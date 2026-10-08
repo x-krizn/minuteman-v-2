@@ -15,8 +15,8 @@ An ultra-responsive retro handheld virtual console featuring decoupled engine sy
 | **Y** | Face Button Y | `V` / `K` | **Block / Timed Parry**: Tap right before an attack to **Parry** (1.0s stagger stun, zero damage). Hold to Guard with stamina chip. |
 | **L** | Left Trigger | `Q` / `U` | **Slot 1 Skill/Item**: Consumes its respective resource pool (e.g., Flask charges for healing). |
 | **R** | Right Trigger | `E` / `I` | **Slot 2 Skill/Item**: Consumes its respective resource pool (e.g., Energy for Firebolt). |
-| **START** | Pill Button | `Enter` | **Satchel / Inventory**: Pauses game and opens equipment, attributes, and merchant. |
-| **SELECT** | Pill Button | `Tab` / `Backspace` | **Shift**: Hold Select + L / R to cycle assigned skills mid-combat. Hold Start + Select to exit game. |
+| **START** | Pill Button | `Enter` | **Game Menu**: Pauses game and opens menu offering Settings (Audio, CRT), Save Game, Load Game, Checkpoint, and Exit. |
+| **SHIFT** | Pill Button | `Tab` / `Backspace` | **Satchel / Inventory**: Opens equipment screen (assign L & R slots), character attributes, and Wandering Merchant. |
 
 ---
 

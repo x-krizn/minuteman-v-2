@@ -4,6 +4,8 @@
  */
 
 import React, { useEffect, useRef } from 'react';
+import { InGameInventory } from './InGameInventory';
+import { InGameMenu } from './InGameMenu';
 import { ScreenCanvas } from './ScreenCanvas';
 import { ScreenText } from './ScreenText';
 
@@ -15,6 +17,14 @@ interface ScreenViewportProps {
   selectedIndex?: number;
   onLineClick?: (index: number) => void;
   showScanlines?: boolean;
+  inGameMenu?: 'none' | 'game-menu' | 'inventory';
+  soundEnabled?: boolean;
+  scanlinesEnabled?: boolean;
+  onToggleSound?: () => void;
+  onToggleScanlines?: () => void;
+  onResume?: () => void;
+  onExitCartridge?: () => void;
+  onCloseInventory?: () => void;
 }
 
 export const ScreenViewport: React.FC<ScreenViewportProps> = ({
@@ -25,6 +35,14 @@ export const ScreenViewport: React.FC<ScreenViewportProps> = ({
   selectedIndex = -1,
   onLineClick,
   showScanlines = true,
+  inGameMenu = 'none',
+  soundEnabled = true,
+  scanlinesEnabled = true,
+  onToggleSound = () => {},
+  onToggleScanlines = () => {},
+  onResume = () => {},
+  onExitCartridge = () => {},
+  onCloseInventory = () => {},
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -75,6 +93,22 @@ export const ScreenViewport: React.FC<ScreenViewportProps> = ({
 
         {/* Game Canvas */}
         <ScreenCanvas hidden={!isCartridgeRunning || isLoading} />
+
+        {/* IN-GAME MENUS (Contained directly inside LCD Screen Viewport) */}
+        {isCartridgeRunning && inGameMenu === 'game-menu' && (
+          <InGameMenu
+            soundEnabled={soundEnabled}
+            scanlinesEnabled={scanlinesEnabled}
+            onToggleSound={onToggleSound}
+            onToggleScanlines={onToggleScanlines}
+            onResume={onResume}
+            onExitCartridge={onExitCartridge}
+          />
+        )}
+
+        {isCartridgeRunning && inGameMenu === 'inventory' && (
+          <InGameInventory onClose={onCloseInventory} />
+        )}
 
         {/* Text Layer (Shell menus, Splash, Debugger) */}
         {!isCartridgeRunning && !isLoading && (

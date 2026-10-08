@@ -3,15 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { initializeCartridges } from './cartridges';
 import { getKnightState } from './cartridges/knight/stateStore';
 import { VirtualGamepad } from './components/gamepad/VirtualGamepad';
 import { ScreenViewport } from './components/screen/ScreenViewport';
-import { ConsoleBezel } from './components/shell/ConsoleBezel';
 import { DebugOverlay } from './components/shell/DebugOverlay';
-import { InventoryModal } from './components/shell/InventoryModal';
-import { KeyboardHelpModal } from './components/shell/KeyboardHelpModal';
 import { cartridgeRunner } from './engine/core/cartridgeRunner';
 import { frameLoop } from './engine/core/frameLoop';
 import { registry } from './engine/core/registry';
@@ -28,17 +25,20 @@ export default function App() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [scanlinesEnabled, setScanlinesEnabled] = useState(true);
   const [showDebug, setShowDebug] = useState(false);
-  const [showHelp, setShowHelp] = useState(false);
-  const [showInventory, setShowInventory] = useState(false);
   const [fps, setFps] = useState(60);
 
-  // Sync inventory pause with knight game state
-  useEffect(() => {
+  // In-game menus contained directly inside LCD screen
+  const [inGameMenu, setInGameMenu] = useState<'none' | 'game-menu' | 'inventory'>('none');
+  const inGameMenuRef = useRef<'none' | 'game-menu' | 'inventory'>('none');
+
+  const updateInGameMenu = (menu: 'none' | 'game-menu' | 'inventory') => {
+    inGameMenuRef.current = menu;
+    setInGameMenu(menu);
     const st = getKnightState();
     if (st) {
-      st.inventoryOpen = showInventory;
+      st.inventoryOpen = menu !== 'none';
     }
-  }, [showInventory]);
+  };
 
   // Screen text display state
   const [screenContent, setScreenContent] = useState(() =>
@@ -56,7 +56,7 @@ export default function App() {
     cartridgeRunner.setOnQuit(() => {
       shellStateMachine.setScreen('carts');
       setActiveCartridgeName(undefined);
-      setShowInventory(false);
+      updateInGameMenu('none');
     });
 
     cartridgeRunner.setOnStatusChange(() => {
@@ -71,21 +71,56 @@ export default function App() {
       setScreenContent(shellStateMachine.getScreenContent());
     });
 
-    // 5. Start unified frame loop
+    // 5. Start unified frame loop (Lifecycle runs continuously without tearing down on menu open/close)
     frameLoop.start((dtSeconds) => {
       try {
         const input = inputReader.read();
+        const isCartActive = Boolean(cartridgeRunner.getActive());
 
-        // Check if player pressed START during knight gameplay to open/close inventory
-        if (
-          cartridgeRunner.getActive()?.id === 'knight' &&
-          input.pressed.start &&
-          !input.held.select
-        ) {
-          setShowInventory((prev) => !prev);
+        // Handle in-game system buttons:
+        // START -> Game Menu (settings, options, save, exit)
+        // SHIFT (Select) -> Inventory / Character Screen
+        if (isCartActive) {
+          const currentMenu = inGameMenuRef.current;
+
+          // Emergency escape hatch: hold START + SHIFT together
+          if (
+            input.held.start &&
+            input.held.select &&
+            (input.pressed.start || input.pressed.select)
+          ) {
+            cartridgeRunner.stopCart();
+            shellStateMachine.setScreen('carts');
+            updateInGameMenu('none');
+            return;
+          }
+
+          // START button: Game Menu
+          if (input.pressed.start && !input.held.select) {
+            if (currentMenu === 'game-menu') {
+              updateInGameMenu('none');
+            } else {
+              updateInGameMenu('game-menu');
+            }
+          }
+
+          // SHIFT (Select) button: Inventory / Character screen
+          if (input.pressed.select && !input.held.start) {
+            if (currentMenu === 'inventory') {
+              updateInGameMenu('none');
+            } else {
+              updateInGameMenu('inventory');
+            }
+          }
+
+          // B button while menu is open: Close and resume game
+          if (input.pressed.b && currentMenu !== 'none') {
+            updateInGameMenu('none');
+          }
         }
 
-        if (cartridgeRunner.getActive()) {
+        // Step active cartridge or shell state machine
+        if (isCartActive) {
           cartridgeRunner.step(input, dtSeconds);
         } else {
           shellStateMachine.step(input, dtSeconds);
@@ -103,7 +138,7 @@ export default function App() {
       frameLoop.stop();
       cartridgeRunner.stopCart();
     };
-  }, []);
+  }, []); // Run ONCE on mount; never tear down on menu toggle!
 
   const handleToggleSound = () => {
     const updated = soundSystem.toggle();
@@ -127,30 +162,13 @@ export default function App() {
   const isCartRunning = Boolean(activeCartridgeName);
 
   return (
-    <div className="w-screen h-screen flex flex-col bg-[#242420] text-[#1a1a1a] select-none touch-none overscroll-none overflow-hidden items-center justify-center p-0 sm:p-3">
-      {/* Handheld Console Device Body */}
+    <div className="w-screen h-screen flex flex-col bg-[#242420] text-[#1a1a1a] select-none touch-none overscroll-none overflow-hidden items-center justify-center p-0">
+      {/* Handheld Console Device Body: Clean Authentic Layout (Screen on Top, Gamepad on Bottom) */}
       <main
         id="game-container"
-        className="w-full h-full sm:max-w-[420px] sm:max-h-[820px] sm:rounded-2xl flex flex-col bg-[#d0d0a8] shadow-2xl relative overflow-hidden border-0 sm:border-4 sm:border-[#9c9c7c]"
+        className="w-full h-full flex flex-col bg-[#d0d0a8] relative overflow-hidden select-none touch-none"
       >
-        {/* Top Console Bezel Bar */}
-        <ConsoleBezel
-          soundEnabled={soundEnabled}
-          scanlinesEnabled={scanlinesEnabled}
-          onToggleSound={handleToggleSound}
-          onToggleScanlines={handleToggleScanlines}
-          onOpenDebug={() => setShowDebug(true)}
-          onOpenHelp={() => setShowHelp(true)}
-          onOpenInventory={() => setShowInventory((prev) => !prev)}
-          activeCartName={activeCartridgeName}
-          onQuitToMenu={() => {
-            cartridgeRunner.stopCart();
-            shellStateMachine.setScreen('carts');
-            setShowInventory(false);
-          }}
-        />
-
-        {/* Middle: Screen Viewport */}
+        {/* Top: LCD Screen Viewport (takes all flexible vertical height; contains in-game menus inside) */}
         <ScreenViewport
           isCartridgeRunning={isCartRunning}
           isLoading={isLoading}
@@ -159,25 +177,27 @@ export default function App() {
           selectedIndex={screenContent.selectedIndex}
           onLineClick={handleLineClick}
           showScanlines={scanlinesEnabled}
+          inGameMenu={isCartRunning ? inGameMenu : 'none'}
+          soundEnabled={soundEnabled}
+          scanlinesEnabled={scanlinesEnabled}
+          onToggleSound={handleToggleSound}
+          onToggleScanlines={handleToggleScanlines}
+          onResume={() => updateInGameMenu('none')}
+          onCloseInventory={() => updateInGameMenu('none')}
+          onExitCartridge={() => {
+            cartridgeRunner.stopCart();
+            shellStateMachine.setScreen('carts');
+            updateInGameMenu('none');
+          }}
         />
 
-        {/* Bottom: Virtual Gamepad (D-Pad, Action Buttons, Pill Buttons) */}
+        {/* Bottom: Virtual Gamepad (D-Pad, Action Buttons, START & SHIFT Pills) - Always Visible */}
         <VirtualGamepad />
       </main>
 
-      {/* Full Inventory Modal */}
-      {showInventory && (
-        <InventoryModal onClose={() => setShowInventory(false)} />
-      )}
-
-      {/* Debug Inspector Modal */}
+      {/* Optional Debug Inspector Modal */}
       {showDebug && (
         <DebugOverlay fps={fps} onClose={() => setShowDebug(false)} />
-      )}
-
-      {/* Keyboard Controls Help Modal */}
-      {showHelp && (
-        <KeyboardHelpModal onClose={() => setShowHelp(false)} />
       )}
     </div>
   );

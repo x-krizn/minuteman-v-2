@@ -84,7 +84,13 @@ export function subscribeKnightState(fn: () => void): () => void {
 }
 
 export function notifyStateChange(): void {
-  stateListeners.forEach((fn) => fn());
+  stateListeners.forEach((fn) => {
+    try {
+      fn();
+    } catch (err) {
+      console.error('State listener error:', err);
+    }
+  });
 }
 
 export function assignSkill(slot: 'L' | 'R', skillId: SkillId): boolean {
@@ -136,3 +142,95 @@ export function buyVendorItem(item: VendorItem): { success: boolean; message: st
   notifyStateChange();
   return { success: true, message: `Purchased ${item.name}!` };
 }
+
+const SAVE_KEY = 'minuteman_knight_save_v1';
+
+export function saveKnightGame(): { success: boolean; message: string } {
+  const st = activeKnightState;
+  if (!st) return { success: false, message: 'No active game to save.' };
+
+  try {
+    const data = {
+      room: st.room,
+      rx: st.rx,
+      ry: st.ry,
+      x: st.x,
+      y: st.y,
+      hp: st.hp,
+      maxHp: st.maxHp,
+      ap: st.ap,
+      maxAp: st.maxAp,
+      ep: st.ep,
+      maxEp: st.maxEp,
+      sp: st.sp,
+      maxSp: st.maxSp,
+      flasks: st.flasks,
+      maxFlasks: st.maxFlasks,
+      coins: st.coins,
+      keys: st.keys,
+      hasDouble: st.hasDouble,
+      assignedL: st.assignedL,
+      assignedR: st.assignedR,
+      got: st.got,
+      checkpoint: st.checkpoint,
+      cleared: st.cleared,
+      nextStart: st.nextStart,
+      timestamp: Date.now(),
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    soundSystem.playKey();
+    return { success: true, message: 'GAME PROGRESS SAVED!' };
+  } catch {
+    return { success: false, message: 'Failed to write save.' };
+  }
+}
+
+export function loadSavedKnightGame(): boolean {
+  const st = activeKnightState;
+  if (!st) return false;
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    Object.assign(st, {
+      room: data.room,
+      rx: data.rx,
+      ry: data.ry,
+      x: data.x,
+      y: data.y,
+      hp: data.hp,
+      maxHp: data.maxHp,
+      ap: data.ap,
+      maxAp: data.maxAp,
+      ep: data.ep,
+      maxEp: data.maxEp,
+      sp: data.sp,
+      maxSp: data.maxSp,
+      flasks: data.flasks,
+      maxFlasks: data.maxFlasks,
+      coins: data.coins,
+      keys: data.keys,
+      hasDouble: data.hasDouble,
+      assignedL: data.assignedL,
+      assignedR: data.assignedR,
+      got: data.got,
+      checkpoint: data.checkpoint,
+      cleared: data.cleared,
+      nextStart: data.nextStart,
+    });
+    soundSystem.playSelect();
+    notifyStateChange();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function hasSavedKnightGame(): boolean {
+  try {
+    return Boolean(localStorage.getItem(SAVE_KEY));
+  } catch {
+    return false;
+  }
+}
+

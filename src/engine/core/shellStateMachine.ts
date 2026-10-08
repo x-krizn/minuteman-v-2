@@ -25,7 +25,8 @@ export const HOWTO_LINES = [
   'X: ATTACK (HOLD CHARGE)',
   'Y: BLOCK (TAP PARRY)',
   'L / R: ASSIGNED SKILLS',
-  'START + SELECT: LEAVE GAME',
+  'START: MENU, SAVE & EXIT',
+  'SHIFT: INVENTORY & STATS',
 ];
 
 export class ShellStateMachine {

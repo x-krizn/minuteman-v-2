@@ -77,6 +77,13 @@ export function createKnightCartridge(): Cartridge {
     maxFlasks: 5,
     inventoryOpen: false,
 
+    menuMode: 'play',
+    menuIndex: 0,
+    invTab: 'gear',
+    invIndex: 0,
+    menuMsg: '',
+    menuMsgT: 0,
+
     hasDouble: false,
     airJumps: 0,
     coyote: 0,

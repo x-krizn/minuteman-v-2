@@ -21,23 +21,28 @@ const KEY_MAPPINGS: Record<string, ButtonKey> = {
   KeyZ: 'a', // Jump (A)
   Space: 'a',
   KeyX: 'b', // Dash / Sprint (B)
-  ShiftLeft: 'b',
+  KeyK: 'b',
   KeyC: 'x', // Attack / Charge (X)
   KeyJ: 'x',
   KeyV: 'y', // Block / Parry (Y)
-  KeyK: 'y',
 
   // Bumpers / Skills
   KeyQ: 'l', // Skill 1 (L)
   KeyU: 'l',
   KeyE: 'r', // Skill 2 (R)
-  KeyI: 'r',
+  KeyO: 'r',
 
-  // System
+  // System Buttons
+  // START -> Game Menu (Enter, P, Escape)
   Enter: 'start',
+  KeyP: 'start',
+  // SHIFT -> Inventory / Character Screen (ShiftLeft, ShiftRight, Tab, M)
+  ShiftLeft: 'select',
+  ShiftRight: 'select',
   Tab: 'select',
+  KeyM: 'select',
+  KeyI: 'select',
   Backspace: 'select',
-  Escape: 'select',
 };
 
 export class KeyboardMapper {

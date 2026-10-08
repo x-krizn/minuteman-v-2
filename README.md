@@ -76,7 +76,15 @@ This repository includes an automated GitHub Actions workflow (`.github/workflow
 1. Push this codebase to your GitHub repository on `main` or `master`.
 2. In your GitHub repository:
    - Navigate to **Settings** > **Pages**.
-   - Under **Build and deployment** > **Source**, select **GitHub Actions**.
+   - Under **Build and deployment** > **Source**, change the dropdown from *"Deploy from a branch"* to **"GitHub Actions"**.
+
+### Troubleshooting Common GitHub Actions Failures:
+1. **"Deployment failed with status 404" or "Resource not accessible by integration"**:
+   - Go to **Settings** > **Pages** and confirm that **Source** is set to **"GitHub Actions"** (NOT *"Deploy from a branch"*).
+   - Go to **Settings** > **Actions** > **General** > scroll down to **Workflow permissions** > select **"Read and write permissions"** and click Save.
+2. **"Dependencies lock file is not found" or "ERESOLVE could not resolve dependency"**:
+   - Resolved! A generated `package-lock.json` and `.npmrc` with `legacy-peer-deps=true` are now included in the repository.
+   - The workflow runs `npm install --legacy-peer-deps` to ensure reliable builds across all Node environments.
 
 GitHub Actions will automatically run the build and host your game at:
 ```

@@ -1,0 +1,6 @@
+{
+  "name": "Minuteman Modular Handheld Game Console",
+  "description": "A modular retro handheld virtual game console and Metroidvania engine with decoupled systems, responsive virtual gamepad, and cartridge architecture.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

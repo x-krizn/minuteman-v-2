@@ -18,6 +18,8 @@ interface InGameMenuProps {
   onToggleScanlines: () => void;
   onResume: () => void;
   onExitCartridge: () => void;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
 }
 
 export const InGameMenu: React.FC<InGameMenuProps> = ({
@@ -27,6 +29,8 @@ export const InGameMenu: React.FC<InGameMenuProps> = ({
   onToggleScanlines,
   onResume,
   onExitCartridge,
+  isFullscreen = false,
+  onToggleFullscreen,
 }) => {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [showControls, setShowControls] = useState(false);
@@ -182,6 +186,28 @@ export const InGameMenu: React.FC<InGameMenuProps> = ({
               {scanlinesEnabled ? 'ENABLED' : 'OFF'}
             </span>
           </button>
+
+          {/* Fullscreen Toggle */}
+          {onToggleFullscreen && (
+            <button
+              onClick={() => {
+                soundSystem.playSelect();
+                onToggleFullscreen();
+              }}
+              className="w-full text-left px-2.5 py-1.5 bg-[#142614] hover:bg-[#1e381e] text-[#9ad482] rounded-xs transition-colors flex justify-between items-center border border-[#224420]"
+            >
+              <span>⛶ FULLSCREEN MODE</span>
+              <span
+                className={`px-1.5 py-0.2 rounded-xs font-bold text-[10px] ${
+                  isFullscreen
+                    ? 'bg-[#1b481b] text-[#50fa7b] border border-[#306028]'
+                    : 'bg-[#223022] text-[#80a080] border border-[#304030]'
+                }`}
+              >
+                {isFullscreen ? 'ACTIVE' : 'WINDOWED'}
+              </span>
+            </button>
+          )}
 
           {/* Controls Guide */}
           <button

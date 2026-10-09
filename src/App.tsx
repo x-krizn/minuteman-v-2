@@ -17,6 +17,12 @@ import { soundSystem } from './engine/core/soundSystem';
 import { inputReader } from './engine/input/inputReader';
 import { keyboardMapper } from './engine/input/keyboardMapper';
 import { ShellScreen } from './types/shell';
+import {
+  isAppFullscreen,
+  requestAppFullscreen,
+  subscribeFullscreenChange,
+  toggleAppFullscreen,
+} from './utils/fullscreen';
 
 export default function App() {
   const [screen, setScreen] = useState<ShellScreen>('splash');
@@ -26,6 +32,7 @@ export default function App() {
   const [scanlinesEnabled, setScanlinesEnabled] = useState(true);
   const [showDebug, setShowDebug] = useState(false);
   const [fps, setFps] = useState(60);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // In-game menus contained directly inside LCD screen
   const [inGameMenu, setInGameMenu] = useState<'none' | 'game-menu' | 'inventory'>('none');
@@ -44,6 +51,32 @@ export default function App() {
   const [screenContent, setScreenContent] = useState(() =>
     shellStateMachine.getScreenContent()
   );
+
+  // Sync fullscreen state
+  useEffect(() => {
+    setIsFullscreen(isAppFullscreen());
+    return subscribeFullscreenChange((fs) => {
+      setIsFullscreen(fs);
+    });
+  }, []);
+
+  // On mobile browsers, attempt fullscreen on first user touch gesture
+  useEffect(() => {
+    const handleInitialTouch = () => {
+      if (
+        !isAppFullscreen() &&
+        typeof navigator !== 'undefined' &&
+        /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
+      ) {
+        requestAppFullscreen().catch(() => {});
+      }
+    };
+
+    window.addEventListener('pointerdown', handleInitialTouch, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', handleInitialTouch);
+    };
+  }, []);
 
   useEffect(() => {
     // 1. Initialize registered cartridges
@@ -162,11 +195,16 @@ export default function App() {
   const isCartRunning = Boolean(activeCartridgeName);
 
   return (
-    <div className="w-screen h-screen flex flex-col bg-[#242420] text-[#1a1a1a] select-none touch-none overscroll-none overflow-hidden items-center justify-center p-0">
+    <div
+      className="fixed inset-0 w-full h-[100dvh] max-h-[100dvh] flex flex-col bg-[#242420] text-[#1a1a1a] select-none touch-none overscroll-none overflow-hidden items-center justify-center p-0 m-0"
+      style={{
+        height: '100dvh',
+      }}
+    >
       {/* Handheld Console Device Body: Clean Authentic Layout (Screen on Top, Gamepad on Bottom) */}
       <main
         id="game-container"
-        className="w-full h-full flex flex-col bg-[#d0d0a8] relative overflow-hidden select-none touch-none"
+        className="w-full h-full max-w-[560px] flex flex-col bg-[#d0d0a8] relative overflow-hidden select-none touch-none justify-between"
       >
         {/* Top: LCD Screen Viewport (takes all flexible vertical height; contains in-game menus inside) */}
         <ScreenViewport
@@ -189,9 +227,11 @@ export default function App() {
             shellStateMachine.setScreen('carts');
             updateInGameMenu('none');
           }}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={() => toggleAppFullscreen()}
         />
 
-        {/* Bottom: Virtual Gamepad (D-Pad, Action Buttons, START & SHIFT Pills) - Always Visible */}
+        {/* Bottom: Virtual Gamepad (D-Pad, Action Buttons, START & SHIFT Pills) - Dynamically Scaled */}
         <VirtualGamepad />
       </main>
 

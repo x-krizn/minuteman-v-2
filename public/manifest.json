@@ -1,0 +1,17 @@
+{
+  "name": "Minuteman Modular Handheld Game Console",
+  "short_name": "Minuteman",
+  "description": "Modular retro handheld virtual game console and Metroidvania engine",
+  "start_url": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#242420",
+  "theme_color": "#242420",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230f300f'/><text x='50' y='65' font-size='50' text-anchor='middle' fill='%2300ff33' font-family='monospace'>M</text></svg>",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}

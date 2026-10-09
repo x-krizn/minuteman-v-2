@@ -110,9 +110,9 @@ export const SystemButtons: React.FC<SystemButtonsProps> = ({ scale, state }) =>
       <div
         className="absolute pointer-events-none select-none tracking-wider font-extrabold"
         style={{
-          left: `${11 * s}px`,
-          top: `${99 * s}px`,
-          fontSize: `${6 * s}px`,
+          left: `${14 * s}px`,
+          top: `${95 * s}px`,
+          fontSize: `${5.5 * s}px`,
           lineHeight: 1,
           color: '#5e5e4c',
           fontFamily: 'orion-font, monospace',

@@ -20,10 +20,10 @@ export const PadBoard: React.FC<PadBoardProps> = ({ scale, state }) => {
   return (
     <div
       id="pad-board"
-      className="relative select-none touch-none"
+      className="relative select-none touch-none mx-auto"
       style={{
-        width: `${144 * s}px`,
-        height: `${108 * s}px`,
+        width: `${160 * s}px`,
+        height: `${100 * s}px`,
       }}
     >
       <DPad scale={scale} state={state} />

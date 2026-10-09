@@ -76,8 +76,8 @@ export const DPad: React.FC<DPadProps> = ({ scale, state }) => {
       onLostPointerCapture={handleRelease}
       className="absolute touch-none select-none"
       style={{
-        left: `${-2 * s}px`,
-        top: `${30 * s}px`,
+        left: `${2 * s}px`,
+        top: `${28 * s}px`,
         width: `${68 * s}px`,
         height: `${68 * s}px`,
       }}

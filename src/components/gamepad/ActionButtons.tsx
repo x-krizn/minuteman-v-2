@@ -30,12 +30,12 @@ interface ButtonConfig {
 }
 
 const BUTTON_CONFIGS: ButtonConfig[] = [
-  { key: 'l', label: 'L', x: 97, y: 22, faceImg: FACE_G, c: '#7d7d7d', hi: '#bcbcbc', lo: '#434343' },
-  { key: 'r', label: 'R', x: 133, y: 22, faceImg: FACE_G, c: '#7d7d7d', hi: '#bcbcbc', lo: '#434343' },
-  { key: 'y', label: 'Y', x: 115, y: 41, faceImg: FACE_Y, c: '#c8c864', hi: '#ffff96', lo: '#6b6b36' },
-  { key: 'x', label: 'X', x: 97, y: 58, faceImg: FACE_X, c: '#6464c8', hi: '#9696ff', lo: '#36366b' },
-  { key: 'b', label: 'B', x: 133, y: 58, faceImg: FACE_B, c: '#bc0000', hi: '#ff0000', lo: '#650000' },
-  { key: 'a', label: 'A', x: 115, y: 77, faceImg: FACE_A, c: '#527252', hi: '#7bab7b', lo: '#2c3d2c' },
+  { key: 'l', label: 'L', x: 97, y: 18, faceImg: FACE_G, c: '#7d7d7d', hi: '#bcbcbc', lo: '#434343' },
+  { key: 'r', label: 'R', x: 133, y: 18, faceImg: FACE_G, c: '#7d7d7d', hi: '#bcbcbc', lo: '#434343' },
+  { key: 'y', label: 'Y', x: 115, y: 37, faceImg: FACE_Y, c: '#c8c864', hi: '#ffff96', lo: '#6b6b36' },
+  { key: 'x', label: 'X', x: 97, y: 55, faceImg: FACE_X, c: '#6464c8', hi: '#9696ff', lo: '#36366b' },
+  { key: 'b', label: 'B', x: 133, y: 55, faceImg: FACE_B, c: '#bc0000', hi: '#ff0000', lo: '#650000' },
+  { key: 'a', label: 'A', x: 115, y: 74, faceImg: FACE_A, c: '#527252', hi: '#7bab7b', lo: '#2c3d2c' },
 ];
 
 interface ActionButtonsProps {

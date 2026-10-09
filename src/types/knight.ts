@@ -122,14 +122,6 @@ export interface KnightState {
   maxFlasks: number;
   inventoryOpen: boolean;
 
-  // In-game menus (contained in-game on retro canvas)
-  menuMode: 'play' | 'pause' | 'inventory';
-  menuIndex: number;
-  invTab: 'gear' | 'merchant';
-  invIndex: number;
-  menuMsg: string;
-  menuMsgT: number;
-
   // Platforming
   hasDouble: boolean;
   airJumps: number;

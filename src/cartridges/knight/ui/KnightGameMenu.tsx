@@ -4,14 +4,14 @@
  */
 
 import React, { useState } from 'react';
+import { soundSystem } from '../../../engine/core/soundSystem';
 import {
   hasSavedKnightGame,
   loadSavedKnightGame,
   saveKnightGame,
-} from '../../cartridges/knight/stateStore';
-import { soundSystem } from '../../engine/core/soundSystem';
+} from '../stateStore';
 
-interface InGameMenuProps {
+export interface KnightGameMenuProps {
   soundEnabled: boolean;
   scanlinesEnabled: boolean;
   onToggleSound: () => void;
@@ -22,7 +22,7 @@ interface InGameMenuProps {
   onToggleFullscreen?: () => void;
 }
 
-export const InGameMenu: React.FC<InGameMenuProps> = ({
+export const KnightGameMenu: React.FC<KnightGameMenuProps> = ({
   soundEnabled,
   scanlinesEnabled,
   onToggleSound,

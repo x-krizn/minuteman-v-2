@@ -6,6 +6,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { initializeCartridges } from './cartridges';
 import { getKnightState } from './cartridges/knight/stateStore';
+import { KnightGameMenu, KnightSatchel } from './cartridges/knight/ui';
 import { VirtualGamepad } from './components/gamepad/VirtualGamepad';
 import { ScreenViewport } from './components/screen/ScreenViewport';
 import { DebugOverlay } from './components/shell/DebugOverlay';
@@ -215,21 +216,31 @@ export default function App() {
           selectedIndex={screenContent.selectedIndex}
           onLineClick={handleLineClick}
           showScanlines={scanlinesEnabled}
-          inGameMenu={isCartRunning ? inGameMenu : 'none'}
-          soundEnabled={soundEnabled}
-          scanlinesEnabled={scanlinesEnabled}
-          onToggleSound={handleToggleSound}
-          onToggleScanlines={handleToggleScanlines}
-          onResume={() => updateInGameMenu('none')}
-          onCloseInventory={() => updateInGameMenu('none')}
-          onExitCartridge={() => {
-            cartridgeRunner.stopCart();
-            shellStateMachine.setScreen('carts');
-            updateInGameMenu('none');
-          }}
           isFullscreen={isFullscreen}
           onToggleFullscreen={() => toggleAppFullscreen()}
-        />
+        >
+          {/* Active Cartridge In-Game Overlay */}
+          {isCartRunning && inGameMenu === 'game-menu' && (
+            <KnightGameMenu
+              soundEnabled={soundEnabled}
+              scanlinesEnabled={scanlinesEnabled}
+              onToggleSound={handleToggleSound}
+              onToggleScanlines={handleToggleScanlines}
+              onResume={() => updateInGameMenu('none')}
+              onExitCartridge={() => {
+                cartridgeRunner.stopCart();
+                shellStateMachine.setScreen('carts');
+                updateInGameMenu('none');
+              }}
+              isFullscreen={isFullscreen}
+              onToggleFullscreen={() => toggleAppFullscreen()}
+            />
+          )}
+
+          {isCartRunning && inGameMenu === 'inventory' && (
+            <KnightSatchel onClose={() => updateInGameMenu('none')} />
+          )}
+        </ScreenViewport>
 
         {/* Bottom: Virtual Gamepad (D-Pad, Action Buttons, START & SHIFT Pills) - Dynamically Scaled */}
         <VirtualGamepad />

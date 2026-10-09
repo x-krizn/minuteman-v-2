@@ -4,9 +4,9 @@
  */
 
 import { AttackVariant, ItemDef, SkillDef, SkillId, StatType } from '../../types/knight';
-import { KNIGHT_PNG } from '../walkTestCartridge';
 
-export { KNIGHT_PNG };
+export const KNIGHT_PNG =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADYAAAASCAYAAAAQeC39AAABhElEQVRIDa2WMZLCMAxFyQ7HgXq5AUPDHei4ABXNNltxATruQLOzN9hbZSOPpZEVybY8ygxj2ZGe9WUlZNrUr1ncnsTcM41idXFqic5/v19F4odjmtdiCn82iWJ1c6wkC0AWtAGhA+KiWCEcOG76LYKSjSM7iR6TOMBEBo49gOxDHIjFeBwlZysXcH67v9BcTumSTosWnEYAa9YYiygzE60VCwhGPr4vaGoxeE+OEawWA/Zc5WSemMwwz1cAw69nOYJlMj56MmA+0OdRVwTLZFiKVwGn8zUJ+nk/YbTiNNERLDfDbEUUomXqXYtgeRlW5VcVYmKsGOZSmBEsN6P7xAZakNTJag+woJizwaF9uGEK2+0/yY+96mnNY0SxOAf2zwVSU2m+FUGUrJRK6liMZLW2awpDQBZX63V05SP9uXJRA6zUhp7OaQqDT5nakXMVNTuCAwXh4vJnllps8xmTSQ488BKR5qxInrfrtMSRABCXRal7wGINTqCGnwnPN6I4fJ8m8x+NOLZlMyexbAAAAABJRU5ErkJggg==';
 
 export const TILE_SIZE = 16;
 export const COLS = 10;

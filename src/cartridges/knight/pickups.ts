@@ -26,20 +26,39 @@ export function updatePickups(
     if (it.k === 'coin') {
       state.coins++;
       soundSystem.playCoin();
+    } else if (it.k === 'coin_bag') {
+      state.coins += 5;
+      say('+5 COINS (SACK)');
+      soundSystem.playCoin();
     } else if (it.k === 'key') {
       state.keys++;
       say('KEY');
       soundSystem.playKey();
     } else if (it.k === 'gem' && it.s) {
-      const keyName = `max${cap(it.s)}` as 'maxHp' | 'maxAp' | 'maxEp' | 'maxSp';
-      state[keyName]++;
-      state[it.s] = state[keyName];
-      say(`+1 MAX ${it.s.toUpperCase()}`);
+      if (it.s === 'purple') {
+        state.maxAp++;
+        state.ap = state.maxAp;
+        say('+1 MAX AP (AMETHYST)');
+      } else if (it.s === 'orange') {
+        state.maxSp++;
+        state.sp = state.maxSp;
+        say('+1 MAX SP (AMBER)');
+      } else {
+        const keyName = `max${cap(it.s)}` as 'maxHp' | 'maxAp' | 'maxEp' | 'maxSp';
+        state[keyName]++;
+        state[it.s] = state[keyName];
+        say(`+1 MAX ${it.s.toUpperCase()}`);
+      }
       soundSystem.playKey();
     } else if (it.k === 'potion' && it.s) {
       if (it.s === 'hp') {
         state.flasks = Math.min(state.maxFlasks, state.flasks + 1);
         say(`+1 FLASK (${state.flasks}/${state.maxFlasks})`);
+        soundSystem.playCoin();
+      } else if (it.s === 'purple' || it.s === 'orange') {
+        state.hp = state.maxHp;
+        state.sp = state.maxSp;
+        say('FULL RESTORE!');
         soundSystem.playCoin();
       } else {
         const keyName = `max${cap(it.s)}` as 'maxHp' | 'maxAp' | 'maxEp' | 'maxSp';
@@ -47,6 +66,22 @@ export function updatePickups(
         say(`+2 ${it.s.toUpperCase()}`);
         soundSystem.playCoin();
       }
+    } else if (it.k === 'weapon') {
+      say(`FOUND ${it.name?.toUpperCase() || 'WEAPON'}!`);
+      soundSystem.playKey();
+    } else if (it.k === 'shield') {
+      state.maxAp++;
+      state.ap = state.maxAp;
+      say(`FOUND ${it.name?.toUpperCase() || 'SHIELD'} (+1 AP)!`);
+      soundSystem.playKey();
+    } else if (it.k === 'caster') {
+      state.maxEp++;
+      state.ep = state.maxEp;
+      say(`FOUND ${it.name?.toUpperCase() || 'CASTER'} (+1 EP)!`);
+      soundSystem.playKey();
+    } else if (it.k === 'quiver') {
+      say('FOUND ARROW QUIVER!');
+      soundSystem.playCoin();
     } else {
       state.hasDouble = true;
       say('DOUBLE JUMP');

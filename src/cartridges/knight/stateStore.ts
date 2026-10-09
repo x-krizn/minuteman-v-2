@@ -49,6 +49,22 @@ export const VENDOR_ITEMS: VendorItem[] = [
     stat: 'ap',
   },
   {
+    id: 'amethyst',
+    name: 'Amethyst Shard',
+    description: '+1 Max AP & Armor Reinforce',
+    cost: 30,
+    type: 'stat',
+    stat: 'purple',
+  },
+  {
+    id: 'amber',
+    name: 'Amber Crystal',
+    description: '+1 Max SP Stamina Boost',
+    cost: 30,
+    type: 'stat',
+    stat: 'orange',
+  },
+  {
     id: 'flask_shard',
     name: 'Flask Shard',
     description: '+1 Max Flask Capacity',
@@ -127,9 +143,12 @@ export function buyVendorItem(item: VendorItem): { success: boolean; message: st
     } else if (item.stat === 'ep') {
       st.maxEp += 1;
       st.ep += 1;
-    } else if (item.stat === 'ap') {
+    } else if (item.stat === 'ap' || item.stat === 'purple') {
       st.maxAp += 1;
       st.ap += 1;
+    } else if (item.stat === 'orange') {
+      st.maxSp += 1;
+      st.sp += 1;
     }
   } else if (item.type === 'flask_max') {
     st.maxFlasks += 1;

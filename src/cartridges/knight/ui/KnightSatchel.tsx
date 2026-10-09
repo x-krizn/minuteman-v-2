@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { SKILLS } from '../../cartridges/knight/constants';
+import { SKILLS } from '../constants';
 import {
   assignSkill,
   buyVendorItem,
@@ -12,16 +12,16 @@ import {
   subscribeKnightState,
   VENDOR_ITEMS,
   VendorItem,
-} from '../../cartridges/knight/stateStore';
-import { SkillId } from '../../types/knight';
+} from '../stateStore';
+import { SkillId } from '../../../types/knight';
 
-interface InGameInventoryProps {
+export interface KnightSatchelProps {
   onClose: () => void;
 }
 
 type TabType = 'equipment' | 'stats' | 'merchant';
 
-export const InGameInventory: React.FC<InGameInventoryProps> = ({ onClose }) => {
+export const KnightSatchel: React.FC<KnightSatchelProps> = ({ onClose }) => {
   const [activeTab, setActiveTab] = useState<TabType>('equipment');
   const [knightState, setKnightState] = useState(() => getKnightState());
   const [shopFeedback, setShopFeedback] = useState<string | null>(null);

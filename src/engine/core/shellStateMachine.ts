@@ -11,8 +11,8 @@ import { registry } from './registry';
 import { soundSystem } from './soundSystem';
 
 export const MENU_ITEMS: MenuItem[] = [
-  { label: 'HOW-TO', go: 'howto' },
-  { label: 'CARTRIDGES', go: 'carts' },
+  { label: 'PLAY KNIGHT', go: 'carts' },
+  { label: 'HOW-TO & COMBAT', go: 'howto' },
   { label: 'SETTINGS', go: 'settings' },
   { label: 'DEBUGGER', go: 'debug' },
   { label: 'CREDITS', go: 'credits' },
@@ -20,13 +20,13 @@ export const MENU_ITEMS: MenuItem[] = [
 ];
 
 export const HOWTO_LINES = [
-  'A: JUMP (AIR JUMP)',
+  'A: JUMP (MID-AIR JUMP)',
   'B: DASH (HOLD SPRINT)',
   'X: ATTACK (HOLD CHARGE)',
-  'Y: BLOCK (TAP PARRY)',
+  'Y: BLOCK (TIMED PARRY)',
   'L / R: ASSIGNED SKILLS',
-  'START: MENU, SAVE & EXIT',
-  'SHIFT: INVENTORY & STATS',
+  'START: MENU & SAVE',
+  'SHIFT: SATCHEL & SHOP',
 ];
 
 export class ShellStateMachine {
@@ -253,6 +253,7 @@ export class ShellStateMachine {
           title: 'Credits',
           lines: [
             'MINUTEMAN CONSOLE',
+            'KNIGHT: METROID-SOULS',
             'MODULAR ENGINE v1.0',
             '',
             'B: BACK',

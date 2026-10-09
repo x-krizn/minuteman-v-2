@@ -229,7 +229,8 @@ export function buildFloor(
           if (rand < 0.12) {
             room = withTile(room, 7, 8, Math.random() < 0.5 ? '1' : '3');
           } else if (rand < 0.45) {
-            room = withTile(room, 7, 8, Math.random() < 0.25 ? 'H' : 'o');
+            const gemOpts = ['H', 'G', 'B', 'Y', 'P', 'R', 'O'];
+            room = withTile(room, 7, 8, pick(gemOpts));
           }
         }
       }

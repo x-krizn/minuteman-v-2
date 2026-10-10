@@ -64,6 +64,13 @@ export class HardwareGamepadManager {
   }
 
   private handleConnected = (e: GamepadEvent) => {
+    if (typeof window !== 'undefined') {
+      try {
+        window.focus();
+      } catch {
+        // Safe focus attempt
+      }
+    }
     const name = e.gamepad.id || `Gamepad ${e.gamepad.index + 1}`;
     if (!this.connectedNames.includes(name)) {
       this.connectedNames.push(name);
@@ -191,16 +198,16 @@ export class HardwareGamepadManager {
           else if (pov >= 0.85 && pov <= 1.05) { currentHardwareButtons.add('up'); currentHardwareButtons.add('left'); }
         }
       }
+    }
 
-      // If analog stick is centered, derive stick movement from hardware D-pad buttons
-      if (stickX === 0) {
-        if (currentHardwareButtons.has('left')) stickX = -1;
-        else if (currentHardwareButtons.has('right')) stickX = 1;
-      }
-      if (stickY === 0) {
-        if (currentHardwareButtons.has('up')) stickY = -1;
-        else if (currentHardwareButtons.has('down')) stickY = 1;
-      }
+    // If analog stick is centered across all pads, derive stick movement from hardware D-pad buttons
+    if (stickX === 0) {
+      if (currentHardwareButtons.has('left')) stickX = -1;
+      else if (currentHardwareButtons.has('right')) stickX = 1;
+    }
+    if (stickY === 0) {
+      if (currentHardwareButtons.has('up')) stickY = -1;
+      else if (currentHardwareButtons.has('down')) stickY = 1;
     }
 
     // Check for gamepads that were disconnected

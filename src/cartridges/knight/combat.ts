@@ -4,7 +4,7 @@
  */
 
 import { soundSystem } from '../../engine/core/soundSystem';
-import { BoundingBox, KnightState } from '../../types/knight';
+import { BoundingBox, KnightState } from './types';
 import {
   CHARGE_TIME_REQUIRED,
   JUMP_VELOCITY,

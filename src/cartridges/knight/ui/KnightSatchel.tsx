@@ -13,7 +13,7 @@ import {
   VENDOR_ITEMS,
   VendorItem,
 } from '../stateStore';
-import { SkillId } from '../../../types/knight';
+import { SkillId } from '../types';
 
 export interface KnightSatchelProps {
   onClose: () => void;

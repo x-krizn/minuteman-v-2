@@ -11,7 +11,7 @@ import {
   CartridgeSurface,
 } from '../../types/cartridge';
 import { GameInput } from '../../types/input';
-import { EnemyEntity, KnightState, SkillId } from '../../types/knight';
+import { EnemyEntity, KnightState, SkillId } from './types';
 import { handleAttackInput, handleBlockInput, updateCombat } from './combat';
 import {
   COLS,
@@ -246,11 +246,7 @@ export function createKnightCartridge(): Cartridge {
     },
 
     init: () => {
-      try {
-        fontFamily = getComputedStyle(document.body).fontFamily || 'orion-font, monospace';
-      } catch {
-        // default fallback
-      }
+      fontFamily = 'orion-font, monospace';
 
       Object.keys(rooms).forEach((k) => delete rooms[k]);
       Object.assign(rooms, JSON.parse(JSON.stringify(INITIAL_ROOMS)));

@@ -20,6 +20,7 @@ import {
   hardwareGamepad,
 } from './engine/input/hardwareGamepad';
 import { ShellScreen } from './types/shell';
+import { CartridgeMenuMode } from './types/cartridge';
 import {
   isAppFullscreen,
   requestAppFullscreen,
@@ -43,10 +44,10 @@ export default function App() {
   const toastTimerRef = useRef<number | null>(null);
 
   // In-game menus contained directly inside LCD screen
-  const [inGameMenu, setInGameMenu] = useState<'none' | 'game-menu' | 'inventory'>('none');
-  const inGameMenuRef = useRef<'none' | 'game-menu' | 'inventory'>('none');
+  const [inGameMenu, setInGameMenu] = useState<CartridgeMenuMode>('none');
+  const inGameMenuRef = useRef<CartridgeMenuMode>('none');
 
-  const updateInGameMenu = (menu: 'none' | 'game-menu' | 'inventory') => {
+  const updateInGameMenu = (menu: CartridgeMenuMode) => {
     inGameMenuRef.current = menu;
     setInGameMenu(menu);
     const active = cartridgeRunner.getActive();

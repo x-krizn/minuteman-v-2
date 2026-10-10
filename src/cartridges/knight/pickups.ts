@@ -4,7 +4,7 @@
  */
 
 import { soundSystem } from '../../engine/core/soundSystem';
-import { KnightState } from '../../types/knight';
+import { KnightState } from './types';
 import { ITEMS } from './constants';
 
 function cap(s: string): string {

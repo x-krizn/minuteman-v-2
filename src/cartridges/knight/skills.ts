@@ -4,7 +4,7 @@
  */
 
 import { soundSystem } from '../../engine/core/soundSystem';
-import { CombatParticle, KnightState, ProjectileEntity, SkillId } from '../../types/knight';
+import { CombatParticle, KnightState, ProjectileEntity, SkillId } from './types';
 import { SKILLS, TILE_SIZE } from './constants';
 import { enemyBox, overlap, solidAt } from './physics';
 

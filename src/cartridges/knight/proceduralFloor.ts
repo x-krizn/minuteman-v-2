@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { KnightState } from '../../types/knight';
+import { KnightState } from './types';
 
 export interface RoomOpenings {
   N: boolean;

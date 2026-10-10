@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { BoundingBox, EnemyEntity, KnightState } from '../../types/knight';
+import { BoundingBox, EnemyEntity, KnightState } from './types';
 import {
   BODY_HEIGHT,
   COLS,

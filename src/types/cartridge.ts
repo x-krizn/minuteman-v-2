@@ -44,8 +44,10 @@ export interface CartridgeSurface {
   assets: AssetLibrary;
 }
 
+export type CartridgeMenuMode = 'none' | 'game-menu' | 'cart-menu' | 'inventory';
+
 export interface CartridgeOverlayProps {
-  menuMode: 'none' | 'game-menu' | 'inventory';
+  menuMode: CartridgeMenuMode;
   soundEnabled: boolean;
   scanlinesEnabled: boolean;
   isFullscreen: boolean;
@@ -68,5 +70,5 @@ export interface Cartridge {
   draw: (surface: CartridgeSurface) => void;
   destroy?: () => void;
   renderOverlay?: (props: CartridgeOverlayProps) => React.ReactNode;
-  onMenuToggle?: (menuMode: 'none' | 'game-menu' | 'inventory') => void;
+  onMenuToggle?: (menuMode: CartridgeMenuMode) => void;
 }

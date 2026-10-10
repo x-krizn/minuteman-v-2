@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { EnemyEntity, KnightState } from '../../types/knight';
+import { EnemyEntity, KnightState } from './types';
 import { SCREEN_W, TILE_SIZE } from './constants';
 import { solidAt } from './physics';
 

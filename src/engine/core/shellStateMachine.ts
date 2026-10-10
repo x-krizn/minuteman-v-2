@@ -11,8 +11,8 @@ import { registry } from './registry';
 import { soundSystem } from './soundSystem';
 
 export const MENU_ITEMS: MenuItem[] = [
-  { label: 'PLAY KNIGHT', go: 'carts' },
-  { label: 'HOW-TO & COMBAT', go: 'howto' },
+  { label: 'PLAY', go: 'carts' },
+  { label: 'HOW-TO & CONTROLS', go: 'howto' },
   { label: 'SETTINGS', go: 'settings' },
   { label: 'DEBUGGER', go: 'debug' },
   { label: 'CREDITS', go: 'credits' },
@@ -20,13 +20,12 @@ export const MENU_ITEMS: MenuItem[] = [
 ];
 
 export const HOWTO_LINES = [
-  'A: JUMP (MID-AIR JUMP)',
-  'B: DASH (HOLD SPRINT)',
-  'X: ATTACK (HOLD CHARGE)',
-  'Y: BLOCK (TIMED PARRY)',
-  'L / R: ASSIGNED SKILLS',
-  'START: MENU & SAVE',
-  'SHIFT: SATCHEL & SHOP',
+  'D-PAD / STICK: MOVE & NAVIGATE',
+  'A / B: PRIMARY ACTIONS',
+  'X / Y: SECONDARY ACTIONS',
+  'L / R: SHOULDERS / TRIGGERS',
+  'START: PAUSE & SYSTEM MENU',
+  'SHIFT: CARTRIDGE SPECIAL',
 ];
 
 export class ShellStateMachine {
@@ -185,12 +184,21 @@ export class ShellStateMachine {
           selectedIndex: -1,
         };
 
-      case 'menu':
+      case 'menu': {
+        const carts = registry.getCartridges();
+        const playLabel =
+          carts.length === 1
+            ? `PLAY: ${carts[0].name.split(':')[0]}`
+            : carts.length > 1
+            ? 'CARTRIDGES'
+            : 'PLAY';
+        const lines = MENU_ITEMS.map((m) => (m.go === 'carts' ? playLabel : m.label));
         return {
           title: 'minuteman Shell Menu',
-          lines: MENU_ITEMS.map((m) => m.label),
+          lines,
           selectedIndex: this.menuIndex,
         };
+      }
 
       case 'carts': {
         const carts = registry.getCartridges();
@@ -248,18 +256,23 @@ export class ShellStateMachine {
         };
       }
 
-      case 'credits':
+      case 'credits': {
+        const carts = registry.getCartridges();
+        const cartLines = carts.map(
+          (c) => `${c.name.split(':')[0]}${c.version ? ` v${c.version}` : ''}`
+        );
         return {
           title: 'Credits',
           lines: [
             'MINUTEMAN CONSOLE',
-            'KNIGHT: METROID-SOULS',
             'MODULAR ENGINE v1.0',
+            ...(cartLines.length > 0 ? ['', 'INSTALLED CARTS:', ...cartLines] : []),
             '',
             'B: BACK',
           ],
           selectedIndex: -1,
         };
+      }
 
       case 'exit':
         return {

@@ -4,7 +4,7 @@
  */
 
 import { soundSystem } from '../../engine/core/soundSystem';
-import { KnightState, SkillId, StatType } from '../../types/knight';
+import { KnightState, SkillId, StatType } from './types';
 
 export interface VendorItem {
   id: string;

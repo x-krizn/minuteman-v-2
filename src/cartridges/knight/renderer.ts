@@ -4,7 +4,7 @@
  */
 
 import { CartridgeSurface } from '../../types/cartridge';
-import { KnightState, StatType } from '../../types/knight';
+import { KnightState, StatType } from './types';
 import {
   BG_COLOR,
   COLS,

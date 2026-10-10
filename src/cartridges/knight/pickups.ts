@@ -5,7 +5,7 @@
 
 import { soundSystem } from '../../engine/core/soundSystem';
 import { KnightState } from './types';
-import { ITEMS } from './constants';
+import { getItemDefinition } from './database/items';
 
 function cap(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
@@ -20,40 +20,79 @@ export function updatePickups(
       return true;
     }
 
-    const it = ITEMS[pk.c];
+    const item = getItemDefinition(pk.c);
     state.got[pk.id] = true;
 
-    if (it.k === 'coin') {
+    if (!item) {
       state.coins++;
       soundSystem.playCoin();
-    } else if (it.k === 'key') {
-      state.keys++;
-      say('KEY');
-      soundSystem.playKey();
-    } else if (it.k === 'gem' && it.s) {
-      const keyName = `max${cap(it.s)}` as 'maxHp' | 'maxAp' | 'maxEp' | 'maxSp';
-      state[keyName]++;
-      state[it.s] = state[keyName];
-      say(`+1 MAX ${it.s.toUpperCase()}`);
-      soundSystem.playKey();
-    } else if (it.k === 'potion' && it.s) {
-      if (it.s === 'hp') {
-        state.flasks = Math.min(state.maxFlasks, state.flasks + 1);
-        say(`+1 FLASK (${state.flasks}/${state.maxFlasks})`);
+      return false;
+    }
+
+    const { effect, stat } = item;
+
+    switch (effect.type) {
+      case 'currency':
+        state.coins += effect.amount ?? 1;
         soundSystem.playCoin();
-      } else {
-        const keyName = `max${cap(it.s)}` as 'maxHp' | 'maxAp' | 'maxEp' | 'maxSp';
-        state[it.s] = Math.min(state[keyName], state[it.s] + 2);
-        say(`+2 ${it.s.toUpperCase()}`);
-        soundSystem.playCoin();
+        break;
+
+      case 'key':
+        state.keys += effect.amount ?? 1;
+        say('KEY');
+        soundSystem.playKey();
+        break;
+
+      case 'double_jump':
+        state.hasDouble = true;
+        say('DOUBLE JUMP');
+        soundSystem.playDoubleJump();
+        break;
+
+      case 'max_stat': {
+        const s = effect.stat || stat;
+        if (s) {
+          const keyName = `max${cap(s)}` as 'maxHp' | 'maxAp' | 'maxEp' | 'maxSp';
+          state[keyName] += effect.amount ?? 1;
+          state[s] = state[keyName];
+          say(`+${effect.amount ?? 1} MAX ${s.toUpperCase()}`);
+          soundSystem.playKey();
+        }
+        break;
       }
-    } else if (it.k === 'ability') {
-      state.hasDouble = true;
-      say('DOUBLE JUMP');
-      soundSystem.playDoubleJump();
-    } else {
-      state.coins++;
-      soundSystem.playCoin();
+
+      case 'restore_stat': {
+        const s = effect.stat || stat;
+        if (s === 'hp') {
+          state.flasks = Math.min(state.maxFlasks, state.flasks + (effect.amount ?? 1));
+          say(`+${effect.amount ?? 1} FLASK (${state.flasks}/${state.maxFlasks})`);
+          soundSystem.playCoin();
+        } else if (s) {
+          const keyName = `max${cap(s)}` as 'maxHp' | 'maxAp' | 'maxEp' | 'maxSp';
+          state[s] = Math.min(state[keyName], state[s] + (effect.amount ?? 2));
+          say(`+${effect.amount ?? 2} ${s.toUpperCase()}`);
+          soundSystem.playCoin();
+        }
+        break;
+      }
+
+      case 'flask_max':
+        state.maxFlasks += effect.amount ?? 1;
+        state.flasks += effect.amount ?? 1;
+        say(`+${effect.amount ?? 1} MAX FLASK`);
+        soundSystem.playKey();
+        break;
+
+      case 'flask_refill':
+        state.flasks = state.maxFlasks;
+        say('FLASKS REFILLED');
+        soundSystem.playCoin();
+        break;
+
+      default:
+        state.coins++;
+        soundSystem.playCoin();
+        break;
     }
 
     return false;

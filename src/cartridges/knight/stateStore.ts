@@ -5,6 +5,7 @@
 
 import { soundSystem } from '../../engine/core/soundSystem';
 import { KnightState, SkillId, StatType } from './types';
+import { VENDOR_ITEMS as DB_VENDOR_ITEMS } from './database/vendors';
 
 export interface VendorItem {
   id: string;
@@ -15,70 +16,7 @@ export interface VendorItem {
   stat?: StatType;
 }
 
-export const VENDOR_ITEMS: VendorItem[] = [
-  {
-    id: 'ruby',
-    name: 'Red Ruby',
-    description: '+1 Maximum Health (HP)',
-    cost: 25,
-    type: 'stat',
-    stat: 'hp',
-  },
-  {
-    id: 'topaz',
-    name: 'Topaz Gem',
-    description: '+1 Maximum Stamina (SP)',
-    cost: 25,
-    type: 'stat',
-    stat: 'sp',
-  },
-  {
-    id: 'sapphire',
-    name: 'Sapphire Gem',
-    description: '+1 Maximum Energy (EP)',
-    cost: 25,
-    type: 'stat',
-    stat: 'ep',
-  },
-  {
-    id: 'emerald',
-    name: 'Emerald Gem',
-    description: '+1 Maximum Poise/Armor (AP)',
-    cost: 25,
-    type: 'stat',
-    stat: 'ap',
-  },
-  {
-    id: 'amethyst',
-    name: 'Amethyst Shard',
-    description: '+1 Max AP & Armor Reinforce',
-    cost: 30,
-    type: 'stat',
-    stat: 'ap',
-  },
-  {
-    id: 'amber',
-    name: 'Amber Crystal',
-    description: '+1 Max SP Stamina Boost',
-    cost: 30,
-    type: 'stat',
-    stat: 'sp',
-  },
-  {
-    id: 'flask_shard',
-    name: 'Flask Shard',
-    description: '+1 Max Flask Capacity',
-    cost: 40,
-    type: 'flask_max',
-  },
-  {
-    id: 'flask_refill',
-    name: 'Elixir Draft',
-    description: 'Refill all Flask charges',
-    cost: 10,
-    type: 'flask_refill',
-  },
-];
+export const VENDOR_ITEMS: VendorItem[] = DB_VENDOR_ITEMS;
 
 let activeKnightState: KnightState | null = null;
 const stateListeners: Set<() => void> = new Set();

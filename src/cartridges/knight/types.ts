@@ -18,7 +18,48 @@ export interface ItemDef {
   s?: StatType;
 }
 
+export interface ItemWikiDefinition {
+  id: string;
+  symbol?: string; // e.g. 'H', 'o', 'K', 'D', '1'
+  name: string;
+  category: 'coin' | 'key' | 'ability' | 'gem' | 'potion' | 'shard';
+  description: string;
+  lore?: string;
+  spriteIndex: number;
+  stat?: StatType;
+  color?: string;
+  cost?: number;
+  sellPrice?: number;
+  canDrop?: boolean;
+  dropWeight?: number;
+  soldBy?: string[];
+  effect: {
+    type:
+      | 'currency'
+      | 'key'
+      | 'double_jump'
+      | 'max_stat'
+      | 'restore_stat'
+      | 'flask_max'
+      | 'flask_refill';
+    stat?: StatType;
+    amount?: number;
+  };
+}
+
 export type EnemyType = 'crawler' | 'sentry' | 'wisp';
+
+export interface EnemyWikiDefinition {
+  type: EnemyType;
+  name: string;
+  description: string;
+  hp: number;
+  maxHp: number;
+  poise: number;
+  speed: number;
+  damage: number;
+  lootTable?: { itemId: string; chance: number }[];
+}
 
 export interface EnemyEntity {
   id?: number;

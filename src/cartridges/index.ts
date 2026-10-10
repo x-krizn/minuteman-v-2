@@ -4,7 +4,7 @@
  */
 
 import { registry } from '../engine/core/registry';
-import { createKnightCartridge } from './knight/knightCartridge';
+import { createKnightCartridge } from './knight';
 
 export function initializeCartridges(): void {
   // Register Knight Metroid-Souls cartridge

@@ -6,6 +6,7 @@
 import { EnemyEntity, KnightState } from './types';
 import { SCREEN_W, TILE_SIZE } from './constants';
 import { solidAt } from './physics';
+import { ENEMY_REGISTRY } from './database/enemies';
 
 export function updateEnemies(
   rooms: Record<string, string[]>,

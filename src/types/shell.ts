@@ -17,10 +17,3 @@ export interface MenuItem {
   label: string;
   go: ShellScreen;
 }
-
-export interface ShellConfig {
-  surfaceWidth: number;
-  surfaceHeight: number;
-  splashDurationMs: number;
-  maxDeltaMs: number;
-}

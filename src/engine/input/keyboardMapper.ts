@@ -66,7 +66,7 @@ export class KeyboardMapper {
       const button = KEY_MAPPINGS[e.code];
       if (button) {
         this.activeKeys.add(e.code);
-        gamepadStore.setButtonState(button, true, false);
+        gamepadStore.setButtonState(button, true, false, 'keyboard');
         this.updateDerivedStick();
       }
     };
@@ -80,7 +80,7 @@ export class KeyboardMapper {
           (k) => KEY_MAPPINGS[k] === button
         );
         if (!stillHeld) {
-          gamepadStore.setButtonState(button, false, false);
+          gamepadStore.setButtonState(button, false, false, 'keyboard');
         }
         this.updateDerivedStick();
       }
@@ -104,9 +104,9 @@ export class KeyboardMapper {
           'select',
         ] as ButtonKey[]
       ).forEach((btn) => {
-        gamepadStore.setButtonState(btn, false, false);
+        gamepadStore.setButtonState(btn, false, false, 'keyboard');
       });
-      gamepadStore.setStick(0, 0);
+      gamepadStore.setStick(0, 0, 'keyboard');
     };
 
     window.addEventListener('keydown', handleKeyDown);

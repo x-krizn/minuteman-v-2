@@ -54,7 +54,7 @@ export const VENDOR_ITEMS: VendorItem[] = [
     description: '+1 Max AP & Armor Reinforce',
     cost: 30,
     type: 'stat',
-    stat: 'purple',
+    stat: 'ap',
   },
   {
     id: 'amber',
@@ -62,7 +62,7 @@ export const VENDOR_ITEMS: VendorItem[] = [
     description: '+1 Max SP Stamina Boost',
     cost: 30,
     type: 'stat',
-    stat: 'orange',
+    stat: 'sp',
   },
   {
     id: 'flask_shard',

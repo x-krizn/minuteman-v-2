@@ -25,17 +25,17 @@ export const SystemButtons: React.FC<SystemButtonsProps> = ({ scale, state }) =>
     } catch {
       // fallback
     }
-    gamepadStore.setButtonState(key, true);
+    gamepadStore.setButtonState(key, true, true, 'touch');
   };
 
   const handlePointerUp = (key: ButtonKey, e: React.PointerEvent<HTMLButtonElement>) => {
     e.preventDefault();
-    gamepadStore.setButtonState(key, false);
+    gamepadStore.setButtonState(key, false, false, 'touch');
   };
 
   const handlePointerCancel = (key: ButtonKey, e: React.PointerEvent<HTMLButtonElement>) => {
     e.preventDefault();
-    gamepadStore.setButtonState(key, false);
+    gamepadStore.setButtonState(key, false, false, 'touch');
   };
 
   return (

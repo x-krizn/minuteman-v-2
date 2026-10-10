@@ -29,6 +29,7 @@ export class GamepadStore {
   };
 
   private stick: StickVector = { x: 0, y: 0 };
+  private buttonSources: Map<ButtonKey, Set<string>> = new Map();
   private listeners: Set<(state: GamepadButtons, stick: StickVector) => void> = new Set();
 
   private constructor() {}
@@ -48,27 +49,54 @@ export class GamepadStore {
     return { ...this.stick };
   }
 
-  public setButtonState(key: ButtonKey, isActive: boolean, vibrate = true): void {
-    if (this.state[key] !== isActive) {
-      this.state[key] = isActive;
-      if (isActive && vibrate) {
+  public setButtonState(
+    key: ButtonKey,
+    isActive: boolean,
+    vibrate = true,
+    source = 'default'
+  ): void {
+    let sources = this.buttonSources.get(key);
+    if (!sources) {
+      sources = new Set<string>();
+      this.buttonSources.set(key, sources);
+    }
+
+    if (isActive) {
+      sources.add(source);
+    } else {
+      sources.delete(source);
+    }
+
+    const nextIsActive = sources.size > 0;
+    if (this.state[key] !== nextIsActive) {
+      this.state[key] = nextIsActive;
+      if (nextIsActive && vibrate) {
         triggerHaptic(10);
       }
       this.notify();
     }
   }
 
-  public setStick(x: number, y: number): void {
+  public setStick(x: number, y: number, source = 'stick'): void {
     if (this.stick.x === x && this.stick.y === y) return;
     this.stick.x = x;
     this.stick.y = y;
 
     // Derive directional digital buttons from stick
-    this.setButtonState('left', x < -DIGITAL_THRESHOLD, false);
-    this.setButtonState('right', x > DIGITAL_THRESHOLD, false);
-    this.setButtonState('up', y < -DIGITAL_THRESHOLD, false);
-    this.setButtonState('down', y > DIGITAL_THRESHOLD, false);
+    this.setButtonState('left', x < -DIGITAL_THRESHOLD, false, source);
+    this.setButtonState('right', x > DIGITAL_THRESHOLD, false, source);
+    this.setButtonState('up', y < -DIGITAL_THRESHOLD, false, source);
+    this.setButtonState('down', y > DIGITAL_THRESHOLD, false, source);
 
+    this.notify();
+  }
+
+  public resetAll(): void {
+    this.buttonSources.clear();
+    (Object.keys(this.state) as ButtonKey[]).forEach((k) => {
+      this.state[k] = false;
+    });
+    this.stick = { x: 0, y: 0 };
     this.notify();
   }
 

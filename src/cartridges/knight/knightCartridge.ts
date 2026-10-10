@@ -3,8 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import React from 'react';
 import { soundSystem } from '../../engine/core/soundSystem';
-import { Cartridge, CartridgeSurface } from '../../types/cartridge';
+import {
+  Cartridge,
+  CartridgeOverlayProps,
+  CartridgeSurface,
+} from '../../types/cartridge';
 import { GameInput } from '../../types/input';
 import { EnemyEntity, KnightState, SkillId } from '../../types/knight';
 import { handleAttackInput, handleBlockInput, updateCombat } from './combat';
@@ -40,6 +45,7 @@ import { buildFloor } from './proceduralFloor';
 import { drawKnightGame } from './renderer';
 import { castSkill, spawnParticles, updateParticles, updateProjectiles } from './skills';
 import { notifyStateChange, setKnightStateRef } from './stateStore';
+import { KnightGameMenu, KnightSatchel } from './ui';
 
 export function createKnightCartridge(): Cartridge {
   const rooms: Record<string, string[]> = {};
@@ -527,6 +533,32 @@ export function createKnightCartridge(): Cartridge {
 
     draw: (surface: CartridgeSurface) => {
       drawKnightGame(surface, state, rooms, greenRooms, fontFamily);
+    },
+
+    onMenuToggle: (menuMode) => {
+      state.inventoryOpen = menuMode !== 'none';
+      state.menuMode =
+        menuMode === 'none' ? 'play' : menuMode === 'game-menu' ? 'pause' : 'inventory';
+    },
+
+    renderOverlay: (props: CartridgeOverlayProps) => {
+      if (props.menuMode === 'game-menu') {
+        return React.createElement(KnightGameMenu, {
+          soundEnabled: props.soundEnabled,
+          scanlinesEnabled: props.scanlinesEnabled,
+          onToggleSound: props.onToggleSound,
+          onToggleScanlines: props.onToggleScanlines,
+          onResume: props.onResume,
+          onExitCartridge: props.onExitCartridge,
+          isFullscreen: props.isFullscreen,
+          onToggleFullscreen: props.onToggleFullscreen,
+          connectedGamepads: props.connectedGamepads,
+        });
+      }
+      if (props.menuMode === 'inventory') {
+        return React.createElement(KnightSatchel, { onClose: props.onResume });
+      }
+      return null;
     },
   };
 }

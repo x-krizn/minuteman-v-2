@@ -17,6 +17,8 @@ export interface ScreenViewportProps {
   showScanlines?: boolean;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
+  connectedGamepads?: string[];
+  gamepadToast?: string | null;
   children?: React.ReactNode;
 }
 
@@ -30,6 +32,8 @@ export const ScreenViewport: React.FC<ScreenViewportProps> = ({
   showScanlines = true,
   isFullscreen = false,
   onToggleFullscreen,
+  connectedGamepads = [],
+  gamepadToast = null,
   children,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -88,6 +92,26 @@ export const ScreenViewport: React.FC<ScreenViewportProps> = ({
             <span>{isFullscreen ? '✕' : '⛶'}</span>
             <span className="hidden xs:inline">{isFullscreen ? 'WINDOW' : 'FULLSCREEN'}</span>
           </button>
+        )}
+
+        {/* Hardware Gamepad Connected Badge */}
+        {connectedGamepads.length > 0 && (
+          <div
+            className="absolute top-1.5 left-1.5 z-30 px-1.5 py-0.8 bg-[#122412]/85 text-[#50fa7b] border border-[#2e5c2e]/60 rounded-xs font-mono text-[9.5px] tracking-wider flex items-center gap-1 shadow-sm"
+            title={`Physical Controller Connected: ${connectedGamepads.join(', ')}`}
+          >
+            <span>🎮</span>
+            <span className="font-bold">{connectedGamepads.length}</span>
+          </div>
+        )}
+
+        {/* Gamepad Toast Banner */}
+        {gamepadToast && (
+          <div className="absolute top-8 inset-x-2 z-40 flex justify-center pointer-events-none transition-all duration-300">
+            <div className="bg-[#0b200b]/95 border-2 border-[#50fa7b] text-[#50fa7b] px-3 py-1 rounded-xs font-mono text-[10px] sm:text-[11px] font-bold tracking-wider shadow-xl flex items-center gap-1.5 animate-pulse text-center">
+              <span>{gamepadToast}</span>
+            </div>
+          </div>
         )}
 
         {/* CRT Scanline Overlay */}

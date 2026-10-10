@@ -121,6 +121,7 @@ export interface KnightState {
   flasks: number;
   maxFlasks: number;
   inventoryOpen: boolean;
+  menuMode?: 'play' | 'pause' | 'inventory';
 
   // Platforming
   hasDouble: boolean;

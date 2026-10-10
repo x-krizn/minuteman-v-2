@@ -45,7 +45,7 @@ export const DPad: React.FC<DPadProps> = ({ scale, state }) => {
     if (e.pointerId !== activePointerId.current) return;
     e.preventDefault();
     activePointerId.current = null;
-    gamepadStore.setStick(0, 0);
+    gamepadStore.setStick(0, 0, 'touch');
   };
 
   const track = (clientX: number, clientY: number) => {
@@ -60,7 +60,7 @@ export const DPad: React.FC<DPadProps> = ({ scale, state }) => {
       clientY - centerY,
       radius
     );
-    gamepadStore.setStick(v.x, v.y);
+    gamepadStore.setStick(v.x, v.y, 'touch');
   };
 
   const s = scale;

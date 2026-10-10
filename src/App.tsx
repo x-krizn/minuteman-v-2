@@ -5,8 +5,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { initializeCartridges } from './cartridges';
-import { getKnightState } from './cartridges/knight/stateStore';
-import { KnightGameMenu, KnightSatchel } from './cartridges/knight/ui';
 import { VirtualGamepad } from './components/gamepad/VirtualGamepad';
 import { ScreenViewport } from './components/screen/ScreenViewport';
 import { DebugOverlay } from './components/shell/DebugOverlay';
@@ -17,6 +15,10 @@ import { shellStateMachine } from './engine/core/shellStateMachine';
 import { soundSystem } from './engine/core/soundSystem';
 import { inputReader } from './engine/input/inputReader';
 import { keyboardMapper } from './engine/input/keyboardMapper';
+import {
+  formatGamepadName,
+  hardwareGamepad,
+} from './engine/input/hardwareGamepad';
 import { ShellScreen } from './types/shell';
 import {
   isAppFullscreen,
@@ -34,6 +36,11 @@ export default function App() {
   const [showDebug, setShowDebug] = useState(false);
   const [fps, setFps] = useState(60);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [connectedGamepads, setConnectedGamepads] = useState<string[]>(() =>
+    hardwareGamepad.getConnectedNames()
+  );
+  const [gamepadToast, setGamepadToast] = useState<string | null>(null);
+  const toastTimerRef = useRef<number | null>(null);
 
   // In-game menus contained directly inside LCD screen
   const [inGameMenu, setInGameMenu] = useState<'none' | 'game-menu' | 'inventory'>('none');
@@ -42,9 +49,9 @@ export default function App() {
   const updateInGameMenu = (menu: 'none' | 'game-menu' | 'inventory') => {
     inGameMenuRef.current = menu;
     setInGameMenu(menu);
-    const st = getKnightState();
-    if (st) {
-      st.inventoryOpen = menu !== 'none';
+    const active = cartridgeRunner.getActive();
+    if (active?.onMenuToggle) {
+      active.onMenuToggle(menu);
     }
   };
 
@@ -61,9 +68,32 @@ export default function App() {
     });
   }, []);
 
-  // On mobile browsers, attempt fullscreen on first user touch gesture
+  // Listen to physical hardware gamepad connections and display retro toasts
+  useEffect(() => {
+    return hardwareGamepad.subscribe((notif) => {
+      setConnectedGamepads(hardwareGamepad.getConnectedNames());
+      const formatted = formatGamepadName(notif.name);
+      const text =
+        notif.type === 'connected'
+          ? `🎮 ${formatted.toUpperCase()} CONNECTED`
+          : `🎮 ${formatted.toUpperCase()} DISCONNECTED`;
+
+      setGamepadToast(text);
+      if (toastTimerRef.current) {
+        window.clearTimeout(toastTimerRef.current);
+      }
+      toastTimerRef.current = window.setTimeout(() => {
+        setGamepadToast(null);
+      }, 3000);
+    });
+  }, []);
+
+  // On mobile browsers, attempt fullscreen on first user touch gesture; ensure window focus for gamepad API
   useEffect(() => {
     const handleInitialTouch = () => {
+      if (typeof window !== 'undefined') {
+        window.focus();
+      }
       if (
         !isAppFullscreen() &&
         typeof navigator !== 'undefined' &&
@@ -73,7 +103,7 @@ export default function App() {
       }
     };
 
-    window.addEventListener('pointerdown', handleInitialTouch, { once: true });
+    window.addEventListener('pointerdown', handleInitialTouch);
     return () => {
       window.removeEventListener('pointerdown', handleInitialTouch);
     };
@@ -218,28 +248,32 @@ export default function App() {
           showScanlines={scanlinesEnabled}
           isFullscreen={isFullscreen}
           onToggleFullscreen={() => toggleAppFullscreen()}
+          connectedGamepads={connectedGamepads}
+          gamepadToast={gamepadToast}
         >
-          {/* Active Cartridge In-Game Overlay */}
-          {isCartRunning && inGameMenu === 'game-menu' && (
-            <KnightGameMenu
-              soundEnabled={soundEnabled}
-              scanlinesEnabled={scanlinesEnabled}
-              onToggleSound={handleToggleSound}
-              onToggleScanlines={handleToggleScanlines}
-              onResume={() => updateInGameMenu('none')}
-              onExitCartridge={() => {
-                cartridgeRunner.stopCart();
-                shellStateMachine.setScreen('carts');
-                updateInGameMenu('none');
-              }}
-              isFullscreen={isFullscreen}
-              onToggleFullscreen={() => toggleAppFullscreen()}
-            />
-          )}
-
-          {isCartRunning && inGameMenu === 'inventory' && (
-            <KnightSatchel onClose={() => updateInGameMenu('none')} />
-          )}
+          {/* Active Cartridge In-Game Overlay via Cartridge Interface */}
+          {isCartRunning && inGameMenu !== 'none' && (() => {
+            const active = cartridgeRunner.getActive();
+            if (active?.renderOverlay) {
+              return active.renderOverlay({
+                menuMode: inGameMenu,
+                soundEnabled,
+                scanlinesEnabled,
+                isFullscreen,
+                onToggleSound: handleToggleSound,
+                onToggleScanlines: handleToggleScanlines,
+                onToggleFullscreen: () => toggleAppFullscreen(),
+                onResume: () => updateInGameMenu('none'),
+                onExitCartridge: () => {
+                  cartridgeRunner.stopCart();
+                  shellStateMachine.setScreen('carts');
+                  updateInGameMenu('none');
+                },
+                connectedGamepads,
+              });
+            }
+            return null;
+          })()}
         </ScreenViewport>
 
         {/* Bottom: Virtual Gamepad (D-Pad, Action Buttons, START & SHIFT Pills) - Dynamically Scaled */}

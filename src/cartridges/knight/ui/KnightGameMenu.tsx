@@ -20,6 +20,7 @@ export interface KnightGameMenuProps {
   onExitCartridge: () => void;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
+  connectedGamepads?: string[];
 }
 
 export const KnightGameMenu: React.FC<KnightGameMenuProps> = ({
@@ -31,6 +32,7 @@ export const KnightGameMenu: React.FC<KnightGameMenuProps> = ({
   onExitCartridge,
   isFullscreen = false,
   onToggleFullscreen,
+  connectedGamepads = [],
 }) => {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [showControls, setShowControls] = useState(false);
@@ -129,6 +131,28 @@ export const KnightGameMenu: React.FC<KnightGameMenuProps> = ({
             </div>
             <div className="bg-[#122412] p-1.5 rounded-xs border border-[#244820]">
               <span className="font-bold text-[#f1fa8c]">SHIFT / TAB / M:</span> Satchel & Character Screen (Equipment L/R, Stats, Merchant).
+            </div>
+
+            {/* Physical Gamepad Support Guide */}
+            <div className="bg-[#132c13] p-2 rounded-xs border border-[#3e723e]">
+              <div className="flex items-center justify-between font-bold text-[#50fa7b] mb-1">
+                <span>🎮 PHYSICAL GAMEPAD</span>
+                <span className="text-[9px] px-1.5 py-0.2 bg-[#1a401a] rounded-xs text-[#50fa7b]">
+                  {connectedGamepads.length > 0
+                    ? `${connectedGamepads.length} ACTIVE`
+                    : 'PLUG & PLAY'}
+                </span>
+              </div>
+              <div className="text-[10px] space-y-0.5 text-[#9ad482]">
+                <div>• <span className="text-[#f1fa8c]">Left Stick / D-Pad:</span> Move & navigate menus</div>
+                <div>• <span className="text-[#f1fa8c]">A (Cross):</span> Jump / Pogo</div>
+                <div>• <span className="text-[#f1fa8c]">B (Circle):</span> Dash / Sprint (Hold)</div>
+                <div>• <span className="text-[#f1fa8c]">X (Square):</span> Attack / Aerial Slash / Charge Strike</div>
+                <div>• <span className="text-[#f1fa8c]">Y (Triangle):</span> Parry & Guard</div>
+                <div>• <span className="text-[#f1fa8c]">LB / RB:</span> Equipped Satchel Skills</div>
+                <div>• <span className="text-[#f1fa8c]">START:</span> Game Menu | <span className="text-[#f1fa8c]">SELECT:</span> Satchel</div>
+                <div>• Native tactile dual-rumble vibration enabled</div>
+              </div>
             </div>
           </div>
         </div>

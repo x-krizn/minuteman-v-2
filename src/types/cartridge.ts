@@ -44,6 +44,19 @@ export interface CartridgeSurface {
   assets: AssetLibrary;
 }
 
+export interface CartridgeOverlayProps {
+  menuMode: 'none' | 'game-menu' | 'inventory';
+  soundEnabled: boolean;
+  scanlinesEnabled: boolean;
+  isFullscreen: boolean;
+  onToggleSound: () => void;
+  onToggleScanlines: () => void;
+  onToggleFullscreen: () => void;
+  onResume: () => void;
+  onExitCartridge: () => void;
+  connectedGamepads: string[];
+}
+
 export interface Cartridge {
   id: string;
   name: string;
@@ -54,4 +67,6 @@ export interface Cartridge {
   update: (input: GameInput, dtSeconds: number) => void;
   draw: (surface: CartridgeSurface) => void;
   destroy?: () => void;
+  renderOverlay?: (props: CartridgeOverlayProps) => React.ReactNode;
+  onMenuToggle?: (menuMode: 'none' | 'game-menu' | 'inventory') => void;
 }

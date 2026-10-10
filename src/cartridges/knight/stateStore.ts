@@ -4,18 +4,10 @@
  */
 
 import { soundSystem } from '../../engine/core/soundSystem';
-import { KnightState, SkillId, StatType } from './types';
-import { VENDOR_ITEMS as DB_VENDOR_ITEMS } from './database/vendors';
+import { KnightState, SkillId } from './types';
+import { VendorItem, VENDOR_ITEMS as DB_VENDOR_ITEMS } from './database/vendors';
 
-export interface VendorItem {
-  id: string;
-  name: string;
-  description: string;
-  cost: number;
-  type: 'stat' | 'flask_max' | 'flask_refill';
-  stat?: StatType;
-}
-
+export type { VendorItem };
 export const VENDOR_ITEMS: VendorItem[] = DB_VENDOR_ITEMS;
 
 let activeKnightState: KnightState | null = null;
@@ -81,12 +73,9 @@ export function buyVendorItem(item: VendorItem): { success: boolean; message: st
     } else if (item.stat === 'ep') {
       st.maxEp += 1;
       st.ep += 1;
-    } else if (item.stat === 'ap' || item.stat === 'purple') {
+    } else if (item.stat === 'ap') {
       st.maxAp += 1;
       st.ap += 1;
-    } else if (item.stat === 'orange') {
-      st.maxSp += 1;
-      st.sp += 1;
     }
   } else if (item.type === 'flask_max') {
     st.maxFlasks += 1;

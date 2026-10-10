@@ -8,15 +8,15 @@ import { KnightState, StatType } from './types';
 import {
   BG_COLOR,
   COLS,
-  ITEMS,
   ROWS,
   SCREEN_H,
   SCREEN_W,
-  SKILLS,
   STAT_COLORS,
   TILE_SIZE,
 } from './constants';
 import { tileIndex } from './physics';
+import { getItemDefinition } from './database/items';
+import { SKILL_REGISTRY } from './database/skills';
 
 function cap(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
@@ -66,13 +66,13 @@ export function drawKnightGame(
   // 2. Draw pickups
   state.picks.forEach((pk) => {
     const bob = Math.round(Math.sin(performance.now() / 250) * 1.5);
-    const it = ITEMS[pk.c];
-    if (it && items && it.i >= 0) {
+    const it = getItemDefinition(pk.c);
+    if (it && items && it.spriteIndex >= 0) {
       items.draw(
         g,
-        it.i,
+        it.spriteIndex,
         pk.x,
-        pk.y + (it.k === 'coin' || it.k === 'key' ? 0 : bob)
+        pk.y + (it.category === 'coin' || it.category === 'key' ? 0 : bob)
       );
       return;
     }
@@ -290,8 +290,8 @@ export function drawKnightGame(
   });
 
   // 14. HUD: Assignable L & R Skill Slots with distinct Resource Counters
-  const skillL = SKILLS[state.assignedL];
-  const skillR = SKILLS[state.assignedR];
+  const skillL = SKILL_REGISTRY[state.assignedL];
+  const skillR = SKILL_REGISTRY[state.assignedR];
 
   const getSlotText = (s: typeof skillL) => {
     if (s.costType === 'flask') return `FLK:${state.flasks}`;

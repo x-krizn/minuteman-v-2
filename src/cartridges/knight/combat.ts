@@ -12,7 +12,8 @@ import {
   SWORD_ATTACKS,
 } from './constants';
 import { bodyBox, enemyBox, overlap } from './physics';
-import { spawnParticles } from './skills';
+import { spawnParticles } from './particles';
+import { defeatEnemy } from './enemies';
 
 /**
  * Handles attack initiation or release of charged attack (Button X)
@@ -217,6 +218,10 @@ export function updateCombat(
           state.isHeavyAttack ? '#ff8800' : '#ffff44',
           `-${damage}`
         );
+
+        if (e.hp <= 0) {
+          defeatEnemy(state, e);
+        }
       }
     });
   }

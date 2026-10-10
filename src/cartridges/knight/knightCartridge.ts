@@ -21,7 +21,6 @@ import {
   GRAVITY,
   HALF_WIDTH,
   INITIAL_START,
-  ITEMS,
   ITEMS_PNG,
   JUMP_VELOCITY,
   KNIGHT_PNG,
@@ -30,7 +29,6 @@ import {
   RUN_SPEED,
   SCREEN_H,
   SCREEN_W,
-  SKILLS,
   SPRINT_SPEED,
   STAMINA_REGEN_RATE,
   TILE_SIZE,
@@ -38,14 +36,17 @@ import {
   TILES_PNG,
 } from './constants';
 import { updateEnemies } from './enemies';
-import { INITIAL_GREEN, INITIAL_ROOMS } from './levels';
+import { INITIAL_GREEN, INITIAL_ROOMS, buildFloor } from './world';
 import { moveX, moveY } from './physics';
 import { updatePickups } from './pickups';
-import { buildFloor } from './proceduralFloor';
 import { drawKnightGame } from './renderer';
-import { castSkill, spawnParticles, updateParticles, updateProjectiles } from './skills';
+import { castSkill, updateProjectiles } from './skills';
+import { spawnParticles, updateParticles } from './particles';
 import { notifyStateChange, setKnightStateRef } from './stateStore';
 import { KnightGameMenu, KnightSatchel } from './ui';
+import { getItemDefinition } from './database/items';
+import { getEnemyDefinition } from './database/enemies';
+import { SKILL_REGISTRY } from './database/skills';
 
 export function createKnightCartridge(): Cartridge {
   const rooms: Record<string, string[]> = {};
@@ -157,29 +158,28 @@ export function createKnightCartridge(): Cartridge {
           if (c === 'E') {
             // Determine enemy type based on room location / cleared count
             let type: EnemyEntity['type'] = 'crawler';
-            let enemyHp = 2;
 
             if (state.cleared > 0 || (rx >= 2 && ry === 0)) {
               if (tx % 2 === 0) {
                 type = 'sentry';
-                enemyHp = 4;
               } else if (ty <= 3) {
                 type = 'wisp';
-                enemyHp = 2;
               }
             }
+
+            const def = getEnemyDefinition(type);
 
             state.enemies.push({
               type,
               x: tx * TILE_SIZE + 8,
               y: (ty + 1) * TILE_SIZE,
               dir: -1,
-              hp: enemyHp,
-              maxHp: enemyHp,
+              hp: def.hp,
+              maxHp: def.maxHp,
               stun: 0,
-              poise: enemyHp * 2,
+              poise: def.poise,
             });
-          } else if (ITEMS[c] && !state.got[`${key}:${tx},${ty}`]) {
+          } else if (getItemDefinition(c) && !state.got[`${key}:${tx},${ty}`]) {
             state.picks.push({
               x: tx * TILE_SIZE + 8,
               y: ty * TILE_SIZE + 8,
@@ -224,10 +224,10 @@ export function createKnightCartridge(): Cartridge {
     const nextSkill = ALL_SKILL_IDS[(idx + 1) % ALL_SKILL_IDS.length];
     if (isLeft) {
       state.assignedL = nextSkill;
-      say(`L: ${SKILLS[nextSkill].name}`);
+      say(`L: ${SKILL_REGISTRY[nextSkill].name}`);
     } else {
       state.assignedR = nextSkill;
-      say(`R: ${SKILLS[nextSkill].name}`);
+      say(`R: ${SKILL_REGISTRY[nextSkill].name}`);
     }
     soundSystem.playMenuBeep();
   };

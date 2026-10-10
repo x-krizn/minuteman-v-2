@@ -7,6 +7,7 @@ export { createKnightCartridge } from './knightCartridge';
 export * from './types';
 export * from './constants';
 export * from './database';
+export * from './world';
 export {
   setKnightStateRef,
   getKnightState,

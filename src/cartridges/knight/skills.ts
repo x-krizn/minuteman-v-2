@@ -5,8 +5,11 @@
 
 import { soundSystem } from '../../engine/core/soundSystem';
 import { CombatParticle, KnightState, ProjectileEntity, SkillId } from './types';
-import { SKILLS, TILE_SIZE } from './constants';
+import { TILE_SIZE } from './constants';
+import { SKILL_REGISTRY } from './database/skills';
 import { enemyBox, overlap, solidAt } from './physics';
+import { spawnParticles, updateParticles } from './particles';
+import { defeatEnemy } from './enemies';
 
 export function castSkill(
   state: KnightState,
@@ -14,7 +17,7 @@ export function castSkill(
   isLeftSlot: boolean,
   say: (t: string) => void
 ): boolean {
-  const skill = SKILLS[skillId];
+  const skill = SKILL_REGISTRY[skillId];
   if (!skill) return false;
 
   // Check cooldown
@@ -156,59 +159,14 @@ export function updateProjectiles(
           e.x += Math.sign(p.vx) * 8;
           soundSystem.playHit();
           spawnParticles(state.particles, p.x, p.y, 6, '#ff4444', `-${p.damage}`);
+          if (e.hp <= 0) {
+            defeatEnemy(state, e);
+          }
           return false;
         }
       }
     }
 
-    return true;
-  });
-}
-
-export function spawnParticles(
-  particles: CombatParticle[],
-  x: number,
-  y: number,
-  count: number,
-  color: string,
-  text?: string
-): void {
-  for (let i = 0; i < count; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const speed = 20 + Math.random() * 60;
-    particles.push({
-      x,
-      y,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
-      color,
-      life: 0.25 + Math.random() * 0.25,
-      maxLife: 0.5,
-      size: 1.5 + Math.random() * 2,
-    });
-  }
-
-  if (text) {
-    particles.push({
-      x,
-      y: y - 4,
-      vx: 0,
-      vy: -20,
-      color,
-      life: 0.6,
-      maxLife: 0.6,
-      size: 3,
-      text,
-    });
-  }
-}
-
-export function updateParticles(particles: CombatParticle[], dt: number): CombatParticle[] {
-  return particles.filter((p) => {
-    p.life -= dt;
-    if (p.life <= 0) return false;
-    p.x += p.vx * dt;
-    p.y += p.vy * dt;
     return true;
   });
 }

@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { SKILLS } from '../constants';
+import { ALL_SKILLS } from '../database/skills';
 import {
   assignSkill,
   buyVendorItem,
@@ -132,7 +132,7 @@ export const KnightSatchel: React.FC<KnightSatchelProps> = ({ onClose }) => {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-              {Object.values(SKILLS).map((skill) => {
+              {ALL_SKILLS.map((skill) => {
                 const isAssignedL = st?.assignedL === skill.id;
                 const isAssignedR = st?.assignedR === skill.id;
 

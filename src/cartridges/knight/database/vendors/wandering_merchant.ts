@@ -15,6 +15,8 @@ export interface VendorItemEntry {
   stat?: StatType;
 }
 
+export type VendorItem = VendorItemEntry;
+
 export interface VendorWikiDefinition {
   id: string;
   name: string;

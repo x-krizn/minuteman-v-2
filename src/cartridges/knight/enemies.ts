@@ -7,6 +7,9 @@ import { EnemyEntity, KnightState } from './types';
 import { SCREEN_W, TILE_SIZE } from './constants';
 import { solidAt } from './physics';
 import { ENEMY_REGISTRY } from './database/enemies';
+import { getItemDefinition } from './database/items';
+import { soundSystem } from '../../engine/core/soundSystem';
+import { spawnParticles } from './particles';
 
 export function updateEnemies(
   rooms: Record<string, string[]>,
@@ -31,13 +34,47 @@ export function updateEnemies(
   });
 }
 
+/**
+ * Handles enemy defeat, death effects, and wiki-defined loot table drops
+ */
+export function defeatEnemy(
+  state: KnightState,
+  e: EnemyEntity,
+  say?: (text: string) => void
+): void {
+  e.hp = 0;
+  const def = ENEMY_REGISTRY[e.type];
+  if (!def) return;
+
+  soundSystem.playHit();
+  spawnParticles(state.particles, e.x, e.y - 6, 12, '#ff4444');
+
+  // Roll loot from database wiki definition
+  if (def.lootTable && def.lootTable.length > 0) {
+    def.lootTable.forEach((entry) => {
+      if (Math.random() <= entry.chance) {
+        const item = getItemDefinition(entry.itemId);
+        if (item) {
+          state.picks.push({
+            x: e.x + (Math.random() * 8 - 4),
+            y: e.y - 8,
+            c: item.symbol || item.id,
+            id: `drop_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          });
+        }
+      }
+    });
+  }
+}
+
 function updateCrawler(
   rooms: Record<string, string[]>,
   state: KnightState,
   e: EnemyEntity,
   dt: number
 ): void {
-  const nx = e.x + e.dir * 22 * dt;
+  const speed = ENEMY_REGISTRY.crawler.speed;
+  const nx = e.x + e.dir * speed * dt;
   const ahead = nx + e.dir * 6;
   const wall = solidAt(
     rooms,
@@ -72,7 +109,8 @@ function updateSentry(
   }
 
   // Sentry walks cautiously
-  const nx = e.x + e.dir * 14 * dt;
+  const speed = ENEMY_REGISTRY.sentry.speed;
+  const nx = e.x + e.dir * speed * dt;
   const ahead = nx + e.dir * 7;
   const wall = solidAt(
     rooms,
@@ -106,6 +144,7 @@ function updateWisp(
   const dy = targetY - e.y;
 
   e.dir = dx > 0 ? 1 : -1;
-  e.x += Math.sign(dx) * 20 * dt;
-  e.y += Math.sign(dy) * 15 * dt;
+  const speed = ENEMY_REGISTRY.wisp.speed;
+  e.x += Math.sign(dx) * speed * dt;
+  e.y += Math.sign(dy) * (speed * 0.75) * dt;
 }

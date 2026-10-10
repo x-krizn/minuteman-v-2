@@ -17,6 +17,13 @@ import {
 import { tileIndex } from './physics';
 import { getItemDefinition } from './database/items';
 import { SKILL_REGISTRY } from './database/skills';
+import { getWeaponDefinition } from './database/weapons';
+import {
+  drawProceduralPickup,
+  drawProceduralArcTrail,
+  drawTransformedImage,
+  getCachedImage,
+} from './renderer/proceduralRenderer';
 
 function cap(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
@@ -64,20 +71,29 @@ export function drawKnightGame(
   }
 
   // 2. Draw pickups
+  const nowMs = performance.now();
   state.picks.forEach((pk) => {
-    const bob = Math.round(Math.sin(performance.now() / 250) * 1.5);
     const it = getItemDefinition(pk.c);
-    if (it && items && it.spriteIndex >= 0) {
-      items.draw(
-        g,
-        it.spriteIndex,
-        pk.x,
-        pk.y + (it.category === 'coin' || it.category === 'key' ? 0 : bob)
-      );
-      return;
+    if (it) {
+      // 2a. Standalone single-frame asset with procedural bob/rotation
+      if (drawProceduralPickup(g, it, pk.x, pk.y, nowMs)) {
+        return;
+      }
+      // 2b. Fallback to sprite sheet cell
+      if (items && it.spriteIndex !== undefined && it.spriteIndex >= 0) {
+        const bob = Math.round(Math.sin(nowMs / 250) * 1.5);
+        items.draw(
+          g,
+          it.spriteIndex,
+          pk.x,
+          pk.y + (it.category === 'coin' || it.category === 'key' ? 0 : bob)
+        );
+        return;
+      }
     }
 
-    // Ability orb (Double Jump)
+    // Ability orb (Double Jump) fallback
+    const bob = Math.round(Math.sin(nowMs / 250) * 1.5);
     g.fillStyle = '#66ccff';
     g.fillRect(pk.x - 4, pk.y - 4 + bob, 8, 8);
     g.fillStyle = '#ffffff';
@@ -205,28 +221,68 @@ export function drawKnightGame(
     g.fillRect(state.x + state.face * 10 - 2, state.y - 10, 4, 4);
   }
 
-  // 9. Draw Sword Slash strictly in its Respective Direction
-  if (state.atk > 0 && items) {
+  // 9. Draw Weapon Slash strictly in its Respective Direction
+  if (state.atk > 0) {
     const f = state.face;
+    const weapon = getWeaponDefinition(state.equippedWeapon);
+    const trailColor = weapon?.assets?.slashTrailColor ?? '#ffffff';
+    const wpImg = weapon?.assets?.imageUri
+      ? getCachedImage(weapon.assets.imageUri)
+      : null;
 
     if (state.isHeavyAttack || state.atkV === 4) {
       // Heavy Charged Strike: massive forward golden slash
-      items.draw(g, 14, state.x + f * 16, state.y - 9, f < 0);
+      if (wpImg) {
+        drawTransformedImage(g, wpImg, state.x + f * 16, state.y - 9, {
+          scaleX: f,
+          rotation: f > 0 ? 0.35 : -0.35,
+        });
+      } else if (items) {
+        items.draw(g, 14, state.x + f * 16, state.y - 9, f < 0);
+      }
       g.fillStyle = 'rgba(255, 200, 0, 0.45)';
       g.fillRect(state.x + (f > 0 ? 4 : -24), state.y - 18, 20, 20);
+      drawProceduralArcTrail(
+        g,
+        state.x + f * 12,
+        state.y - 8,
+        14,
+        f > 0 ? -Math.PI * 0.5 : Math.PI * 0.5,
+        f > 0 ? Math.PI * 0.5 : Math.PI * 1.5,
+        '#ffaa00',
+        3
+      );
     } else if (state.atkV === 1 || state.atkV === 6) {
       // UPWARD ATTACK (Overhead anti-air & Jump Upward Slash)
-      // Drawn above player head
-      items.draw(g, 13, state.x + f * 2, state.y - 20, f < 0);
+      if (wpImg) {
+        drawTransformedImage(g, wpImg, state.x + f * 2, state.y - 20, {
+          scaleX: f,
+          rotation: -Math.PI * 0.45 * f,
+        });
+      } else if (items) {
+        items.draw(g, 13, state.x + f * 2, state.y - 20, f < 0);
+      }
       // Overhead energetic arc
-      g.strokeStyle = state.atkV === 6 ? '#88ffff' : '#ffffff';
-      g.lineWidth = 2;
-      g.beginPath();
-      g.arc(state.x + f * 2, state.y - 14, 12, -Math.PI * 0.85, -Math.PI * 0.15);
-      g.stroke();
+      drawProceduralArcTrail(
+        g,
+        state.x + f * 2,
+        state.y - 14,
+        12,
+        -Math.PI * 0.85,
+        -Math.PI * 0.15,
+        state.atkV === 6 ? '#88ffff' : trailColor,
+        2
+      );
     } else if (state.atkV === 7) {
       // AERIAL DOWNWARD JUMP THRUST (Pogo beneath feet)
-      items.draw(g, 15, state.x, state.y + 3, f < 0);
+      if (wpImg) {
+        drawTransformedImage(g, wpImg, state.x, state.y + 3, {
+          scaleX: f,
+          rotation: Math.PI * 0.5 * f,
+        });
+      } else if (items) {
+        items.draw(g, 15, state.x, state.y + 3, f < 0);
+      }
       // Downward spark trail
       g.fillStyle = '#88ffff';
       g.fillRect(state.x - 2, state.y + 6, 4, 5);
@@ -234,21 +290,64 @@ export function drawKnightGame(
       g.fillRect(state.x - 1, state.y + 8, 2, 4);
     } else if (state.atkV === 3) {
       // GROUND LOW POKE (Sweeping low)
-      items.draw(g, 15, state.x + f * 12, state.y - 3, f < 0);
+      if (wpImg) {
+        drawTransformedImage(g, wpImg, state.x + f * 12, state.y - 3, {
+          scaleX: f,
+          rotation: 0.25 * f,
+        });
+      } else if (items) {
+        items.draw(g, 15, state.x + f * 12, state.y - 3, f < 0);
+      }
     } else if (state.atkV === 5) {
       // AERIAL FORWARD JUMP SLASH
-      items.draw(g, 14, state.x + f * 14, state.y - 9, f < 0);
-      g.strokeStyle = '#88ffff';
-      g.lineWidth = 1;
-      g.beginPath();
-      g.arc(state.x + f * 10, state.y - 8, 10, f > 0 ? -Math.PI * 0.4 : Math.PI * 0.6, f > 0 ? Math.PI * 0.4 : Math.PI * 1.4);
-      g.stroke();
+      if (wpImg) {
+        drawTransformedImage(g, wpImg, state.x + f * 14, state.y - 9, {
+          scaleX: f,
+          rotation: -0.2 * f,
+        });
+      } else if (items) {
+        items.draw(g, 14, state.x + f * 14, state.y - 9, f < 0);
+      }
+      drawProceduralArcTrail(
+        g,
+        state.x + f * 10,
+        state.y - 8,
+        10,
+        f > 0 ? -Math.PI * 0.4 : Math.PI * 0.6,
+        f > 0 ? Math.PI * 0.4 : Math.PI * 1.4,
+        '#88ffff',
+        1
+      );
     } else if (state.atkV === 2) {
       // GROUND FORWARD SLASH
-      items.draw(g, 14, state.x + f * 13, state.y - 8, f < 0);
+      if (wpImg) {
+        drawTransformedImage(g, wpImg, state.x + f * 13, state.y - 8, {
+          scaleX: f,
+          rotation: -0.15 * f,
+        });
+      } else if (items) {
+        items.draw(g, 14, state.x + f * 13, state.y - 8, f < 0);
+      }
+      drawProceduralArcTrail(
+        g,
+        state.x + f * 10,
+        state.y - 8,
+        11,
+        f > 0 ? -Math.PI * 0.35 : Math.PI * 0.65,
+        f > 0 ? Math.PI * 0.35 : Math.PI * 1.35,
+        trailColor,
+        1.5
+      );
     } else {
       // NEUTRAL STAB (0)
-      items.draw(g, 12, state.x + f * 14, state.y - 8, f < 0);
+      if (wpImg) {
+        drawTransformedImage(g, wpImg, state.x + f * 14, state.y - 8, {
+          scaleX: f,
+          rotation: 0,
+        });
+      } else if (items) {
+        items.draw(g, 12, state.x + f * 14, state.y - 8, f < 0);
+      }
     }
   }
 

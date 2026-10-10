@@ -20,7 +20,31 @@ import { potionApItem } from './potion_ap';
 import { potionEpItem } from './potion_ep';
 import { potionSpItem } from './potion_sp';
 
-export const ALL_ITEMS: ItemWikiDefinition[] = [
+// Dynamic auto-discovery: any item file committed to this directory is automatically loaded!
+const itemModules = import.meta.glob('./*.ts', { eager: true }) as Record<
+  string,
+  Record<string, unknown>
+>;
+
+const discoveredItems: ItemWikiDefinition[] = [];
+
+for (const [path, mod] of Object.entries(itemModules)) {
+  if (path.endsWith('index.ts')) continue;
+  for (const exp of Object.values(mod)) {
+    if (
+      exp &&
+      typeof exp === 'object' &&
+      'id' in exp &&
+      'name' in exp &&
+      'category' in exp
+    ) {
+      discoveredItems.push(exp as ItemWikiDefinition);
+    }
+  }
+}
+
+// Static baseline fallback ensuring complete typing & order stability
+const staticBaseline: ItemWikiDefinition[] = [
   rubyItem,
   sapphireItem,
   emeraldItem,
@@ -38,6 +62,13 @@ export const ALL_ITEMS: ItemWikiDefinition[] = [
   potionSpItem,
 ];
 
+// Combine unique by ID (discovered items take priority or append new files)
+const itemMap = new Map<string, ItemWikiDefinition>();
+staticBaseline.forEach((item) => itemMap.set(item.id, item));
+discoveredItems.forEach((item) => itemMap.set(item.id, item));
+
+export const ALL_ITEMS: ItemWikiDefinition[] = Array.from(itemMap.values());
+
 export const ITEM_REGISTRY: Record<string, ItemWikiDefinition> = ALL_ITEMS.reduce(
   (acc, item) => {
     acc[item.id] = item;
@@ -50,6 +81,14 @@ export const ITEM_BY_SYMBOL: Record<string, ItemWikiDefinition> = ALL_ITEMS.redu
   (acc, item) => {
     if (item.symbol) {
       acc[item.symbol] = item;
+    }
+    if (item.spawning?.proceduralPlacementSymbol) {
+      acc[item.spawning.proceduralPlacementSymbol] = item;
+    }
+    if (item.spawning?.legacyAliases) {
+      item.spawning.legacyAliases.forEach((alias) => {
+        acc[alias] = item;
+      });
     }
     return acc;
   },

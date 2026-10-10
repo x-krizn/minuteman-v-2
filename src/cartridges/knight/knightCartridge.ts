@@ -103,6 +103,7 @@ export function createKnightCartridge(): Cartridge {
     isCharging: false,
     isCharged: false,
     isHeavyAttack: false,
+    equippedWeapon: 'short_sword',
 
     isBlocking: false,
     parryWindow: 0,

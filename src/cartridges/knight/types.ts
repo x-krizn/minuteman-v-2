@@ -18,14 +18,56 @@ export interface ItemDef {
   s?: StatType;
 }
 
+export interface SingleFrameAsset {
+  type?: 'single';
+  imageUri: string;
+  width?: number;
+  height?: number;
+  anchor?: { x: number; y: number };
+  procedural?: {
+    bob?: { amplitude: number; speed: number };
+    trail?: { color: string; fadeMs?: number };
+    rotationSpeed?: number;
+  };
+}
+
+export interface MultiFrameAsset {
+  type: 'sheet';
+  sheetUri: string;
+  frameWidth: number;
+  frameHeight: number;
+  frames: number;
+  fps?: number;
+  loop?: boolean;
+  anchor?: { x: number; y: number };
+}
+
+export type EntityAsset =
+  | SingleFrameAsset
+  | MultiFrameAsset
+  | { spriteIndex: number; sheetName?: string };
+
+export interface ItemExecutionContext {
+  sound: any;
+  say: (text: string) => void;
+  spawnParticles: (
+    x: number,
+    y: number,
+    count: number,
+    color: string,
+    text?: string
+  ) => void;
+}
+
 export interface ItemWikiDefinition {
   id: string;
   symbol?: string; // e.g. 'H', 'o', 'K', 'D', '1'
   name: string;
-  category: 'coin' | 'key' | 'ability' | 'gem' | 'potion' | 'shard';
+  category: 'coin' | 'key' | 'ability' | 'gem' | 'potion' | 'shard' | 'weapon';
   description: string;
   lore?: string;
   spriteIndex: number;
+  assets?: SingleFrameAsset | MultiFrameAsset;
   stat?: StatType;
   color?: string;
   cost?: number;
@@ -33,7 +75,15 @@ export interface ItemWikiDefinition {
   canDrop?: boolean;
   dropWeight?: number;
   soldBy?: string[];
-  effect: {
+  vendors?: string[];
+  spawning?: {
+    canDropFromEnemies?: boolean;
+    dropWeight?: number;
+    dungeonRarity?: string;
+    proceduralPlacementSymbol?: string;
+    legacyAliases?: string[];
+  };
+  effect?: {
     type:
       | 'currency'
       | 'key'
@@ -44,6 +94,67 @@ export interface ItemWikiDefinition {
       | 'flask_refill';
     stat?: StatType;
     amount?: number;
+  };
+  hooks?: {
+    onCollect?: (state: KnightState, ctx: ItemExecutionContext) => void;
+  };
+}
+
+export interface WeaponExecutionContext {
+  player: KnightState;
+  state: KnightState;
+  sound: any;
+  spawnParticles: (
+    x: number,
+    y: number,
+    count: number,
+    color: string,
+    text?: string
+  ) => void;
+  say: (message: string) => void;
+}
+
+export interface WeaponDefinition {
+  id: string;
+  name: string;
+  category: 'weapon';
+  slot: 'main_hand' | 'off_hand';
+  description: string;
+  lore?: string;
+  stats: {
+    damage: number;
+    poiseDamage: number;
+    staminaCost: number;
+    critChance?: number;
+    critMultiplier?: number;
+  };
+  assets: {
+    imageUri?: string;
+    spriteIndex?: number;
+    slashTrailColor?: string;
+    impactParticleColor?: string;
+    anchorOffset?: { x: number; y: number };
+    procedural?: {
+      bob?: { amplitude: number; speed: number };
+      trail?: { color: string; fadeMs?: number };
+    };
+  };
+  frameData?: {
+    startupTicks?: number;
+    activeTicks?: number;
+    recoveryTicks?: number;
+    canCancelIntoRoll?: boolean;
+    hitbox?: {
+      offsetX: number;
+      offsetY: number;
+      width: number;
+      height: number;
+    };
+  };
+  hooks?: {
+    onEquip?: (player: KnightState) => void;
+    onSwing?: (ctx: WeaponExecutionContext) => void;
+    onHit?: (target: EnemyEntity, ctx: WeaponExecutionContext) => void;
   };
 }
 
@@ -176,6 +287,9 @@ export interface KnightState {
   dashCooldown: number;
   isSprinting: boolean;
   dashGhosts: DashGhost[];
+
+  // Weapon & Equipment
+  equippedWeapon?: string;
 
   // Fighting game combat: Attack & Charge (X)
   atk: number; // attack active timer

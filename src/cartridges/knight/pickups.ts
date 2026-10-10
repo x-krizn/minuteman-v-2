@@ -6,6 +6,7 @@
 import { soundSystem } from '../../engine/core/soundSystem';
 import { KnightState } from './types';
 import { getItemDefinition } from './database/items';
+import { spawnParticles } from './particles';
 
 function cap(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
@@ -29,7 +30,19 @@ export function updatePickups(
       return false;
     }
 
+    // 1. If item has its own self-contained onCollect hook, execute it directly
+    if (item.hooks?.onCollect) {
+      item.hooks.onCollect(state, {
+        sound: soundSystem,
+        say,
+        spawnParticles: (x, y, count, color, text) =>
+          spawnParticles(state.particles, x, y, count, color, text),
+      });
+      return false;
+    }
+
     const { effect, stat } = item;
+    if (!effect) return false;
 
     switch (effect.type) {
       case 'currency':

@@ -52,8 +52,8 @@ export function getMerchantCatalog(): VendorItemEntry[] {
     if (!item) continue;
 
     let type: 'stat' | 'flask_max' | 'flask_refill' = 'stat';
-    if (item.effect.type === 'flask_max') type = 'flask_max';
-    else if (item.effect.type === 'flask_refill') type = 'flask_refill';
+    if (item.effect?.type === 'flask_max') type = 'flask_max';
+    else if (item.effect?.type === 'flask_refill') type = 'flask_refill';
 
     result.push({
       id: item.id,

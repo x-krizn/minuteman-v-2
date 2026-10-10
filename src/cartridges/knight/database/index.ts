@@ -7,3 +7,4 @@ export * from './items';
 export * from './enemies';
 export * from './skills';
 export * from './vendors';
+export * from './weapons';

@@ -14,6 +14,7 @@ import {
 import { bodyBox, enemyBox, overlap } from './physics';
 import { spawnParticles } from './particles';
 import { defeatEnemy } from './enemies';
+import { getWeaponDefinition } from './database/weapons';
 
 /**
  * Handles attack initiation or release of charged attack (Button X)
@@ -53,17 +54,22 @@ export function handleAttackInput(
       spawnParticles(state.particles, state.x + state.face * 10, state.y - 8, 12, '#ff8800');
     } else if (state.atkCd <= 0) {
       // Released before full charge, execute standard attack
-      executeNormalAttack(state, sx, sy);
+      executeNormalAttack(state, sx, sy, say);
     }
     state.isCharging = false;
     state.isCharged = false;
     state.chargeTimer = 0;
   } else if (isPressed && state.atkCd <= 0 && !state.isCharging) {
-    executeNormalAttack(state, sx, sy);
+    executeNormalAttack(state, sx, sy, say);
   }
 }
 
-function executeNormalAttack(state: KnightState, sx: number, sy: number): void {
+function executeNormalAttack(
+  state: KnightState,
+  sx: number,
+  sy: number,
+  say: (t: string) => void
+): void {
   state.isHeavyAttack = false;
 
   if (!state.ground) {
@@ -91,7 +97,20 @@ function executeNormalAttack(state: KnightState, sx: number, sy: number): void {
   state.atk = 0.18;
   state.atkCd = 0.28;
   state.swung = [];
-  soundSystem.playSword();
+
+  const weapon = getWeaponDefinition(state.equippedWeapon);
+  if (weapon?.hooks?.onSwing) {
+    weapon.hooks.onSwing({
+      player: state,
+      state,
+      sound: soundSystem,
+      spawnParticles: (x, y, count, color, text) =>
+        spawnParticles(state.particles, x, y, count, color, text),
+      say,
+    });
+  } else {
+    soundSystem.playSword();
+  }
 }
 
 /**
@@ -190,34 +209,47 @@ export function updateCombat(
       };
     }
 
-    const damage = state.isHeavyAttack ? 3 : 1;
+    const weapon = getWeaponDefinition(state.equippedWeapon);
+    const damage = state.isHeavyAttack ? 3 : (weapon?.stats?.damage ?? 1);
 
     state.enemies.forEach((e, i) => {
       if (e.hp > 0 && state.swung.indexOf(i) < 0 && overlap(box, enemyBox(e))) {
         state.swung.push(i);
-        e.hp -= damage;
-        e.stun = state.isHeavyAttack ? 0.6 : 0.25;
-        e.x += f * (state.isHeavyAttack ? 14 : 7);
 
         // Aerial Downward Thrust Pogo Bounce!
-        if ((state.atkV === 7 || (state.atkV === 3 && !state.ground))) {
+        if (state.atkV === 7 || (state.atkV === 3 && !state.ground)) {
           state.vy = -JUMP_VELOCITY * 0.95;
           state.airJumps = state.hasDouble ? 1 : 0;
           soundSystem.playPogo();
           spawnParticles(state.particles, state.x, state.y + 4, 8, '#88ffff');
         }
 
-        // Fighting game hitstop & sparks
+        // Fighting game hitstop & impacts
         state.hitstop = state.isHeavyAttack ? 0.08 : 0.04;
-        soundSystem.playHit();
-        spawnParticles(
-          state.particles,
-          e.x,
-          e.y - 6,
-          state.isHeavyAttack ? 10 : 5,
-          state.isHeavyAttack ? '#ff8800' : '#ffff44',
-          `-${damage}`
-        );
+
+        if (weapon?.hooks?.onHit) {
+          weapon.hooks.onHit(e, {
+            player: state,
+            state,
+            sound: soundSystem,
+            spawnParticles: (x, y, count, color, text) =>
+              spawnParticles(state.particles, x, y, count, color, text),
+            say,
+          });
+        } else {
+          e.hp -= damage;
+          e.stun = state.isHeavyAttack ? 0.6 : 0.25;
+          e.x += f * (state.isHeavyAttack ? 14 : 7);
+          soundSystem.playHit();
+          spawnParticles(
+            state.particles,
+            e.x,
+            e.y - 6,
+            state.isHeavyAttack ? 10 : 5,
+            state.isHeavyAttack ? '#ff8800' : '#ffff44',
+            `-${damage}`
+          );
+        }
 
         if (e.hp <= 0) {
           defeatEnemy(state, e);

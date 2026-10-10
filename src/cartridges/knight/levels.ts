@@ -68,5 +68,3 @@ export const INITIAL_GREEN: Record<string, number> = {
   '3,0': 1,
   '1,-1': 1,
 };
-
-export const TUTORIAL_KEYS = Object.keys(INITIAL_GREEN);

@@ -4,11 +4,11 @@
  */
 
 import { soundSystem } from '../../engine/core/soundSystem';
-import { CombatParticle, KnightState, ProjectileEntity, SkillId } from './types';
+import { KnightState, SkillId } from './types';
 import { TILE_SIZE } from './constants';
 import { SKILL_REGISTRY } from './database/skills';
 import { enemyBox, overlap, solidAt } from './physics';
-import { spawnParticles, updateParticles } from './particles';
+import { spawnParticles } from './particles';
 import { defeatEnemy } from './enemies';
 
 export function castSkill(
@@ -62,71 +62,6 @@ export function castSkill(
         spawnParticles(state.particles, x, y, count, color, text),
     });
     return true;
-  }
-
-  switch (skillId) {
-    case 'heal': {
-      state.hp = Math.min(state.maxHp, state.hp + 2);
-      say(`+2 HP (FLASKS: ${state.flasks})`);
-      spawnParticles(state.particles, state.x, state.y - 8, 8, '#44ff88', '+2');
-      break;
-    }
-
-    case 'fireball': {
-      const dir = state.face;
-      state.projectiles.push({
-        x: state.x + dir * 12,
-        y: state.y - 8,
-        vx: dir * 190,
-        vy: 0,
-        damage: 2,
-        isPlayer: true,
-        life: 1.2,
-        radius: 4,
-      });
-      say('FIRE');
-      break;
-    }
-
-    case 'whirlwind': {
-      // 360 spin attack
-      state.atk = 0.25;
-      state.atkV = 2;
-      state.swung = [];
-      say('WHIRLWIND');
-      soundSystem.playHeavyAttack();
-      spawnParticles(state.particles, state.x, state.y - 8, 12, '#99ddff');
-
-      // Hit enemies all around
-      state.enemies.forEach((e, idx) => {
-        if (e.hp > 0 && Math.hypot(e.x - state.x, e.y - state.y) < 28) {
-          e.hp -= 2;
-          e.stun = 0.4;
-          e.x += Math.sign(e.x - state.x || 1) * 12;
-          soundSystem.playHit();
-        }
-      });
-      break;
-    }
-
-    case 'shockwave': {
-      say('SLAM');
-      soundSystem.playHeavyAttack();
-      state.hitstop = 0.05;
-      const dir = state.face;
-      state.projectiles.push({
-        x: state.x + dir * 8,
-        y: state.y - 2,
-        vx: dir * 130,
-        vy: 0,
-        damage: 3,
-        isPlayer: true,
-        life: 0.6,
-        radius: 6,
-      });
-      spawnParticles(state.particles, state.x, state.y, 14, '#ffdd55');
-      break;
-    }
   }
 
   return true;

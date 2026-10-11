@@ -13,6 +13,7 @@ import {
 import { GameInput } from '../../types/input';
 import { EnemyEntity, KnightState, SkillId } from './types';
 import { handleAttackInput, handleBlockInput, updateCombat } from './combat';
+import { canPerformAction } from './database/progression';
 import {
   COLS,
   DASH_COOLDOWN,
@@ -357,13 +358,20 @@ export function createKnightCartridge(): Cartridge {
       }
 
       // --- 2. CONTROLS: B = DASH (TAP) / SPRINT (HOLD) ---
-      if (input.pressed.b && state.dashCooldown <= 0 && state.sp >= 1) {
+      const isAirborne = !state.ground;
+      const canAirDash = isAirborne && canPerformAction('air_dash', state);
+      const canGroundDash = !isAirborne && canPerformAction('dash', state);
+
+      if (input.pressed.b && state.dashCooldown <= 0 && state.sp >= 1 && (canGroundDash || canAirDash)) {
         state.isDashing = true;
         state.dashTimer = DASH_DURATION;
         state.dashCooldown = DASH_COOLDOWN;
         state.sp = Math.max(0, state.sp - 1);
         soundSystem.playDash();
-        spawnParticles(state.particles, state.x, state.y - 8, 5, '#ffffff');
+        spawnParticles(state.particles, state.x, state.y - 8, 5, canAirDash && isAirborne ? '#88ffff' : '#ffffff');
+        if (canAirDash && isAirborne) {
+          say('AIR DASH');
+        }
       }
 
       if (state.isDashing) {
@@ -410,7 +418,7 @@ export function createKnightCartridge(): Cartridge {
       handleAttackInput(state, input.held.x, input.pressed.x, sx, sy, dt, say);
 
       // --- 5. CONTROLS: Y = BLOCK & PARRY (CAN HOLD) ---
-      handleBlockInput(state, input.held.y, input.pressed.y, dt);
+      handleBlockInput(state, input.held.y, input.pressed.y, dt, say);
 
       // --- 6. CONTROLS: L & R = ASSIGNABLE SKILL / ITEM ---
       if (input.pressed.l) {

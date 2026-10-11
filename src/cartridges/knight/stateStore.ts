@@ -51,6 +51,61 @@ export function assignSkill(slot: 'L' | 'R', skillId: SkillId): boolean {
   return true;
 }
 
+export function equipItem(slot: 'mainHand' | 'offHand' | 'armor' | 'trinket', itemId: string): boolean {
+  const st = activeKnightState;
+  if (!st) return false;
+  if (!st.loadout) {
+    st.loadout = {
+      mainHand: st.equippedWeapon || 'short_sword',
+    };
+  }
+  st.loadout[slot] = itemId;
+  if (slot === 'mainHand') {
+    st.equippedWeapon = itemId;
+  }
+  soundSystem.playSelect();
+  notifyStateChange();
+  return true;
+}
+
+export function unlockFeat(featId: string, cost: number): { success: boolean; message: string } {
+  const st = activeKnightState;
+  if (!st) return { success: false, message: 'No active game.' };
+
+  if (!st.unlockedFeats) {
+    st.unlockedFeats = [];
+  }
+
+  if (st.unlockedFeats.includes(featId)) {
+    return { success: false, message: 'Feat already mastered!' };
+  }
+
+  if (st.coins < cost) {
+    return { success: false, message: `Need ${cost} coins (have ${st.coins}).` };
+  }
+
+  st.coins -= cost;
+  st.unlockedFeats.push(featId);
+  soundSystem.playCharge();
+  notifyStateChange();
+  return { success: true, message: `Mastered feat: ${featId}!` };
+}
+
+export function addItemToInventory(itemId: string, quantity = 1): void {
+  const st = activeKnightState;
+  if (!st) return;
+  if (!st.inventorySlots) {
+    st.inventorySlots = [];
+  }
+  const existing = st.inventorySlots.find((s) => s.itemId === itemId);
+  if (existing) {
+    existing.quantity += quantity;
+  } else {
+    st.inventorySlots.push({ itemId, quantity });
+  }
+  notifyStateChange();
+}
+
 export function buyVendorItem(item: VendorItem): { success: boolean; message: string } {
   const st = activeKnightState;
   if (!st) {
@@ -116,6 +171,9 @@ export function saveKnightGame(): { success: boolean; message: string } {
       keys: st.keys,
       hasDouble: st.hasDouble,
       equippedWeapon: st.equippedWeapon || 'short_sword',
+      loadout: st.loadout || { mainHand: st.equippedWeapon || 'short_sword' },
+      unlockedFeats: st.unlockedFeats || [],
+      inventorySlots: st.inventorySlots || [],
       assignedL: st.assignedL,
       assignedR: st.assignedR,
       got: st.got,
@@ -159,6 +217,9 @@ export function loadSavedKnightGame(): boolean {
       keys: data.keys,
       hasDouble: data.hasDouble,
       equippedWeapon: data.equippedWeapon || 'short_sword',
+      loadout: data.loadout || { mainHand: data.equippedWeapon || 'short_sword' },
+      unlockedFeats: data.unlockedFeats || [],
+      inventorySlots: data.inventorySlots || [],
       assignedL: data.assignedL,
       assignedR: data.assignedR,
       got: data.got,

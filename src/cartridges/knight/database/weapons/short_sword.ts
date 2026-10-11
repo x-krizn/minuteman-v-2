@@ -13,9 +13,13 @@ export const shortSwordWeapon: WeaponDefinition = {
   id: 'short_sword',
   name: 'Iron Shortsword',
   category: 'weapon',
+  weaponType: 'sword',
   slot: 'main_hand',
   description: 'A nimble, balanced blade favored by dungeon vanguards.',
   lore: 'Forged from low-grade bog iron, yet light enough to strike in rapid succession.',
+
+  // Combat Techniques Supported
+  supportedActions: ['attack', 'dash_attack', 'air_attack', 'block', 'parry', 'counter_attack'],
 
   // 2. Base Combat Stats
   stats: {

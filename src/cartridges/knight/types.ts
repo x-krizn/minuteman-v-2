@@ -118,7 +118,8 @@ export interface WeaponDefinition extends BaseEntry {
   id: string;
   name: string;
   category?: string;
-  slot?: 'main_hand' | 'off_hand' | string;
+  weaponType?: 'sword' | 'dagger' | 'spear' | 'axe' | 'shield' | 'blunt' | string;
+  slot?: 'main_hand' | 'off_hand' | 'armor' | 'trinket' | string;
   description?: string;
   lore?: string;
   stats?: {
@@ -129,6 +130,9 @@ export interface WeaponDefinition extends BaseEntry {
     critChance?: number;
     critMultiplier?: number;
   };
+  supportedActions?: string[]; // IDs of actions this weapon explicitly supports (e.g. ['attack', 'block', 'parry'])
+  incompatibleActions?: string[]; // Actions blocked while this is equipped
+  innateFeats?: string[]; // Feats inherently granted by this item without spending skill points
   assets?: {
     imageUri?: string;
     spriteIndex?: number;
@@ -157,6 +161,82 @@ export interface WeaponDefinition extends BaseEntry {
     onSwing?: (ctx: WeaponExecutionContext) => void;
     onHit?: (target: EnemyEntity, ctx: WeaponExecutionContext) => void;
   };
+}
+
+// ---------------------------------------------------------------------------
+// Progression & Skill Tree Nodes (Entry-Driven)
+// ---------------------------------------------------------------------------
+
+export type ProgressionUnlockType = 'core' | 'loot' | 'feat';
+
+export interface ProgressionRequirement {
+  type: ProgressionUnlockType;
+  lootItemId?: string; // e.g. 'ability_double_jump' or 'dungeon_key'
+  featCost?: number; // Cost in coins/feat points if unlocked at vendor/altar
+  requiredLevel?: number;
+}
+
+export interface ProgressionEquipmentFilter {
+  requiresWeapon?: boolean; // Must have weapon equipped
+  allowedWeaponTypes?: string[]; // e.g. ['sword', 'dagger'] or ['shield']
+  disallowedWeaponTypes?: string[]; // Explicit exclusions
+  allowedSlots?: ('main_hand' | 'off_hand')[];
+  specificWeaponIds?: string[];
+}
+
+export interface ProgressionExecutionContext {
+  player: KnightState;
+  state: KnightState;
+  sound: any;
+  say: (text: string) => void;
+  spawnParticles: (
+    x: number,
+    y: number,
+    count: number,
+    color: string,
+    text?: string
+  ) => void;
+}
+
+export interface ProgressionNodeEntry extends BaseEntry {
+  id: string; // Unique action ID: 'jump', 'double_jump', 'attack', 'block', 'parry', 'counter_attack'
+  name: string; // Display name
+  description?: string;
+  category?: 'movement' | 'offense' | 'defense' | 'utility' | string;
+  icon?: string; // optional sprite or unicode icon
+
+  // Tree Hierarchy
+  parents?: string[]; // IDs of required parent nodes that must be active/mastered
+
+  // Unlock Gates
+  unlocks: ProgressionRequirement[];
+
+  // Hardware/Equipment Compatibility
+  equipmentFilter?: ProgressionEquipmentFilter;
+
+  // Stun / Frame / Cost Data
+  staminaCost?: number;
+  energyCost?: number;
+  cooldownFrames?: number;
+
+  // Action hook on trigger
+  execute?: (ctx: ProgressionExecutionContext) => boolean | void;
+}
+
+// ---------------------------------------------------------------------------
+// Equipment & Inventory Slots
+// ---------------------------------------------------------------------------
+
+export interface EquipmentLoadout {
+  mainHand?: string; // weapon ID
+  offHand?: string; // shield / parrying dagger ID
+  armor?: string; // armor item ID
+  trinket?: string; // relic / accessory ID
+}
+
+export interface InventorySlot {
+  itemId: string;
+  quantity: number;
 }
 
 export type EnemyType = 'crawler' | 'sentry' | 'wisp' | string;
@@ -329,6 +409,9 @@ export interface KnightState {
 
   // Weapon & Equipment
   equippedWeapon?: string;
+  loadout?: EquipmentLoadout;
+  inventorySlots?: InventorySlot[];
+  unlockedFeats?: string[]; // IDs of feats learned by player (e.g. 'air_dash', 'counter_attack')
 
   // Fighting game combat: Attack & Charge (X)
   atk: number; // attack active timer

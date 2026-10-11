@@ -15,6 +15,7 @@ import { bodyBox, enemyBox, overlap } from './physics';
 import { spawnParticles } from './particles';
 import { defeatEnemy } from './enemies';
 import { getWeaponDefinition } from './database/weapons';
+import { canPerformAction } from './database/progression';
 
 /**
  * Handles attack initiation or release of charged attack (Button X)
@@ -28,6 +29,15 @@ export function handleAttackInput(
   dt: number,
   say: (t: string) => void
 ): void {
+  // Check if player has basic attack unlocked and compatible with equipment
+  if (!canPerformAction('attack', state)) {
+    if (isPressed) {
+      say('NO WEAPON / ATTACK LOCKED');
+      soundSystem.playMenuBeep();
+    }
+    return;
+  }
+
   // If holding X, build charge
   if (isHeld) {
     state.isCharging = true;
@@ -75,15 +85,31 @@ function executeNormalAttack(
   if (!state.ground) {
     // Jump Attacks
     if (sy > 0.35) {
-      state.atkV = 7; // Aerial downward jump thrust (pogo)
+      // Drop Attack: requires drop_attack progression check
+      if (canPerformAction('drop_attack', state)) {
+        state.atkV = 7; // Aerial downward jump thrust (pogo)
+      } else {
+        state.atkV = 5; // Default aerial forward slash
+      }
     } else if (sy < -0.35) {
       state.atkV = 6; // Aerial upward jump slash (anti-air)
     } else {
-      state.atkV = 5; // Aerial forward jump slash
+      // Air attack / Air dash attack
+      if (state.isDashing && canPerformAction('air_dash_attack', state)) {
+        state.atkV = 5; // Forward piercing thrust
+        say('AIR DASH ATTACK!');
+      } else if (canPerformAction('air_attack', state)) {
+        state.atkV = 5; // Aerial forward jump slash
+      } else {
+        state.atkV = 0; // Neutral forward stab
+      }
     }
   } else {
     // Ground Attacks
-    if (sy < -0.35) {
+    if (state.isDashing && canPerformAction('dash_attack', state)) {
+      state.atkV = 2; // Rapid dash slash
+      say('DASH ATTACK!');
+    } else if (sy < -0.35) {
       state.atkV = 1; // Ground upward slash
     } else if (sy > 0.35) {
       state.atkV = 3; // Ground low sweep / poke
@@ -98,7 +124,8 @@ function executeNormalAttack(
   state.atkCd = 0.28;
   state.swung = [];
 
-  const weapon = getWeaponDefinition(state.equippedWeapon);
+  const weaponId = state.loadout?.mainHand || state.equippedWeapon || 'short_sword';
+  const weapon = getWeaponDefinition(weaponId);
   if (weapon?.hooks?.onSwing) {
     weapon.hooks.onSwing({
       player: state,
@@ -120,19 +147,33 @@ export function handleBlockInput(
   state: KnightState,
   isHeld: boolean,
   isPressed: boolean,
-  dt: number
+  dt: number,
+  say?: (t: string) => void
 ): void {
-  if (isPressed) {
+  // Check if block or parry is available on player / equipped gear
+  const canBlock = canPerformAction('block', state);
+  const canParry = canPerformAction('parry', state);
+
+  if (!canBlock && !canParry) {
+    if (isPressed && say) {
+      say('BLOCK / PARRY UNAVAILABLE');
+    }
+    state.isBlocking = false;
+    state.parryWindow = 0;
+    return;
+  }
+
+  if (isPressed && canParry) {
     state.parryWindow = PARRY_WINDOW_DURATION;
     state.isBlocking = true;
   }
 
-  if (isHeld) {
+  if (isHeld && canBlock) {
     state.isBlocking = true;
     if (state.parryWindow > 0) {
       state.parryWindow -= dt;
     }
-  } else {
+  } else if (!isHeld) {
     state.isBlocking = false;
     state.parryWindow = 0;
   }
@@ -209,8 +250,16 @@ export function updateCombat(
       };
     }
 
-    const weapon = getWeaponDefinition(state.equippedWeapon);
-    const damage = state.isHeavyAttack ? 3 : (weapon?.stats?.damage ?? 1);
+    const weaponId = state.loadout?.mainHand || state.equippedWeapon || 'short_sword';
+    const weapon = getWeaponDefinition(weaponId);
+    let damage = state.isHeavyAttack ? 3 : (weapon?.stats?.damage ?? 1);
+
+    // If counter_attack or block_counter node active right after parry or block stun
+    if (state.parrySparkTimer > 0 && canPerformAction('counter_attack', state)) {
+      damage = Math.round(damage * 2.5); // Lethal counter execution
+    } else if (state.blockStun > 0 && canPerformAction('block_counter', state)) {
+      damage = Math.round(damage * 1.8);
+    }
 
     state.enemies.forEach((e, i) => {
       if (e.hp > 0 && state.swung.indexOf(i) < 0 && overlap(box, enemyBox(e))) {

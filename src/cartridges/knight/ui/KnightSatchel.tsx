@@ -5,11 +5,16 @@
 
 import React, { useEffect, useState } from 'react';
 import { ALL_SKILLS } from '../database/skills';
+import { ALL_WEAPONS, getWeaponDefinition } from '../database/weapons';
+import { ALL_PROGRESSION_NODES, canPerformAction } from '../database/progression';
+import { ALL_ITEMS, getItemDefinition } from '../database/items';
 import {
   assignSkill,
   buyVendorItem,
+  equipItem,
   getKnightState,
   subscribeKnightState,
+  unlockFeat,
   VENDOR_ITEMS,
   VendorItem,
 } from '../stateStore';
@@ -19,10 +24,10 @@ export interface KnightSatchelProps {
   onClose: () => void;
 }
 
-type TabType = 'equipment' | 'stats' | 'merchant';
+type TabType = 'loadout' | 'skills' | 'progression' | 'inventory' | 'stats' | 'merchant';
 
 export const KnightSatchel: React.FC<KnightSatchelProps> = ({ onClose }) => {
-  const [activeTab, setActiveTab] = useState<TabType>('equipment');
+  const [activeTab, setActiveTab] = useState<TabType>('loadout');
   const [knightState, setKnightState] = useState(() => getKnightState());
   const [shopFeedback, setShopFeedback] = useState<string | null>(null);
 
@@ -40,6 +45,12 @@ export const KnightSatchel: React.FC<KnightSatchelProps> = ({ onClose }) => {
     assignSkill(slot, skillId);
   };
 
+  const handleEquip = (slot: 'mainHand' | 'offHand', id: string) => {
+    equipItem(slot, id);
+    setShopFeedback(`Equipped ${id} to ${slot}!`);
+    setTimeout(() => setShopFeedback(null), 1800);
+  };
+
   const handleBuy = (item: VendorItem) => {
     const res = buyVendorItem(item);
     setShopFeedback(res.message);
@@ -48,15 +59,24 @@ export const KnightSatchel: React.FC<KnightSatchelProps> = ({ onClose }) => {
     }, 2200);
   };
 
+  const handleUnlockFeat = (featId: string, cost: number) => {
+    const res = unlockFeat(featId, cost);
+    setShopFeedback(res.message);
+    setTimeout(() => setShopFeedback(null), 2000);
+  };
+
+  const mainWeapon = getWeaponDefinition(st?.loadout?.mainHand || st?.equippedWeapon || 'short_sword');
+  const offWeapon = st?.loadout?.offHand ? getWeaponDefinition(st.loadout.offHand) : undefined;
+
   return (
-    <div className="absolute inset-0 z-20 bg-[#0a180a]/92 backdrop-blur-xs flex flex-col p-2 sm:p-2.5 overflow-hidden text-[#9ad482] font-mono select-none">
+    <div className="absolute inset-0 z-20 bg-[#0a180a]/94 backdrop-blur-xs flex flex-col p-2 sm:p-2.5 overflow-hidden text-[#9ad482] font-mono select-none">
       {/* Top Header Bar */}
       <div className="flex items-center justify-between pb-1 border-b border-[#306028]">
         <div className="flex items-center gap-1.5 font-bold text-xs sm:text-sm text-[#50fa7b]">
           <span className="w-2 h-2 rounded-full bg-[#50fa7b] animate-pulse inline-block" />
-          <span>KNIGHT SATCHEL</span>
+          <span>KNIGHT SATCHEL & PROGRESSION</span>
           <span className="text-[10px] text-[#70a860] bg-[#1a3818] px-1 py-0.2 rounded-xs">
-            SHIFT
+            SHIFT / B
           </span>
         </div>
         <button
@@ -77,42 +97,79 @@ export const KnightSatchel: React.FC<KnightSatchelProps> = ({ onClose }) => {
           </span>
           <span className="text-cyan-300 font-bold">🗝️ {st ? st.keys : 0} KEYS</span>
         </div>
-        <span className="text-[9.5px] text-[#70a860]">
-          {st?.hasDouble ? '🪽 D-JUMP ON' : '🔒 D-JUMP'}
-        </span>
+        <div className="flex items-center gap-2 text-[9.5px]">
+          <span className="text-[#88ffff]">
+            ⚔️ {mainWeapon?.name || 'Unarmed'}
+          </span>
+          {offWeapon && (
+            <span className="text-[#94a3b8]">
+              🛡️ {offWeapon.name}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-[#244820] mb-1.5 bg-[#0e1c0e] rounded-xs overflow-hidden">
+      <div className="flex border-b border-[#244820] mb-1.5 bg-[#0e1c0e] rounded-xs overflow-x-auto scrollbar-none">
         <button
-          onClick={() => setActiveTab('equipment')}
-          className={`flex-1 py-1 text-[10px] font-bold uppercase transition-colors text-center ${
-            activeTab === 'equipment'
+          onClick={() => setActiveTab('loadout')}
+          className={`px-2 py-1 text-[10px] font-bold uppercase transition-colors shrink-0 ${
+            activeTab === 'loadout'
               ? 'bg-[#1e441e] text-[#50fa7b] border-b-2 border-[#50fa7b]'
               : 'text-[#609050] hover:text-[#9ad482]'
           }`}
         >
-          1. EQUIPMENT (L/R)
+          1. GEAR
+        </button>
+        <button
+          onClick={() => setActiveTab('progression')}
+          className={`px-2 py-1 text-[10px] font-bold uppercase transition-colors shrink-0 ${
+            activeTab === 'progression'
+              ? 'bg-[#1e441e] text-[#50fa7b] border-b-2 border-[#50fa7b]'
+              : 'text-[#609050] hover:text-[#9ad482]'
+          }`}
+        >
+          2. SKILL TREE
+        </button>
+        <button
+          onClick={() => setActiveTab('inventory')}
+          className={`px-2 py-1 text-[10px] font-bold uppercase transition-colors shrink-0 ${
+            activeTab === 'inventory'
+              ? 'bg-[#1e441e] text-[#50fa7b] border-b-2 border-[#50fa7b]'
+              : 'text-[#609050] hover:text-[#9ad482]'
+          }`}
+        >
+          3. SATCHEL
+        </button>
+        <button
+          onClick={() => setActiveTab('skills')}
+          className={`px-2 py-1 text-[10px] font-bold uppercase transition-colors shrink-0 ${
+            activeTab === 'skills'
+              ? 'bg-[#1e441e] text-[#50fa7b] border-b-2 border-[#50fa7b]'
+              : 'text-[#609050] hover:text-[#9ad482]'
+          }`}
+        >
+          4. ABILITIES (L/R)
         </button>
         <button
           onClick={() => setActiveTab('stats')}
-          className={`flex-1 py-1 text-[10px] font-bold uppercase transition-colors text-center ${
+          className={`px-2 py-1 text-[10px] font-bold uppercase transition-colors shrink-0 ${
             activeTab === 'stats'
               ? 'bg-[#1e441e] text-[#50fa7b] border-b-2 border-[#50fa7b]'
               : 'text-[#609050] hover:text-[#9ad482]'
           }`}
         >
-          2. ATTRIBUTES
+          5. STATS
         </button>
         <button
           onClick={() => setActiveTab('merchant')}
-          className={`flex-1 py-1 text-[10px] font-bold uppercase transition-colors text-center ${
+          className={`px-2 py-1 text-[10px] font-bold uppercase transition-colors shrink-0 ${
             activeTab === 'merchant'
               ? 'bg-[#1e441e] text-amber-300 border-b-2 border-amber-400'
               : 'text-[#609050] hover:text-amber-200'
           }`}
         >
-          3. MERCHANT
+          6. MERCHANT
         </button>
       </div>
 
@@ -124,8 +181,215 @@ export const KnightSatchel: React.FC<KnightSatchelProps> = ({ onClose }) => {
 
       {/* Tab Content */}
       <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 text-[11px]">
-        {/* TAB 1: EQUIPMENT */}
-        {activeTab === 'equipment' && (
+        {/* TAB 1: EQUIPMENT & PAPERDOLL */}
+        {activeTab === 'loadout' && (
+          <div className="space-y-2">
+            <div className="text-[9.5px] text-[#609050] italic px-1">
+              Select weaponry and shields. Equipment modifies compatible combat nodes and innate feats.
+            </div>
+
+            {/* Active Loadout Paperdoll Slots */}
+            <div className="grid grid-cols-2 gap-2 bg-[#122412] p-2 rounded-xs border border-[#244820]">
+              <div className="border border-[#306028] p-1.5 rounded-xs bg-[#0e1c0e]">
+                <div className="text-[9px] text-[#70a860] uppercase mb-0.5">MAIN HAND (WEAPON)</div>
+                <div className="text-[#50fa7b] font-bold text-[11px]">{mainWeapon?.name}</div>
+                <div className="text-[9px] text-[#9ad482] mt-0.5">
+                  Dmg: {mainWeapon?.stats?.damage ?? 1} | Stm: {mainWeapon?.stats?.staminaCost ?? 4} | Crit: {Math.round((mainWeapon?.stats?.critChance ?? 0.15) * 100)}%
+                </div>
+              </div>
+
+              <div className="border border-[#306028] p-1.5 rounded-xs bg-[#0e1c0e]">
+                <div className="text-[9px] text-[#70a860] uppercase mb-0.5">OFF HAND (SHIELD / SECONDARY)</div>
+                <div className="text-[#8be9fd] font-bold text-[11px]">{offWeapon ? offWeapon.name : 'Empty Slot'}</div>
+                <div className="text-[9px] text-[#9ad482] mt-0.5">
+                  {offWeapon ? `Innate: ${offWeapon.innateFeats?.join(', ') || 'None'}` : 'Equip shield below'}
+                </div>
+              </div>
+            </div>
+
+            {/* Available Weapons to Equip */}
+            <div className="text-[10px] font-bold text-[#e6f5d0] mt-1">AVAILABLE EQUIPMENT</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+              {ALL_WEAPONS.map((wp) => {
+                const isEquippedMain = (st?.loadout?.mainHand || st?.equippedWeapon) === wp.id;
+                const isEquippedOff = st?.loadout?.offHand === wp.id;
+
+                return (
+                  <div key={wp.id} className="bg-[#122412] border border-[#244820] p-1.5 rounded-xs flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-[#e6f5d0] text-[11px]">{wp.name}</span>
+                        <span className="text-[9px] uppercase px-1 rounded-xs bg-[#1a3818] text-[#50fa7b]">
+                          {wp.slot}
+                        </span>
+                      </div>
+                      <p className="text-[9px] text-[#70a860] my-0.5">{wp.description}</p>
+                      {wp.innateFeats && wp.innateFeats.length > 0 && (
+                        <div className="text-[8.5px] text-amber-300">
+                          ★ Innate Trait: Grants [{wp.innateFeats.join(', ')}]
+                        </div>
+                      )}
+                      {wp.incompatibleActions && wp.incompatibleActions.length > 0 && (
+                        <div className="text-[8.5px] text-red-400">
+                          ✕ Incompatible: Blocks [{wp.incompatibleActions.join(', ')}]
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex gap-1 mt-1 pt-1 border-t border-[#1a381a]">
+                      {wp.slot === 'main_hand' && (
+                        <button
+                          onClick={() => handleEquip('mainHand', wp.id)}
+                          className={`flex-1 py-0.5 text-[9.5px] font-bold rounded-xs ${
+                            isEquippedMain
+                              ? 'bg-[#50fa7b] text-[#0b1c0b]'
+                              : 'bg-[#183018] text-[#8ec878] hover:bg-[#244820]'
+                          }`}
+                        >
+                          {isEquippedMain ? '✓ EQUIPPED' : 'EQUIP MAIN'}
+                        </button>
+                      )}
+                      {(wp.slot === 'off_hand' || wp.category === 'shield') && (
+                        <button
+                          onClick={() => handleEquip('offHand', wp.id)}
+                          className={`flex-1 py-0.5 text-[9.5px] font-bold rounded-xs ${
+                            isEquippedOff
+                              ? 'bg-[#8be9fd] text-[#0b1c0b]'
+                              : 'bg-[#183018] text-[#8ec878] hover:bg-[#244820]'
+                          }`}
+                        >
+                          {isEquippedOff ? '✓ EQUIPPED' : 'EQUIP OFF-HAND'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: PROGRESSION & SKILL TREE */}
+        {activeTab === 'progression' && (
+          <div className="space-y-1.5">
+            <div className="text-[9.5px] text-[#609050] italic px-1">
+              Actions resolve through Player Mastery + Hardware Compatibility + Innate Gear Grants.
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+              {ALL_PROGRESSION_NODES.map((node) => {
+                const isAvailable = st ? canPerformAction(node.id, st) : false;
+                const isLearnedFeat = Boolean(st?.unlockedFeats?.includes(node.id));
+                const featReq = node.unlocks.find((u) => u.type === 'feat');
+                const lootReq = node.unlocks.find((u) => u.type === 'loot');
+                const isCore = node.unlocks.some((u) => u.type === 'core');
+
+                return (
+                  <div
+                    key={node.id}
+                    className={`p-1.5 rounded-xs border flex flex-col justify-between ${
+                      isAvailable
+                        ? 'bg-[#122412] border-[#50fa7b]/50'
+                        : 'bg-[#0e160e] border-[#223322] opacity-75'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className={`font-bold text-[11px] ${isAvailable ? 'text-[#e6f5d0]' : 'text-gray-400'}`}>
+                          {node.name}
+                        </span>
+                        <span
+                          className={`text-[8.5px] px-1 py-0.2 rounded-xs font-bold ${
+                            isAvailable
+                              ? 'bg-[#1e441e] text-[#50fa7b]'
+                              : 'bg-[#222222] text-gray-500'
+                          }`}
+                        >
+                          {isAvailable ? 'READY' : 'LOCKED'}
+                        </span>
+                      </div>
+
+                      <p className="text-[9px] text-[#70a860] leading-tight mb-1">
+                        {node.description}
+                      </p>
+
+                      <div className="space-y-0.5 text-[8.5px]">
+                        {node.parents && node.parents.length > 0 && (
+                          <div className="text-gray-400">
+                            Prerequisites: <span className="text-[#8be9fd]">{node.parents.join(' → ')}</span>
+                          </div>
+                        )}
+                        <div className="text-[#a0c490]">
+                          Type:{' '}
+                          {isCore && <span className="text-[#50fa7b] mr-1">[Core]</span>}
+                          {lootReq && <span className="text-cyan-300 mr-1">[Loot: {lootReq.lootItemId}]</span>}
+                          {featReq && <span className="text-amber-300 mr-1">[Feat: {featReq.featCost}c]</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action button for purchasable feats */}
+                    {featReq && !isLearnedFeat && !isAvailable && (
+                      <button
+                        onClick={() => handleUnlockFeat(node.id, featReq.featCost || 100)}
+                        className="mt-1.5 py-0.8 px-1 bg-amber-400/90 hover:bg-amber-300 text-black text-[9.5px] font-bold rounded-xs"
+                      >
+                        LEARN FEAT ({featReq.featCost}c)
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: INVENTORY & SATCHEL STACKABLES */}
+        {activeTab === 'inventory' && (
+          <div className="space-y-1.5">
+            <div className="text-[9.5px] text-[#609050] italic px-1">
+              Collected quest keys, stat crystals, and materials stored in satchel.
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+              {/* Keys & Currency Cards */}
+              <div className="bg-[#122412] border border-[#244820] p-1.5 rounded-xs">
+                <div className="text-[9px] text-[#70a860]">DUNGEON CURRENCY</div>
+                <div className="font-bold text-amber-300 text-[12px] mt-0.5">🪙 {st?.coins || 0} Coins</div>
+                <div className="text-[8.5px] text-gray-400 mt-0.5">Use at vendor or for feats</div>
+              </div>
+
+              <div className="bg-[#122412] border border-[#244820] p-1.5 rounded-xs">
+                <div className="text-[9px] text-[#70a860]">DUNGEON KEY</div>
+                <div className="font-bold text-cyan-300 text-[12px] mt-0.5">🗝️ {st?.keys || 0} In Satchel</div>
+                <div className="text-[8.5px] text-gray-400 mt-0.5">Unlocks exit gates (L)</div>
+              </div>
+
+              <div className="bg-[#122412] border border-[#244820] p-1.5 rounded-xs">
+                <div className="text-[9px] text-[#70a860]">HEALING FLASK</div>
+                <div className="font-bold text-[#50fa7b] text-[12px] mt-0.5">🧪 {st?.flasks || 0} / {st?.maxFlasks || 5}</div>
+                <div className="text-[8.5px] text-gray-400 mt-0.5">Refilled at checkpoints</div>
+              </div>
+
+              {/* Dynamic inventory slots */}
+              {st?.inventorySlots && st.inventorySlots.map((slot) => {
+                const def = getItemDefinition(slot.itemId);
+                return (
+                  <div key={slot.itemId} className="bg-[#122412] border border-[#244820] p-1.5 rounded-xs">
+                    <div className="text-[9px] text-[#70a860] uppercase">{def?.category || 'Item'}</div>
+                    <div className="font-bold text-[#e6f5d0] text-[11px] mt-0.5">
+                      {def?.name || slot.itemId} x{slot.quantity}
+                    </div>
+                    <div className="text-[8.5px] text-gray-400 mt-0.5">{def?.description}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: ASSIGNABLE ABILITIES (L/R) */}
+        {activeTab === 'skills' && (
           <div className="space-y-1.5">
             <div className="text-[9.5px] text-[#609050] italic px-1">
               Assign abilities to L and R bumpers. Flask uses pickup charges; Spells cost EP; Skills cost SP.
@@ -200,7 +464,7 @@ export const KnightSatchel: React.FC<KnightSatchelProps> = ({ onClose }) => {
           </div>
         )}
 
-        {/* TAB 2: ATTRIBUTES & STATS */}
+        {/* TAB 5: ATTRIBUTES & STATS */}
         {activeTab === 'stats' && (
           <div className="space-y-1.5 bg-[#122412] p-2 rounded-xs border border-[#244820]">
             <div className="grid grid-cols-2 gap-2 text-[10.5px]">
@@ -292,7 +556,7 @@ export const KnightSatchel: React.FC<KnightSatchelProps> = ({ onClose }) => {
           </div>
         )}
 
-        {/* TAB 3: WANDERING MERCHANT */}
+        {/* TAB 6: WANDERING MERCHANT */}
         {activeTab === 'merchant' && (
           <div className="space-y-1.5">
             <div className="text-[9.5px] text-[#80a860] italic px-1">

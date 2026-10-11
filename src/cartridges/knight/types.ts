@@ -12,9 +12,16 @@ export interface BoundingBox {
 
 export type StatType = 'hp' | 'ap' | 'ep' | 'sp';
 
+export interface BaseEntry {
+  id: string; // Unique entity identifier, e.g. 'short_sword', 'desert'
+  name: string; // Display name
+  kind?: 'item' | 'weapon' | 'skill' | 'enemy' | 'biome' | 'tile' | 'map' | string;
+  description?: string;
+}
+
 export interface ItemDef {
   i: number; // sprite cell index, -1 for special
-  k: 'coin' | 'key' | 'ability' | 'gem' | 'potion';
+  k: string;
   s?: StatType;
 }
 
@@ -59,14 +66,14 @@ export interface ItemExecutionContext {
   ) => void;
 }
 
-export interface ItemWikiDefinition {
+export interface ItemWikiDefinition extends BaseEntry {
   id: string;
-  symbol?: string; // e.g. 'H', 'o', 'K', 'D', '1'
   name: string;
-  category: 'coin' | 'key' | 'ability' | 'gem' | 'potion' | 'shard' | 'weapon';
-  description: string;
+  symbol?: string; // e.g. 'H', 'o', 'K', 'D', '1'
+  category?: string;
+  description?: string;
   lore?: string;
-  spriteIndex: number;
+  spriteIndex?: number;
   assets?: SingleFrameAsset | MultiFrameAsset;
   stat?: StatType;
   color?: string;
@@ -84,14 +91,7 @@ export interface ItemWikiDefinition {
     legacyAliases?: string[];
   };
   effect?: {
-    type:
-      | 'currency'
-      | 'key'
-      | 'double_jump'
-      | 'max_stat'
-      | 'restore_stat'
-      | 'flask_max'
-      | 'flask_refill';
+    type?: string;
     stat?: StatType;
     amount?: number;
   };
@@ -114,21 +114,22 @@ export interface WeaponExecutionContext {
   say: (message: string) => void;
 }
 
-export interface WeaponDefinition {
+export interface WeaponDefinition extends BaseEntry {
   id: string;
   name: string;
-  category: 'weapon';
-  slot: 'main_hand' | 'off_hand';
-  description: string;
+  category?: string;
+  slot?: 'main_hand' | 'off_hand' | string;
+  description?: string;
   lore?: string;
-  stats: {
-    damage: number;
-    poiseDamage: number;
-    staminaCost: number;
+  stats?: {
+    damage?: number;
+    poiseDamage?: number;
+    staminaCost?: number;
+    speed?: number;
     critChance?: number;
     critMultiplier?: number;
   };
-  assets: {
+  assets?: {
     imageUri?: string;
     spriteIndex?: number;
     slashTrailColor?: string;
@@ -373,3 +374,53 @@ export interface KnightState {
   msg: string;
   msgT: number;
 }
+
+export interface BiomeDefinition extends BaseEntry {
+  id: string;
+  name: string;
+  description?: string;
+  bgColor?: string;
+  ambientColor?: string;
+  dustColor?: string;
+  tileset?: {
+    type?: 'single' | 'sheet';
+    imageUri?: string;
+    sheetUri?: string;
+    tileSize?: number;
+  };
+  environmentalHooks?: {
+    onStep?: (player: KnightState) => void;
+    onRoomEnter?: (state: KnightState) => void;
+  };
+}
+
+export interface TileDefinition extends BaseEntry {
+  id: string;
+  symbol: string;
+  name: string;
+  solid?: boolean;
+  color?: string;
+  trigger?: {
+    onStep?: (player: KnightState, ctx: any) => void;
+    onHit?: (state: KnightState, ctx: any) => void;
+  };
+}
+
+export interface RoomDefinition extends BaseEntry {
+  id: string; // e.g. '0,0' or 'desert_passage'
+  name: string;
+  layout: string[];
+  biome?: string; // ID of biome (defaults to 'crypt')
+  exits?: Record<'N' | 'S' | 'E' | 'W' | string, string>;
+  initialSpawns?: {
+    type: string;
+    x: number;
+    y: number;
+  }[];
+  initialPickups?: {
+    symbol: string;
+    x: number;
+    y: number;
+  }[];
+}
+

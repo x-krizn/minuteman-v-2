@@ -5,8 +5,8 @@
 
 import { WeaponDefinition } from '../../types';
 
-// Dynamic auto-discovery: any weapon file added to this directory is automatically registered!
-const weaponModules = import.meta.glob('./*.ts', { eager: true }) as Record<
+// Dynamic recursive auto-discovery: any weapon file added to this directory or subdirectories is automatically registered!
+const weaponModules = import.meta.glob('./**/*.ts', { eager: true }) as Record<
   string,
   Record<string, unknown>
 >;
@@ -19,8 +19,8 @@ for (const [path, mod] of Object.entries(weaponModules)) {
     if (
       exp &&
       typeof exp === 'object' &&
-      'category' in exp &&
-      (exp as { category?: string }).category === 'weapon'
+      'id' in exp &&
+      'name' in exp
     ) {
       collectedWeapons.push(exp as WeaponDefinition);
     }
@@ -40,5 +40,3 @@ export const WEAPON_REGISTRY: Record<string, WeaponDefinition> = ALL_WEAPONS.red
 export function getWeaponDefinition(id?: string): WeaponDefinition {
   return (id && WEAPON_REGISTRY[id]) || WEAPON_REGISTRY['short_sword'] || ALL_WEAPONS[0];
 }
-
-export * from './short_sword';

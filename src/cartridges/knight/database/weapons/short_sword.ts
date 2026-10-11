@@ -58,9 +58,10 @@ export const shortSwordWeapon: WeaponDefinition = {
     },
 
     onHit: (target, ctx: WeaponExecutionContext) => {
-      const isCrit = Math.random() < (shortSwordWeapon.stats.critChance ?? 0.15);
-      const mult = isCrit ? (shortSwordWeapon.stats.critMultiplier ?? 2.0) : 1;
-      const baseDmg = ctx.state.isHeavyAttack ? 3 : shortSwordWeapon.stats.damage;
+      const stats = shortSwordWeapon.stats;
+      const isCrit = Math.random() < (stats?.critChance ?? 0.15);
+      const mult = isCrit ? (stats?.critMultiplier ?? 2.0) : 1;
+      const baseDmg = ctx.state.isHeavyAttack ? 3 : (stats?.damage ?? 1);
       const finalDamage = Math.round(baseDmg * mult);
 
       target.hp -= finalDamage;

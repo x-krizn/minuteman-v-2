@@ -5,6 +5,9 @@
 
 import { WeaponDefinition, WeaponExecutionContext } from '../../types';
 
+export const SHORT_SWORD_PNG =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAd0lEQVR4nGNgGAXUBzd/zv1PkQG/zogOsAGvNnOQbkCFKf//WSZC/2EGTD76F4x//Prz/9GLDyh4yuIdqBaANKZocIHxlmDO/yADEpb+AuPTVx9i4JSSbkxD0F3ws1gMrNDYMRQnxukdkGaSwwAZvIrgGWADSAUAE79zqNkf6WQAAAAASUVORK5CYII=';
+
 export const shortSwordWeapon: WeaponDefinition = {
   // 1. Identity & Equipment Slot
   id: 'short_sword',
@@ -25,8 +28,7 @@ export const shortSwordWeapon: WeaponDefinition = {
 
   // 3. Visual Assets (Single Sprite & FX Colors)
   assets: {
-    // Uses blade frame 12/14 from items sprite sheet or standalone transform
-    spriteIndex: 12,
+    imageUri: SHORT_SWORD_PNG,
     slashTrailColor: '#e2e8f0', // Crisp silver blade trail
     impactParticleColor: '#f8fafc',
     anchorOffset: { x: 4, y: 8 },

@@ -158,7 +158,19 @@ export interface WeaponDefinition {
   };
 }
 
-export type EnemyType = 'crawler' | 'sentry' | 'wisp';
+export type EnemyType = 'crawler' | 'sentry' | 'wisp' | string;
+
+export interface EnemyExecutionContext {
+  sound: any;
+  say?: (text: string) => void;
+  spawnParticles: (
+    x: number,
+    y: number,
+    count: number,
+    color: string,
+    text?: string
+  ) => void;
+}
 
 export interface EnemyWikiDefinition {
   type: EnemyType;
@@ -170,6 +182,18 @@ export interface EnemyWikiDefinition {
   speed: number;
   damage: number;
   lootTable?: { itemId: string; chance: number }[];
+  assets?: SingleFrameAsset | MultiFrameAsset;
+  update?: (
+    rooms: Record<string, string[]>,
+    state: KnightState,
+    entity: EnemyEntity,
+    dt: number
+  ) => void;
+  onDefeat?: (
+    state: KnightState,
+    entity: EnemyEntity,
+    ctx: EnemyExecutionContext
+  ) => void;
 }
 
 export interface EnemyEntity {
@@ -202,7 +226,19 @@ export interface AttackVariant {
   y1: number;
 }
 
-export type SkillId = 'heal' | 'fireball' | 'whirlwind' | 'shockwave';
+export type SkillId = 'heal' | 'fireball' | 'whirlwind' | 'shockwave' | string;
+
+export interface SkillExecutionContext {
+  say: (t: string) => void;
+  sound: any;
+  spawnParticles: (
+    x: number,
+    y: number,
+    count: number,
+    color: string,
+    text?: string
+  ) => void;
+}
 
 export interface SkillDef {
   id: SkillId;
@@ -212,6 +248,8 @@ export interface SkillDef {
   iconIndex: number;
   description: string;
   cooldown: number;
+  assets?: SingleFrameAsset;
+  execute?: (state: KnightState, ctx: SkillExecutionContext) => void;
 }
 
 export interface ProjectileEntity {

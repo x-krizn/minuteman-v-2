@@ -4,7 +4,7 @@
  */
 
 import { StatType } from '../../types';
-import { ITEM_REGISTRY } from '../items';
+import { ALL_ITEMS, ITEM_REGISTRY } from '../items';
 
 export interface VendorItemEntry {
   id: string;
@@ -47,9 +47,11 @@ export const wanderingMerchant: VendorWikiDefinition = {
  */
 export function getMerchantCatalog(): VendorItemEntry[] {
   const result: VendorItemEntry[] = [];
-  for (const itemId of wanderingMerchant.wares) {
-    const item = ITEM_REGISTRY[itemId];
-    if (!item) continue;
+  const added = new Set<string>();
+
+  const processItem = (item: any) => {
+    if (!item || added.has(item.id)) return;
+    added.add(item.id);
 
     let type: 'stat' | 'flask_max' | 'flask_refill' = 'stat';
     if (item.effect?.type === 'flask_max') type = 'flask_max';
@@ -63,6 +65,22 @@ export function getMerchantCatalog(): VendorItemEntry[] {
       type,
       stat: item.stat,
     });
+  };
+
+  // 1. Process explicit wares in vendor list
+  for (const itemId of wanderingMerchant.wares) {
+    processItem(ITEM_REGISTRY[itemId]);
   }
+
+  // 2. Automatically discover any newly created item that marks wandering_merchant
+  for (const item of ALL_ITEMS) {
+    if (
+      item.vendors?.includes('wandering_merchant') ||
+      item.soldBy?.includes('wandering_merchant')
+    ) {
+      processItem(item);
+    }
+  }
+
   return result;
 }

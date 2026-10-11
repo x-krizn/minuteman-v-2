@@ -54,6 +54,16 @@ export function castSkill(
 
   soundSystem.playSpellCast();
 
+  if (skill.execute) {
+    skill.execute(state, {
+      say,
+      sound: soundSystem,
+      spawnParticles: (x, y, count, color, text) =>
+        spawnParticles(state.particles, x, y, count, color, text),
+    });
+    return true;
+  }
+
   switch (skillId) {
     case 'heal': {
       state.hp = Math.min(state.maxHp, state.hp + 2);

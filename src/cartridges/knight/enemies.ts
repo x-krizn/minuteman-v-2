@@ -24,7 +24,10 @@ export function updateEnemies(
       return;
     }
 
-    if (e.type === 'crawler') {
+    const def = ENEMY_REGISTRY[e.type];
+    if (def?.update) {
+      def.update(rooms, state, e, dt);
+    } else if (e.type === 'crawler') {
       updateCrawler(rooms, state, e, dt);
     } else if (e.type === 'sentry') {
       updateSentry(rooms, state, e, dt);
@@ -46,8 +49,17 @@ export function defeatEnemy(
   const def = ENEMY_REGISTRY[e.type];
   if (!def) return;
 
-  soundSystem.playHit();
-  spawnParticles(state.particles, e.x, e.y - 6, 12, '#ff4444');
+  if (def.onDefeat) {
+    def.onDefeat(state, e, {
+      sound: soundSystem,
+      say,
+      spawnParticles: (x, y, count, color, text) =>
+        spawnParticles(state.particles, x, y, count, color, text),
+    });
+  } else {
+    soundSystem.playHit();
+    spawnParticles(state.particles, e.x, e.y - 6, 12, '#ff4444');
+  }
 
   // Roll loot from database wiki definition
   if (def.lootTable && def.lootTable.length > 0) {

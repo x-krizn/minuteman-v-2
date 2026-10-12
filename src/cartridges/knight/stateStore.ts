@@ -180,8 +180,6 @@ export function saveKnightGame(): { success: boolean; message: string } {
       checkpoint: st.checkpoint,
       cleared: st.cleared,
       nextStart: st.nextStart,
-      currentAreaId: st.currentAreaId || 'tutorial',
-      areaStates: st.areaStates || {},
       timestamp: Date.now(),
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
@@ -228,8 +226,6 @@ export function loadSavedKnightGame(): boolean {
       checkpoint: data.checkpoint,
       cleared: data.cleared,
       nextStart: data.nextStart,
-      currentAreaId: data.currentAreaId || 'tutorial',
-      areaStates: data.areaStates || {},
     });
     soundSystem.playSelect();
     notifyStateChange();
@@ -245,67 +241,5 @@ export function hasSavedKnightGame(): boolean {
   } catch {
     return false;
   }
-}
-
-export function getActiveRoomData(): {
-  roomKey: string;
-  areaId: string;
-  tiles: string[];
-  cols: number;
-  rows: number;
-} | null {
-  const st = activeKnightState;
-  if (!st) return null;
-  const currentAreaId = st.currentAreaId || 'tutorial';
-  const runtime = st.areaStates?.[currentAreaId];
-  const tiles = runtime?.rooms?.[st.room];
-  if (!tiles || tiles.length === 0) return null;
-
-  return {
-    roomKey: st.room,
-    areaId: currentAreaId,
-    tiles: [...tiles],
-    cols: tiles[0]?.length || 10,
-    rows: tiles.length || 9,
-  };
-}
-
-export function injectCustomRoom(
-  roomKey: string,
-  tiles: string[],
-  areaId?: string
-): boolean {
-  const st = activeKnightState;
-  if (!st || !tiles || tiles.length === 0) return false;
-
-  const targetAreaId = areaId || st.currentAreaId || 'tutorial';
-  if (!st.areaStates) st.areaStates = {};
-  if (!st.areaStates[targetAreaId]) {
-    st.areaStates[targetAreaId] = {
-      areaId: targetAreaId,
-      rooms: {},
-      greenRooms: {},
-      safeRooms: {},
-      visitedRooms: {},
-    };
-  }
-
-  const runtime = st.areaStates[targetAreaId];
-  runtime.rooms[roomKey] = [...tiles];
-
-  // Warp into room if current area matches
-  if (st.currentAreaId === targetAreaId) {
-    st.room = roomKey;
-    const [rx, ry] = roomKey.includes(',') ? roomKey.split(',').map(Number) : [0, 0];
-    st.rx = isNaN(rx) ? 0 : rx;
-    st.ry = isNaN(ry) ? 0 : ry;
-    st.x = 24;
-    st.y = (tiles.length - 2) * 16;
-    st.vx = 0;
-    st.vy = 0;
-  }
-
-  notifyStateChange();
-  return true;
 }
 

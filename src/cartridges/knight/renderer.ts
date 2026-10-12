@@ -18,7 +18,6 @@ import { tileIndex } from './physics';
 import { getItemDefinition } from './database/items';
 import { SKILL_REGISTRY } from './database/skills';
 import { getWeaponDefinition } from './database/weapons';
-import { getAreaDefinition } from './database/areas';
 import {
   drawProceduralPickup,
   drawProceduralArcTrail,
@@ -48,60 +47,16 @@ export function drawKnightGame(
   g.fillStyle = BG_COLOR;
   g.fillRect(0, 0, SCREEN_W, SCREEN_H);
 
-  const camX = Math.round(state.camX || 0);
-  const camY = Math.round(state.camY || 0);
-  const nowMs = performance.now();
-
-  // Push camera translation matrix for all game world elements
-  g.save();
-  g.translate(-camX, -camY);
-
-  // 1. Draw room tiles (culling to active camera viewport)
+  // 1. Draw room tiles
   const roomRows = rooms[state.room];
   if (roomRows && tiles) {
-    const roomCols = roomRows[0]?.length || COLS;
-    const roomRowsCount = roomRows.length || ROWS;
-    const minTx = Math.max(0, Math.floor(camX / TILE_SIZE));
-    const maxTx = Math.min(roomCols, Math.ceil((camX + SCREEN_W) / TILE_SIZE) + 1);
-    const minTy = Math.max(0, Math.floor(camY / TILE_SIZE));
-    const maxTy = Math.min(roomRowsCount, Math.ceil((camY + SCREEN_H) / TILE_SIZE) + 1);
-
-    for (let ty = minTy; ty < maxTy; ty++) {
-      for (let tx = minTx; tx < maxTx; tx++) {
+    for (let ty = 0; ty < ROWS; ty++) {
+      for (let tx = 0; tx < COLS; tx++) {
         const char = roomRows[ty][tx];
         if (char === 'L') {
           if (!state.got[`${state.room}:L`] && items) {
             items.draw(g, 3, tx * TILE_SIZE + 8, ty * TILE_SIZE + 8);
           }
-          continue;
-        }
-        if (char === 'O') {
-          // Campfire Checkpoint
-          const flicker = Math.sin(nowMs / 120) * 1.5;
-          // Stone hearth
-          g.fillStyle = '#4a5568';
-          g.fillRect(tx * TILE_SIZE + 2, ty * TILE_SIZE + 12, 12, 4);
-          // Fire glow & flames
-          g.fillStyle = '#f59e0b';
-          g.beginPath();
-          g.arc(tx * TILE_SIZE + 8, ty * TILE_SIZE + 8 + flicker, 5, 0, Math.PI * 2);
-          g.fill();
-          g.fillStyle = '#ef4444';
-          g.beginPath();
-          g.arc(tx * TILE_SIZE + 8, ty * TILE_SIZE + 9, 3, 0, Math.PI * 2);
-          g.fill();
-          g.fillStyle = '#fef08a';
-          g.fillRect(tx * TILE_SIZE + 7, ty * TILE_SIZE + 7 + flicker, 2, 2);
-          continue;
-        }
-        if (char === '<' || char === '>') {
-          // Transit portal / return staircase
-          g.fillStyle = '#223328';
-          g.fillRect(tx * TILE_SIZE + 2, ty * TILE_SIZE + 2, 12, 14);
-          g.fillStyle = '#50fa7b';
-          g.fillRect(tx * TILE_SIZE + 4, ty * TILE_SIZE + 5, 8, 10);
-          g.fillStyle = '#ffffff';
-          g.fillRect(tx * TILE_SIZE + 6, ty * TILE_SIZE + 7, 4, 6);
           continue;
         }
         if (char !== '#') continue;
@@ -116,6 +71,7 @@ export function drawKnightGame(
   }
 
   // 2. Draw pickups
+  const nowMs = performance.now();
   state.picks.forEach((pk) => {
     const it = getItemDefinition(pk.c);
     if (it) {
@@ -419,9 +375,6 @@ export function drawKnightGame(
     }
   });
 
-  // Restore matrix before rendering Screen-Space HUD & UI overlays
-  g.restore();
-
   // 11. HUD: Health Hearts
   for (let i = 0; i < state.maxHp; i++) {
     g.fillStyle = i < state.hp ? '#ff5555' : '#401010';
@@ -446,14 +399,6 @@ export function drawKnightGame(
       g.fillRect(3 + i * 6, 16 + row * 5, 4, 3);
     }
   });
-
-  // Current Area Title
-  const areaDef = getAreaDefinition(state.currentAreaId);
-  if (areaDef) {
-    g.font = `6px ${fontFamily}`;
-    g.fillStyle = '#609050';
-    g.fillText(areaDef.name.toUpperCase(), 3, 30);
-  }
 
   // 14. HUD: Assignable L & R Skill Slots with distinct Resource Counters
   const skillL = SKILL_REGISTRY[state.assignedL];

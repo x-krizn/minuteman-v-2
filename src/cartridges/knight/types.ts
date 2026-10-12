@@ -454,95 +454,9 @@ export interface KnightState {
   nextStart: { x: number; y: number };
   floor: unknown;
 
-  // Camera & Viewport
-  camX: number;
-  camY: number;
-
-  // Warp & Door Transition Cooldown
-  warpCooldown: number;
-
-  // Worldbuilding & Multi-Area State
-  currentAreaId?: string;
-  areaStates?: Record<string, AreaRuntimeState>;
-
   msg: string;
   msgT: number;
 }
-
-// ---------------------------------------------------------------------------
-// Worldbuilding & Area Definitions (Static & Dynamic)
-// ---------------------------------------------------------------------------
-
-export type AreaType = 'static' | 'dynamic';
-
-export interface AreaTransition {
-  id: string;
-  fromAreaId: string;
-  fromRoom: string; // e.g. '2,0' or 'exit'
-  trigger: {
-    type: 'door' | 'boundary' | 'portal';
-    tileChar?: string; // 'L' (locked door), 'P' (portal), '>' (stairs down), '<' (stairs up)
-    direction?: 'N' | 'S' | 'E' | 'W';
-    keyRequired?: boolean;
-    prompt?: string;
-  };
-  toAreaId: string;
-  toRoom: string;
-  toPosition: { x: number; y: number };
-  bidirectional?: boolean; // automatically allows returning from toAreaId
-  onTransition?: (state: KnightState) => void;
-}
-
-export interface AreaRuntimeState {
-  areaId: string;
-  rooms: Record<string, string[]>;
-  greenRooms: Record<string, number>;
-  safeRooms: Record<string, number>;
-  visitedRooms?: Record<string, boolean>;
-  cleared?: boolean;
-  metadata?: Record<string, unknown>;
-}
-
-export interface BaseAreaDefinition extends BaseEntry {
-  id: string;
-  name: string;
-  description?: string;
-  category?: 'tutorial' | 'dungeon' | 'hub' | 'overworld' | 'boss' | string;
-  type: AreaType;
-  biomeId?: string;
-  ambientColor?: string;
-  defaultStartRoom: string;
-  defaultStartPosition: { x: number; y: number };
-  transitions: AreaTransition[];
-  checkpoints?: Record<string, { x: number; y: number }>;
-}
-
-export interface StaticAreaDefinition extends BaseAreaDefinition {
-  type: 'static';
-  rooms: Record<string, string[]>;
-  bitmapRooms?: Record<string, string>; // roomKey -> PNG asset URL/path committed to repo
-  bitmapAtlas?: string; // Single macro PNG atlas for the entire area
-  greenRooms?: Record<string, number>;
-  safeRooms?: Record<string, number>;
-  checkpoints?: Record<string, { x: number; y: number }>;
-}
-
-export interface DynamicAreaGeneratorConfig {
-  cols?: number | ((cleared: number) => number);
-  rows?: number | ((cleared: number) => number);
-  enemyProbability?: number;
-  decorFrequency?: number;
-  safeRoomStart?: boolean;
-  theme?: 'crypt' | 'forest' | 'ruins' | string;
-}
-
-export interface DynamicAreaDefinition extends BaseAreaDefinition {
-  type: 'dynamic';
-  generatorConfig: DynamicAreaGeneratorConfig;
-  generate?: (state: KnightState, area: DynamicAreaDefinition) => AreaRuntimeState;
-}
-
-export type AreaDefinition = StaticAreaDefinition | DynamicAreaDefinition;
 
 export interface BiomeDefinition extends BaseEntry {
   id: string;

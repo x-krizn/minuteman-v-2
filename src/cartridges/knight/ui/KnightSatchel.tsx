@@ -8,7 +8,6 @@ import { ALL_SKILLS } from '../database/skills';
 import { ALL_WEAPONS, getWeaponDefinition } from '../database/weapons';
 import { ALL_PROGRESSION_NODES, canPerformAction } from '../database/progression';
 import { ALL_ITEMS, getItemDefinition } from '../database/items';
-import { getAreaDefinition } from '../database/areas';
 import {
   assignSkill,
   buyVendorItem,
@@ -68,7 +67,6 @@ export const KnightSatchel: React.FC<KnightSatchelProps> = ({ onClose }) => {
 
   const mainWeapon = getWeaponDefinition(st?.loadout?.mainHand || st?.equippedWeapon || 'short_sword');
   const offWeapon = st?.loadout?.offHand ? getWeaponDefinition(st.loadout.offHand) : undefined;
-  const currentArea = getAreaDefinition(st?.currentAreaId);
 
   return (
     <div className="absolute inset-0 z-20 bg-[#0a180a]/94 backdrop-blur-xs flex flex-col p-2 sm:p-2.5 overflow-hidden text-[#9ad482] font-mono select-none">
@@ -76,9 +74,9 @@ export const KnightSatchel: React.FC<KnightSatchelProps> = ({ onClose }) => {
       <div className="flex items-center justify-between pb-1 border-b border-[#306028]">
         <div className="flex items-center gap-1.5 font-bold text-xs sm:text-sm text-[#50fa7b]">
           <span className="w-2 h-2 rounded-full bg-[#50fa7b] animate-pulse inline-block" />
-          <span>KNIGHT SATCHEL</span>
-          <span className="text-[10px] text-emerald-300 bg-[#1a3818] px-1 py-0.2 rounded-xs font-semibold">
-            🗺️ {currentArea?.name || 'Forgotten Grove'}
+          <span>KNIGHT SATCHEL & PROGRESSION</span>
+          <span className="text-[10px] text-[#70a860] bg-[#1a3818] px-1 py-0.2 rounded-xs">
+            SHIFT / B
           </span>
         </div>
         <button

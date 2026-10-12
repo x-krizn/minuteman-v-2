@@ -5,5 +5,3 @@
 
 export * from './levels';
 export * from './proceduralFloor';
-export * from './worldManager';
-export * from './bitmapParser';

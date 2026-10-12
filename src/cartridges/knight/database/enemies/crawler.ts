@@ -5,7 +5,7 @@
 
 import { EnemyWikiDefinition } from '../../types';
 import { solidAt } from '../../physics';
-import { COLS, TILE_SIZE } from '../../constants';
+import { SCREEN_W, TILE_SIZE } from '../../constants';
 
 export const crawlerEnemy: EnemyWikiDefinition = {
   type: 'crawler',
@@ -21,8 +21,6 @@ export const crawlerEnemy: EnemyWikiDefinition = {
     { itemId: 'potion_hp', chance: 0.08 },
   ],
   update(rooms, state, e, dt) {
-    const room = rooms[state.room];
-    const roomWidth = (room?.[0]?.length || COLS) * TILE_SIZE;
     const speed = 22;
     const nx = e.x + e.dir * speed * dt;
     const ahead = nx + e.dir * 6;
@@ -39,7 +37,7 @@ export const crawlerEnemy: EnemyWikiDefinition = {
       Math.floor((e.y + 1) / TILE_SIZE)
     );
 
-    if (wall || !floor || ahead < 4 || ahead > roomWidth - 4) {
+    if (wall || !floor || ahead < 4 || ahead > SCREEN_W - 4) {
       e.dir = -e.dir;
     } else {
       e.x = nx;

@@ -4,7 +4,6 @@
  */
 
 import { KnightState } from '../types';
-import { getMatchingRoomTemplate } from './dynamicTemplates';
 
 export interface RoomOpenings {
   N: boolean;
@@ -45,20 +44,15 @@ export function makeCell(m: RoomOpenings, decor: number): string[] {
       let ch = '.';
       if (r === 0) ch = m.N && (c === 4 || c === 5) ? '.' : '#';
       else if (r === 8) ch = m.S && (c === 4 || c === 5) ? '.' : '#';
-      else if (c === 0) ch = m.W && (r === 6 || r === 7) ? '.' : '#';
-      else if (c === 9) ch = m.E && (r === 6 || r === 7) ? '.' : '#';
+      else if (c === 0) ch = m.W && r >= 6 ? '.' : '#';
+      else if (c === 9) ch = m.E && r >= 6 ? '.' : '#';
       row.push(ch);
     }
     g.push(row);
   }
 
-  // Jumping ledges and platforms for vertical connectivity
   if (m.N) {
     for (let c = 3; c <= 6; c++) g[3][c] = '#';
-  }
-  if (m.N && m.S) {
-    for (let c = 2; c <= 4; c++) g[5][c] = '#';
-    for (let c = 5; c <= 7; c++) g[3][c] = '#';
   } else if (decor === 1 && !m.S) {
     for (let c = 1; c <= 3; c++) {
       g[5][c] = '#';
@@ -96,6 +90,14 @@ export function buildFloor(
 
   const inside = (c: number, r: number) => c >= 0 && c < cols && r >= 0 && r < rows;
 
+  const canLink = (c: number, r: number, d: 'N' | 'S' | 'E' | 'W') => {
+    const nc = c + DIRS[d][0];
+    const nr = r + DIRS[d][1];
+    if (d === 'N') return !open[c][r].S && !open[nc][nr].N;
+    if (d === 'S') return !open[c][r].N && !open[nc][nr].S;
+    return true;
+  };
+
   const link = (c: number, r: number, d: 'N' | 'S' | 'E' | 'W') => {
     const nc = c + DIRS[d][0];
     const nr = r + DIRS[d][1];
@@ -103,45 +105,36 @@ export function buildFloor(
     open[nc][nr][DIRS[d][2]] = true;
   };
 
-  // 1. Guaranteed Full DFS Spanning Tree (visits 100% of rooms in the dungeon grid)
   const seen: Record<string, boolean> = { [`0,${sr}`]: true };
   const stack: [number, number][] = [[0, sr]];
 
   while (stack.length) {
     const [c, r] = stack[stack.length - 1];
-    const opts = (['N', 'S', 'E', 'W'] as const).filter((d) => {
-      const nc = c + DIRS[d][0];
-      const nr = r + DIRS[d][1];
-      return inside(nc, nr) && !seen[`${nc},${nr}`];
-    });
-
+    const opts = (['N', 'S', 'E', 'W'] as const).filter(
+      (d) =>
+        inside(c + DIRS[d][0], r + DIRS[d][1]) &&
+        !seen[`${c + DIRS[d][0]},${r + DIRS[d][1]}`] &&
+        canLink(c, r, d)
+    );
     if (!opts.length) {
       stack.pop();
       continue;
     }
-
     const d = pick(opts);
-    const nc = c + DIRS[d][0];
-    const nr = r + DIRS[d][1];
     link(c, r, d);
-    seen[`${nc},${nr}`] = true;
-    stack.push([nc, nr]);
+    seen[`${c + DIRS[d][0]},${r + DIRS[d][1]}`] = true;
+    stack.push([c + DIRS[d][0], r + DIRS[d][1]]);
   }
 
-  // 2. Add extra loops across adjacent rooms for interesting pathing
-  const extraLinks = Math.floor(cols * rows * 0.25);
-  for (let i = 0; i < extraLinks; i++) {
+  for (let i = Math.floor(cols * rows * 0.15); i > 0; i--) {
     const c = Math.floor(Math.random() * cols);
     const r = Math.floor(Math.random() * rows);
     const d = pick(['N', 'S', 'E', 'W'] as const);
-    const nc = c + DIRS[d][0];
-    const nr = r + DIRS[d][1];
-    if (inside(nc, nr) && !open[c][r][d]) {
+    if (inside(c + DIRS[d][0], r + DIRS[d][1]) && canLink(c, r, d)) {
       link(c, r, d);
     }
   }
 
-  // 3. Compute BFS distances from start room [0, sr]
   const dist: Record<string, number> = { [`0,${sr}`]: 0 };
   const q: [number, number][] = [[0, sr]];
   while (q.length) {
@@ -159,60 +152,31 @@ export function buildFloor(
   const deg = (c: number, r: number) =>
     (['N', 'S', 'E', 'W'] as const).filter((d) => open[c][r][d]).length;
 
-  // 4. Guaranteed Exit Door: Furthest reachable room from start
-  let maxDist = -1;
-  let door: [number, number] = [cols - 1, sr];
-  for (let c = 0; c < cols; c++) {
-    for (let r = 0; r < rows; r++) {
-      const d = dist[`${c},${r}`];
-      if (d !== undefined && d > maxDist) {
-        maxDist = d;
-        door = [c, r];
-      }
+  let door = [cols - 1, 0];
+  for (let r = 0; r < rows; r++) {
+    if (dist[`${cols - 1},${r}`] > dist[`${door[0]},${door[1]}`]) {
+      door = [cols - 1, r];
     }
   }
 
-  // Ensure door room terminates cleanly at the eastern wall (no bypass into void)
-  if (open[door[0]][door[1]].E) {
-    open[door[0]][door[1]].E = false;
-    if (door[0] + 1 < cols) {
-      open[door[0] + 1][door[1]].W = false;
-    }
-  }
-
-  // 5. Guaranteed Key placement on a branching dead-end
   let keyCell: [number, number] | null = null;
-  let maxKeyDist = -1;
   for (let c = 0; c < cols; c++) {
     for (let r = 0; r < rows; r++) {
-      if ((c === 0 && r === sr) || (c === door[0] && r === door[1])) continue;
-      const d = dist[`${c},${r}`];
-      if (d !== undefined && deg(c, r) === 1 && d > maxKeyDist) {
-        maxKeyDist = d;
+      if (
+        (c === 0 && r === sr) ||
+        (c === door[0] && r === door[1]) ||
+        deg(c, r) !== 1
+      ) {
+        continue;
+      }
+      if (!keyCell || dist[`${c},${r}`] > dist[`${keyCell[0]},${keyCell[1]}`]) {
         keyCell = [c, r];
       }
     }
   }
 
   if (!keyCell) {
-    for (let c = 0; c < cols; c++) {
-      for (let r = 0; r < rows; r++) {
-        if ((c === 0 && r === sr) || (c === door[0] && r === door[1])) continue;
-        const d = dist[`${c},${r}`];
-        if (
-          d !== undefined &&
-          (keyCell === null ||
-            Math.abs(d - Math.floor(maxDist / 2)) <
-              Math.abs((dist[`${keyCell[0]},${keyCell[1]}`] ?? 0) - Math.floor(maxDist / 2)))
-        ) {
-          keyCell = [c, r];
-        }
-      }
-    }
-  }
-
-  if (!keyCell) {
-    keyCell = [Math.floor(cols / 2), sr];
+    keyCell = [Math.floor(cols / 2), sr === 0 ? 1 : 0];
   }
 
   const enemyProb = Math.min(0.85, 0.2 + 0.12 * state.cleared);
@@ -225,23 +189,20 @@ export function buildFloor(
       const isDoor = c === door[0] && r === door[1];
       const isKey = c === keyCell[0] && r === keyCell[1];
 
-      let room =
-        getMatchingRoomTemplate(m) || makeCell(m, Math.floor(Math.random() * 4));
+      if (isStart) m.W = true;
+      if (isDoor) m.E = true;
+
+      let room = makeCell(m, Math.floor(Math.random() * 4));
 
       if (isStart) {
-        // Rest area / safe room: Only the initial dungeon entrance has a rest area
-        const isDungeonEntrance = !state.cleared || state.cleared === 0;
-        if (isDungeonEntrance) {
-          greenRooms[key] = 1;
-          safeRooms[key] = 1;
-        }
-
-        // Entrance room decor
+        // Safe rooms: spawn coins by default; rare chance of potion
         if (Math.random() < 0.15) {
           room = withTile(room, 7, 6, '1');
         } else {
           room = withTile(room, 7, 6, 'o');
         }
+        greenRooms[key] = 1;
+        safeRooms[key] = 1;
       } else {
         if (isKey) {
           room = withTile(room, 7, 7, 'K');
@@ -262,8 +223,7 @@ export function buildFloor(
         if (room[7][1] === '.' && Math.random() < 0.4) {
           room = withTile(room, 7, 1, 'o');
         }
-
-        // Dead ends: reduced potion frequency
+        // Dead ends: significantly reduced potion frequency (rare 12% drop, otherwise coins or gems)
         if (deg(c, r) === 1 && room[7][8] === '.') {
           const rand = Math.random();
           if (rand < 0.12) {
@@ -276,9 +236,7 @@ export function buildFloor(
       }
 
       if (isDoor) {
-        // Guaranteed locked exit door 'L' at col 8, row 7 with solid stone arch at row 6
-        room = withTile(room, 6, 8, '#');
-        room = withTile(room, 7, 8, 'L');
+        room = withTile(withTile(room, 6, 9, '#'), 7, 9, 'L');
       }
 
       roomsMap[key] = room;

@@ -12,21 +12,6 @@ import {
   TILE_SIZE,
 } from './constants';
 
-export function getRoomDimensions(
-  rooms: Record<string, string[]>,
-  roomKey: string
-): { cols: number; rows: number; width: number; height: number } {
-  const room = rooms[roomKey];
-  const cols = room && room[0] ? room[0].length : COLS;
-  const rows = room ? room.length : ROWS;
-  return {
-    cols,
-    rows,
-    width: cols * TILE_SIZE,
-    height: rows * TILE_SIZE,
-  };
-}
-
 export function solidChar(
   key: string,
   c: string,
@@ -51,30 +36,25 @@ export function solidAt(
   tx: number,
   ty: number
 ): boolean {
-  const currentRoom = rooms[state.room];
-  const rCols = currentRoom && currentRoom[0] ? currentRoom[0].length : COLS;
-  const rRows = currentRoom ? currentRoom.length : ROWS;
-
-  if (tx >= 0 && tx < rCols && ty >= 0 && ty < rRows) {
+  if (tx >= 0 && tx < COLS && ty >= 0 && ty < ROWS) {
+    const currentRoom = rooms[state.room];
     if (!currentRoom) return true;
     return solidChar(state.room, currentRoom[ty][tx], state.got);
   }
 
-  const dx = tx < 0 ? -1 : tx >= rCols ? 1 : 0;
-  const dy = ty < 0 ? -1 : ty >= rRows ? 1 : 0;
+  const dx = tx < 0 ? -1 : tx >= COLS ? 1 : 0;
+  const dy = ty < 0 ? -1 : ty >= ROWS ? 1 : 0;
   if (dx && dy) return true;
 
   const n = neighbor(rooms, state.rx, state.ry, dx, dy);
   if (!n) return true;
 
   const neighborKey = `${state.rx + dx},${state.ry + dy}`;
-  const nCols = n[0] ? n[0].length : COLS;
-  const nRows = n.length || ROWS;
-
-  const wrappedX = ((tx % nCols) + nCols) % nCols;
-  const wrappedY = ((ty % nRows) + nRows) % nRows;
-
-  return solidChar(neighborKey, n[wrappedY][wrappedX], state.got);
+  return solidChar(
+    neighborKey,
+    n[(ty + ROWS) % ROWS][(tx + COLS) % COLS],
+    state.got
+  );
 }
 
 export function hits(
@@ -96,50 +76,6 @@ export function hits(
   return false;
 }
 
-/**
- * Automatically depenetrates / un-sticks the player if spawned or pushed inside solid geometry.
- * Searches in concentric offsets to pop the player into the nearest open air position.
- */
-export function resolveStuck(
-  rooms: Record<string, string[]>,
-  state: KnightState
-): boolean {
-  if (!hits(rooms, state, state.x, state.y)) {
-    return false;
-  }
-
-  // 1. Check if snapping feet to the top of the nearest ground tile resolves subpixel penetration
-  const snappedY = Math.floor(state.y / TILE_SIZE) * TILE_SIZE;
-  if (!hits(rooms, state, state.x, snappedY)) {
-    state.y = snappedY;
-    return true;
-  }
-
-  // 2. Search concentric offsets, prioritizing upward headroom and lateral clearance
-  for (let dist = 1; dist <= 24; dist++) {
-    const candidates = [
-      { dx: 0, dy: -dist }, // push up towards headroom (away from floor)
-      { dx: dist, dy: 0 }, // push right towards open space
-      { dx: -dist, dy: 0 }, // push left towards open space
-      { dx: dist, dy: -dist },
-      { dx: -dist, dy: -dist },
-      { dx: 0, dy: dist }, // push down (if ceiling wedged)
-      { dx: dist, dy: dist },
-      { dx: -dist, dy: dist },
-    ];
-
-    for (const c of candidates) {
-      if (!hits(rooms, state, state.x + c.dx, state.y + c.dy)) {
-        state.x += c.dx;
-        state.y += c.dy;
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
-
 export function moveX(
   rooms: Record<string, string[]>,
   state: KnightState,
@@ -149,22 +85,11 @@ export function moveX(
   let n = Math.abs(dx);
   while (n > 0) {
     const s = Math.min(1, n);
-    const targetX = state.x + sg * s;
-    if (hits(rooms, state, targetX, state.y)) {
-      // Step-up forgiveness: if 1-2 pixels lip on ground, step up cleanly
-      if (state.ground && !hits(rooms, state, targetX, state.y - 1)) {
-        state.y -= 1;
-        state.x = targetX;
-      } else if (state.ground && !hits(rooms, state, targetX, state.y - 2)) {
-        state.y -= 2;
-        state.x = targetX;
-      } else {
-        state.vx = 0;
-        return;
-      }
-    } else {
-      state.x = targetX;
+    if (hits(rooms, state, state.x + sg * s, state.y)) {
+      state.vx = 0;
+      return;
     }
+    state.x += sg * s;
     n -= s;
   }
 }
@@ -179,22 +104,7 @@ export function moveY(
   let n = Math.abs(dy);
   while (n > 0) {
     const s = Math.min(1, n);
-    const targetY = state.y + sg * s;
-    if (hits(rooms, state, state.x, targetY)) {
-      // Ceiling corner slip: nudge slightly if grazing corner during jump
-      if (sg < 0) {
-        if (!hits(rooms, state, state.x - 2, targetY)) {
-          state.x -= 2;
-          state.y = targetY;
-          n -= s;
-          continue;
-        } else if (!hits(rooms, state, state.x + 2, targetY)) {
-          state.x += 2;
-          state.y = targetY;
-          n -= s;
-          continue;
-        }
-      }
+    if (hits(rooms, state, state.x, state.y + sg * s)) {
       if (sg > 0) {
         state.ground = true;
         state.y = Math.floor((state.y + s - 0.001) / TILE_SIZE) * TILE_SIZE;
@@ -202,7 +112,7 @@ export function moveY(
       state.vy = 0;
       return;
     }
-    state.y = targetY;
+    state.y += sg * s;
     n -= s;
   }
 }

@@ -4,6 +4,7 @@
  */
 
 import { KnightState } from '../types';
+import { RoomTemplate, RoomTheme, roomFromLegacy } from './roomSystem';
 
 export interface RoomOpenings {
   N: boolean;
@@ -18,6 +19,13 @@ export const DIRS: Record<'N' | 'S' | 'E' | 'W', [number, number, 'N' | 'S' | 'E
   E: [1, 0, 'W'],
   W: [-1, 0, 'E'],
 };
+
+export interface FloorConfig {
+  roomTheme?: RoomTheme;
+  allowLoops?: boolean;
+  enemyDensity?: number;
+  hazardChance?: number;
+}
 
 export function floorSize(cleared: number): { cols: number; rows: number } {
   return {
@@ -69,12 +77,11 @@ export function makeCell(m: RoomOpenings, decor: number): string[] {
   return g.map((row) => row.join(''));
 }
 
-export function buildFloor(
+export function generateProceduralFloor(
   state: KnightState,
-  roomsMap: Record<string, string[]>,
-  greenRooms: Record<string, number>,
-  safeRooms: Record<string, number>
-): void {
+  config: FloorConfig = {}
+): Record<string, RoomTemplate> {
+  const theme = config.roomTheme ?? 'stone';
   const { cols, rows } = floorSize(state.cleared);
   const x0 = state.nextStart.x;
   const sr = Math.floor(Math.random() * rows);
@@ -126,12 +133,14 @@ export function buildFloor(
     stack.push([c + DIRS[d][0], r + DIRS[d][1]]);
   }
 
-  for (let i = Math.floor(cols * rows * 0.15); i > 0; i--) {
-    const c = Math.floor(Math.random() * cols);
-    const r = Math.floor(Math.random() * rows);
-    const d = pick(['N', 'S', 'E', 'W'] as const);
-    if (inside(c + DIRS[d][0], r + DIRS[d][1]) && canLink(c, r, d)) {
-      link(c, r, d);
+  if (config.allowLoops !== false) {
+    for (let i = Math.floor(cols * rows * 0.15); i > 0; i--) {
+      const c = Math.floor(Math.random() * cols);
+      const r = Math.floor(Math.random() * rows);
+      const d = pick(['N', 'S', 'E', 'W'] as const);
+      if (inside(c + DIRS[d][0], r + DIRS[d][1]) && canLink(c, r, d)) {
+        link(c, r, d);
+      }
     }
   }
 
@@ -162,11 +171,7 @@ export function buildFloor(
   let keyCell: [number, number] | null = null;
   for (let c = 0; c < cols; c++) {
     for (let r = 0; r < rows; r++) {
-      if (
-        (c === 0 && r === sr) ||
-        (c === door[0] && r === door[1]) ||
-        deg(c, r) !== 1
-      ) {
+      if ((c === 0 && r === sr) || (c === door[0] && r === door[1]) || deg(c, r) !== 1) {
         continue;
       }
       if (!keyCell || dist[`${c},${r}`] > dist[`${keyCell[0]},${keyCell[1]}`]) {
@@ -180,6 +185,8 @@ export function buildFloor(
   }
 
   const enemyProb = Math.min(0.85, 0.2 + 0.12 * state.cleared);
+
+  const out: Record<string, RoomTemplate> = {};
 
   for (let c = 0; c < cols; c++) {
     for (let r = 0; r < rows; r++) {
@@ -195,26 +202,18 @@ export function buildFloor(
       let room = makeCell(m, Math.floor(Math.random() * 4));
 
       if (isStart) {
-        // Safe rooms: spawn coins by default; rare chance of potion
         if (Math.random() < 0.15) {
           room = withTile(room, 7, 6, '1');
         } else {
           room = withTile(room, 7, 6, 'o');
         }
-        greenRooms[key] = 1;
-        safeRooms[key] = 1;
       } else {
         if (isKey) {
           room = withTile(room, 7, 7, 'K');
         }
         let enemyCount = 0;
         [2, 7, 3, 6].forEach((col) => {
-          if (
-            !m.S &&
-            enemyCount < 2 &&
-            room[7][col] === '.' &&
-            Math.random() < enemyProb
-          ) {
+          if (!m.S && enemyCount < 2 && room[7][col] === '.' && Math.random() < enemyProb) {
             room = withTile(room, 7, col, 'E');
             enemyCount++;
           }
@@ -223,7 +222,7 @@ export function buildFloor(
         if (room[7][1] === '.' && Math.random() < 0.4) {
           room = withTile(room, 7, 1, 'o');
         }
-        // Dead ends: significantly reduced potion frequency (rare 12% drop, otherwise coins or gems)
+
         if (deg(c, r) === 1 && room[7][8] === '.') {
           const rand = Math.random();
           if (rand < 0.12) {
@@ -239,10 +238,26 @@ export function buildFloor(
         room = withTile(withTile(room, 6, 9, '#'), 7, 9, 'L');
       }
 
-      roomsMap[key] = room;
+      out[key] = roomFromLegacy(key, room, theme);
     }
   }
 
-  state.nextStart = { x: x0 + cols, y: y0 + door[1] };
-  state.floor = { x0, y0, cols, rows, start: [0, sr], door, key: keyCell, open };
+  return out;
+}
+
+export function buildFloor(
+  state: KnightState,
+  roomsMap: Record<string, string[]>,
+  greenRooms: Record<string, number>,
+  safeRooms: Record<string, number>
+): void {
+  const generated = generateProceduralFloor(state, {
+    roomTheme: 'green',
+    allowLoops: true,
+  });
+
+  Object.entries(generated).forEach(([key, room]) => {
+    roomsMap[key] = room.tiles;
+    if (room.theme === 'green') greenRooms[key] = 1;
+  });
 }

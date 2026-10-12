@@ -37,8 +37,13 @@ import {
   TILES_PNG,
 } from './constants';
 import { updateEnemies } from './enemies';
-import { INITIAL_GREEN, INITIAL_ROOMS, buildFloor } from './world';
-import { moveX, moveY } from './physics';
+import {
+  checkDoorTransition,
+  getOrCreateAreaRuntime,
+  syncActiveAreaCache,
+} from './world';
+import { getAreaDefinition } from './database/areas';
+import { moveX, moveY, resolveStuck } from './physics';
 import { updatePickups } from './pickups';
 import { drawKnightGame } from './renderer';
 import { castSkill, updateProjectiles } from './skills';
@@ -105,6 +110,12 @@ export function createKnightCartridge(): Cartridge {
     isCharged: false,
     isHeavyAttack: false,
     equippedWeapon: 'short_sword',
+    loadout: {
+      mainHand: 'short_sword',
+      offHand: 'iron_round_shield',
+    },
+    unlockedFeats: [],
+    inventorySlots: [],
 
     isBlocking: false,
     parryWindow: 0,
@@ -131,6 +142,9 @@ export function createKnightCartridge(): Cartridge {
     cleared: 0,
     nextStart: { x: 4, y: 0 },
     floor: null,
+    camX: 0,
+    camY: 0,
+    warpCooldown: 0,
     msg: '',
     msgT: 0,
   };
@@ -144,6 +158,7 @@ export function createKnightCartridge(): Cartridge {
 
   const enterRoom = (key: string) => {
     state.room = key;
+    syncActiveAreaCache(state, rooms, greenRooms, safeRooms);
     const [rx, ry] = key.split(',').map(Number);
     state.rx = rx;
     state.ry = ry;
@@ -154,8 +169,17 @@ export function createKnightCartridge(): Cartridge {
 
     const roomData = rooms[key];
     if (roomData) {
+      const roomCols = roomData[0]?.length || COLS;
+      const roomRowsCount = roomData.length || ROWS;
+      const roomWidthPx = roomCols * TILE_SIZE;
+      const roomHeightPx = roomRowsCount * TILE_SIZE;
+
+      // Snap camera directly to player upon room entry
+      state.camX = Math.max(0, Math.min(roomWidthPx - SCREEN_W, Math.round(state.x - SCREEN_W / 2)));
+      state.camY = Math.max(0, Math.min(roomHeightPx - SCREEN_H, Math.round(state.y - SCREEN_H / 2)));
+
       roomData.forEach((row, ty) => {
-        for (let tx = 0; tx < COLS; tx++) {
+        for (let tx = 0; tx < row.length; tx++) {
           const c = row[tx];
           if (c === 'E') {
             // Determine enemy type based on room location / cleared count
@@ -194,11 +218,16 @@ export function createKnightCartridge(): Cartridge {
     }
 
     if (safeRooms[key] && !(state.checkpoint && state.checkpoint.room === key)) {
-      state.checkpoint = { room: key, x: 32, y: 128 };
+      const areaDef = getAreaDefinition(state.currentAreaId || 'tutorial');
+      const cp = areaDef?.checkpoints?.[key] || { x: state.x, y: state.y };
+      state.checkpoint = { room: key, x: cp.x, y: cp.y };
       state.flasks = state.maxFlasks;
       say('RESTED: FLASKS REFILLED');
       notifyStateChange();
     }
+
+    // Immediately resolve any geometry overlap
+    resolveStuck(rooms, state);
   };
 
   const respawn = () => {
@@ -251,12 +280,16 @@ export function createKnightCartridge(): Cartridge {
       fontFamily = 'orion-font, monospace';
 
       Object.keys(rooms).forEach((k) => delete rooms[k]);
-      Object.assign(rooms, JSON.parse(JSON.stringify(INITIAL_ROOMS)));
-
       Object.keys(greenRooms).forEach((k) => delete greenRooms[k]);
-      Object.assign(greenRooms, { ...INITIAL_GREEN });
-
       Object.keys(safeRooms).forEach((k) => delete safeRooms[k]);
+
+      state.currentAreaId = 'tutorial';
+      state.areaStates = {};
+
+      const runtime = getOrCreateAreaRuntime('tutorial', state);
+      Object.assign(rooms, runtime.rooms);
+      Object.assign(greenRooms, runtime.greenRooms);
+      Object.assign(safeRooms, runtime.safeRooms);
 
       Object.assign(state, {
         got: {},
@@ -312,6 +345,7 @@ export function createKnightCartridge(): Cartridge {
         particles: [],
         msg: '',
         msgT: 0,
+        warpCooldown: 0,
         checkpoint: null,
       });
 
@@ -350,6 +384,7 @@ export function createKnightCartridge(): Cartridge {
       state.dashCooldown -= dt;
       state.skillCdL -= dt;
       state.skillCdR -= dt;
+      if (state.warpCooldown > 0) state.warpCooldown -= dt;
       if (state.parrySparkTimer > 0) state.parrySparkTimer -= dt;
 
       // --- 1. SOULS-LIKE STAMINA REGENERATION ---
@@ -463,6 +498,7 @@ export function createKnightCartridge(): Cartridge {
       }
 
       // Gravity and movement
+      resolveStuck(rooms, state);
       state.vy = Math.min(state.vy + GRAVITY * dt, MAX_FALL_SPEED);
       moveX(rooms, state, state.vx * dt);
       moveY(rooms, state, state.vy * dt);
@@ -474,19 +510,37 @@ export function createKnightCartridge(): Cartridge {
       }
       state.t = state.ground && Math.abs(state.vx) > 1 ? state.t + dt : 0;
 
-      // Room transitions
+      // Multi-screen room bounds and smooth camera tracking
+      const currentRoomData = rooms[state.room];
+      const roomCols = currentRoomData && currentRoomData[0] ? currentRoomData[0].length : COLS;
+      const roomRowsCount = currentRoomData ? currentRoomData.length : ROWS;
+      const roomWidthPx = roomCols * TILE_SIZE;
+      const roomHeightPx = roomRowsCount * TILE_SIZE;
+
+      const targetCamX = Math.max(0, Math.min(roomWidthPx - SCREEN_W, Math.round(state.x - SCREEN_W / 2)));
+      const targetCamY = Math.max(0, Math.min(roomHeightPx - SCREEN_H, Math.round(state.y - SCREEN_H / 2)));
+      state.camX += (targetCamX - state.camX) * Math.min(1, dt * 14);
+      state.camY += (targetCamY - state.camY) * Math.min(1, dt * 14);
+
+      // Room transitions across actual room boundaries
       if (state.x < 0) {
-        state.x += SCREEN_W;
-        enterRoom(`${state.rx - 1},${state.ry}`);
-      } else if (state.x >= SCREEN_W) {
-        state.x -= SCREEN_W;
+        const nextRoomKey = `${state.rx - 1},${state.ry}`;
+        const nextRoomData = rooms[nextRoomKey];
+        const nextCols = nextRoomData && nextRoomData[0] ? nextRoomData[0].length : COLS;
+        state.x += nextCols * TILE_SIZE;
+        enterRoom(nextRoomKey);
+      } else if (state.x >= roomWidthPx) {
+        state.x -= roomWidthPx;
         enterRoom(`${state.rx + 1},${state.ry}`);
       }
       if (state.y < 0) {
-        state.y += SCREEN_H;
-        enterRoom(`${state.rx},${state.ry - 1}`);
-      } else if (state.y > SCREEN_H) {
-        state.y -= SCREEN_H;
+        const nextRoomKey = `${state.rx},${state.ry - 1}`;
+        const nextRoomData = rooms[nextRoomKey];
+        const nextRows = nextRoomData ? nextRoomData.length : ROWS;
+        state.y += nextRows * TILE_SIZE;
+        enterRoom(nextRoomKey);
+      } else if (state.y > roomHeightPx) {
+        state.y -= roomHeightPx;
         enterRoom(`${state.rx},${state.ry + 1}`);
       }
 
@@ -508,28 +562,52 @@ export function createKnightCartridge(): Cartridge {
         say
       );
 
-      // Locked door interaction
-      const lx = Math.floor((state.x + state.face * (HALF_WIDTH + 1)) / TILE_SIZE);
-      const ly = Math.floor((state.y - 8) / TILE_SIZE);
-      const currentRoomData = rooms[state.room];
+      // Interactive doors, portals, and area transitions
+      if (state.warpCooldown <= 0 && currentRoomData) {
+        const rCols = currentRoomData[0]?.length || COLS;
+        const rRows = currentRoomData.length || ROWS;
+        const lx = Math.floor((state.x + state.face * (HALF_WIDTH + 1)) / TILE_SIZE);
+        const ly = Math.floor((state.y - 8) / TILE_SIZE);
+        const cx = Math.floor(state.x / TILE_SIZE);
+        const cy = Math.floor((state.y - 8) / TILE_SIZE);
 
-      if (
-        state.keys > 0 &&
-        Math.abs(sx) > 0.1 &&
-        lx >= 0 &&
-        lx < COLS &&
-        ly >= 0 &&
-        ly < ROWS &&
-        currentRoomData &&
-        currentRoomData[ly][lx] === 'L' &&
-        !state.got[`${state.room}:L`]
-      ) {
-        state.keys--;
-        state.got[`${state.room}:L`] = true;
-        state.cleared++;
-        soundSystem.playUnlock();
-        say(state.room === '2,0' ? 'TUTORIAL CLEARED' : 'FLOOR CLEARED');
-        buildFloor(state, rooms, greenRooms, safeRooms);
+        const upPressed = Boolean(input.pressed.up || input.held.up || sy < -0.4);
+        const isMovingHoriz = Math.abs(sx) > 0.2;
+
+        // Check facing tile when walking into it, or standing tile when pressing UP
+        const checkTiles = [
+          { x: lx, y: ly, active: isMovingHoriz },
+          { x: cx, y: cy, active: upPressed },
+        ];
+
+        for (const pt of checkTiles) {
+          if (!pt.active || pt.x < 0 || pt.x >= rCols || pt.y < 0 || pt.y >= rRows) continue;
+          const tileChar = currentRoomData[pt.y][pt.x];
+          if (tileChar === 'L' || tileChar === '<' || tileChar === '>' || tileChar === 'P') {
+            const transitioned = checkDoorTransition(
+              state,
+              tileChar,
+              rooms,
+              greenRooms,
+              safeRooms,
+              enterRoom,
+              say
+            );
+
+            if (!transitioned && tileChar === 'L' && state.keys > 0 && !state.got[`${state.room}:L`]) {
+              state.keys--;
+              state.got[`${state.room}:L`] = true;
+              state.cleared++;
+              soundSystem.playUnlock();
+              say('DOOR UNLOCKED');
+              rooms[state.room] = currentRoomData.map((row) =>
+                row.includes('L') ? row.replace('L', '.') : row
+              );
+              syncActiveAreaCache(state, rooms, greenRooms, safeRooms);
+            }
+            break;
+          }
+        }
       }
 
       // Pickups

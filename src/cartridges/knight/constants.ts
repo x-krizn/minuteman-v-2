@@ -13,8 +13,8 @@ export const ROWS = 9;
 export const SCREEN_W = 160;
 export const SCREEN_H = 144;
 
-export const HALF_WIDTH = 5;
-export const BODY_HEIGHT = 16;
+export const HALF_WIDTH = 4.5;
+export const BODY_HEIGHT = 13;
 
 export const GRAVITY = 700;
 export const JUMP_VELOCITY = 270;

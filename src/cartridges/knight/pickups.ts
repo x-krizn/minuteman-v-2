@@ -29,6 +29,19 @@ export function updatePickups(
       return false;
     }
 
+    // Record non-currency items to satchel inventory
+    if (item.category !== 'currency') {
+      if (!state.inventorySlots) {
+        state.inventorySlots = [];
+      }
+      const existing = state.inventorySlots.find((s) => s.itemId === item.id);
+      if (existing) {
+        existing.quantity += 1;
+      } else {
+        state.inventorySlots.push({ itemId: item.id, quantity: 1 });
+      }
+    }
+
     // Execute self-contained onCollect hook
     if (item.hooks?.onCollect) {
       item.hooks.onCollect(state, {

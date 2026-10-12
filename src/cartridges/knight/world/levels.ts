@@ -47,7 +47,7 @@ export const INITIAL_ROOMS: Record<string, string[]> = {
     '#........#',
     '#........#',
     '#........#',
-    '.G.B.Y.P.O.',
+    '.....H....',
     '##########',
   ],
   '1,-1': [
@@ -58,7 +58,7 @@ export const INITIAL_ROOMS: Record<string, string[]> = {
     '#........#',
     '#........#',
     '#........#',
-    '#.E...KH.#',
+    '#.E....K.#',
     '####..####',
   ],
 };

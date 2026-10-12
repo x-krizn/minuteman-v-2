@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
-
+import { RoomTemplate } from './world/roomSystem';
 import { CartridgeSurface } from '../../types/cartridge';
 import { KnightState, StatType } from './types';
 import {
@@ -49,6 +49,7 @@ export function drawKnightGame(
 
   // 1. Draw room tiles
   const roomRows = rooms[state.room];
+  const roomTheme = greenRooms[state.room] ? 'green' : 'stone';
   if (roomRows && tiles) {
     for (let ty = 0; ty < ROWS; ty++) {
       for (let tx = 0; tx < COLS; tx++) {
@@ -60,7 +61,11 @@ export function drawKnightGame(
           continue;
         }
         if (char !== '#') continue;
-        tiles.draw(
+  
+        const selectedTiles =
+          roomTheme === 'green' ? surface.assets.tilesG : surface.assets.tiles;
+  
+        selectedTiles.draw(
           g,
           tileIndex(rooms, state, tx, ty),
           tx * TILE_SIZE,

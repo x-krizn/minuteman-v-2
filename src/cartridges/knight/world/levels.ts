@@ -3,8 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { RoomTemplate, roomFromLegacy } from './roomSystem';
-
 export const INITIAL_ROOMS: Record<string, string[]> = {
   '0,0': [
     '##########',
@@ -35,7 +33,7 @@ export const INITIAL_ROOMS: Record<string, string[]> = {
     '#........#',
     '#........#',
     '#........#',
-    '..........',
+    '.........#',
     '.......D.L',
     '##########',
   ],
@@ -47,7 +45,7 @@ export const INITIAL_ROOMS: Record<string, string[]> = {
     '#........#',
     '#........#',
     '#........#',
-    '.....H....',
+    '.G.B.Y.P.O.',
     '##########',
   ],
   '1,-1': [
@@ -58,7 +56,7 @@ export const INITIAL_ROOMS: Record<string, string[]> = {
     '#........#',
     '#........#',
     '#........#',
-    '#.E....K.#',
+    '#.E...KH.#',
     '####..####',
   ],
 };
@@ -70,11 +68,3 @@ export const INITIAL_GREEN: Record<string, number> = {
   '3,0': 1,
   '1,-1': 1,
 };
-
-export function buildStaticRoomTemplates(): Record<string, RoomTemplate> {
-  const out: Record<string, RoomTemplate> = {};
-  Object.entries(INITIAL_ROOMS).forEach(([key, tiles]) => {
-    out[key] = roomFromLegacy(key, tiles, INITIAL_GREEN[key] ? 'green' : 'stone');
-  });
-  return out;
-}

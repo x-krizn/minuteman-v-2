@@ -12,15 +12,12 @@ import {
   TILE_SIZE,
 } from './constants';
 
-import { isSolidTile } from './world/roomSystem';
-
 export function solidChar(
   key: string,
   c: string,
   got: Record<string, boolean>
 ): boolean {
-  if (c === 'L' && !got[`${key}:L`]) return true;
-  return isSolidTile(c);
+  return c === '#' || (c === 'L' && !got[`${key}:L`]);
 }
 
 export function neighbor(

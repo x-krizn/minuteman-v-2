@@ -12,12 +12,14 @@ import {
   TILE_SIZE,
 } from './constants';
 
+import { isSolidTile } from './database/world/tiles';
+
 export function solidChar(
   key: string,
   c: string,
   got: Record<string, boolean>
 ): boolean {
-  return c === '#' || (c === 'L' && !got[`${key}:L`]);
+  return isSolidTile(c, key, got);
 }
 
 export function neighbor(

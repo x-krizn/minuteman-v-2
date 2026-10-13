@@ -9,3 +9,5 @@ export * from './skills';
 export * from './vendors';
 export * from './weapons';
 export * from './progression';
+export * from './world';
+export * from './characters';

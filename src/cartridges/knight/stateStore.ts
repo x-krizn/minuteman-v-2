@@ -4,18 +4,44 @@
  */
 
 import { soundSystem } from '../../engine/core/soundSystem';
-import { KnightState, SkillId } from './types';
+import { EnemyEntity, KnightState, PickupEntity, SkillId } from './types';
 import { VendorItem, VENDOR_ITEMS as DB_VENDOR_ITEMS } from './database/vendors';
 
 export type { VendorItem };
 export const VENDOR_ITEMS: VendorItem[] = DB_VENDOR_ITEMS;
 
+export interface DungeonStateData {
+  rooms: Record<string, string[]>;
+  greenRooms: Record<string, number>;
+  safeRooms: Record<string, number>;
+  floor: unknown;
+}
+
+export interface DungeonEntityData {
+  enemies: EnemyEntity[];
+  picks: PickupEntity[];
+}
+
+export interface DungeonContext {
+  getDungeonData: () => DungeonStateData;
+  restoreDungeonData: (
+    dungeon: DungeonStateData,
+    entities?: DungeonEntityData,
+    targetRoom?: string
+  ) => void;
+}
+
 let activeKnightState: KnightState | null = null;
+let activeDungeonContext: DungeonContext | null = null;
 const stateListeners: Set<() => void> = new Set();
 
 export function setKnightStateRef(st: KnightState | null): void {
   activeKnightState = st;
   notifyStateChange();
+}
+
+export function setDungeonContextRef(ctx: DungeonContext | null): void {
+  activeDungeonContext = ctx;
 }
 
 export function getKnightState(): KnightState | null {
@@ -144,48 +170,60 @@ export function buyVendorItem(item: VendorItem): { success: boolean; message: st
   return { success: true, message: `Purchased ${item.name}!` };
 }
 
-const SAVE_KEY = 'minuteman_knight_save_v1';
+const SAVE_KEY_V2 = 'minuteman_knight_save_v2';
+const SAVE_KEY_V1 = 'minuteman_knight_save_v1';
 
 export function saveKnightGame(): { success: boolean; message: string } {
   const st = activeKnightState;
   if (!st) return { success: false, message: 'No active game to save.' };
 
   try {
+    const dungeon = activeDungeonContext ? activeDungeonContext.getDungeonData() : null;
     const data = {
-      room: st.room,
-      rx: st.rx,
-      ry: st.ry,
-      x: st.x,
-      y: st.y,
-      hp: st.hp,
-      maxHp: st.maxHp,
-      ap: st.ap,
-      maxAp: st.maxAp,
-      ep: st.ep,
-      maxEp: st.maxEp,
-      sp: st.sp,
-      maxSp: st.maxSp,
-      flasks: st.flasks,
-      maxFlasks: st.maxFlasks,
-      coins: st.coins,
-      keys: st.keys,
-      hasDouble: st.hasDouble,
-      equippedWeapon: st.equippedWeapon || 'short_sword',
-      loadout: st.loadout || { mainHand: st.equippedWeapon || 'short_sword' },
-      unlockedFeats: st.unlockedFeats || [],
-      inventorySlots: st.inventorySlots || [],
-      assignedL: st.assignedL,
-      assignedR: st.assignedR,
-      got: st.got,
-      checkpoint: st.checkpoint,
-      cleared: st.cleared,
-      nextStart: st.nextStart,
+      version: 2,
       timestamp: Date.now(),
+      player: {
+        room: st.room,
+        rx: st.rx,
+        ry: st.ry,
+        x: st.x,
+        y: st.y,
+        hp: st.hp,
+        maxHp: st.maxHp,
+        ap: st.ap,
+        maxAp: st.maxAp,
+        ep: st.ep,
+        maxEp: st.maxEp,
+        sp: st.sp,
+        maxSp: st.maxSp,
+        flasks: st.flasks,
+        maxFlasks: st.maxFlasks,
+        coins: st.coins,
+        keys: st.keys,
+        hasDouble: st.hasDouble,
+        equippedWeapon: st.equippedWeapon || 'short_sword',
+        loadout: st.loadout || { mainHand: st.equippedWeapon || 'short_sword' },
+        unlockedFeats: st.unlockedFeats || [],
+        inventorySlots: st.inventorySlots || [],
+        assignedL: st.assignedL,
+        assignedR: st.assignedR,
+        checkpoint: st.checkpoint,
+        cleared: st.cleared,
+        nextStart: st.nextStart,
+      },
+      dungeon,
+      entities: {
+        enemies: st.enemies || [],
+        picks: st.picks || [],
+      },
+      got: st.got || {},
     };
-    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+
+    localStorage.setItem(SAVE_KEY_V2, JSON.stringify(data));
     soundSystem.playKey();
-    return { success: true, message: 'GAME PROGRESS SAVED!' };
-  } catch {
+    return { success: true, message: 'DUNGEON & PROGRESS SAVED!' };
+  } catch (err) {
+    console.error('Save game failed:', err);
     return { success: false, message: 'Failed to write save.' };
   }
 }
@@ -194,52 +232,103 @@ export function loadSavedKnightGame(): boolean {
   const st = activeKnightState;
   if (!st) return false;
   try {
-    const raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) return false;
-    const data = JSON.parse(raw);
-    Object.assign(st, {
-      room: data.room,
-      rx: data.rx,
-      ry: data.ry,
-      x: data.x,
-      y: data.y,
-      hp: data.hp,
-      maxHp: data.maxHp,
-      ap: data.ap,
-      maxAp: data.maxAp,
-      ep: data.ep,
-      maxEp: data.maxEp,
-      sp: data.sp,
-      maxSp: data.maxSp,
-      flasks: data.flasks,
-      maxFlasks: data.maxFlasks,
-      coins: data.coins,
-      keys: data.keys,
-      hasDouble: data.hasDouble,
-      equippedWeapon: data.equippedWeapon || 'short_sword',
-      loadout: data.loadout || { mainHand: data.equippedWeapon || 'short_sword' },
-      unlockedFeats: data.unlockedFeats || [],
-      inventorySlots: data.inventorySlots || [],
-      assignedL: data.assignedL,
-      assignedR: data.assignedR,
-      got: data.got,
-      checkpoint: data.checkpoint,
-      cleared: data.cleared,
-      nextStart: data.nextStart,
-    });
-    soundSystem.playSelect();
-    notifyStateChange();
-    return true;
-  } catch {
+    const rawV2 = localStorage.getItem(SAVE_KEY_V2);
+    if (rawV2) {
+      const data = JSON.parse(rawV2);
+      const p = data.player;
+      Object.assign(st, {
+        room: p.room,
+        rx: p.rx,
+        ry: p.ry,
+        x: p.x,
+        y: p.y,
+        hp: p.hp,
+        maxHp: p.maxHp,
+        ap: p.ap,
+        maxAp: p.maxAp,
+        ep: p.ep,
+        maxEp: p.maxEp,
+        sp: p.sp,
+        maxSp: p.maxSp,
+        flasks: p.flasks,
+        maxFlasks: p.maxFlasks,
+        coins: p.coins,
+        keys: p.keys,
+        hasDouble: p.hasDouble,
+        equippedWeapon: p.equippedWeapon || 'short_sword',
+        loadout: p.loadout || { mainHand: p.equippedWeapon || 'short_sword' },
+        unlockedFeats: p.unlockedFeats || [],
+        inventorySlots: p.inventorySlots || [],
+        assignedL: p.assignedL,
+        assignedR: p.assignedR,
+        got: data.got || {},
+        checkpoint: p.checkpoint,
+        cleared: p.cleared,
+        nextStart: p.nextStart,
+      });
+
+      if (data.dungeon && activeDungeonContext) {
+        activeDungeonContext.restoreDungeonData(data.dungeon, data.entities, p.room);
+      }
+
+      soundSystem.playSelect();
+      notifyStateChange();
+      return true;
+    }
+
+    // Graceful backward compatibility with V1 save format
+    const rawV1 = localStorage.getItem(SAVE_KEY_V1);
+    if (rawV1) {
+      const data = JSON.parse(rawV1);
+      Object.assign(st, {
+        room: data.room,
+        rx: data.rx,
+        ry: data.ry,
+        x: data.x,
+        y: data.y,
+        hp: data.hp,
+        maxHp: data.maxHp,
+        ap: data.ap,
+        maxAp: data.maxAp,
+        ep: data.ep,
+        maxEp: data.maxEp,
+        sp: data.sp,
+        maxSp: data.maxSp,
+        flasks: data.flasks,
+        maxFlasks: data.maxFlasks,
+        coins: data.coins,
+        keys: data.keys,
+        hasDouble: data.hasDouble,
+        equippedWeapon: data.equippedWeapon || 'short_sword',
+        loadout: data.loadout || { mainHand: data.equippedWeapon || 'short_sword' },
+        unlockedFeats: data.unlockedFeats || [],
+        inventorySlots: data.inventorySlots || [],
+        assignedL: data.assignedL,
+        assignedR: data.assignedR,
+        got: data.got || {},
+        checkpoint: data.checkpoint,
+        cleared: data.cleared,
+        nextStart: data.nextStart,
+      });
+
+      soundSystem.playSelect();
+      notifyStateChange();
+      return true;
+    }
+
+    return false;
+  } catch (err) {
+    console.error('Load game failed:', err);
     return false;
   }
 }
 
 export function hasSavedKnightGame(): boolean {
   try {
-    return Boolean(localStorage.getItem(SAVE_KEY));
+    return Boolean(localStorage.getItem(SAVE_KEY_V2) || localStorage.getItem(SAVE_KEY_V1));
   } catch {
     return false;
   }
 }
+
 

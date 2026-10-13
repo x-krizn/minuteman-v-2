@@ -289,8 +289,12 @@ export interface EnemyEntity {
   poise: number;
   attackTimer?: number;
   isAttacking?: boolean;
+  isBlocking?: boolean;
+  blockTimer?: number;
   vx?: number;
   vy?: number;
+  aiState?: 'patrol' | 'alert' | 'windup' | 'attack' | 'block';
+  animTimer?: number;
 }
 
 export interface PickupEntity {
@@ -453,9 +457,69 @@ export interface KnightState {
   cleared: number;
   nextStart: { x: number; y: number };
   floor: unknown;
+  currentAreaId?: string;
+  camX?: number;
+  camY?: number;
 
   msg: string;
   msgT: number;
+}
+
+export interface CharacterDefinition extends BaseEntry {
+  id: string;
+  name: string;
+  category: 'player' | 'enemy' | 'npc';
+  description?: string;
+  lore?: string;
+
+  stats: {
+    hp: number;
+    maxHp: number;
+    ap: number;
+    maxAp: number;
+    ep: number;
+    maxEp: number;
+    sp: number;
+    maxSp: number;
+    flasks?: number;
+    maxFlasks?: number;
+    poise?: number;
+  };
+
+  movement: {
+    runSpeed: number;
+    sprintSpeed: number;
+    dashSpeed: number;
+    jumpVelocity: number;
+    gravity: number;
+  };
+
+  sprite: {
+    sheetUri: string;
+    frameWidth: number;
+    frameHeight: number;
+    frames: number;
+    fps: number;
+    anchorX: number;
+    anchorY: number;
+  };
+
+  startingLoadout?: {
+    weapon: string;
+    shield?: string;
+    skills?: {
+      assignedL: SkillId;
+      assignedR: SkillId;
+    };
+  };
+
+  ai?: {
+    detectionRange: number;
+    attackRange: number;
+    blockChance: number;
+    parryWindow: number;
+    patrolSpeed: number;
+  };
 }
 
 export interface BiomeDefinition extends BaseEntry {
@@ -477,15 +541,34 @@ export interface BiomeDefinition extends BaseEntry {
   };
 }
 
+export interface TileExecutionContext {
+  sound?: any;
+  say?: (text: string) => void;
+  spawnParticles?: (
+    x: number,
+    y: number,
+    count: number,
+    color: string,
+    text?: string
+  ) => void;
+}
+
 export interface TileDefinition extends BaseEntry {
   id: string;
   symbol: string;
   name: string;
+  category?: 'terrain' | 'hazard' | 'structure' | 'interactive' | string;
   solid?: boolean;
+  oneWay?: boolean;
+  hazard?: boolean;
+  spriteIndex?: number;
   color?: string;
   trigger?: {
-    onStep?: (player: KnightState, ctx: any) => void;
-    onHit?: (state: KnightState, ctx: any) => void;
+    onStep?: (player: KnightState, ctx: TileExecutionContext) => void;
+    onHit?: (state: KnightState, ctx: TileExecutionContext) => void;
+  };
+  hooks?: {
+    canPass?: (state: KnightState, roomKey: string) => boolean;
   };
 }
 

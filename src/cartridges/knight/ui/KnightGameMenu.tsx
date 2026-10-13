@@ -45,11 +45,11 @@ export const KnightGameMenu: React.FC<KnightGameMenuProps> = ({
 
   const handleLoad = () => {
     if (loadSavedKnightGame()) {
-      setFeedback('SAVE LOADED!');
+      setFeedback('DUNGEON & SAVE RESTORED!');
       setTimeout(() => {
         setFeedback(null);
         onResume();
-      }, 900);
+      }, 700);
     } else {
       setFeedback('NO SAVE FILE FOUND');
       setTimeout(() => setFeedback(null), 2000);

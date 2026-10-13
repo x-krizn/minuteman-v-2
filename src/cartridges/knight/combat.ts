@@ -276,6 +276,14 @@ export function updateCombat(
         // Fighting game hitstop & impacts
         state.hitstop = state.isHeavyAttack ? 0.08 : 0.04;
 
+        // Enemy shield guard deflection
+        if (e.isBlocking && e.dir === -f && !state.isHeavyAttack) {
+          soundSystem.playBlock();
+          spawnParticles(state.particles, (state.x + e.x) / 2, e.y - 8, 6, '#88ccff', 'BLOCKED');
+          state.x -= f * 6;
+          return;
+        }
+
         if (weapon?.hooks?.onHit) {
           weapon.hooks.onHit(e, {
             player: state,

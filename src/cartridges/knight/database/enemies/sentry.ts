@@ -5,7 +5,7 @@
 
 import { EnemyWikiDefinition } from '../../types';
 import { solidAt } from '../../physics';
-import { SCREEN_W, TILE_SIZE } from '../../constants';
+import { COLS, TILE_SIZE } from '../../constants';
 
 export const sentryEnemy: EnemyWikiDefinition = {
   type: 'sentry',
@@ -22,6 +22,9 @@ export const sentryEnemy: EnemyWikiDefinition = {
     { itemId: 'emerald', chance: 0.05 },
   ],
   update(rooms, state, e, dt) {
+    const room = rooms[state.room];
+    const roomWidth = (room?.[0]?.length || COLS) * TILE_SIZE;
+
     // Sentry faces towards player if nearby
     const dist = Math.abs(state.x - e.x);
     if (dist < 60) {
@@ -45,7 +48,7 @@ export const sentryEnemy: EnemyWikiDefinition = {
       Math.floor((e.y + 1) / TILE_SIZE)
     );
 
-    if (!wall && floor && ahead >= 6 && ahead <= SCREEN_W - 6) {
+    if (!wall && floor && ahead >= 6 && ahead <= roomWidth - 6) {
       e.x = nx;
     }
   },

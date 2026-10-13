@@ -37,17 +37,24 @@ import {
   TILES_PNG,
 } from './constants';
 import { updateEnemies } from './enemies';
-import { INITIAL_GREEN, INITIAL_ROOMS, buildFloor } from './world';
+import { TUTORIAL_GREEN, TUTORIAL_ROOMS, buildFloor } from './database/world';
 import { moveX, moveY } from './physics';
 import { updatePickups } from './pickups';
 import { drawKnightGame } from './renderer';
 import { castSkill, updateProjectiles } from './skills';
 import { spawnParticles, updateParticles } from './particles';
-import { notifyStateChange, setKnightStateRef } from './stateStore';
+import {
+  DungeonEntityData,
+  DungeonStateData,
+  notifyStateChange,
+  setDungeonContextRef,
+  setKnightStateRef,
+} from './stateStore';
 import { KnightGameMenu, KnightSatchel } from './ui';
 import { getItemDefinition } from './database/items';
 import { getEnemyDefinition } from './database/enemies';
 import { SKILL_REGISTRY } from './database/skills';
+import { protoKnightCharacter } from './database/characters';
 
 export function createKnightCartridge(): Cartridge {
   const rooms: Record<string, string[]> = {};
@@ -69,20 +76,20 @@ export function createKnightCartridge(): Cartridge {
     face: 1,
     t: 0,
 
-    hp: 4,
-    maxHp: 4,
-    ap: 2,
-    maxAp: 2,
-    ep: 3,
-    maxEp: 3,
-    sp: 4,
-    maxSp: 4,
+    hp: protoKnightCharacter.stats.hp,
+    maxHp: protoKnightCharacter.stats.maxHp,
+    ap: protoKnightCharacter.stats.ap,
+    maxAp: protoKnightCharacter.stats.maxAp,
+    ep: protoKnightCharacter.stats.ep,
+    maxEp: protoKnightCharacter.stats.maxEp,
+    sp: protoKnightCharacter.stats.sp,
+    maxSp: protoKnightCharacter.stats.maxSp,
     spRegenTimer: 0,
 
     coins: 0,
     keys: 0,
-    flasks: 3,
-    maxFlasks: 5,
+    flasks: protoKnightCharacter.stats.flasks || 3,
+    maxFlasks: protoKnightCharacter.stats.maxFlasks || 5,
     inventoryOpen: false,
 
     hasDouble: false,
@@ -168,7 +175,9 @@ export function createKnightCartridge(): Cartridge {
             let type: EnemyEntity['type'] = 'crawler';
 
             if (state.cleared > 0 || (rx >= 2 && ry === 0)) {
-              if (tx % 2 === 0) {
+              if (tx % 3 === 0 && state.cleared > 0) {
+                type = 'enemy_knight';
+              } else if (tx % 2 === 0) {
                 type = 'sentry';
               } else if (ty <= 3) {
                 type = 'wisp';
@@ -205,6 +214,49 @@ export function createKnightCartridge(): Cartridge {
       say('RESTED: FLASKS REFILLED');
       notifyStateChange();
     }
+  };
+
+  const getDungeonData = (): DungeonStateData => {
+    return {
+      rooms: { ...rooms },
+      greenRooms: { ...greenRooms },
+      safeRooms: { ...safeRooms },
+      floor: state.floor,
+    };
+  };
+
+  const restoreDungeonData = (
+    dungeon: DungeonStateData,
+    entities?: DungeonEntityData,
+    targetRoom?: string
+  ) => {
+    Object.keys(rooms).forEach((k) => delete rooms[k]);
+    Object.assign(rooms, dungeon.rooms || {});
+
+    Object.keys(greenRooms).forEach((k) => delete greenRooms[k]);
+    Object.assign(greenRooms, dungeon.greenRooms || {});
+
+    Object.keys(safeRooms).forEach((k) => delete safeRooms[k]);
+    Object.assign(safeRooms, dungeon.safeRooms || {});
+
+    state.floor = dungeon.floor;
+
+    const roomKey = targetRoom || state.room;
+    state.room = roomKey;
+    const [rx, ry] = roomKey.split(',').map(Number);
+    state.rx = isNaN(rx) ? 0 : rx;
+    state.ry = isNaN(ry) ? 0 : ry;
+
+    if (entities && Array.isArray(entities.enemies) && Array.isArray(entities.picks)) {
+      state.enemies = entities.enemies.map((e) => ({ ...e }));
+      state.picks = entities.picks.map((p) => ({ ...p }));
+      state.projectiles = [];
+      state.particles = [];
+    } else {
+      enterRoom(roomKey);
+    }
+
+    notifyStateChange();
   };
 
   const respawn = () => {
@@ -247,7 +299,7 @@ export function createKnightCartridge(): Cartridge {
     description: 'Metroid-Souls with Fighting Game Combat: Jump, Dash/Sprint, Attack/Charge, Block/Parry, Skills.',
 
     assets: {
-      knight: { src: KNIGHT_PNG, cw: 18, ch: 18, frames: 3, fps: 6, ax: 9, ay: 18 },
+      knight: { src: KNIGHT_PNG, cw: 16, ch: 16, frames: 4, fps: 8, ax: 8, ay: 16 },
       tiles: { src: TILES_PNG, cw: 16, ch: 16, frames: 4, rows: 4 },
       tilesG: { src: TILES_G_PNG, cw: 16, ch: 16, frames: 4, rows: 4 },
       items: { src: ITEMS_PNG, cw: 16, ch: 16, frames: 4, rows: 4, ax: 8, ay: 8 },
@@ -257,10 +309,10 @@ export function createKnightCartridge(): Cartridge {
       fontFamily = 'orion-font, monospace';
 
       Object.keys(rooms).forEach((k) => delete rooms[k]);
-      Object.assign(rooms, JSON.parse(JSON.stringify(INITIAL_ROOMS)));
+      Object.assign(rooms, JSON.parse(JSON.stringify(TUTORIAL_ROOMS)));
 
       Object.keys(greenRooms).forEach((k) => delete greenRooms[k]);
-      Object.assign(greenRooms, { ...INITIAL_GREEN });
+      Object.assign(greenRooms, { ...TUTORIAL_GREEN });
 
       Object.keys(safeRooms).forEach((k) => delete safeRooms[k]);
 
@@ -270,20 +322,20 @@ export function createKnightCartridge(): Cartridge {
         nextStart: { x: 4, y: 0 },
         floor: null,
         hasDouble: false,
-        maxHp: 4,
-        hp: 4,
+        maxHp: protoKnightCharacter.stats.maxHp,
+        hp: protoKnightCharacter.stats.hp,
         face: 1,
         t: 0,
-        maxAp: 2,
-        ap: 2,
-        maxEp: 3,
-        ep: 3,
-        maxSp: 4,
-        sp: 4,
+        maxAp: protoKnightCharacter.stats.maxAp,
+        ap: protoKnightCharacter.stats.ap,
+        maxEp: protoKnightCharacter.stats.maxEp,
+        ep: protoKnightCharacter.stats.ep,
+        maxSp: protoKnightCharacter.stats.maxSp,
+        sp: protoKnightCharacter.stats.sp,
         coins: 0,
         keys: 0,
-        flasks: 3,
-        maxFlasks: 5,
+        flasks: protoKnightCharacter.stats.flasks || 3,
+        maxFlasks: protoKnightCharacter.stats.maxFlasks || 5,
         inventoryOpen: false,
         atkV: 0,
         coyote: 0,
@@ -322,11 +374,13 @@ export function createKnightCartridge(): Cartridge {
       });
 
       setKnightStateRef(state);
+      setDungeonContextRef({ getDungeonData, restoreDungeonData });
       respawn();
     },
 
     destroy: () => {
       setKnightStateRef(null);
+      setDungeonContextRef(null);
     },
 
     update: (input: GameInput, rawDt: number) => {

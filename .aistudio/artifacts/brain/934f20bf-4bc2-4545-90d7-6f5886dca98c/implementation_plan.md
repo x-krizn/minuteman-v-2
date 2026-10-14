@@ -1,163 +1,125 @@
-# Modular Character Architecture & 4-Frame Proto Knight
+# Gradual Asset Override Architecture & Hierarchical Maps
 
-Establishes an entry-driven character system under `database/characters/` for player and NPC knight archetypes, defining base stats, movement velocities, sprite configurations, and starting loadouts, while integrating the updated 4-frame `proto_knight` animation cycle.
+Enables incremental replacement of sprite sheets and procedural graphics with dedicated per-entry asset overrides (`assets: { imageUri?: string, sheetIndex?: number }`) across all database items, weapons, enemies, and tiles, while establishing the 5-tier map hierarchy (`world > region > area > local > room`) and relocating initial spawn coordinates into map definitions.
 
 > [!IMPORTANT]
 > **User Decisions Confirmed**:
-> 1. **Directory Location**: Stored in `src/cartridges/knight/database/characters/` with dedicated entry files for player and NPC archetypes.
-> 2. **Character Specification Contract**: Defines base stats (`hp`, `ap`, `ep`, `sp`, `flasks`), movement velocities (run speed, sprint speed, dash speed, jump velocity), sprite configuration (sheet URI, frame dimensions, FPS, anchor), and initial equipment loadout.
-> 3. **Enemy Knight Combat Behavior**: Mirrors player abilities with state-machine AI for patrolling, shield blocking/parrying, and telegraphed melee attacks.
-> 4. **Updated 4-Frame Sprite**: Upgrades the knight walk cycle from 3 frames to 4 frames (72x18 sprite sheet: standing, forward stride, passing stride, reverse stride).
+> 1. **Asset Override Architecture**:
+>    - Add a standard `assets: { imageUri?: string, sheetIndex?: number, frameWidth?: number, frameHeight?: number }` object to all items, weapons, enemies, and tiles.
+>    - Entries with an empty/omitted `imageUri` fall back to `sheetIndex` or procedural rendering.
+>    - When the user pastes a custom sprite (base64 data URL) into `imageUri`, the engine automatically prioritizes it, allowing gradual migration until legacy sheets become obsolete.
+> 2. **Scope**: Applied across all items (consumables, equipment, valuables, keys), weapons, enemies, and tiles.
+> 3. **5-Tier Map Hierarchy**: Organize world data under `database/world/`:
+>    - **Tier 1 (World Map)**: `world/maps/world.ts`
+>    - **Tier 2 (Region Map)**: `world/regions/` (e.g. `ancient_depths.ts`)
+>    - **Tier 3 (Area Map)**: `world/areas/` (e.g. `forgotten_crypt.ts`, `verdant_ruins.ts`, `boss_arena.ts`)
+>    - **Tier 4 (Local Map)**: `world/maps/local/` (e.g. `tutorial.ts` with spawn coordinates and room layouts)
+>    - **Tier 5 (Room Map)**: `world/rooms/recycled/` and `world/rooms/special/`
+> 4. **Spawn Points**: Move `INITIAL_START` (`{ room: '0,0', x: 32, y: 128 }`) out of `constants.ts` directly into the map entry (`world/maps/local/tutorial.ts`).
+> 5. **Bridge Cleanup**: Delete the temporary `src/cartridges/knight/database/areas/` bridge folder.
 
 ---
 
 ## 1. Overview & Core Concept
 
-### What It Delivers
-- **`proto_knight.ts`**: The canonical player character archetype definition. Centralizes the previously hardcoded player constants (`hp: 4`, `sp: 4`, `ep: 3`, `ap: 2`, `flasks: 3`, movement speeds, jump velocity, starting weapon `short_sword`, and starter skills `heal` & `fireball`).
-- **`enemy_knight.ts`**: Hostile rival knight archetype. Shares the knight silhouette and physical footprint, equipped with a sword and shield, featuring reactive AI (alert patrol, shield block when attacked, and thrust/slash combos).
-- **Auto-Discovery Registry**: `database/characters/index.ts` scanning via `import.meta.glob('./**/*.ts')`, exposing `CHARACTER_REGISTRY` and helper `getCharacterDefinition(id)`.
-- **4-Frame Animation Engine**: Replaces the 3-frame legacy sprite asset with the 4-frame walk cycle, adjusting frame duration (`fps: 8`) and frame width (18px) for natural, fluid locomotion.
+### Incremental Asset Replacement Strategy
+Currently, entities either sample a tile index from a legacy sheet (`ITEMS_PNG`, `TILES_PNG`, `TILES_G_PNG`) or draw via procedural vector rendering (`drawProceduralPickup`, etc.). 
+
+With the new contract:
+- Every entry explicitly declares its asset configuration:
+  ```typescript
+  assets: {
+    imageUri: '', // PLACEHOLDER: Paste dedicated base64 data URL here to override
+    sheetIndex: 0, // Fallback index on legacy sprite sheet
+  }
+  ```
+- The renderer checks `entry.assets?.imageUri`. If present and non-empty, it renders the dedicated image immediately.
+- If `imageUri` is empty or undefined, it smoothly falls back to the existing `sheetIndex` or procedural routine.
+- The user can paste and test custom sprites one by one without breaking anything.
 
 ---
 
-## 2. User Experience & Visual Design
+## 2. Technical Architecture & File Structure
 
-### Animation & Visual Motion
-- **4-Frame Locomotion**: The new walk cycle features a 4-step sequence:
-  - Frame 0: Upright neutral stance
-  - Frame 1: Right leg forward stride
-  - Frame 2: Upright passing leg transition
-  - Frame 3: Left leg forward stride
-- **Visual Feedback**:
-  - Player knight retains smooth turn flipping (`face: 1 | -1`).
-  - Enemy knights render with distinct armor tinting or pauldron shading while maintaining equal hitbox clarity.
-  - Blocking and parrying sparks trigger identically for both player and enemy knights.
-
----
-
-## 3. Key Product Decisions & Trade-Offs
-
-### Decision 1: Dedicated `database/characters/` vs. Merging into `enemies/`
-- **Chosen Approach**: Create a dedicated `database/characters/` directory housing player and NPC archetypes (`proto_knight.ts`, `enemy_knight.ts`), matching the existing database pattern (`items/`, `skills/`, `world/`).
-- **Why**: Keeps the player's core identity and stats entry-driven, making future class selection or character skins straightforward, while allowing enemy knights to inherit or reference shared humanoid traits.
-- **Alternatives Considered**: Putting `proto_knight` in `knightCartridge.ts` as constants. Rejected because it violates the modular entry-driven architecture of the project.
-
-### Decision 2: Enemy Knight Behavior Architecture
-- **Chosen Approach**: Enemy knights use a modular state machine in `enemies.ts` that mirrors player mechanics:
-  - **Patrol**: Pace territory until the player enters detection radius.
-  - **Engagement & Standoff**: Advance to melee distance with occasional shield raises (blocking player slashes).
-  - **Telegraphed Attack**: Charge attack with visual anticipation before striking, vulnerable to player parry.
-- **Why**: Delivers true fighting-game / Metroid-Souls dueling dynamics rather than simple crawler hazard collisions.
-
----
-
-## 4. Technical Architecture & Data Strategy
-
-### System Architecture Diagram
-
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│               src/cartridges/knight/database/characters/              │
-├────────────────────────────────┬───────────────────────────────────────┤
-│        proto_knight.ts         │            enemy_knight.ts            │
-│  - ID: 'proto_knight'          │  - ID: 'enemy_knight'                 │
-│  - Base HP: 4, AP: 2, SP: 4    │  - Base HP: 5, Poise: 3               │
-│  - Speeds: Run 80, Sprint 120  │  - Weapon: 'short_sword'              │
-│  - 4-Frame Sprite Sheet        │  - AI: Patrol, Block, Slash           │
-│  - Loadout: 'short_sword'      │  - Drops: Coins / Emerald             │
-└────────────────────────────────┴───────────────────────────────────────┘
-                                   │
-                                   ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│                    Character Registry (index.ts)                       │
-│    ALL_CHARACTERS, CHARACTER_REGISTRY, getCharacterDefinition(id)     │
-└──────────────────────────────────┬─────────────────────────────────────┘
-                                   │
-          ┌────────────────────────┴────────────────────────┐
-          ▼                                                 ▼
-┌───────────────────────────────┐         ┌───────────────────────────────┐
-│      knightCartridge.ts       │         │       enemies.ts / AI         │
-│  - Initializes player stats   │         │  - Enemy knight state machine │
-│  - Configures 4-frame sprite  │         │  - Shield parry / attack wind │
-└───────────────────────────────┘         └───────────────────────────────┘
-```
-
-### Character Definition Contract (`CharacterDefinition`)
+### Asset Override Contract (`EntityAssetConfig`)
 
 ```typescript
-export interface CharacterDefinition extends BaseEntry {
-  id: string; // 'proto_knight', 'enemy_knight'
-  name: string;
-  category: 'player' | 'enemy' | 'npc';
-  description?: string;
-  lore?: string;
-
-  stats: {
-    hp: number;
-    maxHp: number;
-    ap: number;
-    maxAp: number;
-    ep: number;
-    maxEp: number;
-    sp: number;
-    maxSp: number;
-    flasks?: number;
-    maxFlasks?: number;
-    poise?: number;
-  };
-
-  movement: {
-    runSpeed: number;
-    sprintSpeed: number;
-    dashSpeed: number;
-    jumpVelocity: number;
-    gravity: number;
-  };
-
-  sprite: {
-    sheetUri: string;
-    frameWidth: number;
-    frameHeight: number;
-    frames: number;
-    fps: number;
-    anchorX: number;
-    anchorY: number;
-  };
-
-  startingLoadout?: {
-    weapon: string;
-    shield?: string;
-    skills?: {
-      assignedL: SkillId;
-      assignedR: SkillId;
-    };
-  };
-
-  ai?: {
-    detectionRange: number;
-    attackRange: number;
-    blockChance: number;
-    parryWindow: number;
-    patrolSpeed: number;
-  };
+export interface EntityAssetConfig {
+  imageUri?: string; // Dedicated base64 data URL or asset path
+  sheetIndex?: number; // Legacy sprite sheet frame/cell index fallback
+  frameWidth?: number; // Optional frame dimension (defaults to 16)
+  frameHeight?: number; // Optional frame dimension (defaults to 16)
+  frames?: number; // Total animation frames (default 1)
+  fps?: number; // Animation playback speed
+  anchorX?: number; // Center/pivot anchor
+  anchorY?: number;
 }
 ```
 
-### Implementation Steps
-1. **Extend Type Contract**:
-   - Add `CharacterDefinition` interface and relevant character types to `src/cartridges/knight/types.ts`.
-2. **Encode 4-Frame Sprite Sheet**:
-   - Encode the 4-frame `proto_knight` sprite (72x18 PNG) into base64 in `src/cartridges/knight/assets/sprites.ts`.
-   - Update cartridge asset definition to `{ cw: 18, ch: 18, frames: 4, fps: 8, ax: 9, ay: 18 }`.
-3. **Build Character Database**:
-   - Create `src/cartridges/knight/database/characters/proto_knight.ts`.
-   - Create `src/cartridges/knight/database/characters/enemy_knight.ts`.
-   - Create `src/cartridges/knight/database/characters/index.ts` with dynamic auto-discovery and exports in `database/index.ts`.
-4. **Integrate Player Initialization**:
-   - In `knightCartridge.ts`, initialize player state variables (`hp`, `sp`, `ep`, `ap`, `flasks`, speeds, starting weapon) from `getCharacterDefinition('proto_knight')`.
-5. **Implement Enemy Knight AI**:
-   - In `enemies.ts`, add enemy knight behavior handler (patrol, alert, block/shield raise, and telegraphed swing).
-   - Register enemy knight in `database/enemies/` so it can be spawned procedural or statically in dungeon rooms.
+### 5-Tier Map Hierarchy
+
+```
+src/cartridges/knight/database/world/
+├── maps/
+│   ├── world.ts          ◄── Tier 1: World Map (overarching realm topology)
+│   ├── local/            ◄── Tier 4: Local Map (room layout & spawnPoint)
+│   │   ├── tutorial.ts   ◄── spawnPoint: { room: '0,0', x: 32, y: 128 }
+│   │   └── index.ts
+│   └── index.ts
+├── regions/              ◄── Tier 2: Region Map (regional zones)
+│   ├── ancient_depths.ts
+│   └── index.ts
+├── areas/                ◄── Tier 3: Area Map (thematic sub-zones & biomes)
+│   ├── forgotten_crypt.ts
+│   ├── verdant_ruins.ts
+│   ├── boss_arena.ts
+│   └── index.ts
+├── rooms/                ◄── Tier 5: Room Map (chambers & corridors)
+│   ├── recycled/
+│   │   ├── corridors.ts
+│   │   ├── shafts.ts
+│   │   ├── vaults.ts
+│   │   └── index.ts
+│   ├── special/
+│   │   ├── sanctuary.ts
+│   │   └── index.ts
+│   └── index.ts
+├── biomes/               ◄── Visual & audio atmosphere
+├── tiles/                ◄── Individual tile definitions with asset overrides
+└── generation/           ◄── Procedural floor generator
+```
+
+---
+
+## 3. Implementation Steps
+
+1. **Update Type Definitions (`src/cartridges/knight/types.ts`)**:
+   - Define `EntityAssetConfig` interface.
+   - Attach `assets?: EntityAssetConfig` to `ItemDefinition`, `EnemyWikiDefinition`, `TileDefinition`, `WeaponDefinition`, and `CharacterDefinition`.
+   - Add `RegionDefinition`, `AreaDefinition`, `LocalMapDefinition`, and `WorldMapDefinition` interfaces.
+2. **Apply Asset Placeholders Across Database Entries**:
+   - **Items (`database/items/`)**:
+     - Consumables (`flask_refill.ts`, `potion_hp.ts`, `potion_ap.ts`, `potion_ep.ts`, `potion_sp.ts`).
+     - Equipment (`ability_double_jump.ts`, `flask_shard.ts`).
+     - Valuables (`coin.ts`, `amber.ts`, `amethyst.ts`, `emerald.ts`, `ruby.ts`, `sapphire.ts`, `topaz.ts`).
+     - Keys (`key.ts`).
+   - **Weapons (`database/weapons/`)**:
+     - `short_sword.ts`, `iron_round_shield.ts`.
+   - **Enemies (`database/enemies/`)**:
+     - `crawler.ts`, `sentry.ts`, `wisp.ts`, `enemy_knight.ts`.
+   - **Tiles (`database/world/tiles/`)**:
+     - `wall.ts`, `platform.ts`, `gate.ts`, `air.ts`.
+3. **Build 5-Tier Map Hierarchy**:
+   - Create `database/world/regions/` (`ancient_depths.ts`, `index.ts`).
+   - Create `database/world/areas/` (`forgotten_crypt.ts`, `verdant_ruins.ts`, `boss_arena.ts`, `index.ts`).
+   - Restructure `database/world/maps/` into `world.ts` and `local/tutorial.ts` (defining `spawnPoint: { room: '0,0', x: 32, y: 128 }`).
+   - Update `knightCartridge.ts` to read player initial spawn from `tutorialMap.spawnPoint` and remove `INITIAL_START` from `constants.ts`.
+4. **Update Render Pipeline for Asset Overrides**:
+   - In `renderer.ts` and `proceduralRenderer.ts`:
+     - When drawing items/pickups: if `itemDef.assets?.imageUri` exists and is non-empty, render the image; otherwise fall back to `sheetIndex` on `items` strip or procedural icon.
+     - When drawing tiles: if `tileDef.assets?.imageUri` exists and is non-empty, render the image; otherwise use active biome sheet.
+     - When drawing enemies: if `enemyDef.assets?.imageUri` exists and is non-empty, render the custom image; otherwise use default enemy render.
+5. **Clean Up Bridge Directory**:
+   - Delete `src/cartridges/knight/database/areas/` bridge folder.
 6. **Verification**:
-   - Run `compile_applet` and `lint_applet` to ensure zero compilation regressions and smooth animation.
+   - Run `compile_applet` and `lint_applet` to confirm complete type safety and clean execution.

@@ -12,4 +12,8 @@ export const airTile: TileDefinition = {
   category: 'terrain',
   description: 'Unobstructed empty space allowing free player and entity traversal.',
   solid: false,
+  assets: {
+    imageUri: '',
+    sheetIndex: -1,
+  },
 };

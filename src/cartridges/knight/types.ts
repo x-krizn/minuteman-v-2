@@ -49,10 +49,49 @@ export interface MultiFrameAsset {
   anchor?: { x: number; y: number };
 }
 
+export interface EntityAssetConfig {
+  imageUri?: string; // Dedicated base64 data URL to override sheetIndex or procedural render
+  sheetIndex?: number; // Legacy sprite sheet frame/cell index fallback
+  frameWidth?: number; // Optional width (defaults to 16)
+  frameHeight?: number; // Optional height (defaults to 16)
+  frames?: number; // Total animation frames (default 1)
+  fps?: number; // Animation playback speed
+  anchorX?: number; // Center/pivot anchor X
+  anchorY?: number; // Center/pivot anchor Y
+  procedural?: {
+    bob?: { amplitude: number; speed: number };
+    trail?: { color: string; fadeMs?: number };
+    rotationSpeed?: number;
+  };
+}
+
 export type EntityAsset =
+  | EntityAssetConfig
   | SingleFrameAsset
   | MultiFrameAsset
   | { spriteIndex: number; sheetName?: string };
+
+export function getAssetImageUri(asset?: EntityAsset): string | undefined {
+  if (!asset) return undefined;
+  if ('imageUri' in asset && typeof asset.imageUri === 'string' && asset.imageUri.length > 0) {
+    return asset.imageUri;
+  }
+  if ('sheetUri' in asset && typeof asset.sheetUri === 'string' && asset.sheetUri.length > 0) {
+    return asset.sheetUri;
+  }
+  return undefined;
+}
+
+export function getAssetSheetIndex(asset?: EntityAsset): number | undefined {
+  if (!asset) return undefined;
+  if ('sheetIndex' in asset && typeof asset.sheetIndex === 'number' && asset.sheetIndex >= 0) {
+    return asset.sheetIndex;
+  }
+  if ('spriteIndex' in asset && typeof asset.spriteIndex === 'number' && asset.spriteIndex >= 0) {
+    return asset.spriteIndex;
+  }
+  return undefined;
+}
 
 export interface ItemExecutionContext {
   sound: any;
@@ -74,7 +113,7 @@ export interface ItemWikiDefinition extends BaseEntry {
   description?: string;
   lore?: string;
   spriteIndex?: number;
-  assets?: SingleFrameAsset | MultiFrameAsset;
+  assets?: EntityAsset;
   stat?: StatType;
   color?: string;
   cost?: number;
@@ -263,7 +302,7 @@ export interface EnemyWikiDefinition {
   speed: number;
   damage: number;
   lootTable?: { itemId: string; chance: number }[];
-  assets?: SingleFrameAsset | MultiFrameAsset;
+  assets?: EntityAsset;
   update?: (
     rooms: Record<string, string[]>,
     state: KnightState,
@@ -562,6 +601,7 @@ export interface TileDefinition extends BaseEntry {
   oneWay?: boolean;
   hazard?: boolean;
   spriteIndex?: number;
+  assets?: EntityAsset;
   color?: string;
   trigger?: {
     onStep?: (player: KnightState, ctx: TileExecutionContext) => void;
@@ -589,4 +629,49 @@ export interface RoomDefinition extends BaseEntry {
     y: number;
   }[];
 }
+
+// ---------------------------------------------------------------------------
+// 5-Tier Map Hierarchy Interfaces
+// ---------------------------------------------------------------------------
+
+export interface LocalMapDefinition extends BaseEntry {
+  id: string; // e.g. 'tutorial', 'crypt_chamber_floor_1'
+  name: string;
+  areaId: string; // Parent area ID
+  rooms: Record<string, string[]>;
+  greenRooms?: Record<string, number>;
+  safeRooms?: Record<string, number>;
+  spawnPoint: { room: string; x: number; y: number };
+  defaultBiomeId?: string;
+  description?: string;
+}
+
+export interface AreaDefinition extends BaseEntry {
+  id: string; // e.g. 'forgotten_crypt', 'verdant_ruins', 'boss_arena'
+  name: string;
+  regionId: string; // Parent region ID
+  description?: string;
+  lore?: string;
+  biomeId: string;
+  localMapIds: string[];
+  threatLevel?: number;
+}
+
+export interface RegionDefinition extends BaseEntry {
+  id: string; // e.g. 'ancient_depths'
+  name: string;
+  description?: string;
+  lore?: string;
+  areaIds: string[];
+  theme?: string;
+}
+
+export interface WorldMapDefinition extends BaseEntry {
+  id: string; // 'realm_of_the_knight'
+  name: string;
+  description?: string;
+  regionIds: string[];
+  connections?: { fromRegionId: string; toRegionId: string; requirement?: string }[];
+}
+
 

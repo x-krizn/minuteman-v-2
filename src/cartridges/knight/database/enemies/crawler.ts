@@ -20,6 +20,14 @@ export const crawlerEnemy: EnemyWikiDefinition = {
     { itemId: 'coin', chance: 0.6 },
     { itemId: 'potion_hp', chance: 0.08 },
   ],
+  assets: {
+    imageUri: '', // Paste custom base64 sprite data URL to override procedural crawler render
+    sheetIndex: -1,
+    frameWidth: 16,
+    frameHeight: 16,
+    anchorX: 8,
+    anchorY: 16,
+  },
   update(rooms, state, e, dt) {
     const room = rooms[state.room];
     const roomWidth = (room?.[0]?.length || COLS) * TILE_SIZE;

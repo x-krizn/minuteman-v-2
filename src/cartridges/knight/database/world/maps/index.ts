@@ -3,4 +3,5 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export * from './tutorial';
+export * from './world';
+export * from './local';

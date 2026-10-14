@@ -4,7 +4,7 @@
  */
 
 import { CharacterDefinition } from '../../types';
-import { PROTO_KNIGHT_PNG } from '../../assets/sprites';
+import { PROTO_KNIGHT_PNG } from './proto_knight';
 
 export const enemyKnightCharacter: CharacterDefinition = {
   id: 'enemy_knight',

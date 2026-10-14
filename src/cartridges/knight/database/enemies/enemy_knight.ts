@@ -21,6 +21,14 @@ export const enemyKnightDef: EnemyWikiDefinition = {
     { itemId: 'potion_hp', chance: 0.25 },
     { itemId: 'sapphire', chance: 0.1 },
   ],
+  assets: {
+    imageUri: '', // Paste custom base64 sprite data URL to override rival knight sprite
+    sheetIndex: -1,
+    frameWidth: 16,
+    frameHeight: 16,
+    anchorX: 8,
+    anchorY: 16,
+  },
   update(rooms, state, e, dt) {
     const room = rooms[state.room];
     const roomWidth = (room?.[0]?.length || COLS) * TILE_SIZE;

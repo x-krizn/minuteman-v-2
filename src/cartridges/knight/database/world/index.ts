@@ -5,6 +5,8 @@
 
 export * from './tiles';
 export * from './biomes';
+export * from './regions';
+export * from './areas';
 export * from './maps';
 export * from './rooms';
 export * from './generation';

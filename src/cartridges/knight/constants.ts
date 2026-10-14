@@ -29,7 +29,6 @@ export const CHARGE_TIME_REQUIRED = 0.45;
 export const PARRY_WINDOW_DURATION = 0.15;
 export const STAMINA_REGEN_RATE = 2.5; // SP per second
 
-export const INITIAL_START = { room: '0,0', x: 32, y: 128 };
 export const BG_COLOR = '#000000';
 
 export const STAT_COLORS: Record<StatType, string> = {

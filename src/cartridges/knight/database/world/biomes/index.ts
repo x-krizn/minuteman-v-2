@@ -41,3 +41,6 @@ export const BIOME_REGISTRY: Record<string, BiomeDefinition> = ALL_BIOMES.reduce
 export function getBiomeDefinition(id: string): BiomeDefinition | undefined {
   return BIOME_REGISTRY[id];
 }
+
+export * from './crypt';
+export * from './verdant_ruins';

@@ -19,6 +19,14 @@ export const wispEnemy: EnemyWikiDefinition = {
     { itemId: 'potion_ep', chance: 0.2 },
     { itemId: 'sapphire', chance: 0.05 },
   ],
+  assets: {
+    imageUri: '', // Paste custom base64 sprite data URL to override procedural wisp render
+    sheetIndex: -1,
+    frameWidth: 16,
+    frameHeight: 16,
+    anchorX: 8,
+    anchorY: 8,
+  },
   update(_rooms, state, e, dt) {
     const targetY = state.y - 12 + Math.sin(performance.now() / 300) * 8;
     const dx = state.x - e.x;

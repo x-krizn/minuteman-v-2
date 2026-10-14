@@ -13,4 +13,10 @@ export const wallTile: TileDefinition = {
   description: 'Solid masonry dungeon wall blocking all physical traversal.',
   solid: true,
   color: '#475569',
+  assets: {
+    imageUri: '', // Paste custom base64 sprite data URL to override wall tile texture
+    sheetIndex: 0,
+    frameWidth: 16,
+    frameHeight: 16,
+  },
 };

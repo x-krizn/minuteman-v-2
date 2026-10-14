@@ -3,14 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/**
- * Tutorial map layout containing the fixed introductory chambers:
- * - 0,0: Awakening Chamber (intro jump tutorial with platform ledge)
- * - 1,0: Combat Grounds (crawler enemy and coin caches)
- * - 2,0: Key Chamber & Locked Gate (vertical drop, key puzzle, and locked exit)
- * - 3,0: Treasury / Gem Vault (gem rewards)
- * - 1,-1: The Hidden Belfry (secret room with rare drops)
- */
+import { LocalMapDefinition } from '../../../../types';
+
 export const TUTORIAL_ROOMS: Record<string, string[]> = {
   '0,0': [
     '##########',
@@ -18,9 +12,9 @@ export const TUTORIAL_ROOMS: Record<string, string[]> = {
     '#........#',
     '#........#',
     '#..ooo...#',
-    '#..#####.#',
-    '#......#..',
-    '#......#..',
+    '#..###...#',
+    '#.........',
+    '#.........',
     '##########',
   ],
   '1,0': [
@@ -77,6 +71,17 @@ export const TUTORIAL_GREEN: Record<string, number> = {
   '1,-1': 1,
 };
 
-// Aliases for backwards compatibility with legacy level systems
+export const tutorialLocalMap: LocalMapDefinition = {
+  id: 'tutorial',
+  name: 'Awakening Descent',
+  areaId: 'forgotten_crypt',
+  description: 'The introductory chambers where the Proto Knight awakens and learns basic movement and sword strikes.',
+  spawnPoint: { room: '0,0', x: 32, y: 128 },
+  rooms: TUTORIAL_ROOMS,
+  greenRooms: TUTORIAL_GREEN,
+  defaultBiomeId: 'crypt',
+};
+
+// Aliases for backwards compatibility with legacy world runners
 export const INITIAL_ROOMS = TUTORIAL_ROOMS;
 export const INITIAL_GREEN = TUTORIAL_GREEN;

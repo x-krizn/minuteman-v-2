@@ -103,7 +103,7 @@ export function drawProceduralPickup(
   y: number,
   nowMs: number
 ): boolean {
-  const asset = it.assets as SingleFrameAsset | undefined;
+  const asset = it.assets as (SingleFrameAsset & { anchorX?: number; anchorY?: number; frameWidth?: number; frameHeight?: number }) | undefined;
   if (!asset?.imageUri) {
     return false;
   }
@@ -121,10 +121,10 @@ export function drawProceduralPickup(
 
   drawTransformedImage(g, img, x, y + bob, {
     rotation,
-    width: asset.width ?? 16,
-    height: asset.height ?? 16,
-    anchorX: asset.anchor?.x ?? 8,
-    anchorY: asset.anchor?.y ?? 8,
+    width: asset.frameWidth ?? asset.width ?? 16,
+    height: asset.frameHeight ?? asset.height ?? 16,
+    anchorX: asset.anchorX ?? asset.anchor?.x ?? 8,
+    anchorY: asset.anchorY ?? asset.anchor?.y ?? 8,
   });
 
   return true;

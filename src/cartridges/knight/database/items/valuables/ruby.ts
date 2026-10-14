@@ -19,6 +19,7 @@ export const rubyItem: ItemWikiDefinition = {
   assets: {
     type: 'single',
     imageUri: '', // Uses sprite sheet fallback when empty
+    sheetIndex: 4, // Legacy sprite sheet fallback
     width: 16,
     height: 16,
     anchor: { x: 8, y: 8 },

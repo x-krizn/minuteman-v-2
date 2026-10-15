@@ -21,14 +21,6 @@ export const sentryEnemy: EnemyWikiDefinition = {
     { itemId: 'potion_ap', chance: 0.15 },
     { itemId: 'emerald', chance: 0.05 },
   ],
-  assets: {
-    imageUri: '', // Paste custom base64 sprite data URL to override procedural sentry render
-    sheetIndex: -1,
-    frameWidth: 16,
-    frameHeight: 16,
-    anchorX: 8,
-    anchorY: 16,
-  },
   update(rooms, state, e, dt) {
     const room = rooms[state.room];
     const roomWidth = (room?.[0]?.length || COLS) * TILE_SIZE;

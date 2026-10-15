@@ -21,6 +21,7 @@ import {
   DASH_SPEED,
   GRAVITY,
   HALF_WIDTH,
+  INITIAL_START,
   ITEMS_PNG,
   JUMP_VELOCITY,
   KNIGHT_PNG,
@@ -36,7 +37,7 @@ import {
   TILES_PNG,
 } from './constants';
 import { updateEnemies } from './enemies';
-import { TUTORIAL_GREEN, TUTORIAL_ROOMS, tutorialLocalMap, buildFloor } from './database/world';
+import { TUTORIAL_GREEN, TUTORIAL_ROOMS, buildFloor } from './database/world';
 import { moveX, moveY } from './physics';
 import { updatePickups } from './pickups';
 import { drawKnightGame } from './renderer';
@@ -63,11 +64,11 @@ export function createKnightCartridge(): Cartridge {
   const ALL_SKILL_IDS: SkillId[] = ['heal', 'fireball', 'whirlwind', 'shockwave'];
 
   const state: KnightState = {
-    room: tutorialLocalMap.spawnPoint.room,
+    room: '0,0',
     rx: 0,
     ry: 0,
-    x: tutorialLocalMap.spawnPoint.x,
-    y: tutorialLocalMap.spawnPoint.y,
+    x: 32,
+    y: 128,
     vx: 0,
     vy: 0,
     ground: false,
@@ -259,7 +260,7 @@ export function createKnightCartridge(): Cartridge {
   };
 
   const respawn = () => {
-    const cp = state.checkpoint || tutorialLocalMap.spawnPoint;
+    const cp = state.checkpoint || INITIAL_START;
     state.x = cp.x;
     state.y = cp.y;
     state.vx = 0;

@@ -1,6 +1,6 @@
 {
-  "summary": "Revised implementation plan for:\n- Standard asset override objects ({ imageUri?: string, sheetIndex?: number }) with placeholders across all items, weapons, enemies, and tiles\n- Dynamic renderer integration prioritizing entry.assets.imageUri over legacy sheet slices or procedural fallbacks\n- 5-tier hierarchical map architecture (world > region > area > local > room)\n- Moving initial spawn coordinates into map definitions\n- Deleting temporary database/areas bridge folder",
-  "updatedAt": "2026-10-14T08:24:00.764173852Z",
+  "summary": "Implementation plan for character entries and 4-frame proto_knight sprite:\n- Establishes src/cartridges/knight/database/characters/ directory for player and NPC archetypes\n- Creates proto_knight.ts defining base health, stamina, energy, physics, starting equipment, and sprite metadata\n- Creates enemy_knight.ts with matching combat moveset, AI patrolling, block/parry, and telegraphed attacks\n- Integrates the new 4-frame proto_knight sprite sheet (72x18) with updated walk cycle animation\n- Hooks character entries into knightCartridge initialization, enemies update loop, and satchel display",
+  "updatedAt": "2026-10-13T16:47:08.246231657Z",
   "requestFeedback": true,
   "userFacing": true
 }

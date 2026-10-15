@@ -19,7 +19,6 @@ export const potionApItem: ItemWikiDefinition = {
   assets: {
     type: 'single',
     imageUri: '',
-    sheetIndex: 9, // Legacy sprite sheet fallback
     width: 16,
     height: 16,
     anchor: { x: 8, y: 8 },

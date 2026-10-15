@@ -19,7 +19,6 @@ export const emeraldItem: ItemWikiDefinition = {
   assets: {
     type: 'single',
     imageUri: '',
-    sheetIndex: 5, // Legacy sprite sheet fallback
     width: 16,
     height: 16,
     anchor: { x: 8, y: 8 },

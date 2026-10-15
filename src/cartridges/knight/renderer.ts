@@ -4,7 +4,7 @@
  */
 
 import { CartridgeSurface } from '../../types/cartridge';
-import { KnightState, StatType, getAssetImageUri, getAssetSheetIndex } from './types';
+import { KnightState, StatType } from './types';
 import {
   BG_COLOR,
   COLS,
@@ -16,10 +16,9 @@ import {
 } from './constants';
 import { tileIndex } from './physics';
 import { getItemDefinition } from './database/items';
-import { getEnemyDefinition } from './database/enemies';
 import { SKILL_REGISTRY } from './database/skills';
 import { getWeaponDefinition } from './database/weapons';
-import { getBiomeDefinition, getTileDefinition } from './database/world';
+import { getBiomeDefinition } from './database/world';
 import {
   drawProceduralPickup,
   drawProceduralArcTrail,
@@ -106,19 +105,12 @@ export function drawKnightGame(
           continue;
         }
         if (char !== '#') continue;
-        const tileDef = getTileDefinition('wall');
-        const wallUri = getAssetImageUri(tileDef?.assets);
-        const customWallImg = wallUri ? getCachedImage(wallUri) : null;
-        if (customWallImg) {
-          g.drawImage(customWallImg, tx * TILE_SIZE, ty * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-        } else {
-          tiles.draw(
-            g,
-            tileIndex(rooms, state, tx, ty),
-            tx * TILE_SIZE,
-            ty * TILE_SIZE
-          );
-        }
+        tiles.draw(
+          g,
+          tileIndex(rooms, state, tx, ty),
+          tx * TILE_SIZE,
+          ty * TILE_SIZE
+        );
       }
     }
   }
@@ -132,12 +124,11 @@ export function drawKnightGame(
         return;
       }
       // 2b. Fallback to sprite sheet cell
-      const sIdx = getAssetSheetIndex(it.assets) ?? it.spriteIndex;
-      if (items && sIdx !== undefined && sIdx >= 0) {
+      if (items && it.spriteIndex !== undefined && it.spriteIndex >= 0) {
         const bob = Math.round(Math.sin(nowMs / 250) * 1.5);
         items.draw(
           g,
-          sIdx,
+          it.spriteIndex,
           pk.x,
           pk.y + (it.category === 'coin' || it.category === 'key' ? 0 : bob)
         );
@@ -188,21 +179,7 @@ export function drawKnightGame(
   state.enemies.forEach((e) => {
     if (e.hp <= 0) return;
 
-    // Check for custom dedicated enemy sprite override
-    const enemyDef = getEnemyDefinition(e.type);
-    const enemyUri = getAssetImageUri(enemyDef?.assets);
-    const customEnemyImg = enemyUri ? getCachedImage(enemyUri) : null;
-    if (customEnemyImg) {
-      g.save();
-      if (e.dir < 0) {
-        g.translate(Math.round(e.x), Math.round(e.y));
-        g.scale(-1, 1);
-        g.drawImage(customEnemyImg, -8, -16, 16, 16);
-      } else {
-        g.drawImage(customEnemyImg, Math.round(e.x - 8), Math.round(e.y - 16), 16, 16);
-      }
-      g.restore();
-    } else if (e.type === 'enemy_knight') {
+    if (e.type === 'enemy_knight') {
       // Corrupted Rival Knight: renders knight sprite with buckler guard and slash weapon
       if (knight) {
         knight.draw(g, e.isAttacking ? 1 : 0, e.x, e.y, e.dir < 0);

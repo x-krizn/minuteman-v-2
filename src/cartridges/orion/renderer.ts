@@ -362,10 +362,25 @@ export function drawOrionGame(
       g.fillStyle = '#77c7ff';
       g.fillRect(state.x - 1, py - 15, 2, 1);
 
-      // Weapon Hardpoint
+      // Weapon Hardpoint (Visually distinct per equipped weapon)
       const dirInfo = DIR_VECTORS[state.dir] || DIR_VECTORS.S;
-      g.fillStyle = '#94a3b8';
-      g.fillRect(state.x + dirInfo.dx * 7 - 1, py - 9 + dirInfo.dy * 5, 3, 6);
+      const activeWeaponId = state.equippedWeapons[state.activeWeaponIndex] || 'gladius_boltcaster';
+      const wx = state.x + dirInfo.dx * 7;
+      const wy = py - 9 + dirInfo.dy * 5;
+
+      if (activeWeaponId === 'khopesh') {
+        // Scout Khopesh: Gleaming curved magenta/violet sickle blade
+        g.fillStyle = '#c084fc';
+        g.fillRect(wx - 2, wy - 1, 4, 7);
+        g.fillStyle = '#f0abfc';
+        g.fillRect(wx + (dirInfo.dx >= 0 ? 1 : -2), wy - 2, 2, 4);
+      } else {
+        // Gladius Boltcaster: Steel rifle barrel with amber muzzle
+        g.fillStyle = '#94a3b8';
+        g.fillRect(wx - 1, wy, 3, 6);
+        g.fillStyle = '#fbbf24';
+        g.fillRect(wx - 1, wy + (dirInfo.dy >= 0 ? 5 : -1), 3, 2);
+      }
 
       g.restore();
     },
@@ -459,17 +474,24 @@ function drawCanonicalHud(g: CanvasRenderingContext2D, state: OrionState): void 
   );
 
   // Top-Right: Currencies & Weapon Info
+  const activeWeaponId = state.equippedWeapons[state.activeWeaponIndex] || 'gladius_boltcaster';
+  const isKhopesh = activeWeaponId === 'khopesh';
+
   g.textAlign = 'right';
   g.fillStyle = '#ffd27d';
   g.fillText(`SCRAP:${state.salvageScrap}`, SCREEN_W - 4, 9);
 
-  // Ammo & Reload status
+  // Active Weapon & Ammo / Combo status
   if (state.isReloading) {
     g.fillStyle = '#f59e0b';
-    g.fillText('RELOADING...', SCREEN_W - 4, 17);
+    g.fillText(isKhopesh ? 'STANCE...' : 'RELOADING...', SCREEN_W - 4, 17);
   } else {
-    g.fillStyle = '#77c7ff';
-    g.fillText(`AMMO:${state.ammo}/${state.maxAmmo}`, SCREEN_W - 4, 17);
+    g.fillStyle = isKhopesh ? '#e879f9' : '#77c7ff';
+    g.fillText(
+      `${isKhopesh ? 'KHOPESH' : 'GLADIUS'} ${state.ammo}/${state.maxAmmo}`,
+      SCREEN_W - 4,
+      17
+    );
   }
 
   // Bottom action bar controls
@@ -477,7 +499,13 @@ function drawCanonicalHud(g: CanvasRenderingContext2D, state: OrionState): void 
   g.fillStyle = 'rgba(0, 0, 0, 0.7)';
   g.fillRect(4, SCREEN_H - 12, SCREEN_W - 8, 9);
   g.fillStyle = '#e2e8f0';
-  g.fillText('[X] AUTO · [L] AP SLUG · [R] GRENADE · [Y] SWAP', 6, SCREEN_H - 5);
+  g.fillText(
+    isKhopesh
+      ? '[X] SICKLE · [L] LUNGE · [R] DEFLECT · [Y] SWAP'
+      : '[X] AUTO · [L] AP SLUG · [R] GRENADE · [Y] SWAP',
+    6,
+    SCREEN_H - 5
+  );
 
   // Contextual Interactive Prompts & Toasts (Docked unobtrusively in lower section)
   if (state.toastText && state.toastTimer > 0) {

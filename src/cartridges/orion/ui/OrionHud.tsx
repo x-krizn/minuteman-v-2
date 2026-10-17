@@ -4,6 +4,8 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { performWeaponSwap } from '../combat';
+import { getWeaponDefinition } from '../database/weapons';
 import { getOrionStateRef, notifyOrionStateChange } from '../stateStore';
 
 const ROOM_TITLES: Record<string, string> = {
@@ -58,14 +60,23 @@ export const OrionHud: React.FC = () => {
   // Room Title
   const roomName = ROOM_TITLES[state.room] || `Sector [${state.rx}, ${state.ry}]`;
 
-  // Ammo & Magazine
+  // Active Weapon & Magazine
+  const currentWeaponId = state.equippedWeapons[state.activeWeaponIndex] || 'gladius_boltcaster';
+  const activeWeapon = getWeaponDefinition(currentWeaponId);
+  const activeWeaponName = activeWeapon?.name || 'Gladius Boltcaster';
+  const isKhopesh = currentWeaponId === 'khopesh';
   const ammo = state.ammo;
-  const maxAmmo = state.maxAmmo || 9;
+  const maxAmmo = state.maxAmmo || activeWeapon?.shotsPerChain || 9;
   const isReloading = state.isReloading;
   const reloadTimer = state.reloadTimer;
+  const swapCooldown = state.weaponSwapCooldown || 0;
+  const totalWeapons = state.equippedWeapons.length;
 
-  // Active Weapon
-  const activeWeaponName = 'Gladius Boltcaster';
+  const move0Name = isKhopesh ? 'SICKLE COMBO' : 'AUTO-SALVO';
+  const move1Name = isKhopesh ? 'EXEC LUNGE' : 'AP SLUG';
+  const move2Name = isKhopesh ? 'SWEEP DEFLECT' : 'GRENADE';
+  const cd1 = state.skillCooldowns[1] || 0;
+  const cd2 = state.skillCooldowns[2] || 0;
 
   return (
     <aside
@@ -202,33 +213,66 @@ export const OrionHud: React.FC = () => {
 
           {/* Weapon Status & Ammo Magazine Box */}
           <div className="flex flex-col items-end bg-[#0b1322]/85 backdrop-blur-[2px] p-1.5 rounded border border-[#334155]/60 shadow-lg w-full">
-            <div className="text-[9px] font-bold text-[#f1f5f9] tracking-wider flex items-center gap-1">
-              <span>{activeWeaponName}</span>
-              <span className="bg-[#0369a1]/50 border border-[#0284c7]/50 text-[#38bdf8] text-[7.5px] px-1 rounded font-bold">
-                PIERCE
+            <div className="w-full flex items-center justify-between gap-1.5">
+              <button
+                onClick={() => {
+                  performWeaponSwap(state, {
+                    say: (txt) => {
+                      state.toastText = txt;
+                      state.toastTimer = 2.5;
+                    },
+                  });
+                }}
+                className={`pointer-events-auto px-1 py-0.2 rounded text-[7.5px] font-bold border transition-colors cursor-pointer ${
+                  swapCooldown > 0
+                    ? 'bg-[#1e293b] text-[#94a3b8] border-[#475569]'
+                    : 'bg-[#422006]/80 hover:bg-[#713f12] text-[#fbbf24] border-[#f59e0b]/60'
+                }`}
+                title="Swap Weapon [Y]"
+              >
+                {swapCooldown > 0 ? `CD ${swapCooldown.toFixed(1)}s` : `[Y] ${state.activeWeaponIndex + 1}/${totalWeapons}`}
+              </button>
+              <span
+                className={`text-[7.5px] px-1 rounded font-bold border ${
+                  isKhopesh
+                    ? 'bg-[#701a75]/60 border-[#c084fc]/50 text-[#f0abfc]'
+                    : 'bg-[#0369a1]/50 border-[#0284c7]/50 text-[#38bdf8]'
+                }`}
+              >
+                {activeWeapon?.primaryDamageType.toUpperCase() || 'PIERCE'}
               </span>
+            </div>
+
+            <div className="text-[9px] font-bold text-[#f1f5f9] tracking-wider mt-0.5 truncate max-w-full">
+              {activeWeaponName}
             </div>
 
             {/* Reloading Alert or Ammo Pips */}
             {isReloading ? (
               <div className="text-[9.5px] text-[#f59e0b] font-black tracking-wider animate-pulse mt-1 flex items-center gap-1">
                 <span>🔄</span>
-                <span>RELOAD [{reloadTimer.toFixed(1)}s]</span>
+                <span>{isKhopesh ? 'STANCE' : 'RELOAD'} [{reloadTimer.toFixed(1)}s]</span>
               </div>
             ) : (
               <div className="flex flex-col items-end mt-1 w-full">
                 <div className="flex justify-between items-center w-full text-[8.5px] font-bold text-[#93c5fd]">
-                  <span className="text-[8px] text-[#64748b]">MAG</span>
-                  <span>{ammo} / {maxAmmo}</span>
+                  <span className="text-[8px] text-[#64748b]">{isKhopesh ? 'COMBO' : 'MAG'}</span>
+                  <span className={isKhopesh ? 'text-[#f0abfc]' : 'text-[#93c5fd]'}>
+                    {ammo} / {maxAmmo}
+                  </span>
                 </div>
-                {/* Segmented Ammo Rounds */}
+                {/* Segmented Ammo / Combo Rounds */}
                 <div className="flex items-center gap-0.8 mt-0.5">
                   {Array.from({ length: maxAmmo }).map((_, i) => (
                     <div
                       key={i}
-                      className={`w-1.5 h-2 rounded-xs border transition-colors ${
+                      className={`h-2 rounded-xs border transition-colors ${
+                        isKhopesh ? 'w-3' : 'w-1.5'
+                      } ${
                         i < ammo
-                          ? 'bg-[#38bdf8] border-[#7dd3fc] shadow-[0_0_3px_rgba(56,189,248,0.8)]'
+                          ? isKhopesh
+                            ? 'bg-[#e879f9] border-[#f5d0fe] shadow-[0_0_4px_rgba(232,121,249,0.85)]'
+                            : 'bg-[#38bdf8] border-[#7dd3fc] shadow-[0_0_3px_rgba(56,189,248,0.8)]'
                           : 'bg-[#1e293b] border-[#334155]'
                       }`}
                     />
@@ -286,26 +330,42 @@ export const OrionHud: React.FC = () => {
             <kbd className="bg-[#1e293b] text-[#38bdf8] border border-[#38bdf8]/40 px-1 py-0.2 rounded font-bold text-[8px]">
               X
             </kbd>
-            <span>AUTO-SALVO</span>
+            <span className={isKhopesh ? 'text-[#f0abfc]' : 'text-[#cbd5e1]'}>{move0Name}</span>
           </span>
           <span className="flex items-center gap-0.8">
             <kbd className="bg-[#1e293b] text-[#38bdf8] border border-[#38bdf8]/40 px-1 py-0.2 rounded font-bold text-[8px]">
               L
             </kbd>
-            <span>AP SLUG</span>
+            <span className={cd1 > 0 ? 'text-[#64748b]' : 'text-[#cbd5e1]'}>
+              {move1Name} {cd1 > 0 ? `(${cd1.toFixed(1)}s)` : ''}
+            </span>
           </span>
           <span className="flex items-center gap-0.8">
             <kbd className="bg-[#1e293b] text-[#38bdf8] border border-[#38bdf8]/40 px-1 py-0.2 rounded font-bold text-[8px]">
               R
             </kbd>
-            <span>GRENADE</span>
+            <span className={cd2 > 0 ? 'text-[#64748b]' : 'text-[#cbd5e1]'}>
+              {move2Name} {cd2 > 0 ? `(${cd2.toFixed(1)}s)` : ''}
+            </span>
           </span>
-          <span className="flex items-center gap-0.8">
+          <button
+            onClick={() => {
+              performWeaponSwap(state, {
+                say: (txt) => {
+                  state.toastText = txt;
+                  state.toastTimer = 2.5;
+                },
+              });
+            }}
+            className="pointer-events-auto flex items-center gap-0.8 hover:text-[#fef08a] cursor-pointer"
+          >
             <kbd className="bg-[#1e293b] text-[#fbbf24] border border-[#fbbf24]/40 px-1 py-0.2 rounded font-bold text-[8px]">
               Y
             </kbd>
-            <span>SWAP</span>
-          </span>
+            <span className={swapCooldown > 0 ? 'text-[#64748b]' : 'text-[#fde68a] font-bold'}>
+              SWAP {swapCooldown > 0 ? `(${swapCooldown.toFixed(1)}s)` : `[${state.activeWeaponIndex + 1}/${totalWeapons}]`}
+            </span>
+          </button>
           <span className="flex items-center gap-0.8">
             <kbd className="bg-[#1e293b] text-[#f97316] border border-[#f97316]/40 px-1 py-0.2 rounded font-bold text-[8px]">
               B

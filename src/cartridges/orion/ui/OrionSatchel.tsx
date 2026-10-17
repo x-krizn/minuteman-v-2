@@ -5,6 +5,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { soundSystem } from '../../../engine/core/soundSystem';
+import { performWeaponSwap } from '../combat';
 import { getItemDefinition } from '../database/items';
 import { getWeaponDefinition } from '../database/weapons';
 import { TRAIT_REGISTRY } from '../database/characters/trait_lines';
@@ -250,6 +251,57 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
       {/* Tab: WEAPONS & MOVESET */}
       {tab === 'weapons' && (
         <div className="flex-1 overflow-y-auto space-y-2 pr-0.5 text-[10px]">
+          {/* Equipped Hardpoints Selector */}
+          <div className="text-[10px] font-bold text-[#94a3b8]">EQUIPPED HARDPOINTS (PRESS [Y] IN COMBAT TO SWAP):</div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {state.equippedWeapons.map((wId, idx) => {
+              const wDef = getWeaponDefinition(wId);
+              const isSelected = idx === state.activeWeaponIndex;
+              return (
+                <button
+                  key={`${wId}-${idx}`}
+                  onClick={() => {
+                    if (!isSelected) {
+                      performWeaponSwap(
+                        state,
+                        {
+                          say: (txt) => {
+                            state.toastText = txt;
+                            state.toastTimer = 2.5;
+                          },
+                        },
+                        idx,
+                        true
+                      );
+                    }
+                  }}
+                  className={`p-2 rounded-xs border text-left transition-colors cursor-pointer ${
+                    isSelected
+                      ? 'bg-[#172554]/70 border-[#38bdf8] shadow-sm'
+                      : 'bg-[#090d14] border-[#1e293b] hover:border-[#475569]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[8px] font-bold text-[#94a3b8]">SLOT {idx + 1}</span>
+                    <span
+                      className={`px-1 py-0.2 rounded-xs text-[8px] font-bold ${
+                        isSelected ? 'bg-[#38bdf8] text-[#05070a]' : 'bg-[#1e293b] text-[#94a3b8]'
+                      }`}
+                    >
+                      {isSelected ? 'ACTIVE' : 'EQUIP'}
+                    </span>
+                  </div>
+                  <div className="text-[10.5px] font-bold text-[#ffd27d] mt-0.5 truncate">
+                    {wDef?.name || wId}
+                  </div>
+                  <div className="text-[8.5px] text-[#64748b] truncate">
+                    {wDef?.class} · {wDef?.shotsPerChain} Rounds
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
           {/* Active Weapon Card */}
           <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">
             <div className="flex items-center justify-between">
@@ -259,7 +311,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
               </div>
               <div className="text-right">
                 <span className="text-[9px] text-[#38bdf8]">
-                  AMMO: {state.ammo} / {state.maxAmmo}
+                  {currentWeaponId === 'khopesh' ? 'COMBO' : 'AMMO'}: {state.ammo} / {state.maxAmmo}
                 </span>
                 <div className="text-[9px] text-[#94a3b8]">
                   SWAP CD: {state.weaponSwapCooldown > 0 ? `${state.weaponSwapCooldown.toFixed(1)}s` : 'READY'}

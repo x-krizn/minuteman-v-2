@@ -1,6 +1,6 @@
 {
-  "summary": "Implementation plan for Project Orion Stage 1 (The Bog), Stage 2 (Camelot Border Town), and Part V Secrets systems based on Project Orion — Index.md. Covers Corrosive Bog Water, Orc Pairs, Bog Wurm, Poe & Lantern resolution, Bedivere's Ring choice & Numbered List, Lady of the Lake secret boss, NPC Grail Sickness & Loyalist disposition, Market Desynchronization phasing, Dynamic Orc Raids, the Three Knights (Percival, Tristan, Bors) & Knight's Oath feat, and the Three-Way Cathedral Dungeon Door.",
-  "updatedAt": "2026-10-17T16:56:49.687915814Z",
+  "summary": "Implementation plan for Project Orion's dual-mode B boost (tap burst + hold continuous boost), Y button multi-function (tap target lock-on with strafe aiming + hold weapon swap), and modular multi-source action registry for X (always basic attack) and assignable L & R triggers (Weapon Skills, Defensive/Hardware Modules, and Reactor/Core Abilities).",
+  "updatedAt": "2026-10-17T17:32:46.721002080Z",
   "requestFeedback": true,
   "userFacing": true
 }

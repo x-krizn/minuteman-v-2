@@ -273,6 +273,13 @@ export interface OrionExecutionContext {
   sound: SoundSystem;
 }
 
+export type OrionActionSourceCategory = 'weapon' | 'hardware' | 'reactor';
+
+export interface OrionAssignedActions {
+  L: string; // Default: 'weapon_skill_1'
+  R: string; // Default: 'weapon_skill_2'
+}
+
 // Master Player / Orion State
 export interface OrionState {
   areaId: string;
@@ -323,14 +330,29 @@ export interface OrionState {
   reloadDuration: number;
   skillCooldowns: number[]; // Cooldowns for Skills 0..4
 
-  // Active Skill Windup & Tell
+  // Active Skill / Action Windup & Tell
   activeSkillSlot: number | null;
+  activeActionId?: string | null;
   skillTellTimer: number;
   skillActionTimer: number;
 
-  // Booster Kit / Evasion
+  // Assignable L & R Multi-Source Actions
+  assignedActions: OrionAssignedActions;
+  actionCooldowns: Record<string, number>;
+  overdriveTimer?: number;
+  opticMarkTimer?: number;
+
+  // Target Lock-On & Y Hold Weapon Swap
+  lockedTargetId: number | null;
+  yHoldTimer?: number;
+  yHoldTriggeredSwap?: boolean;
+  wasYHeld?: boolean;
+
+  // Booster Kit / Evasion (Tap Dodge Burst + Hold Continuous Boost)
   hasBoosterKit: boolean;
   isBoosterDashing: boolean;
+  isContinuousBoosting?: boolean;
+  bHoldTimer?: number;
   boosterTimer: number;
   boosterCooldown: number;
   boosterDirX: number;

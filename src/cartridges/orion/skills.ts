@@ -65,12 +65,11 @@ export function updateProjectiles(
           e.stun = 0.2;
           e.hurt = 0.2;
 
-          // Knight's Oath Feat: +25% bonus damage against Camelot enemies
+          // Knight's Oath Feat (+25% vs Camelot) & Head Optic Target Painter (+25% vs marked targets)
           const hasKnightsOath = state.equippedFeats.includes('knights_oath');
-          const effDamage =
-            hasKnightsOath && e.faction === 'camelot'
-              ? Math.round(p.damage * 1.25)
-              : p.damage;
+          const oathMult = hasKnightsOath && e.faction === 'camelot' ? 1.25 : 1.0;
+          const opticMult = (state.opticMarkTimer || 0) > 0 ? 1.25 : 1.0;
+          const effDamage = Math.round(p.damage * oathMult * opticMult);
 
           // Apply damage through Defense Layers (Shield -> Armor -> Frame)
           applyDamageToLayers(

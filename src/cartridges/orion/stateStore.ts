@@ -44,6 +44,8 @@ export function saveOrionGame(state: OrionState): boolean {
       frame: state.frame,
       equippedWeapons: state.equippedWeapons,
       activeWeaponIndex: state.activeWeaponIndex,
+      assignedActions: state.assignedActions,
+      equippedFeats: state.equippedFeats,
       hasBoosterKit: state.hasBoosterKit,
       salvageScrap: state.salvageScrap,
       inventorySlots: state.inventorySlots,
@@ -87,6 +89,12 @@ export function loadOrionGame(state: OrionState): boolean {
     state.frame = data.frame ?? state.frame;
     state.equippedWeapons = data.equippedWeapons ?? state.equippedWeapons;
     state.activeWeaponIndex = data.activeWeaponIndex ?? state.activeWeaponIndex;
+    if (data.assignedActions && typeof data.assignedActions === 'object') {
+      state.assignedActions = { ...state.assignedActions, ...data.assignedActions };
+    }
+    if (Array.isArray(data.equippedFeats)) {
+      state.equippedFeats = data.equippedFeats;
+    }
     state.hasBoosterKit = data.hasBoosterKit ?? state.hasBoosterKit;
     state.salvageScrap = data.salvageScrap ?? state.salvageScrap;
     state.inventorySlots = consolidateInventorySlots(data.inventorySlots ?? state.inventorySlots);

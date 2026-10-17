@@ -18,8 +18,14 @@ import {
 } from '../stateStore';
 import {
   applyTraitLineProfile,
+  ASSIGNABLE_ACTION_CATALOG,
+  assignTriggerAction,
   awakenLadyOfTheLake,
   evaluateCathedralDoorStatus,
+  getActionCooldown,
+  isActionUnlocked,
+  resetTriggerActionsToDefault,
+  resolveTriggerAction,
   setBypassProgressionGates,
   setTutorialStateActive,
   syncStateGates,
@@ -28,6 +34,7 @@ import {
   TUTORIAL_STEP_DESCRIPTORS,
   TutorialStepId,
 } from '../systems';
+import { getResolvedActionDescriptor } from '../database/equipment';
 import { TraitLine } from '../types';
 
 export interface OrionSatchelProps {
@@ -60,6 +67,8 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
   const currentWeaponId = state.equippedWeapons[state.activeWeaponIndex] || 'gladius_boltcaster';
   const currentWeapon = getWeaponDefinition(currentWeaponId);
   const trait = TRAIT_REGISTRY[state.traitLine] || TRAIT_REGISTRY.Warrior;
+  const activeL = resolveTriggerAction(state, 'L');
+  const activeR = resolveTriggerAction(state, 'R');
 
   const handleUseItem = (itemId: string) => {
     const itemDef = getItemDefinition(itemId);
@@ -114,7 +123,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                 : 'bg-[#0f172a] text-[#94a3b8] hover:bg-[#1e293b]'
             }`}
           >
-            WEAPONS
+            ACTIONS & WPN
           </button>
           <button
             onClick={() => {
@@ -290,7 +299,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                 {state.equippedFeats.includes('knights_oath')
                   ? "Knight's Oath Feat Active (+25% dmg vs Camelot enemies)"
                   : gates.canBoosterDash
-                  ? 'Booster Online: Lateral evasion dash (+20 Heat) & chasm clearance'
+                  ? 'Tap [B] Dodge Burst · Hold [B] Continuous Boost (until overheat)'
                   : 'Booster Offline: Salvage Fallen Scout [S] or unlock Level 2 Legs slot'}
               </div>
             </div>
@@ -301,12 +310,65 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
         </div>
       )}
 
-      {/* Tab: WEAPONS & MOVESET */}
+      {/* Tab: MULTI-SOURCE ACTIONS (X, L, R) & WEAPON HARDPOINTS */}
       {tab === 'weapons' && (
         <div className="flex-1 overflow-y-auto space-y-2 pr-0.5 text-[10px]">
-          {/* Equipped Hardpoints Selector */}
+          {/* Active Action Bindings Summary (X = Basic Always, L & R = Assignable) */}
+          <div className="p-2 bg-[#090d14] rounded-xs border border-[#38bdf8]/40 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[#38bdf8] font-bold text-[10px]">
+                ACTIVE COMBAT BINDINGS (X · L · R)
+              </span>
+              <button
+                onClick={() => {
+                  soundSystem.playSelect();
+                  resetTriggerActionsToDefault(state);
+                }}
+                className="px-1.5 py-0.2 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs text-[8px] font-bold text-[#ffd27d] cursor-pointer"
+              >
+                DEFAULT WEAPON SKILLS
+              </button>
+            </div>
+
+            <div className="grid grid-cols-3 gap-1 text-[8.5px]">
+              {/* X: Basic Attack Always */}
+              <div className="p-1.5 bg-[#0f172a] rounded-xs border border-[#1e293b]">
+                <div className="text-[#94a3b8] font-bold">[X] BASIC ATTACK (LOCKED)</div>
+                <div className="text-[#ffd27d] font-bold truncate mt-0.5">
+                  {currentWeapon?.moveset[0]?.name || 'Auto-Salvo'}
+                </div>
+                <div className="text-[7.5px] text-[#64748b] truncate">
+                  {currentWeapon?.name} [Slot 0]
+                </div>
+              </div>
+
+              {/* L: Assignable Trigger */}
+              <div className="p-1.5 bg-[#0f172a] rounded-xs border border-[#38bdf8]/50">
+                <div className="text-[#38bdf8] font-bold">[L] ASSIGNED ACTION</div>
+                <div className="text-[#e2e8f0] font-bold truncate mt-0.5">
+                  {activeL.name}
+                </div>
+                <div className="text-[7.5px] text-[#7dd3fc] truncate">
+                  {activeL.sourceLabel}
+                </div>
+              </div>
+
+              {/* R: Assignable Trigger */}
+              <div className="p-1.5 bg-[#0f172a] rounded-xs border border-[#c084fc]/50">
+                <div className="text-[#c084fc] font-bold">[R] ASSIGNED ACTION</div>
+                <div className="text-[#e2e8f0] font-bold truncate mt-0.5">
+                  {activeR.name}
+                </div>
+                <div className="text-[7.5px] text-[#e879f9] truncate">
+                  {activeR.sourceLabel}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/*Equipped Hardpoints Selector */}
           <div className="text-[10px] font-bold text-[#94a3b8]">
-            EQUIPPED HARDPOINTS (PRESS [Y] IN COMBAT TO SWAP · MAX SLOTS: {gates.maxWeaponSlots}):
+            EQUIPPED HARDPOINTS (TAP [Y] LOCK-ON · HOLD [Y] SWAP WEAPON · MAX SLOTS: {gates.maxWeaponSlots}):
           </div>
           <div className="grid grid-cols-2 gap-1.5">
             {state.equippedWeapons.map((wId, idx) => {
@@ -357,50 +419,87 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
             })}
           </div>
 
-          {/* Active Weapon Card */}
-          <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-[9px] text-[#94a3b8]">ACTIVE WEAPON (SLOT {state.activeWeaponIndex + 1}):</span>
-                <div className="text-[#ffd27d] font-bold text-[11px]">{currentWeapon?.name}</div>
-              </div>
-              <div className="text-right">
-                <span className="text-[9px] text-[#38bdf8]">
-                  {currentWeaponId === 'khopesh' ? 'COMBO' : 'AMMO'}: {state.ammo} / {state.maxAmmo}
-                </span>
-                <div className="text-[9px] text-[#94a3b8]">
-                  SWAP CD: {state.weaponSwapCooldown > 0 ? `${state.weaponSwapCooldown.toFixed(1)}s` : 'READY'}
-                </div>
-              </div>
-            </div>
-            <div className="text-[9px] text-[#94a3b8]">{currentWeapon?.description}</div>
+          {/* Multi-Source Assignable Action Catalog (Weapon Skills, Hardware Modules, Reactor Abilities) */}
+          <div className="text-[10px] font-bold text-[#94a3b8] pt-1">
+            ASSIGN [L] & [R] ACTIONS (WEAPON SKILLS · HARDWARE MODULES · REACTOR CORE):
           </div>
-
-          {/* 5-Action Moveset List */}
-          <div className="text-[10px] font-bold text-[#94a3b8] pt-1">EQUIPPED MOVESET & COMBAT TELLS:</div>
           <div className="space-y-1">
-            {currentWeapon?.moveset.map((action) => {
-              const isUnlocked = gates.unlockedSkillSlots.includes(action.slot);
+            {ASSIGNABLE_ACTION_CATALOG.map((catalogItem) => {
+              const resolved = getResolvedActionDescriptor(state, catalogItem.id);
+              const unlockInfo = isActionUnlocked(state, catalogItem.id);
+              const isAssignedL = (state.assignedActions?.L || 'weapon_skill_1') === catalogItem.id;
+              const isAssignedR = (state.assignedActions?.R || 'weapon_skill_2') === catalogItem.id;
+              const cd = getActionCooldown(state, catalogItem.id);
+
+              const badgeColor =
+                resolved.sourceCategory === 'weapon'
+                  ? 'bg-[#1e293b] text-[#ffd27d]'
+                  : resolved.sourceCategory === 'hardware'
+                  ? 'bg-[#0c4a6e] text-[#7dd3fc]'
+                  : 'bg-[#3b0764] text-[#e879f9]';
+
               return (
                 <div
-                  key={action.slot}
+                  key={catalogItem.id}
                   className={`p-1.5 bg-[#090d14] rounded-xs border space-y-0.5 ${
-                    isUnlocked ? 'border-[#1e293b]' : 'border-[#334155]/40 opacity-60'
+                    unlockInfo.unlocked ? 'border-[#1e293b]' : 'border-[#334155]/40 opacity-65'
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-[#e2e8f0]">
-                      [{action.slot === 0 ? 'X BUTTON' : action.slot === 1 ? 'L TRIGGER' : action.slot === 2 ? 'R TRIGGER' : `SLOT ${action.slot}`}] {action.name}
-                    </span>
-                    <span className="text-[9px] text-[#ffd27d]">
-                      {isUnlocked ? `${action.damage} ${action.damageType} (${action.damageFamily})` : 'LOCKED (LVL 4+)'}
-                    </span>
+                  <div className="flex items-center justify-between gap-1">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className={`px-1 py-0.2 rounded-xs text-[7.5px] font-bold uppercase shrink-0 ${badgeColor}`}>
+                        {resolved.sourceCategory === 'weapon'
+                          ? 'WEAPON'
+                          : resolved.sourceCategory === 'hardware'
+                          ? resolved.hardwareSlot || 'MODULE'
+                          : 'REACTOR'}
+                      </span>
+                      <span className="font-bold text-[#e2e8f0] truncate">{resolved.name}</span>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => {
+                          soundSystem.playSelect();
+                          assignTriggerAction(state, 'L', catalogItem.id);
+                        }}
+                        className={`px-1.5 py-0.2 rounded-xs font-bold text-[8px] border cursor-pointer ${
+                          isAssignedL
+                            ? 'bg-[#38bdf8] text-[#05070a] border-[#7dd3fc]'
+                            : 'bg-[#0f172a] text-[#94a3b8] border-[#334155] hover:border-[#38bdf8]'
+                        }`}
+                      >
+                        {isAssignedL ? 'BOUND [L]' : 'BIND L'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          soundSystem.playSelect();
+                          assignTriggerAction(state, 'R', catalogItem.id);
+                        }}
+                        className={`px-1.5 py-0.2 rounded-xs font-bold text-[8px] border cursor-pointer ${
+                          isAssignedR
+                            ? 'bg-[#c084fc] text-[#05070a] border-[#e879f9]'
+                            : 'bg-[#0f172a] text-[#94a3b8] border-[#334155] hover:border-[#c084fc]'
+                        }`}
+                      >
+                        {isAssignedR ? 'BOUND [R]' : 'BIND R'}
+                      </button>
+                    </div>
                   </div>
-                  <div className="text-[9px] text-[#94a3b8]">{action.description}</div>
-                  <div className="flex gap-2 text-[8px] text-[#64748b]">
-                    <span>TELL: {action.tellDurationSec}s</span>
-                    <span>COOLDOWN: {action.cooldownSec}s</span>
-                    <span>HEAT: +{action.heatCost}</span>
+
+                  <div className="text-[8.5px] text-[#94a3b8]">{resolved.description}</div>
+                  <div className="flex items-center justify-between text-[8px] text-[#64748b]">
+                    <div className="flex gap-2">
+                      <span>SOURCE: {resolved.sourceLabel}</span>
+                      <span>TELL: {resolved.tellDurationSec}s</span>
+                      <span>CD: {cd > 0 ? `${cd.toFixed(1)}s` : `${resolved.cooldownSec}s`}</span>
+                      <span>
+                        HEAT: {resolved.heatCost >= 0 ? `+${resolved.heatCost}` : `${resolved.heatCost}`}
+                      </span>
+                    </div>
+                    <span className={unlockInfo.unlocked ? 'text-[#4ade80] font-bold' : 'text-[#f59e0b]'}>
+                      {unlockInfo.reason}
+                    </span>
                   </div>
                 </div>
               );

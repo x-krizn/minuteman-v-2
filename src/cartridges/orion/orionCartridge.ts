@@ -12,7 +12,7 @@ import {
   CartridgeSurface,
 } from '../../types/cartridge';
 import { GameInput } from '../../types/input';
-import { handleCombatInput, updateCombat } from './combat';
+import { handleCombatInput, performWeaponSwap, updateCombat } from './combat';
 import {
   BOOSTER_DASH_COOLDOWN,
   BOOSTER_DASH_DURATION,
@@ -39,15 +39,21 @@ import {
 } from './stateStore';
 import {
   checkWorldInteractivePrompt,
+  cycleTargetLock,
   executeWorldInteraction,
   handleWorldRoomTransition,
   rebootAtSpawnAnchor,
   syncStateGates,
   updateEnvironmentalHazards,
+  updateTargetLock,
   updateTutorialSystem,
 } from './systems';
 import { OrionCombatContext, OrionState } from './types';
 import { OrionGameMenu, OrionHud, OrionSatchel } from './ui';
+
+const Y_HOLD_SWAP_THRESHOLD_SEC = 0.32;
+const B_HOLD_CONTINUOUS_THRESHOLD_SEC = 0.14;
+const CONTINUOUS_BOOST_HEAT_PER_SEC = 28;
 
 export function createOrionCartridge(): Cartridge {
   const rooms: Record<string, string[]> = { ...ORION_INITIAL_ROOMS };
@@ -119,12 +125,30 @@ export function createOrionCartridge(): Cartridge {
     skillCooldowns: [0, 0, 0, 0, 0],
 
     activeSkillSlot: null,
+    activeActionId: null,
     skillTellTimer: 0,
     skillActionTimer: 0,
 
-    // Booster Kit mobility
+    // Assignable L & R Multi-Source Actions (Default: Weapon Skills 1 & 2)
+    assignedActions: {
+      L: 'weapon_skill_1',
+      R: 'weapon_skill_2',
+    },
+    actionCooldowns: {},
+    overdriveTimer: 0,
+    opticMarkTimer: 0,
+
+    // Target Lock-On & Y Hold Weapon Swap
+    lockedTargetId: null,
+    yHoldTimer: 0,
+    yHoldTriggeredSwap: false,
+    wasYHeld: false,
+
+    // Booster Kit mobility (Tap Dodge Burst + Hold Continuous Boost)
     hasBoosterKit: false,
     isBoosterDashing: false,
+    isContinuousBoosting: false,
+    bHoldTimer: 0,
     boosterTimer: 0,
     boosterCooldown: 0,
     boosterDirX: 0,
@@ -228,6 +252,7 @@ export function createOrionCartridge(): Cartridge {
       // 0. Abyssal Sinkhole / Pit Falling & Death
       if (state.isFallingIntoPit) {
         state.isBoosterDashing = false;
+        state.isContinuousBoosting = false;
         updateElevationPhysics(rooms, state, dt);
 
         // Spawn void abyss particles
@@ -297,27 +322,66 @@ export function createOrionCartridge(): Cartridge {
       if (h.up || stick.y < -0.2) moveDy -= 1;
       if (h.down || stick.y > 0.2) moveDy += 1;
 
-      if (moveDx !== 0 || moveDy !== 0) {
-        const norm = Math.hypot(moveDx, moveDy) || 1;
-        state.faceX = moveDx / norm;
-        state.faceY = moveDy / norm;
+      const hasMoveInput = moveDx !== 0 || moveDy !== 0;
+      const moveNorm = Math.hypot(moveDx, moveDy) || 1;
+      const normMoveX = hasMoveInput ? moveDx / moveNorm : 0;
+      const normMoveY = hasMoveInput ? moveDy / moveNorm : 0;
+
+      // Update facing from movement only when NOT locked onto a target
+      if (hasMoveInput && state.lockedTargetId === null) {
+        state.faceX = normMoveX;
+        state.faceY = normMoveY;
         state.dir = getDirFromVector(moveDx, moveDy);
       }
 
-      // 2. Booster Kit Dash (B button) - governed by capability gate
+      // 1B. [Y] Button Multi-Function: Tap Y = Lock-On Target, Hold Y (>= 0.32s) = Weapon Swap
+      if (h.y) {
+        state.yHoldTimer = (state.yHoldTimer || 0) + dt;
+        if (state.yHoldTimer >= Y_HOLD_SWAP_THRESHOLD_SEC && !state.yHoldTriggeredSwap) {
+          state.yHoldTriggeredSwap = true;
+          performWeaponSwap(state, combatCtx);
+        }
+        state.wasYHeld = true;
+      } else {
+        if (state.wasYHeld) {
+          // Released Y: if held less than threshold, execute Tap Y Target Lock-On!
+          if (!state.yHoldTriggeredSwap) {
+            cycleTargetLock(state, combatCtx);
+          }
+          state.yHoldTimer = 0;
+          state.yHoldTriggeredSwap = false;
+          state.wasYHeld = false;
+        }
+      }
+
+      // Maintain target lock-on (strafing / auto-facing locked target)
+      updateTargetLock(state);
+
+      // 2. [B] Button Dual-Mode Boost:
+      // - Tap B: Quick dodge burst
+      // - Hold B: Continuous thruster boost until release or overheat (100 Heat)
       if (p.b) {
-        if (gates.canBoosterDash && state.boosterCooldown <= 0) {
+        state.bHoldTimer = 0;
+        if (!gates.canBoosterDash) {
+          soundSystem.playMenuBeep();
+          combatCtx.say('BOOSTER KIT OFFLINE — SALVAGE FALLEN SCOUT [S]');
+          notifyOrionStateChange();
+        } else if (state.heat >= state.maxHeat) {
+          soundSystem.playMenuBeep();
+          combatCtx.say('REACTOR OVERHEATED — VENT HEAT BEFORE BOOSTING');
+          notifyOrionStateChange();
+        } else if (state.boosterCooldown <= 0) {
           state.isBoosterDashing = true;
           state.boosterTimer = BOOSTER_DASH_DURATION;
-          state.boosterCooldown = BOOSTER_DASH_COOLDOWN;
-          state.heat = Math.min(state.maxHeat, state.heat + BOOSTER_HEAT_COST);
+          state.boosterCooldown = BOOSTER_DASH_COOLDOWN * 0.65;
+          state.heat = Math.min(state.maxHeat, state.heat + BOOSTER_HEAT_COST * 0.7);
 
           const dirInfo = DIR_VECTORS[state.dir] || DIR_VECTORS.S;
-          state.boosterDirX = moveDx !== 0 || moveDy !== 0 ? state.faceX : dirInfo.dx;
-          state.boosterDirY = moveDx !== 0 || moveDy !== 0 ? state.faceY : dirInfo.dy;
+          state.boosterDirX = hasMoveInput ? normMoveX : state.faceX || dirInfo.dx;
+          state.boosterDirY = hasMoveInput ? normMoveY : state.faceY || dirInfo.dy;
           soundSystem.playDash();
 
-          // Booster exhaust particles
+          // Initial dodge burst exhaust particles
           for (let i = 0; i < 4; i++) {
             state.particles.push({
               x: state.x - state.boosterDirX * 6 + (Math.random() - 0.5) * 4,
@@ -333,24 +397,68 @@ export function createOrionCartridge(): Cartridge {
               fade: true,
             });
           }
-        } else if (!gates.canBoosterDash) {
-          soundSystem.playMenuBeep();
-          combatCtx.say('BOOSTER KIT OFFLINE — SALVAGE FALLEN SCOUT [S]');
-          notifyOrionStateChange();
         }
+      }
+
+      if (h.b && gates.canBoosterDash) {
+        state.bHoldTimer = (state.bHoldTimer || 0) + dt;
+        if (state.bHoldTimer >= B_HOLD_CONTINUOUS_THRESHOLD_SEC && state.heat < state.maxHeat) {
+          state.isContinuousBoosting = true;
+          state.isBoosterDashing = true;
+          const dirInfo = DIR_VECTORS[state.dir] || DIR_VECTORS.S;
+          state.boosterDirX = hasMoveInput ? normMoveX : state.boosterDirX || dirInfo.dx;
+          state.boosterDirY = hasMoveInput ? normMoveY : state.boosterDirY || dirInfo.dy;
+
+          state.heat = Math.min(state.maxHeat, state.heat + CONTINUOUS_BOOST_HEAT_PER_SEC * dt);
+
+          // Continuous thruster exhaust stream
+          if (Math.random() < 0.75) {
+            state.particles.push({
+              x: state.x - state.boosterDirX * 6 + (Math.random() - 0.5) * 4,
+              y: state.y - state.boosterDirY * 6 + (Math.random() - 0.5) * 4,
+              z: state.z + 4,
+              vx: -state.boosterDirX * 35 + (Math.random() - 0.5) * 12,
+              vy: -state.boosterDirY * 35 + (Math.random() - 0.5) * 12,
+              vz: 3,
+              life: 0.2,
+              maxLife: 0.2,
+              color: state.heat > 80 ? '#f97316' : '#38bdf8',
+              size: 2,
+              fade: true,
+            });
+          }
+
+          // Cut continuous boost if reactor reaches max heat (100)
+          if (state.heat >= state.maxHeat) {
+            state.isContinuousBoosting = false;
+            state.isBoosterDashing = false;
+            state.boosterCooldown = 0.85;
+            soundSystem.playMenuBeep();
+            combatCtx.say('REACTOR OVERHEAT — CONTINUOUS BOOST CUT!');
+            notifyOrionStateChange();
+          }
+        }
+      } else {
+        if (state.isContinuousBoosting) {
+          state.isContinuousBoosting = false;
+          state.isBoosterDashing = false;
+        }
+        state.bHoldTimer = 0;
       }
 
       // Execute Movement
       if (state.isBoosterDashing) {
-        state.boosterTimer -= dt;
-        const step = BOOSTER_SPEED * dt;
+        if (!state.isContinuousBoosting) {
+          state.boosterTimer -= dt;
+          if (state.boosterTimer <= 0) {
+            state.isBoosterDashing = false;
+          }
+        }
+        const boostSpeed = state.isContinuousBoosting ? BOOSTER_SPEED * 0.88 : BOOSTER_SPEED;
+        const step = boostSpeed * dt;
         state.x = moveEntityX(rooms, state, state.x, state.y, state.z, state.boosterDirX * step);
         state.y = moveEntityY(rooms, state, state.x, state.y, state.z, state.boosterDirY * step);
-
-        if (state.boosterTimer <= 0) {
-          state.isBoosterDashing = false;
-        }
-      } else if (moveDx !== 0 || moveDy !== 0) {
+      } else if (hasMoveInput) {
         // Check if standing in deep bog mud
         const tx = Math.floor(state.x / TILE_SIZE);
         const ty = Math.floor(state.y / TILE_SIZE);
@@ -358,8 +466,9 @@ export function createOrionCartridge(): Cartridge {
         const inMud = curChar === '~' && state.z <= 0;
         const speed = WALK_SPEED * (inMud ? MUD_SPEED_PENALTY : 1.0);
 
-        const stepX = state.faceX * speed * dt;
-        const stepY = state.faceY * speed * dt;
+        // Move along normMoveX/normMoveY so pilot can strafe while locked onto a target!
+        const stepX = normMoveX * speed * dt;
+        const stepY = normMoveY * speed * dt;
 
         state.x = moveEntityX(rooms, state, state.x, state.y, state.z, stepX);
         state.y = moveEntityY(rooms, state, state.x, state.y, state.z, stepY);

@@ -446,6 +446,23 @@ export function drawOrionGame(
         const framePct = Math.max(0, e.frame.integrity / e.frame.maxIntegrity);
         g.fillStyle = e.npcDisposition === 'calm' ? '#7dd3fc' : '#8dd7ad';
         g.fillRect(e.x - barW / 2, ey - 22, barW * framePct, 3);
+
+        // Target Lock-On Reticle (Tap [Y])
+        if (state.lockedTargetId === e.id) {
+          const pulse = 9 + Math.sin(state.t * 8) * 1.5;
+          g.strokeStyle = '#38bdf8';
+          g.lineWidth = 1.2;
+          g.beginPath();
+          g.arc(e.x, ey - 9, pulse, 0, Math.PI * 2);
+          g.stroke();
+
+          // Corner Lock Brackets
+          g.fillStyle = '#fbbf24';
+          g.fillRect(e.x - pulse - 1, ey - 9 - pulse, 3, 1);
+          g.fillRect(e.x + pulse - 2, ey - 9 - pulse, 3, 1);
+          g.fillRect(e.x - pulse - 1, ey - 9 + pulse, 3, 1);
+          g.fillRect(e.x + pulse - 2, ey - 9 + pulse, 3, 1);
+        }
       },
     });
   }
@@ -469,6 +486,19 @@ export function drawOrionGame(
 
       const py = state.y - state.z * Z_SCALE;
 
+      // Subtle Lock-On Aim Line from Pilot to Locked Target
+      if (state.lockedTargetId !== null && !isFalling) {
+        const lockedEnemy = state.enemies.find((en) => en.id === state.lockedTargetId);
+        if (lockedEnemy) {
+          g.strokeStyle = 'rgba(56, 189, 248, 0.28)';
+          g.lineWidth = 1;
+          g.beginPath();
+          g.moveTo(state.x, py - 8);
+          g.lineTo(lockedEnemy.x, lockedEnemy.y - lockedEnemy.z * Z_SCALE - 8);
+          g.stroke();
+        }
+      }
+
       g.save();
       g.globalAlpha = alpha;
       if (scale < 1.0) {
@@ -477,11 +507,17 @@ export function drawOrionGame(
         g.translate(-state.x, -py);
       }
 
-      // Booster Kit Evade Thrusters
-      if (state.isBoosterDashing) {
-        g.fillStyle = '#77c7ff';
+      // Booster Kit Evade / Continuous Boost Thrusters
+      if (state.isBoosterDashing || state.isContinuousBoosting) {
+        g.fillStyle = state.isContinuousBoosting ? '#38bdf8' : '#77c7ff';
         g.beginPath();
-        g.arc(state.x - state.boosterDirX * 6, py - 6 - state.boosterDirY * 6, 5, 0, Math.PI * 2);
+        g.arc(
+          state.x - state.boosterDirX * 6,
+          py - 6 - state.boosterDirY * 6,
+          state.isContinuousBoosting ? 6 : 5,
+          0,
+          Math.PI * 2
+        );
         g.fill();
       }
 

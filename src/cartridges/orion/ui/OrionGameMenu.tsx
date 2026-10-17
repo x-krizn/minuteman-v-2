@@ -112,31 +112,31 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
           <div className="space-y-1.5 text-[10px]">
             <div className="p-1.5 bg-[#1e293b] rounded-xs border border-[#334155]">
               <span className="text-[#facc15] font-bold">D-PAD / STICK:</span> 8-Way
-              directional navigation on 2.5D ground plane.
+              directional navigation on 2.5D ground plane (strafes while target locked).
             </div>
             <div className="p-1.5 bg-[#1e293b] rounded-xs border border-[#334155]">
               <span className="text-[#facc15] font-bold">[A] JUMP / EXAMINE:</span> Elevation leap
               over abyssal sinkholes (`_`), sync Spawn Anchors (`D`), loot Caches (`C`), or close pop-ups.
             </div>
             <div className="p-1.5 bg-[#1e293b] rounded-xs border border-[#334155]">
-              <span className="text-[#facc15] font-bold">[B] BOOSTER DASH:</span> Lateral thruster
-              evasion (+20 Heat) once Booster Kit is online.
+              <span className="text-[#facc15] font-bold">[B] TAP DODGE / HOLD CONTINUOUS BOOST:</span> Tap
+              for a quick dodge burst; hold `[B]` for continuous thruster boost until release or Reactor Overheat (`100` Heat).
             </div>
             <div className="p-1.5 bg-[#1e293b] rounded-xs border border-[#334155]">
-              <span className="text-[#facc15] font-bold">[X] SKILL 0 AUTO-CHAIN:</span> Fire Gladius
-              9-shot bolt salvo or swing Khopesh 3-hit melee combo.
+              <span className="text-[#facc15] font-bold">[Y] TAP LOCK-ON / HOLD WEAPON SWAP:</span> Tap
+              `[Y]` to lock onto and cycle hostile targets; hold `[Y]` to swap between equipped weapon hardpoints.
             </div>
             <div className="p-1.5 bg-[#1e293b] rounded-xs border border-[#334155]">
-              <span className="text-[#facc15] font-bold">[Y] WEAPON SWAP:</span> Swap between equipped
-              weapon hardpoints (5.0s global cooldown).
+              <span className="text-[#facc15] font-bold">[X] BASIC ATTACK (ALWAYS):</span> Fires active
+              weapon's Basic Attack chain (Gladius 9-round salvo or Khopesh 3-hit combo).
             </div>
             <div className="p-1.5 bg-[#1e293b] rounded-xs border border-[#334155]">
-              <span className="text-[#facc15] font-bold">[L / R] ACTIVE SKILLS 1 & 2:</span> Trigger
-              equipped weapon active skills (AP Slug / Frag Grenade / Executioner Lunge).
+              <span className="text-[#facc15] font-bold">[L / R] ASSIGNABLE ACTIONS:</span> Defaults to
+              Weapon Skills 1 & 2; reassignable in `[SELECT]` Satchel to Weapon Skills, Hardware Modules, or Reactor Abilities.
             </div>
             <div className="p-1.5 bg-[#1e293b] rounded-xs border border-[#334155]">
               <span className="text-[#facc15] font-bold">[SHIFT / SELECT]:</span> Open Pilot Satchel,
-              Trait Line Selector, & Multi-Domain State Gate Controller.
+              Action Loadout Binder, Trait Line Selector, & Multi-Domain State Gate Controller.
             </div>
           </div>
         </div>

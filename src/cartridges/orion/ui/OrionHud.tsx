@@ -8,7 +8,11 @@ import { performWeaponSwap } from '../combat';
 import { getWeaponDefinition } from '../database/weapons';
 import { getOrionStateRef, notifyOrionStateChange } from '../stateStore';
 import {
+  cycleTargetLock,
+  getActionCooldown,
+  getLockedTarget,
   getRoomWorldInfo,
+  resolveTriggerAction,
   TUTORIAL_STEP_DESCRIPTORS,
   TutorialStepId,
 } from '../systems';
@@ -72,11 +76,14 @@ export const OrionHud: React.FC = () => {
   const swapCooldown = state.weaponSwapCooldown || 0;
   const totalWeapons = state.equippedWeapons.length;
 
+  // X Basic Attack + Assignable L & R Multi-Source Actions
   const move0Name = isKhopesh ? 'SICKLE COMBO' : 'AUTO-SALVO';
-  const move1Name = isKhopesh ? 'EXEC LUNGE' : 'AP SLUG';
-  const move2Name = isKhopesh ? 'SWEEP DEFLECT' : 'GRENADE';
-  const cd1 = state.skillCooldowns[1] || 0;
-  const cd2 = state.skillCooldowns[2] || 0;
+  const actionL = resolveTriggerAction(state, 'L');
+  const actionR = resolveTriggerAction(state, 'R');
+  const cdL = getActionCooldown(state, actionL.id);
+  const cdR = getActionCooldown(state, actionR.id);
+  const lockedEnemy = getLockedTarget(state);
+  const yHoldPct = Math.min(100, ((state.yHoldTimer || 0) / 0.32) * 100);
 
   return (
     <aside
@@ -169,7 +176,7 @@ export const OrionHud: React.FC = () => {
             <div className="flex flex-col mt-0.5">
               <div className="flex justify-between items-center text-[8px] font-bold">
                 <span className={isOverheating ? 'text-[#ef4444] font-black animate-pulse' : 'text-[#f97316]'}>
-                  HEAT {isOverheating ? '🔥 OVERHEAT' : ''}
+                  HEAT {state.isContinuousBoosting ? '⚡ BOOSTING' : isOverheating ? '🔥 OVERHEAT' : ''}
                 </span>
                 <span className={isOverheating ? 'text-[#ef4444] font-bold' : 'text-[#fdba74]'}>
                   {Math.round(heat)}%
@@ -189,7 +196,7 @@ export const OrionHud: React.FC = () => {
           </div>
         </section>
 
-        {/* CENTER CLUSTER: Sector, World Location & Tutorial State Indicator */}
+        {/* CENTER CLUSTER: Sector, World Location, Target Lock-On & Tutorial State Indicator */}
         <section aria-label="Sector Info" className="hidden xs:flex flex-col items-center">
           <div className="px-2.5 py-0.5 bg-[#090d14]/90 border border-[#38bdf8]/40 rounded-full text-[9px] text-[#7dd3fc] tracking-wider uppercase font-bold flex items-center gap-1 shadow-md backdrop-blur-xs">
             <span className="text-[#38bdf8]">⬢</span>
@@ -198,15 +205,26 @@ export const OrionHud: React.FC = () => {
           <span className="text-[8px] text-[#94a3b8] tracking-widest mt-0.5 font-semibold uppercase">
             {worldInfo.areaName} · {worldInfo.worldName}
           </span>
-          {tutorialStepDesc && (
+          {lockedEnemy ? (
+            <button
+              onClick={() => cycleTargetLock(state)}
+              className="pointer-events-auto mt-0.5 px-2 py-0.2 bg-[#0c4a6e]/90 border border-[#38bdf8] rounded text-[8px] text-[#e0f2fe] font-bold tracking-wider uppercase flex items-center gap-1 cursor-pointer"
+              title="Tap [Y] to cycle target lock"
+            >
+              <span className="text-[#fbbf24]">◎</span>
+              <span>
+                LOCKED: {lockedEnemy.name} ({lockedEnemy.frame.integrity} HP)
+              </span>
+            </button>
+          ) : tutorialStepDesc ? (
             <div className="mt-0.5 px-2 py-0.2 bg-[#1e1b4b]/85 border border-[#818cf8]/40 rounded text-[7.5px] text-[#c7d2fe] font-bold tracking-wider uppercase">
               {tutorialStepDesc.title}
             </div>
-          )}
+          ) : null}
         </section>
 
         {/* RIGHT CLUSTER: Munitions, Scrap & Hardpoint */}
-        <section aria-label="Munitions & Salvage" className="flex flex-col items-end gap-1 max-w-[170px]">
+        <section aria-label="Munitions & Salvage" className="flex flex-col items-end gap-1 max-w-[175px]">
           {/* Salvage Scrap Counter */}
           <div className="flex items-center gap-1.5 bg-[#090d14]/85 border border-[#ca8a04]/50 px-2 py-0.8 rounded shadow-md backdrop-blur-xs">
             <span className="text-[#eab308]">⚙️</span>
@@ -233,9 +251,11 @@ export const OrionHud: React.FC = () => {
                     ? 'bg-[#1e293b] text-[#94a3b8] border-[#475569]'
                     : 'bg-[#422006]/80 hover:bg-[#713f12] text-[#fbbf24] border-[#f59e0b]/60'
                 }`}
-                title="Swap Weapon [Y]"
+                title="Hold [Y] to Swap Weapon"
               >
-                {swapCooldown > 0 ? `CD ${swapCooldown.toFixed(1)}s` : `[Y] ${state.activeWeaponIndex + 1}/${totalWeapons}`}
+                {swapCooldown > 0
+                  ? `CD ${swapCooldown.toFixed(1)}s`
+                  : `HOLD [Y] ${state.activeWeaponIndex + 1}/${totalWeapons}`}
               </button>
               <span
                 className={`text-[7.5px] px-1 rounded font-bold border ${
@@ -247,6 +267,15 @@ export const OrionHud: React.FC = () => {
                 {activeWeapon?.primaryDamageType.toUpperCase() || 'PIERCE'}
               </span>
             </div>
+
+            {yHoldPct > 5 && !state.yHoldTriggeredSwap && (
+              <div className="w-full h-1 bg-[#1e293b] rounded-full overflow-hidden mt-0.5">
+                <div
+                  className="h-full bg-[#fbbf24] transition-all"
+                  style={{ width: `${yHoldPct}%` }}
+                />
+              </div>
+            )}
 
             <div className="text-[9px] font-bold text-[#f1f5f9] tracking-wider mt-0.5 truncate max-w-full">
               {activeWeaponName}
@@ -341,41 +370,37 @@ export const OrionHud: React.FC = () => {
             <kbd className="bg-[#1e293b] text-[#38bdf8] border border-[#38bdf8]/40 px-1 py-0.2 rounded font-bold text-[8px]">
               L
             </kbd>
-            <span className={cd1 > 0 ? 'text-[#64748b]' : 'text-[#cbd5e1]'}>
-              {move1Name} {cd1 > 0 ? `(${cd1.toFixed(1)}s)` : ''}
+            <span className={cdL > 0 ? 'text-[#64748b]' : 'text-[#cbd5e1]'}>
+              {actionL.shortLabel} {cdL > 0 ? `(${cdL.toFixed(1)}s)` : ''}
             </span>
           </span>
           <span className="flex items-center gap-0.8">
             <kbd className="bg-[#1e293b] text-[#38bdf8] border border-[#38bdf8]/40 px-1 py-0.2 rounded font-bold text-[8px]">
               R
             </kbd>
-            <span className={cd2 > 0 ? 'text-[#64748b]' : 'text-[#cbd5e1]'}>
-              {move2Name} {cd2 > 0 ? `(${cd2.toFixed(1)}s)` : ''}
+            <span className={cdR > 0 ? 'text-[#64748b]' : 'text-[#cbd5e1]'}>
+              {actionR.shortLabel} {cdR > 0 ? `(${cdR.toFixed(1)}s)` : ''}
             </span>
           </span>
           <button
-            onClick={() => {
-              performWeaponSwap(state, {
-                say: (txt) => {
-                  state.toastText = txt;
-                  state.toastTimer = 2.5;
-                },
-              });
-            }}
+            onClick={() => cycleTargetLock(state)}
             className="pointer-events-auto flex items-center gap-0.8 hover:text-[#fef08a] cursor-pointer"
+            title="Tap [Y] to Lock-On Target · Hold [Y] to Swap Weapon"
           >
             <kbd className="bg-[#1e293b] text-[#fbbf24] border border-[#fbbf24]/40 px-1 py-0.2 rounded font-bold text-[8px]">
               Y
             </kbd>
-            <span className={swapCooldown > 0 ? 'text-[#64748b]' : 'text-[#fde68a] font-bold'}>
-              SWAP {swapCooldown > 0 ? `(${swapCooldown.toFixed(1)}s)` : `[${state.activeWeaponIndex + 1}/${totalWeapons}]`}
+            <span className={lockedEnemy ? 'text-[#38bdf8] font-bold' : 'text-[#fde68a] font-bold'}>
+              {lockedEnemy ? 'LOCKED' : 'LOCK'} · HOLD SWAP
             </span>
           </button>
           <span className="flex items-center gap-0.8">
             <kbd className="bg-[#1e293b] text-[#f97316] border border-[#f97316]/40 px-1 py-0.2 rounded font-bold text-[8px]">
               B
             </kbd>
-            <span>DASH</span>
+            <span className={state.isContinuousBoosting ? 'text-[#38bdf8] font-bold' : ''}>
+              {state.isContinuousBoosting ? 'BOOSTING' : 'HOLD BOOST'}
+            </span>
           </span>
           <span className="flex items-center gap-0.8">
             <kbd className="bg-[#1e293b] text-[#4ade80] border border-[#4ade80]/40 px-1 py-0.2 rounded font-bold text-[8px]">

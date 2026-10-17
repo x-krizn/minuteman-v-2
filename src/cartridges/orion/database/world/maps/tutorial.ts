@@ -82,4 +82,65 @@ export const ORION_TUTORIAL_ROOMS: Record<string, string[]> = {
   ],
 };
 
+export interface OrionRoomMetadata {
+  title: string;
+  bannerTitle: string;
+  areaId: string;
+}
+
+export interface OrionCacheDefinition {
+  scrap: number;
+  items: Array<{ itemId: string; count: number }>;
+  toast: string;
+}
+
+export const ORION_ROOM_METADATA: Record<string, OrionRoomMetadata> = {
+  '0,0': {
+    title: 'Drop-Pod Crater',
+    bannerTitle: 'M00: DROP-POD CRATER (SPAWN ANCHOR)',
+    areaId: 'm00_the_bog',
+  },
+  '1,0': {
+    title: 'Fallen Scout Ridge',
+    bannerTitle: 'FALLEN SCOUT RIDGE (MICRO-SETPIECE)',
+    areaId: 'm00_the_bog',
+  },
+  '1,-1': {
+    title: 'Sunken Sinkhole Island',
+    bannerTitle: 'SUNKEN SINKHOLE ISLAND (SECRET)',
+    areaId: 'm00_the_bog',
+  },
+  '2,0': {
+    title: 'Marsh Sinkhole Crossings',
+    bannerTitle: 'MARSH SINKHOLE CROSSINGS',
+    areaId: 'm00_the_bog',
+  },
+  '3,0': {
+    title: 'Rusted Perimeter Gateway',
+    bannerTitle: 'PERIMETER FORTIFICATION · SIR BORS',
+    areaId: 'm00_the_bog',
+  },
+  '4,0': {
+    title: 'Border Town Slums',
+    bannerTitle: 'BORDER TOWN SLUMS OUTSKIRTS',
+    areaId: 'border_town_slums',
+  },
+};
+
+export const ORION_CACHE_DEFINITIONS: Record<string, OrionCacheDefinition> = {
+  '1,-1': {
+    scrap: 35,
+    items: [
+      { itemId: 'corrupted_shard', count: 1 },
+      { itemId: 'repair_kit', count: 2 },
+    ],
+    toast: 'LOOTED: +35 SCRAP, CORRUPTED SHARD, REPAIR KITS',
+  },
+  default: {
+    scrap: 20,
+    items: [{ itemId: 'grail_water', count: 1 }],
+    toast: 'LOOTED: +20 SCRAP & GRAIL WATER',
+  },
+};
+
 export const ORION_INITIAL_ROOMS = ORION_TUTORIAL_ROOMS;

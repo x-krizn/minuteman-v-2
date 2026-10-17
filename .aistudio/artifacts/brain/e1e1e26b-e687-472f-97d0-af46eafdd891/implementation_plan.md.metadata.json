@@ -1,0 +1,6 @@
+{
+  "summary": "Revised plan isolating systems rather than content: world areas (like M00 The Bog) remain unified world content that behave as tutorial areas only while the tutorial state is active, backed by a multi-gate state system and an isolated tutorial system module.",
+  "updatedAt": "2026-10-17T16:21:19.016866372Z",
+  "requestFeedback": true,
+  "userFacing": true
+}

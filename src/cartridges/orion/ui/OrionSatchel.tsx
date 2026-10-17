@@ -16,10 +16,28 @@ import {
   notifyOrionStateChange,
   subscribeOrionStateChange,
 } from '../stateStore';
+import {
+  applyTraitLineProfile,
+  setBypassProgressionGates,
+  setTutorialStateActive,
+  syncStateGates,
+  TUTORIAL_STEP_DESCRIPTORS,
+  TutorialStepId,
+} from '../systems';
+import { TraitLine } from '../types';
 
 export interface OrionSatchelProps {
   onResume: () => void;
 }
+
+const ALL_TRAIT_LINES: TraitLine[] = [
+  'Warrior',
+  'Marauder',
+  'Guardian',
+  'Rogue',
+  'Wizard',
+  'Cleric',
+];
 
 export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
   const [tab, setTab] = useState<'status' | 'weapons' | 'inventory' | 'progression'>('status');
@@ -32,6 +50,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
   const state = getOrionStateRef();
   if (!state) return null;
 
+  const gates = syncStateGates(state);
   const currentWeaponId = state.equippedWeapons[state.activeWeaponIndex] || 'gladius_boltcaster';
   const currentWeapon = getWeaponDefinition(currentWeaponId);
   const trait = TRAIT_REGISTRY[state.traitLine] || TRAIT_REGISTRY.Warrior;
@@ -115,7 +134,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                 : 'bg-[#0f172a] text-[#94a3b8] hover:bg-[#1e293b]'
             }`}
           >
-            LORE & LAWS
+            STATES & LAWS
           </button>
         </div>
 
@@ -193,7 +212,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
 
             {/* Layer 3: Frame Integrity */}
             <div className="space-y-0.5">
-              <div className="flex justify-between text-[9px]">
+              <div className="flex justify-between items-center text-[9px]">
                 <span className={state.frame.state === 'Critical' ? 'text-[#ff9b9b] font-bold animate-pulse' : 'text-[#8dd7ad] font-bold'}>
                   LAYER 3: FRAME INTEGRITY (STATIC 200 HP) · {state.frame.state.toUpperCase()}
                 </span>
@@ -224,9 +243,35 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
             </div>
           </div>
 
-          {/* Trait Lore */}
-          <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1">
-            <div className="text-[#94a3b8] font-bold text-[10px]">CHASSIS IDENTITY:</div>
+          {/* 6 Canonical Trait Lines & 3 Reactor Families */}
+          <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[#94a3b8] font-bold text-[10px]">SIX TRAIT LINES & REACTOR FAMILIES:</span>
+              <span className="text-[8.5px] text-[#38bdf8] font-bold">{trait.reactor.toUpperCase()} REACTOR</span>
+            </div>
+            <div className="grid grid-cols-3 gap-1">
+              {ALL_TRAIT_LINES.map((tl) => {
+                const prof = TRAIT_REGISTRY[tl];
+                const isCurrent = state.traitLine === tl;
+                return (
+                  <button
+                    key={tl}
+                    onClick={() => {
+                      soundSystem.playSelect();
+                      applyTraitLineProfile(state, tl);
+                    }}
+                    className={`px-1.5 py-1 rounded-xs border text-left transition-colors cursor-pointer ${
+                      isCurrent
+                        ? 'bg-[#172554]/80 border-[#38bdf8] text-[#e2e8f0]'
+                        : 'bg-[#0f172a] border-[#1e293b] text-[#94a3b8] hover:border-[#475569]'
+                    }`}
+                  >
+                    <div className="font-bold text-[9px] text-[#ffd27d]">{tl.toUpperCase()}</div>
+                    <div className="text-[7.5px] text-[#7dd3fc]">{prof.reactor} · {prof.baseArmor.type}</div>
+                  </button>
+                );
+              })}
+            </div>
             <div className="text-[10px] text-[#cbd5e1]">{trait.identity}</div>
             <div className="text-[9px] text-[#64748b] italic">{trait.lore}</div>
           </div>
@@ -236,13 +281,13 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
             <div>
               <div className="font-bold text-[#e2e8f0]">BOOSTER KIT ASSEMBLY</div>
               <div className="text-[9px] text-[#94a3b8]">
-                {state.hasBoosterKit
+                {gates.canBoosterDash
                   ? 'Active: Lateral evasion dash (+20 Heat) & chasm clearance'
-                  : 'Inactive: Locate Fallen Scout in M00 Fallen Scout Ridge'}
+                  : 'Inactive: Salvage Fallen Scout [S] or unlock Level 2 Legs slot'}
               </div>
             </div>
-            <span className={`px-1.5 py-0.5 rounded-xs font-bold text-[9px] ${state.hasBoosterKit ? 'bg-[#15803d] text-white' : 'bg-[#334155] text-[#94a3b8]'}`}>
-              {state.hasBoosterKit ? 'ONLINE' : 'OFFLINE'}
+            <span className={`px-1.5 py-0.5 rounded-xs font-bold text-[9px] ${gates.canBoosterDash ? 'bg-[#15803d] text-white' : 'bg-[#334155] text-[#94a3b8]'}`}>
+              {gates.canBoosterDash ? 'ONLINE' : 'OFFLINE'}
             </span>
           </div>
         </div>
@@ -252,7 +297,9 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
       {tab === 'weapons' && (
         <div className="flex-1 overflow-y-auto space-y-2 pr-0.5 text-[10px]">
           {/* Equipped Hardpoints Selector */}
-          <div className="text-[10px] font-bold text-[#94a3b8]">EQUIPPED HARDPOINTS (PRESS [Y] IN COMBAT TO SWAP):</div>
+          <div className="text-[10px] font-bold text-[#94a3b8]">
+            EQUIPPED HARDPOINTS (PRESS [Y] IN COMBAT TO SWAP · MAX SLOTS: {gates.maxWeaponSlots}):
+          </div>
           <div className="grid grid-cols-2 gap-1.5">
             {state.equippedWeapons.map((wId, idx) => {
               const wDef = getWeaponDefinition(wId);
@@ -324,27 +371,32 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
           {/* 5-Action Moveset List */}
           <div className="text-[10px] font-bold text-[#94a3b8] pt-1">EQUIPPED MOVESET & COMBAT TELLS:</div>
           <div className="space-y-1">
-            {currentWeapon?.moveset.map((action) => (
-              <div
-                key={action.slot}
-                className="p-1.5 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-0.5"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-[#e2e8f0]">
-                    [{action.slot === 0 ? 'X BUTTON' : action.slot === 1 ? 'L TRIGGER' : action.slot === 2 ? 'R TRIGGER' : `SLOT ${action.slot}`}] {action.name}
-                  </span>
-                  <span className="text-[9px] text-[#ffd27d]">
-                    {action.damage} {action.damageType} ({action.damageFamily})
-                  </span>
+            {currentWeapon?.moveset.map((action) => {
+              const isUnlocked = gates.unlockedSkillSlots.includes(action.slot);
+              return (
+                <div
+                  key={action.slot}
+                  className={`p-1.5 bg-[#090d14] rounded-xs border space-y-0.5 ${
+                    isUnlocked ? 'border-[#1e293b]' : 'border-[#334155]/40 opacity-60'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-[#e2e8f0]">
+                      [{action.slot === 0 ? 'X BUTTON' : action.slot === 1 ? 'L TRIGGER' : action.slot === 2 ? 'R TRIGGER' : `SLOT ${action.slot}`}] {action.name}
+                    </span>
+                    <span className="text-[9px] text-[#ffd27d]">
+                      {isUnlocked ? `${action.damage} ${action.damageType} (${action.damageFamily})` : 'LOCKED (LVL 4+)'}
+                    </span>
+                  </div>
+                  <div className="text-[9px] text-[#94a3b8]">{action.description}</div>
+                  <div className="flex gap-2 text-[8px] text-[#64748b]">
+                    <span>TELL: {action.tellDurationSec}s</span>
+                    <span>COOLDOWN: {action.cooldownSec}s</span>
+                    <span>HEAT: +{action.heatCost}</span>
+                  </div>
                 </div>
-                <div className="text-[9px] text-[#94a3b8]">{action.description}</div>
-                <div className="flex gap-2 text-[8px] text-[#64748b]">
-                  <span>TELL: {action.tellDurationSec}s</span>
-                  <span>COOLDOWN: {action.cooldownSec}s</span>
-                  <span>HEAT: +{action.heatCost}</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -388,9 +440,103 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
         </div>
       )}
 
-      {/* Tab: PROGRESSION & CORE COMBAT LAWS */}
+      {/* Tab: MULTI-DOMAIN STATE GATES, PROGRESSION & CORE COMBAT LAWS */}
       {tab === 'progression' && (
         <div className="flex-1 overflow-y-auto space-y-2 pr-0.5 text-[10px]">
+          {/* Multi-Domain State & Gate Controller */}
+          <div className="p-2 bg-[#090d14] rounded-xs border border-[#38bdf8]/40 space-y-1.5">
+            <div className="text-[#38bdf8] font-bold text-[10px] flex items-center justify-between">
+              <span>MULTI-DOMAIN STATE & GATE CONTROLLER</span>
+              <span className="text-[8.5px] text-[#94a3b8]">ISOLATED SYSTEMS</span>
+            </div>
+
+            {/* Gate 1: Tutorial State Isolation */}
+            <div className="flex items-center justify-between bg-[#0f172a] p-1.5 rounded-xs border border-[#1e293b]">
+              <div>
+                <div className="font-bold text-[#e2e8f0] text-[9.5px]">
+                  TUTORIAL STATE ({state.tutorialActive ? 'ACTIVE' : 'OFF · STANDARD WORLD'})
+                </div>
+                <div className="text-[8.5px] text-[#94a3b8]">
+                  {state.tutorialActive
+                    ? TUTORIAL_STEP_DESCRIPTORS[state.tutorialStep as TutorialStepId]?.objective || state.tutorialStep
+                    : 'Areas act as standard gameworld zones without tutorial overrides.'}
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  soundSystem.playSelect();
+                  setTutorialStateActive(state, !state.tutorialActive);
+                }}
+                className={`px-2 py-0.5 rounded-xs font-bold text-[9px] cursor-pointer shrink-0 ml-2 ${
+                  state.tutorialActive
+                    ? 'bg-[#4f46e5] text-white border border-[#818cf8]'
+                    : 'bg-[#1e293b] text-[#94a3b8] border border-[#475569]'
+                }`}
+              >
+                {state.tutorialActive ? 'TUTORIAL ON' : 'STANDARD'}
+              </button>
+            </div>
+
+            {/* Gate 2: Level Progression & Sandbox Gate Bypass */}
+            <div className="flex items-center justify-between bg-[#0f172a] p-1.5 rounded-xs border border-[#1e293b]">
+              <div>
+                <div className="font-bold text-[#ffd27d] text-[9.5px]">
+                  PROGRESSION LEVEL GATE: LVL {state.level} / 20
+                </div>
+                <div className="text-[8.5px] text-[#94a3b8]">
+                  Hardpoints: {gates.maxWeaponSlots} · Skills: [{gates.unlockedSkillSlots.join(',')}] · Feats: {gates.featSlots}
+                </div>
+              </div>
+              <div className="flex items-center gap-1 shrink-0 ml-2">
+                <button
+                  onClick={() => {
+                    soundSystem.playMenuBeep();
+                    state.level = Math.max(1, state.level - 1);
+                    syncStateGates(state);
+                    notifyOrionStateChange();
+                  }}
+                  className="px-1.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs font-bold text-[9px] cursor-pointer"
+                >
+                  -1
+                </button>
+                <button
+                  onClick={() => {
+                    soundSystem.playMenuBeep();
+                    state.level = Math.min(20, state.level + 1);
+                    syncStateGates(state);
+                    notifyOrionStateChange();
+                  }}
+                  className="px-1.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs font-bold text-[9px] cursor-pointer"
+                >
+                  +1
+                </button>
+                <button
+                  onClick={() => {
+                    soundSystem.playSelect();
+                    setBypassProgressionGates(state, !state.bypassProgressionGates);
+                  }}
+                  className={`px-1.5 py-0.5 rounded-xs font-bold text-[8.5px] cursor-pointer ${
+                    state.bypassProgressionGates
+                      ? 'bg-[#15803d] text-white border border-[#4ade80]'
+                      : 'bg-[#1e293b] text-[#94a3b8] border border-[#475569]'
+                  }`}
+                >
+                  {state.bypassProgressionGates ? 'BYPASS ON' : 'STRICT'}
+                </button>
+              </div>
+            </div>
+
+            {/* Gate 3: Active Spawn Anchor & Incursion State */}
+            <div className="flex items-center justify-between bg-[#0f172a] p-1.5 rounded-xs border border-[#1e293b] text-[8.5px]">
+              <span className="text-[#94a3b8]">
+                SPAWN ANCHOR: <b className="text-[#e2e8f0]">{state.spawnAnchor.areaId} [{state.spawnAnchor.room}]</b>
+              </span>
+              <span className="text-[#94a3b8]">
+                INCURSION: <b className="text-[#c084fc]">{state.incursionEnabled ? 'ACTIVE' : 'DORMANT'}</b>
+              </span>
+            </div>
+          </div>
+
           {/* Core Combat Laws */}
           <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1">
             <div className="text-[#ffd27d] font-bold text-[10px]">THE SIX CORE COMBAT LAWS:</div>
@@ -403,13 +549,13 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
 
           {/* Level Unlocks Timeline */}
           <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1">
-            <div className="text-[#38bdf8] font-bold text-[10px]">HORIZONTAL PROGRESSION TIMELINE:</div>
+            <div className="text-[#38bdf8] font-bold text-[10px]">HORIZONTAL PROGRESSION TIMELINE (LEVELS 1–20):</div>
             <div className="space-y-1 max-h-36 overflow-y-auto pr-1">
               {LEVEL_UNLOCK_SEQUENCE.map((lvl) => (
                 <div
                   key={lvl.level}
                   className={`p-1 rounded-xs flex items-center justify-between text-[9px] ${
-                    state.level >= lvl.level
+                    state.level >= lvl.level || state.bypassProgressionGates
                       ? 'bg-[#1e293b] text-[#e2e8f0]'
                       : 'bg-[#090d14] text-[#64748b]'
                   }`}

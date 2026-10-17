@@ -261,6 +261,7 @@ export interface OrionExecutionContext {
 
 // Master Player / Orion State
 export interface OrionState {
+  areaId: string;
   room: string;
   rx: number;
   ry: number;
@@ -332,6 +333,14 @@ export interface OrionState {
   unlockedGates: Record<string, boolean>;
   incursionEnabled: boolean; // Æther Incursion (defaults ON)
 
+  // Multi-Domain State Gates (System Mode, Progression Gates, Narrative Flags, Spawn Anchor)
+  tutorialActive: boolean; // True only while tutorial state is active; areas act as standard world zones when false
+  tutorialStep: string; // Current onboarding step identifier when tutorialActive is true
+  bypassProgressionGates: boolean; // Dev/Sandbox override to unlock all hardware/skill gates regardless of level
+  flags: Record<string, boolean | number | string>; // Persistent world & narrative state flags
+  spawnAnchor: OrionSpawnAnchor; // Active Drop-Pod / Spawn Anchor coordinates for death/reboot
+  gates?: OrionCapabilityGates; // Computed active hardware & skill capability gates
+
   // Dynamic Entities
   enemies: EnemyEntity[];
   pickups: PickupEntity[];
@@ -346,4 +355,26 @@ export interface OrionState {
   useStandardResolutionHud?: boolean;
   isFallingIntoPit?: boolean; // Falling into abyssal sinkhole / pit
   dismissedPromptKey?: string | null; // Currently dismissed interactive prompt tile
+}
+
+export interface OrionSpawnAnchor {
+  areaId: string;
+  room: string;
+  x: number;
+  y: number;
+}
+
+export interface OrionCapabilityGates {
+  maxWeaponSlots: number; // 1 (Lvl 1), 2 (Lvl 3), 4 (Lvl 13)
+  unlockedSkillSlots: number[]; // [0] (Lvl 1), [0,1,2] (Lvl 4), [0,1,2,3,4] (Lvl 6)
+  canBoosterDash: boolean; // Lvl 2+ & hasBoosterKit (or bypass)
+  canWeaponSwap: boolean; // Lvl 3+ & >1 weapon equipped (or bypass)
+  heatSystemActive: boolean; // Lvl 5+ Generator slot
+  energySystemActive: boolean; // Lvl 5+ Generator slot
+  opticsActive: boolean; // Lvl 7+ Head slot
+  armSidearmActive: boolean; // Lvl 8+ Arm slot
+  defensiveSlots: number; // 0 -> 1 (Lvl 10) -> 3 (Lvl 11)
+  featSlots: number; // 0 -> 1 (Lvl 9) -> 2 (Lvl 12) -> 3 (Lvl 14) -> 4 (Lvl 16) -> 5 (Lvl 18)
+  presenceActive: boolean; // Lvl 15+ Presence system
+  coreSystemActive: boolean; // Lvl 17+ Core reactor identity
 }

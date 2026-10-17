@@ -7,14 +7,11 @@ import React, { useEffect, useState } from 'react';
 import { performWeaponSwap } from '../combat';
 import { getWeaponDefinition } from '../database/weapons';
 import { getOrionStateRef, notifyOrionStateChange } from '../stateStore';
-
-const ROOM_TITLES: Record<string, string> = {
-  '0,0': 'Drop-Pod Crater',
-  '1,0': 'Fallen Scout Ridge',
-  '2,0': 'Scavenger Cache Outpost',
-  '3,0': 'Rusted Perimeter Gateway',
-  '4,0': 'Border Town Slums',
-};
+import {
+  getRoomWorldInfo,
+  TUTORIAL_STEP_DESCRIPTORS,
+  TutorialStepId,
+} from '../systems';
 
 export const OrionHud: React.FC = () => {
   const [, setTick] = useState(0);
@@ -57,8 +54,11 @@ export const OrionHud: React.FC = () => {
   const heatPct = Math.max(0, Math.min(100, (heat / maxHeat) * 100));
   const isOverheating = heatPct >= 80;
 
-  // Room Title
-  const roomName = ROOM_TITLES[state.room] || `Sector [${state.rx}, ${state.ry}]`;
+  // Generic World & Sector Metadata via worldSystem
+  const worldInfo = getRoomWorldInfo(state);
+  const tutorialStepDesc = state.tutorialActive
+    ? TUTORIAL_STEP_DESCRIPTORS[state.tutorialStep as TutorialStepId]
+    : null;
 
   // Active Weapon & Magazine
   const currentWeaponId = state.equippedWeapons[state.activeWeaponIndex] || 'gladius_boltcaster';
@@ -189,15 +189,20 @@ export const OrionHud: React.FC = () => {
           </div>
         </section>
 
-        {/* CENTER CLUSTER: Sector & World Location */}
+        {/* CENTER CLUSTER: Sector, World Location & Tutorial State Indicator */}
         <section aria-label="Sector Info" className="hidden xs:flex flex-col items-center">
           <div className="px-2.5 py-0.5 bg-[#090d14]/90 border border-[#38bdf8]/40 rounded-full text-[9px] text-[#7dd3fc] tracking-wider uppercase font-bold flex items-center gap-1 shadow-md backdrop-blur-xs">
             <span className="text-[#38bdf8]">⬢</span>
-            <span>{roomName}</span>
+            <span>{worldInfo.roomTitle}</span>
           </div>
-          <span className="text-[8px] text-[#94a3b8] tracking-widest mt-0.5 font-semibold">
-            M00 THE BOG · CAMELOT
+          <span className="text-[8px] text-[#94a3b8] tracking-widest mt-0.5 font-semibold uppercase">
+            {worldInfo.areaName} · {worldInfo.worldName}
           </span>
+          {tutorialStepDesc && (
+            <div className="mt-0.5 px-2 py-0.2 bg-[#1e1b4b]/85 border border-[#818cf8]/40 rounded text-[7.5px] text-[#c7d2fe] font-bold tracking-wider uppercase">
+              {tutorialStepDesc.title}
+            </div>
+          )}
         </section>
 
         {/* RIGHT CLUSTER: Munitions, Scrap & Hardpoint */}

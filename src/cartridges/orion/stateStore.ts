@@ -35,6 +35,7 @@ export function saveOrionGame(state: OrionState): boolean {
     const saveData = {
       pilotName: state.pilotName,
       traitLine: state.traitLine,
+      reactor: state.reactor,
       level: state.level,
       heat: state.heat,
       energy: state.energy,
@@ -49,6 +50,13 @@ export function saveOrionGame(state: OrionState): boolean {
       clearedRooms: state.clearedRooms,
       lootedCaches: state.lootedCaches,
       unlockedGates: state.unlockedGates,
+      incursionEnabled: state.incursionEnabled,
+      tutorialActive: state.tutorialActive,
+      tutorialStep: state.tutorialStep,
+      bypassProgressionGates: state.bypassProgressionGates,
+      flags: state.flags,
+      spawnAnchor: state.spawnAnchor,
+      areaId: state.areaId,
       room: state.room,
       rx: state.rx,
       ry: state.ry,
@@ -70,6 +78,7 @@ export function loadOrionGame(state: OrionState): boolean {
 
     state.pilotName = data.pilotName ?? state.pilotName;
     state.traitLine = data.traitLine ?? state.traitLine;
+    state.reactor = data.reactor ?? state.reactor;
     state.level = data.level ?? state.level;
     state.heat = data.heat ?? state.heat;
     state.energy = data.energy ?? state.energy;
@@ -84,6 +93,13 @@ export function loadOrionGame(state: OrionState): boolean {
     state.clearedRooms = data.clearedRooms ?? state.clearedRooms;
     state.lootedCaches = data.lootedCaches ?? state.lootedCaches;
     state.unlockedGates = data.unlockedGates ?? state.unlockedGates;
+    state.incursionEnabled = data.incursionEnabled ?? state.incursionEnabled;
+    state.tutorialActive = data.tutorialActive ?? state.tutorialActive;
+    state.tutorialStep = data.tutorialStep ?? state.tutorialStep;
+    state.bypassProgressionGates = data.bypassProgressionGates ?? state.bypassProgressionGates;
+    state.flags = data.flags ?? state.flags;
+    state.spawnAnchor = data.spawnAnchor ?? state.spawnAnchor;
+    state.areaId = data.areaId ?? state.areaId;
     state.room = data.room ?? state.room;
     state.rx = data.rx ?? state.rx;
     state.ry = data.ry ?? state.ry;

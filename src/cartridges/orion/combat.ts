@@ -223,8 +223,16 @@ export function handleCombatInput(
     state.skillActionTimer = perShotAction;
   }
 
+  const unlockedSkillSlots = state.gates?.unlockedSkillSlots ?? [0, 1, 2];
+
   // 5. Active Skills: L Trigger = Skill 1, R Trigger = Skill 2
   if (input.pressed.l && state.activeSkillSlot === null) {
+    if (!unlockedSkillSlots.includes(1)) {
+      soundSystem.playMenuBeep();
+      ctx.say('ACTIVE SKILL [L] GATED — UNLOCKS AT LEVEL 4');
+      notifyOrionStateChange();
+      return;
+    }
     const skill1 = weapon.moveset[1];
     if (skill1 && state.skillCooldowns[1] <= 0) {
       state.activeSkillSlot = 1;
@@ -239,6 +247,12 @@ export function handleCombatInput(
   }
 
   if (input.pressed.r && state.activeSkillSlot === null) {
+    if (!unlockedSkillSlots.includes(2)) {
+      soundSystem.playMenuBeep();
+      ctx.say('ACTIVE SKILL [R] GATED — UNLOCKS AT LEVEL 4');
+      notifyOrionStateChange();
+      return;
+    }
     const skill2 = weapon.moveset[2];
     if (skill2 && state.skillCooldowns[2] <= 0) {
       state.activeSkillSlot = 2;

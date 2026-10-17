@@ -18,14 +18,10 @@ import {
   BOOSTER_DASH_DURATION,
   BOOSTER_HEAT_COST,
   BOOSTER_SPEED,
-  COLS,
   DIR_VECTORS,
   getDirFromVector,
   JUMP_VELOCITY,
   MUD_SPEED_PENALTY,
-  ROWS,
-  SCREEN_H,
-  SCREEN_W,
   TILE_SIZE,
   WALK_SPEED,
 } from './constants';
@@ -38,11 +34,17 @@ import { updatePickups } from './pickups';
 import { drawOrionGame } from './renderer';
 import { updateProjectiles } from './skills';
 import {
-  addOrionInventoryItem,
   notifyOrionStateChange,
-  saveOrionGame,
   setOrionStateRef,
 } from './stateStore';
+import {
+  checkWorldInteractivePrompt,
+  executeWorldInteraction,
+  handleWorldRoomTransition,
+  rebootAtSpawnAnchor,
+  syncStateGates,
+  updateTutorialSystem,
+} from './systems';
 import { OrionCombatContext, OrionState } from './types';
 import { OrionGameMenu, OrionHud, OrionSatchel } from './ui';
 
@@ -52,6 +54,7 @@ export function createOrionCartridge(): Cartridge {
   const defaultTrait = TRAIT_REGISTRY.Warrior;
 
   const state: OrionState = {
+    areaId: 'm00_the_bog',
     room: '0,0',
     rx: 0,
     ry: 0,
@@ -137,6 +140,18 @@ export function createOrionCartridge(): Cartridge {
     unlockedGates: {},
     incursionEnabled: true,
 
+    // Multi-Domain State Gates
+    tutorialActive: true,
+    tutorialStep: 'drop_pod_boot',
+    bypassProgressionGates: false,
+    flags: {},
+    spawnAnchor: {
+      areaId: 'm00_the_bog',
+      room: '0,0',
+      x: 48,
+      y: 72,
+    },
+
     // Entities
     enemies: [],
     pickups: [],
@@ -152,6 +167,7 @@ export function createOrionCartridge(): Cartridge {
     dismissedPromptKey: null,
   };
 
+  syncStateGates(state);
   setOrionStateRef(state);
 
   let currentMenuMode: CartridgeMenuMode = 'none';
@@ -168,257 +184,6 @@ export function createOrionCartridge(): Cartridge {
     },
   };
 
-  const ROOM_TITLES: Record<string, string> = {
-    '0,0': 'M00: DROP-POD CRATER (SPAWN ANCHOR)',
-    '1,0': 'FALLEN SCOUT RIDGE (MICRO-SETPIECE)',
-    '1,-1': 'SUNKEN SINKHOLE ISLAND (SECRET)',
-    '2,0': 'MARSH SINKHOLE CROSSINGS',
-    '3,0': 'PERIMETER FORTIFICATION · SIR BORS',
-    '4,0': 'BORDER TOWN SLUMS OUTSKIRTS',
-  };
-
-  function checkInteractivePrompt(): void {
-    const tx = Math.floor(state.x / TILE_SIZE);
-    const ty = Math.floor(state.y / TILE_SIZE);
-
-    const dirInfo = DIR_VECTORS[state.dir] || DIR_VECTORS.S;
-    const ax = Math.floor((state.x + dirInfo.dx * 12) / TILE_SIZE);
-    const ay = Math.floor((state.y + dirInfo.dy * 12) / TILE_SIZE);
-
-    const roomData = rooms[state.room];
-    if (!roomData) {
-      state.promptText = null;
-      return;
-    }
-
-    const currentTile = roomData[ty]?.[tx] || '.';
-    const facingTile = roomData[ay]?.[ax] || '.';
-
-    let candidateKey: string | null = null;
-    let candidateText: string | null = null;
-
-    // 1. Drop-Pod Crater (White Spawn Anchor)
-    if (currentTile === 'D' || facingTile === 'D') {
-      candidateKey = `${state.room}:D`;
-      candidateText = '[A] REBOOT SYSTEMS · PURGE HEAT & REPAIR';
-    } else if (facingTile === 'S' || currentTile === 'S') {
-      // 2. Fallen Scout (Magenta Micro-Setpiece)
-      const scoutKey = `scout:${state.room}`;
-      candidateKey = `${state.room}:${scoutKey}`;
-      if (!state.lootedCaches[scoutKey]) {
-        candidateText = '[A] SALVAGE FALLEN SCOUT (KHOPESH & BOOSTER)';
-      } else {
-        candidateText = 'FALLEN CAMELOT SCOUT (SALVAGED)';
-      }
-    } else if (facingTile === 'C') {
-      // 3. Scavenger Cache
-      const cacheKey = `${state.room}:${ax},${ay}`;
-      candidateKey = `${state.room}:${cacheKey}`;
-      if (!state.lootedCaches[cacheKey]) {
-        candidateText = '[A] LOOT SCAVENGER CACHE';
-      } else {
-        candidateText = 'SCAVENGER CACHE (EMPTY)';
-      }
-    } else if (facingTile === 'G' || currentTile === 'G') {
-      // 4. Perimeter Fortification Gate (Blue Transition Anchor)
-      const isUnlocked = Boolean(state.unlockedGates[state.room]);
-      if (!isUnlocked) {
-        candidateKey = `${state.room}:gate`;
-        const hasKey = state.inventorySlots.some((s) => s.itemId === 'rusted_gate_key');
-        candidateText = hasKey
-          ? '[A] UNLOCK PERIMETER GATE'
-          : 'LOCKED GATE · REQUIRES RUSTED GATE KEY';
-      }
-    }
-
-    // Check if dismissed to prevent screen clutter
-    if (candidateKey) {
-      if (state.dismissedPromptKey === candidateKey) {
-        state.promptText = null;
-        return;
-      }
-      state.promptText = candidateText;
-    } else {
-      // Stepped away from interactive object
-      state.promptText = null;
-      state.dismissedPromptKey = null;
-    }
-  }
-
-  function handleInteraction(): boolean {
-    const dirInfo = DIR_VECTORS[state.dir] || DIR_VECTORS.S;
-    const ax = Math.floor((state.x + dirInfo.dx * 12) / TILE_SIZE);
-    const ay = Math.floor((state.y + dirInfo.dy * 12) / TILE_SIZE);
-    const tx = Math.floor(state.x / TILE_SIZE);
-    const ty = Math.floor(state.y / TILE_SIZE);
-
-    const roomData = rooms[state.room];
-    if (!roomData) return false;
-
-    // 1. Drop-Pod Crater (White Spawn Anchor)
-    if (roomData[ty]?.[tx] === 'D' || roomData[ay]?.[ax] === 'D') {
-      state.frame.integrity = 200;
-      state.frame.state = 'Operational';
-      state.armor.durability = state.armor.maxDurability;
-      state.shields.capacity = state.shields.maxCapacity;
-      state.shields.overloaded = false;
-      state.heat = 0;
-      state.ammo = state.maxAmmo;
-      state.isReloading = false;
-      saveOrionGame(state);
-      soundSystem.playHeal();
-      combatCtx.say('SYSTEMS REBOOTED · THERMAL PURGED (SAVED)');
-      notifyOrionStateChange();
-      return true;
-    }
-
-    // 2. Fallen Scout (Magenta Micro-Setpiece)
-    if (roomData[ay]?.[ax] === 'S' || roomData[ty]?.[tx] === 'S') {
-      const scoutKey = `scout:${state.room}`;
-      if (!state.lootedCaches[scoutKey]) {
-        state.lootedCaches[scoutKey] = true;
-        state.hasBoosterKit = true;
-        if (state.level < 2) state.level = 2; // Unlocks Legs & Booster Kit
-
-        // Grant Scout Khopesh & Signet Ring
-        if (!state.equippedWeapons.includes('khopesh')) {
-          state.equippedWeapons.push('khopesh');
-        }
-        addOrionInventoryItem(state, 'bedivere_ring', 1);
-        addOrionInventoryItem(state, 'repair_kit', 1);
-
-        soundSystem.playPowerup();
-        combatCtx.say('SALVAGED: SCOUT KHOPESH & BOOSTER KIT (LVL 2 UNLOCKED)');
-        notifyOrionStateChange();
-        return true;
-      }
-    }
-
-    // 3. Scavenger Cache
-    if (roomData[ay]?.[ax] === 'C') {
-      const cacheKey = `${state.room}:${ax},${ay}`;
-      if (!state.lootedCaches[cacheKey]) {
-        state.lootedCaches[cacheKey] = true;
-        soundSystem.playPowerup();
-
-        if (state.room === '1,-1') {
-          state.salvageScrap += 35;
-          addOrionInventoryItem(state, 'corrupted_shard', 1);
-          addOrionInventoryItem(state, 'repair_kit', 2);
-          combatCtx.say('LOOTED: +35 SCRAP, CORRUPTED SHARD, REPAIR KITS');
-        } else {
-          state.salvageScrap += 20;
-          addOrionInventoryItem(state, 'grail_water', 1);
-          combatCtx.say('LOOTED: +20 SCRAP & GRAIL WATER');
-        }
-        notifyOrionStateChange();
-        return true;
-      }
-    }
-
-    // 4. Perimeter Fortification Gate (Blue Transition Anchor)
-    if (roomData[ay]?.[ax] === 'G' || roomData[ty]?.[tx] === 'G') {
-      if (state.unlockedGates[state.room]) return false;
-
-      const keySlotIndex = state.inventorySlots.findIndex((s) => s.itemId === 'rusted_gate_key');
-      if (keySlotIndex >= 0) {
-        state.inventorySlots[keySlotIndex].count -= 1;
-        if (state.inventorySlots[keySlotIndex].count <= 0) {
-          state.inventorySlots.splice(keySlotIndex, 1);
-        }
-        state.unlockedGates[state.room] = true;
-        state.clearedRooms[state.room] = true;
-
-        // Open 'G' tiles in current room
-        const curRoom = rooms[state.room];
-        if (curRoom) {
-          rooms[state.room] = curRoom.map((r) => r.replace(/G/g, '.'));
-        }
-
-        soundSystem.playPowerup();
-        combatCtx.say('PERIMETER GATE UNLOCKED · BORDER TOWN ACCESS');
-        notifyOrionStateChange();
-        return true;
-      } else {
-        soundSystem.playMenuBeep();
-        combatCtx.say('GATE LOCKED: DEFEAT SIR BORS FOR KEY');
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  function handleRoomTransition(): void {
-    let transitioned = false;
-
-    // East transition
-    if (state.x >= SCREEN_W) {
-      const nextRx = state.rx + 1;
-      const nextKey = `${nextRx},${state.ry}`;
-      if (rooms[nextKey]) {
-        state.rx = nextRx;
-        state.room = nextKey;
-        // Place safely inside new room and clamp Y to doorway corridor (rows 5-6)
-        state.x = 8;
-        state.y = Math.max(84, Math.min(108, state.y));
-        transitioned = true;
-      } else {
-        state.x = SCREEN_W - 4;
-      }
-    } else if (state.x < 0) {
-      // West transition
-      const nextRx = state.rx - 1;
-      const nextKey = `${nextRx},${state.ry}`;
-      if (rooms[nextKey]) {
-        state.rx = nextRx;
-        state.room = nextKey;
-        state.x = SCREEN_W - 8;
-        state.y = Math.max(84, Math.min(108, state.y));
-        transitioned = true;
-      } else {
-        state.x = 4;
-      }
-    }
-
-    // North transition
-    if (state.y < 0) {
-      const nextRy = state.ry - 1;
-      const nextKey = `${state.rx},${nextRy}`;
-      if (rooms[nextKey]) {
-        state.ry = nextRy;
-        state.room = nextKey;
-        state.y = SCREEN_H - 8;
-        state.x = Math.max(68, Math.min(92, state.x)); // Center X in doorway (cols 4-5)
-        transitioned = true;
-      } else {
-        state.y = 4;
-      }
-    } else if (state.y >= SCREEN_H) {
-      // South transition
-      const nextRy = state.ry + 1;
-      const nextKey = `${state.rx},${nextRy}`;
-      if (rooms[nextKey]) {
-        state.ry = nextRy;
-        state.room = nextKey;
-        state.y = 8;
-        state.x = Math.max(68, Math.min(92, state.x));
-        transitioned = true;
-      } else {
-        state.y = SCREEN_H - 4;
-      }
-    }
-
-    if (transitioned) {
-      state.projectiles = [];
-      spawnRoomEnemies(rooms, state);
-      soundSystem.playSelect();
-      const title = ROOM_TITLES[state.room] || `M00: ROOM ${state.room}`;
-      combatCtx.say(title);
-      notifyOrionStateChange();
-    }
-  }
-
   return {
     id: 'orion',
     name: 'ORION: BELLDOR EXPEDITION',
@@ -426,7 +191,8 @@ export function createOrionCartridge(): Cartridge {
     description:
       'A 2.5D action-adventure Metroid-Souls RPG with Golden Sun baked perspective, 8-way traversal, Three Defense Layers, and orbital drop-pod Belldor lore.',
 
-    init(surface: CartridgeSurface) {
+    init(_surface: CartridgeSurface) {
+      syncStateGates(state);
       spawnRoomEnemies(rooms, state);
       setOrionStateRef(state);
     },
@@ -466,62 +232,32 @@ export function createOrionCartridge(): Cartridge {
           });
         }
 
-        // Once fallen deep into the abyss (z <= -35) -> Cause death!
+        // Once fallen deep into the abyss (z <= -35) -> Reboot at active Spawn Anchor
         if (state.z <= -35) {
           soundSystem.playExplosion();
-          state.frame.integrity = 200;
-          state.frame.state = 'Operational';
-          state.armor.durability = state.armor.maxDurability;
-          state.shields.capacity = state.shields.maxCapacity;
-          state.shields.overloaded = false;
-          state.heat = 0;
-          state.ammo = state.maxAmmo;
-          state.isReloading = false;
-          state.isFallingIntoPit = false;
           state.flickerTimer = 0.6;
-
-          // Reboot at drop-pod crater (spawn anchor)
-          state.room = '0,0';
-          state.rx = 0;
-          state.ry = 0;
-          state.x = 48;
-          state.y = 72;
-          state.z = 0;
-          state.vz = 0;
-          state.onGround = true;
-
-          combatCtx.say('FELL INTO ABYSSAL SINKHOLE · FRAME DESTROYED');
-          spawnRoomEnemies(rooms, state);
-          notifyOrionStateChange();
+          rebootAtSpawnAnchor(
+            rooms,
+            state,
+            combatCtx,
+            'FELL INTO ABYSSAL SINKHOLE · FRAME DESTROYED'
+          );
         }
 
         updateParticles(state, dt);
         return; // Bypass normal player controls while plummeting
       }
 
-      // Check player defeat: Frame Integrity collapses
+      // Check player defeat: Frame Integrity collapses -> Reboot at active Spawn Anchor
       if (state.frame.integrity <= 0) {
         soundSystem.playExplosion();
-        state.frame.integrity = 200;
-        state.frame.state = 'Operational';
-        state.armor.durability = state.armor.maxDurability;
-        state.shields.capacity = state.shields.maxCapacity;
-        state.shields.overloaded = false;
-        state.heat = 0;
-        state.ammo = state.maxAmmo;
-        state.isReloading = false;
-
-        // Reboot at drop-pod crater
-        state.room = '0,0';
-        state.rx = 0;
-        state.ry = 0;
-        state.x = 48;
-        state.y = 72;
-        state.z = 0;
-        state.vz = 0;
-        combatCtx.say('FRAME DESTROYED · PILOT REBOOTED AT DROP-POD');
-        spawnRoomEnemies(rooms, state);
-        notifyOrionStateChange();
+        state.flickerTimer = 0.6;
+        rebootAtSpawnAnchor(
+          rooms,
+          state,
+          combatCtx,
+          'FRAME DESTROYED · PILOT REBOOTED AT ANCHOR'
+        );
         return;
       }
 
@@ -529,6 +265,9 @@ export function createOrionCartridge(): Cartridge {
       if (currentMenuMode !== 'none') {
         return;
       }
+
+      // Sync active capability gates
+      const gates = syncStateGates(state);
 
       // 1. Directional Movement & Input
       const p = input.pressed;
@@ -550,33 +289,39 @@ export function createOrionCartridge(): Cartridge {
         state.dir = getDirFromVector(moveDx, moveDy);
       }
 
-      // 2. Booster Kit Dash (B button)
-      if (p.b && state.hasBoosterKit && state.boosterCooldown <= 0) {
-        state.isBoosterDashing = true;
-        state.boosterTimer = BOOSTER_DASH_DURATION;
-        state.boosterCooldown = BOOSTER_DASH_COOLDOWN;
-        state.heat = Math.min(state.maxHeat, state.heat + BOOSTER_HEAT_COST);
+      // 2. Booster Kit Dash (B button) - governed by capability gate
+      if (p.b) {
+        if (gates.canBoosterDash && state.boosterCooldown <= 0) {
+          state.isBoosterDashing = true;
+          state.boosterTimer = BOOSTER_DASH_DURATION;
+          state.boosterCooldown = BOOSTER_DASH_COOLDOWN;
+          state.heat = Math.min(state.maxHeat, state.heat + BOOSTER_HEAT_COST);
 
-        const dirInfo = DIR_VECTORS[state.dir] || DIR_VECTORS.S;
-        state.boosterDirX = (moveDx !== 0 || moveDy !== 0) ? state.faceX : dirInfo.dx;
-        state.boosterDirY = (moveDx !== 0 || moveDy !== 0) ? state.faceY : dirInfo.dy;
-        soundSystem.playDash();
+          const dirInfo = DIR_VECTORS[state.dir] || DIR_VECTORS.S;
+          state.boosterDirX = moveDx !== 0 || moveDy !== 0 ? state.faceX : dirInfo.dx;
+          state.boosterDirY = moveDx !== 0 || moveDy !== 0 ? state.faceY : dirInfo.dy;
+          soundSystem.playDash();
 
-        // Booster exhaust particles
-        for (let i = 0; i < 4; i++) {
-          state.particles.push({
-            x: state.x - state.boosterDirX * 6 + (Math.random() - 0.5) * 4,
-            y: state.y - state.boosterDirY * 6 + (Math.random() - 0.5) * 4,
-            z: state.z + 4,
-            vx: -state.boosterDirX * 30 + (Math.random() - 0.5) * 10,
-            vy: -state.boosterDirY * 30 + (Math.random() - 0.5) * 10,
-            vz: 4,
-            life: 0.25,
-            maxLife: 0.25,
-            color: '#77c7ff',
-            size: 2,
-            fade: true,
-          });
+          // Booster exhaust particles
+          for (let i = 0; i < 4; i++) {
+            state.particles.push({
+              x: state.x - state.boosterDirX * 6 + (Math.random() - 0.5) * 4,
+              y: state.y - state.boosterDirY * 6 + (Math.random() - 0.5) * 4,
+              z: state.z + 4,
+              vx: -state.boosterDirX * 30 + (Math.random() - 0.5) * 10,
+              vy: -state.boosterDirY * 30 + (Math.random() - 0.5) * 10,
+              vz: 4,
+              life: 0.25,
+              maxLife: 0.25,
+              color: '#77c7ff',
+              size: 2,
+              fade: true,
+            });
+          }
+        } else if (!gates.canBoosterDash) {
+          soundSystem.playMenuBeep();
+          combatCtx.say('BOOSTER KIT OFFLINE — SALVAGE FALLEN SCOUT [S]');
+          notifyOrionStateChange();
         }
       }
 
@@ -634,7 +379,7 @@ export function createOrionCartridge(): Cartridge {
           soundSystem.playSelect();
           notifyOrionStateChange();
         } else {
-          const didInteract = handleInteraction();
+          const didInteract = executeWorldInteraction(rooms, state, combatCtx);
           if (didInteract) {
             state.dismissedPromptKey = currentTileKey;
             soundSystem.playSelect();
@@ -659,7 +404,7 @@ export function createOrionCartridge(): Cartridge {
         {
           pressed: {
             a: p.a,
-            b: p.b,
+            b: false, // Handled above with gate check and exhaust particles
             x: p.x,
             y: p.y,
             l: p.l,
@@ -684,11 +429,14 @@ export function createOrionCartridge(): Cartridge {
       updatePickups(state, combatCtx, dt);
       updateParticles(state, dt);
 
-      // 6. Seamless Room Transitions
-      handleRoomTransition();
+      // 6. Isolated Tutorial System (active ONLY when state.tutorialActive === true)
+      updateTutorialSystem(state, combatCtx, dt);
 
-      // 7. Contextual Interactive Prompts
-      checkInteractivePrompt();
+      // 7. Seamless World Room Transitions
+      handleWorldRoomTransition(rooms, state, combatCtx);
+
+      // 8. Contextual World Interactive Prompts
+      checkWorldInteractivePrompt(rooms, state);
     },
 
     draw(surface: CartridgeSurface) {

@@ -67,7 +67,11 @@ export type OrionTileType =
   | 'scout'
   | 'gate'
   | 'cache'
-  | 'barricade';
+  | 'barricade'
+  | 'desync_wall'
+  | 'lantern'
+  | 'switch'
+  | 'dungeon_door';
 
 export interface TileDefinition {
   id: string;
@@ -78,6 +82,8 @@ export interface TileDefinition {
   isMud?: boolean;
   isWater?: boolean;
   isChasm?: boolean;
+  isCorrosive?: boolean;
+  isDesync?: boolean;
   blocksHeight: number;
   bakedTopColor?: string;
   bakedFrontColor?: string;
@@ -127,7 +133,7 @@ export interface WeaponDefinition {
   moveset: ActionDefinition[]; // 5 actions
 }
 
-// Enemy Entity
+// Enemy / NPC / Spirit Entity
 export interface EnemyEntity {
   id: number;
   type: string;
@@ -152,6 +158,14 @@ export interface EnemyEntity {
   tellRadius?: number;
   isFlying?: boolean;
   emissiveColor?: string;
+  // Belldor Stage 1 & 2 AI State
+  isSubmerged?: boolean; // Bog Wurm / Lady of the Lake submerged stealth
+  hitsLanded?: number; // Bors stacking +10% damage per hit landed
+  enraged?: boolean; // Bors <50% HP Grail Enrage
+  faction?: 'hostile' | 'camelot' | 'orc' | 'npc' | 'poe';
+  npcDisposition?: 'calm' | 'linger' | 'feral';
+  isLoyalist?: boolean;
+  lingerTimer?: number;
 }
 
 // Enemy Wiki Definition

@@ -25,12 +25,20 @@ export function isSolidAt(
 
     const char = room[ty][tx] || '.';
     if (char === 'G') {
-      // Perimeter / Sun Gate: solid unless unlocked or cleared
-      return !state.unlockedGates?.[state.room] && !state.clearedRooms?.[state.room];
+      if (state.flags?.orc_raid_active) return true; // Sealed during Orc Raid
+      return !state.unlockedGates?.[state.room] && !state.clearedRooms?.[state.room] && !state.flags?.bog_exit_revealed;
+    }
+    if (char === 'M') {
+      return !state.flags?.cathedral_door_open && !state.unlockedGates?.[`${state.room}:M`];
     }
 
     const tile = getTileDefinition(char);
     if (!tile.solid) return false;
+
+    // Desynchronizing market walls (%) phase between intact (solid) and ruined (passable)
+    if (tile.isDesync && Math.floor(state.t / 3.5) % 2 !== 0) {
+      return false;
+    }
 
     // Chasms are open holes, not impassable walls; entities can fall into them
     if (tile.isChasm) {
@@ -61,11 +69,16 @@ export function isSolidAt(
   const nChar = neighborRoom[nty]?.[ntx] || '.';
 
   if (nChar === 'G') {
-    return !state.unlockedGates?.[neighborKey] && !state.clearedRooms?.[neighborKey];
+    if (state.flags?.orc_raid_active) return true;
+    return !state.unlockedGates?.[neighborKey] && !state.clearedRooms?.[neighborKey] && !state.flags?.bog_exit_revealed;
+  }
+  if (nChar === 'M') {
+    return !state.flags?.cathedral_door_open && !state.unlockedGates?.[`${neighborKey}:M`];
   }
 
   const tile = getTileDefinition(nChar);
   if (!tile.solid) return false;
+  if (tile.isDesync && Math.floor(state.t / 3.5) % 2 !== 0) return false;
   if (tile.isChasm) return false;
 
   return tile.solid;

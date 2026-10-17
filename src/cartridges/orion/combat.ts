@@ -444,15 +444,22 @@ export function updateCombat(
               soundSystem.playLaser();
             }
           } else if (state.activeSkillSlot === 2) {
+            const hasKnightsOath = state.equippedFeats.includes('knights_oath');
             if (isKhopesh) {
               // Sweep Deflection: 360-degree kinetic parry & stagger around pilot
               soundSystem.playSword();
               state.shields.capacity = Math.min(state.shields.maxCapacity, state.shields.capacity + 12);
               ctx.spawnParticles(state.x, state.y, state.z + 8, 10, '#c084fc', 'DEFLECT!');
               for (const e of state.enemies) {
+                if (e.isSubmerged) continue;
+                if (e.type === 'town_npc' && e.npcDisposition !== 'feral') continue;
                 if (Math.hypot(e.x - state.x, e.y - state.y) < 32) {
                   e.stun = 1.4;
-                  applyDamageToLayers(e.shields, e.armor, e.frame, action.damage, 'Impact');
+                  const dmg =
+                    hasKnightsOath && e.faction === 'camelot'
+                      ? Math.round(action.damage * 1.25)
+                      : action.damage;
+                  applyDamageToLayers(e.shields, e.armor, e.frame, dmg, 'Impact');
                 }
               }
             } else {
@@ -474,10 +481,15 @@ export function updateCombat(
                 lightRadius: 30,
                 onImpact(x, y, _z, st) {
                   soundSystem.playExplosion();
+                  const oathActive = st.equippedFeats.includes('knights_oath');
                   for (const e of st.enemies) {
+                    if (e.isSubmerged) continue;
+                    if (e.type === 'town_npc' && e.npcDisposition !== 'feral') continue;
                     if (Math.hypot(e.x - x, e.y - y) < 36) {
                       e.stun = 1.2; // CC opportunity window
-                      applyDamageToLayers(e.shields, e.armor, e.frame, 24, 'Blast');
+                      const blastDmg =
+                        oathActive && e.faction === 'camelot' ? Math.round(24 * 1.25) : 24;
+                      applyDamageToLayers(e.shields, e.armor, e.frame, blastDmg, 'Blast');
                     }
                   }
                 },
@@ -499,16 +511,26 @@ export function updateCombat(
 
   // Check incoming enemy attacks with readable tells against Player
   for (const e of state.enemies) {
+    if (e.type === 'bog_poe') continue;
+    if (e.type === 'town_npc' && e.npcDisposition !== 'feral') continue;
+
     if (e.state === 'attack' && e.stateTimer > 0.1) {
       const dist = Math.hypot(state.x - e.x, state.y - e.y);
       if (dist < 22 && !state.isBoosterDashing) {
         // Player hit by enemy!
+        e.stateTimer = 0.05; // Prevent multi-frame hit stacking from single swing
+        let hitDamage = e.damage;
+        if (e.type === 'bors_knight') {
+          e.hitsLanded = (e.hitsLanded || 0) + 1;
+          hitDamage = Math.round(e.damage * (1 + 0.1 * (e.hitsLanded - 1)));
+        }
+
         soundSystem.playHit();
         applyDamageToLayers(
           state.shields,
           state.armor,
           state.frame,
-          e.damage,
+          hitDamage,
           e.damageType,
           (count, color, label) => ctx.spawnParticles(state.x, state.y, state.z + 8, count, color, label)
         );
@@ -516,3 +538,4 @@ export function updateCombat(
     }
   }
 }
+

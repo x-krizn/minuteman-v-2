@@ -54,18 +54,30 @@ export function updateProjectiles(
     if (p.isPlayer) {
       let hit = false;
       for (const e of state.enemies) {
+        // Submerged Bog Wurm cannot be hit while hidden underwater without Poe's Lantern Gift
+        if (e.isSubmerged) continue;
+        // Calm Town NPCs are not hit by friendly fire
+        if (e.type === 'town_npc' && e.npcDisposition !== 'feral') continue;
+
         const dist = Math.hypot(e.x - p.x, e.y - p.y);
         if (dist < 14 && Math.abs(e.z - p.z) < 14) {
           hit = true;
           e.stun = 0.2;
           e.hurt = 0.2;
 
+          // Knight's Oath Feat: +25% bonus damage against Camelot enemies
+          const hasKnightsOath = state.equippedFeats.includes('knights_oath');
+          const effDamage =
+            hasKnightsOath && e.faction === 'camelot'
+              ? Math.round(p.damage * 1.25)
+              : p.damage;
+
           // Apply damage through Defense Layers (Shield -> Armor -> Frame)
           applyDamageToLayers(
             e.shields,
             e.armor,
             e.frame,
-            p.damage,
+            effDamage,
             p.damageType,
             (count, color, label) => ctx.spawnParticles(e.x, e.y, e.z + 8, count, color, label)
           );

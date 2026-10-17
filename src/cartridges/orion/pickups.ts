@@ -47,6 +47,16 @@ export function updatePickups(
       } else if (p.itemId === 'rusted_gate_key') {
         addOrionInventoryItem(state, 'rusted_gate_key', 1);
         ctx.say('ACQUIRED RUSTED GATE KEY');
+      } else if (p.itemId === 'bedivere_relic') {
+        addOrionInventoryItem(state, 'bedivere_relic', 1);
+        state.flags = state.flags || {};
+        const count = Math.min(3, Number(state.flags.bedivere_list_items || 0) + 1);
+        state.flags.bedivere_list_items = count;
+        ctx.say(
+          count >= 3
+            ? "BEDIVERE'S LIST COMPLETE (3/3) · THE BOG WATER WAITS"
+            : `BEDIVERE LIST RELIC (${count}/3)`
+        );
       } else if (p.itemId) {
         const itemDef = getItemDefinition(p.itemId);
         addOrionInventoryItem(state, p.itemId, 1);

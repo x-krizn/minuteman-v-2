@@ -94,6 +94,61 @@ export const bedivereRingItem: ItemWikiDefinition = {
   iconColor: '#e2e8f0',
 };
 
+export const bedivereListItem: ItemWikiDefinition = {
+  id: 'bedivere_list',
+  name: "Bedivere's Numbered List",
+  category: 'key',
+  description: 'A numbered list of seemingly nonsensical items scattered across more than one zone.',
+  lore: 'Found on Bedivere in the bog. Whoever collects all listed curiosities and returns to the bog water will find the Lady of the Lake waiting.',
+  buyPrice: 0,
+  sellPrice: 0,
+  iconColor: '#f8fafc',
+};
+
+export const bedivereRelicItem: ItemWikiDefinition = {
+  id: 'bedivere_relic',
+  name: 'Curiosity from Bedivere List',
+  category: 'key',
+  description: 'An odd half-mechanical relic matching one of the numbered entries on Bedivere’s list.',
+  lore: 'Makes no sense on its own, yet hums faintly when brought near the waters of the Bog.',
+  buyPrice: 0,
+  sellPrice: 0,
+  iconColor: '#38bdf8',
+};
+
+export const poeLanternCharmItem: ItemWikiDefinition = {
+  id: 'poe_lantern_charm',
+  name: "Poe's Lantern Gift",
+  category: 'equipment',
+  description: 'Ætheric lantern ember gifted by a Poe. Reveals the Bog Wurm when it hides beneath corrosive water.',
+  lore: 'Earned by helping a small floating lantern-spirit back to its lantern in the drowned maze.',
+  buyPrice: 0,
+  sellPrice: 0,
+  iconColor: '#7dd3fc',
+};
+
+export const grailFragmentItem: ItemWikiDefinition = {
+  id: 'grail_fragment',
+  name: 'Grail Fragment',
+  category: 'key',
+  description: 'Resonant shard carried by Percival, Tristan, and Bors. Three fragments force open the Cathedral Dungeon Door.',
+  lore: 'Warped by Camelot’s desynchronization, each knight guards a fragment with their life.',
+  buyPrice: 0,
+  sellPrice: 0,
+  iconColor: '#fbbf24',
+};
+
+export const knightsOathItem: ItemWikiDefinition = {
+  id: 'knights_oath',
+  name: "Feat: Knight's Oath",
+  category: 'equipment',
+  description: 'Earned by defeating Percival, Tristan, and Bors simultaneously. Grants permanent +25% bonus damage against Camelot enemies.',
+  lore: 'A mark of martial mastery recognized even by the feral remnants of the Round Table.',
+  buyPrice: 0,
+  sellPrice: 0,
+  iconColor: '#c084fc',
+};
+
 export const salvageScrapItem: ItemWikiDefinition = {
   id: 'salvage_scrap',
   name: 'Salvage Scrap',
@@ -123,6 +178,11 @@ export const ITEM_REGISTRY: Record<string, ItemWikiDefinition> = {
   booster_kit: boosterKitItem,
   rusted_gate_key: rustedGateKeyItem,
   bedivere_ring: bedivereRingItem,
+  bedivere_list: bedivereListItem,
+  bedivere_relic: bedivereRelicItem,
+  poe_lantern_charm: poeLanternCharmItem,
+  grail_fragment: grailFragmentItem,
+  knights_oath: knightsOathItem,
   salvage_scrap: salvageScrapItem,
   corrupted_shard: corruptedShardItem,
 };
@@ -130,3 +190,4 @@ export const ITEM_REGISTRY: Record<string, ItemWikiDefinition> = {
 export function getItemDefinition(id: string): ItemWikiDefinition | undefined {
   return ITEM_REGISTRY[id];
 }
+

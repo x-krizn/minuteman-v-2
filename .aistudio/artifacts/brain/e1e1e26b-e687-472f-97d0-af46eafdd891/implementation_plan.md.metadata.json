@@ -1,6 +1,6 @@
 {
-  "summary": "Revised plan isolating systems rather than content: world areas (like M00 The Bog) remain unified world content that behave as tutorial areas only while the tutorial state is active, backed by a multi-gate state system and an isolated tutorial system module.",
-  "updatedAt": "2026-10-17T16:21:19.016866372Z",
+  "summary": "Implementation plan for Project Orion Stage 1 (The Bog), Stage 2 (Camelot Border Town), and Part V Secrets systems based on Project Orion — Index.md. Covers Corrosive Bog Water, Orc Pairs, Bog Wurm, Poe & Lantern resolution, Bedivere's Ring choice & Numbered List, Lady of the Lake secret boss, NPC Grail Sickness & Loyalist disposition, Market Desynchronization phasing, Dynamic Orc Raids, the Three Knights (Percival, Tristan, Bors) & Knight's Oath feat, and the Three-Way Cathedral Dungeon Door.",
+  "updatedAt": "2026-10-17T16:56:49.687915814Z",
   "requestFeedback": true,
   "userFacing": true
 }

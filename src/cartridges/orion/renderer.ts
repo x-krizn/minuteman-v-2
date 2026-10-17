@@ -97,15 +97,36 @@ export function drawOrionGame(
           // Drop shadow at base
           g.fillStyle = 'rgba(0, 0, 0, 0.35)';
           g.fillRect(sx, sy + 16, TILE_SIZE, 3);
+        } else if (tile.type === 'desync_wall') {
+          // Desynchronizing Market Wall (%): Phases between solid wall and passable temporal rift
+          const isSolidPhase = Math.floor(state.t / 3.5) % 2 === 0;
+          if (isSolidPhase) {
+            g.fillStyle = '#a855f7';
+            g.fillRect(sx, sy, TILE_SIZE, 5);
+            g.fillStyle = '#581c87';
+            g.fillRect(sx, sy + 5, TILE_SIZE, 11);
+            g.fillStyle = 'rgba(192, 132, 252, 0.45)';
+            g.fillRect(sx + 2, sy + 7, TILE_SIZE - 4, 2);
+          } else {
+            g.strokeStyle = 'rgba(192, 132, 252, 0.45)';
+            g.lineWidth = 1;
+            g.strokeRect(sx + 1.5, sy + 1.5, TILE_SIZE - 3, TILE_SIZE - 3);
+          }
         } else if (tile.type === 'gate') {
-          // Rusted Gate (Blue Transition Anchor)
-          const isOpen = Boolean(state.unlockedGates[state.room] || state.clearedRooms[state.room]);
-          g.fillStyle = '#0369a1';
+          // Rusted Gate / Bog Exit (Blue Transition Anchor)
+          const isOpen =
+            !state.flags?.orc_raid_active &&
+            Boolean(
+              state.unlockedGates[state.room] ||
+                state.clearedRooms[state.room] ||
+                state.flags?.bog_exit_revealed
+            );
+          g.fillStyle = state.flags?.orc_raid_active ? '#7f1d1d' : '#0369a1';
           g.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
 
           if (!isOpen) {
             // Locked fortified gate
-            g.fillStyle = '#38bdf8';
+            g.fillStyle = state.flags?.orc_raid_active ? '#f87171' : '#38bdf8';
             for (let bx = 2; bx < TILE_SIZE; bx += 3) {
               g.fillRect(sx + bx, sy + 2, 2, TILE_SIZE - 2);
             }
@@ -113,6 +134,23 @@ export function drawOrionGame(
             // Opened blue threshold
             g.fillStyle = '#7dd3fc';
             g.fillRect(sx + 3, sy + 4, 10, 12);
+          }
+        } else if (tile.type === 'dungeon_door') {
+          // Three-Way Cathedral Dungeon Door (M)
+          const isOpen = Boolean(
+            state.flags?.cathedral_door_open || state.unlockedGates[`${state.room}:M`]
+          );
+          g.fillStyle = '#450a0a';
+          g.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+          if (!isOpen) {
+            g.fillStyle = '#f59e0b';
+            g.fillRect(sx + 1, sy + 1, TILE_SIZE - 2, 3);
+            for (let bx = 3; bx < TILE_SIZE - 2; bx += 4) {
+              g.fillRect(sx + bx, sy + 4, 2, TILE_SIZE - 5);
+            }
+          } else {
+            g.fillStyle = '#fde68a';
+            g.fillRect(sx + 3, sy + 3, 10, 12);
           }
         }
       }
@@ -126,7 +164,7 @@ export function drawOrionGame(
   }
   const renderQueue: RenderItem[] = [];
 
-  // A. Props: Drop-Pod Crater (White), Fallen Scout (Magenta), Pylons, Caches
+  // A. Props: Drop-Pod Crater (White), Fallen Scout (Magenta), Pylons, Caches, Lantern, Switches
   if (room) {
     for (let ty = 0; ty < ROWS; ty++) {
       for (let tx = 0; tx < COLS; tx++) {
@@ -162,8 +200,8 @@ export function drawOrionGame(
             },
           });
         } else if (char === 'S') {
-          // Fallen Scout (Magenta Micro-Setpiece)
-          const isLooted = Boolean(state.hasBoosterKit);
+          // Fallen Scout / Bedivere (Magenta Micro-Setpiece)
+          const isLooted = Boolean(state.lootedCaches[`scout:${state.room}`]);
           renderQueue.push({
             y: sy,
             draw: () => {
@@ -186,7 +224,37 @@ export function drawOrionGame(
                 const glimmer = Math.sin(state.t * 6) * 2;
                 g.fillStyle = '#77c7ff';
                 g.fillRect(sx + 5, sy - 11 + glimmer, 3, 5);
+              } else if (state.flags?.bedivere_ring_choice === 'pending') {
+                // Gleaming gold signet ring waiting for choice
+                g.fillStyle = '#fbbf24';
+                g.fillRect(sx + 4, sy - 5, 3, 3);
               }
+            },
+          });
+        } else if (char === 'L') {
+          // Poe Lantern Anchor
+          const isLit = state.flags?.poe_state === 'helped';
+          renderQueue.push({
+            y: sy,
+            draw: () => {
+              g.fillStyle = '#334155';
+              g.fillRect(sx - 2, sy - 14, 4, 14);
+              g.fillStyle = isLit ? '#38bdf8' : '#f59e0b';
+              g.beginPath();
+              g.arc(sx, sy - 15, isLit ? 4.5 : 3, 0, Math.PI * 2);
+              g.fill();
+            },
+          });
+        } else if (char === '1' || char === '2' || char === '3') {
+          // Hidden Grail Switch (Exploration Door Method)
+          const isActive = Boolean(state.lootedCaches[`switch:${state.room}:${char}`]);
+          renderQueue.push({
+            y: sy,
+            draw: () => {
+              g.fillStyle = '#1e293b';
+              g.fillRect(sx - 4, sy - 7, 8, 7);
+              g.fillStyle = isActive ? '#4ade80' : '#f59e0b';
+              g.fillRect(sx - 2, sy - 9, 4, 3);
             },
           });
         } else if (char === 'P') {
@@ -256,20 +324,30 @@ export function drawOrionGame(
     });
   }
 
-  // C. Enemies (Bog Crawler & Sir Bors)
+  // C. Enemies & Interactive World Entities (Stage 1, Stage 2 & Secrets)
   for (const e of state.enemies) {
     renderQueue.push({
       y: e.y,
       draw: () => {
+        const ey = e.y - e.z * Z_SCALE;
+        const isHurt = e.hurt > 0;
+        const isWindup = e.state === 'windup';
+
+        // Special case: Submerged Bog Wurm (hidden beneath water unless revealed by Poe's Gift)
+        if (e.type === 'bog_wurm' && e.isSubmerged) {
+          g.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+          g.lineWidth = 1;
+          g.beginPath();
+          g.ellipse(e.x, e.y, 7 + Math.sin(state.t * 4) * 2, 3, 0, 0, Math.PI * 2);
+          g.stroke();
+          return;
+        }
+
         const shadowR = Math.max(3, 8 * (1 - e.z / 60));
         g.fillStyle = 'rgba(0, 0, 0, 0.45)';
         g.beginPath();
         g.ellipse(e.x, e.y + 1, shadowR, shadowR * 0.5, 0, 0, Math.PI * 2);
         g.fill();
-
-        const ey = e.y - e.z * Z_SCALE;
-        const isHurt = e.hurt > 0;
-        const isWindup = e.state === 'windup';
 
         // Tell Windup Ring (Combat Law 1: Every ability has a tell)
         if (isWindup) {
@@ -281,31 +359,93 @@ export function drawOrionGame(
         }
 
         if (e.type === 'bog_crawler') {
-          // Hardened Chitin Shell
           g.fillStyle = isHurt ? '#ffffff' : '#334155';
           g.beginPath();
           g.ellipse(e.x, ey - 5, 7, 5, 0, 0, Math.PI * 2);
           g.fill();
-
-          // Pincers
           g.fillStyle = isWindup ? '#ff9b9b' : '#64748b';
           g.fillRect(e.x - 7, ey - 8, 3, 4);
           g.fillRect(e.x + 4, ey - 8, 3, 4);
+        } else if (e.type === 'orc_warrior') {
+          // Shield-bearing Orc Brawler
+          g.fillStyle = isHurt ? '#ffffff' : '#9a3412';
+          g.fillRect(e.x - 6, ey - 15, 12, 15);
+          // Physical Bulwark Shield
+          g.fillStyle = '#fdba74';
+          g.fillRect(e.x - 8, ey - 12, 4, 10);
+        } else if (e.type === 'orc_scout') {
+          // Ranged Orc Skirmisher
+          g.fillStyle = isHurt ? '#ffffff' : '#c2410c';
+          g.fillRect(e.x - 4, ey - 13, 8, 13);
+          g.fillStyle = '#fed7aa';
+          g.fillRect(e.x + 3, ey - 10, 4, 3);
+        } else if (e.type === 'bog_wurm') {
+          // Surfaced / Revealed Bog Wurm
+          g.fillStyle = isHurt ? '#ffffff' : '#0284c7';
+          g.beginPath();
+          g.ellipse(e.x, ey - 9, 8, 10, 0, 0, Math.PI * 2);
+          g.fill();
+          g.fillStyle = '#38bdf8';
+          g.fillRect(e.x - 4, ey - 15, 8, 4);
+        } else if (e.type === 'bog_poe') {
+          // Drifting Poe Spirit
+          const floatY = ey - 6 + Math.sin(state.t * 4) * 2;
+          g.fillStyle = isHurt ? '#ffffff' : 'rgba(125, 211, 252, 0.85)';
+          g.beginPath();
+          g.arc(e.x, floatY, 5, 0, Math.PI * 2);
+          g.fill();
+          g.fillStyle = '#fef08a';
+          g.fillRect(e.x + 4, floatY - 2, 3, 4);
+        } else if (e.type === 'town_npc') {
+          // Border Town NPC (Calm / Linger / Feral)
+          const dispColor =
+            e.npcDisposition === 'feral'
+              ? '#dc2626'
+              : e.npcDisposition === 'linger'
+              ? '#d97706'
+              : '#475569';
+          g.fillStyle = isHurt ? '#ffffff' : dispColor;
+          g.fillRect(e.x - 4, ey - 13, 8, 13);
+          g.fillStyle = e.isLoyalist ? '#93c5fd' : '#cbd5e1';
+          g.fillRect(e.x - 3, ey - 15, 6, 3);
+        } else if (e.type === 'percival_knight') {
+          // Sir Percival (Shield-Bearing Guardian)
+          g.fillStyle = isHurt ? '#ffffff' : '#1e3a8a';
+          g.fillRect(e.x - 7, ey - 18, 14, 18);
+          g.fillStyle = '#7dd3fc';
+          g.fillRect(e.x - 9, ey - 14, 4, 12);
+        } else if (e.type === 'tristan_knight') {
+          // Sir Tristan (Kiting Archer)
+          g.fillStyle = isHurt ? '#ffffff' : '#065f46';
+          g.fillRect(e.x - 5, ey - 17, 10, 17);
+          g.fillStyle = '#6ee7b7';
+          g.fillRect(e.x + 4, ey - 13, 4, 7);
         } else if (e.type === 'bors_knight') {
-          // Sir Bors Corrupted Mech
+          // Sir Bors (Relentless Berserker)
           g.fillStyle = isHurt ? '#ffffff' : '#312e81';
           g.fillRect(e.x - 8, ey - 20, 16, 20);
-          g.fillStyle = '#b8a4ff';
+          g.fillStyle = (e.hitsLanded || 0) > 0 ? '#f43f5e' : '#b8a4ff';
           g.fillRect(e.x - 6, ey - 18, 12, 12);
+        } else if (e.type === 'lady_of_the_lake') {
+          // Lady of the Lake (Secret Bog Sovereign)
+          g.strokeStyle = '#38bdf8';
+          g.lineWidth = 1;
+          g.beginPath();
+          g.ellipse(e.x, e.y, 12, 5, 0, 0, Math.PI * 2);
+          g.stroke();
+          g.fillStyle = isHurt ? '#ffffff' : '#7e22ce';
+          g.fillRect(e.x - 6, ey - 20, 12, 20);
+          g.fillStyle = '#e879f9';
+          g.fillRect(e.x - 4, ey - 18, 8, 10);
         }
 
-        // Enemy Defense Layer Bar (Armor durability & Frame integrity)
+        // Enemy Defense Layer Bar (Shield + Frame integrity)
         const barW = 16;
         g.fillStyle = '#000000';
-        g.fillRect(e.x - barW / 2, ey - 16, barW, 3);
+        g.fillRect(e.x - barW / 2, ey - 22, barW, 3);
         const framePct = Math.max(0, e.frame.integrity / e.frame.maxIntegrity);
-        g.fillStyle = '#8dd7ad';
-        g.fillRect(e.x - barW / 2, ey - 16, barW * framePct, 3);
+        g.fillStyle = e.npcDisposition === 'calm' ? '#7dd3fc' : '#8dd7ad';
+        g.fillRect(e.x - barW / 2, ey - 22, barW * framePct, 3);
       },
     });
   }

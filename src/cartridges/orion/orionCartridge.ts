@@ -43,6 +43,7 @@ import {
   handleWorldRoomTransition,
   rebootAtSpawnAnchor,
   syncStateGates,
+  updateEnvironmentalHazards,
   updateTutorialSystem,
 } from './systems';
 import { OrionCombatContext, OrionState } from './types';
@@ -140,11 +141,25 @@ export function createOrionCartridge(): Cartridge {
     unlockedGates: {},
     incursionEnabled: true,
 
-    // Multi-Domain State Gates
+    // Multi-Domain State Gates & Belldor Campaign Flags
     tutorialActive: true,
     tutorialStep: 'drop_pod_boot',
     bypassProgressionGates: false,
-    flags: {},
+    flags: {
+      poe_state: 'unmet',
+      poe_lantern_gift: false,
+      bog_exit_revealed: false,
+      bedivere_ring_choice: 'unchosen',
+      bedivere_list_collected: false,
+      bedivere_list_items: 0,
+      lady_of_the_lake_defeated: false,
+      orc_raid_active: false,
+      town_trust: 0,
+      grail_fragments: 0,
+      dungeon_switches: 0,
+      knights_pulled_together: false,
+      cathedral_door_open: false,
+    },
     spawnAnchor: {
       areaId: 'm00_the_bog',
       room: '0,0',
@@ -423,7 +438,8 @@ export function createOrionCartridge(): Cartridge {
       );
       updateCombat(state, combatCtx, dt);
 
-      // 5. Update Systems: Enemies, Projectiles, Pickups, Particles
+      // 5. Update Systems: Environmental Hazards (Corrosive Bog Water), Enemies, Projectiles, Pickups, Particles
+      updateEnvironmentalHazards(rooms, state, combatCtx, dt);
       updateEnemies(rooms, state, combatCtx, dt);
       updateProjectiles(rooms, state, combatCtx, dt);
       updatePickups(state, combatCtx, dt);

@@ -20,7 +20,7 @@ export const ORION_TUTORIAL_ROOMS: Record<string, string[]> = {
     '#..P..P..#',
     '#...D....#', // Drop-Pod Crater (White Spawn Anchor)
     '#........#',
-    '#..~~~~...',
+    '#..~~~~...', // Corrosive Bog Water (~)
     '#..~~~~...',
     '#........#',
     '##########',
@@ -28,7 +28,7 @@ export const ORION_TUTORIAL_ROOMS: Record<string, string[]> = {
   '1,0': [
     '####..####',
     '#........#',
-    '#...S....#', // Fallen Scout (Magenta Micro-Setpiece: Khopesh & Booster Kit)
+    '#...S....#', // Bedivere / Fallen Scout (Booster Kit, Khopesh, Signet Ring, Numbered List)
     '#........#',
     '#..____..#',
     '...____...',
@@ -39,7 +39,7 @@ export const ORION_TUTORIAL_ROOMS: Record<string, string[]> = {
   '1,-1': [
     '##########',
     '#..P..P..#',
-    '#...C....#', // Supply Cache
+    '#...C....#', // Supply Cache (contains Bedivere List Relic #1)
     '#.~~..~~.#',
     '#........#',
     '#..P..P..#',
@@ -49,34 +49,56 @@ export const ORION_TUTORIAL_ROOMS: Record<string, string[]> = {
   ],
   '2,0': [
     '##########',
-    '#........#',
-    '#..P..P..#',
+    '#..L.....#', // Poe's Lantern Anchor (L)
+    '#..p..P..#', // Drifting Poe Spirit (p)
+    '#..~~~~..#',
+    '#..~W~~..#', // Submerged Bog Wurm (W) lurking in Corrosive Bog Water (~)
+    '..........',
+    '..........',
     '#...E....#', // Bog Crawler
-    '#........#',
-    '..........',
-    '..........',
-    '#........#',
     '##########',
   ],
   '3,0': [
     '##########',
     '#........#',
     '#..P..P..#',
-    '#...B....#', // Sir Bors / Heavy Guardian
-    '#........#',
-    '.......G..', // Rusted Gate (Blue Transition Anchor)
+    '#...o....#', // Orc Warrior (automatically spawns paired Orc Scout)
+    '#..~~~~..#',
+    '.......G..', // Bog Exit Gate (hidden until Poe resolved or Rusted Gate Key used)
     '.......G..',
     '#........#',
     '##########',
   ],
   '4,0': [
-    '##########',
-    '#..~~~~..#',
-    '#...C....#', // Scavenger Depot Cache
+    '####..####',
+    '#..1..C..#', // Hidden Switch #1 (1) & Market Cache (Bedivere List Relic #2)
+    '#..%%%%..#', // Desynchronizing Market Walls (%)
+    '#..N..N..#', // Border Town NPCs (Calm, Linger, Feral)
     '#........#',
-    '#...P....#',
-    '...P..P..#',
-    '...P..P..#',
+    '...P..N...',
+    '...P.....',
+    '#........#',
+    '##########',
+  ],
+  '4,-1': [
+    '##########',
+    '#..2..C..#', // Hidden Switch #2 (2) & Barracks Cache (Bedivere List Relic #3)
+    '#..K..T..#', // Sir Percival (K) & Sir Tristan (T)
+    '#........#',
+    '#...o....#', // Orc Pair in the Barracks
+    '#..P..P..#',
+    '#........#',
+    '#........#',
+    '####..####',
+  ],
+  '5,0': [
+    '##########',
+    '#..3.....#', // Hidden Switch #3 (3)
+    '#..P..P..#',
+    '#...B....#', // Sir Bors (B)
+    '#........#',
+    '.......M..', // Three-Way Cathedral Dungeon Door (M: Force / Exploration / Trust)
+    '.......M..',
     '#........#',
     '##########',
   ],
@@ -102,7 +124,7 @@ export const ORION_ROOM_METADATA: Record<string, OrionRoomMetadata> = {
   },
   '1,0': {
     title: 'Fallen Scout Ridge',
-    bannerTitle: 'FALLEN SCOUT RIDGE (MICRO-SETPIECE)',
+    bannerTitle: 'FALLEN SCOUT RIDGE · SIR BEDIVERE',
     areaId: 'm00_the_bog',
   },
   '1,-1': {
@@ -111,18 +133,28 @@ export const ORION_ROOM_METADATA: Record<string, OrionRoomMetadata> = {
     areaId: 'm00_the_bog',
   },
   '2,0': {
-    title: 'Marsh Sinkhole Crossings',
-    bannerTitle: 'MARSH SINKHOLE CROSSINGS',
+    title: 'The Poe & Deep Bog',
+    bannerTitle: 'DEEP BOG · THE POE & SUBMERGED WURM',
     areaId: 'm00_the_bog',
   },
   '3,0': {
-    title: 'Rusted Perimeter Gateway',
-    bannerTitle: 'PERIMETER FORTIFICATION · SIR BORS',
+    title: 'Bog Perimeter Gateway',
+    bannerTitle: 'BOG EXIT PERIMETER · ORC PAIR',
     areaId: 'm00_the_bog',
   },
   '4,0': {
-    title: 'Border Town Slums',
-    bannerTitle: 'BORDER TOWN SLUMS OUTSKIRTS',
+    title: 'Border Town Market',
+    bannerTitle: 'CAMELOT BORDER TOWN · DESYNC MARKET',
+    areaId: 'border_town_slums',
+  },
+  '4,-1': {
+    title: 'Border Town Barracks',
+    bannerTitle: 'BORDER TOWN BARRACKS · PERCIVAL & TRISTAN',
+    areaId: 'border_town_slums',
+  },
+  '5,0': {
+    title: 'Border Town Cathedral',
+    bannerTitle: 'CATHEDRAL COURTYARD · SIR BORS & DUNGEON DOOR',
     areaId: 'border_town_slums',
   },
 };
@@ -131,10 +163,27 @@ export const ORION_CACHE_DEFINITIONS: Record<string, OrionCacheDefinition> = {
   '1,-1': {
     scrap: 35,
     items: [
+      { itemId: 'bedivere_relic', count: 1 },
       { itemId: 'corrupted_shard', count: 1 },
       { itemId: 'repair_kit', count: 2 },
     ],
-    toast: 'LOOTED: +35 SCRAP, CORRUPTED SHARD, REPAIR KITS',
+    toast: "LOOTED: +35 SCRAP, BEDIVERE RELIC (1/3), SHARD & REPAIR KITS",
+  },
+  '4,0': {
+    scrap: 25,
+    items: [
+      { itemId: 'bedivere_relic', count: 1 },
+      { itemId: 'grail_water', count: 1 },
+    ],
+    toast: "LOOTED: +25 SCRAP, BEDIVERE RELIC (2/3) & GRAIL WATER",
+  },
+  '4,-1': {
+    scrap: 30,
+    items: [
+      { itemId: 'bedivere_relic', count: 1 },
+      { itemId: 'repair_kit', count: 2 },
+    ],
+    toast: "LOOTED: +30 SCRAP, BEDIVERE RELIC (3/3) & REPAIR KITS",
   },
   default: {
     scrap: 20,

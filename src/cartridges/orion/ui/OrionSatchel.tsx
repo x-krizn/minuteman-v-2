@@ -18,9 +18,13 @@ import {
 } from '../stateStore';
 import {
   applyTraitLineProfile,
+  awakenLadyOfTheLake,
+  evaluateCathedralDoorStatus,
   setBypassProgressionGates,
   setTutorialStateActive,
   syncStateGates,
+  triggerOrcRaid,
+  triggerThreeKnightsTrial,
   TUTORIAL_STEP_DESCRIPTORS,
   TutorialStepId,
 } from '../systems';
@@ -50,7 +54,9 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
   const state = getOrionStateRef();
   if (!state) return null;
 
+  state.flags = state.flags || {};
   const gates = syncStateGates(state);
+  const doorStatus = evaluateCathedralDoorStatus(state);
   const currentWeaponId = state.equippedWeapons[state.activeWeaponIndex] || 'gladius_boltcaster';
   const currentWeapon = getWeaponDefinition(currentWeaponId);
   const trait = TRAIT_REGISTRY[state.traitLine] || TRAIT_REGISTRY.Warrior;
@@ -276,14 +282,16 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
             <div className="text-[9px] text-[#64748b] italic">{trait.lore}</div>
           </div>
 
-          {/* Mobility Systems */}
+          {/* Mobility & Equipped Feats */}
           <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] flex items-center justify-between">
             <div>
-              <div className="font-bold text-[#e2e8f0]">BOOSTER KIT ASSEMBLY</div>
+              <div className="font-bold text-[#e2e8f0]">BOOSTER KIT & ACTIVE FEATS</div>
               <div className="text-[9px] text-[#94a3b8]">
-                {gates.canBoosterDash
-                  ? 'Active: Lateral evasion dash (+20 Heat) & chasm clearance'
-                  : 'Inactive: Salvage Fallen Scout [S] or unlock Level 2 Legs slot'}
+                {state.equippedFeats.includes('knights_oath')
+                  ? "Knight's Oath Feat Active (+25% dmg vs Camelot enemies)"
+                  : gates.canBoosterDash
+                  ? 'Booster Online: Lateral evasion dash (+20 Heat) & chasm clearance'
+                  : 'Booster Offline: Salvage Fallen Scout [S] or unlock Level 2 Legs slot'}
               </div>
             </div>
             <span className={`px-1.5 py-0.5 rounded-xs font-bold text-[9px] ${gates.canBoosterDash ? 'bg-[#15803d] text-white' : 'bg-[#334155] text-[#94a3b8]'}`}>
@@ -440,7 +448,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
         </div>
       )}
 
-      {/* Tab: MULTI-DOMAIN STATE GATES, PROGRESSION & CORE COMBAT LAWS */}
+      {/* Tab: MULTI-DOMAIN STATE GATES, BELLDOR CAMPAIGN & CORE COMBAT LAWS */}
       {tab === 'progression' && (
         <div className="flex-1 overflow-y-auto space-y-2 pr-0.5 text-[10px]">
           {/* Multi-Domain State & Gate Controller */}
@@ -525,15 +533,161 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                 </button>
               </div>
             </div>
+          </div>
 
-            {/* Gate 3: Active Spawn Anchor & Incursion State */}
-            <div className="flex items-center justify-between bg-[#0f172a] p-1.5 rounded-xs border border-[#1e293b] text-[8.5px]">
-              <span className="text-[#94a3b8]">
-                SPAWN ANCHOR: <b className="text-[#e2e8f0]">{state.spawnAnchor.areaId} [{state.spawnAnchor.room}]</b>
-              </span>
-              <span className="text-[#94a3b8]">
-                INCURSION: <b className="text-[#c084fc]">{state.incursionEnabled ? 'ACTIVE' : 'DORMANT'}</b>
-              </span>
+          {/* Belldor Campaign & Secrets State Controller (Stage 1, Stage 2 & Part V) */}
+          <div className="p-2 bg-[#090d14] rounded-xs border border-[#c084fc]/40 space-y-1.5">
+            <div className="text-[#c084fc] font-bold text-[10px] flex items-center justify-between">
+              <span>BELLDOR CAMPAIGN & SECRETS STATE (STAGE 1 & 2)</span>
+              <span className="text-[8.5px] text-[#94a3b8]">PROJECT ORION INDEX</span>
+            </div>
+
+            {/* Stage 1: The Poe & Bog Exit */}
+            <div className="flex items-center justify-between bg-[#0f172a] p-1.5 rounded-xs border border-[#1e293b]">
+              <div>
+                <div className="font-bold text-[#7dd3fc] text-[9px]">
+                  STAGE 1 · THE POE: {(String(state.flags.poe_state || 'unmet')).toUpperCase()}
+                </div>
+                <div className="text-[8px] text-[#94a3b8]">
+                  Bog Exit: {state.flags.bog_exit_revealed ? 'REVEALED' : 'HIDDEN'} · Wurm Gift: {state.flags.poe_lantern_gift ? 'ACTIVE' : 'NONE'}
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  const order = ['unmet', 'helped', 'ignored', 'killed'];
+                  const cur = String(state.flags.poe_state || 'unmet');
+                  const next = order[(order.indexOf(cur) + 1) % order.length];
+                  state.flags.poe_state = next;
+                  state.flags.poe_lantern_gift = next === 'helped';
+                  state.flags.bog_exit_revealed = next !== 'unmet';
+                  soundSystem.playSelect();
+                  notifyOrionStateChange();
+                }}
+                className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs font-bold text-[8.5px] text-[#38bdf8] cursor-pointer shrink-0 ml-2"
+              >
+                CYCLE POE
+              </button>
+            </div>
+
+            {/* Part V Secrets: Bedivere's Ring, Numbered List & Lady of the Lake */}
+            <div className="flex items-center justify-between bg-[#0f172a] p-1.5 rounded-xs border border-[#1e293b]">
+              <div>
+                <div className="font-bold text-[#e879f9] text-[9px]">
+                  BEDIVERE RING: {(String(state.flags.bedivere_ring_choice || 'unchosen')).toUpperCase()} · LIST: {Number(state.flags.bedivere_list_items || 0)}/3
+                </div>
+                <div className="text-[8px] text-[#94a3b8]">
+                  Ring taken = Loyalists hostile (+2 Trust needed). List 3/3 = Lady of the Lake.
+                </div>
+              </div>
+              <div className="flex items-center gap-1 shrink-0 ml-2">
+                <button
+                  onClick={() => {
+                    const order = ['unchosen', 'taken', 'left'];
+                    const cur = String(state.flags.bedivere_ring_choice || 'unchosen');
+                    state.flags.bedivere_ring_choice = order[(order.indexOf(cur) + 1) % order.length];
+                    soundSystem.playSelect();
+                    notifyOrionStateChange();
+                  }}
+                  className="px-1.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs font-bold text-[8px] cursor-pointer"
+                >
+                  RING
+                </button>
+                <button
+                  onClick={() => {
+                    const next = (Number(state.flags.bedivere_list_items || 0) + 1) % 4;
+                    state.flags.bedivere_list_items = next;
+                    soundSystem.playSelect();
+                    notifyOrionStateChange();
+                  }}
+                  className="px-1.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs font-bold text-[8px] cursor-pointer"
+                >
+                  LIST +1
+                </button>
+                <button
+                  onClick={() => {
+                    state.flags.bedivere_list_items = 3;
+                    awakenLadyOfTheLake(state);
+                    onResume();
+                  }}
+                  className="px-1.5 py-0.5 bg-[#7e22ce] hover:bg-[#6b21a8] text-white rounded-xs font-bold text-[8px] cursor-pointer"
+                >
+                  LADY BOSS
+                </button>
+              </div>
+            </div>
+
+            {/* Stage 2: Orc Raid & Border Town Trust */}
+            <div className="flex items-center justify-between bg-[#0f172a] p-1.5 rounded-xs border border-[#1e293b]">
+              <div>
+                <div className="font-bold text-[#fb923c] text-[9px]">
+                  ORC RAID: {state.flags.orc_raid_active ? 'ACTIVE (BOG SEALED)' : 'INACTIVE'} · TRUST: {Number(state.flags.town_trust || 0)}
+                </div>
+                <div className="text-[8px] text-[#94a3b8]">
+                  Orcs target NPCs first during raids. Saving NPCs increases Town Trust.
+                </div>
+              </div>
+              <div className="flex items-center gap-1 shrink-0 ml-2">
+                <button
+                  onClick={() => {
+                    state.flags.town_trust = (Number(state.flags.town_trust || 0) + 1) % 6;
+                    soundSystem.playMenuBeep();
+                    notifyOrionStateChange();
+                  }}
+                  className="px-1.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs font-bold text-[8px] cursor-pointer"
+                >
+                  TRUST +1
+                </button>
+                <button
+                  onClick={() => {
+                    triggerOrcRaid(state);
+                    onResume();
+                  }}
+                  className="px-1.5 py-0.5 bg-[#9a3412] hover:bg-[#7c2d12] text-white rounded-xs font-bold text-[8px] cursor-pointer"
+                >
+                  START RAID
+                </button>
+              </div>
+            </div>
+
+            {/* Stage 2: Three Knights & 3-Way Cathedral Dungeon Door */}
+            <div className="flex items-center justify-between bg-[#0f172a] p-1.5 rounded-xs border border-[#1e293b]">
+              <div>
+                <div className="font-bold text-[#ffd27d] text-[9px]">
+                  DUNGEON DOOR: {doorStatus.canOpen ? 'READY TO OPEN' : 'LOCKED'}
+                </div>
+                <div className="text-[8px] text-[#94a3b8]">{doorStatus.reason}</div>
+              </div>
+              <div className="flex items-center gap-1 shrink-0 ml-2">
+                <button
+                  onClick={() => {
+                    state.flags.grail_fragments = (Number(state.flags.grail_fragments || 0) + 1) % 4;
+                    soundSystem.playMenuBeep();
+                    notifyOrionStateChange();
+                  }}
+                  className="px-1.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs font-bold text-[8px] cursor-pointer"
+                >
+                  GRAIL +1
+                </button>
+                <button
+                  onClick={() => {
+                    state.flags.dungeon_switches = (Number(state.flags.dungeon_switches || 0) + 1) % 4;
+                    soundSystem.playMenuBeep();
+                    notifyOrionStateChange();
+                  }}
+                  className="px-1.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs font-bold text-[8px] cursor-pointer"
+                >
+                  SWITCH +1
+                </button>
+                <button
+                  onClick={() => {
+                    triggerThreeKnightsTrial(state);
+                    onResume();
+                  }}
+                  className="px-1.5 py-0.5 bg-[#312e81] hover:bg-[#3730a3] text-[#e2e8f0] border border-[#818cf8] rounded-xs font-bold text-[8px] cursor-pointer"
+                >
+                  3 KNIGHTS
+                </button>
+              </div>
             </div>
           </div>
 

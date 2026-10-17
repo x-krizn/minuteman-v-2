@@ -9,7 +9,7 @@ import { AREA_REGISTRY } from '../database/areas/m00_the_bog';
 import {
   ORION_CACHE_DEFINITIONS,
   ORION_ROOM_METADATA,
-} from '../database/world/maps/tutorial';
+} from '../database/world/maps';
 import { spawnRoomEnemies } from '../enemies';
 import {
   addOrionInventoryItem,

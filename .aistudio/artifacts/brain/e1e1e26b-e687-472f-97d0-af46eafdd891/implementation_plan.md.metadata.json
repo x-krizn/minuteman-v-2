@@ -1,6 +1,6 @@
 {
-  "summary": "Implementation plan for Project Orion's dual-mode B boost (tap burst + hold continuous boost), Y button multi-function (tap target lock-on with strafe aiming + hold weapon swap), and modular multi-source action registry for X (always basic attack) and assignable L & R triggers (Weapon Skills, Defensive/Hardware Modules, and Reactor/Core Abilities).",
-  "updatedAt": "2026-10-17T17:32:46.721002080Z",
+  "summary": "Implementation plan for refactoring Project Orion into a strict one-file-per-entity, self-registering content architecture across Enemies, Weapons, Items, Equipment Actions, World Tiles, and Map Rooms using Vite import.meta.glob and data-driven spawning/AI/rendering hooks.",
+  "updatedAt": "2026-10-17T18:12:39.369363452Z",
   "requestFeedback": true,
   "userFacing": true
 }

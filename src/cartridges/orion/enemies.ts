@@ -5,23 +5,11 @@
 
 import { soundSystem } from '../../engine/core/soundSystem';
 import { TILE_SIZE } from './constants';
-import { getEnemyDefinition } from './database/enemies';
-import { addOrionInventoryItem, notifyOrionStateChange } from './stateStore';
+import { CHAR_TO_ENEMY_TYPE, getEnemyDefinition } from './database/enemies';
+import { notifyOrionStateChange } from './stateStore';
 import { EnemyEntity, OrionCombatContext, OrionState } from './types';
 
 let nextEnemyId = 1;
-
-const CHAR_TO_ENEMY_TYPE: Record<string, string> = {
-  E: 'bog_crawler',
-  o: 'orc_warrior',
-  s: 'orc_scout',
-  W: 'bog_wurm',
-  p: 'bog_poe',
-  N: 'town_npc',
-  K: 'percival_knight',
-  T: 'tristan_knight',
-  B: 'bors_knight',
-};
 
 export function spawnEnemyByType(
   state: OrionState,
@@ -33,38 +21,13 @@ export function spawnEnemyByType(
   const def = getEnemyDefinition(type);
   if (!def) return null;
 
-  let faction: EnemyEntity['faction'] = 'hostile';
-  if (type === 'bog_poe') faction = 'poe';
-  else if (type === 'town_npc') faction = 'npc';
-  else if (type === 'orc_warrior' || type === 'orc_scout') faction = 'orc';
-  else if (
-    type === 'percival_knight' ||
-    type === 'tristan_knight' ||
-    type === 'bors_knight'
-  ) {
-    faction = 'camelot';
-  }
-
-  const emissiveMap: Record<string, string> = {
-    bog_crawler: '#ffd27d',
-    orc_warrior: '#fb923c',
-    orc_scout: '#fdba74',
-    bog_wurm: '#38bdf8',
-    bog_poe: '#7dd3fc',
-    town_npc: '#94a3b8',
-    percival_knight: '#60a5fa',
-    tristan_knight: '#4ade80',
-    bors_knight: '#b8a4ff',
-    lady_of_the_lake: '#c084fc',
-  };
-
   const entity: EnemyEntity = {
     id: nextEnemyId++,
     type,
     name: def.name,
     x,
     y,
-    z: type === 'bog_poe' ? 8 : 0,
+    z: def.defaultZ ?? 0,
     vz: 0,
     shields: {
       ...def.shields,
@@ -89,10 +52,10 @@ export function spawnEnemyByType(
     state: 'idle',
     stateTimer: 0,
     attackCd: 1.2,
-    tellRadius: type.includes('knight') || type === 'lady_of_the_lake' ? 34 : 26,
-    isFlying: type === 'bog_poe',
-    emissiveColor: emissiveMap[type] || '#ffd27d',
-    faction,
+    tellRadius: def.tellRadius ?? 26,
+    isFlying: Boolean(def.isFlying),
+    emissiveColor: def.emissiveColor || '#ffd27d',
+    faction: def.faction || 'hostile',
     hitsLanded: 0,
     ...overrides,
   };
@@ -106,7 +69,7 @@ export function spawnRoomEnemies(
   state: OrionState
 ): void {
   // Check if leaving a room where a Poe was left untouched -> marks Poe as 'ignored' & reveals Bog exit
-  const hadPoe = state.enemies.some((e) => e.type === 'bog_poe' && e.frame.integrity > 0);
+  const hadPoe = state.enemies.some((e) => e.faction === 'poe' && e.frame.integrity > 0);
   if (hadPoe && (!state.flags?.poe_state || state.flags.poe_state === 'unmet')) {
     state.flags = state.flags || {};
     state.flags.poe_state = 'ignored';
@@ -120,7 +83,7 @@ export function spawnRoomEnemies(
   // Don't respawn hostiles if room cleared
   if (state.clearedRooms[state.room]) return;
 
-  let npcIndex = 0;
+  const spawnCountsByType: Record<string, number> = {};
 
   for (let y = 0; y < room.length; y++) {
     for (let x = 0; x < room[y].length; x++) {
@@ -128,46 +91,42 @@ export function spawnRoomEnemies(
       const type = CHAR_TO_ENEMY_TYPE[char];
       if (!type) continue;
 
-      // Skip Poe if already helped or killed
-      if (
-        type === 'bog_poe' &&
-        (state.flags?.poe_state === 'helped' || state.flags?.poe_state === 'killed')
-      ) {
+      const def = getEnemyDefinition(type);
+      if (!def) continue;
+
+      if (def.shouldSkipSpawn?.(state)) {
         continue;
       }
 
       const px = x * TILE_SIZE + 8;
       const py = y * TILE_SIZE + 8;
+      const countOfType = spawnCountsByType[type] || 0;
+      spawnCountsByType[type] = countOfType + 1;
 
-      if (type === 'town_npc') {
-        const dispositions: Array<'calm' | 'linger' | 'feral'> = ['calm', 'linger', 'feral'];
-        const disp = dispositions[npcIndex % 3];
-        const isLoyalist = npcIndex % 2 === 0;
-        npcIndex++;
-        spawnEnemyByType(state, 'town_npc', px, py, {
-          npcDisposition: disp,
-          isLoyalist,
-          faction: disp === 'feral' ? 'hostile' : 'npc',
-          name: isLoyalist ? `Camelot Loyalist (${disp.toUpperCase()})` : `Town Scavenger (${disp.toUpperCase()})`,
-        });
-      } else if (type === 'orc_warrior') {
-        spawnEnemyByType(state, 'orc_warrior', px, py);
-        // Canonical Law: Orcs always come as a Warrior and a Scout pair
-        const hasExplicitScout = room.some((r) => r.includes('s'));
-        if (!hasExplicitScout) {
-          spawnEnemyByType(state, 'orc_scout', Math.min(140, px + 18), Math.max(20, py - 12));
+      const customOverrides = def.customSpawnSetup?.(state, px, py, countOfType);
+      spawnEnemyByType(state, type, px, py, customOverrides);
+
+      // Data-driven companion pair spawning (e.g. Orc Warrior spawns paired Orc Scout if not explicitly placed)
+      if (def.companionSpawnType) {
+        const hasExplicitCompanion =
+          def.companionSpawnChar && room.some((r) => r.includes(def.companionSpawnChar!));
+        if (!hasExplicitCompanion) {
+          spawnEnemyByType(
+            state,
+            def.companionSpawnType,
+            Math.min(140, px + 18),
+            Math.max(20, py - 12)
+          );
         }
-      } else {
-        spawnEnemyByType(state, type, px, py);
       }
     }
   }
 
-  // Track if all 3 Knights are present simultaneously in this room for the Knight's Oath feat
-  const hasPercival = state.enemies.some((e) => e.type === 'percival_knight');
-  const hasTristan = state.enemies.some((e) => e.type === 'tristan_knight');
-  const hasBors = state.enemies.some((e) => e.type === 'bors_knight');
-  if (hasPercival && hasTristan && hasBors) {
+  // Track if all 3 Camelot Knights are present simultaneously in this room for the Knight's Oath feat
+  const camelotKnightTypes = new Set(
+    state.enemies.filter((e) => e.faction === 'camelot').map((e) => e.type)
+  );
+  if (camelotKnightTypes.size >= 3) {
     state.flags = state.flags || {};
     state.flags.knights_pulled_together = true;
   }
@@ -236,71 +195,29 @@ export function updateEnemies(
         }
       }
 
-      const defeatedType = e.type;
+      const defeatedFaction = e.faction;
       state.enemies.splice(i, 1);
-
       state.flags = state.flags || {};
 
-      // 1. Poe Killed Resolution
-      if (defeatedType === 'bog_poe') {
-        state.flags.poe_state = 'killed';
-        state.flags.bog_exit_revealed = true;
-        ctx.say('POE DESTROYED · BOG EXIT UNSEALED');
-        notifyOrionStateChange();
-      }
+      // Execute entity-specific onDeath hook from its database module
+      def?.onDeath?.(state, e, ctx);
 
-      // 2. Three Knights Grail Fragment & Knight's Oath Feat Check
-      if (
-        defeatedType === 'percival_knight' ||
-        defeatedType === 'tristan_knight' ||
-        defeatedType === 'bors_knight'
-      ) {
-        const curFrags = Number(state.flags.grail_fragments || 0);
-        state.flags.grail_fragments = Math.min(3, curFrags + 1);
-        addOrionInventoryItem(state, 'grail_fragment', 1);
-
-        const remainingKnights = state.enemies.filter(
-          (rem) =>
-            rem.type === 'percival_knight' ||
-            rem.type === 'tristan_knight' ||
-            rem.type === 'bors_knight'
-        );
-
-        if (remainingKnights.length === 0 && state.flags.knights_pulled_together) {
-          if (!state.equippedFeats.includes('knights_oath')) {
-            state.equippedFeats.push('knights_oath');
-            addOrionInventoryItem(state, 'knights_oath', 1);
-          }
-          soundSystem.playPowerup();
-          ctx.say("3V1 VICTORY! FEAT EARNED: KNIGHT'S OATH (+25% VS CAMELOT)");
-        } else {
-          ctx.say(`GRAIL FRAGMENT RECOVERED (${state.flags.grail_fragments}/3)`);
-        }
-        notifyOrionStateChange();
-      }
-
-      // 3. Lady of the Lake Secret Boss Defeat
-      if (defeatedType === 'lady_of_the_lake') {
-        state.flags.lady_of_the_lake_defeated = true;
-        soundSystem.playPowerup();
-        ctx.say('THE LADY OF THE LAKE HAS BEEN VANQUISHED!');
-        notifyOrionStateChange();
-      }
-
-      // 4. Orc Raid Completion Check
+      // Orc Raid Completion Check
       if (state.flags.orc_raid_active) {
         const remainingOrcs = state.enemies.filter((rem) => rem.faction === 'orc');
         if (remainingOrcs.length === 0) {
           state.flags.orc_raid_active = false;
           const survivors = Math.max(
             1,
-            state.enemies.filter((rem) => rem.type === 'town_npc').length
+            state.enemies.filter((rem) => rem.faction === 'npc').length
           );
           const trustGain = state.flags.bedivere_ring_choice === 'taken' ? 1 : survivors;
           state.flags.town_trust = Number(state.flags.town_trust || 0) + trustGain;
-          // Calm surviving NPCs after raid
           for (const rem of state.enemies) {
-            if (rem.type === 'town_npc' && (!rem.isLoyalist || state.flags.bedivere_ring_choice !== 'taken')) {
+            if (
+              rem.type === 'town_npc' &&
+              (!rem.isLoyalist || state.flags.bedivere_ring_choice !== 'taken')
+            ) {
               rem.npcDisposition = 'calm';
               rem.faction = 'npc';
             }
@@ -315,7 +232,7 @@ export function updateEnemies(
       const remainingHostiles = state.enemies.filter(
         (rem) => rem.faction !== 'npc' && rem.faction !== 'poe'
       );
-      if (remainingHostiles.length === 0 && defeatedType !== 'bog_poe') {
+      if (remainingHostiles.length === 0 && defeatedFaction !== 'poe') {
         state.clearedRooms[state.room] = true;
         if (!state.toastText || state.toastTimer <= 0) {
           ctx.say('SECTOR SECURED');

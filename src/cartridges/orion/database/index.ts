@@ -7,6 +7,7 @@ export * from './areas';
 export * from './biomes';
 export * from './characters';
 export * from './enemies';
+export * from './equipment';
 export * from './items';
 export * from './progression';
 export * from './weapons';

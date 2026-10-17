@@ -87,6 +87,43 @@ export interface TileDefinition {
   blocksHeight: number;
   bakedTopColor?: string;
   bakedFrontColor?: string;
+  renderLayer0?: (
+    g: CanvasRenderingContext2D,
+    tx: number,
+    ty: number,
+    sx: number,
+    sy: number,
+    state: OrionState
+  ) => void;
+  renderLayer1?: (
+    g: CanvasRenderingContext2D,
+    tx: number,
+    ty: number,
+    sx: number,
+    sy: number,
+    state: OrionState
+  ) => void;
+  renderProp25D?: (
+    g: CanvasRenderingContext2D,
+    tx: number,
+    ty: number,
+    sx: number,
+    sy: number,
+    state: OrionState
+  ) => void;
+}
+
+export interface RoomDefinition {
+  coord: string;
+  areaId: string;
+  title: string;
+  bannerTitle: string;
+  grid: string[];
+  cache?: {
+    scrap: number;
+    items: Array<{ itemId: string; count: number }>;
+    toast: string;
+  };
 }
 
 // Trait Line Wiki Definition
@@ -131,6 +168,14 @@ export interface WeaponDefinition {
   reloadDurationSec: number; // 3.15s
   primaryDamageType: DamageType;
   moveset: ActionDefinition[]; // 5 actions
+  renderHardpoint25D?: (
+    g: CanvasRenderingContext2D,
+    wx: number,
+    wy: number,
+    dirDx: number,
+    dirDy: number,
+    state: OrionState
+  ) => void;
 }
 
 // Enemy / NPC / Spirit Entity
@@ -168,10 +213,18 @@ export interface EnemyEntity {
   lingerTimer?: number;
 }
 
-// Enemy Wiki Definition
+// Enemy Wiki Definition (Self-Contained Entity Module Contract)
 export interface EnemyWikiDefinition {
   type: string;
   name: string;
+  spawnChar?: string;
+  faction?: 'hostile' | 'camelot' | 'orc' | 'npc' | 'poe';
+  defaultZ?: number;
+  isFlying?: boolean;
+  tellRadius?: number;
+  emissiveColor?: string;
+  companionSpawnType?: string;
+  companionSpawnChar?: string;
   description: string;
   lore: string;
   shields: { type: 'energy' | 'physical'; capacity: number };
@@ -183,6 +236,22 @@ export interface EnemyWikiDefinition {
   tellDurationSec: number;
   attackCooldownSec: number;
   lootTable: LootEntry[];
+  shouldSkipSpawn?: (state: OrionState) => boolean;
+  customSpawnSetup?: (
+    state: OrionState,
+    px: number,
+    py: number,
+    spawnCountOfType: number
+  ) => Partial<EnemyEntity>;
+  onDeath?: (state: OrionState, e: EnemyEntity, ctx: OrionCombatContext) => void;
+  render25D?: (
+    g: CanvasRenderingContext2D,
+    e: EnemyEntity,
+    state: OrionState,
+    ey: number,
+    isHurt: boolean,
+    isWindup: boolean
+  ) => boolean | void;
   update: (
     rooms: Record<string, string[]>,
     state: OrionState,
@@ -274,6 +343,26 @@ export interface OrionExecutionContext {
 }
 
 export type OrionActionSourceCategory = 'weapon' | 'hardware' | 'reactor';
+
+export interface OrionActionDescriptor {
+  id: string;
+  name: string;
+  shortLabel: string;
+  sourceCategory: OrionActionSourceCategory;
+  sourceLabel: string;
+  hardwareSlot?: 'Head' | 'Torso' | 'Arms' | 'Legs' | 'Reactor';
+  weaponSkillSlot?: 1 | 2 | 3 | 4;
+  sortOrder?: number;
+  description: string;
+  tellDurationSec: number;
+  actionDurationSec: number;
+  cooldownSec: number;
+  heatCost: number; // Negative values vent heat
+  damage: number;
+  damageType: DamageType;
+  damageFamily: DamageFamily;
+  range: number;
+}
 
 export interface OrionAssignedActions {
   L: string; // Default: 'weapon_skill_1'

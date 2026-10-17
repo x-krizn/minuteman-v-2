@@ -1,71 +1,102 @@
-# Project Orion — Boost, Target Lock-On & Modular Action Binding Plan
+# Project Orion — Self-Contained Content & Auto-Registry Architecture Plan
 
-Upgrade the Orion cartridge's control, mobility, targeting, and combat action architecture while preserving strict modular system isolation:
-- **`[B]` Dual-Mode Boost**: Tap `[B]` for an instant dodge burst; hold `[B]` for continuous sustained thruster boost that drains Reactor Heat over time until released or overheated (`100` Heat).
-- **`[Y]` Target Lock-On & Hold Weapon Swap**: Tap `[Y]` to lock onto and cycle nearby hostile targets (auto-facing the locked target for strafe movement and aiming `X`, `L`, `R` attacks directly at it); hold `[Y]` (`>= 0.32s`) to swap equipped weapons.
-- **`[X]`, `[L]`, `[R]` Multi-Source Action Architecture**:
-  - `[X]` is permanently bound to the active weapon's **Basic Attack (Slot 0)**.
-  - `[L]` and `[R]` are assignable via the `[SELECT]` Satchel menu to actions supplied by **multiple equipment sources**:
-    1. **Weapon Skills** (Default: `L = Weapon Skill 1`, `R = Weapon Skill 2`, plus Weapon Skills 3–4 as unlocked).
-    2. **Defensive & Hardware Modules** (`Head`, `Torso`, `Arms`, `Legs` actions such as *Optic Target Painter*, *Ablative Reactive Plating*, *Magnetic Grapple*, *Seismic Stomp*).
-    3. **Reactor & Core Abilities** (*Thermal Vent Purge*, *Reactor Overdrive*, *Aegis Barrier Pulse*).
+Refactor the Orion cartridge's database and engine boundary so that every content entity (Enemy, Weapon, Item, Equipment Action, World Tile, and Map Room) lives in its own dedicated module and encapsulates all of its data, map spawn tokens, AI/loot parameters, and visual rendering logic—Collected automatically by master registry modules via `import.meta.glob`.
 
----
+## User Review & Critical Decisions
 
-## 1. Isolated Systems & Database Architecture
-
-### A. Equipment & Reactor Action Database (`src/cartridges/orion/database/equipment/canonical_equipment_actions.ts`)
-- Define a unified `OrionActionDescriptor` interface representing any action that can be bound to `L` or `R`:
-  - `id: string` (e.g., `'weapon_skill_1'`, `'weapon_skill_2'`, `'weapon_skill_3'`, `'weapon_skill_4'`, `'reactor_thermal_vent'`, `'reactor_overdrive'`, `'reactor_aegis_pulse'`, `'mod_head_optic_scan'`, `'mod_torso_reactive_burst'`, `'mod_arms_shock_grapple'`, `'mod_legs_seismic_stomp'`)
-  - `name: string`
-  - `sourceCategory: 'weapon' | 'hardware' | 'reactor'`
-  - `hardwareSlot?: 'Head' | 'Torso' | 'Arms' | 'Legs'`
-  - `description: string`
-  - `tellDurationSec: number` (Combat Law 1: Every ability has a readable tell)
-  - `actionDurationSec: number`
-  - `cooldownSec: number`
-  - `heatCost: number` (negative for *Thermal Vent Purge*, which vents heat)
-  - `damage: number`
-  - `damageType: DamageType`
-  - `damageFamily: DamageFamily`
-- Provide dynamic resolution for `'weapon_skill_1' .. 'weapon_skill_4'` so that when `L` or `R` is set to a Weapon Skill slot, it automatically resolves to the **currently active weapon's** corresponding skill (preserving seamless weapon swapping).
-
-### B. Isolated Targeting & Lock-On System (`src/cartridges/orion/systems/targetingSystem.ts`)
-- **`cycleTargetLock(state, ctx)`**:
-  - Collects all valid targetable enemies in the current room within lock-on range (excluding non-hostile `calm` NPCs and unrevealed submerged Bog Wurms).
-  - Sorts targets by distance; tapping `[Y]` locks onto the nearest target, cycles to the next target on subsequent taps, and clears lock-on if tapped after the last target (or if no targets exist).
-- **`updateTargetLock(state, dt)`**:
-  - Validates that `state.lockedTargetId` still exists, is alive (`frame.integrity > 0`), and is targetable; automatically clears lock if the enemy is defeated or out of range.
-  - When locked onto a valid target, computes the normalized aim vector `(aimDx, aimDy)` from the pilot to the locked target and updates `state.dir`, `state.faceX`, and `state.faceY` to face the locked target while allowing independent 8-direction movement (strafing).
-
-### C. Isolated Action Binding & Execution System (`src/cartridges/orion/systems/actionSystem.ts`)
-- **`resolveAssignedAction(state, trigger: 'L' | 'R')`**:
-  - Resolves `state.assignedActions.L` (default `'weapon_skill_1'`) and `state.assignedActions.R` (default `'weapon_skill_2'`) into concrete `OrionActionDescriptor` metadata, respecting progression/hardware slot gates from `state.gates`.
-- **`initiateAssignedAction(state, ctx, trigger: 'L' | 'R')`** & **`executeActionPayload(state, ctx, actionId)`**:
-  - Handles windup tells, cooldown tracking (`state.actionCooldowns[actionId]`), heat costs, and payload execution for Weapon Skills, Defensive/Hardware Modules, and Reactor/Core Abilities.
+> [!IMPORTANT]
+> All three architectural preferences have been confirmed:
+> - **Confirmed Decision 1 (Full Content Domain Split)**: Every content domain (`enemies`, `weapons`, `items`, `equipment`, `world/tiles`, and `world/maps`) will be split into individual one-entity-per-file definitions with a single master registry in each domain.
+> - **Confirmed Decision 2 (Zero-Touch Auto-Discovery)**: Each master registry will use `import.meta.glob('./*.ts', { eager: true })` to automatically discover and register all sibling content modules. Creating or modifying content requires editing **only** that entity's file.
+> - **Confirmed Decision 3 (Self-Contained Spawning, AI/Loot & Visuals)**: Map spawn tokens (`spawnChar`), AI movement/attack/submerge/aggro rules, death drops/state triggers, and 2.5D canvas visual definitions (or custom `render` hooks) will live inside each entity's file so engine systems (`worldSystem`, `enemies`, `renderer`, `combat`) contain zero hardcoded entity ID branches.
 
 ---
 
-## 2. Input & Mobility Upgrades (`orionCartridge.ts` & `combat.ts`)
+## 1. Overview & Core Concept
 
-### A. `[B]` Tap Dodge Burst vs. Hold Continuous Boost
-- **Tap `[B]`**: Initiates a `0.18s` high-impulse evade burst (`+16` Heat), granting brief evasion momentum.
-- **Hold `[B]`**: After the initial burst (or continuously while `[B]` remains held), sustains **Continuous Thruster Boost** (`state.isContinuousBoosting = true`) at `BOOSTER_SPEED * 0.88`, draining `28 Heat/sec` and emitting continuous thruster exhaust particles.
-- **Overheat & Release Safety**: Releasing `[B]` or reaching `state.heat >= state.maxHeat` (`100` Heat) immediately disengages continuous boost with a thermal warning chime (`OVERHEAT — THRUSTERS CUT`).
-
-### B. `[Y]` Tap Lock-On vs. Hold Weapon Swap
-- Track `state.yHoldTimer` while `input.held.y` is true:
-  - **Hold `[Y]` (`>= 0.32s`)**: Triggers `performWeaponSwap(state, ctx)` once per hold press (with visual progress indicator on HUD).
-  - **Tap `[Y]` (released before `0.32s`)**: Triggers `cycleTargetLock(state, combatCtx)` to lock onto or cycle hostile targets.
+- **What It Does**: Decouples game content from engine systems. Instead of maintaining monolithic `canonical_*.ts` files and updating `if/else` chains across `worldSystem.ts`, `enemies.ts`, and `renderer.ts` whenever an enemy, weapon, item, tile, or room is added, each content unit becomes a self-contained specification that the engine reads generically.
+- **Target Audience / Persona**: The cartridge creator and systems designer building *Project Orion* content iteratively.
+- **Key Value**: Enforces the rule that *"unless new content needs new systems, the only edit is the file the content is sourced from."*
 
 ---
 
-## 3. Visual Reticle, HUD & Satchel Menu Integration
+## 2. User Experience & Visual Design
 
-- **2.5D Canvas Lock-On Reticle (`renderer.ts`)**:
-  - Draw an animated cyan/amber targeting reticle and corner brackets around the locked enemy (`state.lockedTargetId`) with a subtle aim line from the pilot's mech.
-- **HUD Action Readouts (`ui/OrionHud.tsx`)**:
-  - Display the currently assigned `[L]` and `[R]` action names, source badges (`WPN`, `MOD`, `CORE`), and cooldown states, plus a Lock-On target indicator and `[Y]` Hold Swap progress bar.
-- **Action Loadout Assignment UI (`ui/OrionSatchel.tsx`)**:
-  - In the `WEAPONS` (now `ACTIONS & WPN`) tab, allow the player to assign `[L TRIGGER]` and `[R TRIGGER]` to any unlocked **Weapon Skill**, **Defensive/Hardware Module**, or **Reactor/Core Ability**, with a one-click reset to Default Weapon Skills.
-  - Update `OrionGameMenu.tsx` controls guide to reflect the new `[B]`, `[Y]`, `[X]`, `[L]`, `[R]` control scheme.
+- **Key User Flows**:
+  1. **Authoring or Editing Content**: When tweaking an enemy (e.g., *Bog Wurm* or *Sir Percival*), a weapon (e.g., *Scout Khopesh*), an item, an equipment module, a tile, or a room, all stats, map placement characters, loot tables, state hooks, and 2.5D canvas visuals are located in that single entity module.
+  2. **Adding New Content**: Dropping a new entity definition module into its domain folder automatically registers it into the runtime game world, map parser, renderer, and Satchel Reference Codex without touching any other file.
+  3. **In-Game & Satchel Parity**: All existing gameplay mechanics, 2.5D visuals, stage setpieces, and Satchel UI views continue to work identically, now dynamically populated from the auto-discovered registries.
+- **Visual Identity & Theme**:
+  - Preserves the 2.5D top-down oblique pixel-art aesthetic, dynamic elevation shadows, telegraphed attack tells, and tactical HUD/Satchel overlays.
+  - Entity and tile rendering is driven by declarative visual descriptors and optional custom canvas draw hooks embedded in each entity's definition.
+
+---
+
+## 3. Key Product Decisions & Trade-Offs
+
+- **Decision 1: Vite `import.meta.glob` Master Registries**
+  - *Chosen Approach*: Each domain's master index uses `import.meta.glob('./*.ts', { eager: true })` (filtering out `./index.ts`) to collect exported definitions into a unified lookup map, array, and helper functions (such as `getEnemyBySpawnChar(char)` or `getTileDefinition(char)`).
+  - *Why*: Eliminates boilerplate barrel export lists and prevents merge or registration omissions when adding new content files.
+  - *Alternatives Considered*: Manual re-exports in `index.ts`—passed over because it violates the single-file-edit goal when adding new content.
+- **Decision 2: Data-Driven Entity Schema (Spawning, Behavior, Loot & Visuals)**
+  - *Chosen Approach*: Expand `EnemyWikiDefinition`, `TileDefinition`, `WeaponDefinition`, and `RoomDefinition` to carry their own runtime behavior and rendering contracts:
+    - **Enemies**: Include `spawnChar`, `runtime` config (move speed, attack cooldown, projectile speed/color, ranged vs. melee, submerged-by-default, calm NPC until provoked, linked pair bonus tags, on-death state mutations, and drop table), and a `render25D(g, entity, state, sx, sy)` visual drawer (or declarative palette/shape preset).
+    - **Tiles**: Include `char`, collision/height flags, dynamic state-gate rules (e.g., desync phase, gate open state key, interactive prompt handler), and a self-contained `render25D(g, tile, state, sx, sy)` drawer.
+    - **Weapons**: Separate each weapon (`gladius_boltcaster`, `khopesh`) into its own module with its moveset and execution payload rules.
+    - **Rooms**: Separate each map room (`room_0_0_drop_zone`, `room_1_0_sunken_approach`, `room_0_1_overgrown_pylon`, `room_1_1_corrupted_clearing`, `room_2_0_camelot_border_town`, etc.) into its own room module containing its ASCII grid, metadata, and scavenger caches.
+  - *Why*: Engine loops (`worldSystem`, `enemies`, `renderer`, `combat`) become pure interpreters of the schema rather than switchboards of entity names.
+
+---
+
+## 4. Technical Architecture & Data Strategy *(Technical Reference)*
+
+### Architecture & Component Diagram
+
+```
+┌───────────────────────────────────────────────────────────────────────────┐
+│                    INDIVIDUAL SELF-CONTAINED CONTENT FILES                │
+│                                                                           │
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐  │
+│  │ Enemies      │ │ Weapons &    │ │ Items &      │ │ World Tiles &    │  │
+│  │ (1 per enemy)│ │ Equipment    │ │ Progression  │ │ Map Rooms        │  │
+│  │ - Stats/Lore │ │ (1 per item) │ │ (1 per item) │ │ (1 per tile/room)│  │
+│  │ - spawnChar  │ │ - Moveset    │ │ - Cost/Lore  │ │ - ASCII / Caches │  │
+│  │ - AI & Loot  │ │ - Action Hook│ │ - onUse Hook │ │ - Collision/Gate │  │
+│  │ - render25D  │ │              │ │              │ │ - render25D      │  │
+│  └──────┬───────┘ └──────┬───────┘ └──────┬───────┘ └────────┬─────────┘  │
+└─────────┼────────────────┼────────────────┼──────────────────┼────────────┘
+          │                │                │                  │
+          ▼                ▼                ▼                  ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│             MASTER DOMAIN REGISTRIES (import.meta.glob eager)             │
+│                                                                           │
+│  • Auto-discovers all sibling entity modules at build/dev time            │
+│  • Builds ID registries, spawn-char lookup maps, and Codex collections    │
+└─────────┬───────────────────────┬──────────────────────┬──────────────────┘
+          │                       │                      │
+          ▼                       ▼                      ▼
+┌─────────────────────┐ ┌──────────────────────┐ ┌──────────────────────────┐
+│   WORLD PARSER      │ │  SIMULATION ENGINE   │ │   2.5D CANVAS & UI       │
+│  (worldSystem.ts)   │ │(enemies/combat/act.) │ │ (renderer.ts / Satchel)  │
+│                     │ │                      │ │                          │
+│ • Queries Tile &    │ │ • Runs generic AI,   │ │ • Calls tile.render25D   │
+│   Enemy registries  │ │   loot drops, &      │ │   and enemy.render25D    │
+│   by ASCII char     │ │   state hooks from   │ │ • Populates Satchel Wiki │
+│ • Loads Room files  │ │   entity definitions │ │   from master registries │
+└─────────────────────┘ └──────────────────────┘ └──────────────────────────┘
+```
+
+### Data Model & State
+
+1. **Enemy Definition Contract (`EnemyWikiDefinition`)**:
+   - **Identity & Codex**: `id`, `name`, `faction`, `role`, `levelRange`, `description`, `lore`, `frameIntegrity`, `armorDurability`, `armorThreshold`, `shieldCapacity`, `weakness`, `resistance`, `tells`.
+   - **World Spawning**: `spawnChar?: string`, `defaultElevation?: number`, `initialStateFlags?: { isSubmerged?: boolean; isCalmNpc?: boolean }`.
+   - **Runtime AI & Loot (`runtimeConfig`)**: `radius`, `speed`, `aggroRange`, `attackCooldownSec`, `tellDurationSec`, `attackDurationSec`, `isRanged`, `projectileSpeed`, `projectileColor`, `scrapDrop`, `itemDrops`, and `onDeath?: (state, enemy, ctx) => void`.
+   - **Visual Representation (`render25D`)**: Encapsulated canvas drawing callback invoked by `renderer.ts` after elevation and lock-on reticle transforms.
+2. **Tile Definition Contract (`TileDefinition`)**:
+   - **Identity & Collision**: `id`, `char`, `name`, `type`, `solid`, `blocksHeight`, `isMud`, `isWater`, `isCorrosive`, `isChasm`, `isDesync`, `bakedTopColor`, `bakedFrontColor`.
+   - **Visual Representation (`render25D`)**: Encapsulated 2.5D tile renderer invoked by `renderer.ts` so new tiles render without modifying `renderer.ts`.
+3. **Room Definition Contract (`RoomDefinition`)**:
+   - Each room module exports a `RoomDefinition` (`coord`, `name`, `areaId`, `grid`, `caches`) automatically assembled by the maps master registry into `ORION_TUTORIAL_ROOMS`, `ORION_ROOM_METADATA`, and `ORION_CACHE_DEFINITIONS`.
+4. **Weapons, Items & Equipment Actions**:
+   - Each weapon (`gladius_boltcaster`, `khopesh`), item (all 13 items), and assignable equipment action module lives in its own file and is auto-registered by its folder's master `index.ts`.

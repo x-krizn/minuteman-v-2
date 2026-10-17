@@ -31,7 +31,7 @@ export const sinkholeTile: TileDefinition = {
   char: '_',
   name: 'Abyssal Sinkhole',
   type: 'chasm',
-  solid: true,
+  solid: false,
   isChasm: true,
   blocksHeight: 0,
   bakedTopColor: '#090d14',

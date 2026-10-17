@@ -344,4 +344,6 @@ export interface OrionState {
   promptText: string | null;
   flickerTimer: number; // Desynchronization visual flicker
   useStandardResolutionHud?: boolean;
+  isFallingIntoPit?: boolean; // Falling into abyssal sinkhole / pit
+  dismissedPromptKey?: string | null; // Currently dismissed interactive prompt tile
 }

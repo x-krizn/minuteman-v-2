@@ -314,14 +314,28 @@ export function drawOrionGame(
   renderQueue.push({
     y: state.y,
     draw: () => {
-      // Ground Drop Shadow
-      const shadowR = Math.max(3, 7 * (1 - state.z / 60));
-      g.fillStyle = 'rgba(0, 0, 0, 0.45)';
-      g.beginPath();
-      g.ellipse(state.x, state.y + 1, shadowR, shadowR * 0.45, 0, 0, Math.PI * 2);
-      g.fill();
+      const isFalling = Boolean(state.isFallingIntoPit || state.z < 0);
+      const scale = isFalling ? Math.max(0.15, 1 + state.z / 45) : 1.0;
+      const alpha = isFalling ? Math.max(0, 1 + state.z / 40) : 1.0;
+
+      // Ground Drop Shadow (hidden when falling into chasm)
+      if (!isFalling && state.z >= 0) {
+        const shadowR = Math.max(3, 7 * (1 - state.z / 60));
+        g.fillStyle = 'rgba(0, 0, 0, 0.45)';
+        g.beginPath();
+        g.ellipse(state.x, state.y + 1, shadowR, shadowR * 0.45, 0, 0, Math.PI * 2);
+        g.fill();
+      }
 
       const py = state.y - state.z * Z_SCALE;
+
+      g.save();
+      g.globalAlpha = alpha;
+      if (scale < 1.0) {
+        g.translate(state.x, py);
+        g.scale(scale, scale);
+        g.translate(-state.x, -py);
+      }
 
       // Booster Kit Evade Thrusters
       if (state.isBoosterDashing) {
@@ -352,6 +366,8 @@ export function drawOrionGame(
       const dirInfo = DIR_VECTORS[state.dir] || DIR_VECTORS.S;
       g.fillStyle = '#94a3b8';
       g.fillRect(state.x + dirInfo.dx * 7 - 1, py - 9 + dirInfo.dy * 5, 3, 6);
+
+      g.restore();
     },
   });
 
@@ -463,16 +479,7 @@ function drawCanonicalHud(g: CanvasRenderingContext2D, state: OrionState): void 
   g.fillStyle = '#e2e8f0';
   g.fillText('[X] AUTO · [L] AP SLUG · [R] GRENADE · [Y] SWAP', 6, SCREEN_H - 5);
 
-  // Contextual Interactive Prompts
-  if (state.promptText) {
-    g.textAlign = 'center';
-    g.fillStyle = 'rgba(0, 0, 0, 0.85)';
-    g.fillRect(SCREEN_W / 2 - 58, SCREEN_H - 25, 116, 11);
-    g.fillStyle = '#ffd27d';
-    g.fillText(state.promptText, SCREEN_W / 2, SCREEN_H - 17);
-  }
-
-  // Toasts (Docked in lower section above bottom controls bar)
+  // Contextual Interactive Prompts & Toasts (Docked unobtrusively in lower section)
   if (state.toastText && state.toastTimer > 0) {
     g.textAlign = 'center';
     g.fillStyle = 'rgba(0, 0, 0, 0.9)';
@@ -482,5 +489,11 @@ function drawCanonicalHud(g: CanvasRenderingContext2D, state: OrionState): void 
     g.strokeRect(SCREEN_W / 2 - 61.5, SCREEN_H - 24.5, 123, 10);
     g.fillStyle = '#77c7ff';
     g.fillText(`${state.toastText} [A]`, SCREEN_W / 2, SCREEN_H - 17);
+  } else if (state.promptText) {
+    g.textAlign = 'center';
+    g.fillStyle = 'rgba(0, 0, 0, 0.85)';
+    g.fillRect(SCREEN_W / 2 - 58, SCREEN_H - 25, 116, 11);
+    g.fillStyle = '#ffd27d';
+    g.fillText(state.promptText, SCREEN_W / 2, SCREEN_H - 17);
   }
 }

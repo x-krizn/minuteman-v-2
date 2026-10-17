@@ -32,8 +32,8 @@ export function isSolidAt(
     const tile = getTileDefinition(char);
     if (!tile.solid) return false;
 
-    // Chasms can be crossed if jumping
-    if (tile.isChasm && z > 2) {
+    // Chasms are open holes, not impassable walls; entities can fall into them
+    if (tile.isChasm) {
       return false;
     }
 
@@ -66,7 +66,7 @@ export function isSolidAt(
 
   const tile = getTileDefinition(nChar);
   if (!tile.solid) return false;
-  if (tile.isChasm && z > 2) return false;
+  if (tile.isChasm) return false;
 
   return tile.solid;
 }
@@ -154,40 +154,73 @@ export function moveEntityY(
 }
 
 /**
- * Update 2.5D vertical height z physics (Jumping and Falling)
+ * Update 2.5D vertical height z physics (Jumping and Falling into Chasms)
  */
-export function updateElevationPhysics(state: OrionState, dt: number): void {
+export function updateElevationPhysics(
+  rooms: Record<string, string[]>,
+  state: OrionState,
+  dt: number
+): void {
+  // If actively falling into the abyssal pit, plummet into negative elevation
+  if (state.isFallingIntoPit) {
+    state.vz -= GRAVITY * dt * 1.5;
+    state.z += state.vz * dt;
+    state.onGround = false;
+    return;
+  }
+
+  const tx = Math.floor(state.x / TILE_SIZE);
+  const ty = Math.floor(state.y / TILE_SIZE);
+  const currentRoom = rooms[state.room];
+  const char = currentRoom?.[ty]?.[tx] || '.';
+  const tile = getTileDefinition(char);
+
   if (state.z > 0 || state.vz !== 0) {
     state.z += state.vz * dt;
     state.vz -= GRAVITY * dt;
 
     if (state.z <= 0) {
-      state.z = 0;
-      state.vz = 0;
-      state.onGround = true;
+      if (tile.isChasm) {
+        // Player missed jump or landed in the pit!
+        state.isFallingIntoPit = true;
+        state.onGround = false;
+        state.vz = Math.min(state.vz, -35);
+      } else {
+        state.z = 0;
+        state.vz = 0;
+        state.onGround = true;
 
-      // Dust puff particles on landing
-      for (let i = 0; i < 4; i++) {
-        state.particles.push({
-          x: state.x + (Math.random() - 0.5) * 8,
-          y: state.y + (Math.random() - 0.5) * 4,
-          z: 0,
-          vx: (Math.random() - 0.5) * 25,
-          vy: (Math.random() - 0.5) * 15,
-          vz: 8,
-          life: 0.25,
-          maxLife: 0.25,
-          color: '#e2d4b7',
-          size: 2,
-          fade: true,
-        });
+        // Dust puff particles on landing
+        for (let i = 0; i < 4; i++) {
+          state.particles.push({
+            x: state.x + (Math.random() - 0.5) * 8,
+            y: state.y + (Math.random() - 0.5) * 4,
+            z: 0,
+            vx: (Math.random() - 0.5) * 25,
+            vy: (Math.random() - 0.5) * 15,
+            vz: 8,
+            life: 0.25,
+            maxLife: 0.25,
+            color: '#e2d4b7',
+            size: 2,
+            fade: true,
+          });
+        }
       }
     } else {
       state.onGround = false;
     }
   } else {
-    state.z = 0;
-    state.vz = 0;
-    state.onGround = true;
+    // Ground level (z <= 0)
+    if (tile.isChasm) {
+      // Stepped directly onto pit hole!
+      state.isFallingIntoPit = true;
+      state.onGround = false;
+      state.vz = -35;
+    } else {
+      state.z = 0;
+      state.vz = 0;
+      state.onGround = true;
+    }
   }
 }

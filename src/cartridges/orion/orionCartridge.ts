@@ -148,6 +148,8 @@ export function createOrionCartridge(): Cartridge {
     promptText: null,
     flickerTimer: 0,
     useStandardResolutionHud: true,
+    isFallingIntoPit: false,
+    dismissedPromptKey: null,
   };
 
   setOrionStateRef(state);
@@ -192,50 +194,55 @@ export function createOrionCartridge(): Cartridge {
     const currentTile = roomData[ty]?.[tx] || '.';
     const facingTile = roomData[ay]?.[ax] || '.';
 
+    let candidateKey: string | null = null;
+    let candidateText: string | null = null;
+
     // 1. Drop-Pod Crater (White Spawn Anchor)
     if (currentTile === 'D' || facingTile === 'D') {
-      state.promptText = '[A] REBOOT SYSTEMS · PURGE HEAT & REPAIR';
-      return;
-    }
-
-    // 2. Fallen Scout (Magenta Micro-Setpiece)
-    if (facingTile === 'S' || currentTile === 'S') {
+      candidateKey = `${state.room}:D`;
+      candidateText = '[A] REBOOT SYSTEMS · PURGE HEAT & REPAIR';
+    } else if (facingTile === 'S' || currentTile === 'S') {
+      // 2. Fallen Scout (Magenta Micro-Setpiece)
       const scoutKey = `scout:${state.room}`;
+      candidateKey = `${state.room}:${scoutKey}`;
       if (!state.lootedCaches[scoutKey]) {
-        state.promptText = '[A] SALVAGE FALLEN SCOUT (KHOPESH & BOOSTER)';
+        candidateText = '[A] SALVAGE FALLEN SCOUT (KHOPESH & BOOSTER)';
       } else {
-        state.promptText = 'FALLEN CAMELOT SCOUT (SALVAGED)';
+        candidateText = 'FALLEN CAMELOT SCOUT (SALVAGED)';
       }
-      return;
-    }
-
-    // 3. Scavenger Cache
-    if (facingTile === 'C') {
+    } else if (facingTile === 'C') {
+      // 3. Scavenger Cache
       const cacheKey = `${state.room}:${ax},${ay}`;
+      candidateKey = `${state.room}:${cacheKey}`;
       if (!state.lootedCaches[cacheKey]) {
-        state.promptText = '[A] LOOT SCAVENGER CACHE';
+        candidateText = '[A] LOOT SCAVENGER CACHE';
       } else {
-        state.promptText = 'SCAVENGER CACHE (EMPTY)';
+        candidateText = 'SCAVENGER CACHE (EMPTY)';
       }
-      return;
-    }
-
-    // 4. Perimeter Fortification Gate (Blue Transition Anchor)
-    if (facingTile === 'G' || currentTile === 'G') {
+    } else if (facingTile === 'G' || currentTile === 'G') {
+      // 4. Perimeter Fortification Gate (Blue Transition Anchor)
       const isUnlocked = Boolean(state.unlockedGates[state.room]);
       if (!isUnlocked) {
+        candidateKey = `${state.room}:gate`;
         const hasKey = state.inventorySlots.some((s) => s.itemId === 'rusted_gate_key');
-        state.promptText = hasKey
+        candidateText = hasKey
           ? '[A] UNLOCK PERIMETER GATE'
           : 'LOCKED GATE · REQUIRES RUSTED GATE KEY';
-      } else {
-        state.promptText = null;
       }
-      return;
     }
 
-    // Clear prompt if not facing any interactive setpiece (keeps UI uncluttered)
-    state.promptText = null;
+    // Check if dismissed to prevent screen clutter
+    if (candidateKey) {
+      if (state.dismissedPromptKey === candidateKey) {
+        state.promptText = null;
+        return;
+      }
+      state.promptText = candidateText;
+    } else {
+      // Stepped away from interactive object
+      state.promptText = null;
+      state.dismissedPromptKey = null;
+    }
   }
 
   function handleInteraction(): boolean {
@@ -437,6 +444,61 @@ export function createOrionCartridge(): Cartridge {
         state.toastTimer -= dt;
       }
 
+      // 0. Abyssal Sinkhole / Pit Falling & Death
+      if (state.isFallingIntoPit) {
+        state.isBoosterDashing = false;
+        updateElevationPhysics(rooms, state, dt);
+
+        // Spawn void abyss particles
+        if (Math.random() < 0.6) {
+          state.particles.push({
+            x: state.x + (Math.random() - 0.5) * 8,
+            y: state.y + (Math.random() - 0.5) * 6,
+            z: state.z,
+            vx: (Math.random() - 0.5) * 12,
+            vy: (Math.random() - 0.5) * 12,
+            vz: -15,
+            life: 0.3,
+            maxLife: 0.3,
+            color: '#090d14',
+            size: 2,
+            fade: true,
+          });
+        }
+
+        // Once fallen deep into the abyss (z <= -35) -> Cause death!
+        if (state.z <= -35) {
+          soundSystem.playExplosion();
+          state.frame.integrity = 200;
+          state.frame.state = 'Operational';
+          state.armor.durability = state.armor.maxDurability;
+          state.shields.capacity = state.shields.maxCapacity;
+          state.shields.overloaded = false;
+          state.heat = 0;
+          state.ammo = state.maxAmmo;
+          state.isReloading = false;
+          state.isFallingIntoPit = false;
+          state.flickerTimer = 0.6;
+
+          // Reboot at drop-pod crater (spawn anchor)
+          state.room = '0,0';
+          state.rx = 0;
+          state.ry = 0;
+          state.x = 48;
+          state.y = 72;
+          state.z = 0;
+          state.vz = 0;
+          state.onGround = true;
+
+          combatCtx.say('FELL INTO ABYSSAL SINKHOLE · FRAME DESTROYED');
+          spawnRoomEnemies(rooms, state);
+          notifyOrionStateChange();
+        }
+
+        updateParticles(state, dt);
+        return; // Bypass normal player controls while plummeting
+      }
+
       // Check player defeat: Frame Integrity collapses
       if (state.frame.integrity <= 0) {
         soundSystem.playExplosion();
@@ -543,17 +605,47 @@ export function createOrionCartridge(): Cartridge {
         state.y = moveEntityY(rooms, state, state.x, state.y, state.z, stepY);
       }
 
+      // Update 2.5D vertical height z physics (including pit detection)
+      updateElevationPhysics(rooms, state, dt);
+
+      // If stepping or landing caused a pit fall, abort jump and combat
+      if (state.isFallingIntoPit) {
+        state.isBoosterDashing = false;
+        return;
+      }
+
       // 3. Jump (A button), Examine Interaction, or Close Pop-up Message
       if (p.a && !state.isBoosterDashing) {
-        // If an active pop-up message is displayed, pressing A closes it immediately!
+        const tx = Math.floor(state.x / TILE_SIZE);
+        const ty = Math.floor(state.y / TILE_SIZE);
+        const dirInfo = DIR_VECTORS[state.dir] || DIR_VECTORS.S;
+        const ax = Math.floor((state.x + dirInfo.dx * 12) / TILE_SIZE);
+        const ay = Math.floor((state.y + dirInfo.dy * 12) / TILE_SIZE);
+        const roomData = rooms[state.room];
+        const facingTile = roomData?.[ay]?.[ax] || '.';
+        const currentTileKey = `${state.room}:${tx},${ty}:${facingTile}`;
+
+        // If an active pop-up toast message is displayed, pressing A closes it immediately!
         if (state.toastText && state.toastTimer > 0) {
           state.toastText = null;
           state.toastTimer = 0;
+          state.promptText = null;
+          state.dismissedPromptKey = currentTileKey;
           soundSystem.playSelect();
           notifyOrionStateChange();
         } else {
           const didInteract = handleInteraction();
-          if (!didInteract && state.onGround) {
+          if (didInteract) {
+            state.dismissedPromptKey = currentTileKey;
+            soundSystem.playSelect();
+            notifyOrionStateChange();
+          } else if (state.promptText) {
+            // Dismiss informative prompt cleanly
+            state.promptText = null;
+            state.dismissedPromptKey = currentTileKey;
+            soundSystem.playSelect();
+            notifyOrionStateChange();
+          } else if (state.onGround) {
             // Elevation leap across sinkhole/chasm
             state.vz = JUMP_VELOCITY;
             state.onGround = false;
@@ -561,9 +653,6 @@ export function createOrionCartridge(): Cartridge {
           }
         }
       }
-
-      // Update 2.5D vertical height z physics
-      updateElevationPhysics(state, dt);
 
       // 4. Combat & Moveset Handling (X, Y, L, R)
       handleCombatInput(

@@ -253,7 +253,7 @@ export default function App() {
           gamepadToast={gamepadToast}
         >
           {/* Active Cartridge In-Game Overlay via Cartridge Interface */}
-          {isCartRunning && inGameMenu !== 'none' && (() => {
+          {isCartRunning && (() => {
             const active = cartridgeRunner.getActive();
             if (active?.renderOverlay) {
               return active.renderOverlay({

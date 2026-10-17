@@ -134,6 +134,22 @@ export class SoundSystem {
   public playPogo(): void {
     this.playTone(280, 750, 0.14, 'triangle', 0.08);
   }
+
+  public playHeal(): void {
+    this.playTone(440, 880, 0.22, 'sine', 0.08);
+  }
+
+  public playExplosion(): void {
+    this.playTone(140, 30, 0.28, 'sawtooth', 0.12);
+  }
+
+  public playLaser(): void {
+    this.playTone(880, 220, 0.12, 'sawtooth', 0.07);
+  }
+
+  public playPowerup(): void {
+    this.playTone(330, 990, 0.25, 'triangle', 0.09);
+  }
 }
 
 export const soundSystem = SoundSystem.getInstance();

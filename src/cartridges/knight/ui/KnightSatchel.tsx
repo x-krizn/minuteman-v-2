@@ -377,10 +377,10 @@ export const KnightSatchel: React.FC<KnightSatchelProps> = ({ onClose }) => {
               </div>
 
               {/* Dynamic inventory slots */}
-              {st?.inventorySlots && st.inventorySlots.map((slot) => {
+              {st?.inventorySlots && st.inventorySlots.map((slot, idx) => {
                 const def = getItemDefinition(slot.itemId);
                 return (
-                  <div key={slot.itemId} className="bg-[#122412] border border-[#244820] p-1.5 rounded-xs">
+                  <div key={`${slot.itemId}-${idx}`} className="bg-[#122412] border border-[#244820] p-1.5 rounded-xs">
                     <div className="text-[9px] text-[#70a860] uppercase">{def?.category || 'Item'}</div>
                     <div className="font-bold text-[#e6f5d0] text-[11px] mt-0.5">
                       {def?.name || slot.itemId} x{slot.quantity}

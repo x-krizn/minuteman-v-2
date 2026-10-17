@@ -6,6 +6,7 @@
 import { OrionState } from './types';
 
 let orionStateRef: OrionState | null = null;
+let orionRoomsRef: Record<string, string[]> | null = null;
 let onStateChangeListeners: Array<() => void> = [];
 
 export function setOrionStateRef(state: OrionState): void {
@@ -15,6 +16,14 @@ export function setOrionStateRef(state: OrionState): void {
 
 export function getOrionStateRef(): OrionState | null {
   return orionStateRef;
+}
+
+export function setOrionRoomsRef(rooms: Record<string, string[]>): void {
+  orionRoomsRef = rooms;
+}
+
+export function getOrionRoomsRef(): Record<string, string[]> | null {
+  return orionRoomsRef;
 }
 
 export function subscribeOrionStateChange(listener: () => void): () => void {
@@ -58,7 +67,12 @@ export function saveOrionGame(state: OrionState): boolean {
       bypassProgressionGates: state.bypassProgressionGates,
       flags: state.flags,
       spawnAnchor: state.spawnAnchor,
+      regionId: state.regionId,
       areaId: state.areaId,
+      mapId: state.mapId,
+      biomeId: state.biomeId,
+      discoveredWaystations: state.discoveredWaystations,
+      discoveredWaygates: state.discoveredWaygates,
       room: state.room,
       rx: state.rx,
       ry: state.ry,
@@ -107,7 +121,16 @@ export function loadOrionGame(state: OrionState): boolean {
     state.bypassProgressionGates = data.bypassProgressionGates ?? state.bypassProgressionGates;
     state.flags = data.flags ?? state.flags;
     state.spawnAnchor = data.spawnAnchor ?? state.spawnAnchor;
+    state.regionId = data.regionId ?? state.regionId;
     state.areaId = data.areaId ?? state.areaId;
+    state.mapId = data.mapId ?? state.mapId;
+    state.biomeId = data.biomeId ?? state.biomeId;
+    if (Array.isArray(data.discoveredWaystations)) {
+      state.discoveredWaystations = data.discoveredWaystations;
+    }
+    if (Array.isArray(data.discoveredWaygates)) {
+      state.discoveredWaygates = data.discoveredWaygates;
+    }
     state.room = data.room ?? state.room;
     state.rx = data.rx ?? state.rx;
     state.ry = data.ry ?? state.ry;

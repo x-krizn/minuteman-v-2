@@ -5,7 +5,10 @@
 
 import { soundSystem } from '../../../engine/core/soundSystem';
 import { COLS, DIR_VECTORS, ROWS, TILE_SIZE } from '../constants';
-import { AREA_REGISTRY } from '../database/areas/m00_the_bog';
+import { AREA_REGISTRY, getAreaDefinition, WAYSTATION_REGISTRY } from '../database/areas';
+import { getBiomeDefinition } from '../database/biomes';
+import { getMapDefinition } from '../database/maps';
+import { getRegionDefinition, WAYGATE_REGISTRY } from '../database/regions';
 import {
   ORION_CACHE_DEFINITIONS,
   ORION_ROOM_METADATA,
@@ -25,25 +28,187 @@ import {
 } from './tutorialSystem';
 
 /**
- * Retrieve structured display metadata for the pilot's current room and area
- * from the world database.
+ * Synchronize the pilot's active 5-tier hierarchy IDs (Region -> Area -> Map -> Room -> Biome)
+ * and auto-attune any Waystation in the starting room.
+ */
+export function syncRoomHierarchyState(state: OrionState): void {
+  const meta = ORION_ROOM_METADATA[state.room];
+  const areaId = meta?.areaId || state.areaId || 'm00_the_bog';
+  const areaDef = getAreaDefinition(areaId);
+  const regionId = meta?.regionId || areaDef.regionId || 'region_belldor_outskirts';
+  const regionDef = getRegionDefinition(regionId);
+  const mapId = meta?.mapId || areaDef.localMapIds[0] || 'map_bog_drop_zone';
+  const mapDef = getMapDefinition(mapId);
+  const biomeId =
+    meta?.biomeId ||
+    mapDef?.biomeId ||
+    areaDef.biomeId ||
+    regionDef.defaultBiomeId ||
+    'belldor_bog';
+
+  state.regionId = regionDef.id;
+  state.areaId = areaDef.id;
+  state.mapId = mapDef?.id || mapId;
+  state.biomeId = getBiomeDefinition(biomeId).id;
+
+  state.discoveredWaystations = state.discoveredWaystations || ['ws_bog_drop_pod'];
+  state.discoveredWaygates = state.discoveredWaygates || [];
+
+  // Auto-discover the area's Waystation if the pilot enters the room containing it
+  if (
+    areaDef.waystation &&
+    areaDef.waystation.room === state.room &&
+    !state.discoveredWaystations.includes(areaDef.waystation.id)
+  ) {
+    state.discoveredWaystations.push(areaDef.waystation.id);
+  }
+
+  // Auto-discover the region's Colossal Waygate if the pilot enters its sanctum room
+  if (
+    regionDef.waygate &&
+    regionDef.waygate.room === state.room &&
+    !state.discoveredWaygates.includes(regionDef.waygate.id)
+  ) {
+    state.discoveredWaygates.push(regionDef.waygate.id);
+  }
+}
+
+/**
+ * Retrieve structured 5-tier display metadata for the pilot's current room, map, area, biome, and region.
  */
 export function getRoomWorldInfo(state: OrionState): {
   roomTitle: string;
+  roomScope: 'global' | 'local';
   bannerTitle: string;
+  mapName: string;
+  mapScope: 'global' | 'local';
   areaName: string;
+  areaScope: 'global' | 'local';
+  regionName: string;
+  regionScope: 'global' | 'local';
+  biomeName: string;
+  biomeScope: 'global' | 'local';
   worldName: string;
 } {
   const meta = ORION_ROOM_METADATA[state.room];
   const areaId = meta?.areaId || state.areaId || 'm00_the_bog';
-  const areaDef = AREA_REGISTRY[areaId] || AREA_REGISTRY.m00_the_bog;
+  const areaDef = AREA_REGISTRY[areaId] || getAreaDefinition('m00_the_bog');
+  const regionDef = getRegionDefinition(meta?.regionId || state.regionId || areaDef.regionId);
+  const mapDef = getMapDefinition(meta?.mapId || state.mapId || areaDef.localMapIds[0]);
+  const biomeDef = getBiomeDefinition(
+    meta?.biomeId || state.biomeId || mapDef?.biomeId || areaDef.biomeId
+  );
 
   return {
     roomTitle: meta?.title || `Sector [${state.rx}, ${state.ry}]`,
+    roomScope: meta?.scope || 'local',
     bannerTitle: meta?.bannerTitle || `${areaDef.name.toUpperCase()} [${state.rx},${state.ry}]`,
+    mapName: mapDef?.name || 'Bog Sector',
+    mapScope: mapDef?.scope || 'local',
     areaName: areaDef.name,
-    worldName: areaDef.world,
+    areaScope: areaDef.scope,
+    regionName: regionDef.name,
+    regionScope: regionDef.scope,
+    biomeName: biomeDef.name,
+    biomeScope: biomeDef.scope,
+    worldName: regionDef.world || areaDef.world,
   };
+}
+
+/**
+ * Lore-accurate intra-region / area fast travel via attuned Æther Waystations.
+ */
+export function fastTravelToWaystation(
+  rooms: Record<string, string[]>,
+  state: OrionState,
+  waystationId: string,
+  ctx?: OrionCombatContext
+): boolean {
+  if (state.flags?.orc_raid_active) {
+    const msg = 'WAYSTATION LOCKED: DEAL WITH ACTIVE ORC RAID FIRST!';
+    if (ctx) ctx.say(msg);
+    else {
+      state.toastText = msg;
+      state.toastTimer = 2.5;
+    }
+    soundSystem.playMenuBeep();
+    return false;
+  }
+
+  const ws = WAYSTATION_REGISTRY[waystationId];
+  if (!ws || !rooms[ws.room]) return false;
+
+  const [rxStr, ryStr] = ws.room.split(',');
+  state.room = ws.room;
+  state.rx = Number(rxStr) || 0;
+  state.ry = Number(ryStr) || 0;
+  state.x = ws.x;
+  state.y = ws.y;
+  state.z = 0;
+  state.vz = 0;
+  state.projectiles = [];
+  state.pickups = [];
+
+  syncRoomHierarchyState(state);
+  state.spawnAnchor = {
+    areaId: state.areaId,
+    room: state.room,
+    x: ws.x,
+    y: ws.y,
+  };
+
+  spawnRoomEnemies(rooms, state);
+  soundSystem.playPowerup();
+  const msg = `ÆTHER WAYSTATION TRANSIT -> ${ws.name.toUpperCase()}`;
+  if (ctx) ctx.say(msg);
+  else {
+    state.toastText = msg;
+    state.toastTimer = 2.8;
+  }
+  notifyOrionStateChange();
+  return true;
+}
+
+/**
+ * Lore-accurate inter-region / inter-world fast travel via Colossal Waygates.
+ * Reads the pilot's ætheric signature and transits across aligned worlds.
+ */
+export function fastTravelViaWaygate(
+  rooms: Record<string, string[]>,
+  state: OrionState,
+  waygateId: string,
+  ctx?: OrionCombatContext
+): boolean {
+  const wg = WAYGATE_REGISTRY[waygateId];
+  if (!wg || !rooms[wg.room]) return false;
+
+  const [rxStr, ryStr] = wg.room.split(',');
+  state.room = wg.room;
+  state.rx = Number(rxStr) || 0;
+  state.ry = Number(ryStr) || 0;
+  state.x = wg.x;
+  state.y = wg.y + 18;
+  state.z = 0;
+  state.vz = 0;
+  state.projectiles = [];
+  state.pickups = [];
+  state.flickerTimer = 0.8;
+
+  syncRoomHierarchyState(state);
+  if (!state.discoveredWaygates?.includes(wg.id)) {
+    state.discoveredWaygates = [...(state.discoveredWaygates || []), wg.id];
+  }
+
+  spawnRoomEnemies(rooms, state);
+  soundSystem.playPowerup();
+  const msg = `WAYGATE READS ÆTHERIC SIGNATURE -> ${wg.world.toUpperCase()} (${wg.name.toUpperCase()})`;
+  if (ctx) ctx.say(msg);
+  else {
+    state.toastText = msg;
+    state.toastTimer = 3.2;
+  }
+  notifyOrionStateChange();
+  return true;
 }
 
 /**
@@ -111,6 +276,7 @@ export function rebootAtSpawnAnchor(
   state.z = 0;
   state.vz = 0;
 
+  syncRoomHierarchyState(state);
   ctx.say(reasonToast);
   spawnRoomEnemies(rooms, state);
   syncStateGates(state);
@@ -188,9 +354,26 @@ export function checkWorldInteractivePrompt(
       ? '[A] SPEAK WITH CAMELOT LOYALIST'
       : '[A] TRADE WITH BORDER TOWN SCAVENGER (15 SCRAP -> REPAIR KIT)';
   } else if (currentTile === 'D' || facingTile === 'D') {
-    // 1. White Spawn Anchor: Drop-Pod Crater (D)
+    // 1. White Spawn Anchor: Drop-Pod Crater & Bog Waystation (D)
     candidateKey = `${state.room}:D`;
-    candidateText = '[A] SYNC SPAWN ANCHOR · PURGE HEAT & REPAIR';
+    const wsCount = (state.discoveredWaystations || []).length;
+    candidateText =
+      wsCount > 1
+        ? `[A] SYNC DROP-POD WAYSTATION · FAST TRAVEL (${wsCount} ATTUNED)`
+        : '[A] SYNC SPAWN ANCHOR & ATTUNE BOG WAYSTATION';
+  } else if (currentTile === 'A' || facingTile === 'A') {
+    // 1B. Æther Waystation (A) — Area Fast Travel Anchor
+    candidateKey = `${state.room}:A`;
+    const wsCount = (state.discoveredWaystations || []).length;
+    candidateText =
+      wsCount > 1
+        ? `[A] ATTUNE ÆTHER WAYSTATION · TRANSIT TO NEXT AREA (${wsCount} ATTUNED)`
+        : '[A] ATTUNE ÆTHER WAYSTATION · SYNC SPAWN & REPAIR';
+  } else if (currentTile === 'Q' || facingTile === 'Q') {
+    // 1C. Colossal Waygate (Q) — Lore Inter-Region / Inter-World Signature Archway
+    candidateKey = `${state.room}:Q`;
+    const destWorld = state.regionId === 'region_tyrranus_frontier' ? 'BELLDOR (CAMELOT)' : 'TYRRANUS FRONTIER';
+    candidateText = `[A] WALK THROUGH COLOSSAL WAYGATE -> READ ÆTHERIC SIGNATURE TO ${destWorld}`;
   } else if (nearScout) {
     // 2. Magenta Micro-Setpiece: Bedivere / Fallen Scout (S)
     candidateKey = `${state.room}:${scoutKey}:${state.flags.bedivere_ring_choice || 'none'}`;
@@ -272,7 +455,7 @@ export function checkWorldInteractivePrompt(
 }
 
 /**
- * Execute an interaction with an anchor, setpiece, Poe, NPC, or switch in the world.
+ * Execute an interaction with an anchor, Waystation, Colossal Waygate, setpiece, Poe, NPC, or switch in the world.
  */
 export function executeWorldInteraction(
   rooms: Record<string, string[]>,
@@ -304,7 +487,6 @@ export function executeWorldInteraction(
     state.flags.poe_lantern_gift = true;
     state.flags.bog_exit_revealed = true;
     addOrionInventoryItem(state, 'poe_lantern_charm', 1);
-    // Reveal any submerged Bog Wurm in the room
     for (const e of state.enemies) {
       if (e.type === 'bog_wurm') e.isSubmerged = false;
     }
@@ -351,8 +533,21 @@ export function executeWorldInteraction(
     return true;
   }
 
-  // 1. White Spawn Anchor: Drop-Pod Crater (D)
-  if (currentTile === 'D' || facingTile === 'D') {
+  // 1. White Spawn Anchor (D) or Æther Waystation (A)
+  if (
+    currentTile === 'D' ||
+    facingTile === 'D' ||
+    currentTile === 'A' ||
+    facingTile === 'A'
+  ) {
+    syncRoomHierarchyState(state);
+    const areaDef = getAreaDefinition(state.areaId);
+    const currentWsId = areaDef.waystation?.id;
+    state.discoveredWaystations = state.discoveredWaystations || ['ws_bog_drop_pod'];
+    if (currentWsId && !state.discoveredWaystations.includes(currentWsId)) {
+      state.discoveredWaystations.push(currentWsId);
+    }
+
     state.spawnAnchor = {
       areaId: state.areaId,
       room: state.room,
@@ -368,17 +563,45 @@ export function executeWorldInteraction(
     state.ammo = state.maxAmmo;
     state.isReloading = false;
     saveOrionGame(state);
+
+    // If multiple Waystations are attuned, cycle to the next discovered Waystation on repeat press
+    const discovered = state.discoveredWaystations;
+    if (discovered.length > 1 && currentWsId) {
+      const idx = discovered.indexOf(currentWsId);
+      const nextWsId = discovered[(idx + 1) % discovered.length];
+      if (nextWsId && nextWsId !== currentWsId) {
+        return fastTravelToWaystation(rooms, state, nextWsId, ctx);
+      }
+    }
+
     soundSystem.playHeal();
-    ctx.say('SPAWN ANCHOR SYNCED · SYSTEMS REBOOTED (SAVED)');
+    ctx.say(
+      `WAYSTATION ATTUNED (${areaDef.waystation?.name || 'DROP-POD'}) · SYSTEMS REBOOTED`
+    );
     notifyOrionStateChange();
     return true;
+  }
+
+  // 1C. Colossal Waygate (Q) — Inter-Region / Inter-World Signature Transit
+  if (currentTile === 'Q' || facingTile === 'Q') {
+    syncRoomHierarchyState(state);
+    const allWaygates = Object.values(WAYGATE_REGISTRY);
+    for (const wg of allWaygates) {
+      if (!state.discoveredWaygates?.includes(wg.id)) {
+        state.discoveredWaygates = [...(state.discoveredWaygates || []), wg.id];
+      }
+    }
+    const targetWaygateId =
+      state.regionId === 'region_tyrranus_frontier'
+        ? 'wg_camelot_sanctum'
+        : 'wg_tyrranus_colonnade';
+    return fastTravelViaWaygate(rooms, state, targetWaygateId, ctx);
   }
 
   // 2. Magenta Setpiece: Bedivere / Fallen Scout (S)
   if (facingTile === 'S' || currentTile === 'S') {
     const scoutKey = `scout:${state.room}`;
     if (!state.lootedCaches[scoutKey]) {
-      // First press: salvage gear & Bedivere's Numbered List; set ring choice to 'pending'
       handleTutorialAnchorInteraction(state, ctx, 'S');
       state.lootedCaches[scoutKey] = true;
       state.hasBoosterKit = true;
@@ -395,7 +618,6 @@ export function executeWorldInteraction(
       notifyOrionStateChange();
       return true;
     } else if (state.flags.bedivere_ring_choice === 'pending') {
-      // Second press at Bedivere: explicitly take the Signet Ring
       state.flags.bedivere_ring_choice = 'taken';
       addOrionInventoryItem(state, 'bedivere_ring', 1);
       soundSystem.playCoin();
@@ -417,7 +639,6 @@ export function executeWorldInteraction(
       for (const item of cacheDef.items) {
         addOrionInventoryItem(state, item.itemId, item.count);
       }
-      // Also progress Bedivere's List relics when looting hidden caches
       if (Number(state.flags.bedivere_list_items || 0) < 3) {
         state.flags.bedivere_list_items = Number(state.flags.bedivere_list_items || 0) + 1;
         addOrionInventoryItem(state, 'bedivere_relic', 1);
@@ -514,7 +735,7 @@ export function executeWorldInteraction(
 }
 
 /**
- * Handle seamless room boundary transitions and area updates.
+ * Handle seamless on-foot room, map, area, and region boundary transitions.
  */
 export function handleWorldRoomTransition(
   rooms: Record<string, string[]>,
@@ -586,15 +807,20 @@ export function handleWorldRoomTransition(
     state.projectiles = [];
     state.pickups = [];
 
-    const meta = ORION_ROOM_METADATA[state.room];
-    if (meta?.areaId) {
-      state.areaId = meta.areaId;
-    }
+    const prevRegionId = state.regionId;
+    const prevAreaId = state.areaId;
+    syncRoomHierarchyState(state);
 
     spawnRoomEnemies(rooms, state);
     soundSystem.playSelect();
     const info = getRoomWorldInfo(state);
-    ctx.say(info.bannerTitle);
+    if (state.regionId !== prevRegionId) {
+      ctx.say(`REGION ENTERED: ${info.regionName.toUpperCase()} · ${info.bannerTitle}`);
+    } else if (state.areaId !== prevAreaId) {
+      ctx.say(`AREA ENTERED: ${info.areaName.toUpperCase()} · ${info.bannerTitle}`);
+    } else {
+      ctx.say(info.bannerTitle);
+    }
     notifyOrionStateChange();
   }
 }

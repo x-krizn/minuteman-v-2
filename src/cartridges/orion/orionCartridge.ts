@@ -25,6 +25,7 @@ import {
   TILE_SIZE,
   WALK_SPEED,
 } from './constants';
+import { getBiomeDefinition } from './database/biomes';
 import { TRAIT_REGISTRY } from './database/characters/trait_lines';
 import { ORION_INITIAL_ROOMS } from './database/world';
 import { spawnRoomEnemies, updateEnemies } from './enemies';
@@ -35,6 +36,7 @@ import { drawOrionGame } from './renderer';
 import { updateProjectiles } from './skills';
 import {
   notifyOrionStateChange,
+  setOrionRoomsRef,
   setOrionStateRef,
 } from './stateStore';
 import {
@@ -43,6 +45,7 @@ import {
   executeWorldInteraction,
   handleWorldRoomTransition,
   rebootAtSpawnAnchor,
+  syncRoomHierarchyState,
   syncStateGates,
   updateEnvironmentalHazards,
   updateTargetLock,
@@ -61,10 +64,15 @@ export function createOrionCartridge(): Cartridge {
   const defaultTrait = TRAIT_REGISTRY.Warrior;
 
   const state: OrionState = {
+    regionId: 'region_belldor_outskirts',
     areaId: 'm00_the_bog',
+    mapId: 'map_bog_drop_zone',
+    biomeId: 'belldor_bog',
     room: '0,0',
     rx: 0,
     ry: 0,
+    discoveredWaystations: ['ws_bog_drop_pod'],
+    discoveredWaygates: [],
 
     x: 48,
     y: 72,
@@ -206,7 +214,9 @@ export function createOrionCartridge(): Cartridge {
     dismissedPromptKey: null,
   };
 
+  syncRoomHierarchyState(state);
   syncStateGates(state);
+  setOrionRoomsRef(rooms);
   setOrionStateRef(state);
 
   let currentMenuMode: CartridgeMenuMode = 'none';
@@ -231,8 +241,10 @@ export function createOrionCartridge(): Cartridge {
       'A 2.5D action-adventure Metroid-Souls RPG with Golden Sun baked perspective, 8-way traversal, Three Defense Layers, and orbital drop-pod Belldor lore.',
 
     init(_surface: CartridgeSurface) {
+      syncRoomHierarchyState(state);
       syncStateGates(state);
       spawnRoomEnemies(rooms, state);
+      setOrionRoomsRef(rooms);
       setOrionStateRef(state);
     },
 
@@ -459,12 +471,14 @@ export function createOrionCartridge(): Cartridge {
         state.x = moveEntityX(rooms, state, state.x, state.y, state.z, state.boosterDirX * step);
         state.y = moveEntityY(rooms, state, state.x, state.y, state.z, state.boosterDirY * step);
       } else if (hasMoveInput) {
-        // Check if standing in deep bog mud
+        // Check if standing in deep bog mud / water using active Biome's tileRules
         const tx = Math.floor(state.x / TILE_SIZE);
         const ty = Math.floor(state.y / TILE_SIZE);
         const curChar = rooms[state.room]?.[ty]?.[tx] || '.';
         const inMud = curChar === '~' && state.z <= 0;
-        const speed = WALK_SPEED * (inMud ? MUD_SPEED_PENALTY : 1.0);
+        const biomeMudMult =
+          getBiomeDefinition(state.biomeId).tileRules?.mudSlowMultiplier ?? MUD_SPEED_PENALTY;
+        const speed = WALK_SPEED * (inMud ? biomeMudMult : 1.0);
 
         // Move along normMoveX/normMoveY so pilot can strafe while locked onto a target!
         const stepX = normMoveX * speed * dt;

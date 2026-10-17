@@ -6,12 +6,19 @@
 import React, { useEffect, useState } from 'react';
 import { soundSystem } from '../../../engine/core/soundSystem';
 import { performWeaponSwap } from '../combat';
-import { getItemDefinition } from '../database/items';
-import { getWeaponDefinition } from '../database/weapons';
+import { AREA_REGISTRY, WAYSTATION_REGISTRY } from '../database/areas';
+import { BIOME_REGISTRY, getBiomeDefinition } from '../database/biomes';
 import { TRAIT_REGISTRY } from '../database/characters/trait_lines';
+import { getResolvedActionDescriptor } from '../database/equipment';
+import { getItemDefinition } from '../database/items';
+import { MAP_REGISTRY } from '../database/maps';
 import { LEVEL_UNLOCK_SEQUENCE, CORE_COMBAT_LAWS } from '../database/progression/canonical_progression';
+import { REGION_REGISTRY, WAYGATE_REGISTRY } from '../database/regions';
+import { GLOBAL_ROOM_REGISTRY, LOCAL_ROOM_REGISTRY } from '../database/rooms';
+import { getWeaponDefinition } from '../database/weapons';
 import {
   consolidateInventorySlots,
+  getOrionRoomsRef,
   getOrionStateRef,
   notifyOrionStateChange,
   subscribeOrionStateChange,
@@ -22,7 +29,10 @@ import {
   assignTriggerAction,
   awakenLadyOfTheLake,
   evaluateCathedralDoorStatus,
+  fastTravelToWaystation,
+  fastTravelViaWaygate,
   getActionCooldown,
+  getRoomWorldInfo,
   isActionUnlocked,
   resetTriggerActionsToDefault,
   resolveTriggerAction,
@@ -34,7 +44,6 @@ import {
   TUTORIAL_STEP_DESCRIPTORS,
   TutorialStepId,
 } from '../systems';
-import { getResolvedActionDescriptor } from '../database/equipment';
 import { TraitLine } from '../types';
 
 export interface OrionSatchelProps {
@@ -51,7 +60,7 @@ const ALL_TRAIT_LINES: TraitLine[] = [
 ];
 
 export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
-  const [tab, setTab] = useState<'status' | 'weapons' | 'inventory' | 'progression'>('status');
+  const [tab, setTab] = useState<'status' | 'weapons' | 'inventory' | 'world' | 'progression'>('status');
   const [, setRefresh] = useState(0);
 
   useEffect(() => {
@@ -137,6 +146,19 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
             }`}
           >
             SATCHEL
+          </button>
+          <button
+            onClick={() => {
+              soundSystem.playMenuBeep();
+              setTab('world');
+            }}
+            className={`px-2 py-0.5 text-[10px] font-bold rounded-xs transition-colors shrink-0 ${
+              tab === 'world'
+                ? 'bg-[#22d3ee] text-[#05070a]'
+                : 'bg-[#0f172a] text-[#94a3b8] hover:bg-[#1e293b]'
+            }`}
+          >
+            WORLD & WAYGATES
           </button>
           <button
             onClick={() => {
@@ -800,27 +822,233 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
             ))}
           </div>
 
-          {/* Level Unlocks Timeline */}
-          <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1">
-            <div className="text-[#38bdf8] font-bold text-[10px]">HORIZONTAL PROGRESSION TIMELINE (LEVELS 1–20):</div>
-            <div className="space-y-1 max-h-36 overflow-y-auto pr-1">
-              {LEVEL_UNLOCK_SEQUENCE.map((lvl) => (
-                <div
-                  key={lvl.level}
-                  className={`p-1 rounded-xs flex items-center justify-between text-[9px] ${
-                    state.level >= lvl.level || state.bypassProgressionGates
-                      ? 'bg-[#1e293b] text-[#e2e8f0]'
-                      : 'bg-[#090d14] text-[#64748b]'
-                  }`}
-                >
-                  <span className="font-bold">LVL {lvl.level}: {lvl.unlock}</span>
-                  <span className="italic">{lvl.learningFocus}</span>
-                </div>
-              ))}
+            {/* Level Unlocks Timeline */}
+            <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1">
+              <div className="text-[#38bdf8] font-bold text-[10px]">HORIZONTAL PROGRESSION TIMELINE (LEVELS 1–20):</div>
+              <div className="space-y-1 max-h-36 overflow-y-auto pr-1">
+                {LEVEL_UNLOCK_SEQUENCE.map((lvl) => (
+                  <div
+                    key={lvl.level}
+                    className={`p-1 rounded-xs flex items-center justify-between text-[9px] ${
+                      state.level >= lvl.level || state.bypassProgressionGates
+                        ? 'bg-[#1e293b] text-[#e2e8f0]'
+                        : 'bg-[#090d14] text-[#64748b]'
+                    }`}
+                  >
+                    <span className="font-bold">LVL {lvl.level}: {lvl.unlock}</span>
+                    <span className="italic">{lvl.learningFocus}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+      {/* TAB: 5-TIER NESTED WORLD ARCHITECTURE & LORE FAST TRAVEL */}
+      {tab === 'world' && (() => {
+        const worldInfo = getRoomWorldInfo(state);
+        const activeBiome = getBiomeDefinition(state.biomeId);
+        const rooms = getOrionRoomsRef();
+        const discoveredWs = state.discoveredWaystations || ['ws_bog_drop_pod'];
+        const discoveredWg = state.discoveredWaygates || [];
+
+        return (
+          <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-[10px]">
+            {/* Active 5-Tier Nested Location Breadcrumb */}
+            <div className="p-2 bg-[#0f172a] rounded-xs border border-[#22d3ee]/50 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-[#22d3ee] text-[10px]">
+                  ACTIVE 5-TIER NESTED WORLD HIERARCHY (ON-FOOT & LORE TRANSIT)
+                </span>
+                <button
+                  onClick={() => {
+                    state.discoveredWaystations = Object.keys(WAYSTATION_REGISTRY);
+                    state.discoveredWaygates = Object.keys(WAYGATE_REGISTRY);
+                    soundSystem.playPowerup();
+                    notifyOrionStateChange();
+                  }}
+                  className="px-1.5 py-0.5 bg-[#164e63] hover:bg-[#0e7490] text-[#e0f2fe] border border-[#22d3ee]/60 rounded-xs font-bold text-[8px] cursor-pointer"
+                >
+                  ATTUNE ALL WAYSTATIONS & WAYGATES
+                </button>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-1 pt-1">
+                <div className="p-1 bg-[#090d14] rounded-xs border border-[#1e293b]">
+                  <div className="text-[8px] text-[#94a3b8]">1. REGION ({worldInfo.regionScope.toUpperCase()})</div>
+                  <div className="font-bold text-[#f8fafc] truncate">{worldInfo.regionName}</div>
+                </div>
+                <div className="p-1 bg-[#090d14] rounded-xs border border-[#1e293b]">
+                  <div className="text-[8px] text-[#94a3b8]">2. AREA ({worldInfo.areaScope.toUpperCase()})</div>
+                  <div className="font-bold text-[#38bdf8] truncate">{worldInfo.areaName}</div>
+                </div>
+                <div className="p-1 bg-[#090d14] rounded-xs border border-[#1e293b]">
+                  <div className="text-[8px] text-[#94a3b8]">3. MAP ({worldInfo.mapScope.toUpperCase()})</div>
+                  <div className="font-bold text-[#ffd27d] truncate">{worldInfo.mapName}</div>
+                </div>
+                <div className="p-1 bg-[#090d14] rounded-xs border border-[#1e293b]">
+                  <div className="text-[8px] text-[#94a3b8]">4. ROOM [{state.room}] ({worldInfo.roomScope.toUpperCase()})</div>
+                  <div className="font-bold text-[#86efac] truncate">{worldInfo.roomTitle}</div>
+                </div>
+                <div className="p-1 bg-[#090d14] rounded-xs border border-[#1e293b]">
+                  <div className="text-[8px] text-[#94a3b8]">5. BIOME ({worldInfo.biomeScope.toUpperCase()})</div>
+                  <div className="font-bold text-[#c084fc] truncate">{worldInfo.biomeName}</div>
+                </div>
+              </div>
+              <div className="text-[8.5px] text-[#cbd5e1] pt-0.5 flex flex-wrap items-center gap-2">
+                <span>
+                  BIOME RULES: Corrosive Water:{' '}
+                  <strong className={activeBiome.tileRules.corrosiveWater ? 'text-[#84cc16]' : 'text-[#94a3b8]'}>
+                    {activeBiome.tileRules.corrosiveWater
+                      ? `YES (${activeBiome.tileRules.corrosiveDamagePerSec}/s)`
+                      : 'NO'}
+                  </strong>
+                </span>
+                <span>·</span>
+                <span>
+                  Mud Speed: <strong>{Math.round(activeBiome.tileRules.mudSlowMultiplier * 100)}%</strong>
+                </span>
+                <span>·</span>
+                <span>
+                  Desync Cadence: <strong>{activeBiome.tileRules.desyncPeriodSec}s</strong>
+                </span>
+              </div>
+            </div>
+
+            {/* Lore Fast Travel 1: Colossal Waygates (Inter-World / Inter-Region Signature Transit) */}
+            <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-[#67e8f9] text-[10px]">
+                  COLOSSAL WAYGATES (Q) — INTER-WORLD ÆTHERIC SIGNATURE TRANSIT
+                </span>
+                <span className="text-[8px] text-[#94a3b8]">
+                  Reads pilot ætheric signature across aligned worlds
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                {Object.values(WAYGATE_REGISTRY).map((wg) => {
+                  const isDiscovered =
+                    discoveredWg.includes(wg.id) || Boolean(state.bypassProgressionGates);
+                  const isHere = state.room === wg.room;
+                  return (
+                    <div
+                      key={wg.id}
+                      className="p-1.5 bg-[#0f172a] rounded-xs border border-[#1e293b] flex items-center justify-between gap-2"
+                    >
+                      <div>
+                        <div className="font-bold text-[#e0f2fe] text-[9.5px]">
+                          {wg.name} · <span className="text-[#38bdf8]">{wg.world}</span>
+                        </div>
+                        <div className="text-[8px] text-[#94a3b8]">
+                          Room [{wg.room}] · Alignment: {wg.desyncStatus}
+                        </div>
+                      </div>
+                      <button
+                        disabled={!isDiscovered || !rooms}
+                        onClick={() => {
+                          if (!rooms) return;
+                          if (fastTravelViaWaygate(rooms, state, wg.id)) {
+                            onResume();
+                          }
+                        }}
+                        className={`px-2 py-1 rounded-xs font-bold text-[8.5px] shrink-0 cursor-pointer ${
+                          isHere
+                            ? 'bg-[#164e63] text-[#67e8f9] border border-[#22d3ee]'
+                            : isDiscovered
+                              ? 'bg-[#0284c7] hover:bg-[#0369a1] text-white'
+                              : 'bg-[#1e293b] text-[#64748b] cursor-not-allowed'
+                        }`}
+                      >
+                        {isHere ? 'AT WAYGATE' : isDiscovered ? 'WAYGATE TRANSIT' : 'UNATTUNED'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Lore Fast Travel 2: Æther Waystations (Discovered Area Fast Travel) */}
+            <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-[#ffd27d] text-[10px]">
+                  ÆTHER WAYSTATIONS (D / A) — DISCOVERED AREA FAST TRAVEL
+                </span>
+                <span className="text-[8px] text-[#94a3b8]">
+                  Entire world also traversable room-to-room on foot
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                {Object.values(WAYSTATION_REGISTRY).map((ws) => {
+                  const isDiscovered =
+                    discoveredWs.includes(ws.id) || Boolean(state.bypassProgressionGates);
+                  const isHere = state.room === ws.room;
+                  return (
+                    <div
+                      key={ws.id}
+                      className="p-1.5 bg-[#0f172a] rounded-xs border border-[#1e293b] flex items-center justify-between gap-2"
+                    >
+                      <div>
+                        <div className="font-bold text-[#fef08a] text-[9.5px]">{ws.name}</div>
+                        <div className="text-[8px] text-[#94a3b8]">
+                          Area: {AREA_REGISTRY[ws.areaId]?.name || ws.areaId} · Room [{ws.room}]
+                        </div>
+                      </div>
+                      <button
+                        disabled={!isDiscovered || !rooms}
+                        onClick={() => {
+                          if (!rooms) return;
+                          if (fastTravelToWaystation(rooms, state, ws.id)) {
+                            onResume();
+                          }
+                        }}
+                        className={`px-2 py-1 rounded-xs font-bold text-[8.5px] shrink-0 cursor-pointer ${
+                          isHere
+                            ? 'bg-[#422006] text-[#fde68a] border border-[#f59e0b]'
+                            : isDiscovered
+                              ? 'bg-[#ca8a04] hover:bg-[#a16207] text-[#05070a]'
+                              : 'bg-[#1e293b] text-[#64748b] cursor-not-allowed'
+                        }`}
+                      >
+                        {isHere ? 'CURRENT ROOM' : isDiscovered ? 'FAST TRAVEL' : 'UNDISCOVERED'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 5-Tier Global & Local Registry Summary */}
+            <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1">
+              <div className="text-[#c084fc] font-bold text-[9.5px]">
+                NESTED ARCHITECTURE REGISTRIES (GLOBAL PROCEDURAL & LOCAL BESPOKE):
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-1 text-[8.5px]">
+                <div className="p-1 bg-[#0f172a] rounded-xs border border-[#1e293b]">
+                  <div className="font-bold text-[#e2e8f0]">REGIONS ({Object.keys(REGION_REGISTRY).length})</div>
+                  <div className="text-[#94a3b8]">Global & Local</div>
+                </div>
+                <div className="p-1 bg-[#0f172a] rounded-xs border border-[#1e293b]">
+                  <div className="font-bold text-[#38bdf8]">AREAS ({Object.keys(AREA_REGISTRY).length})</div>
+                  <div className="text-[#94a3b8]">Global & Local</div>
+                </div>
+                <div className="p-1 bg-[#0f172a] rounded-xs border border-[#1e293b]">
+                  <div className="font-bold text-[#ffd27d]">MAPS ({Object.keys(MAP_REGISTRY).length})</div>
+                  <div className="text-[#94a3b8]">Global & Local</div>
+                </div>
+                <div className="p-1 bg-[#0f172a] rounded-xs border border-[#1e293b]">
+                  <div className="font-bold text-[#86efac]">
+                    ROOMS ({Object.keys(LOCAL_ROOM_REGISTRY).length}L + {Object.keys(GLOBAL_ROOM_REGISTRY).length}G)
+                  </div>
+                  <div className="text-[#94a3b8]">Hybrid Stitched</div>
+                </div>
+                <div className="p-1 bg-[#0f172a] rounded-xs border border-[#1e293b]">
+                  <div className="font-bold text-[#c084fc]">BIOMES ({Object.keys(BIOME_REGISTRY).length})</div>
+                  <div className="text-[#94a3b8]">Types, Rules, Assets</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };

@@ -37,14 +37,14 @@ export function drawOrionGame(
   g.fillRect(0, 0, SCREEN_W, SCREEN_H);
 
   const room = rooms[state.room];
-  const defaultFloorTile = getTileDefinition('.');
+  const defaultFloorTile = getTileDefinition('.', state.biomeId);
 
-  // 1. LAYER 0: Ground, Mud & Sinkholes (Data-Driven per Tile Module)
+  // 1. LAYER 0: Ground, Mud & Sinkholes (Data-Driven per Tile & Biome Module)
   if (room) {
     for (let ty = 0; ty < ROWS; ty++) {
       for (let tx = 0; tx < COLS; tx++) {
         const char = room[ty]?.[tx] || '.';
-        const tile = getTileDefinition(char);
+        const tile = getTileDefinition(char, state.biomeId);
         const sx = tx * TILE_SIZE;
         const sy = ty * TILE_SIZE;
 
@@ -57,12 +57,12 @@ export function drawOrionGame(
     }
   }
 
-  // 2. LAYER 1: Baked 2.5D Walls, Desync Barriers & Gates (Data-Driven per Tile Module)
+  // 2. LAYER 1: Baked 2.5D Walls, Desync Barriers & Gates (Data-Driven per Tile & Biome Module)
   if (room) {
     for (let ty = 0; ty < ROWS; ty++) {
       for (let tx = 0; tx < COLS; tx++) {
         const char = room[ty]?.[tx] || '.';
-        const tile = getTileDefinition(char);
+        const tile = getTileDefinition(char, state.biomeId);
         const sx = tx * TILE_SIZE;
         const sy = ty * TILE_SIZE;
         tile.renderLayer1?.(g, tx, ty, sx, sy, state);
@@ -82,7 +82,7 @@ export function drawOrionGame(
     for (let ty = 0; ty < ROWS; ty++) {
       for (let tx = 0; tx < COLS; tx++) {
         const char = room[ty]?.[tx] || '.';
-        const tile = getTileDefinition(char);
+        const tile = getTileDefinition(char, state.biomeId);
         if (tile.renderProp25D) {
           const sx = tx * TILE_SIZE + 8;
           const sy = ty * TILE_SIZE + 12;

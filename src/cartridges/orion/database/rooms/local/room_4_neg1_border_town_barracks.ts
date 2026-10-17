@@ -6,8 +6,13 @@
 import { RoomDefinition } from '../../../types';
 
 export const room4Neg1BorderTownBarracks: RoomDefinition = {
+  id: 'room_4_neg1_border_town_barracks',
+  scope: 'local',
   coord: '4,-1',
+  mapId: 'map_border_town_barracks',
   areaId: 'border_town_slums',
+  regionId: 'region_belldor_camelot_heartland',
+  biomeId: 'camelot_border_town',
   title: 'Border Town Barracks',
   bannerTitle: 'BORDER TOWN BARRACKS · PERCIVAL & TRISTAN',
   grid: [
@@ -16,8 +21,8 @@ export const room4Neg1BorderTownBarracks: RoomDefinition = {
     '#..K..T..#', // Sir Percival (K) & Sir Tristan (T)
     '#........#',
     '#...o....#', // Orc Pair in the Barracks
-    '#..P..P..#',
-    '#........#',
+    '#..P..P...', // East passage to global northern cloister (5,-1)
+    '#.........',
     '#........#',
     '####..####',
   ],

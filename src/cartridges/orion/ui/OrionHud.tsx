@@ -196,14 +196,17 @@ export const OrionHud: React.FC = () => {
           </div>
         </section>
 
-        {/* CENTER CLUSTER: Sector, World Location, Target Lock-On & Tutorial State Indicator */}
+        {/* CENTER CLUSTER: 5-Tier Nested World Location, Target Lock-On & Tutorial State Indicator */}
         <section aria-label="Sector Info" className="hidden xs:flex flex-col items-center">
           <div className="px-2.5 py-0.5 bg-[#090d14]/90 border border-[#38bdf8]/40 rounded-full text-[9px] text-[#7dd3fc] tracking-wider uppercase font-bold flex items-center gap-1 shadow-md backdrop-blur-xs">
             <span className="text-[#38bdf8]">⬢</span>
             <span>{worldInfo.roomTitle}</span>
+            <span className="text-[7px] px-1 rounded bg-[#1e293b] text-[#94a3b8]">
+              {worldInfo.roomScope.toUpperCase()}
+            </span>
           </div>
           <span className="text-[8px] text-[#94a3b8] tracking-widest mt-0.5 font-semibold uppercase">
-            {worldInfo.areaName} · {worldInfo.worldName}
+            {worldInfo.mapName} · {worldInfo.areaName} · {worldInfo.worldName}
           </span>
           {lockedEnemy ? (
             <button

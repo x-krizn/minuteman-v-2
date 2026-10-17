@@ -6,8 +6,13 @@
 import { RoomDefinition } from '../../../types';
 
 export const room1Neg1SunkenSinkhole: RoomDefinition = {
+  id: 'room_1_neg1_sunken_sinkhole',
+  scope: 'local',
   coord: '1,-1',
+  mapId: 'map_bog_drop_zone',
   areaId: 'm00_the_bog',
+  regionId: 'region_belldor_outskirts',
+  biomeId: 'belldor_bog',
   title: 'Sunken Sinkhole Island',
   bannerTitle: 'SUNKEN SINKHOLE ISLAND (SECRET)',
   grid: [
@@ -16,7 +21,7 @@ export const room1Neg1SunkenSinkhole: RoomDefinition = {
     '#...C....#', // Supply Cache (contains Bedivere List Relic #1)
     '#.~~..~~.#',
     '#........#',
-    '#..P..P..#',
+    '#..P..P...#',
     '#........#',
     '#........#',
     '####..####',

@@ -71,7 +71,56 @@ export type OrionTileType =
   | 'desync_wall'
   | 'lantern'
   | 'switch'
-  | 'dungeon_door';
+  | 'dungeon_door'
+  | 'waystation'
+  | 'waygate';
+
+export type WorldScope = 'global' | 'local';
+
+export interface BiomeTileRules {
+  corrosiveWater: boolean;
+  corrosiveDamagePerSec: number;
+  mudSlowMultiplier: number;
+  desyncPeriodSec: number;
+  aetherMistDensity: number;
+}
+
+export interface BiomeTileAssets {
+  groundPrimary: string;
+  groundSecondary: string;
+  mudColor: string;
+  waterColor: string;
+  waterRippleColor: string;
+  pylonTop: string;
+  pylonFront: string;
+  pylonTrim: string;
+  shadow: string;
+  lightColor: string;
+}
+
+export interface BiomeDefinition {
+  id: string;
+  name: string;
+  scope: WorldScope;
+  world: string;
+  description: string;
+  /** Maps tile characters (e.g. '.', '#', '~') to TileDefinition IDs for rooms in this biome */
+  tileTypes: Record<string, string>;
+  /** Physics and environmental rules supplied by this biome to its rooms */
+  tileRules: BiomeTileRules;
+  /** Visual tile asset colors and lighting supplied by this biome to its rooms */
+  tileAssets: BiomeTileAssets;
+  /** Legacy palette alias for backward compatibility */
+  palette: {
+    ground: string;
+    mud: string;
+    water: string;
+    pylonTop: string;
+    pylonFront: string;
+    shadow: string;
+  };
+  lightColor: string;
+}
 
 export interface TileDefinition {
   id: string;
@@ -114,16 +163,115 @@ export interface TileDefinition {
 }
 
 export interface RoomDefinition {
+  id?: string;
+  scope?: WorldScope;
   coord: string;
+  mapId?: string;
   areaId: string;
+  regionId?: string;
+  biomeId?: string;
   title: string;
   bannerTitle: string;
   grid: string[];
+  /** Allowed doorway directions for global procedural template rooms */
+  doorDirs?: Array<'N' | 'S' | 'E' | 'W'>;
   cache?: {
     scrap: number;
     items: Array<{ itemId: string; count: number }>;
     toast: string;
   };
+}
+
+export interface MapProceduralRoomSlot {
+  coord: string;
+  globalRoomId?: string;
+  biomeId?: string;
+  title?: string;
+  bannerTitle?: string;
+}
+
+export interface MapDefinition {
+  id: string;
+  name: string;
+  title: string;
+  scope: WorldScope;
+  areaId: string;
+  biomeId: string;
+  description: string;
+  /** Canonical coordinates of bespoke local rooms assembled into this map */
+  localRoomCoords: string[];
+  /** Coordinates filled by global rooms (procedural generation / hybrid stitching) */
+  globalRoomSlots: MapProceduralRoomSlot[];
+  /** Connected neighboring Map IDs for continuous on-foot traversal */
+  connectedMapIds: string[];
+}
+
+export interface WaystationNode {
+  id: string;
+  name: string;
+  regionId: string;
+  areaId: string;
+  mapId: string;
+  room: string;
+  x: number;
+  y: number;
+  lore: string;
+}
+
+export interface WaygateNode {
+  id: string;
+  name: string;
+  world: string;
+  regionId: string;
+  areaId: string;
+  mapId: string;
+  room: string;
+  x: number;
+  y: number;
+  desyncStatus: 'Synchronized' | 'Drifting' | 'Severe Desync';
+  lore: string;
+}
+
+export interface AreaWikiDefinition {
+  id: string;
+  name: string;
+  title: string;
+  scope: WorldScope;
+  regionId: string;
+  biomeId: string;
+  world: string;
+  recommendedLevels: string;
+  description: string;
+  lore: string;
+  /** Local maps unique to this area */
+  localMapIds: string[];
+  /** Global maps used in procedural generation within this area */
+  globalMapIds: string[];
+  /** Connected neighboring Area IDs for continuous on-foot traversal */
+  connectedAreaIds: string[];
+  spawnAnchor: { room: string; x: number; y: number };
+  exitAnchor: { room: string; x: number; y: number };
+  waystation?: WaystationNode;
+}
+
+export interface RegionDefinition {
+  id: string;
+  name: string;
+  title: string;
+  scope: WorldScope;
+  world: string;
+  culture: string;
+  defaultBiomeId: string;
+  desyncStatus: 'Synchronized' | 'Drifting' | 'Severe Desync';
+  description: string;
+  lore: string;
+  /** Local areas unique to this region */
+  localAreaIds: string[];
+  /** Global areas used in procedural generation within this region */
+  globalAreaIds: string[];
+  /** Connected neighboring Region IDs for continuous on-foot traversal */
+  connectedRegionIds: string[];
+  waygate?: WaygateNode;
 }
 
 // Trait Line Wiki Definition
@@ -371,10 +519,15 @@ export interface OrionAssignedActions {
 
 // Master Player / Orion State
 export interface OrionState {
+  regionId?: string;
   areaId: string;
+  mapId?: string;
+  biomeId?: string;
   room: string;
   rx: number;
   ry: number;
+  discoveredWaystations?: string[];
+  discoveredWaygates?: string[];
 
   // 2.5D Position & Height
   x: number;

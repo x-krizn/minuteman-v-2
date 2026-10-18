@@ -4,11 +4,11 @@
  */
 
 import { TileDefinition } from '../../../types';
-import { getBiomeDefinition } from '../../biomes';
+import { getBiomeDefinition } from '../biomes';
 import { groundTile } from './floor';
 
-// Auto-discover all tile entity modules in this directory via Vite import.meta.glob
-const modules = import.meta.glob<Record<string, unknown>>('./*.ts', { eager: true });
+// Auto-discover all tile entity modules in this directory (including subfolders) via Vite import.meta.glob
+const modules = import.meta.glob<Record<string, unknown>>('./**/*.ts', { eager: true });
 
 export const TILE_REGISTRY: Record<string, TileDefinition> = {};
 export const TILE_BY_ID_REGISTRY: Record<string, TileDefinition> = {};

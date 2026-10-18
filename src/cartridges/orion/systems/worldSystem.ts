@@ -5,14 +5,17 @@
 
 import { soundSystem } from '../../../engine/core/soundSystem';
 import { COLS, DIR_VECTORS, ROWS, TILE_SIZE } from '../constants';
-import { AREA_REGISTRY, getAreaDefinition, WAYSTATION_REGISTRY } from '../database/areas';
-import { getBiomeDefinition } from '../database/biomes';
-import { getMapDefinition } from '../database/maps';
-import { getRegionDefinition, WAYGATE_REGISTRY } from '../database/regions';
 import {
+  AREA_REGISTRY,
+  getAreaDefinition,
+  getBiomeDefinition,
+  getMapDefinition,
+  getRegionDefinition,
   ORION_CACHE_DEFINITIONS,
   ORION_ROOM_METADATA,
-} from '../database/world/maps';
+  WAYGATE_REGISTRY,
+  WAYSTATION_REGISTRY,
+} from '../database/world';
 import { spawnRoomEnemies } from '../enemies';
 import {
   addOrionInventoryItem,

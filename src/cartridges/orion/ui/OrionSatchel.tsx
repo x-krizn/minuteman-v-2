@@ -6,16 +6,22 @@
 import React, { useEffect, useState } from 'react';
 import { soundSystem } from '../../../engine/core/soundSystem';
 import { performWeaponSwap } from '../combat';
-import { AREA_REGISTRY, WAYSTATION_REGISTRY } from '../database/areas';
-import { BIOME_REGISTRY, getBiomeDefinition } from '../database/biomes';
 import { TRAIT_REGISTRY } from '../database/characters/trait_lines';
 import { getResolvedActionDescriptor } from '../database/equipment';
 import { getItemDefinition } from '../database/items';
-import { MAP_REGISTRY } from '../database/maps';
 import { LEVEL_UNLOCK_SEQUENCE, CORE_COMBAT_LAWS } from '../database/progression/canonical_progression';
-import { REGION_REGISTRY, WAYGATE_REGISTRY } from '../database/regions';
-import { GLOBAL_ROOM_REGISTRY, LOCAL_ROOM_REGISTRY } from '../database/rooms';
 import { getWeaponDefinition } from '../database/weapons';
+import {
+  AREA_REGISTRY,
+  BIOME_REGISTRY,
+  getBiomeDefinition,
+  GLOBAL_ROOM_REGISTRY,
+  LOCAL_ROOM_REGISTRY,
+  MAP_REGISTRY,
+  REGION_REGISTRY,
+  WAYGATE_REGISTRY,
+  WAYSTATION_REGISTRY,
+} from '../database/world';
 import {
   consolidateInventorySlots,
   getOrionRoomsRef,

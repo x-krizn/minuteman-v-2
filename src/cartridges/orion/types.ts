@@ -77,6 +77,52 @@ export type OrionTileType =
 
 export type WorldScope = 'global' | 'local';
 
+/**
+ * Declarative Base64 PNG Sprite or Grid Spritesheet / Tilemap Configuration.
+ * Supports both standalone Base64 PNGs and grid-sliced atlases/animation strips.
+ */
+export interface Base64SpriteConfig {
+  /** Full `data:image/png;base64,...` URI, raw Base64 PNG payload, or registered atlas key */
+  base64: string;
+  /** Cell width in pixels when slicing a grid spritesheet or tilemap (defaults to full image width) */
+  cellWidth?: number;
+  /** Cell height in pixels when slicing a grid spritesheet or tilemap (defaults to full image height) */
+  cellHeight?: number;
+  /** Column index (0-based) in a grid tilemap or spritesheet */
+  col?: number;
+  /** Row index (0-based) in a grid tilemap or spritesheet */
+  row?: number;
+  /** Optional animation frame count (advances horizontally from `col` to `col + frameCount - 1`) */
+  frameCount?: number;
+  /** Optional animation speed in frames per second (default: 6) */
+  fps?: number;
+  /** Optional directional row mapping for 4-dir or 8-dir spritesheets */
+  dirRowMap?: Partial<Record<OrionDir, number>>;
+  /** Optional state row mapping for enemies (e.g. idle, patrol, windup, attack, recovery, stagger) */
+  stateRowMap?: Record<string, number>;
+  /** Destination render width in canvas pixels (defaults to cellWidth or image width) */
+  renderWidth?: number;
+  /** Destination render height in canvas pixels (defaults to cellHeight or image height) */
+  renderHeight?: number;
+  /** Pixel X offset from anchor point */
+  offsetX?: number;
+  /** Pixel Y offset from anchor point */
+  offsetY?: number;
+  /** Optional uniform scale multiplier (default: 1) */
+  scale?: number;
+  /** Anchor mode: 'top-left' (default for tiles) or 'bottom-center' (default for 2.5D props/entities) */
+  anchor?: 'top-left' | 'center' | 'bottom-center';
+}
+
+export interface BiomeTilesetCell {
+  col: number;
+  row: number;
+  cellWidth?: number;
+  cellHeight?: number;
+  frameCount?: number;
+  fps?: number;
+}
+
 export interface BiomeTileRules {
   corrosiveWater: boolean;
   corrosiveDamagePerSec: number;
@@ -110,6 +156,12 @@ export interface BiomeDefinition {
   tileRules: BiomeTileRules;
   /** Visual tile asset colors and lighting supplied by this biome to its rooms */
   tileAssets: BiomeTileAssets;
+  /** Optional shared Base64 PNG tilemap / atlas for this biome */
+  tileSheetBase64?: string;
+  /** Default grid cell size in pixels for tileSheetBase64 (default: 16) */
+  tileSheetCellSize?: number;
+  /** Optional mapping of tile char ('.', '~', '#') or tile ID to [col, row] cell in tileSheetBase64 */
+  tileSheetCoords?: Record<string, BiomeTilesetCell>;
   /** Legacy palette alias for backward compatibility */
   palette: {
     ground: string;
@@ -136,6 +188,12 @@ export interface TileDefinition {
   blocksHeight: number;
   bakedTopColor?: string;
   bakedFrontColor?: string;
+  /** Optional embedded Base64 PNG or grid tilemap slice for Layer 0 ground/liquid */
+  layer0Sprite?: Base64SpriteConfig;
+  /** Optional embedded Base64 PNG or grid tilemap slice for Layer 1 walls/barriers */
+  layer1Sprite?: Base64SpriteConfig;
+  /** Optional embedded Base64 PNG or grid spritesheet slice for Layer 2 2.5D props */
+  propSprite?: Base64SpriteConfig;
   renderLayer0?: (
     g: CanvasRenderingContext2D,
     tx: number,
@@ -316,6 +374,10 @@ export interface WeaponDefinition {
   reloadDurationSec: number; // 3.15s
   primaryDamageType: DamageType;
   moveset: ActionDefinition[]; // 5 actions
+  /** Optional embedded Base64 PNG or directional spritesheet for the mech hardpoint */
+  hardpointSprite?: Base64SpriteConfig;
+  /** Optional embedded Base64 PNG icon for UI displays */
+  iconSprite?: Base64SpriteConfig;
   renderHardpoint25D?: (
     g: CanvasRenderingContext2D,
     wx: number,
@@ -384,6 +446,8 @@ export interface EnemyWikiDefinition {
   tellDurationSec: number;
   attackCooldownSec: number;
   lootTable: LootEntry[];
+  /** Optional embedded Base64 PNG sprite or grid animation/directional spritesheet */
+  sprite?: Base64SpriteConfig;
   shouldSkipSpawn?: (state: OrionState) => boolean;
   customSpawnSetup?: (
     state: OrionState,
@@ -418,6 +482,8 @@ export interface ItemWikiDefinition {
   buyPrice: number;
   sellPrice: number;
   iconColor: string;
+  /** Optional embedded Base64 PNG or spritesheet icon for world pickups and satchel UI */
+  iconSprite?: Base64SpriteConfig;
   onUse?: (state: OrionState, ctx: OrionExecutionContext) => boolean;
 }
 
@@ -510,6 +576,8 @@ export interface OrionActionDescriptor {
   damageType: DamageType;
   damageFamily: DamageFamily;
   range: number;
+  /** Optional embedded Base64 PNG icon for hardware/skill displays */
+  iconSprite?: Base64SpriteConfig;
 }
 
 export interface OrionAssignedActions {

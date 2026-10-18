@@ -5,8 +5,8 @@
 
 import { WeaponDefinition } from '../../types';
 
-// Auto-discover all weapon entity modules in this directory via Vite import.meta.glob
-const modules = import.meta.glob<Record<string, unknown>>('./*.ts', { eager: true });
+// Auto-discover all weapon entity modules in this directory (including subfolders) via Vite import.meta.glob
+const modules = import.meta.glob<Record<string, unknown>>('./**/*.ts', { eager: true });
 
 export const WEAPON_REGISTRY: Record<string, WeaponDefinition> = {};
 

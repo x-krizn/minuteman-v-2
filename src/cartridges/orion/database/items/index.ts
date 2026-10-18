@@ -5,8 +5,8 @@
 
 import { ItemWikiDefinition } from '../../types';
 
-// Auto-discover all item entity modules in this directory via Vite import.meta.glob
-const modules = import.meta.glob<Record<string, unknown>>('./*.ts', { eager: true });
+// Auto-discover all item entity modules in this directory (including subfolders) via Vite import.meta.glob
+const modules = import.meta.glob<Record<string, unknown>>('./**/*.ts', { eager: true });
 
 export const ITEM_REGISTRY: Record<string, ItemWikiDefinition> = {};
 

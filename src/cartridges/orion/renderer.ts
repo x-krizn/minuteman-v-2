@@ -17,15 +17,17 @@ import {
   TILE_SIZE,
   Z_SCALE,
 } from './constants';
+import { drawBase64Sprite, drawBiomeSheetTile } from './database/assets';
 import { getEnemyDefinition } from './database/enemies';
+import { getItemDefinition } from './database/items';
 import { getWeaponDefinition } from './database/weapons';
-import { getTileDefinition } from './database/world';
+import { getBiomeDefinition, getTileDefinition } from './database/world';
 import { OrionState } from './types';
 
 /**
  * 2.5D Renderer for Project Orion
- * Delegates tile, prop, enemy, and weapon hardpoint rendering directly to
- * each self-contained entity module in ./database.
+ * Supports embedded Base64 PNG sprites and grid spritesheets/tilemaps on Biomes,
+ * Tiles, Props, Pickups, Enemies, and Weapons, with automatic procedural Canvas 2D fallback.
  */
 export function drawOrionGame(
   g: CanvasRenderingContext2D,
@@ -37,9 +39,10 @@ export function drawOrionGame(
   g.fillRect(0, 0, SCREEN_W, SCREEN_H);
 
   const room = rooms[state.room];
+  const activeBiome = getBiomeDefinition(state.biomeId);
   const defaultFloorTile = getTileDefinition('.', state.biomeId);
 
-  // 1. LAYER 0: Ground, Mud & Sinkholes (Data-Driven per Tile & Biome Module)
+  // 1. LAYER 0: Ground, Mud & Sinkholes (Base64 Sprite / Biome Tilemap -> Procedural Fallback)
   if (room) {
     for (let ty = 0; ty < ROWS; ty++) {
       for (let tx = 0; tx < COLS; tx++) {
@@ -48,16 +51,27 @@ export function drawOrionGame(
         const sx = tx * TILE_SIZE;
         const sy = ty * TILE_SIZE;
 
-        if (tile.renderLayer0) {
-          tile.renderLayer0(g, tx, ty, sx, sy, state);
-        } else {
-          defaultFloorTile.renderLayer0?.(g, tx, ty, sx, sy, state);
+        const drewTileSprite =
+          drawBase64Sprite(g, tile.layer0Sprite, sx, sy, state.t, {
+            defaultAnchor: 'top-left',
+            defaultWidth: TILE_SIZE,
+            defaultHeight: TILE_SIZE,
+          }) ||
+          drawBiomeSheetTile(g, activeBiome, char, sx, sy, state.t) ||
+          drawBiomeSheetTile(g, activeBiome, tile.id, sx, sy, state.t);
+
+        if (!drewTileSprite) {
+          if (tile.renderLayer0) {
+            tile.renderLayer0(g, tx, ty, sx, sy, state);
+          } else {
+            defaultFloorTile.renderLayer0?.(g, tx, ty, sx, sy, state);
+          }
         }
       }
     }
   }
 
-  // 2. LAYER 1: Baked 2.5D Walls, Desync Barriers & Gates (Data-Driven per Tile & Biome Module)
+  // 2. LAYER 1: Baked 2.5D Walls, Desync Barriers & Gates (Base64 Sprite -> Procedural Fallback)
   if (room) {
     for (let ty = 0; ty < ROWS; ty++) {
       for (let tx = 0; tx < COLS; tx++) {
@@ -65,7 +79,17 @@ export function drawOrionGame(
         const tile = getTileDefinition(char, state.biomeId);
         const sx = tx * TILE_SIZE;
         const sy = ty * TILE_SIZE;
-        tile.renderLayer1?.(g, tx, ty, sx, sy, state);
+
+        const drewLayer1Sprite =
+          drawBase64Sprite(g, tile.layer1Sprite, sx, sy, state.t, {
+            defaultAnchor: 'top-left',
+            defaultWidth: TILE_SIZE,
+            defaultHeight: TILE_SIZE,
+          }) || drawBiomeSheetTile(g, activeBiome, `${tile.id}:layer1`, sx, sy, state.t);
+
+        if (!drewLayer1Sprite) {
+          tile.renderLayer1?.(g, tx, ty, sx, sy, state);
+        }
       }
     }
   }
@@ -77,19 +101,24 @@ export function drawOrionGame(
   }
   const renderQueue: RenderItem[] = [];
 
-  // A. World Props & Setpieces (Data-Driven via tile.renderProp25D)
+  // A. World Props & Setpieces (Data-Driven via tile.propSprite or tile.renderProp25D)
   if (room) {
     for (let ty = 0; ty < ROWS; ty++) {
       for (let tx = 0; tx < COLS; tx++) {
         const char = room[ty]?.[tx] || '.';
         const tile = getTileDefinition(char, state.biomeId);
-        if (tile.renderProp25D) {
+        if (tile.propSprite || tile.renderProp25D) {
           const sx = tx * TILE_SIZE + 8;
           const sy = ty * TILE_SIZE + 12;
           renderQueue.push({
             y: sy,
             draw: () => {
-              tile.renderProp25D?.(g, tx, ty, sx, sy, state);
+              const drewProp = drawBase64Sprite(g, tile.propSprite, sx, sy, state.t, {
+                defaultAnchor: 'bottom-center',
+              });
+              if (!drewProp) {
+                tile.renderProp25D?.(g, tx, ty, sx, sy, state);
+              }
             },
           });
         }
@@ -110,21 +139,28 @@ export function drawOrionGame(
 
         const py = p.y - p.z * Z_SCALE;
         const bob = Math.sin(p.t * 5) * 2;
+        const itemDef = p.itemId ? getItemDefinition(p.itemId) : undefined;
 
-        if (p.kind === 'scrap') {
-          g.fillStyle = '#ffd27d';
-          g.fillRect(p.x - 2, py - 4 + bob, 4, 5);
-          g.fillStyle = '#fffbeb';
-          g.fillRect(p.x - 1, py - 3 + bob, 2, 2);
-        } else {
-          g.fillStyle = p.color || '#77c7ff';
-          g.fillRect(p.x - 3, py - 5 + bob, 6, 6);
+        const drewIcon = drawBase64Sprite(g, itemDef?.iconSprite, p.x, py + bob, state.t, {
+          defaultAnchor: 'bottom-center',
+        });
+
+        if (!drewIcon) {
+          if (p.kind === 'scrap') {
+            g.fillStyle = '#ffd27d';
+            g.fillRect(p.x - 2, py - 4 + bob, 4, 5);
+            g.fillStyle = '#fffbeb';
+            g.fillRect(p.x - 1, py - 3 + bob, 2, 2);
+          } else {
+            g.fillStyle = p.color || '#77c7ff';
+            g.fillRect(p.x - 3, py - 5 + bob, 6, 6);
+          }
         }
       },
     });
   }
 
-  // C. Enemies & Interactive World Entities (Data-Driven via enemyDef.render25D)
+  // C. Enemies & Interactive World Entities (Data-Driven via enemyDef.sprite or enemyDef.render25D)
   for (const e of state.enemies) {
     renderQueue.push({
       y: e.y,
@@ -155,11 +191,20 @@ export function drawOrionGame(
           g.stroke();
         }
 
-        if (def?.render25D) {
-          def.render25D(g, e, state, ey, isHurt, isWindup);
-        } else {
-          g.fillStyle = isHurt ? '#ffffff' : e.emissiveColor || '#64748b';
-          g.fillRect(e.x - 5, ey - 14, 10, 14);
+        const drewEnemySprite = drawBase64Sprite(g, def?.sprite, e.x, ey, state.t, {
+          dir: e.dir,
+          stateName: e.state,
+          isHurt,
+          defaultAnchor: 'bottom-center',
+        });
+
+        if (!drewEnemySprite) {
+          if (def?.render25D) {
+            def.render25D(g, e, state, ey, isHurt, isWindup);
+          } else {
+            g.fillStyle = isHurt ? '#ffffff' : e.emissiveColor || '#64748b';
+            g.fillRect(e.x - 5, ey - 14, 10, 14);
+          }
         }
 
         // Enemy Defense Layer Bar (Shield + Frame integrity)
@@ -261,18 +306,25 @@ export function drawOrionGame(
       g.fillStyle = '#77c7ff';
       g.fillRect(state.x - 1, py - 15, 2, 1);
 
-      // Weapon Hardpoint (Data-Driven via weaponDef.renderHardpoint25D)
+      // Weapon Hardpoint (Data-Driven via weaponDef.hardpointSprite or weaponDef.renderHardpoint25D)
       const dirInfo = DIR_VECTORS[state.dir] || DIR_VECTORS.S;
       const activeWeaponId = state.equippedWeapons[state.activeWeaponIndex] || 'gladius_boltcaster';
       const weaponDef = getWeaponDefinition(activeWeaponId);
       const wx = state.x + dirInfo.dx * 7;
       const wy = py - 9 + dirInfo.dy * 5;
 
-      if (weaponDef?.renderHardpoint25D) {
-        weaponDef.renderHardpoint25D(g, wx, wy, dirInfo.dx, dirInfo.dy, state);
-      } else {
-        g.fillStyle = '#94a3b8';
-        g.fillRect(wx - 1, wy, 3, 6);
+      const drewHardpointSprite = drawBase64Sprite(g, weaponDef?.hardpointSprite, wx, wy, state.t, {
+        dir: state.dir,
+        defaultAnchor: 'center',
+      });
+
+      if (!drewHardpointSprite) {
+        if (weaponDef?.renderHardpoint25D) {
+          weaponDef.renderHardpoint25D(g, wx, wy, dirInfo.dx, dirInfo.dy, state);
+        } else {
+          g.fillStyle = '#94a3b8';
+          g.fillRect(wx - 1, wy, 3, 6);
+        }
       }
 
       g.restore();

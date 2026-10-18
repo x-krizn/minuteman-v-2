@@ -5,7 +5,7 @@
 
 import { TILE_SIZE } from '../../../constants';
 import { TileDefinition } from '../../../types';
-import { getBiomeDefinition } from '../../biomes';
+import { getBiomeDefinition } from '../biomes';
 
 export const groundTile: TileDefinition = {
   id: 'floor',

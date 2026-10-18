@@ -4,3 +4,4 @@
  */
 
 export * from './procedural25dFloor';
+export * from './worldComposer';

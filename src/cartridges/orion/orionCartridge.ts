@@ -25,9 +25,8 @@ import {
   TILE_SIZE,
   WALK_SPEED,
 } from './constants';
-import { getBiomeDefinition } from './database/biomes';
 import { TRAIT_REGISTRY } from './database/characters/trait_lines';
-import { ORION_INITIAL_ROOMS } from './database/world';
+import { getBiomeDefinition, ORION_INITIAL_ROOMS } from './database/world';
 import { spawnRoomEnemies, updateEnemies } from './enemies';
 import { spawnParticles, updateParticles } from './particles';
 import { moveEntityX, moveEntityY, updateElevationPhysics } from './physics';

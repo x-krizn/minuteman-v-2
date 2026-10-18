@@ -8,8 +8,8 @@ import { getWeaponDefinition } from '../weapons';
 
 export type { OrionActionDescriptor } from '../../types';
 
-// Auto-discover all assignable action modules in this directory via Vite import.meta.glob
-const modules = import.meta.glob<Record<string, unknown>>('./*.ts', { eager: true });
+// Auto-discover all assignable action modules in this directory (including subfolders) via Vite import.meta.glob
+const modules = import.meta.glob<Record<string, unknown>>('./**/*.ts', { eager: true });
 
 const discoveredActions: OrionActionDescriptor[] = [];
 

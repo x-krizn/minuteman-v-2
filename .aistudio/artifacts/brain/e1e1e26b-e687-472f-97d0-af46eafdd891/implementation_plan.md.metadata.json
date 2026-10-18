@@ -1,6 +1,6 @@
 {
-  "summary": "Implementation plan for Project Orion's nested 5-tier world mapping architecture (Biomes -> Rooms -> Maps -> Areas -> Regions) with global/local scoping, hybrid procedural stitching for continuous on-foot world traversal, and lore-accurate Waygate & Aether Waystation fast travel.",
-  "updatedAt": "2026-10-17T19:06:27.410608961Z",
+  "summary": "Updated implementation plan adding a dedicated step to reorganize the database into a clean, hierarchy-aligned nested structure (with recursive auto-discovery across parent-grouped local tiers) alongside the Base64 PNG asset pipeline and Authoring Guide.",
+  "updatedAt": "2026-10-18T10:45:26.407057248Z",
   "requestFeedback": true,
   "userFacing": true
 }

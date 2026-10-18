@@ -5,8 +5,8 @@
 
 import { EnemyWikiDefinition } from '../../types';
 
-// Auto-discover all enemy entity modules in this directory via Vite import.meta.glob
-const modules = import.meta.glob<Record<string, unknown>>('./*.ts', { eager: true });
+// Auto-discover all enemy entity modules in this directory (including subfolders) via Vite import.meta.glob
+const modules = import.meta.glob<Record<string, unknown>>('./**/*.ts', { eager: true });
 
 export const ENEMY_REGISTRY: Record<string, EnemyWikiDefinition> = {};
 export const CHAR_TO_ENEMY_TYPE: Record<string, string> = {};

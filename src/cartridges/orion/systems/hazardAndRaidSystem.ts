@@ -5,8 +5,7 @@
 
 import { soundSystem } from '../../../engine/core/soundSystem';
 import { TILE_SIZE } from '../constants';
-import { getBiomeDefinition } from '../database/biomes';
-import { getTileDefinition } from '../database/world';
+import { getBiomeDefinition, getTileDefinition } from '../database/world';
 import { spawnEnemyByType } from '../enemies';
 import { notifyOrionStateChange } from '../stateStore';
 import { OrionCombatContext, OrionState } from '../types';

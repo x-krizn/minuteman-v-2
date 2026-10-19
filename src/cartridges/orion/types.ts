@@ -237,6 +237,12 @@ export interface TileDefinition {
   blocksHeight: number;
   bakedTopColor?: string;
   bakedFrontColor?: string;
+  /** Optional cluster auto-tiler terrain role ('dirt' | 'grass' | 'aether' | 'ruins') */
+  clusterTerrain?: ClusterTerrainType;
+  /** Optional sub-tile rearrangement granularity ('4x4' 4px micro-blocks or '2x2' 8px quadrants) */
+  subTileMode?: '4x4' | '2x2';
+  /** Optional embedded 16x16px Base64 PNG seed tile used by the Sub-Tile Micro-Composer */
+  baseTileBase64?: string;
   /** Optional dynamic light source emitted by this tile/prop in the post-processing pass */
   lightSource?: LightSourceConfig;
   /** Optional 1px pixel-art outline color for Layer 2 props */
@@ -247,6 +253,8 @@ export interface TileDefinition {
   layer1Sprite?: Base64SpriteConfig;
   /** Optional embedded Base64 PNG or grid spritesheet slice for Layer 2 2.5D props */
   propSprite?: Base64SpriteConfig;
+  /** Optional dynamic solid check (e.g. for locked gates or doors) */
+  checkSolid?: (state: OrionState, roomKey: string) => boolean;
   renderLayer0?: (
     g: CanvasRenderingContext2D,
     tx: number,
@@ -537,6 +545,8 @@ export interface ItemWikiDefinition {
   iconColor: string;
   /** Optional embedded Base64 PNG or spritesheet icon for world pickups and satchel UI */
   iconSprite?: Base64SpriteConfig;
+  /** Optional custom callback when collected from a world pickup */
+  onCollect?: (state: OrionState, ctx: OrionExecutionContext) => void;
   onUse?: (state: OrionState, ctx: OrionExecutionContext) => boolean;
 }
 

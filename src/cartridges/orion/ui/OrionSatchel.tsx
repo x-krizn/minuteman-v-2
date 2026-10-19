@@ -5,8 +5,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { soundSystem } from '../../../engine/core/soundSystem';
-import { performWeaponSwap } from '../combat';
-import { TRAIT_REGISTRY } from '../database/characters/trait_lines';
+import { TRAIT_REGISTRY } from '../database/characters';
 import { getResolvedActionDescriptor } from '../database/equipment';
 import { getItemDefinition } from '../database/items';
 import { LEVEL_UNLOCK_SEQUENCE, CORE_COMBAT_LAWS } from '../database/progression/canonical_progression';
@@ -40,6 +39,7 @@ import {
   getActionCooldown,
   getRoomWorldInfo,
   isActionUnlocked,
+  performWeaponSwap,
   resetTriggerActionsToDefault,
   resolveTriggerAction,
   setBypassProgressionGates,

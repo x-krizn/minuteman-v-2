@@ -3,13 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { COLS, ROWS } from '../../../constants';
-import { RoomDefinition } from '../../../types';
-import { AREA_REGISTRY, getAreaDefinition } from '../areas';
-import { getBiomeDefinition } from '../biomes';
-import { MAP_REGISTRY } from '../maps';
-import { getRegionDefinition, REGION_REGISTRY } from '../regions';
-import { GLOBAL_ROOM_REGISTRY, LOCAL_ROOM_REGISTRY } from '../rooms';
+import { COLS, ROWS } from '../constants';
+import { AREA_REGISTRY, getAreaDefinition } from '../database/world/areas';
+import { getBiomeDefinition } from '../database/world/biomes';
+import { MAP_REGISTRY } from '../database/world/maps';
+import { getRegionDefinition, REGION_REGISTRY } from '../database/world/regions';
+import { GLOBAL_ROOM_REGISTRY, LOCAL_ROOM_REGISTRY } from '../database/world/rooms';
+import { RoomDefinition } from '../types';
 
 export interface OrionRoomMetadata {
   title: string;

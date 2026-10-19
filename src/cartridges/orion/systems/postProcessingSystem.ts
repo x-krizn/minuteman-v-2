@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { COLS, ROWS, SCREEN_H, SCREEN_W, TILE_SIZE, Z_SCALE } from './constants';
-import { BiomeDefinition, BiomeWeatherType, OrionState } from './types';
+import { COLS, ROWS, SCREEN_H, SCREEN_W, TILE_SIZE, Z_SCALE } from '../constants';
+import { BiomeDefinition, BiomeWeatherType, OrionState } from '../types';
 
 /**
  * Multi-Pass 2.5D Post-Processing & Visual Effect Layers for Project Orion

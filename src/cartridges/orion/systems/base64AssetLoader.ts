@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { TILE_SIZE } from '../../constants';
-import { Base64SpriteConfig, BiomeDefinition, OrionDir } from '../../types';
+import { TILE_SIZE } from '../constants';
+import { Base64SpriteConfig, BiomeDefinition, OrionDir } from '../types';
 
 export interface Base64AtlasDefinition {
   id: string;

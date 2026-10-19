@@ -12,36 +12,41 @@ Welcome to the **Project Orion** authoring manual. The cartridge is built around
 All game data lives inside `src/cartridges/orion/database/`, organized into two primary branches: the **World Hierarchy (`database/world/`)** and **Gameplay & Asset Domains**.
 
 ```
-src/cartridges/orion/database/
-├── assets/                       # Base64 PNG loader, memory cache & shared sprite atlases
-│   ├── base64AssetLoader.ts
-│   └── index.ts                  # Auto-discovers any atlas file in ./assets/**/*.ts
+src/cartridges/orion/
+├── database/                     # Strictly Self-Contained Content & Asset Entry Files
+│   ├── world/                    # Unified 5-Tier Spatial & Environmental Hierarchy
+│   │   ├── regions/              # Tier 5: Macro-Regions & Shattered Worlds (+ Colossal Waygates)
+│   │   │   ├── global/           # Procedural / inter-world expanses
+│   │   │   └── local/<world>/    # Bespoke regions grouped by World (e.g., belldor/, tyrranus/)
+│   │   ├── areas/                # Tier 4: Areas (+ Æther Waystations)
+│   │   │   ├── global/           # Procedural wilds & drift corridors
+│   │   │   └── local/<regionId>/ # Bespoke areas grouped by parent Region
+│   │   ├── maps/                 # Tier 3: Maps (Assembled from Local + Global Rooms)
+│   │   │   ├── global/           # Procedural maps
+│   │   │   └── local/<areaId>/   # Bespoke maps grouped by parent Area
+│   │   ├── rooms/                # Tier 2: Rooms (10x9 tile grids)
+│   │   │   ├── global/           # Reusable procedural room templates
+│   │   │   └── local/<mapId>/    # Bespoke rooms grouped by parent Map
+│   │   ├── biomes/               # Tier 1A: Biomes (Tile rules, palettes & post-processing config)
+│   │   │   ├── global/           # Reusable procedural biomes
+│   │   │   └── local/<world>/    # Bespoke biomes grouped by World
+│   │   └── tiles/                # Tier 1B: Tile & Prop definitions + embedded 16x16 base tiles
+│   ├── enemies/                  # Self-contained Enemy, Boss & NPC modules (recursive glob)
+│   ├── weapons/                  # Self-contained 5-Action Weapon modules (recursive glob)
+│   ├── items/                    # Consumables, Keys & Relics (recursive glob)
+│   ├── equipment/                # Assignable [L]/[R] Hardware & Reactor skills (recursive glob)
+│   ├── characters/               # Self-contained Mech Frame / Trait Line modules (recursive glob)
+│   └── progression/              # Canonical 1–20 Level Unlock Sequence & Combat Laws
 │
-├── world/                        # Unified 5-Tier Spatial & Environmental Hierarchy
-│   ├── regions/                  # Tier 5: Macro-Regions & Shattered Worlds (+ Colossal Waygates)
-│   │   ├── global/               # Procedural / inter-world expanses
-│   │   └── local/<world>/        # Bespoke regions grouped by World (e.g., belldor/, tyrranus/)
-│   ├── areas/                    # Tier 4: Areas (+ Æther Waystations)
-│   │   ├── global/               # Procedural wilds & drift corridors
-│   │   └── local/<regionId>/     # Bespoke areas grouped by parent Region
-│   ├── maps/                     # Tier 3: Maps (Assembled from Local + Global Rooms)
-│   │   ├── global/               # Procedural maps
-│   │   └── local/<areaId>/       # Bespoke maps grouped by parent Area
-│   ├── rooms/                    # Tier 2: Rooms (10x9 tile grids)
-│   │   ├── global/               # Reusable procedural room templates
-│   │   └── local/<mapId>/        # Bespoke rooms grouped by parent Map
-│   ├── biomes/                   # Tier 1A: Biomes (Tile rules, palettes & tilemap atlases)
-│   │   ├── global/               # Reusable procedural biomes
-│   │   └── local/<world>/        # Bespoke biomes grouped by World
-│   ├── tiles/                    # Tier 1B: Tile & Prop definitions (floor, mud, walls, gates...)
-│   └── generation/               # Hybrid 5-Tier World Composer (worldComposer.ts)
+├── systems/                      # All Runtime Engine, Generation, Tiling & Rendering Systems
+│   ├── base64AssetLoader.ts      # Offscreen image/canvas cache & 1px sprite outliner
+│   ├── subTileComposer.ts        # 4x4 (4px) & 2x2 (8px) offscreen sub-tile cluster baker
+│   ├── clusterAutoTiler.ts       # 8-neighbor auto-tiler for separated 3x3 clusters
+│   ├── worldComposer.ts          # 5-tier nested spatial world assembler
+│   ├── renderSystem.ts           # 2.5D multi-layer renderer
+│   └── postProcessingSystem.ts   # Reflections, blade trails, weather & dynamic lighting
 │
-├── enemies/                      # Self-contained Enemy, Boss & NPC modules (recursive glob)
-├── weapons/                      # Self-contained 5-Action Weapon modules (recursive glob)
-├── items/                        # Consumables, Keys & Relics (recursive glob)
-├── equipment/                    # Assignable [L]/[R] Hardware & Reactor skills (recursive glob)
-├── characters/                   # Pilot Trait Lines (Hydraulic, Arcane, Astral)
-└── progression/                  # Canonical 1–20 Level Unlock Sequence & Combat Laws
+└── ui/                           # React HUD, Satchel & Menu overlays
 ```
 
 ### Recommended Order for Building New World Content (Bottom-Up)
@@ -352,31 +357,29 @@ Create a file exporting an `ItemWikiDefinition` (`id`, `name`, `category`, `icon
 
 ---
 
-## 4. Embedding Drafted PNG Assets (Base64 Sprites & Grid Tilemaps)
+## 4. Embedding Drafted PNG Assets Directly in Entry Files
 
-Project Orion includes a zero-latency Base64 image & spritesheet pipeline (`src/cartridges/orion/database/assets/base64AssetLoader.ts`).
-- Images are decoded once into an in-memory `Map<string, HTMLImageElement>` cache and drawn with `imageSmoothingEnabled = false` so pixel art stays razor-sharp.
-- You can pass either a full `data:image/png;base64,...` URI, a raw Base64 payload, or a shared `atlasId` registered in `database/assets/`.
-- If `sprite` / `layer0Sprite` / `tileSheetBase64` is omitted, the renderer automatically falls back to procedural Canvas 2D drawing.
+All visual assets in Project Orion are embedded directly inside their respective entry files (`database/world/tiles/`, `database/world/biomes/`, `database/enemies/`, `database/items/`, `database/weapons/`) — there is no separate `assets/` directory.
+- Images and sub-tile clusters are decoded and baked once into an in-memory `Map<string, HTMLImageElement | HTMLCanvasElement>` cache (`systems/base64AssetLoader.ts`) and drawn with `imageSmoothingEnabled = false` so pixel art stays razor-sharp.
+- You can pass either a full `data:image/png;base64,...` URI or a raw Base64 payload directly inside the entry file.
+- If `sprite` / `layer0Sprite` / `baseTileBase64` / `tileSheetBase64` is omitted, the renderer automatically falls back to procedural Canvas 2D drawing.
 
 ### Quick Command to Convert a Drafted PNG to Base64
-Until you fork a standalone converter utility, you can turn any `.png` into a single-line Base64 string in your terminal:
+You can turn any `.png` into a single-line Base64 string in your terminal:
 ```bash
 # Linux / macOS:
-base64 -w 0 my_sprite.png
-# Or with data URI prefix:
 echo "data:image/png;base64,$(base64 -w 0 my_sprite.png)"
 ```
 
 ---
 
-### Recipe A: Individual Base64 PNG on a Tile, Prop, Enemy, Weapon, or Item
-Use this when you have a single standalone `.png` file for an entity or prop:
+### Recipe A: Individual Base64 PNG Embedded in a Tile, Prop, Enemy, Weapon, or Item Entry File
+Paste the Base64 string directly inside the entity's `.ts` entry file:
 
 ```ts
 // Inside any EnemyWikiDefinition, TileDefinition, WeaponDefinition, or ItemWikiDefinition:
 sprite: {
-  base64: 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9h...', // Raw Base64 or data:image/png;base64,...
+  base64: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9h...',
   renderWidth: 16,       // Optional override (defaults to PNG width)
   renderHeight: 20,      // Optional override (defaults to PNG height)
   offsetX: 0,            // Fine-tune horizontal pixel pivot
@@ -388,27 +391,12 @@ sprite: {
 
 ---
 
-### Recipe B: Shared Base64 Grid Tilemap / Spritesheet Atlas (`database/assets/`)
-When multiple tiles or entities share a grid spritesheet or tilemap PNG, drop an atlas module into `src/cartridges/orion/database/assets/` (it is auto-discovered on boot):
-
-```ts
-// Example: src/cartridges/orion/database/assets/belldor_tileset_atlas.ts
-import { Base64AtlasDefinition } from './base64AssetLoader';
-
-export const belldorTilesetAtlas: Base64AtlasDefinition = {
-  id: 'atlas_belldor_bog_16x16',
-  name: 'Belldor Bog 16x16 Tilemap',
-  cellWidth: 16,
-  cellHeight: 16,
-  base64: 'iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHL...',
-};
-```
-
-Then reference `atlas_belldor_bog_16x16` inside a **Biome** (to skin an entire biome's tiles at once) or on individual **Tiles**:
+### Recipe B: Biome Tilemap Sheet Embedded in a Biome Entry File (`database/world/biomes/`)
+To skin a biome with a custom grid sheet, embed the Base64 string directly in the `BiomeDefinition` entry file:
 
 ```ts
 // Inside a BiomeDefinition (e.g., world/biomes/local/belldor/belldor_bog.ts):
-tileSheetBase64: 'atlas_belldor_bog_16x16', // Or paste raw Base64 directly here
+tileSheetBase64: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHL...',
 tileSheetCellSize: 16,
 tileSheetCoords: {
   '.': { col: 0, row: 0 },                        // Static floor tile at (col 0, row 0)
@@ -453,8 +441,8 @@ sprite: {
 
 ---
 
-### Recipe D: Sub-Tile Micro-Composer & Separated `3×3` Biome Cluster Atlases (`database/assets/subTileComposer.ts`)
-Rather than hardcoding 180 individual `16×16px` PNG tiles (`>60 KB` of Base64 strings), Project Orion uses an offscreen **Sub-Tile Micro-Composer** (`database/assets/subTileComposer.ts`) that takes tiny `4×4px` and `8×8px` seed patterns and bakes all 20 separated `3×3` biome clusters (`48×48px` each) plus the combined `192×240px` `ruins_tileset` sheet onto offscreen canvases once at startup (`ruins_tileset.ts` is under `1 KB`!).
+### Recipe D: Sub-Tile Micro-Composer & Separated `3×3` Biome Cluster Atlases (`systems/subTileComposer.ts`)
+Rather than hardcoding 180 individual `16×16px` PNG tiles (`>60 KB` of Base64 strings), Project Orion uses an offscreen **Sub-Tile Micro-Composer** (`systems/subTileComposer.ts`) that takes the 4 `16×16px` base tiles embedded directly in `floor.ts` (`dirt01`), `grass.ts` (`grass01`), `mud.ts` (`aether01`), and `ruins_floor.ts` (`ruins01`) and bakes all 20 separated `3×3` biome clusters (`48×48px` each) plus the combined `192×240px` `ruins_tileset` sheet onto offscreen canvases once at startup.
 
 - **Two Sub-Tile Granularities**:
   1. **`4×4` Micro-Block Mode (`16` blocks of `4×4px` per `16×16px` tile)**:
@@ -479,22 +467,29 @@ clusterTileSheetBase64: 'ruins_tileset', // Uses the offscreen-baked 20-cluster 
 defaultClusterTerrain: 'ruins',          // 'dirt' | 'grass' | 'aether' | 'ruins'
 ```
 
-To customize or swap any of the 4 base `16×16px` tiles, edit `dirt01`, `grass01`, `aether01`, or `ruins01` in `src/cartridges/orion/database/assets/ruins_tileset.ts` (the composer automatically decodes their `16×16px` pixels, slices them into `4×4` `4px` micro-blocks and `2×2` `8px` quadrants, and re-bakes all 20 `3×3` clusters):
+To customize or swap any of the 4 base `16×16px` tiles, edit `baseTileBase64` (`dirt01`, `grass01`, `aether01`, or `ruins01`) directly inside its respective tile entry file (`database/world/tiles/floor.ts`, `grass.ts`, `mud.ts`, or `ruins_floor.ts`):
 ```ts
-// Inside src/cartridges/orion/database/assets/ruins_tileset.ts:
+// Example: src/cartridges/orion/database/world/tiles/floor.ts
 export const dirt01 = 'data:image/png;base64,...';
-export const grass01 = 'data:image/png;base64,...';
-export const aether01 = 'data:image/png;base64,...';
-export const ruins01 = 'data:image/png;base64,...';
 
-const baked = bakeBiomeClusterTileset({ dirt01, grass01, aether01, ruins01 });
+export const groundTile: TileDefinition = {
+  id: 'floor',
+  char: '.',
+  name: 'Solid Island Soil',
+  type: 'floor',
+  solid: false,
+  blocksHeight: 0,
+  clusterTerrain: 'dirt', // 'dirt' | 'grass' | 'aether' | 'ruins'
+  subTileMode: '4x4',     // '4x4' (16 4x4px groups) or '2x2' (4 8x8px quadrants)
+  baseTileBase64: dirt01, // Auto-collected on boot & baked into all 20 3x3 clusters!
+};
 ```
 
 ---
 
-## 6. 2.5D Post-Processing & Visual Effect Layers (`postProcessing.ts`)
+## 5. 2.5D Post-Processing & Visual Effect Layers (`systems/postProcessingSystem.ts`)
 
-Instead of hardcoding hundreds of pixel effect frames for lighting, weapon trails, projectiles, outlines, reflections, and weather, the engine provides a **5-Pass Post-Processing Pipeline** (`src/cartridges/orion/postProcessing.ts`) controlled declaratively from your Biome, Tile, Weapon, and Enemy definitions:
+Instead of hardcoding hundreds of pixel effect frames for lighting, weapon trails, projectiles, outlines, reflections, and weather, the engine provides a **5-Pass Post-Processing Pipeline** (`src/cartridges/orion/systems/postProcessingSystem.ts`) controlled declaratively from your Biome, Tile, Weapon, and Enemy definitions:
 
 ### Pass 1: Planar Water / Corrosive Aether (`~`) Reflections
 Any biome with `liquidReflection: true` (enabled by default) automatically renders vertically-flipped, horizontal-ripple-sheared planar reflections of north-bordering pillars (`P`), walls (`#`), Poe Lanterns (`L`), the Player, and Enemies clipped strictly inside `~` liquid tiles.

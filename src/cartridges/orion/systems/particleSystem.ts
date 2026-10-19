@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { OrionState } from './types';
+import { OrionState } from '../types';
 
 export function spawnParticles(
   state: OrionState,

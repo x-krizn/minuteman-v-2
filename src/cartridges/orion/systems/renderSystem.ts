@@ -16,25 +16,24 @@ import {
   SCREEN_W,
   TILE_SIZE,
   Z_SCALE,
-} from './constants';
+} from '../constants';
+import { getEnemyDefinition } from '../database/enemies';
+import { getItemDefinition } from '../database/items';
+import { getWeaponDefinition } from '../database/weapons';
+import { getBiomeDefinition, getTileDefinition } from '../database/world';
+import { OrionState } from '../types';
+import { drawBase64Sprite, drawBiomeSheetTile } from './base64AssetLoader';
 import {
-  drawBase64Sprite,
-  drawBiomeSheetTile,
   drawClusterBiomeLayer0,
   drawClusterBiomeWall,
   isClusterSingleWallChar,
-} from './database/assets';
-import { getEnemyDefinition } from './database/enemies';
-import { getItemDefinition } from './database/items';
-import { getWeaponDefinition } from './database/weapons';
-import { getBiomeDefinition, getTileDefinition } from './database/world';
+} from './clusterAutoTiler';
 import {
   drawBiomeWeatherLayer,
   drawDynamicLightingAndBloomPass,
   drawEnhancedProjectilesAndBladeTrails,
   drawPlanarWaterReflections,
-} from './postProcessing';
-import { OrionState } from './types';
+} from './postProcessingSystem';
 
 /**
  * 2.5D Renderer for Project Orion

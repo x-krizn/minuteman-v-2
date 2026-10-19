@@ -12,7 +12,6 @@ import {
   CartridgeSurface,
 } from '../../types/cartridge';
 import { GameInput } from '../../types/input';
-import { handleCombatInput, performWeaponSwap, updateCombat } from './combat';
 import {
   BOOSTER_DASH_COOLDOWN,
   BOOSTER_DASH_DURATION,
@@ -25,14 +24,8 @@ import {
   TILE_SIZE,
   WALK_SPEED,
 } from './constants';
-import { TRAIT_REGISTRY } from './database/characters/trait_lines';
+import { TRAIT_REGISTRY } from './database/characters';
 import { getBiomeDefinition, ORION_INITIAL_ROOMS } from './database/world';
-import { spawnRoomEnemies, updateEnemies } from './enemies';
-import { spawnParticles, updateParticles } from './particles';
-import { moveEntityX, moveEntityY, updateElevationPhysics } from './physics';
-import { updatePickups } from './pickups';
-import { drawOrionGame } from './renderer';
-import { updateProjectiles } from './skills';
 import {
   notifyOrionStateChange,
   setOrionRoomsRef,
@@ -41,12 +34,25 @@ import {
 import {
   checkWorldInteractivePrompt,
   cycleTargetLock,
+  drawOrionGame,
   executeWorldInteraction,
+  handleCombatInput,
   handleWorldRoomTransition,
+  moveEntityX,
+  moveEntityY,
+  performWeaponSwap,
   rebootAtSpawnAnchor,
+  spawnParticles,
+  spawnRoomEnemies,
   syncRoomHierarchyState,
   syncStateGates,
+  updateCombat,
+  updateElevationPhysics,
+  updateEnemies,
   updateEnvironmentalHazards,
+  updateParticles,
+  updatePickups,
+  updateProjectiles,
   updateTargetLock,
   updateTutorialSystem,
 } from './systems';

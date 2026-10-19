@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { soundSystem } from '../../engine/core/soundSystem';
+import { soundSystem } from '../../../engine/core/soundSystem';
 import {
   BOOSTER_DASH_COOLDOWN,
   BOOSTER_DASH_DURATION,
@@ -13,17 +13,17 @@ import {
   GLADIUS_RELOAD_TIME,
   GLADIUS_SHOTS_PER_CHAIN,
   WEAPON_SWAP_COOLDOWN,
-} from './constants';
-import { getWeaponDefinition } from './database/weapons';
-import { updateBladeTrails } from './postProcessing';
-import { notifyOrionStateChange } from './stateStore';
+} from '../constants';
+import { getWeaponDefinition } from '../database/weapons';
+import { notifyOrionStateChange } from '../stateStore';
+import { ArmorState, DamageType, FrameState, OrionCombatContext, OrionState, ShieldState } from '../types';
 import {
   executeActionPayload,
   getCombatAimVector,
   initiateTriggerAction,
   updateActionTimers,
-} from './systems/actionSystem';
-import { ArmorState, DamageType, FrameState, OrionCombatContext, OrionState, ShieldState } from './types';
+} from './actionSystem';
+import { updateBladeTrails } from './postProcessingSystem';
 
 /**
  * Swap to the next equipped weapon (or a specific index) and sync magazine/combo parameters

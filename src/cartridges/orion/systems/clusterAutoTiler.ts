@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { COLS, ROWS, TILE_SIZE } from '../../constants';
-import { BiomeDefinition, ClusterTerrainType } from '../../types';
+import { COLS, ROWS, TILE_SIZE } from '../constants';
+import { BiomeDefinition, ClusterTerrainType } from '../types';
 import { BASE64_ATLAS_REGISTRY, drawBase64Sprite } from './base64AssetLoader';
 
 /**

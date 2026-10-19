@@ -15,6 +15,9 @@ export const cathedralDoorTile: TileDefinition = {
   blocksHeight: 2,
   bakedTopColor: '#c084fc',
   bakedFrontColor: '#581c87',
+  checkSolid(state, roomKey) {
+    return !state.flags?.cathedral_door_open && !state.unlockedGates?.[`${roomKey}:M`];
+  },
   renderLayer1(g, _tx, _ty, sx, sy, state) {
     const isOpen = Boolean(
       state.flags?.cathedral_door_open || state.unlockedGates[`${state.room}:M`]

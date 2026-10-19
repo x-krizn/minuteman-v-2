@@ -15,6 +15,14 @@ export const rustedGateTile: TileDefinition = {
   blocksHeight: 2,
   bakedTopColor: '#38bdf8',
   bakedFrontColor: '#0369a1',
+  checkSolid(state, roomKey) {
+    if (state.flags?.orc_raid_active) return true;
+    return (
+      !state.unlockedGates?.[roomKey] &&
+      !state.clearedRooms?.[roomKey] &&
+      !state.flags?.bog_exit_revealed
+    );
+  },
   renderLayer1(g, _tx, _ty, sx, sy, state) {
     const isOpen =
       !state.flags?.orc_raid_active &&

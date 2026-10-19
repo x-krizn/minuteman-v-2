@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export * from './assets';
 export * from './characters';
 export * from './enemies';
 export * from './equipment';

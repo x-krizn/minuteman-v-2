@@ -9,4 +9,4 @@ export * from './maps';
 export * from './rooms';
 export * from './biomes';
 export * from './tiles';
-export * from './generation';
+export * from '../../systems/worldComposer';

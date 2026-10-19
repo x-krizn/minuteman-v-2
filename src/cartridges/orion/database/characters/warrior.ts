@@ -1,0 +1,18 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import { TraitLineWikiDefinition } from '../../types';
+
+export const warriorTrait: TraitLineWikiDefinition = {
+  id: 'Warrior',
+  name: 'Warrior',
+  reactor: 'Ichor',
+  defaultDamageStyle: 'Impact',
+  identity: 'Balanced combatant clad in reactive armor with reliable energy shields.',
+  lore: 'Frontline mechs deployed to hold ground and absorb sustained kinetic fire.',
+  baseShield: { type: 'energy', capacity: 60 },
+  baseArmor: { type: 'Reactive', threshold: 6, rating: 4, durability: 80 },
+  startingWeapons: ['gladius_boltcaster'],
+};

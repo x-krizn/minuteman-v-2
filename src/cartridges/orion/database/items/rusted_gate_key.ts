@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { addOrionInventoryItem } from '../../stateStore';
 import { ItemWikiDefinition } from '../../types';
 
 export const rustedGateKeyItem: ItemWikiDefinition = {
@@ -14,4 +15,8 @@ export const rustedGateKeyItem: ItemWikiDefinition = {
   buyPrice: 0,
   sellPrice: 0,
   iconColor: '#ffd27d',
+  onCollect(state, ctx) {
+    addOrionInventoryItem(state, 'rusted_gate_key', 1);
+    ctx.say('ACQUIRED RUSTED GATE KEY');
+  },
 };

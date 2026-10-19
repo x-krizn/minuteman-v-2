@@ -3,11 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { soundSystem } from '../../engine/core/soundSystem';
-import { TILE_SIZE } from './constants';
-import { CHAR_TO_ENEMY_TYPE, getEnemyDefinition } from './database/enemies';
-import { notifyOrionStateChange } from './stateStore';
-import { EnemyEntity, OrionCombatContext, OrionState } from './types';
+import { soundSystem } from '../../../engine/core/soundSystem';
+import { TILE_SIZE } from '../constants';
+import { CHAR_TO_ENEMY_TYPE, getEnemyDefinition } from '../database/enemies';
+import { notifyOrionStateChange } from '../stateStore';
+import { EnemyEntity, OrionCombatContext, OrionState } from '../types';
 
 let nextEnemyId = 1;
 

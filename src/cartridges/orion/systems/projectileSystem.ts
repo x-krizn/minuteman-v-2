@@ -3,11 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { soundSystem } from '../../engine/core/soundSystem';
-import { TILE_SIZE } from './constants';
-import { applyDamageToLayers } from './combat';
-import { isSolidAt } from './physics';
-import { OrionCombatContext, OrionState } from './types';
+import { soundSystem } from '../../../engine/core/soundSystem';
+import { TILE_SIZE } from '../constants';
+import { OrionCombatContext, OrionState } from '../types';
+import { applyDamageToLayers } from './combatSystem';
+import { isSolidAt } from './physicsSystem';
 
 export function updateProjectiles(
   rooms: Record<string, string[]>,

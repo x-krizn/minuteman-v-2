@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { COLS, GRAVITY, ROWS, TILE_SIZE } from './constants';
-import { OrionState } from './types';
-import { getTileDefinition } from './database/world';
+import { COLS, GRAVITY, ROWS, TILE_SIZE } from '../constants';
+import { getTileDefinition } from '../database/world';
+import { OrionState } from '../types';
 
 /**
  * Check if a world coordinate is solid or impassable.
@@ -24,15 +24,10 @@ export function isSolidAt(
     if (!room || !room[ty]) return true;
 
     const char = room[ty][tx] || '.';
-    if (char === 'G') {
-      if (state.flags?.orc_raid_active) return true; // Sealed during Orc Raid
-      return !state.unlockedGates?.[state.room] && !state.clearedRooms?.[state.room] && !state.flags?.bog_exit_revealed;
+    const tile = getTileDefinition(char, state.biomeId);
+    if (tile.checkSolid) {
+      return tile.checkSolid(state, state.room);
     }
-    if (char === 'M') {
-      return !state.flags?.cathedral_door_open && !state.unlockedGates?.[`${state.room}:M`];
-    }
-
-    const tile = getTileDefinition(char);
     if (!tile.solid) return false;
 
     // Desynchronizing market walls (%) phase between intact (solid) and ruined (passable)
@@ -45,7 +40,7 @@ export function isSolidAt(
       return false;
     }
 
-    return true;
+    return z < tile.blocksHeight * 12;
   }
 
   // 2. Beyond room boundaries: check neighbor room
@@ -67,21 +62,16 @@ export function isSolidAt(
   const ntx = ((tx % COLS) + COLS) % COLS;
   const nty = ((ty % ROWS) + ROWS) % ROWS;
   const nChar = neighborRoom[nty]?.[ntx] || '.';
+  const tile = getTileDefinition(nChar, state.biomeId);
 
-  if (nChar === 'G') {
-    if (state.flags?.orc_raid_active) return true;
-    return !state.unlockedGates?.[neighborKey] && !state.clearedRooms?.[neighborKey] && !state.flags?.bog_exit_revealed;
+  if (tile.checkSolid) {
+    return tile.checkSolid(state, neighborKey);
   }
-  if (nChar === 'M') {
-    return !state.flags?.cathedral_door_open && !state.unlockedGates?.[`${neighborKey}:M`];
-  }
-
-  const tile = getTileDefinition(nChar);
   if (!tile.solid) return false;
   if (tile.isDesync && Math.floor(state.t / 3.5) % 2 !== 0) return false;
   if (tile.isChasm) return false;
 
-  return tile.solid;
+  return z < tile.blocksHeight * 12;
 }
 
 /**

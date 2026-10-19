@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { TRAIT_REGISTRY } from '../database/characters/trait_lines';
+import { TRAIT_REGISTRY } from '../database/characters';
 import { getWeaponDefinition } from '../database/weapons';
 import { notifyOrionStateChange } from '../stateStore';
 import { OrionCapabilityGates, OrionState, TraitLine } from '../types';

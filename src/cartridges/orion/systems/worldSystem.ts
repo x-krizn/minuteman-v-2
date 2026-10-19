@@ -16,13 +16,13 @@ import {
   WAYGATE_REGISTRY,
   WAYSTATION_REGISTRY,
 } from '../database/world';
-import { spawnRoomEnemies } from '../enemies';
 import {
   addOrionInventoryItem,
   notifyOrionStateChange,
   saveOrionGame,
 } from '../stateStore';
 import { OrionCombatContext, OrionState } from '../types';
+import { spawnRoomEnemies } from './enemySystem';
 import { awakenLadyOfTheLake } from './hazardAndRaidSystem';
 import { syncStateGates } from './stateSystem';
 import {

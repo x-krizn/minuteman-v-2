@@ -4,7 +4,6 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { performWeaponSwap } from '../combat';
 import { getWeaponDefinition } from '../database/weapons';
 import { getOrionStateRef, notifyOrionStateChange } from '../stateStore';
 import {
@@ -12,6 +11,7 @@ import {
   getActionCooldown,
   getLockedTarget,
   getRoomWorldInfo,
+  performWeaponSwap,
   resolveTriggerAction,
   TUTORIAL_STEP_DESCRIPTORS,
   TutorialStepId,

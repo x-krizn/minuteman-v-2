@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { ClusterTerrainType } from '../../types';
+import { ClusterTerrainType } from '../types';
 import { Base64AtlasDefinition, registerCanvasAtlas } from './base64AssetLoader';
 
 /**
@@ -482,8 +482,19 @@ let cachedCatalog: BakedBiomeClusterCatalog | null = null;
  * `ruins_tileset` once into offscreen canvases from the 4 base `16×16px` tiles
  * (`dirt01`, `grass01`, `aether01`, `ruins01`) and register them in `BASE64_ATLAS_REGISTRY`.
  */
-export function bakeBiomeClusterTileset(baseTiles?: BasicFourTilesInput): BakedBiomeClusterCatalog {
-  if (cachedCatalog) return cachedCatalog;
+export function bakeBiomeClusterTileset(
+  baseTiles?: Partial<BasicFourTilesInput>,
+  modes?: Partial<Record<ClusterTerrainType, '4x4' | '2x2'>>
+): BakedBiomeClusterCatalog {
+  if (modes) {
+    for (const [terrain, mode] of Object.entries(modes) as Array<[ClusterTerrainType, '4x4' | '2x2']>) {
+      if (mode && TERRAIN_MICRO_SEEDS[terrain]) {
+        TERRAIN_MICRO_SEEDS[terrain].mode = mode;
+      }
+    }
+  }
+
+  if (cachedCatalog && !baseTiles) return cachedCatalog;
 
   const clusterSpecs: Array<{
     id: string;
@@ -579,13 +590,14 @@ export function bakeBiomeClusterTileset(baseTiles?: BasicFourTilesInput): BakedB
   // Also bind live HTMLImageElement decoders to `dirt01`, `grass01`, `aether01`, `ruins01`
   // so editing any of the 4 Base64 PNG strings dynamically updates the baked clusters!
   if (baseTiles && typeof Image !== 'undefined' && typeof document !== 'undefined') {
-    const entries: Array<[ClusterTerrainType, string]> = [
+    const entries: Array<[ClusterTerrainType, string | undefined]> = [
       ['dirt', baseTiles.dirt01],
       ['grass', baseTiles.grass01],
       ['aether', baseTiles.aether01],
       ['ruins', baseTiles.ruins01],
     ];
     for (const [terrain, src] of entries) {
+      if (!src) continue;
       const img = new Image();
       img.onload = () => {
         const scratch = document.createElement('canvas');

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { addOrionInventoryItem } from '../../stateStore';
+import { addOrionInventoryItem } from '../../systems/playerSystem';
 import { ItemWikiDefinition } from '../../types';
 
 export const rustedGateKeyItem: ItemWikiDefinition = {

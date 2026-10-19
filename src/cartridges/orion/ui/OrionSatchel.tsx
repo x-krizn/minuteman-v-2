@@ -8,7 +8,7 @@ import { soundSystem } from '../../../engine/core/soundSystem';
 import { TRAIT_REGISTRY } from '../database/characters';
 import { getResolvedActionDescriptor } from '../database/equipment';
 import { getItemDefinition } from '../database/items';
-import { LEVEL_UNLOCK_SEQUENCE, CORE_COMBAT_LAWS } from '../database/progression/canonical_progression';
+import { CORE_COMBAT_LAWS, LEVEL_UNLOCK_SEQUENCE } from '../database/progression';
 import { getWeaponDefinition } from '../database/weapons';
 import {
   AREA_REGISTRY,
@@ -22,35 +22,37 @@ import {
   WAYSTATION_REGISTRY,
 } from '../database/world';
 import {
-  consolidateInventorySlots,
-  getOrionRoomsRef,
-  getOrionStateRef,
-  notifyOrionStateChange,
-  subscribeOrionStateChange,
-} from '../stateStore';
-import {
   applyTraitLineProfile,
   ASSIGNABLE_ACTION_CATALOG,
   assignTriggerAction,
   awakenLadyOfTheLake,
+  consolidateInventorySlots,
   evaluateCathedralDoorStatus,
   fastTravelToWaystation,
   fastTravelViaWaygate,
   getActionCooldown,
+  getActiveAetherNode,
+  getOrionRoomsRef,
+  getOrionStateRef,
   getRoomWorldInfo,
+  hasPoeLanternGuidance,
   isActionUnlocked,
+  notifyOrionStateChange,
   performWeaponSwap,
+  resetAetherFogGraph,
   resetTriggerActionsToDefault,
   resolveTriggerAction,
   setBypassProgressionGates,
   setTutorialStateActive,
+  subscribeOrionStateChange,
   syncStateGates,
+  transitionViaAetherDoor,
   triggerOrcRaid,
   triggerThreeKnightsTrial,
   TUTORIAL_STEP_DESCRIPTORS,
   TutorialStepId,
 } from '../systems';
-import { TraitLine } from '../types';
+import { AetherCardinalDir, TraitLine } from '../types';
 
 export interface OrionSatchelProps {
   onResume: () => void;
@@ -919,6 +921,108 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                 </span>
               </div>
             </div>
+
+            {/* Aether Fog 5-Node Graph Engine (Key, General, Side, Loop, End) */}
+            {(() => {
+              const activeNode = getActiveAetherNode(state);
+              const hasLantern = hasPoeLanternGuidance(state);
+              const totalGenerated = Object.keys(state.fogGraph?.nodes || {}).filter((k) =>
+                k.startsWith('fog:')
+              ).length;
+              const dirs: AetherCardinalDir[] = ['N', 'S', 'E', 'W'];
+
+              return (
+                <div className="p-2 bg-[#090d14] rounded-xs border border-[#38bdf8]/40 space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold text-[#38bdf8] text-[10px]">
+                      ÆTHER FOG 5-NODE TOPOLOGY (KEY · GENERAL · SIDE · LOOP · END)
+                    </span>
+                    <button
+                      disabled={!rooms}
+                      onClick={() => {
+                        if (!rooms) return;
+                        soundSystem.playSelect();
+                        resetAetherFogGraph(rooms, state);
+                      }}
+                      className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#7dd3fc] border border-[#38bdf8]/40 rounded-xs font-bold text-[8px] cursor-pointer shrink-0"
+                    >
+                      RESET FOG GRAPH (SEED #{state.fogGraph?.seed || 104729})
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 text-[8.5px]">
+                    <div className="p-1 bg-[#0f172a] rounded-xs border border-[#1e293b]">
+                      <div className="text-[#94a3b8] text-[7.5px]">ACTIVE NODE TYPE</div>
+                      <div className="font-bold text-[#fbbf24]">
+                        {activeNode.nodeType.toUpperCase()} NODE
+                      </div>
+                    </div>
+                    <div className="p-1 bg-[#0f172a] rounded-xs border border-[#1e293b]">
+                      <div className="text-[#94a3b8] text-[7.5px]">ROUTE / BRANCH STATUS</div>
+                      <div className="font-bold text-[#38bdf8]">
+                        {activeNode.nodeType === 'general'
+                          ? `STEP ${activeNode.routeStep || 1} OF ${activeNode.routeTotal || 1}`
+                          : activeNode.nodeType === 'side'
+                            ? 'OFF-PATH (NO PROGRESS)'
+                            : activeNode.nodeType === 'loop'
+                              ? `FOG LOOP (DEPTH ${worldInfo.loopDepth})`
+                              : activeNode.nodeType === 'end'
+                                ? `END (${(activeNode.endFeature || 'loot_cache').toUpperCase()})`
+                                : 'POINT OF INTEREST'}
+                      </div>
+                    </div>
+                    <div className="p-1 bg-[#0f172a] rounded-xs border border-[#1e293b]">
+                      <div className="text-[#94a3b8] text-[7.5px]">TRUE PATH / ESCAPE TELL</div>
+                      <div className="font-bold text-[#86efac]">
+                        {activeNode.trueExitDir
+                          ? `THRESHOLD [${activeNode.trueExitDir}]`
+                          : 'ALL CARDINAL EXITS'}
+                      </div>
+                    </div>
+                    <div className="p-1 bg-[#0f172a] rounded-xs border border-[#1e293b]">
+                      <div className="text-[#94a3b8] text-[7.5px]">WAYFINDING & CHUNKS</div>
+                      <div className="font-bold text-[#e2e8f0]">
+                        {hasLantern ? 'POE LANTERN ACTIVE' : 'MOTE TELLS ONLY'} · {totalGenerated} GEN
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-1.5 pt-0.5">
+                    <span className="text-[8px] text-[#94a3b8]">
+                      No literal border walls: open doorways dynamically generate General, Side, End, or silent Loop chunks.
+                    </span>
+                    <div className="flex items-center gap-1">
+                      {dirs.map((d) => {
+                        const isTrue = activeNode.trueExitDir === d;
+                        const isBlockedEnd =
+                          activeNode.nodeType === 'end' && activeNode.returnDir !== d;
+                        return (
+                          <button
+                            key={d}
+                            disabled={!rooms || isBlockedEnd}
+                            onClick={() => {
+                              if (!rooms || isBlockedEnd) return;
+                              if (transitionViaAetherDoor(rooms, state, d)) {
+                                onResume();
+                              }
+                            }}
+                            className={`px-1.5 py-0.5 rounded-xs font-bold text-[8px] cursor-pointer ${
+                              isBlockedEnd
+                                ? 'bg-[#0f172a] text-[#475569] border border-[#1e293b] cursor-not-allowed'
+                                : isTrue
+                                  ? 'bg-[#0c4a6e] hover:bg-[#075985] text-[#7dd3fc] border border-[#38bdf8]'
+                                  : 'bg-[#1e293b] hover:bg-[#334155] text-[#cbd5e1] border border-[#475569]'
+                            }`}
+                          >
+                            STEP {d} {isTrue ? '★' : ''}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Lore Fast Travel 1: Colossal Waygates (Inter-World / Inter-Region Signature Transit) */}
             <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">

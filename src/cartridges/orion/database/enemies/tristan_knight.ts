@@ -5,7 +5,7 @@
 
 import { soundSystem } from '../../../../engine/core/soundSystem';
 import { getDirFromVector } from '../../constants';
-import { addOrionInventoryItem, notifyOrionStateChange } from '../../stateStore';
+import { addOrionInventoryItem, notifyOrionStateChange } from '../../systems/playerSystem';
 import { EnemyEntity, EnemyWikiDefinition, OrionCombatContext, OrionState } from '../../types';
 
 function handleGrailKnightDefeat(state: OrionState, ctx: OrionCombatContext): void {

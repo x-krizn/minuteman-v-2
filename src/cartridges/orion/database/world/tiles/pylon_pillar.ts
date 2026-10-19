@@ -4,7 +4,7 @@
  */
 
 import { TileDefinition } from '../../../types';
-import { getBiomeDefinition } from '../biomes';
+import { getBiomeDefinition } from '../index';
 
 export const pylonPillarTile: TileDefinition = {
   id: 'pylon_pillar',

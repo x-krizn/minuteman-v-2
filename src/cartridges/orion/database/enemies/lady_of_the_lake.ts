@@ -5,7 +5,7 @@
 
 import { soundSystem } from '../../../../engine/core/soundSystem';
 import { getDirFromVector } from '../../constants';
-import { notifyOrionStateChange } from '../../stateStore';
+import { notifyOrionStateChange } from '../../systems/playerSystem';
 import { EnemyEntity, EnemyWikiDefinition, OrionState } from '../../types';
 
 export const ladyOfTheLakeEnemy: EnemyWikiDefinition = {

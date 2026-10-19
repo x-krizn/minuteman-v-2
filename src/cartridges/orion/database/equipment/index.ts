@@ -4,14 +4,14 @@
  */
 
 import { OrionActionDescriptor, OrionState } from '../../types';
-import { getWeaponDefinition } from '../weapons';
+import { getWeaponDefinition, WEAPON_SKILL_ACTIONS } from '../weapons';
 
 export type { OrionActionDescriptor } from '../../types';
 
-// Auto-discover all assignable action modules in this directory (including subfolders) via Vite import.meta.glob
+// Auto-discover all assignable equipment/reactor modules in this directory via Vite import.meta.glob
 const modules = import.meta.glob<Record<string, unknown>>('./**/*.ts', { eager: true });
 
-const discoveredActions: OrionActionDescriptor[] = [];
+const discoveredActions: OrionActionDescriptor[] = [...WEAPON_SKILL_ACTIONS];
 
 function isOrionActionDescriptor(val: unknown): val is OrionActionDescriptor {
   return (

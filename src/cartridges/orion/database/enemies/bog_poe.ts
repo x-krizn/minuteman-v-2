@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { notifyOrionStateChange } from '../../stateStore';
+import { notifyOrionStateChange } from '../../systems/playerSystem';
 import { EnemyEntity, EnemyWikiDefinition, OrionState } from '../../types';
 
 export const bogPoeEntity: EnemyWikiDefinition = {

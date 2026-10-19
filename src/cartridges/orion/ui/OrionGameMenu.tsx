@@ -5,8 +5,12 @@
 
 import React, { useState } from 'react';
 import { soundSystem } from '../../../engine/core/soundSystem';
-import { getOrionStateRef, loadOrionGame, saveOrionGame } from '../stateStore';
-import { setTutorialStateActive } from '../systems';
+import {
+  getOrionStateRef,
+  loadOrionGame,
+  saveOrionGame,
+  setTutorialStateActive,
+} from '../systems';
 
 export interface OrionGameMenuProps {
   soundEnabled: boolean;

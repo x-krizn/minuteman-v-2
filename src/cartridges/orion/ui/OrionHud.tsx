@@ -5,12 +5,13 @@
 
 import React, { useEffect, useState } from 'react';
 import { getWeaponDefinition } from '../database/weapons';
-import { getOrionStateRef, notifyOrionStateChange } from '../stateStore';
 import {
   cycleTargetLock,
   getActionCooldown,
   getLockedTarget,
+  getOrionStateRef,
   getRoomWorldInfo,
+  notifyOrionStateChange,
   performWeaponSwap,
   resolveTriggerAction,
   TUTORIAL_STEP_DESCRIPTORS,
@@ -196,13 +197,31 @@ export const OrionHud: React.FC = () => {
           </div>
         </section>
 
-        {/* CENTER CLUSTER: 5-Tier Nested World Location, Target Lock-On & Tutorial State Indicator */}
+        {/* CENTER CLUSTER: 5-Tier Nested World Location, Aether Fog Node Type & Target Lock-On */}
         <section aria-label="Sector Info" className="hidden xs:flex flex-col items-center">
-          <div className="px-2.5 py-0.5 bg-[#090d14]/90 border border-[#38bdf8]/40 rounded-full text-[9px] text-[#7dd3fc] tracking-wider uppercase font-bold flex items-center gap-1 shadow-md backdrop-blur-xs">
+          <div className="px-2.5 py-0.5 bg-[#090d14]/90 border border-[#38bdf8]/40 rounded text-[9px] text-[#7dd3fc] tracking-wider uppercase font-bold flex items-center gap-1.5 shadow-md backdrop-blur-xs">
             <span className="text-[#38bdf8]">⬢</span>
             <span>{worldInfo.roomTitle}</span>
-            <span className="text-[7px] px-1 rounded bg-[#1e293b] text-[#94a3b8]">
-              {worldInfo.roomScope.toUpperCase()}
+            <span className="text-[#475569]">·</span>
+            <span
+              className={
+                worldInfo.nodeType === 'key'
+                  ? 'text-[#fbbf24]'
+                  : worldInfo.nodeType === 'general'
+                    ? 'text-[#38bdf8]'
+                    : worldInfo.nodeType === 'side'
+                      ? 'text-[#a78bfa]'
+                      : worldInfo.nodeType === 'end'
+                        ? 'text-[#4ade80]'
+                        : 'text-[#f43f5e]'
+              }
+            >
+              {worldInfo.nodeType.toUpperCase()} NODE
+              {worldInfo.nodeType === 'general' && worldInfo.routeStep && worldInfo.routeTotal
+                ? ` (${worldInfo.routeStep}/${worldInfo.routeTotal})`
+                : worldInfo.nodeType === 'loop' && worldInfo.loopDepth > 0
+                  ? ` (DEPTH ${worldInfo.loopDepth})`
+                  : ''}
             </span>
           </div>
           <span className="text-[8px] text-[#94a3b8] tracking-widest mt-0.5 font-semibold uppercase">

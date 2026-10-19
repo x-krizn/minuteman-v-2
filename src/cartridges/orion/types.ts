@@ -281,9 +281,52 @@ export interface TileDefinition {
   ) => void;
 }
 
+export type AetherNodeType = 'key' | 'general' | 'side' | 'loop' | 'end';
+export type AetherCardinalDir = 'N' | 'S' | 'E' | 'W';
+export type AetherEndFeature = 'loot_cache' | 'mini_boss' | 'secret_switch' | 'dead_end';
+
+export interface AetherGraphNode {
+  id: string;
+  nodeType: AetherNodeType;
+  coord: string;
+  title: string;
+  bannerTitle: string;
+  regionId: string;
+  areaId: string;
+  mapId: string;
+  biomeId: string;
+  /** Source and target key node coordinates when on a connecting route */
+  sourceKeyCoord?: string;
+  targetKeyCoord?: string;
+  /** Current and total general-node steps along a route (side & loop nodes do not advance step) */
+  routeStep?: number;
+  routeTotal?: number;
+  /** The doorway direction that advances the true general path or escapes a loop/side/end node */
+  trueExitDir?: AetherCardinalDir;
+  /** Entry doorway direction used to step back into the parent node */
+  returnDir?: AetherCardinalDir;
+  /** Parent node ID for side, loop, and end nodes */
+  parentNodeId?: string;
+  /** Resolved cardinal doorway transitions persisted until Waystation rest */
+  edges: Partial<Record<AetherCardinalDir, string>>;
+  /** Rolled reward/encounter feature when nodeType === 'end' */
+  endFeature?: AetherEndFeature;
+  /** Optional generated grid for dynamic chunks so save/load restores them cleanly */
+  grid?: string[];
+}
+
+export interface AetherFogGraphState {
+  seed: number;
+  nextCounter: number;
+  activeNodeId: string;
+  loopDepth: number;
+  nodes: Record<string, AetherGraphNode>;
+}
+
 export interface RoomDefinition {
   id?: string;
   scope?: WorldScope;
+  nodeType?: AetherNodeType;
   coord: string;
   mapId?: string;
   areaId: string;
@@ -749,6 +792,7 @@ export interface OrionState {
   flags: Record<string, boolean | number | string>; // Persistent world & narrative state flags
   spawnAnchor: OrionSpawnAnchor; // Active Drop-Pod / Spawn Anchor coordinates for death/reboot
   gates?: OrionCapabilityGates; // Computed active hardware & skill capability gates
+  fogGraph?: AetherFogGraphState; // Dynamic 5-node Aether Fog graph (key, general, side, loop, end)
 
   // Dynamic Entities & Visual Effect Layers
   enemies: EnemyEntity[];

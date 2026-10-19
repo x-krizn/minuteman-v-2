@@ -1,113 +1,146 @@
-# Project Orion — Sub-Tile Micro-Composer & 2.5D Post-Processing Pipeline
+# Orion — Aether Fog Dynamic Node Graph & Borderless World Engine
 
-Drastically reduce embedded asset file size by replacing pre-baked full tilesets with a **Sub-Tile Micro-Composer** (`2×2` of `8×8px` quadrants and `4×4` of `4×4px` micro-blocks baked once into an offscreen atlas cache at startup), and introduce a **Multi-Pass Post-Processing & Visual Effects Pipeline** that handles dynamic lighting, bloom, blade trails, projectile glow, automatic sprite outlines, water reflections, and biome weather without requiring hundreds of hardcoded pixel assets.
+Design and implement the **Aether Fog Node Engine**, replacing rigid outer room boundaries with a borderless, dynamically generated 5-node topology (`key`, `general`, `side`, `loop`, and `end`) that connects Points of Interest via procedural paths, branches into side rooms and reward dead-ends, and silently loops lost travellers in the fog until guided by environmental tells or Poe Lantern cues.
 
 ## User Review & Critical Decisions
 
 > [!IMPORTANT]
-> All choices from your clarifications are locked into this plan. Click **Proceed** to build the offscreen Sub-Tile Micro-Composer, wire the 2.5D Post-Processing & Effect Layers into the renderer, shrink the tileset footprint, and amend the Authoring Guide.
+> The following core engine decisions were confirmed during interactive planning and govern how Aether Fog nodes generate, loop, and reset across the world:
 
-- **Confirmed Decision 1 — Hybrid `2×2` (`8px`) Quadrant & `4×4` (`4px`) Micro-Block Sub-Tile Composer**: A `16×16px` tile is synthesized from either **16 rearranged `4×4px` micro-blocks** (for organic terrains like Dirt, Grass, and Corrosive Aether plus stepped neighbor transitions) or **4 rearranged `8×8px` quadrants** (for architectural Ruins masonry, connected walls, and single pillars).
-- **Confirmed Decision 2 — Startup Offscreen Atlas Baking**: All `3×3` terrain, transition, and wall clusters are baked once at startup into an in-memory offscreen canvas cache, shrinking source file size by over 90% while preserving zero-allocation 60fps `drawImage` blitting.
-- **Confirmed Decision 3 — Full 5-Pass Post-Processing & Effect Layer Suite**:
-  1. **Automatic Sprite Outlines, Drop Shadows & Water/Aether Reflections**
-  2. **Procedural Projectiles, Hit Flashes & Sweeping Blade Trails**
-  3. **Dynamic Light Sources, Radial Bloom & Ambient Darkness**
-  4. **Biome Weather Layers (Rain + Ripples, Siege Ash, Luminous Æther Mist)**
-  5. **Optional CRT Scanline, Vignette & Desync Chromatic Glitch Pass**
+- **Confirmed Decision 1 — Navigation & Loop Escape (`Environmental Tells & Poe Lantern Cues`)**: True `general` path doorways emit subtle visual/environmental tells (such as drifting Aether motes, stone boundary markers, or heightened Poe Lantern resonance when the player carries the Poe Lantern Charm), allowing attentive pilots to distinguish the true path from `side` and `loop` exits and break out of fog loops.
+- **Confirmed Decision 2 — Chunk Persistence Lifecycle (`Persist Until Waystation Rest`)**: Once a `general`, `side`, `end`, or `loop` chunk is dynamically generated during a trek, its layout, enemies, and connections remain fixed in memory and state so the player can backtrack reliably. Resting or attuning at any Waystation (`D` / `A`) resets the ephemeral fog graph while preserving discovered `key` nodes and permanent progression flags.
+- **Confirmed Decision 3 — Borderless Boundary Resolution (`Dynamic Open-Border Spawning`)**: No exterior room border acts as a hard wall. Crossing any unmapped open doorway on a `key` or `general` room dynamically spawns a `general` path node (if aligned with the active Point of Interest heading), a `side` branch node, or a `loop` fog node that silently wraps coordinates back into the fog ring.
 
 ---
 
 ## 1. Overview & Core Concept
 
-- **What It Does**:
-  1. **Takes Tiny Assets and Makes Them Huge**: Instead of embedding 180 individual `16×16px` PNG tiles (`>60 KB` of Base64 strings), the engine stores compact `4×4px` micro-blocks and `8×8px` quadrant seeds (just a few kilobytes total) and algorithmically permutes, rotates, and blends them into all 20 `3×3` biome clusters (`180` tiles across `Dirt`, `Grass`, `Aether`, and `Ruins`) on an offscreen canvas at boot.
-  2. **Shifts Visual Complexity into Engine Effect Layers**: Projectiles, melee weapon arcs, light sources, sprite silhouettes, liquid reflections, hit flashes, and weather are generated dynamically in dedicated rendering passes on top of the base pixel art.
-- **Target Audience / Persona**: You (the world and content author) building rich biomes, weapons, and enemies using tiny seed sprites and declarative effect properties rather than hand-painting hundreds of permutation tiles and effect frames.
-- **Key Value**: Tiny, maintainable source files paired with atmospheric 2.5D visuals (lighting, bloom, reflections, outlines, weather, and combat trails) at 60fps.
+- **What It Does**: Transforms world traversal in *Project Orion* from a static coordinate grid into a living **Aether Fog Node Graph**. Hand-authored Points of Interest (`key` nodes such as the Bog Drop-Pod, Border Town Slums, Cathedral Dungeon, and Waygate Sanctums) are anchored in world space, while the journeys between them—and the uncharted wilds beyond their borders—are dynamically synthesized from five canonical node archetypes:
+  1. **`key` Nodes**: Bespoke Points of Interest (quest hubs, towns, bosses, Waystations, Waygates) that anchor progression.
+  2. **`general` Nodes**: Dynamic in-between corridor chunks that advance `nodeProgress` along the active route between two `key` nodes.
+  3. **`side` Nodes**: Optional off-path chunks branching from `general` or `key` nodes that do **not** increment route `nodeProgress`, leading either to an `end` node or a `loop` node.
+  4. **`end` Nodes**: Terminal pockets extending from `side` nodes that house guaranteed Scavenger Caches, mini-boss ambushes, hidden switches, or atmospheric dead-ends with a single return exit.
+  5. **`loop` Nodes**: Disorienting Aether Fog rooms where non-escaped exits silently cycle between `loop` chunks without advancing world coordinates, simulating being lost in the mist until the player follows the subtle escape tell back to a `general` or `key` node.
+- **Target Audience / Persona**: Action-RPG players and world designers who want exploration to feel mysterious, seamless, and replayable without artificial invisible walls.
+- **Key Value**: Eliminates hard map edges, gives real gameplay utility to the Poe Lantern Charm and environmental observation, and turns every trek between towns and dungeons into a tense navigation challenge with optional `side` → `end` risk/reward branches.
 
 ---
 
 ## 2. User Experience & Visual Design
 
-- **Key Visual & Gameplay Flows**:
-  1. **Sub-Tile World Rendering (Layer 0 & Layer 1)**:
-     - **Organic Terrains (`4×4` of `4×4px` Micro-Blocks)**: `Dirt` (`.`), `Grass` (`,`), and `Corrosive Aether` (`~`) permute 16 `4×4px` micro-blocks per `16×16` cell so ground textures never visibly repeat, and weave `4×4px` edge/corner micro-blocks from neighboring terrains to form seamless `from(to)` transitions.
-     - **Architectural Masonry & Walls (`2×2` of `8×8px` Quadrants)**: `Ruins` (`:`), connected solid walls (`#`), and standalone single walls (`P`) assemble `8×8px` top-left, top-right, bottom-left, and bottom-right quadrants with automatic bevels and mortar joints.
-  2. **Planar Water/Aether Reflections & Sprite Outlines (Layer 2)**:
-     - Entities, pillars, and lanterns standing on or immediately north of Corrosive Aether / Bog Water (`~`) cast a **vertically flipped, horizontal-ripple-sheared reflection** into the liquid surface.
-     - Small entity and prop sprites can enable **automatic 1px pixel-art outlines** (cached offscreen) and **elevation-scaled ground shadows**.
-  3. **Combat Trails, Projectiles & Hit Effects (Layer 3)**:
-     - **Blade Swing Trails**: Melee attacks (such as the Khopesh sickle combo and lunge) emit a sweeping crescent ribbon with tapered alpha and additive edge glow.
-     - **Post-Processed Projectiles & Hit Flashes**: Bolts, plasma slugs, and grenades render an emissive core, motion-blurred velocity tail, and expanding impact ring, while struck targets trigger a crisp white-hot silhouette flash.
-  4. **Biome Weather, Dynamic Lighting & Bloom (Layers 4 & 5)**:
-     - **Weather Pass**: Biomes automatically drive atmospheric particles—slanted **Bog Rain** with ground splash rings in `belldor_bog`, drifting **Cinder Ash** in `orc_siege_encampment`, and rising **Æther Spores / Mist** in waygate sanctums.
-     - **Lighting & Bloom Pass**: A soft ambient darkness veil is carved out by radial light sources (Player Reactor Core, Poe Lantern `L`, Drop-Pod `D`, Waystations `A`, Waygates `Q`, Corrosive Aether `~`, and projectiles) with additive bloom halos.
-
+- **Key User Flows**:
+  1. **Departing a Key Node into the Fog**: When a pilot walks through an open perimeter doorway of a `key` node, the engine checks whether that cardinal direction leads toward a neighboring `key` node or into the uncharted borderlands.
+  2. **Traversing `general` Nodes (The True Path)**: Moving along the correct exit sequence generates `general` chunks (`1 / N` to `N / N` progress) until seamlessly arriving at the destination `key` node.
+  3. **Branching into `side` & `end` Nodes**: Taking a perpendicular doorway off a `general` node spawns a `side` node (leaving `nodeProgress` unchanged). Continuing down a `side` branch resolves into either a high-value `end` node (containing a Scavenger Cache, mini-boss guardian, or relic secret) or a `loop` node.
+  4. **Getting Lost & Escaping `loop` Nodes**: Stepping off an unmapped border or taking a false exit drops the pilot into a `loop` node. Walking out the wrong exits of a `loop` node seamlessly transitions into another `loop` chunk while cycling the player's logical coordinate in place—no hard border bounce, just endless shifting mist. Observing the subtle doorway tell (drifting cyan/amber Aether motes or Poe Lantern directional pulse) reveals the single stabilized exit that breaks the loop and returns to the last `general` or `key` node.
+  5. **Waystation Attunement Reset**: Interacting with a Waystation (`D` / `A`) reboots mech systems, saves the game, and clears the ephemeral `general`, `side`, `loop`, and `end` node instances so the surrounding fog shifts anew on the next expedition.
 - **Visual Identity & Theme**:
-  - *Aesthetic Direction*: High-contrast Golden Sun / GBA-inspired 2.5D pixel art enhanced with modern HD-2D post-processing (crisp nearest-neighbor pixels underneath soft radial bloom, planar water reflections, and atmospheric weather).
-  - *Color Palette & Mood*: Deep bog slate (`#090d14`) ambient shadow, cyan shield/waystation glow (`#38bdf8`), violet corrosive aether (`#a855f7`), warm sandstone ruins (`#c8b980`), and ember-orange reactor/ash accents (`#f97316`).
+  - *Aesthetic Direction*: Retro-futuristic 2.5D top-down pixel canvas (`160x192` internal resolution) paired with a crisp tactical mech HUD and World Topology Satchel inspect view.
+  - *Color Palette & Mood*:
+    - **60% Dominant Canvas**: Deep bog slate (`#131d2d`), wet stone (`#1c2733`), and shadowed Aether caverns (`#0e1624`).
+    - **30% Structural Surfaces**: Pylon masonry (`#334155`), slate HUD framing, and subtle fog veils.
+    - **10% Accent & Navigation Tells**: Luminous Aether cyan (`#22d3ee`) for true-path directional motes, Poe Lantern amber (`#f59e0b`) for lantern resonance cues, and hazard crimson (`#ef4444`) for mini-boss tells.
+  - *Typography & Hierarchy*: Clean tactical sans-serif (`Plus Jakarta Sans` / system geometric sans) for HUD prompts and Satchel wiki inspection, paired with `tabular-nums` monospace readouts for node coordinates, route progress, and defense meters. Metadata is rendered as clean unboxed text with middle-dot (`·`) separators.
+- **Interactive Feedback & Motion**:
+  - **Subtle Environmental Tells**: On `general` and `loop` rooms, the doorway aligned with the true path (or loop escape) spawns gentle directional Aether drift particles and a soft radial light glow near the threshold—amplified in radius and clarity when the player holds the `poe_lantern_charm`.
+  - **Seamless Looping Transitions**: Crossing a `loop` exit triggers a brief 120ms Aether mist shimmer and room transition toast (`ÆTHER FOG DRIFT · SIGNAL LOOPING`) without snapping or blocking player momentum.
 
 ---
 
 ## 3. Key Product Decisions & Trade-Offs
 
-- **Decision 1: Startup Offscreen Baking of `4×4px` and `8×8px` Sub-Tiles vs. Static 60KB Base64 Blobs**
-  - *Chosen Approach*: Define compact micro-tile seeds (`4×4px` and `8×8px` pixel matrices / mini-PNGs) and bake the 20 `3×3` cluster atlases (`dirt_general`, `dirt_to_grass`, `ruins_walls`, etc.) onto offscreen canvases once at module initialization.
-  - *Why*: Cuts tile asset code size by >90%, eliminates massive Base64 strings in source files, and lets you author new terrains by defining just a `4×4` or `8×8` micro-pattern.
-- **Decision 2: Declarative Post-Processing Config per Biome, Weapon & Entity**
-  - *Chosen Approach*: Expose lightweight optional properties (`lightSource`, `weather`, `outlineColor`, `bladeTrailColor`, `reflectiveLiquid`) on Biomes, Tiles, Weapons, and Enemies that the renderer's post-processing pipeline reads automatically.
-  - *Why*: Lets you add lighting, weather, outlines, or weapon trails to any content file with 1–2 lines of config instead of writing custom Canvas drawing code.
+- **Decision 1 — Virtual Node Graph Overlay on Top of `rx,ry` Grid**
+  - *Chosen Approach*: Maintain an explicit `AetherNodeGraph` state alongside `rooms[coord]` that tracks each room's `nodeType` (`'key' | 'general' | 'side' | 'loop' | 'end'`), its directional edge links (`N`, `S`, `E`, `W`), and its `trueExitDir` / `escapeDir`.
+  - *Why*: Pure Euclidean `(rx, ry)` coordinates cannot naturally express non-Euclidean fog loops (where walking East three times cycles through two `loop` rooms without advancing toward a town at `rx + 3`) or `side` branches that avoid colliding with nearby `key` rooms. Routing transitions through the node graph's directional edges lets `loop` nodes wrap seamlessly while keeping `key` nodes anchored at canonical coordinates.
+  - *Alternatives Considered*: Mutating raw `(rx, ry)` coordinates without a graph overlay was rejected because `side` and `loop` rooms would overwrite adjacent `key` rooms in the 2D coordinate plane.
+- **Decision 2 — Environmental & Poe Lantern Wayfinding Over Explicit UI Arrows**
+  - *Chosen Approach*: Render diegetic canvas particle motes and threshold glow on the correct doorway in `renderSystem`, with enhanced visibility when `state.flags.poe_lantern_gift` or `poe_lantern_charm` is active.
+  - *Why*: Preserves the feeling of navigating a mysterious fog-shrouded world while rewarding players who helped the Bog Poe or pay close attention to the environment.
+  - *Alternatives Considered*: Drawing a giant HUD compass arrow was rejected because it trivializes the "lost in the fog" mechanic.
+- **Decision 3 — Waystation-Scoped Ephemeral Persistence**
+  - *Chosen Approach*: Store generated nodes in `state.fogGraph` during active exploration so backtracking through visited `general`, `side`, and `end` rooms is deterministic, then flush ephemeral nodes when the player attunes at a Waystation.
+  - *Why*: Prevents frustrating room randomization when stepping one screen back during combat, while keeping the broader world dynamic across expeditions.
 
 ---
 
 ## 4. Technical Architecture & Data Strategy *(Technical Reference)*
 
-### Sub-Tile Micro-Composer & Multi-Pass Post-Processing Architecture
+### Architecture & Node Topology Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────────────┐
-│                 1. STARTUP SUB-TILE MICRO-COMPOSER (Baked Once)                     │
-│                                                                                     │
-│  ┌───────────────────────────────┐        ┌──────────────────────────────────────┐  │
-│  │ 4×4 Micro-Blocks (4×4px each) │        │ 2×2 Quadrant Seeds (8×8px each)      │  │
-│  │ • Dirt, Grass, Aether seeds   │        │ • Ruins masonry, Wall caps, Pillars  │  │
-│  │ • Permuted into 16×16 tiles   │        │ • Assembled into 16×16 walls/floors  │  │
-│  └───────────────┬───────────────┘        └──────────────────┬───────────────────┘  │
-│                  └─────────────────────┬─────────────────────┘                      │
-│                                        ▼                                            │
-│         ┌──────────────────────────────────────────────────────────────┐            │
-│         │ Offscreen Atlas Cache (20 Separated 3×3 Clusters + 4×5 Sheet)│            │
-│         └──────────────────────────────┬───────────────────────────────┘            │
-└────────────────────────────────────────┼────────────────────────────────────────────┘
-                                         ▼
-┌─────────────────────────────────────────────────────────────────────────────────────┐
-│                 2. 60FPS MULTI-PASS RENDER & POST-PROCESSING PIPELINE               │
-│                                                                                     │
-│  [Pass 0: Ground & Transitions] ──► Blits cached 16×16 auto-tiles (Dirt/Grass/Ruins)│
-│                 │                                                                   │
-│                 ▼                                                                   │
-│  [Pass 1: Liquid Reflections]   ──► Planar flipped + ripple-sheared reflections on ~│
-│                 │                                                                   │
-│                 ▼                                                                   │
-│  [Pass 2: 2.5D Walls & Entities]──► Cached 1px Sprite Outliner + Z-Sorted Shadows   │
-│                 │                                                                   │
-│                 ▼                                                                   │
-│  [Pass 3: Combat Effect Layer]  ──► Sweeping Blade Trails + Glow Projectiles + Hits │
-│                 │                                                                   │
-│                 ▼                                                                   │
-│  [Pass 4: Biome Weather Layer]  ──► Rain Streaks/Ripples, Siege Ash, or Æther Mist  │
-│                 │                                                                   │
-│                 ▼                                                                   │
-│  [Pass 5: Lighting, Bloom & CRT]──► Ambient Veil + Radial Light Cutouts + Desync FX │
-└─────────────────────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────────┐
+│                        AETHER FOG 5-NODE TOPOLOGY                          │
+└────────────────────────────────────────────────────────────────────────────┘
+
+   [ KEY NODE: Point of Interest ] (Anchored: Bog Drop-Pod, Slums, Dungeon)
+                 │
+                 ├── (True Path Exit: Subtle Aether Mote / Lantern Tell)
+                 ▼
+   [ GENERAL NODE (1..N) ] ─── (Progresses Route 1/N -> N/N) ───► [ NEXT KEY NODE ]
+                 │
+                 ├── (Off-Path Border Exit: Does NOT count toward progress)
+                 ▼
+          [ SIDE NODE ]
+           ╱         ╲
+   (Reward Roll)   (Fog Drift Roll)
+         ╱             ╲
+        ▼               ▼
+  [ END NODE ]     [ LOOP NODE A ] ◄─── (Silent Non-Euclidean Wrap) ───┐
+  • Loot Cache          │      ▲                                       │
+  • Mini-Boss           │      └─────── [ LOOP NODE B ] ───────────────┘
+  • Secret Switch       │
+  • Single Exit         └── (Follow Lantern / Mote Tell Exit) ──► Returns to
+                                                                  SIDE / GENERAL
 ```
 
-### Data Model & Authoring Hooks
-- **Sub-Tile Seed Definition**:
-  - `MicroTileSeed`: Supports `'4x4'` mode (array of `4×4px` micro-blocks arranged in a `4×4` grid to form a `16×16` tile, with automatic edge-block substitution for `from(to)` transitions) and `'2x2'` mode (`8×8px` top-left, top-right, bottom-left, bottom-right quadrants for masonry and walls).
-- **Post-Processing & Effect Layer Hooks**:
-  - `BiomeDefinition.postProcess`: `{ ambientDarkness?: number; bloomIntensity?: number; weather?: 'rain' | 'ash' | 'aether_mist' | 'none'; liquidReflection?: boolean }`
-  - `TileDefinition.lightSource` / `EnemyWikiDefinition.lightSource`: `{ color: string; radius: number; intensity?: number; pulseSpeed?: number }`
-  - `SpriteOutline`: Automatic offscreen 1px silhouette generator (`getOutlinedSpriteCanvas`) for any Base64 or procedural sprite.
-  - `BladeTrailEffect`: Ring buffer of recent melee arc angles/positions rendered as an alpha-tapered crescent slash with additive bloom.
+### Engine Data Flow Diagram
+
+```
+┌───────────────────────────┐     ┌──────────────────────────────────────────┐
+│   database/world/         │     │           systems/worldSystem.ts         │
+│ • Authored KEY Rooms      │────►│ • Aether Fog Node Graph Resolver         │
+│ • Procedural Templates    │     │ • Borderless Doorway & Loop Router       │
+│   (General/Side/End/Loop) │     │ • Waystation Graph Reset Handler         │
+└───────────────────────────┘     └────────────────────┬─────────────────────┘
+                                                       │
+                         ┌─────────────────────────────┼─────────────────────┐
+                         ▼                             ▼                     ▼
+          ┌────────────────────────────┐ ┌──────────────────────┐ ┌─────────────────────┐
+          │   systems/renderSystem.ts  │ │systems/entitySystem  │ │  ui/OrionHud.tsx &  │
+          │ • Threshold Mote Tells     │ │• End-Node Mini-Boss  │ │  OrionSatchel.tsx   │
+          │ • Poe Lantern Resonance    │ │  & Secret Spawners   │ │• Node Type & Fog    │
+          │ • Aether Fog Veil Shimmer  │ │• Loop Ambush Spawns  │ │  Topology Readout   │
+          └────────────────────────────┘ └──────────────────────┘ └─────────────────────┘
+```
+
+### Data Model & State
+
+- **`AetherNodeType`**: `'key' | 'general' | 'side' | 'loop' | 'end'`
+- **`AetherGraphNode`**:
+  - `id: string` — Unique node key (canonical `"rx,ry"` for `key` nodes, or virtual key such as `"fog:gen:1"`, `"fog:side:2"`, `"fog:loop:3"`, `"fog:end:4"` for dynamic chunks).
+  - `nodeType: AetherNodeType` — One of the 5 node classifications.
+  - `coord: string` — Display/anchor coordinate in the world registry.
+  - `sourceKeyCoord?: string` & `targetKeyCoord?: string` — The `key` node anchor pair this path bridges.
+  - `routeStep?: number` & `routeTotal?: number` — Tracks `general` node progress (`1..N`) toward the target `key` node (`side` and `loop` nodes preserve the parent's step without incrementing it).
+  - `trueExitDir?: 'N' | 'S' | 'E' | 'W'` — The doorway direction that advances along the `general` path or escapes a `loop` node.
+  - `edges: Partial<Record<'N' | 'S' | 'E' | 'W', string>>` — Resolved neighbor node IDs so visited chunks persist until a Waystation rest.
+  - `endFeature?: 'loot_cache' | 'mini_boss' | 'secret_switch' | 'dead_end'` — Feature rolled for `end` nodes.
+- **`OrionState.fogGraph`**:
+  - Stores the active session's generated `nodes: Record<string, AetherGraphNode>`, `activeNodeId: string`, `loopDepth: number` (how many consecutive loop transitions the player has made), and `seed: number`.
+
+### Interactive Component & State Mapping
+
+1. **Borderless Room Transition Resolver (`handleWorldRoomTransition` in `worldSystem.ts`)**:
+   - All exterior perimeter walls on `key`, `general`, `side`, and `loop` rooms keep their central 2-tile cardinal doorways open (`N`, `S`, `E`, `W`), while `end` nodes open **only** the single entry doorway back to the parent `side` node.
+   - When the player crosses a doorway boundary in direction `dir`:
+     - If `currentNode.edges[dir]` already exists in `state.fogGraph`, transition directly to that persisted node.
+     - If departing a `key` or `general` node along `trueExitDir`, either step into the destination `key` node (when `routeStep >= routeTotal`) or dynamically generate the next `general` node (`routeStep + 1`).
+     - If departing a `key` or `general` node through any **other** open border, dynamically generate a `side` node (or a `loop` node if on an outer world perimeter).
+     - If departing a `side` node, roll between generating a terminal `end` node (spawning a Scavenger Cache, mini-boss guardian, or secret switch) or a `loop` node.
+     - If inside a `loop` node: crossing `trueExitDir` escapes the fog loop back to the anchor `side`/`general`/`key` node and resets `loopDepth = 0`; crossing any of the other 3 exits silently links to a sibling `loop` node, increments `loopDepth`, and wraps the player seamlessly without hitting a hard border.
+2. **Environmental & Poe Lantern Tell Renderer (`renderSystem.ts`)**:
+   - In `general` and `loop` nodes, the doorway corresponding to `trueExitDir` renders subtle drifting Aether particles flowing toward the exit threshold plus a faint floor rune/beacon tint.
+   - If the player possesses `poe_lantern_charm` (or `state.flags.poe_lantern_gift`), a warm Poe Lantern wisp tether gently orbits the player and points toward `trueExitDir`, and the HUD prompt notes `POE LANTERN RESONATES TOWARD THE TRUE PATH` when standing near the correct threshold.
+3. **Waystation Reset & Satchel Topology Inspector (`worldSystem.ts`, `OrionHud.tsx`, `OrionSatchel.tsx`)**:
+   - Attuning at a Waystation (`D` / `A`) calls `resetEphemeralFogGraph(state)`, pruning all dynamic `general`, `side`, `loop`, and `end` rooms from `rooms` and `state.fogGraph` while restoring `key` rooms to their canonical state.
+   - The HUD and Satchel World Architecture tab display the current room's `AetherNodeType` (`KEY`, `GENERAL`, `SIDE`, `LOOP`, `END`), current route progress (`PATH STEP X/Y` on `general` nodes, `OFF-PATH BRANCH` on `side` nodes, `ÆTHER FOG LOOP` on `loop` nodes), and active `end` node rewards.

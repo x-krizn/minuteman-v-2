@@ -14,64 +14,86 @@ All game data lives inside `src/cartridges/orion/database/`, organized into two 
 ```
 src/cartridges/orion/
 ├── database/                     # Strictly Self-Contained Content & Asset Entry Files
-│   ├── world/                    # Unified 5-Tier Spatial & Environmental Hierarchy
-│   │   ├── regions/              # Tier 5: Macro-Regions & Shattered Worlds (+ Colossal Waygates)
-│   │   │   ├── global/           # Procedural / inter-world expanses
-│   │   │   └── local/<world>/    # Bespoke regions grouped by World (e.g., belldor/, tyrranus/)
-│   │   ├── areas/                # Tier 4: Areas (+ Æther Waystations)
-│   │   │   ├── global/           # Procedural wilds & drift corridors
-│   │   │   └── local/<regionId>/ # Bespoke areas grouped by parent Region
-│   │   ├── maps/                 # Tier 3: Maps (Assembled from Local + Global Rooms)
-│   │   │   ├── global/           # Procedural maps
-│   │   │   └── local/<areaId>/   # Bespoke maps grouped by parent Area
-│   │   ├── rooms/                # Tier 2: Rooms (10x9 tile grids)
-│   │   │   ├── global/           # Reusable procedural room templates
-│   │   │   └── local/<mapId>/    # Bespoke rooms grouped by parent Map
-│   │   ├── biomes/               # Tier 1A: Biomes (Tile rules, palettes & post-processing config)
-│   │   │   ├── global/           # Reusable procedural biomes
-│   │   │   └── local/<world>/    # Bespoke biomes grouped by World
-│   │   └── tiles/                # Tier 1B: Tile & Prop definitions + embedded 16x16 base tiles
+│   ├── world/                    # Spatial World -> Region -> Area -> Map (+ Rooms) Hierarchy
+│   │   ├── index.ts              # Single Polymorphic Auto-Discovery World Registry
+│   │   ├── belldor/              # World: Belldor (Camelot)
+│   │   │   ├── biomes.ts         # Belldor biomes (belldor_bog, orc_siege_encampment, etc.)
+│   │   │   ├── region_belldor_outskirts/
+│   │   │   │   ├── region.ts     # Region definition
+│   │   │   │   ├── m00_the_bog/
+│   │   │   │   │   ├── area.ts   # Area definition + Waystation
+│   │   │   │   │   ├── map_bog_drop_zone.ts # Map + co-located local rooms
+│   │   │   │   │   └── map_deep_bog_maze.ts
+│   │   │   │   └── orc_siege_encampment/
+│   │   │   │       ├── area.ts
+│   │   │   │       └── map_orc_siege_camp.ts
+│   │   │   └── region_belldor_camelot_heartland/
+│   │   │       ├── region.ts     # Region definition + Colossal Waygate
+│   │   │       ├── border_town_slums/
+│   │   │       │   ├── area.ts
+│   │   │       │   ├── map_border_town_market.ts
+│   │   │       │   ├── map_border_town_barracks.ts
+│   │   │       │   └── map_border_town_cathedral.ts
+│   │   │       └── camelot_waygate_depths/
+│   │   │           ├── area.ts
+│   │   │           └── map_camelot_waygate_depths.ts
+│   │   ├── tyrranus/             # World: Tyrranus (Greco-Roman Frontier)
+│   │   │   ├── biomes.ts
+│   │   │   └── region_tyrranus_frontier/
+│   │   │       ├── region.ts
+│   │   │       └── tyrranus_marble_gatehead/
+│   │   │           ├── area.ts
+│   │   │           └── map_tyrranus_gatehead.ts
+│   │   ├── global/               # Reusable procedural & inter-world templates
+│   │   │   └── templates.ts      # Global biomes, regions, areas, maps & procedural rooms
+│   │   └── tiles/                # Shared tile & 2.5D prop definitions + embedded 16x16 base tiles
 │   ├── enemies/                  # Self-contained Enemy, Boss & NPC modules (recursive glob)
 │   ├── weapons/                  # Self-contained 5-Action Weapon modules (recursive glob)
 │   ├── items/                    # Consumables, Keys & Relics (recursive glob)
-│   ├── equipment/                # Assignable [L]/[R] Hardware & Reactor skills (recursive glob)
+│   ├── equipment/                # Hardware & Reactor assignable [L]/[R] skills (recursive glob)
 │   ├── characters/               # Self-contained Mech Frame / Trait Line modules (recursive glob)
-│   └── progression/              # Canonical 1–20 Level Unlock Sequence & Combat Laws
+│   └── progression/              # Declarative 1–20 Level Unlock Sequence & Combat Laws
 │
-├── systems/                      # All Runtime Engine, Generation, Tiling & Rendering Systems
-│   ├── base64AssetLoader.ts      # Offscreen image/canvas cache & 1px sprite outliner
-│   ├── subTileComposer.ts        # 4x4 (4px) & 2x2 (8px) offscreen sub-tile cluster baker
-│   ├── clusterAutoTiler.ts       # 8-neighbor auto-tiler for separated 3x3 clusters
-│   ├── worldComposer.ts          # 5-tier nested spatial world assembler
-│   ├── renderSystem.ts           # 2.5D multi-layer renderer
-│   └── postProcessingSystem.ts   # Reflections, blade trails, weather & dynamic lighting
+├── systems/                      # 5 Cohesive Engine Systems
+│   ├── renderSystem.ts           # Sub-tile baker, 3x3 cluster auto-tiler, 2.5D renderer & post-processing
+│   ├── worldSystem.ts            # 5-tier world composer, room transitions, waygates & setpiece raids
+│   ├── playerSystem.ts           # State store, save/load, 2.5D physics, player controller & state gates
+│   ├── combatSystem.ts           # Three Defense Layers math, targeting, weapon swap & L/R actions
+│   └── entitySystem.ts           # Enemy spawning/AI, projectiles, pickups & 2.5D particles
 │
 └── ui/                           # React HUD, Satchel & Menu overlays
 ```
 
-### Recommended Order for Building New World Content (Bottom-Up)
-1. **Biome (`world/biomes/`)**: Define the atmosphere, environmental rules (corrosive water, mud slow, desync flicker), and colors or Base64 tilemap atlas.
+### Recommended Order for Building New World Content
+1. **Biome (`world/<world>/biomes.ts`)**: Define the atmosphere, environmental rules (corrosive water, mud slow, desync flicker), and colors or Base64 tilemap atlas.
 2. **Tiles (`world/tiles/`)**: *(Optional)* Add any new interactive props or custom walls needed by your rooms.
-3. **Rooms (`world/rooms/local/<mapId>/`)**: Paint `10 × 9` ASCII room grids (`COLS = 10`, `ROWS = 9`) with aligned doorways and enemy/prop tokens.
-4. **Map (`world/maps/local/<areaId>/`)**: Group your local room coordinates and optionally add `globalRoomSlots` to procedurally stitch connecting rooms.
-5. **Area (`world/areas/local/<regionId>/`)**: Group your maps and attach an **Æther Waystation (`A`)** for intra-region fast travel.
-6. **Region (`world/regions/local/<world>/`)**: Group your areas and optionally attach a **Colossal Waygate (`Q`)** for inter-world / inter-region fast travel.
+3. **Region (`world/<world>/<regionId>/region.ts`)**: Group your areas and optionally attach a **Colossal Waygate (`Q`)** for inter-world / inter-region fast travel.
+4. **Area (`world/<world>/<regionId>/<areaId>/area.ts`)**: Group your maps and attach an **Æther Waystation (`A`)** for intra-region fast travel.
+5. **Map + Co-Located Rooms (`world/<world>/<regionId>/<areaId>/map_<name>.ts`)**: Paint `10 × 9` ASCII room grids (`COLS = 10`, `ROWS = 9`) and export the `MapDefinition` alongside its `RoomDefinition` entries in the same file.
+
+### Aether Fog 5-Node Topology (`key`, `general`, `side`, `loop`, `end`)
+No outer room in Orion has a literal solid map border. Instead, `systems/worldSystem.ts` routes cardinal doorways through a dynamic 5-node Aether Fog graph that persists until the player rests at a Waystation (`D` / `A`):
+- **`key` Nodes**: Authored Points of Interest (Drop-Pod, Towns, Boss Sanctums, Waystations, Waygates).
+- **`general` Nodes**: Dynamically generated corridor chunks that advance route progress (`1/N .. N/N`) between connected `key` nodes. The true doorway (`trueExitDir`) emits subtle drifting Aether motes and Poe Lantern resonance.
+- **`side` Nodes**: Off-path branches extending from `general` or `key` nodes; they do **not** advance route progress and lead either to an `end` node or a `loop` node.
+- **`end` Nodes**: Terminal single-exit pockets featuring rolled rewards (`loot_cache`, `mini_boss`, `secret_switch`, or `dead_end`).
+- **`loop` Nodes**: Borderless mist rooms where false exits silently cycle between `loop` chunks until the player follows the subtle threshold tell or Poe Lantern wisp through `trueExitDir`.
 
 ---
 
 ## 2. Authoring the 5-Tier World Hierarchy
 
-### Tier 1A: Biomes (`database/world/biomes/`)
+### Tier 1A: Biomes (`database/world/<world>/biomes.ts` or `database/world/global/templates.ts`)
 Biomes supply **tile character mappings (`tileTypes`)**, **environmental hazard rules (`tileRules`)**, **procedural color palettes (`tileAssets`)**, and optional **Base64 grid tilemaps (`tileSheetBase64` + `tileSheetCoords`)** to rooms.
 
 - **Inheritance Chain**: A Room uses its own `biomeId` first; if omitted, it inherits from `Map.biomeId → Area.biomeId → Region.defaultBiomeId`.
 - **Where to create**:
-  - Reusable procedural biome: `database/world/biomes/global/<biome_name>.ts`
-  - Location-specific biome: `database/world/biomes/local/<world_folder>/<biome_name>.ts`
+  - Reusable procedural biome: `database/world/global/templates.ts`
+  - World-specific biome: `database/world/<world>/biomes.ts`
 
 ```ts
-// Example: src/cartridges/orion/database/world/biomes/local/belldor/sunken_catacombs.ts
-import { BiomeDefinition } from '../../../../../types';
+// Example: inside src/cartridges/orion/database/world/belldor/biomes.ts
+import { BiomeDefinition } from '../../../types';
 
 export const sunkenCatacombsBiome: BiomeDefinition = {
   id: 'sunken_catacombs',
@@ -181,27 +203,27 @@ export const aetherBrazierTile: TileDefinition = {
 
 ---
 
-### Tier 2: Rooms (`database/world/rooms/`)
-Rooms are `10` columns wide by `9` rows tall (`16×16` pixels per tile = `160×144` logical canvas).
+### Tiers 2 & 3: Maps & Co-Located Rooms (`database/world/<world>/<regionId>/<areaId>/map_<name>.ts`)
+Rooms are `10` columns wide by `9` rows tall (`16×16` pixels per tile = `160×144` logical canvas) and are co-located directly inside their parent Map file.
 
-####On-Foot Doorway Alignment Rule
+#### On-Foot Doorway Alignment Rule
 So the player can walk continuously from room to room on foot, carve `..` openings on shared edges:
 - **North Edge (`ry - 1`)**: Row `0`, columns `4` and `5` (`####..####`)
 - **South Edge (`ry + 1`)**: Row `8`, columns `4` and `5` (`####..####`)
 - **West Edge (`rx - 1`)**: Column `0`, rows `5` and `6`
 - **East Edge (`rx + 1`)**: Column `9`, rows `5` and `6`
 
-*(Note: For **Global Rooms** in `world/rooms/global/`, `worldComposer.ts` automatically seals or opens the 4 doorway edges based on whether a neighboring room exists at that coordinate!)*
+*(Note: For **Global Rooms** in `world/global/templates.ts`, `worldSystem.ts` automatically seals or opens the 4 doorway edges based on whether a neighboring room exists at that coordinate!)*
 
 ```ts
-// Example Local Room: src/cartridges/orion/database/world/rooms/local/map_bog_drop_zone/room_0_2_sunken_shrine.ts
-import { RoomDefinition } from '../../../../../types';
+// Example Map + Rooms: src/cartridges/orion/database/world/belldor/region_belldor_outskirts/m00_the_bog/map_southern_fens.ts
+import { MapDefinition, RoomDefinition } from '../../../../../types';
 
 export const room02SunkenShrine: RoomDefinition = {
   id: 'room_0_2_sunken_shrine',
   scope: 'local',
   coord: '0,2', // World grid coordinate "rx,ry"
-  mapId: 'map_bog_drop_zone',
+  mapId: 'map_southern_fens',
   areaId: 'm00_the_bog',
   regionId: 'region_belldor_outskirts',
   biomeId: 'belldor_bog',
@@ -224,16 +246,6 @@ export const room02SunkenShrine: RoomDefinition = {
     toast: 'LOOTED SHRINE: +45 SCRAP & 2x REPAIR KITS',
   },
 };
-```
-
----
-
-### Tier 3: Maps (`database/world/maps/`)
-Maps assemble **bespoke `localRoomCoords`** alongside **procedural `globalRoomSlots`** (which pull a template from `world/rooms/global/` and automatically align its doors).
-
-```ts
-// Example Local Map: src/cartridges/orion/database/world/maps/local/m00_the_bog/map_southern_fens.ts
-import { MapDefinition } from '../../../../../types';
 
 export const mapSouthernFens: MapDefinition = {
   id: 'map_southern_fens',
@@ -259,12 +271,12 @@ export const mapSouthernFens: MapDefinition = {
 
 ---
 
-### Tier 4: Areas & Æther Waystations (`database/world/areas/`)
+### Tier 4: Areas & Æther Waystations (`database/world/<world>/<regionId>/<areaId>/area.ts`)
 Areas assemble `localMapIds` and `globalMapIds`, and can declare a lore-accurate **Æther Waystation (`waystation`)** for intra-region fast travel.
 - To place the physical Waystation in the world, put `'A'` (or `'D'` for the initial Drop-Pod) in the corresponding Room grid at the matching coordinate.
 
 ```ts
-// Example Local Area: src/cartridges/orion/database/world/areas/local/region_belldor_outskirts/whispering_fens.ts
+// Example Area: src/cartridges/orion/database/world/belldor/region_belldor_outskirts/whispering_fens/area.ts
 import { AreaWikiDefinition } from '../../../../../types';
 
 export const whisperingFensArea: AreaWikiDefinition = {
@@ -299,7 +311,7 @@ export const whisperingFensArea: AreaWikiDefinition = {
 
 ---
 
-### Tier 5: Regions & Colossal Waygates (`database/world/regions/`)
+### Tier 5: Regions & Colossal Waygates (`database/world/<world>/<regionId>/region.ts`)
 Regions are top-level territories or Shattered Worlds assembled from `localAreaIds` and `globalAreaIds`. Major Regions can define a **Colossal Waygate (`waygate`)** paired with a `'Q'` tile in the sanctum room grid.
 
 ---
@@ -359,8 +371,8 @@ Create a file exporting an `ItemWikiDefinition` (`id`, `name`, `category`, `icon
 
 ## 4. Embedding Drafted PNG Assets Directly in Entry Files
 
-All visual assets in Project Orion are embedded directly inside their respective entry files (`database/world/tiles/`, `database/world/biomes/`, `database/enemies/`, `database/items/`, `database/weapons/`) — there is no separate `assets/` directory.
-- Images and sub-tile clusters are decoded and baked once into an in-memory `Map<string, HTMLImageElement | HTMLCanvasElement>` cache (`systems/base64AssetLoader.ts`) and drawn with `imageSmoothingEnabled = false` so pixel art stays razor-sharp.
+All visual assets in Project Orion are embedded directly inside their respective entry files (`database/world/tiles/`, `database/world/<world>/biomes.ts`, `database/enemies/`, `database/items/`, `database/weapons/`) — there is no separate `assets/` directory.
+- Images and sub-tile clusters are decoded and baked once into an in-memory `Map<string, HTMLImageElement | HTMLCanvasElement>` cache (`systems/renderSystem.ts`) and drawn with `imageSmoothingEnabled = false` so pixel art stays razor-sharp.
 - You can pass either a full `data:image/png;base64,...` URI or a raw Base64 payload directly inside the entry file.
 - If `sprite` / `layer0Sprite` / `baseTileBase64` / `tileSheetBase64` is omitted, the renderer automatically falls back to procedural Canvas 2D drawing.
 
@@ -391,11 +403,11 @@ sprite: {
 
 ---
 
-### Recipe B: Biome Tilemap Sheet Embedded in a Biome Entry File (`database/world/biomes/`)
+### Recipe B: Biome Tilemap Sheet Embedded in a Biome Entry File (`database/world/<world>/biomes.ts`)
 To skin a biome with a custom grid sheet, embed the Base64 string directly in the `BiomeDefinition` entry file:
 
 ```ts
-// Inside a BiomeDefinition (e.g., world/biomes/local/belldor/belldor_bog.ts):
+// Inside a BiomeDefinition (e.g., world/belldor/biomes.ts):
 tileSheetBase64: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHL...',
 tileSheetCellSize: 16,
 tileSheetCoords: {
@@ -441,8 +453,8 @@ sprite: {
 
 ---
 
-### Recipe D: Sub-Tile Micro-Composer & Separated `3×3` Biome Cluster Atlases (`systems/subTileComposer.ts`)
-Rather than hardcoding 180 individual `16×16px` PNG tiles (`>60 KB` of Base64 strings), Project Orion uses an offscreen **Sub-Tile Micro-Composer** (`systems/subTileComposer.ts`) that takes the 4 `16×16px` base tiles embedded directly in `floor.ts` (`dirt01`), `grass.ts` (`grass01`), `mud.ts` (`aether01`), and `ruins_floor.ts` (`ruins01`) and bakes all 20 separated `3×3` biome clusters (`48×48px` each) plus the combined `192×240px` `ruins_tileset` sheet onto offscreen canvases once at startup.
+### Recipe D: Sub-Tile Micro-Composer & Separated `3×3` Biome Cluster Atlases (`systems/renderSystem.ts`)
+Rather than hardcoding 180 individual `16×16px` PNG tiles (`>60 KB` of Base64 strings), Project Orion uses an offscreen **Sub-Tile Micro-Composer** (`systems/renderSystem.ts`) that takes the 4 `16×16px` base tiles embedded directly in `floor.ts` (`dirt01`), `grass.ts` (`grass01`), `mud.ts` (`aether01`), and `ruins_floor.ts` (`ruins01`) and bakes all 20 separated `3×3` biome clusters (`48×48px` each) plus the combined `192×240px` `ruins_tileset` sheet onto offscreen canvases once at startup.
 
 - **Two Sub-Tile Granularities**:
   1. **`4×4` Micro-Block Mode (`16` blocks of `4×4px` per `16×16px` tile)**:
@@ -487,9 +499,9 @@ export const groundTile: TileDefinition = {
 
 ---
 
-## 5. 2.5D Post-Processing & Visual Effect Layers (`systems/postProcessingSystem.ts`)
+## 5. 2.5D Post-Processing & Visual Effect Layers (`systems/renderSystem.ts`)
 
-Instead of hardcoding hundreds of pixel effect frames for lighting, weapon trails, projectiles, outlines, reflections, and weather, the engine provides a **5-Pass Post-Processing Pipeline** (`src/cartridges/orion/systems/postProcessingSystem.ts`) controlled declaratively from your Biome, Tile, Weapon, and Enemy definitions:
+Instead of hardcoding hundreds of pixel effect frames for lighting, weapon trails, projectiles, outlines, reflections, and weather, the engine provides a **5-Pass Post-Processing Pipeline** (`src/cartridges/orion/systems/renderSystem.ts`) controlled declaratively from your Biome, Tile, Weapon, and Enemy definitions:
 
 ### Pass 1: Planar Water / Corrosive Aether (`~`) Reflections
 Any biome with `liquidReflection: true` (enabled by default) automatically renders vertically-flipped, horizontal-ripple-sheared planar reflections of north-bordering pillars (`P`), walls (`#`), Poe Lanterns (`L`), the Player, and Enemies clipped strictly inside `~` liquid tiles.

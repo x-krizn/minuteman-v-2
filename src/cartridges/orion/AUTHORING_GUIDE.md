@@ -479,29 +479,15 @@ clusterTileSheetBase64: 'ruins_tileset', // Uses the offscreen-baked 20-cluster 
 defaultClusterTerrain: 'ruins',          // 'dirt' | 'grass' | 'aether' | 'ruins'
 ```
 
-To customize or add a terrain's micro-blocks or quadrants, edit `TERRAIN_MICRO_SEEDS` in `src/cartridges/orion/database/assets/subTileComposer.ts`:
+To customize or swap any of the 4 base `16×16px` tiles, edit `dirt01`, `grass01`, `aether01`, or `ruins01` in `src/cartridges/orion/database/assets/ruins_tileset.ts` (the composer automatically decodes their `16×16px` pixels, slices them into `4×4` `4px` micro-blocks and `2×2` `8px` quadrants, and re-bakes all 20 `3×3` clusters):
 ```ts
-dirt: {
-  terrain: 'dirt',
-  mode: '4x4', // '4x4' (sixteen 4x4px micro-blocks) or '2x2' (four 8x8px quadrants)
-  palette: {
-    base: [64, 48, 34],
-    dark: [41, 31, 22],
-    mid: [78, 58, 41],
-    light: [96, 73, 52],
-    edge: [30, 22, 16],
-    wallTop: [96, 73, 52],
-    wallFront: [54, 40, 28],
-    wallBrick: [74, 55, 39],
-    wallMortar: [32, 24, 17],
-  },
-  microBlocks4x4: [
-    ['.m..', 'd..m', '..l.', '.d..'],
-    ['m..d', '..l.', '.d.m', '...d'],
-    ['.d..', '..m.', 'l..d', '.m..'],
-    ['..d.', 'm...', '.ll.', 'd.m.'],
-  ],
-}
+// Inside src/cartridges/orion/database/assets/ruins_tileset.ts:
+export const dirt01 = 'data:image/png;base64,...';
+export const grass01 = 'data:image/png;base64,...';
+export const aether01 = 'data:image/png;base64,...';
+export const ruins01 = 'data:image/png;base64,...';
+
+const baked = bakeBiomeClusterTileset({ dirt01, grass01, aether01, ruins01 });
 ```
 
 ---

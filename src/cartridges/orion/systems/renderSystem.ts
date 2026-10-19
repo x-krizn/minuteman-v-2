@@ -17,6 +17,7 @@ import {
   TILE_SIZE,
   Z_SCALE,
 } from '../constants';
+import { getTraitDefinition } from '../database/characters';
 import { getEnemyDefinition } from '../database/enemies';
 import { getItemDefinition } from '../database/items';
 import { getWeaponDefinition } from '../database/weapons';
@@ -2145,19 +2146,27 @@ export function drawOrionGame(
         g.fill();
       }
 
-      const isCritical = state.frame.state === 'Critical';
-      g.fillStyle = isCritical ? '#ff9b9b' : '#3b82f6';
-      g.fillRect(state.x - 4, py - 13, 8, 11);
+      const traitDef = getTraitDefinition(state.traitLine);
+      const drewPlayerSprite = drawBase64Sprite(g, traitDef?.sprite, state.x, py, state.t, {
+        dir: state.dir,
+        defaultAnchor: 'bottom-center',
+      });
 
-      const reactorColor =
-        state.reactor === 'Ichor' ? '#ea580c' : state.reactor === 'Mana' ? '#38bdf8' : '#a855f7';
-      g.fillStyle = reactorColor;
-      g.fillRect(state.x - 2, py - 9, 4, 4);
+      if (!drewPlayerSprite) {
+        const isCritical = state.frame.state === 'Critical';
+        g.fillStyle = isCritical ? '#ff9b9b' : '#3b82f6';
+        g.fillRect(state.x - 4, py - 13, 8, 11);
 
-      g.fillStyle = '#0f172a';
-      g.fillRect(state.x - 3, py - 16, 6, 3);
-      g.fillStyle = '#77c7ff';
-      g.fillRect(state.x - 1, py - 15, 2, 1);
+        const reactorColor =
+          state.reactor === 'Ichor' ? '#ea580c' : state.reactor === 'Mana' ? '#38bdf8' : '#a855f7';
+        g.fillStyle = reactorColor;
+        g.fillRect(state.x - 2, py - 9, 4, 4);
+
+        g.fillStyle = '#0f172a';
+        g.fillRect(state.x - 3, py - 16, 6, 3);
+        g.fillStyle = '#77c7ff';
+        g.fillRect(state.x - 1, py - 15, 2, 1);
+      }
 
       const dirInfo = DIR_VECTORS[state.dir] || DIR_VECTORS.S;
       const activeWeaponId = state.equippedWeapons[state.activeWeaponIndex] || 'gladius_boltcaster';

@@ -112,36 +112,49 @@ const KEY_NODE_ROUTES: Record<string, Partial<Record<AetherCardinalDir, KeyNodeR
   '2,0': {
     W: { targetKeyCoord: '1,0', routeTotal: 2 },
     E: { targetKeyCoord: '3,0', routeTotal: 1 },
-    S: { targetKeyCoord: '2,2', routeTotal: 2 },
+    S: { targetKeyCoord: '2,1', routeTotal: 1 },
   },
-  '2,2': {
-    N: { targetKeyCoord: '2,0', routeTotal: 2 },
-    E: { targetKeyCoord: '4,0', routeTotal: 2 },
+  '2,1': {
+    N: { targetKeyCoord: '2,0', routeTotal: 1 },
   },
   '3,0': {
     W: { targetKeyCoord: '2,0', routeTotal: 1 },
     E: { targetKeyCoord: '4,0', routeTotal: 2 },
+    S: { targetKeyCoord: '3,1', routeTotal: 1 },
   },
   '4,0': {
     W: { targetKeyCoord: '3,0', routeTotal: 2 },
+    N: { targetKeyCoord: '4,-1', routeTotal: 1 },
     E: { targetKeyCoord: '5,0', routeTotal: 2 },
+  },
+  '4,-1': {
+    S: { targetKeyCoord: '4,0', routeTotal: 1 },
   },
   '5,0': {
     W: { targetKeyCoord: '4,0', routeTotal: 2 },
-    E: { targetKeyCoord: '6,0', routeTotal: 2 },
+    E: { targetKeyCoord: '6,0', routeTotal: 1 },
   },
   '6,0': {
-    W: { targetKeyCoord: '5,0', routeTotal: 2 },
-    E: { targetKeyCoord: '8,0', routeTotal: 2 },
-  },
-  '8,0': {
-    W: { targetKeyCoord: '6,0', routeTotal: 2 },
-    E: { targetKeyCoord: '9,0', routeTotal: 2 },
-  },
-  '9,0': {
-    W: { targetKeyCoord: '8,0', routeTotal: 2 },
+    W: { targetKeyCoord: '5,0', routeTotal: 1 },
+    E: { targetKeyCoord: '7,0', routeTotal: 2 },
   },
 };
+
+function getUndefinedZoneSealReason(coordOrNodeId: string): string | null {
+  const meta = ORION_ROOM_METADATA[coordOrNodeId];
+  if (!meta) return null;
+  const areaDef = AREA_REGISTRY[meta.areaId];
+  const mapDef = MAP_REGISTRY[meta.mapId];
+  if (areaDef?.specStatus === 'UNDEFINED') {
+    const tag = areaDef.openDesignId || areaDef.docRef || 'UNDEFINED';
+    return `${areaDef.name} [UNDEFINED · ${tag}]`;
+  }
+  if (mapDef?.specStatus === 'UNDEFINED') {
+    const tag = mapDef.openDesignId || mapDef.docRef || 'UNDEFINED';
+    return `${mapDef.name} [UNDEFINED · ${tag}]`;
+  }
+  return null;
+}
 
 function getPrimaryKeyExitDir(coord: string): AetherCardinalDir | undefined {
   const routes = KEY_NODE_ROUTES[coord];
@@ -774,6 +787,18 @@ function resolveNextAetherNode(
   if (currentNode.nodeType === 'key') {
     const route = KEY_NODE_ROUTES[currentNode.coord]?.[dir];
     if (route) {
+      const sealReason = getUndefinedZoneSealReason(route.targetKeyCoord);
+      if (sealReason) {
+        const sealedLoop = createDynamicAetherNode(rooms, state, currentNode, dir, 'loop', {
+          sourceKeyCoord: currentNode.coord,
+          targetKeyCoord: route.targetKeyCoord,
+        });
+        sealedLoop.bannerTitle = `SEALED BY ÆTHER FOG · ${sealReason.toUpperCase()}`;
+        ORION_ROOM_METADATA[sealedLoop.id].bannerTitle = sealedLoop.bannerTitle;
+        currentNode.edges[dir] = sealedLoop.id;
+        return { targetNode: sealedLoop, isLoopCycle: true, escapedLoop: false };
+      }
+
       if (route.isDirectEndNode || route.routeTotal <= 0) {
         const directTarget = graph.nodes[route.targetKeyCoord];
         if (directTarget) {
@@ -817,6 +842,18 @@ function resolveNextAetherNode(
       const step = currentNode.routeStep || 1;
       const total = currentNode.routeTotal || 1;
       if (step >= total && currentNode.targetKeyCoord && graph.nodes[currentNode.targetKeyCoord]) {
+        const sealReason = getUndefinedZoneSealReason(currentNode.targetKeyCoord);
+        if (sealReason) {
+          const sealedLoop = createDynamicAetherNode(rooms, state, currentNode, dir, 'loop', {
+            sourceKeyCoord: currentNode.sourceKeyCoord,
+            targetKeyCoord: currentNode.targetKeyCoord,
+          });
+          sealedLoop.bannerTitle = `SEALED BY ÆTHER FOG · ${sealReason.toUpperCase()}`;
+          ORION_ROOM_METADATA[sealedLoop.id].bannerTitle = sealedLoop.bannerTitle;
+          currentNode.edges[dir] = sealedLoop.id;
+          return { targetNode: sealedLoop, isLoopCycle: true, escapedLoop: false };
+        }
+
         const destKeyNode = graph.nodes[currentNode.targetKeyCoord];
         currentNode.edges[dir] = destKeyNode.id;
         destKeyNode.edges[getOppositeCardinalDir(dir)] = currentNode.id;
@@ -965,7 +1002,9 @@ export function transitionViaAetherDoor(
 
   let toastMsg = info.bannerTitle;
   if (isLoopCycle) {
-    toastMsg = `LOST IN ÆTHER FOG (LOOP DEPTH ${graph.loopDepth}) · FOLLOW THE TELL`;
+    toastMsg = targetNode.bannerTitle.startsWith('SEALED BY ÆTHER FOG')
+      ? `${targetNode.bannerTitle} · REDIRECTED TO FOG LOOP`
+      : `LOST IN ÆTHER FOG (LOOP DEPTH ${graph.loopDepth}) · FOLLOW THE TELL`;
   } else if (escapedLoop) {
     toastMsg = `ÆTHER FOG CLEARED · RETURNED TO ${info.roomTitle.toUpperCase()}`;
   } else if (state.regionId !== prevRegionId) {
@@ -1255,6 +1294,19 @@ export function fastTravelToWaystation(
   const ws = WAYSTATION_REGISTRY[waystationId];
   if (!ws || !rooms[ws.room]) return false;
 
+  const targetArea = AREA_REGISTRY[ws.areaId];
+  if (targetArea?.specStatus === 'UNDEFINED') {
+    const tag = targetArea.openDesignId || targetArea.docRef || 'UNDEFINED';
+    const msg = `SEALED BY ÆTHER FOG · ${targetArea.name} [UNDEFINED: ${tag}]`;
+    if (ctx) ctx.say(msg);
+    else {
+      state.toastText = msg;
+      state.toastTimer = 2.8;
+    }
+    soundSystem.playMenuBeep();
+    return false;
+  }
+
   resetAetherFogGraph(rooms, state);
 
   const [rxStr, ryStr] = ws.room.split(',');
@@ -1296,6 +1348,19 @@ export function fastTravelViaWaygate(
 ): boolean {
   const wg = WAYGATE_REGISTRY[waygateId];
   if (!wg || !rooms[wg.room]) return false;
+
+  const targetArea = AREA_REGISTRY[wg.areaId];
+  if (targetArea?.specStatus === 'UNDEFINED') {
+    const tag = targetArea.openDesignId || targetArea.docRef || 'worlds.md §1';
+    const msg = `WAYGATE SEALED · ${targetArea.name} / ${wg.world.toUpperCase()} [UNDEFINED: ${tag}]`;
+    if (ctx) ctx.say(msg);
+    else {
+      state.toastText = msg;
+      state.toastTimer = 3.2;
+    }
+    soundSystem.playMenuBeep();
+    return false;
+  }
 
   const [rxStr, ryStr] = wg.room.split(',');
   state.room = wg.room;
@@ -1683,7 +1748,11 @@ export function executeWorldInteraction(
     state.isReloading = false;
     saveOrionGame(state);
 
-    const discovered = state.discoveredWaystations;
+    const discovered = state.discoveredWaystations.filter((wsId) => {
+      const wsNode = WAYSTATION_REGISTRY[wsId];
+      const wsArea = wsNode ? AREA_REGISTRY[wsNode.areaId] : undefined;
+      return wsArea?.specStatus !== 'UNDEFINED';
+    });
     if (discovered.length > 1 && currentWsId) {
       const idx = discovered.indexOf(currentWsId);
       const nextWsId = discovered[(idx + 1) % discovered.length];
@@ -1820,17 +1889,20 @@ export function executeWorldInteraction(
     if (status.canOpen) {
       state.flags.cathedral_door_open = true;
       state.unlockedGates[`${state.room}:M`] = true;
+      addOrionInventoryItem(state, 'dungeon_key', 1);
       const curRoom = rooms[state.room];
       if (curRoom) {
         rooms[state.room] = curRoom.map((r) => r.replace(/M/g, '.'));
       }
       soundSystem.playPowerup();
-      ctx.say(`CATHEDRAL DUNGEON DOOR OPENED ${status.reason}!`);
+      ctx.say(
+        `DUNGEON ENTRANCE OPENED (${status.reason}) · CAMELOT WAYGATE KEY ACQUIRED! [DEEP DUNGEON OD-BT-01 SEALED]`
+      );
       notifyOrionStateChange();
       return true;
     } else {
       soundSystem.playMenuBeep();
-      ctx.say(`DOOR SEALED: NEED ${status.reason}`);
+      ctx.say(`DUNGEON ENTRANCE SEALED: NEED ${status.reason}`);
       return true;
     }
   }

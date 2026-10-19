@@ -20,9 +20,10 @@ import {
   WaystationNode,
 } from '../../types';
 import { belldorBogBiome } from './belldor/biomes';
-import { borderTownSlumsArea } from './belldor/region_belldor_camelot_heartland/border_town_slums/area';
+import { camelotBorderTownArea } from './belldor/region_belldor_camelot_heartland/camelot_border_town/area';
 import { m00TheBogArea } from './belldor/region_belldor_outskirts/m00_the_bog/area';
 import { regionBelldorOutskirts } from './belldor/region_belldor_outskirts/region';
+import { U00_UNIVERSE_CATALOG, UNIVERSE_WORLD_BY_ID } from './universe';
 import { dirt01, groundTile } from './tiles/floor';
 import { grass01 } from './tiles/grass';
 import { aether01 } from './tiles/mud';
@@ -241,11 +242,14 @@ export function getTileDefinition(char: string, biomeId?: string): TileDefinitio
 export {
   aether01,
   belldorBogBiome,
-  borderTownSlumsArea,
+  camelotBorderTownArea,
+  camelotBorderTownArea as borderTownSlumsArea,
   dirt01,
   grass01,
   m00TheBogArea,
   regionBelldorOutskirts,
   ruins01,
+  U00_UNIVERSE_CATALOG,
+  UNIVERSE_WORLD_BY_ID,
 };
 export type { AreaWikiDefinition, BiomeDefinition, MapDefinition, RegionDefinition, RoomDefinition };

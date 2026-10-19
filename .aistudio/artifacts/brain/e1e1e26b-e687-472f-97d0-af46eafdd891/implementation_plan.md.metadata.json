@@ -1,6 +1,6 @@
 {
-  "summary": "Architecture and design plan for Orion's Aether Fog dynamic node graph (key, general, side, loop, end nodes), borderless looping transitions, environmental/Poe lantern navigation tells, and Waystation-scoped chunk persistence.",
-  "updatedAt": "2026-10-19T19:09:43.331437498Z",
+  "summary": "Architecture and implementation plan for the u00 Universe 20-world catalog (8 Major, 7 Minor, 5 Unstable; Canon vs. Derived/Folklore classification), Belldor's 4 canonical Zone/Area structures (M00 The Bog, Camelot Border Town, M01 Orc Encampment, Camelot Interior), and UNDEFINED spec lockouts (OD-BOG-01, OD-BT-01, mapping-v0.md).",
+  "updatedAt": "2026-10-19T20:49:38.157745666Z",
   "requestFeedback": true,
   "userFacing": true
 }

@@ -7,18 +7,18 @@ import { RegionDefinition } from '../../../../types';
 
 export const regionBelldorOutskirts: RegionDefinition = {
   id: 'region_belldor_outskirts',
-  name: 'Belldor — Toxic Marshes & Siege Outskirts',
-  title: 'Drowned Marshes & Novarin Encampment',
+  name: 'Belldor — M00 The Bog & M01 Outskirts',
+  title: 'M00 The Bog (LOCKED) & M01 Orc Encampment (UNDEFINED)',
   scope: 'local',
   world: 'Belldor (Camelot)',
-  culture: 'Arthurian Knights & Grail Mythology',
+  culture: 'Arthurian (Canon Original Story)',
   defaultBiomeId: 'belldor_bog',
   desyncStatus: 'Drifting',
   description:
-    'The outer marshlands of Belldor where drop-pod pilots land and Novarin orc raiders stage war-horn assaults.',
+    'The outer marshlands of Belldor housing the locked starting zone M00 The Bog (bog-v2.md) and the undefined M01 Orc Encampment (mapping-v0.md).',
   lore:
-    'A drowned maze of fallen trees, corrosive bog water, and ruined monastery pylons bordering the contested settlement of Camelot.',
-  localAreaIds: ['m00_the_bog', 'orc_siege_encampment'],
+    'A drowned maze of fallen trees, temple/monastery ruins, and corrosive bog water bordering Camelot Border Town.',
+  localAreaIds: ['m00_the_bog', 'm01_orc_encampment'],
   globalAreaIds: ['global_shattered_wilds_area'],
   connectedRegionIds: ['region_belldor_camelot_heartland', 'global_aether_sea_expanse'],
 };

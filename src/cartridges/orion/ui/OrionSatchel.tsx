@@ -18,6 +18,7 @@ import {
   LOCAL_ROOM_REGISTRY,
   MAP_REGISTRY,
   REGION_REGISTRY,
+  U00_UNIVERSE_CATALOG,
   WAYGATE_REGISTRY,
   WAYSTATION_REGISTRY,
 } from '../database/world';
@@ -1024,6 +1025,156 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
               );
             })()}
 
+            {/* u00 Universe 20-World Catalog & Belldor Canonical 4-Zone Spec */}
+            {(() => {
+              const majorWorlds = U00_UNIVERSE_CATALOG.filter((w) => w.tier === 'major');
+              const minorWorlds = U00_UNIVERSE_CATALOG.filter((w) => w.tier === 'minor');
+              const unstableWorlds = U00_UNIVERSE_CATALOG.filter((w) => w.tier === 'unstable');
+              const belldorZones = [
+                AREA_REGISTRY.m00_the_bog,
+                AREA_REGISTRY.camelot_border_town,
+                AREA_REGISTRY.m01_orc_encampment,
+                AREA_REGISTRY.camelot_interior,
+              ].filter(Boolean);
+
+              return (
+                <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-1 border-b border-[#1e293b] pb-1">
+                    <span className="font-bold text-[#fbbf24] text-[10px]">
+                      u00 UNIVERSE CATALOG (worlds.md §1 · 8 MAJOR, 7 MINOR, 5 UNSTABLE)
+                    </span>
+                    <span className="text-[8px] text-[#94a3b8]">
+                      CANON = Original Story · NON-CANON = Folklore / Mythology
+                    </span>
+                  </div>
+
+                  {/* Belldor 4-Zone Breakdown */}
+                  <div className="space-y-1">
+                    <div className="text-[8.5px] font-bold text-[#38bdf8]">
+                      1. BELLDOR (CAMELOT) — ARTHURIAN, CANON · 4 ZONES (ONLY WORLD WITH ZONE DOCS):
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      {belldorZones.map((zone) => {
+                        const isLocked = zone.specStatus === 'LOCKED';
+                        const isCurrent = state.areaId === zone.id;
+                        return (
+                          <div
+                            key={zone.id}
+                            className={`p-1.5 rounded-xs border ${
+                              isCurrent
+                                ? 'bg-[#0f172a] border-[#38bdf8]'
+                                : 'bg-[#0b111d] border-[#1e293b]'
+                            } space-y-1`}
+                          >
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="font-bold text-[#f8fafc] text-[9px]">
+                                {zone.name}
+                              </span>
+                              <span
+                                className={`px-1 py-0.5 rounded-xs font-bold text-[7.5px] ${
+                                  isLocked
+                                    ? 'bg-[#064e3b] text-[#6ee7b7] border border-[#059669]'
+                                    : 'bg-[#451a03] text-[#fcd34d] border border-[#b45309]'
+                                }`}
+                              >
+                                {zone.specStatus || 'LOCKED'}
+                                {zone.docRef ? ` · ${zone.docRef}` : ''}
+                              </span>
+                            </div>
+                            {zone.zoneFeatures && zone.zoneFeatures.length > 0 && (
+                              <div className="space-y-0.5 pt-0.5 border-t border-[#1e293b]/70">
+                                {zone.zoneFeatures.map((feat, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="flex items-center justify-between gap-1 text-[7.5px]"
+                                  >
+                                    <span className="text-[#cbd5e1] truncate">
+                                      • {feat.name}
+                                      {feat.detail ? ` — ${feat.detail}` : ''}
+                                    </span>
+                                    <span
+                                      className={`shrink-0 font-bold ${
+                                        feat.status === 'UNDEFINED'
+                                          ? 'text-[#fbbf24]'
+                                          : 'text-[#86efac]'
+                                      }`}
+                                    >
+                                      {feat.openDesignId || feat.status}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 8 Major Worlds */}
+                  <div className="space-y-1 pt-1 border-t border-[#1e293b]">
+                    <div className="text-[8.5px] font-bold text-[#e2e8f0]">
+                      MAJOR WORLDS (1–8 · worlds.md §1, LOCKED):
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 text-[8px]">
+                      {majorWorlds.map((w) => (
+                        <div
+                          key={w.id}
+                          className="p-1 bg-[#0f172a] rounded-xs border border-[#1e293b] flex flex-col justify-between"
+                        >
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="font-bold text-[#f8fafc] truncate">
+                              {w.index}. {w.name}
+                              {w.subtitle ? ` (${w.subtitle})` : ''}
+                            </span>
+                            <span
+                              className={`text-[7px] font-bold px-1 rounded-xs ${
+                                w.origin === 'canon'
+                                  ? 'bg-[#1e1b4b] text-[#c4b5fd]'
+                                  : 'bg-[#1e293b] text-[#94a3b8]'
+                              }`}
+                            >
+                              {w.origin.toUpperCase()}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-[7.5px] text-[#94a3b8] mt-0.5">
+                            <span>{w.theme}</span>
+                            <span
+                              className={
+                                w.hasZoneDocs ? 'text-[#86efac] font-bold' : 'text-[#fbbf24]'
+                              }
+                            >
+                              {w.hasZoneDocs ? 'ZONE DOCS' : 'NO ZONE DOCS'}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Minor & Unstable Worlds */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1 border-t border-[#1e293b] text-[8px]">
+                    <div className="p-1.5 bg-[#0f172a] rounded-xs border border-[#1e293b]">
+                      <div className="font-bold text-[#94a3b8] mb-0.5">
+                        MINOR WORLDS ({minorWorlds.length} · ALL UNDEFINED):
+                      </div>
+                      <div className="text-[#cbd5e1]">
+                        {minorWorlds.map((w) => w.name).join(' · ')}
+                      </div>
+                    </div>
+                    <div className="p-1.5 bg-[#0f172a] rounded-xs border border-[#1e293b]">
+                      <div className="font-bold text-[#f43f5e] mb-0.5">
+                        UNSTABLE WORLDS ({unstableWorlds.length} · ALL UNDEFINED):
+                      </div>
+                      <div className="text-[#cbd5e1]">
+                        {unstableWorlds.map((w) => w.name).join(' · ')}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Lore Fast Travel 1: Colossal Waygates (Inter-World / Inter-Region Signature Transit) */}
             <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">
               <div className="flex items-center justify-between">
@@ -1031,11 +1182,13 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                   COLOSSAL WAYGATES (Q) — INTER-WORLD ÆTHERIC SIGNATURE TRANSIT
                 </span>
                 <span className="text-[8px] text-[#94a3b8]">
-                  Reads pilot ætheric signature across aligned worlds
+                  UNDEFINED destination zones are sealed behind Waygate locks
                 </span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                 {Object.values(WAYGATE_REGISTRY).map((wg) => {
+                  const wgArea = AREA_REGISTRY[wg.areaId];
+                  const isUndefinedSpec = wgArea?.specStatus === 'UNDEFINED';
                   const isDiscovered =
                     discoveredWg.includes(wg.id) || Boolean(state.bypassProgressionGates);
                   const isHere = state.room === wg.room;
@@ -1049,7 +1202,10 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                           {wg.name} · <span className="text-[#38bdf8]">{wg.world}</span>
                         </div>
                         <div className="text-[8px] text-[#94a3b8]">
-                          Room [{wg.room}] · Alignment: {wg.desyncStatus}
+                          Room [{wg.room}] ·{' '}
+                          {isUndefinedSpec
+                            ? `UNDEFINED (${wgArea?.openDesignId || wgArea?.docRef || 'worlds.md §1'})`
+                            : `Alignment: ${wg.desyncStatus}`}
                         </div>
                       </div>
                       <button
@@ -1061,14 +1217,22 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                           }
                         }}
                         className={`px-2 py-1 rounded-xs font-bold text-[8.5px] shrink-0 cursor-pointer ${
-                          isHere
-                            ? 'bg-[#164e63] text-[#67e8f9] border border-[#22d3ee]'
-                            : isDiscovered
-                              ? 'bg-[#0284c7] hover:bg-[#0369a1] text-white'
-                              : 'bg-[#1e293b] text-[#64748b] cursor-not-allowed'
+                          isUndefinedSpec
+                            ? 'bg-[#451a03] text-[#fcd34d] border border-[#b45309]'
+                            : isHere
+                              ? 'bg-[#164e63] text-[#67e8f9] border border-[#22d3ee]'
+                              : isDiscovered
+                                ? 'bg-[#0284c7] hover:bg-[#0369a1] text-white'
+                                : 'bg-[#1e293b] text-[#64748b] cursor-not-allowed'
                         }`}
                       >
-                        {isHere ? 'AT WAYGATE' : isDiscovered ? 'WAYGATE TRANSIT' : 'UNATTUNED'}
+                        {isUndefinedSpec
+                          ? 'SEALED (UNDEFINED)'
+                          : isHere
+                            ? 'AT WAYGATE'
+                            : isDiscovered
+                              ? 'WAYGATE TRANSIT'
+                              : 'UNATTUNED'}
                       </button>
                     </div>
                   );
@@ -1083,11 +1247,13 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                   ÆTHER WAYSTATIONS (D / A) — DISCOVERED AREA FAST TRAVEL
                 </span>
                 <span className="text-[8px] text-[#94a3b8]">
-                  Entire world also traversable room-to-room on foot
+                  LOCKED zones allow transit · UNDEFINED zones are veiled in Aether Fog
                 </span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                 {Object.values(WAYSTATION_REGISTRY).map((ws) => {
+                  const wsArea = AREA_REGISTRY[ws.areaId];
+                  const isUndefinedSpec = wsArea?.specStatus === 'UNDEFINED';
                   const isDiscovered =
                     discoveredWs.includes(ws.id) || Boolean(state.bypassProgressionGates);
                   const isHere = state.room === ws.room;
@@ -1099,7 +1265,10 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                       <div>
                         <div className="font-bold text-[#fef08a] text-[9.5px]">{ws.name}</div>
                         <div className="text-[8px] text-[#94a3b8]">
-                          Area: {AREA_REGISTRY[ws.areaId]?.name || ws.areaId} · Room [{ws.room}]
+                          Zone: {wsArea?.name || ws.areaId} ·{' '}
+                          {isUndefinedSpec
+                            ? `UNDEFINED (${wsArea?.openDesignId || wsArea?.docRef})`
+                            : `Room [${ws.room}]`}
                         </div>
                       </div>
                       <button
@@ -1111,14 +1280,22 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                           }
                         }}
                         className={`px-2 py-1 rounded-xs font-bold text-[8.5px] shrink-0 cursor-pointer ${
-                          isHere
-                            ? 'bg-[#422006] text-[#fde68a] border border-[#f59e0b]'
-                            : isDiscovered
-                              ? 'bg-[#ca8a04] hover:bg-[#a16207] text-[#05070a]'
-                              : 'bg-[#1e293b] text-[#64748b] cursor-not-allowed'
+                          isUndefinedSpec
+                            ? 'bg-[#451a03] text-[#fcd34d] border border-[#b45309]'
+                            : isHere
+                              ? 'bg-[#422006] text-[#fde68a] border border-[#f59e0b]'
+                              : isDiscovered
+                                ? 'bg-[#ca8a04] hover:bg-[#a16207] text-[#05070a]'
+                                : 'bg-[#1e293b] text-[#64748b] cursor-not-allowed'
                         }`}
                       >
-                        {isHere ? 'CURRENT ROOM' : isDiscovered ? 'FAST TRAVEL' : 'UNDISCOVERED'}
+                        {isUndefinedSpec
+                          ? 'FOG SEALED'
+                          : isHere
+                            ? 'CURRENT ROOM'
+                            : isDiscovered
+                              ? 'FAST TRAVEL'
+                              : 'UNDISCOVERED'}
                       </button>
                     </div>
                   );
@@ -1133,12 +1310,14 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-1 text-[8.5px]">
                 <div className="p-1 bg-[#0f172a] rounded-xs border border-[#1e293b]">
-                  <div className="font-bold text-[#e2e8f0]">REGIONS ({Object.keys(REGION_REGISTRY).length})</div>
-                  <div className="text-[#94a3b8]">Global & Local</div>
+                  <div className="font-bold text-[#e2e8f0]">
+                    WORLDS ({U00_UNIVERSE_CATALOG.length})
+                  </div>
+                  <div className="text-[#94a3b8]">8 Major · 7 Minor · 5 Unstable</div>
                 </div>
                 <div className="p-1 bg-[#0f172a] rounded-xs border border-[#1e293b]">
                   <div className="font-bold text-[#38bdf8]">AREAS ({Object.keys(AREA_REGISTRY).length})</div>
-                  <div className="text-[#94a3b8]">Global & Local</div>
+                  <div className="text-[#94a3b8]">LOCKED & UNDEFINED</div>
                 </div>
                 <div className="p-1 bg-[#0f172a] rounded-xs border border-[#1e293b]">
                   <div className="font-bold text-[#ffd27d]">MAPS ({Object.keys(MAP_REGISTRY).length})</div>

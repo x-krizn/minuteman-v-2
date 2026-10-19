@@ -366,6 +366,42 @@ export interface MapDefinition {
   globalRoomSlots: MapProceduralRoomSlot[];
   /** Connected neighboring Map IDs for continuous on-foot traversal */
   connectedMapIds: string[];
+  /** Design specification status (LOCKED vs UNDEFINED) */
+  specStatus?: DesignSpecStatus;
+  /** Source design document reference (e.g., bog-v2.md, border-town-v1.md, mapping-v0.md) */
+  docRef?: string;
+  /** Open design issue identifier if UNDEFINED (e.g., OD-BOG-01, OD-BT-01) */
+  openDesignId?: string;
+  /** Documented sub-features or sub-zones within this map/zone */
+  zoneFeatures?: ZoneFeatureSpec[];
+}
+
+export type UniverseWorldTier = 'major' | 'minor' | 'unstable';
+export type UniverseCanonOrigin = 'canon' | 'non-canon';
+export type DesignSpecStatus = 'LOCKED' | 'UNDEFINED';
+
+export interface ZoneFeatureSpec {
+  name: string;
+  detail?: string;
+  status: DesignSpecStatus;
+  openDesignId?: string;
+  coord?: string;
+}
+
+export interface UniverseWorldDefinition {
+  id: string;
+  index?: number;
+  name: string;
+  subtitle?: string;
+  theme: string;
+  tier: UniverseWorldTier;
+  /** 'canon' = original story; 'non-canon' = derived of folklore, mythology, etc. */
+  origin: UniverseCanonOrigin;
+  specStatus: DesignSpecStatus;
+  docRef?: string;
+  hasZoneDocs: boolean;
+  regionIds: string[];
+  lore: string;
 }
 
 export interface WaystationNode {
@@ -414,6 +450,14 @@ export interface AreaWikiDefinition {
   spawnAnchor: { room: string; x: number; y: number };
   exitAnchor: { room: string; x: number; y: number };
   waystation?: WaystationNode;
+  /** Design specification status (LOCKED vs UNDEFINED) */
+  specStatus?: DesignSpecStatus;
+  /** Source design document reference (e.g., bog-v2.md, border-town-v1.md, mapping-v0.md) */
+  docRef?: string;
+  /** Open design issue identifier if UNDEFINED (e.g., OD-BOG-01, OD-BT-01) */
+  openDesignId?: string;
+  /** Documented sub-features or sub-zones within this area */
+  zoneFeatures?: ZoneFeatureSpec[];
 }
 
 export interface RegionDefinition {
@@ -447,6 +491,8 @@ export interface TraitLineWikiDefinition {
   baseShield: { type: 'energy' | 'physical'; capacity: number };
   baseArmor: { type: ArmorType; threshold: number; rating: number; durability: number };
   startingWeapons: string[];
+  /** Optional embedded Base64 PNG sprite or directional spritesheet for the player mech */
+  sprite?: Base64SpriteConfig;
 }
 
 // Moveset Action (One atomic unit of a 5-action moveset)

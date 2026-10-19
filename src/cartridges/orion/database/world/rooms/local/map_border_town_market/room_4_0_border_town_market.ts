@@ -16,15 +16,15 @@ export const room40BorderTownMarket: RoomDefinition = {
   title: 'Border Town Market',
   bannerTitle: 'CAMELOT BORDER TOWN · DESYNC MARKET & WAYSTATION',
   grid: [
-    '####..####', // North passage to Barracks (4,-1)
-    '#..1..C..#', // Hidden Switch #1 (1) & Market Cache (Bedivere List Relic #2)
-    '#..%%%%..#', // Desynchronizing Market Walls (%)
-    '#..N..N..#', // Border Town NPCs (Calm, Linger, Feral)
-    '#......A.#', // Border Town Æther Waystation (A)
-    '...P..N...',
-    '...P......',
-    '#........#',
-    '####..####', // South passage to global desync arcade (4,1)
+    '####::####', // North passage to Barracks (4,-1)
+    '#::1::C::#', // Hidden Switch #1 (1) & Market Cache (Bedivere List Relic #2)
+    '#::%%%%::#', // Desynchronizing Market Walls (%)
+    '#.:N::N:.#', // Border Town NPCs (Calm, Linger, Feral)
+    '#..::::A:#', // Border Town Æther Waystation (A)
+    '::.P::N:::',
+    '::.P::::,,',
+    '#..::::,,#',
+    '####::####', // South passage to global desync arcade (4,1)
   ],
   cache: {
     scrap: 25,

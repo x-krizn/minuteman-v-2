@@ -129,13 +129,15 @@ export const sunkenCatacombsBiome: BiomeDefinition = {
 ### Tier 1B: Tiles & 2.5D Props (`database/world/tiles/`)
 Every character in a Room's `10 × 9` ASCII grid resolves to a `TileDefinition` (or an Enemy spawn character).
 
-#### Canonical ASCII Grid Legend
+#### Canonical ASCII Grid Legend (4×5 Cluster Terrains, Walls & Doodads)
 | Char | Tile / Entity | Behavior |
 | :--- | :--- | :--- |
-| `.` | `floor` | Walkable solid ground |
-| `#` | `pylon_wall` | Solid perimeter wall (`blocksHeight: 2`) |
-| `P` | `pylon_pillar` | 2.5D depth-sorted interior pillar (`solid: true`) |
-| `~` | `mud` | Liquid / mud tile (applies `mudSlowMultiplier` + corrosion if enabled in Biome) |
+| `.` | `floor` (**Dirt** — Col 1) | Walkable dirt ground; auto-tiles Row 1 general variants & Rows 2–4 transitions |
+| `,` | `grass` (**Grass** — Col 2) | Walkable grass ground; auto-tiles Row 1 general variants & Rows 2–4 transitions |
+| `~` | `mud` (**Aether Corrosive** — Col 3) | Corrosive liquid/mud hazard (`mudSlowMultiplier` + Armor corrosion); auto-tiles Row 1 & Rows 2–4 |
+| `:` | `ruins_floor` (**Ruins** — Col 4) | Walkable ancient flagstones; auto-tiles Row 1 general variants & Rows 2–4 transitions |
+| `#` | `pylon_wall` (Row 5 Solid/Single Wall) | Connected `#` slices Row 5 top row (`[left, center, right]`); isolated `#` slices Row 5 bottom left/right single wall |
+| `P` | `pylon_pillar` (Row 5 Single Wall) | 2.5D depth-sorted interior single wall (`solid: true`); slices Row 5 bottom left/right single wall |
 | `_` | `chasm` | Open pit/sinkhole (must Jump `[A]` or Booster Dash `[B]` across) |
 | `%` | `desync_wall` | Temporal wall that phases between solid and passable every `desyncPeriodSec` |
 | `D` | `drop_pod` | Drop-Pod Spawn Anchor & initial Bog Waystation |
@@ -144,6 +146,7 @@ Every character in a Room's `10 × 9` ASCII grid resolves to a `TileDefinition` 
 | `C` | `cache` | Lootable Supply Cache (rewards defined in `room.cache`) |
 | `G` | `rusted_gate` | Locked perimeter gate |
 | `M` | `cathedral_door` | Three-Way Cathedral Dungeon Door |
+| `L` | `poe_lantern` | Decoupled Layer 2 Poe Lantern doodad (inherits neighbor terrain on Layer 0) |
 | `1`,`2`,`3` | `hidden_switch` | Secret switches for unlocking the Cathedral Door via Exploration |
 
 ```ts
@@ -447,3 +450,116 @@ sprite: {
   anchor: 'bottom-center',
 }
 ```
+
+---
+
+### Recipe D: Sub-Tile Micro-Composer & Separated `3×3` Biome Cluster Atlases (`database/assets/subTileComposer.ts`)
+Rather than hardcoding 180 individual `16×16px` PNG tiles (`>60 KB` of Base64 strings), Project Orion uses an offscreen **Sub-Tile Micro-Composer** (`database/assets/subTileComposer.ts`) that takes tiny `4×4px` and `8×8px` seed patterns and bakes all 20 separated `3×3` biome clusters (`48×48px` each) plus the combined `192×240px` `ruins_tileset` sheet onto offscreen canvases once at startup (`ruins_tileset.ts` is under `1 KB`!).
+
+- **Two Sub-Tile Granularities**:
+  1. **`4×4` Micro-Block Mode (`16` blocks of `4×4px` per `16×16px` tile)**:
+     - Used for organic terrains (`dirt` `.`, `grass` `,`, `aether` `~`).
+     - Each `16×16px` general tile permutes, rotates, and flips 4 `4×4px` micro-block templates across a `4×4` sub-grid so ground textures never visibly repeat.
+     - For `from(to)` transition clusters (`Rows 2–4`), border `4×4px` micro-blocks along the 8 neighbor edges/corners automatically substitute in the `to` terrain's micro-blocks with a 1px dark lip contour.
+  2. **`2×2` Quadrant Mode (`4` quadrants of `8×8px` per `16×16px` tile)**:
+     - Used for architectural masonry (`ruins` `:`), connected solid walls (`#`), and standalone single walls (`P`).
+     - Assembles top-left, top-right, bottom-left, and bottom-right `8×8px` quadrants with bevel highlights and mortar joints.
+
+- **20 Separated `3×3` Cluster Atlases (`48×48px` each) + Master `4×5` Sheet (`192×240px`)**:
+  - **Row 1 (General `3×3` Clusters)**: `dirt_general`, `grass_general`, `aether_general`, `ruins_general`
+  - **Row 2 (Transitions to Dirt/Grass)**: `dirt_to_grass`, `grass_to_dirt`, `aether_to_dirt`, `ruins_to_dirt`
+  - **Row 3 (Transitions to Aether/Grass)**: `dirt_to_aether`, `grass_to_aether`, `aether_to_grass`, `ruins_to_grass`
+  - **Row 4 (Transitions to Ruins/Aether)**: `dirt_to_ruins`, `grass_to_ruins`, `aether_to_ruins`, `ruins_to_aether`
+  - **Row 5 (Walls & Associated Floors)**: `dirt_walls`, `grass_walls`, `aether_walls`, `ruins_walls` (`localRow 0` = connected solid `#` wall `[left, center, right]`; `localRow 1` = associated floor; `localRow 2` left/right = single `#`/`P` walls, center = floor)
+
+To enable automatic 8-neighbor cluster auto-tiling on any Biome:
+```ts
+// Inside any BiomeDefinition:
+clusterTileSheetBase64: 'ruins_tileset', // Uses the offscreen-baked 20-cluster cache (or custom PNG)
+defaultClusterTerrain: 'ruins',          // 'dirt' | 'grass' | 'aether' | 'ruins'
+```
+
+To customize or add a terrain's micro-blocks or quadrants, edit `TERRAIN_MICRO_SEEDS` in `src/cartridges/orion/database/assets/subTileComposer.ts`:
+```ts
+dirt: {
+  terrain: 'dirt',
+  mode: '4x4', // '4x4' (sixteen 4x4px micro-blocks) or '2x2' (four 8x8px quadrants)
+  palette: {
+    base: [64, 48, 34],
+    dark: [41, 31, 22],
+    mid: [78, 58, 41],
+    light: [96, 73, 52],
+    edge: [30, 22, 16],
+    wallTop: [96, 73, 52],
+    wallFront: [54, 40, 28],
+    wallBrick: [74, 55, 39],
+    wallMortar: [32, 24, 17],
+  },
+  microBlocks4x4: [
+    ['.m..', 'd..m', '..l.', '.d..'],
+    ['m..d', '..l.', '.d.m', '...d'],
+    ['.d..', '..m.', 'l..d', '.m..'],
+    ['..d.', 'm...', '.ll.', 'd.m.'],
+  ],
+}
+```
+
+---
+
+## 6. 2.5D Post-Processing & Visual Effect Layers (`postProcessing.ts`)
+
+Instead of hardcoding hundreds of pixel effect frames for lighting, weapon trails, projectiles, outlines, reflections, and weather, the engine provides a **5-Pass Post-Processing Pipeline** (`src/cartridges/orion/postProcessing.ts`) controlled declaratively from your Biome, Tile, Weapon, and Enemy definitions:
+
+### Pass 1: Planar Water / Corrosive Aether (`~`) Reflections
+Any biome with `liquidReflection: true` (enabled by default) automatically renders vertically-flipped, horizontal-ripple-sheared planar reflections of north-bordering pillars (`P`), walls (`#`), Poe Lanterns (`L`), the Player, and Enemies clipped strictly inside `~` liquid tiles.
+
+### Pass 2: Automatic 1px Pixel-Art Outlines & Elevation Shadows
+You can add a crisp 1px outer silhouette around any Base64 sprite (cached offscreen on first draw) or procedural 2.5D prop without hand-drawing outline pixels:
+```ts
+// On any Base64SpriteConfig (Tile, Prop, Item, or Enemy):
+sprite: {
+  base64: '...',
+  outlineColor: '#090d14', // Automatically bakes a 4-neighbor 1px outline onto an offscreen canvas!
+}
+```
+
+### Pass 3: Sweeping Blade Trails, Glow Projectiles & Hit Flashes
+- **Melee Blade Swing Trails**: Melee weapons automatically emit a sweeping crescent ribbon (`state.bladeTrails`) with tapered alpha and additive edge bloom. Customize a weapon's trail color in its `WeaponWikiDefinition`:
+  ```ts
+  // Inside a WeaponWikiDefinition (e.g., database/weapons/khopesh.ts):
+  bladeTrailColor: '#38bdf8',
+  ```
+- **Procedural Projectiles & Hit Flashes**: Projectiles (`state.bullets`) automatically render a motion-blurred velocity tail, additive outer halo, and bright core without requiring projectile sprites. Struck enemies flash with a crisp white-hot silhouette.
+
+### Pass 4: Biome Weather Layers (`rain`, `ash`, `aether_mist`)
+Biomes can enable procedural weather layers that animate across the viewport:
+- `'rain'`: Slanted rain streaks + animated ground splash ripples (default in Bog/Wetland biomes).
+- `'ash'`: Drifting ember cinders and rising soot motes (default in Orc Siege / Tyrranus biomes).
+- `'aether_mist'`: Floating luminous violet/cyan spores and low-lying mist banks (default in Waygate/Ruins biomes).
+
+Configure weather and lighting per biome via `postProcess`:
+```ts
+// Inside any BiomeDefinition:
+postProcess: {
+  ambientDarkness: 0.26,     // 0.0 (bright day) to 0.75 (deep cavern shadow)
+  bloomIntensity: 0.6,       // Additive radial glow multiplier for lights & projectiles
+  weather: 'rain',           // 'rain' | 'ash' | 'aether_mist' | 'none'
+  weatherIntensity: 0.7,     // 0.0 to 1.0 particle density
+  liquidReflection: true,    // Planar reflections on '~' tiles
+  scanlines: false,          // Optional per-biome CRT scanline overlay
+}
+```
+
+### Pass 5: Dynamic Light Sources & Radial Bloom
+The lighting pass carves soft radial cutouts through the biome's ambient darkness veil and adds colored bloom halos around light-emitting tiles, props, entities, and projectiles. Attach a `lightSource` to any `TileDefinition` or `EnemyWikiDefinition`:
+```ts
+// Inside any TileDefinition (e.g., tiles/poe_lantern.ts) or EnemyWikiDefinition:
+lightSource: {
+  color: '#fbbf24',     // Hex or RGB glow color
+  radius: 56,           // Radial illumination radius in pixels
+  intensity: 0.85,      // 0.0 to 1.0 bloom strength
+  pulseSpeed: 3.5,      // Optional sinusoidal breathing speed
+  flicker: 0.12,        // Optional organic torch/lantern flicker amplitude
+}
+```
+

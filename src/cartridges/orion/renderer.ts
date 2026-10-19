@@ -17,17 +17,31 @@ import {
   TILE_SIZE,
   Z_SCALE,
 } from './constants';
-import { drawBase64Sprite, drawBiomeSheetTile } from './database/assets';
+import {
+  drawBase64Sprite,
+  drawBiomeSheetTile,
+  drawClusterBiomeLayer0,
+  drawClusterBiomeWall,
+  isClusterSingleWallChar,
+} from './database/assets';
 import { getEnemyDefinition } from './database/enemies';
 import { getItemDefinition } from './database/items';
 import { getWeaponDefinition } from './database/weapons';
 import { getBiomeDefinition, getTileDefinition } from './database/world';
+import {
+  drawBiomeWeatherLayer,
+  drawDynamicLightingAndBloomPass,
+  drawEnhancedProjectilesAndBladeTrails,
+  drawPlanarWaterReflections,
+} from './postProcessing';
 import { OrionState } from './types';
 
 /**
  * 2.5D Renderer for Project Orion
- * Supports embedded Base64 PNG sprites and grid spritesheets/tilemaps on Biomes,
- * Tiles, Props, Pickups, Enemies, and Weapons, with automatic procedural Canvas 2D fallback.
+ * Combines the Sub-Tile Micro-Composer (`4×4` `4px` micro-blocks & `2×2` `8px` quadrants
+ * baked to an offscreen atlas cache) with a Multi-Pass Post-Processing Pipeline
+ * (planar liquid reflections, 1px sprite outlines, blade trails, projectile bloom,
+ * biome weather, and dynamic radial lighting).
  */
 export function drawOrionGame(
   g: CanvasRenderingContext2D,
@@ -42,7 +56,7 @@ export function drawOrionGame(
   const activeBiome = getBiomeDefinition(state.biomeId);
   const defaultFloorTile = getTileDefinition('.', state.biomeId);
 
-  // 1. LAYER 0: Ground, Mud & Sinkholes (Base64 Sprite / Biome Tilemap -> Procedural Fallback)
+  // 1. LAYER 0: Ground, Transitions, Corrosive Aether & Sinkholes (4x5 Cluster Auto-Tiler -> Base64 Sprite -> Procedural Fallback)
   if (room) {
     for (let ty = 0; ty < ROWS; ty++) {
       for (let tx = 0; tx < COLS; tx++) {
@@ -58,7 +72,8 @@ export function drawOrionGame(
             defaultHeight: TILE_SIZE,
           }) ||
           drawBiomeSheetTile(g, activeBiome, char, sx, sy, state.t) ||
-          drawBiomeSheetTile(g, activeBiome, tile.id, sx, sy, state.t);
+          drawBiomeSheetTile(g, activeBiome, tile.id, sx, sy, state.t) ||
+          drawClusterBiomeLayer0(g, room, activeBiome, tx, ty, sx, sy, state.t);
 
         if (!drewTileSprite) {
           if (tile.renderLayer0) {
@@ -69,9 +84,12 @@ export function drawOrionGame(
         }
       }
     }
+
+    // 1B. POST-PROCESS PASS 1: Planar Water / Corrosive Aether ('~') Reflections
+    drawPlanarWaterReflections(g, room, activeBiome, state);
   }
 
-  // 2. LAYER 1: Baked 2.5D Walls, Desync Barriers & Gates (Base64 Sprite -> Procedural Fallback)
+  // 2. LAYER 1: Baked 2.5D Walls, Desync Barriers & Gates (Row 5 Cluster Wall -> Base64 Sprite -> Procedural Fallback)
   if (room) {
     for (let ty = 0; ty < ROWS; ty++) {
       for (let tx = 0; tx < COLS; tx++) {
@@ -85,7 +103,9 @@ export function drawOrionGame(
             defaultAnchor: 'top-left',
             defaultWidth: TILE_SIZE,
             defaultHeight: TILE_SIZE,
-          }) || drawBiomeSheetTile(g, activeBiome, `${tile.id}:layer1`, sx, sy, state.t);
+          }) ||
+          drawBiomeSheetTile(g, activeBiome, `${tile.id}:layer1`, sx, sy, state.t) ||
+          (char === '#' && drawClusterBiomeWall(g, room, activeBiome, tx, ty, sx, sy, state.t));
 
         if (!drewLayer1Sprite) {
           tile.renderLayer1?.(g, tx, ty, sx, sy, state);
@@ -101,7 +121,7 @@ export function drawOrionGame(
   }
   const renderQueue: RenderItem[] = [];
 
-  // A. World Props & Setpieces (Data-Driven via tile.propSprite or tile.renderProp25D)
+  // A. World Props, Single Walls ('P') & Doodads (Data-Driven via tile.propSprite, Row 5 Single Wall, or tile.renderProp25D)
   if (room) {
     for (let ty = 0; ty < ROWS; ty++) {
       for (let tx = 0; tx < COLS; tx++) {
@@ -113,9 +133,21 @@ export function drawOrionGame(
           renderQueue.push({
             y: sy,
             draw: () => {
-              const drewProp = drawBase64Sprite(g, tile.propSprite, sx, sy, state.t, {
-                defaultAnchor: 'bottom-center',
-              });
+              const drewProp =
+                drawBase64Sprite(g, tile.propSprite, sx, sy, state.t, {
+                  defaultAnchor: 'bottom-center',
+                }) ||
+                (isClusterSingleWallChar(char) &&
+                  drawClusterBiomeWall(
+                    g,
+                    room,
+                    activeBiome,
+                    tx,
+                    ty,
+                    tx * TILE_SIZE,
+                    ty * TILE_SIZE,
+                    state.t
+                  ));
               if (!drewProp) {
                 tile.renderProp25D?.(g, tx, ty, sx, sy, state);
               }
@@ -337,14 +369,8 @@ export function drawOrionGame(
     item.draw();
   }
 
-  // 4. LAYER 3: Projectiles & Particles
-  for (const p of state.projectiles) {
-    const py = p.y - p.z * Z_SCALE;
-    g.fillStyle = p.color;
-    g.beginPath();
-    g.arc(p.x, py, p.radius, 0, Math.PI * 2);
-    g.fill();
-  }
+  // 4. LAYER 3: Post-Processed Projectiles, Sweeping Blade Trails & Particles
+  drawEnhancedProjectilesAndBladeTrails(g, state);
 
   for (const p of state.particles) {
     const py = p.y - p.z * Z_SCALE;
@@ -360,14 +386,13 @@ export function drawOrionGame(
     }
   }
 
-  // 5. LAYER 4: Desynchronization Visual Glitch
-  if (state.flickerTimer > 0) {
-    state.flickerTimer -= 0.016;
-    g.fillStyle = 'rgba(184, 164, 255, 0.08)';
-    g.fillRect(0, 0, SCREEN_W, SCREEN_H);
-  }
+  // 5. LAYER 4: Biome Atmospheric Weather Pass (Rain, Siege Ash, or Luminous Æther Mist)
+  drawBiomeWeatherLayer(g, activeBiome, state);
 
-  // 6. LAYER 5: CANONICAL THREE DEFENSE LAYERS HUD
+  // 6. LAYER 5: Dynamic Light Sources, Radial Bloom, Ambient Vignette & Desync Glitch Pass
+  drawDynamicLightingAndBloomPass(g, room, activeBiome, state);
+
+  // 7. LAYER 6: CANONICAL THREE DEFENSE LAYERS HUD
   if (!state.useStandardResolutionHud) {
     drawCanonicalHud(g, state);
   }

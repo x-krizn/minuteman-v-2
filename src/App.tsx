@@ -33,7 +33,7 @@ export default function App() {
   const [activeCartridgeName, setActiveCartridgeName] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [scanlinesEnabled, setScanlinesEnabled] = useState(true);
+  const [scanlinesEnabled, setScanlinesEnabled] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
   const [fps, setFps] = useState(60);
   const [isFullscreen, setIsFullscreen] = useState(false);

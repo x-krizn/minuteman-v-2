@@ -326,8 +326,8 @@ export const OrionHud: React.FC = () => {
         aria-label="Tactical Notifications"
         className="w-full flex flex-col items-center justify-end gap-1.5 mt-auto mb-1.5 px-3 z-30"
       >
-        {/* Pop-up Message Notification (Closes immediately when [A] is pressed or clicked) */}
-        {state.toastText && state.toastTimer > 0 ? (
+        {/* Non-Interactive Pop-up Notification (Persists until superseded or clicked; never overrides Jump [A]) */}
+        {state.toastText ? (
           <button
             onClick={() => {
               state.toastText = null;
@@ -335,14 +335,15 @@ export const OrionHud: React.FC = () => {
               notifyOrionStateChange();
             }}
             className="pointer-events-auto flex items-center gap-2.5 px-3 py-1 bg-[#090d14]/95 hover:bg-[#111827] border border-[#38bdf8]/80 text-[#7dd3fc] rounded-md shadow-xl text-[10px] sm:text-[11px] font-bold tracking-wider backdrop-blur-xs transition-colors cursor-pointer active:scale-95"
-            title="Press [A] or click to close"
+            title="Click to dismiss notification"
           >
             <span>⚡ {state.toastText}</span>
             <span className="bg-[#1e293b] border border-[#38bdf8]/50 text-[#38bdf8] px-1.5 py-0.2 rounded text-[8px] font-mono font-bold tracking-normal">
-              [A] CLOSE
+              ✕
             </span>
           </button>
-        ) : state.promptText ? (
+        ) : null}
+        {state.promptText ? (
           /* Contextual Interaction Prompt (Docked cleanly in lower section) */
           <button
             onClick={() => {
@@ -350,11 +351,13 @@ export const OrionHud: React.FC = () => {
               notifyOrionStateChange();
             }}
             className="pointer-events-auto flex items-center gap-2 px-3 py-1 bg-[#0b1329]/95 hover:bg-[#111c38] border border-[#f59e0b]/80 text-[#fef08a] rounded-md shadow-lg text-[10px] sm:text-[11px] font-bold tracking-wider backdrop-blur-xs transition-colors cursor-pointer active:scale-95"
-            title="Press [A] or click to interact/close"
+            title="Click to dismiss prompt"
           >
-            <span className="bg-[#f59e0b] text-[#0f172a] px-1.5 py-0.2 rounded font-black text-[9px] shadow-sm">
-              A
-            </span>
+            {/^\[A\]/i.test(state.promptText) ? (
+              <span className="bg-[#f59e0b] text-[#0f172a] px-1.5 py-0.2 rounded font-black text-[9px] shadow-sm">
+                A
+              </span>
+            ) : null}
             <span>{state.promptText.replace(/^\[A\]\s*/i, '')}</span>
           </button>
         ) : null}

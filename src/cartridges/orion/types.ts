@@ -112,6 +112,47 @@ export interface Base64SpriteConfig {
   scale?: number;
   /** Anchor mode: 'top-left' (default for tiles) or 'bottom-center' (default for 2.5D props/entities) */
   anchor?: 'top-left' | 'center' | 'bottom-center';
+  /** Optional 1px pixel-art silhouette outline color baked automatically offscreen */
+  outlineColor?: string;
+}
+
+export interface LightSourceConfig {
+  color: string;
+  radius: number;
+  intensity?: number;
+  pulseSpeed?: number;
+  offsetY?: number;
+}
+
+export type BiomeWeatherType = 'none' | 'rain' | 'ash' | 'aether_mist';
+
+export interface BiomePostProcessConfig {
+  /** Ambient darkness veil opacity 0..0.75 (carved out by dynamic lights) */
+  ambientDarkness?: number;
+  /** Additive radial bloom multiplier 0..1.0 */
+  bloomIntensity?: number;
+  /** Atmospheric weather effect layer */
+  weather?: BiomeWeatherType;
+  /** Weather particle density multiplier 0..1.0 */
+  weatherIntensity?: number;
+  /** Render planar flipped + ripple-sheared reflections on Corrosive Aether / Bog Water ('~') */
+  liquidReflection?: boolean;
+  /** Optional per-biome CRT scanline pass */
+  scanlines?: boolean;
+}
+
+export interface BladeTrailEffect {
+  x: number;
+  y: number;
+  z: number;
+  angle: number;
+  arcSpan: number;
+  radius: number;
+  color: string;
+  coreColor?: string;
+  life: number;
+  maxLife: number;
+  flipDir?: boolean;
 }
 
 export interface BiomeTilesetCell {
@@ -144,24 +185,32 @@ export interface BiomeTileAssets {
   lightColor: string;
 }
 
+export type ClusterTerrainType = 'dirt' | 'grass' | 'aether' | 'ruins';
+
 export interface BiomeDefinition {
   id: string;
   name: string;
   scope: WorldScope;
   world: string;
   description: string;
-  /** Maps tile characters (e.g. '.', '#', '~') to TileDefinition IDs for rooms in this biome */
+  /** Maps tile characters (e.g. '.', ',', '~', ':', '#') to TileDefinition IDs for rooms in this biome */
   tileTypes: Record<string, string>;
   /** Physics and environmental rules supplied by this biome to its rooms */
   tileRules: BiomeTileRules;
   /** Visual tile asset colors and lighting supplied by this biome to its rooms */
   tileAssets: BiomeTileAssets;
+  /** Optional 4x5 (3x3-cluster, 192x240px) Base64 PNG or offscreen-baked biome tileset key for automatic 8-neighbor auto-tiling */
+  clusterTileSheetBase64?: string;
+  /** Default base terrain ('dirt' | 'grass' | 'aether' | 'ruins') when auto-tiling non-terrain cells */
+  defaultClusterTerrain?: ClusterTerrainType;
   /** Optional shared Base64 PNG tilemap / atlas for this biome */
   tileSheetBase64?: string;
   /** Default grid cell size in pixels for tileSheetBase64 (default: 16) */
   tileSheetCellSize?: number;
   /** Optional mapping of tile char ('.', '~', '#') or tile ID to [col, row] cell in tileSheetBase64 */
   tileSheetCoords?: Record<string, BiomeTilesetCell>;
+  /** Optional post-processing, lighting, reflection, and weather layer configuration */
+  postProcess?: BiomePostProcessConfig;
   /** Legacy palette alias for backward compatibility */
   palette: {
     ground: string;
@@ -188,6 +237,10 @@ export interface TileDefinition {
   blocksHeight: number;
   bakedTopColor?: string;
   bakedFrontColor?: string;
+  /** Optional dynamic light source emitted by this tile/prop in the post-processing pass */
+  lightSource?: LightSourceConfig;
+  /** Optional 1px pixel-art outline color for Layer 2 props */
+  outlineColor?: string;
   /** Optional embedded Base64 PNG or grid tilemap slice for Layer 0 ground/liquid */
   layer0Sprite?: Base64SpriteConfig;
   /** Optional embedded Base64 PNG or grid tilemap slice for Layer 1 walls/barriers */
@@ -687,11 +740,12 @@ export interface OrionState {
   spawnAnchor: OrionSpawnAnchor; // Active Drop-Pod / Spawn Anchor coordinates for death/reboot
   gates?: OrionCapabilityGates; // Computed active hardware & skill capability gates
 
-  // Dynamic Entities
+  // Dynamic Entities & Visual Effect Layers
   enemies: EnemyEntity[];
   pickups: PickupEntity[];
   projectiles: OrionProjectile[];
   particles: OrionParticle[];
+  bladeTrails?: BladeTrailEffect[];
 
   // Feedback & Toasts
   toastText: string | null;

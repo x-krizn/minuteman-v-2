@@ -7,6 +7,8 @@ import { BiomeDefinition } from '../../../../types';
 
 const DEFAULT_TILE_TYPES: Record<string, string> = {
   '.': 'floor',
+  ',': 'grass',
+  ':': 'ruins_floor',
   '#': 'pylon_wall',
   P: 'pylon_pillar',
   '~': 'mud',
@@ -32,6 +34,8 @@ export const globalToxicWetlandsBiome: BiomeDefinition = {
   world: 'Shattered Worlds',
   description:
     'Procedural marshland biome supplying corrosive bog water, mud drag rules, and overgrown pylon assets to global wetland rooms.',
+  clusterTileSheetBase64: 'ruins_tileset',
+  defaultClusterTerrain: 'grass',
   tileTypes: { ...DEFAULT_TILE_TYPES },
   tileRules: {
     corrosiveWater: true,

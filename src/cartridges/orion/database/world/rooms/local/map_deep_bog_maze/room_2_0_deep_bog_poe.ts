@@ -17,13 +17,13 @@ export const room20DeepBogPoe: RoomDefinition = {
   bannerTitle: 'DEEP BOG · THE POE & SUBMERGED WURM',
   grid: [
     '####..####', // North passage to global marsh room (2,-1)
-    '#..L.....#', // Poe's Lantern Anchor (L)
-    '#..p..P..#', // Drifting Poe Spirit (p)
-    '#..~~~~..#',
-    '#..~W~~..#', // Submerged Bog Wurm (W) lurking in Corrosive Bog Water (~)
-    '..........',
-    '..........',
-    '#...E....#', // Bog Crawler
+    '#::L..,,,#', // Poe's Lantern Anchor (L) on Ruins flagstones
+    '#::p..P,,#', // Drifting Poe Spirit (p) & Single Wall Pillar (P)
+    '#..~~~~,,#',
+    '#..~W~~..#', // Submerged Bog Wurm (W) lurking in Corrosive Aether (~)
+    '...,.....:',
+    '...,.....:',
+    '#,,,E.:::#', // Bog Crawler
     '####..####', // South passage to global marsh room (2,1)
   ],
 };

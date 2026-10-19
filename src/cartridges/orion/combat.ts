@@ -15,6 +15,7 @@ import {
   WEAPON_SWAP_COOLDOWN,
 } from './constants';
 import { getWeaponDefinition } from './database/weapons';
+import { updateBladeTrails } from './postProcessing';
 import { notifyOrionStateChange } from './stateStore';
 import {
   executeActionPayload,
@@ -251,6 +252,7 @@ export function updateCombat(
     }
   }
   updateActionTimers(state, dt);
+  updateBladeTrails(state, dt);
 
   // Passive energy shield recharge if not overloaded
   if (state.shields.type === 'energy') {
@@ -312,7 +314,21 @@ export function updateCombat(
             const shotDmg = Math.round(action.damage * overdriveMult);
 
             if (isKhopesh) {
-              // Khopesh Sickle Combo: Close-quarters crescent slash arc
+              // Khopesh Sickle Combo: Close-quarters crescent slash arc + Post-Processed Blade Swing Trail
+              state.bladeTrails = state.bladeTrails || [];
+              state.bladeTrails.push({
+                x: state.x,
+                y: state.y,
+                z: state.z,
+                angle: Math.atan2(aim.dy, aim.dx),
+                arcSpan: Math.PI * 0.9,
+                radius: 17,
+                color: '#e879f9',
+                coreColor: '#fdf4ff',
+                life: 0.22,
+                maxLife: 0.22,
+                flipDir: state.ammo % 2 === 0,
+              });
               state.projectiles.push({
                 x: state.x + aim.dx * 10,
                 y: state.y + aim.dy * 10,

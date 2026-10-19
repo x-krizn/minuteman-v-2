@@ -12,8 +12,12 @@ export const belldorBogBiome: BiomeDefinition = {
   world: 'Belldor (Camelot)',
   description:
     'Deep toxic marshlands littered with orbital impact debris, ruined monastery pylons, and armor-eating bog water.',
+  clusterTileSheetBase64: 'ruins_tileset',
+  defaultClusterTerrain: 'dirt',
   tileTypes: {
     '.': 'floor',
+    ',': 'grass',
+    ':': 'ruins_floor',
     '#': 'pylon_wall',
     P: 'pylon_pillar',
     '~': 'mud',

@@ -17,13 +17,13 @@ export const room00DropPodCrater: RoomDefinition = {
   bannerTitle: 'M00: DROP-POD CRATER (SPAWN ANCHOR & WAYSTATION)',
   grid: [
     '##########',
-    '#........#',
-    '#..P..P..#',
-    '#...D....#', // Drop-Pod Crater (White Spawn Anchor & Bog Waystation)
-    '#........#',
-    '#..~~~~...', // Corrosive Bog Water (~) & East passage to 1,0
+    '#::,,,,..#',
+    '#:P,.,P..#',
+    '#::.D....#', // Drop-Pod Crater (White Spawn Anchor & Bog Waystation)
+    '#,,......#',
+    '#,,~~~~...', // Corrosive Aether (~), Grass (,), Ruins (:), Dirt (.) & East passage to 1,0
     '#..~~~~...',
-    '#........#',
+    '#..,,,:::#',
     '####..####', // South passage to procedural global room (0,1)
   ],
 };

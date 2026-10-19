@@ -17,13 +17,13 @@ export const room10FallenScoutRidge: RoomDefinition = {
   bannerTitle: 'FALLEN SCOUT RIDGE · SIR BEDIVERE',
   grid: [
     '####..####', // North passage to Sunken Sinkhole (1,-1)
-    '#........#',
-    '#...S....#', // Bedivere / Fallen Scout (Booster Kit, Khopesh, Signet Ring, Numbered List)
-    '#........#',
+    '#,,,..:::#',
+    '#,,.S.:::#', // Bedivere / Fallen Scout (Booster Kit, Khopesh, Signet Ring, Numbered List)
+    '#,,....::#',
     '#..____..#',
     '...____...',
-    '..........',
-    '#........#',
+    '...,..,...',
+    '#,,,..,,,#',
     '####..####', // South passage to procedural global room (1,1)
   ],
 };

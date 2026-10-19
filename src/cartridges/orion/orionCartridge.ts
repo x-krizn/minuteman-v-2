@@ -255,11 +255,6 @@ export function createOrionCartridge(): Cartridge {
       const dt = Math.min(0.05, dtSeconds);
       state.t += dt;
 
-      // Update toast timer
-      if (state.toastTimer > 0) {
-        state.toastTimer -= dt;
-      }
-
       // 0. Abyssal Sinkhole / Pit Falling & Death
       if (state.isFallingIntoPit) {
         state.isBoosterDashing = false;
@@ -496,7 +491,7 @@ export function createOrionCartridge(): Cartridge {
         return;
       }
 
-      // 3. Jump (A button), Examine Interaction, or Close Pop-up Message
+      // 3. Jump (A button) or Execute Interactive World Anchor (Non-interactive popups never override Jump)
       if (p.a && !state.isBoosterDashing) {
         const tx = Math.floor(state.x / TILE_SIZE);
         const ty = Math.floor(state.y / TILE_SIZE);
@@ -507,32 +502,16 @@ export function createOrionCartridge(): Cartridge {
         const facingTile = roomData?.[ay]?.[ax] || '.';
         const currentTileKey = `${state.room}:${tx},${ty}:${facingTile}`;
 
-        // If an active pop-up toast message is displayed, pressing A closes it immediately!
-        if (state.toastText && state.toastTimer > 0) {
-          state.toastText = null;
-          state.toastTimer = 0;
-          state.promptText = null;
+        const didInteract = executeWorldInteraction(rooms, state, combatCtx);
+        if (didInteract) {
           state.dismissedPromptKey = currentTileKey;
           soundSystem.playSelect();
           notifyOrionStateChange();
-        } else {
-          const didInteract = executeWorldInteraction(rooms, state, combatCtx);
-          if (didInteract) {
-            state.dismissedPromptKey = currentTileKey;
-            soundSystem.playSelect();
-            notifyOrionStateChange();
-          } else if (state.promptText) {
-            // Dismiss informative prompt cleanly
-            state.promptText = null;
-            state.dismissedPromptKey = currentTileKey;
-            soundSystem.playSelect();
-            notifyOrionStateChange();
-          } else if (state.onGround) {
-            // Elevation leap across sinkhole/chasm
-            state.vz = JUMP_VELOCITY;
-            state.onGround = false;
-            soundSystem.playJump();
-          }
+        } else if (state.onGround) {
+          // Elevation leap across sinkhole/chasm (never blocked by non-interactive popups)
+          state.vz = JUMP_VELOCITY;
+          state.onGround = false;
+          soundSystem.playJump();
         }
       }
 

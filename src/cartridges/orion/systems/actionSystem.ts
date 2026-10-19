@@ -311,6 +311,19 @@ export function executeActionPayload(
       if (isKhopesh) {
         // Sweep Deflection
         soundSystem.playSword();
+        state.bladeTrails = state.bladeTrails || [];
+        state.bladeTrails.push({
+          x: state.x,
+          y: state.y,
+          z: state.z,
+          angle: Math.atan2(aim.dy, aim.dx),
+          arcSpan: Math.PI * 1.25,
+          radius: 22,
+          color: '#c084fc',
+          coreColor: '#ffffff',
+          life: 0.26,
+          maxLife: 0.26,
+        });
         state.shields.capacity = Math.min(state.shields.maxCapacity, state.shields.capacity + 12);
         ctx.spawnParticles(state.x, state.y, state.z + 8, 10, '#c084fc', 'DEFLECT!');
         for (const e of state.enemies) {
@@ -370,6 +383,19 @@ export function executeActionPayload(
       if (isKhopesh) {
         // Hamstring Arc: Wide slash that slows enemy speed
         soundSystem.playSword();
+        state.bladeTrails = state.bladeTrails || [];
+        state.bladeTrails.push({
+          x: state.x,
+          y: state.y,
+          z: state.z,
+          angle: Math.atan2(aim.dy, aim.dx),
+          arcSpan: Math.PI * 1.1,
+          radius: 24,
+          color: '#e879f9',
+          coreColor: '#fdf4ff',
+          life: 0.25,
+          maxLife: 0.25,
+        });
         ctx.spawnParticles(state.x + aim.dx * 14, state.y + aim.dy * 14, state.z + 6, 8, '#e879f9', 'HAMSTRING!');
         for (const e of state.enemies) {
           if (e.isSubmerged) continue;
@@ -417,6 +443,19 @@ export function executeActionPayload(
       if (isKhopesh) {
         // Whirlwind Sever: 360-degree heavy cleave
         soundSystem.playSword();
+        state.bladeTrails = state.bladeTrails || [];
+        state.bladeTrails.push({
+          x: state.x,
+          y: state.y,
+          z: state.z,
+          angle: 0,
+          arcSpan: Math.PI * 1.95,
+          radius: 28,
+          color: '#f43f5e',
+          coreColor: '#ffe4e6',
+          life: 0.3,
+          maxLife: 0.3,
+        });
         ctx.spawnParticles(state.x, state.y, state.z + 8, 14, '#f43f5e', 'WHIRLWIND!');
         for (const e of state.enemies) {
           if (e.isSubmerged) continue;
@@ -500,7 +539,7 @@ export function executeActionPayload(
       vy: aim.dy * 210,
       vz: 0,
       damage: Math.round(desc.damage * overdriveMult),
-      damageType: 'Shock',
+      damageType: 'Pulse',
       isPlayer: true,
       life: 0.75,
       radius: 4.5,
@@ -553,7 +592,7 @@ export function executeActionPayload(
           e.armor,
           e.frame,
           computeEnemyDamage(desc.damage, e.faction),
-          'Burn'
+          'Wave'
         );
       }
     }

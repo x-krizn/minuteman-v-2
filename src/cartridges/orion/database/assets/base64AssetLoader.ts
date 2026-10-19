@@ -12,18 +12,61 @@ export interface Base64AtlasDefinition {
   base64: string;
   cellWidth?: number;
   cellHeight?: number;
+  /** Optional pre-baked offscreen HTMLCanvasElement (zero-latency startup cache) */
+  canvas?: HTMLCanvasElement;
 }
 
+export type CachedSpriteSource = HTMLImageElement | HTMLCanvasElement;
+
 /**
- * Shared Base64 Atlas Registry (maps human-readable atlas IDs to Base64 PNG strings)
+ * Shared Atlas Registry (maps human-readable atlas IDs to Base64 PNGs or baked offscreen Canvases)
  */
 export const BASE64_ATLAS_REGISTRY: Record<string, Base64AtlasDefinition> = {};
 
 /**
- * Singleton pre-decoded HTMLImageElement cache keyed by normalized data URI or atlas ID.
- * Ensures zero-allocation 60fps blitting once decoded in browser memory.
+ * Singleton pre-decoded HTMLImageElement / HTMLCanvasElement cache keyed by atlas ID or data URI.
+ * Ensures zero-allocation 60fps blitting once decoded or baked in browser memory.
  */
-const IMAGE_CACHE = new Map<string, HTMLImageElement>();
+const IMAGE_CACHE = new Map<string, CachedSpriteSource>();
+
+/**
+ * Offscreen 1px pixel-art silhouette outline cache keyed by `${sourceKey}:${srcX},${srcY},${cellW},${cellH}:${outlineColor}`
+ */
+const OUTLINE_CACHE = new Map<string, HTMLCanvasElement>();
+
+function getSourceDimensions(src: CachedSpriteSource): { width: number; height: number; ready: boolean } {
+  if (typeof HTMLCanvasElement !== 'undefined' && src instanceof HTMLCanvasElement) {
+    return { width: src.width, height: src.height, ready: src.width > 0 && src.height > 0 };
+  }
+  const img = src as HTMLImageElement;
+  return {
+    width: img.naturalWidth || img.width || 0,
+    height: img.naturalHeight || img.height || 0,
+    ready: Boolean(img.complete && (img.naturalWidth > 0 || img.width > 0)),
+  };
+}
+
+/**
+ * Register a pre-baked offscreen HTMLCanvasElement directly into the global atlas registry.
+ * Eliminates large Base64 strings in source files while rendering immediately on frame 0.
+ */
+export function registerCanvasAtlas(
+  id: string,
+  canvas: HTMLCanvasElement,
+  cellWidth?: number,
+  cellHeight?: number,
+  name?: string
+): void {
+  BASE64_ATLAS_REGISTRY[id] = {
+    id,
+    name: name || id,
+    base64: id,
+    cellWidth,
+    cellHeight,
+    canvas,
+  };
+  IMAGE_CACHE.set(id, canvas);
+}
 
 /**
  * Register a named Base64 PNG sprite or grid tileset/spritesheet in the global atlas registry.
@@ -32,10 +75,14 @@ export function registerBase64Atlas(
   id: string,
   base64: string,
   cellWidth?: number,
-  cellHeight?: number
+  cellHeight?: number,
+  canvas?: HTMLCanvasElement
 ): void {
+  if (canvas) {
+    registerCanvasAtlas(id, canvas, cellWidth, cellHeight);
+    return;
+  }
   BASE64_ATLAS_REGISTRY[id] = { id, base64, cellWidth, cellHeight };
-  // Pre-warm the image cache immediately in browser environments
   getBase64Image(id);
 }
 
@@ -48,7 +95,7 @@ export function normalizeBase64DataUri(base64OrKey: string): string {
   if (!trimmed) return '';
   const registered = BASE64_ATLAS_REGISTRY[trimmed];
   const raw = registered ? registered.base64.trim() : trimmed;
-  if (!raw) return '';
+  if (!raw || raw === trimmed && registered?.canvas) return '';
   if (raw.startsWith('data:image/')) {
     return raw;
   }
@@ -56,15 +103,24 @@ export function normalizeBase64DataUri(base64OrKey: string): string {
 }
 
 /**
- * Retrieve (or lazily instantiate and cache) a decoded HTMLImageElement for a Base64 string or atlas ID.
+ * Retrieve (or lazily instantiate and cache) a decoded HTMLImageElement or pre-baked HTMLCanvasElement.
  */
-export function getBase64Image(base64OrKey: string): HTMLImageElement | null {
-  if (!base64OrKey || typeof Image === 'undefined') return null;
+export function getBase64Image(base64OrKey: string): CachedSpriteSource | null {
+  if (!base64OrKey) return null;
 
   const cached = IMAGE_CACHE.get(base64OrKey);
   if (cached) {
-    return cached.complete && cached.naturalWidth > 0 ? cached : null;
+    const dims = getSourceDimensions(cached);
+    return dims.ready ? cached : null;
   }
+
+  const registered = BASE64_ATLAS_REGISTRY[base64OrKey];
+  if (registered?.canvas) {
+    IMAGE_CACHE.set(base64OrKey, registered.canvas);
+    return registered.canvas;
+  }
+
+  if (typeof Image === 'undefined') return null;
 
   const dataUri = normalizeBase64DataUri(base64OrKey);
   if (!dataUri) return null;
@@ -72,7 +128,8 @@ export function getBase64Image(base64OrKey: string): HTMLImageElement | null {
   const existingByUri = IMAGE_CACHE.get(dataUri);
   if (existingByUri) {
     IMAGE_CACHE.set(base64OrKey, existingByUri);
-    return existingByUri.complete && existingByUri.naturalWidth > 0 ? existingByUri : null;
+    const dims = getSourceDimensions(existingByUri);
+    return dims.ready ? existingByUri : null;
   }
 
   const img = new Image();
@@ -81,21 +138,74 @@ export function getBase64Image(base64OrKey: string): HTMLImageElement | null {
   IMAGE_CACHE.set(base64OrKey, img);
   IMAGE_CACHE.set(dataUri, img);
 
-  return img.complete && img.naturalWidth > 0 ? img : null;
+  const dims = getSourceDimensions(img);
+  return dims.ready ? img : null;
+}
+
+/**
+ * Bake and cache a 1px pixel-art silhouette outline around a sprite slice `(srcX, srcY, cellW, cellH)`
+ * on an offscreen canvas (`cellW + 2` by `cellH + 2`).
+ */
+export function getOutlinedSpriteCanvas(
+  sourceKey: string,
+  src: CachedSpriteSource,
+  srcX: number,
+  srcY: number,
+  cellW: number,
+  cellH: number,
+  outlineColor: string
+): HTMLCanvasElement | null {
+  if (typeof document === 'undefined') return null;
+  const cacheKey = `${sourceKey}:${srcX},${srcY},${cellW},${cellH}:${outlineColor}`;
+  const existing = OUTLINE_CACHE.get(cacheKey);
+  if (existing) return existing;
+
+  const outW = cellW + 2;
+  const outH = cellH + 2;
+  const canvas = document.createElement('canvas');
+  canvas.width = outW;
+  canvas.height = outH;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.imageSmoothingEnabled = false;
+
+  // Stamp 4-neighbor silhouette copies in `outlineColor`
+  const sil = document.createElement('canvas');
+  sil.width = cellW;
+  sil.height = cellH;
+  const sctx = sil.getContext('2d');
+  if (sctx) {
+    sctx.imageSmoothingEnabled = false;
+    sctx.drawImage(src, srcX, srcY, cellW, cellH, 0, 0, cellW, cellH);
+    sctx.globalCompositeOperation = 'source-in';
+    sctx.fillStyle = outlineColor;
+    sctx.fillRect(0, 0, cellW, cellH);
+
+    ctx.drawImage(sil, 0, 1);
+    ctx.drawImage(sil, 2, 1);
+    ctx.drawImage(sil, 1, 0);
+    ctx.drawImage(sil, 1, 2);
+  }
+
+  // Draw crisp original sprite in center
+  ctx.drawImage(src, srcX, srcY, cellW, cellH, 1, 1, cellW, cellH);
+  OUTLINE_CACHE.set(cacheKey, canvas);
+  return canvas;
 }
 
 export interface DrawBase64SpriteOptions {
   dir?: OrionDir;
   stateName?: string;
   isHurt?: boolean;
+  outlineColor?: string;
   defaultAnchor?: 'top-left' | 'center' | 'bottom-center';
   defaultWidth?: number;
   defaultHeight?: number;
 }
 
 /**
- * Draw an individual Base64 PNG or slice a cell/animation frame from a Base64 grid spritesheet/tilemap.
- * Returns `true` if drawn, or `false` if no valid image is ready (allowing automatic procedural fallback).
+ * Draw an individual Base64 PNG, offscreen-baked sub-tile canvas, or grid spritesheet slice.
+ * Supports automatic 1px pixel-art outlines (`outlineColor`) and hurt flashes.
  */
 export function drawBase64Sprite(
   g: CanvasRenderingContext2D,
@@ -106,12 +216,15 @@ export function drawBase64Sprite(
   options?: DrawBase64SpriteOptions
 ): boolean {
   if (!config || !config.base64) return false;
-  const img = getBase64Image(config.base64);
-  if (!img) return false;
+  const src = getBase64Image(config.base64);
+  if (!src) return false;
+
+  const dims = getSourceDimensions(src);
+  if (!dims.ready) return false;
 
   const atlasDef = BASE64_ATLAS_REGISTRY[config.base64];
-  const cellW = config.cellWidth || atlasDef?.cellWidth || img.naturalWidth;
-  const cellH = config.cellHeight || atlasDef?.cellHeight || img.naturalHeight;
+  const cellW = config.cellWidth || atlasDef?.cellWidth || dims.width;
+  const cellH = config.cellHeight || atlasDef?.cellHeight || dims.height;
   if (cellW <= 0 || cellH <= 0) return false;
 
   // Resolve grid column (supports horizontal strip animation via frameCount & fps)
@@ -150,11 +263,40 @@ export function drawBase64Sprite(
 
   const prevSmoothing = g.imageSmoothingEnabled;
   g.imageSmoothingEnabled = false;
-  g.drawImage(img, srcX, srcY, cellW, cellH, Math.round(drawX), Math.round(drawY), destW, destH);
+
+  const activeOutline = config.outlineColor || options?.outlineColor;
+  if (activeOutline) {
+    const outlined = getOutlinedSpriteCanvas(
+      config.base64,
+      src,
+      srcX,
+      srcY,
+      cellW,
+      cellH,
+      activeOutline
+    );
+    if (outlined) {
+      g.drawImage(
+        outlined,
+        0,
+        0,
+        outlined.width,
+        outlined.height,
+        Math.round(drawX - scale),
+        Math.round(drawY - scale),
+        destW + scale * 2,
+        destH + scale * 2
+      );
+    } else {
+      g.drawImage(src, srcX, srcY, cellW, cellH, Math.round(drawX), Math.round(drawY), destW, destH);
+    }
+  } else {
+    g.drawImage(src, srcX, srcY, cellW, cellH, Math.round(drawX), Math.round(drawY), destW, destH);
+  }
 
   // Optional hurt flash overlay for 2.5D entities
   if (options?.isHurt) {
-    g.fillStyle = 'rgba(255, 255, 255, 0.55)';
+    g.fillStyle = 'rgba(255, 255, 255, 0.6)';
     g.fillRect(Math.round(drawX), Math.round(drawY), destW, destH);
   }
 

@@ -1,122 +1,113 @@
-# Project Orion — Hierarchy-Aligned Database Structure, Base64 PNG Pipeline & Authoring Guide
+# Project Orion — Sub-Tile Micro-Composer & 2.5D Post-Processing Pipeline
 
-Reorganize the Orion database into a clean, hierarchy-aligned nested structure (`World [Regions → Areas → Maps → Rooms + Biomes → Tiles]` and `Content Domains`), add a zero-latency **Base64 PNG & Grid Spritesheet/Tilemap** rendering pipeline, and provide a comprehensive standalone **World & Content Authoring Guide**.
+Drastically reduce embedded asset file size by replacing pre-baked full tilesets with a **Sub-Tile Micro-Composer** (`2×2` of `8×8px` quadrants and `4×4` of `4×4px` micro-blocks baked once into an offscreen atlas cache at startup), and introduce a **Multi-Pass Post-Processing & Visual Effects Pipeline** that handles dynamic lighting, bloom, blade trails, projectile glow, automatic sprite outlines, water reflections, and biome weather without requiring hundreds of hardcoded pixel assets.
 
-### User Review & Critical Decisions
+## User Review & Critical Decisions
 
 > [!IMPORTANT]
-> The following decisions were confirmed during clarification and revision feedback and govern this implementation:
+> All choices from your clarifications are locked into this plan. Click **Proceed** to build the offscreen Sub-Tile Micro-Composer, wire the 2.5D Post-Processing & Effect Layers into the renderer, shrink the tileset footprint, and amend the Authoring Guide.
 
-- **Confirmed Decision 1 — Sane, Hierarchy-Aligned Nested Database Structure**:
-  - Consolidate all spatial tiers (`Regions`, `Areas`, `Maps`, `Rooms`, `Biomes`, `Tiles`, and `Generation`) cleanly under the unified `world` domain (eliminating the split between top-level folders and legacy `world` subfolders).
-  - Organize `local` definitions into nested sub-groups matching their parent in the hierarchy (Local Areas grouped by Region, Local Maps grouped by Area, Local Rooms grouped by Map) and upgrade every tier registry to use recursive auto-discovery (`**/*.ts`) so files can be nested at any depth matching the world tree without manual imports.
-- **Confirmed Decision 2 — Standalone Cartridge Authoring Guide**: The complete authoring manual will live as a standalone Markdown reference inside the Orion cartridge folder, structured as a practical recipe book reflecting the cleaned-up nested hierarchy, modular content domains (`Tiles`, `Enemies`, `Weapons`, `Items`, `Equipment`), and asset integration.
-- **Confirmed Decision 3 — Fast Base64 Embedded Asset System**: Rather than relying on external network fetches or slow runtime file I/O, the engine will include a dedicated Base64 image & atlas cache that pre-decodes `data:image/png;base64,...` strings (or raw Base64 payloads) into cached `HTMLImageElement` instances with `imageSmoothingEnabled = false` for crisp pixel art and automatic fallback to procedural Canvas 2D drawing.
-- **Confirmed Decision 4 — Dual Support for Individual PNGs & Grid Spritesheets/Tilemaps**: Every visual entity (Tiles, Props, Biome Tile Atlases, Enemies, Weapons, Pickups, and Equipment Icons) will support either a single Base64 PNG sprite or a grid-based Base64 spritesheet/tilemap (specifying cell dimensions, grid coordinates, directional rows, or animation frame strips).
+- **Confirmed Decision 1 — Hybrid `2×2` (`8px`) Quadrant & `4×4` (`4px`) Micro-Block Sub-Tile Composer**: A `16×16px` tile is synthesized from either **16 rearranged `4×4px` micro-blocks** (for organic terrains like Dirt, Grass, and Corrosive Aether plus stepped neighbor transitions) or **4 rearranged `8×8px` quadrants** (for architectural Ruins masonry, connected walls, and single pillars).
+- **Confirmed Decision 2 — Startup Offscreen Atlas Baking**: All `3×3` terrain, transition, and wall clusters are baked once at startup into an in-memory offscreen canvas cache, shrinking source file size by over 90% while preserving zero-allocation 60fps `drawImage` blitting.
+- **Confirmed Decision 3 — Full 5-Pass Post-Processing & Effect Layer Suite**:
+  1. **Automatic Sprite Outlines, Drop Shadows & Water/Aether Reflections**
+  2. **Procedural Projectiles, Hit Flashes & Sweeping Blade Trails**
+  3. **Dynamic Light Sources, Radial Bloom & Ambient Darkness**
+  4. **Biome Weather Layers (Rain + Ripples, Siege Ash, Luminous Æther Mist)**
+  5. **Optional CRT Scanline, Vignette & Desync Chromatic Glitch Pass**
 
 ---
 
-### 1. Overview & Core Concept
+## 1. Overview & Core Concept
 
 - **What It Does**:
-  1. **Hierarchy-Aligned Database Consolidation**: Restructures the database so the world tiers mirror the actual spatial architecture (`Regions → Areas → Maps → Rooms` and `Biomes → Tiles`). Local content modules are nested by their parent tier (e.g., a room lives under its parent region/area/map subgroup) and are auto-discovered recursively so the database stays organized as the world scales.
-  2. **Zero-Config Base64 Asset Registry & Renderer**: Adds a lightweight, cached Base64 sprite & tilemap utility (`drawBase64Sprite`, `drawBase64TileFromAtlas`, `drawBase64AnimatedFrame`) plus declarative `sprite` / `tilemap` fields on Biome, Tile, Enemy, Weapon, Item, and Equipment definitions. If a Base64 PNG or spritesheet frame is defined on an entity, the 2.5D renderer draws it automatically with pixel-crisp scaling, 2.5D elevation (`Z_SCALE`) offset, and hurt-flash tinting; otherwise, it falls back seamlessly to the existing procedural Canvas 2D renderer.
-  3. **Complete Written Authoring Guide**: Provides copy-pasteable templates, hierarchy organization rules, ASCII grid legends, coordinate linking rules, lore fast-travel setup (`Waygates` & `Æther Waystations`), and Base64 PNG / spritesheet recipes for building out Project Orion from bottom to top without touching engine code.
-- **Target Audience / Persona**: The cartridge creator and level/content designer building out Belldor, the Shattered Worlds, and custom PNG artwork.
-- **Key Value**: Eliminates legacy folder clutter so the database hierarchy is intuitive at a glance, while making drafted PNG assets (both standalone sprites and grid tilemaps) work out-of-the-box via embedded Base64 strings.
+  1. **Takes Tiny Assets and Makes Them Huge**: Instead of embedding 180 individual `16×16px` PNG tiles (`>60 KB` of Base64 strings), the engine stores compact `4×4px` micro-blocks and `8×8px` quadrant seeds (just a few kilobytes total) and algorithmically permutes, rotates, and blends them into all 20 `3×3` biome clusters (`180` tiles across `Dirt`, `Grass`, `Aether`, and `Ruins`) on an offscreen canvas at boot.
+  2. **Shifts Visual Complexity into Engine Effect Layers**: Projectiles, melee weapon arcs, light sources, sprite silhouettes, liquid reflections, hit flashes, and weather are generated dynamically in dedicated rendering passes on top of the base pixel art.
+- **Target Audience / Persona**: You (the world and content author) building rich biomes, weapons, and enemies using tiny seed sprites and declarative effect properties rather than hand-painting hundreds of permutation tiles and effect frames.
+- **Key Value**: Tiny, maintainable source files paired with atmospheric 2.5D visuals (lighting, bloom, reflections, outlines, weather, and combat trails) at 60fps.
 
 ---
 
-### 2. User Experience & Visual Design
+## 2. User Experience & Visual Design
 
-- **Key Authoring Workflows Documented & Supported**:
-  1. **Navigating the Nested World Hierarchy**:
-     - Every spatial tier lives inside the unified World hierarchy, and each tier's `local` collection is organized into parent-named subfolders (Regions → Areas per Region → Maps per Area → Rooms per Map). Adding a file anywhere inside a tier's `global` or nested `local` hierarchy automatically registers it on boot.
-  2. **Where to Start — Bottom-Up vs. Top-Down World Building**:
-     - *Bottom-Up Workflow*: Define a Biome palette/tilemap → Craft a custom Tile or Prop → Paint a 20×12 Room ASCII grid inside its Map subgroup → Assemble Rooms into a Map → Group Maps into an Area with an Æther Waystation → Anchor the Area inside a Region with a Colossal Waygate.
-     - *Quick Encounters Workflow*: Drop a new Enemy, Weapon, Item, or Equipment module into its domain, assign a `spawnChar` or cache reward ID, and place that character directly inside any Room grid.
-  3. **Embedding Individual Base64 PNGs & Grid Tilemaps**:
-     - *Single Sprite Mode*: Paste a Base64 PNG string directly onto a Tile (`layer0Sprite`, `layer1Sprite`, `propSprite`), Enemy (`sprite`), Weapon (`hardpointSprite`), or Item (`iconSprite`), along with optional anchor/offset tuning.
-     - *Grid Tilemap & Animation Sheet Mode*: Register a shared Base64 PNG tileset on a Biome or spritesheet on an Enemy/Weapon, specifying `cellWidth`, `cellHeight`, `col`, `row`, `frameCount`, and `fps`. The engine slices the exact sub-rectangle in real time with `imageSmoothingEnabled = false`.
-- **Visual Identity & Rendering Rules**:
-  - *Crisp Nearest-Neighbor Pixel Rendering*: Disables browser bilinear blurring on canvas when blitting Base64 PNGs so 16×16, 24×24, or 32×32 pixel art stays razor-sharp at any display scale.
-  - *2.5D Depth & Hurt Feedback Preservation*: Embedded PNG sprites automatically inherit the engine's ground drop-shadows, `z * Z_SCALE` vertical elevation, windup telegraph rings, and white hit-flash overlays.
+- **Key Visual & Gameplay Flows**:
+  1. **Sub-Tile World Rendering (Layer 0 & Layer 1)**:
+     - **Organic Terrains (`4×4` of `4×4px` Micro-Blocks)**: `Dirt` (`.`), `Grass` (`,`), and `Corrosive Aether` (`~`) permute 16 `4×4px` micro-blocks per `16×16` cell so ground textures never visibly repeat, and weave `4×4px` edge/corner micro-blocks from neighboring terrains to form seamless `from(to)` transitions.
+     - **Architectural Masonry & Walls (`2×2` of `8×8px` Quadrants)**: `Ruins` (`:`), connected solid walls (`#`), and standalone single walls (`P`) assemble `8×8px` top-left, top-right, bottom-left, and bottom-right quadrants with automatic bevels and mortar joints.
+  2. **Planar Water/Aether Reflections & Sprite Outlines (Layer 2)**:
+     - Entities, pillars, and lanterns standing on or immediately north of Corrosive Aether / Bog Water (`~`) cast a **vertically flipped, horizontal-ripple-sheared reflection** into the liquid surface.
+     - Small entity and prop sprites can enable **automatic 1px pixel-art outlines** (cached offscreen) and **elevation-scaled ground shadows**.
+  3. **Combat Trails, Projectiles & Hit Effects (Layer 3)**:
+     - **Blade Swing Trails**: Melee attacks (such as the Khopesh sickle combo and lunge) emit a sweeping crescent ribbon with tapered alpha and additive edge glow.
+     - **Post-Processed Projectiles & Hit Flashes**: Bolts, plasma slugs, and grenades render an emissive core, motion-blurred velocity tail, and expanding impact ring, while struck targets trigger a crisp white-hot silhouette flash.
+  4. **Biome Weather, Dynamic Lighting & Bloom (Layers 4 & 5)**:
+     - **Weather Pass**: Biomes automatically drive atmospheric particles—slanted **Bog Rain** with ground splash rings in `belldor_bog`, drifting **Cinder Ash** in `orc_siege_encampment`, and rising **Æther Spores / Mist** in waygate sanctums.
+     - **Lighting & Bloom Pass**: A soft ambient darkness veil is carved out by radial light sources (Player Reactor Core, Poe Lantern `L`, Drop-Pod `D`, Waystations `A`, Waygates `Q`, Corrosive Aether `~`, and projectiles) with additive bloom halos.
 
----
-
-### 3. Key Product Decisions & Trade-Offs
-
-- **Decision 1: Unified World Hierarchy with Recursive Parent-Grouped Auto-Discovery**
-  - *Chosen Approach*: Consolidate all 5 spatial tiers (`Regions`, `Areas`, `Maps`, `Rooms`, `Biomes`, plus `Tiles` and `Generation`) under the World database domain, remove redundant split folders, organize `local` modules into subdirectories named after their parent tier, and use recursive glob patterns (`./global/**/*.ts` and `./local/**/*.ts`) in each tier's registry.
-  - *Why*: Previously, world tiers were split between top-level database folders and `world/`, and all local rooms/maps sat in a flat list. Grouping local modules by parent hierarchy while using recursive discovery keeps hundreds of rooms and maps cleanly organized by region/area/map without ever needing manual index edits.
-  - *Alternatives Considered*: Keeping flat `local/` directories at the top level of `database/` (rejected because it fails to reflect the nested `Region → Area → Map → Room` ownership as content grows).
-- **Decision 2: Synchronous-Feel Pre-Decoded Image Cache for Base64 Strings**
-  - *Chosen Approach*: Normalize both `data:image/png;base64,...` URIs and raw Base64 strings into a singleton `Map<string, HTMLImageElement>` cache on first reference or cartridge boot. Once decoded in memory, `ctx.drawImage(...)` blits directly from GPU/memory in sub-millisecond time every frame.
-  - *Why*: Calling `new Image()` inside a 60fps render loop stalls rendering and causes flicker; caching by Base64 hash/ID guarantees instant zero-allocation blitting.
-- **Decision 3: Declarative `SpriteAssetConfig` Alongside Custom `render25D` Hooks**
-  - *Chosen Approach*: Entity definitions can specify a declarative `sprite` / `tileSheet` object (supporting both single Base64 images and `[col, row]` grid sheets) OR use helper functions inside their custom `render25D` / `renderLayer0` / `renderProp25D` callbacks.
-  - *Why*: Lets simple tiles, props, and enemies render a PNG or spritesheet strip with zero drawing code, while still allowing complex multi-part bosses or phase-shifting walls to combine Base64 sprites with custom Canvas effects.
+- **Visual Identity & Theme**:
+  - *Aesthetic Direction*: High-contrast Golden Sun / GBA-inspired 2.5D pixel art enhanced with modern HD-2D post-processing (crisp nearest-neighbor pixels underneath soft radial bloom, planar water reflections, and atmospheric weather).
+  - *Color Palette & Mood*: Deep bog slate (`#090d14`) ambient shadow, cyan shield/waystation glow (`#38bdf8`), violet corrosive aether (`#a855f7`), warm sandstone ruins (`#c8b980`), and ember-orange reactor/ash accents (`#f97316`).
 
 ---
 
-### 4. Technical Architecture & Data Strategy *(Technical Reference)*
+## 3. Key Product Decisions & Trade-Offs
 
-- **Architecture & Component Diagram**:
+- **Decision 1: Startup Offscreen Baking of `4×4px` and `8×8px` Sub-Tiles vs. Static 60KB Base64 Blobs**
+  - *Chosen Approach*: Define compact micro-tile seeds (`4×4px` and `8×8px` pixel matrices / mini-PNGs) and bake the 20 `3×3` cluster atlases (`dirt_general`, `dirt_to_grass`, `ruins_walls`, etc.) onto offscreen canvases once at module initialization.
+  - *Why*: Cuts tile asset code size by >90%, eliminates massive Base64 strings in source files, and lets you author new terrains by defining just a `4×4` or `8×8` micro-pattern.
+- **Decision 2: Declarative Post-Processing Config per Biome, Weapon & Entity**
+  - *Chosen Approach*: Expose lightweight optional properties (`lightSource`, `weather`, `outlineColor`, `bladeTrailColor`, `reflectiveLiquid`) on Biomes, Tiles, Weapons, and Enemies that the renderer's post-processing pipeline reads automatically.
+  - *Why*: Lets you add lighting, weather, outlines, or weapon trails to any content file with 1–2 lines of config instead of writing custom Canvas drawing code.
+
+---
+
+## 4. Technical Architecture & Data Strategy *(Technical Reference)*
+
+### Sub-Tile Micro-Composer & Multi-Pass Post-Processing Architecture
 
 ```
-┌────────────────────────────────────────────────────────────────────────────┐
-│                HIERARCHY-ALIGNED ORION DATABASE ARCHITECTURE               │
-│                                                                            │
-│  ┌──────────────────────────────────────────────────────────────────────┐  │
-│  │  WORLD HIERARCHY DOMAIN (Recursive Auto-Discovery per Tier)          │  │
-│  │                                                                      │  │
-│  │   [Tier 5: REGIONS]  (global + local by world)                       │  │
-│  │          │                                                           │  │
-│  │          ▼                                                           │  │
-│  │   [Tier 4: AREAS]    (global + local nested by parent Region)        │  │
-│  │          │                                                           │  │
-│  │          ▼                                                           │  │
-│  │   [Tier 3: MAPS]     (global + local nested by parent Area)          │  │
-│  │          │                                                           │  │
-│  │          ▼                                                           │  │
-│  │   [Tier 2: ROOMS]    (global + local nested by parent Map)           │  │
-│  │          ▲                                                           │  │
-│  │          │                                                           │  │
-│  │   [Tier 1: BIOMES & TILES] (global/local Biomes ──▶ Tile Registry)   │  │
-│  └──────────────────────────────────┬───────────────────────────────────┘  │
-│                                     │                                      │
-│  ┌──────────────────────────────────┴───────────────────────────────────┐  │
-│  │  ENTITY & GAMEPLAY DOMAINS + BASE64 ASSET REGISTRY                   │  │
-│  │  • Characters, Enemies, Weapons, Equipment, Items, Progression       │  │
-│  │  • Base64 Sprite & Grid Tilemap Cache (Individual PNGs + Atlases)    │  │
-│  └──────────────────────────────────┬───────────────────────────────────┘  │
-└─────────────────────────────────────┼──────────────────────────────────────┘
-                                      │
-                                      ▼
-┌────────────────────────────────────────────────────────────────────────────┐
-│                   2.5D RENDERER & AUTHORING WORKFLOW                       │
-│  • Resolves Region → Area → Map → Room → Biome → Tile hierarchy            │
-│  • Renders Base64 PNG sprites & grid tilemap cells (nearest-neighbor)      │
-│  • Falls back automatically to procedural Canvas 2D drawing                │
-│  • Documented end-to-end in standalone Cartridge Authoring Guide           │
-└────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                 1. STARTUP SUB-TILE MICRO-COMPOSER (Baked Once)                     │
+│                                                                                     │
+│  ┌───────────────────────────────┐        ┌──────────────────────────────────────┐  │
+│  │ 4×4 Micro-Blocks (4×4px each) │        │ 2×2 Quadrant Seeds (8×8px each)      │  │
+│  │ • Dirt, Grass, Aether seeds   │        │ • Ruins masonry, Wall caps, Pillars  │  │
+│  │ • Permuted into 16×16 tiles   │        │ • Assembled into 16×16 walls/floors  │  │
+│  └───────────────┬───────────────┘        └──────────────────┬───────────────────┘  │
+│                  └─────────────────────┬─────────────────────┘                      │
+│                                        ▼                                            │
+│         ┌──────────────────────────────────────────────────────────────┐            │
+│         │ Offscreen Atlas Cache (20 Separated 3×3 Clusters + 4×5 Sheet)│            │
+│         └──────────────────────────────┬───────────────────────────────┘            │
+└────────────────────────────────────────┼────────────────────────────────────────────┘
+                                         ▼
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                 2. 60FPS MULTI-PASS RENDER & POST-PROCESSING PIPELINE               │
+│                                                                                     │
+│  [Pass 0: Ground & Transitions] ──► Blits cached 16×16 auto-tiles (Dirt/Grass/Ruins)│
+│                 │                                                                   │
+│                 ▼                                                                   │
+│  [Pass 1: Liquid Reflections]   ──► Planar flipped + ripple-sheared reflections on ~│
+│                 │                                                                   │
+│                 ▼                                                                   │
+│  [Pass 2: 2.5D Walls & Entities]──► Cached 1px Sprite Outliner + Z-Sorted Shadows   │
+│                 │                                                                   │
+│                 ▼                                                                   │
+│  [Pass 3: Combat Effect Layer]  ──► Sweeping Blade Trails + Glow Projectiles + Hits │
+│                 │                                                                   │
+│                 ▼                                                                   │
+│  [Pass 4: Biome Weather Layer]  ──► Rain Streaks/Ripples, Siege Ash, or Æther Mist  │
+│                 │                                                                   │
+│                 ▼                                                                   │
+│  [Pass 5: Lighting, Bloom & CRT]──► Ambient Veil + Radial Light Cutouts + Desync FX │
+└─────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Data Model & State**:
-  - **Recursive Tier Registries**: Every world tier (`regions`, `areas`, `maps`, `rooms`, `biomes`, `tiles`) uses recursive glob discovery (`./global/**/*.ts` and `./local/**/*.ts`) so local content can be nested cleanly by parent Region, Area, and Map while re-exporting a unified API from `database/world` and `database/index.ts`.
-  - `Base64SpriteConfig`:
-    - `base64: string` (either a full `data:image/png;base64,...` URI, raw Base64 string, or an ID key referencing a shared Base64 atlas)
-    - `cellWidth?: number` and `cellHeight?: number` (for grid tilemaps/spritesheets; defaults to full image dimensions for individual PNGs)
-    - `col?: number` and `row?: number` (static tile coordinate in a grid atlas)
-    - `frameCount?: number` and `fps?: number` (optional horizontal strip animation)
-    - `offsetX?: number`, `offsetY?: number`, `scale?: number` (pixel pivot & 2.5D alignment tuning)
-  - Extended Optional Asset Fields:
-    - `BiomeDefinition.tileSheetBase64?: string` and `tileSheetCoords?: Record<string, { col: number; row: number; cellWidth?: number; cellHeight?: number }>`
-    - `TileDefinition.layer0Sprite?: Base64SpriteConfig`, `layer1Sprite?: Base64SpriteConfig`, `propSprite?: Base64SpriteConfig`
-    - `EnemyWikiDefinition.sprite?: Base64SpriteConfig` (with optional state/direction row mapping)
-    - `WeaponDefinition.hardpointSprite?: Base64SpriteConfig`
-    - `ItemDefinition.iconSprite?: Base64SpriteConfig` & `EquipmentDefinition.iconSprite?: Base64SpriteConfig`
-- **Interactive Component & State Mapping**:
-  - **Hierarchy-Aligned World Resolver (`world/index.ts` & `generation/procedural25dFloor.ts`)**: Imports all five spatial tiers from their unified `world/` hierarchy and resolves parent-child relationships (`Region → Area → Map → Room → Biome → Tile`) seamlessly.
-  - **Base64 Asset Helper (`assets/base64AssetLoader.ts`)**: Exposes `registerBase64Atlas(key, base64)`, `getBase64Image(base64OrKey)`, and `drawBase64Sprite(ctx, config, screenX, screenY, stateTime, options)` so any auto-discovered content file can embed or reference Base64 PNGs with zero boilerplate.
-  - **Renderer Integration (`renderer.ts`)**: Checks declarative `layer0Sprite`, `layer1Sprite`, `propSprite`, `biome.tileSheetCoords`, `enemyDef.sprite`, and `weaponDef.hardpointSprite` automatically during the depth-sorted render pass while preserving full procedural fallbacks for every existing entity.
+### Data Model & Authoring Hooks
+- **Sub-Tile Seed Definition**:
+  - `MicroTileSeed`: Supports `'4x4'` mode (array of `4×4px` micro-blocks arranged in a `4×4` grid to form a `16×16` tile, with automatic edge-block substitution for `from(to)` transitions) and `'2x2'` mode (`8×8px` top-left, top-right, bottom-left, bottom-right quadrants for masonry and walls).
+- **Post-Processing & Effect Layer Hooks**:
+  - `BiomeDefinition.postProcess`: `{ ambientDarkness?: number; bloomIntensity?: number; weather?: 'rain' | 'ash' | 'aether_mist' | 'none'; liquidReflection?: boolean }`
+  - `TileDefinition.lightSource` / `EnemyWikiDefinition.lightSource`: `{ color: string; radius: number; intensity?: number; pulseSpeed?: number }`
+  - `SpriteOutline`: Automatic offscreen 1px silhouette generator (`getOutlinedSpriteCanvas`) for any Base64 or procedural sprite.
+  - `BladeTrailEffect`: Ring buffer of recent melee arc angles/positions rendered as an alpha-tapered crescent slash with additive bloom.

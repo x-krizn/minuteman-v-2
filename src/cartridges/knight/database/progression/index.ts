@@ -4,13 +4,11 @@
  */
 
 import {
-  EquipmentLoadout,
   KnightState,
   ProgressionNodeEntry,
   WeaponDefinition,
 } from '../../types';
 import { getWeaponDefinition } from '../weapons';
-import { getItemDefinition } from '../items';
 
 // Dynamic recursive auto-discovery of all progression nodes
 const progressionModules = import.meta.glob('./**/*.ts', { eager: true }) as Record<

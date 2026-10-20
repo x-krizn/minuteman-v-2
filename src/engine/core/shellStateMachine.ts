@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Cartridge } from '../../types/cartridge';
 import { GameInput } from '../../types/input';
 import { MenuItem, ShellScreen } from '../../types/shell';
 import { cartridgeRunner } from './cartridgeRunner';

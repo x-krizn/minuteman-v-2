@@ -16,28 +16,29 @@ src/cartridges/orion/
 ├── database/                     # Strictly Self-Contained Content & Asset Entry Files
 │   ├── world/                    # Spatial World -> Region -> Area -> Map (+ Rooms) Hierarchy
 │   │   ├── index.ts              # Single Polymorphic Auto-Discovery World Registry
-│   │   ├── belldor/              # World: Belldor (Camelot)
+│   │   ├── universe.ts           # u00 Universe 20-World Catalog (8 Major, 7 Minor, 5 Unstable)
+│   │   ├── belldor/              # 1. Belldor (Camelot) — Arthurian, canon (LOCKED)
 │   │   │   ├── biomes.ts         # Belldor biomes (belldor_bog, orc_siege_encampment, etc.)
 │   │   │   ├── region_belldor_outskirts/
 │   │   │   │   ├── region.ts     # Region definition
-│   │   │   │   ├── m00_the_bog/
-│   │   │   │   │   ├── area.ts   # Area definition + Waystation
-│   │   │   │   │   ├── map_bog_drop_zone.ts # Map + co-located local rooms
-│   │   │   │   │   └── map_deep_bog_maze.ts
-│   │   │   │   └── orc_siege_encampment/
+│   │   │   │   ├── m00_the_bog/  # M00 THE BOG (bog-v2.md · LOCKED)
+│   │   │   │   │   ├── area.ts   # Area definition + Waystation + ZoneFeatureSpec
+│   │   │   │   │   ├── map_bog_drop_zone.ts # Downed trees, Temple ruins, Bedivere's corpse
+│   │   │   │   │   └── map_deep_bog_maze.ts # The Poe, Lady of the Lake arena, OD-BOG-01
+│   │   │   │   └── m01_orc_encampment/      # M01 ORC ENCAMPMENT (mapping-v0.md · UNDEFINED)
 │   │   │   │       ├── area.ts
 │   │   │   │       └── map_orc_siege_camp.ts
 │   │   │   └── region_belldor_camelot_heartland/
 │   │   │       ├── region.ts     # Region definition + Colossal Waygate
-│   │   │       ├── border_town_slums/
+│   │   │       ├── camelot_border_town/     # CAMELOT BORDER TOWN (border-town-v1.md · LOCKED)
 │   │   │       │   ├── area.ts
-│   │   │       │   ├── map_border_town_market.ts
-│   │   │       │   ├── map_border_town_barracks.ts
-│   │   │       │   └── map_border_town_cathedral.ts
-│   │   │       └── camelot_waygate_depths/
+│   │   │       │   ├── map_border_town_market.ts    # Outer Perimeter & Market District
+│   │   │       │   ├── map_border_town_barracks.ts  # Barracks Quarter (Percival/Tristan/Bors)
+│   │   │       │   └── map_border_town_cathedral.ts # Cathedral District & Dungeon Entrance
+│   │   │       └── camelot_interior/        # CAMELOT INTERIOR & Deep Dungeon (OD-BT-01 · UNDEFINED)
 │   │   │           ├── area.ts
 │   │   │           └── map_camelot_waygate_depths.ts
-│   │   ├── tyrranus/             # World: Tyrranus (Greco-Roman Frontier)
+│   │   ├── tyrranus/             # 2. Tyrranus (Greek/Roman, non-canon · UNDEFINED zone docs)
 │   │   │   ├── biomes.ts
 │   │   │   └── region_tyrranus_frontier/
 │   │   │       ├── region.ts

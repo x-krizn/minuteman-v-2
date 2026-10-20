@@ -7,7 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { ALL_SKILLS } from '../database/skills';
 import { ALL_WEAPONS, getWeaponDefinition } from '../database/weapons';
 import { ALL_PROGRESSION_NODES, canPerformAction } from '../database/progression';
-import { ALL_ITEMS, getItemDefinition } from '../database/items';
+import { getItemDefinition } from '../database/items';
 import { getBiomeDefinition } from '../database/world';
 import {
   assignSkill,

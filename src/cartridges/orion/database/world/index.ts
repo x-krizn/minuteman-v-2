@@ -243,7 +243,6 @@ export {
   aether01,
   belldorBogBiome,
   camelotBorderTownArea,
-  camelotBorderTownArea as borderTownSlumsArea,
   dirt01,
   grass01,
   m00TheBogArea,

@@ -9,7 +9,6 @@ import {
   CHARGE_TIME_REQUIRED,
   JUMP_VELOCITY,
   PARRY_WINDOW_DURATION,
-  SWORD_ATTACKS,
 } from './constants';
 import { bodyBox, enemyBox, overlap } from './physics';
 import { spawnParticles } from './particles';

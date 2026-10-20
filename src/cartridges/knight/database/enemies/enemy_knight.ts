@@ -112,7 +112,7 @@ export const enemyKnightDef: EnemyWikiDefinition = {
       }
     }
   },
-  onDefeat(state, entity, ctx) {
+  onDefeat(_state, entity, ctx) {
     ctx.sound.playParry?.();
     ctx.spawnParticles(entity.x, entity.y - 8, 8, '#70a8ff', 'FALLEN');
   },

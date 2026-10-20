@@ -9,6 +9,7 @@ export const gladiusBoltcasterWeapon: WeaponDefinition = {
   id: 'gladius_boltcaster',
   name: 'Gladius Boltcaster',
   class: 'Boltcaster / Rifle',
+  weightClass: 'medium',
   description: 'The standard-issue reference ballistic rifle of the expeditionary pilots.',
   lore:
     'The Gladius Boltcaster fires high-velocity armor-piercing bolts in 9-round salvos. Its full burst defines the Base Combat Unit (54 BCU).',

@@ -4,22 +4,31 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { soundSystem } from '../../../engine/core/soundSystem';
+import { TRAIT_LIST, TRAIT_REGISTRY } from '../database/characters';
 import { getWeaponDefinition } from '../database/weapons';
 import {
+  createNewPilotGame,
   cycleTargetLock,
   getActionCooldown,
   getLockedTarget,
   getOrionStateRef,
   getRoomWorldInfo,
+  loadPilotFromRoster,
+  loadPilotRoster,
   notifyOrionStateChange,
   performWeaponSwap,
   resolveTriggerAction,
   TUTORIAL_STEP_DESCRIPTORS,
   TutorialStepId,
 } from '../systems';
+import { TraitLine } from '../types';
 
 export const OrionHud: React.FC = () => {
   const [, setTick] = useState(0);
+  const [showPilotModal, setShowPilotModal] = useState(false);
+  const [selectedTrait, setSelectedTrait] = useState<TraitLine>('Warrior');
+  const [newPilotName, setNewPilotName] = useState('Pilot Vane');
 
   useEffect(() => {
     let animId: number;
@@ -85,25 +94,147 @@ export const OrionHud: React.FC = () => {
   const cdR = getActionCooldown(state, actionR.id);
   const lockedEnemy = getLockedTarget(state);
   const yHoldPct = Math.min(100, ((state.yHoldTimer || 0) / 0.32) * 100);
+  const roster = showPilotModal ? loadPilotRoster() : [];
 
   return (
     <aside
       aria-label="Pilot Mech Cockpit Telemetry"
       className="absolute inset-0 pointer-events-none flex flex-col justify-between p-1.5 sm:p-2 z-20 select-none font-mono text-[#e2e8f0]"
     >
+      {/* Optional Quick Pilot Creation & Roster Prompt Modal (§2.4) */}
+      {showPilotModal && (
+        <div className="pointer-events-auto fixed inset-0 z-50 bg-[#05070a]/90 backdrop-blur-xs flex items-center justify-center p-3">
+          <div className="w-full max-w-md bg-[#0b111e] border border-[#38bdf8]/60 rounded-xs p-3 space-y-2.5 shadow-2xl text-[10px]">
+            <div className="flex items-center justify-between border-b border-[#1e293b] pb-1.5">
+              <span className="font-bold text-[#ffd27d] text-[11px]">
+                §2.4 PILOT BONDING & ROSTER TERMINAL
+              </span>
+              <button
+                onClick={() => {
+                  soundSystem.playMenuBeep();
+                  setShowPilotModal(false);
+                }}
+                className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#facc15] rounded-xs font-bold"
+              >
+                ✕ CLOSE
+              </button>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="text-[9px] text-[#94a3b8] font-bold">
+                NEW GAME: SELECT TRAIT LINE → PILOT NAME → DEPLOY LV.1 (M00 BOG)
+              </div>
+              <div className="grid grid-cols-3 gap-1">
+                {TRAIT_LIST.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => {
+                      soundSystem.playSelect();
+                      setSelectedTrait(t.id);
+                    }}
+                    className={`p-1 rounded-xs border text-left ${
+                      selectedTrait === t.id
+                        ? 'bg-[#1e293b] border-[#facc15] text-white'
+                        : 'bg-[#090d16] border-[#1e293b] text-[#94a3b8]'
+                    }`}
+                  >
+                    <div className="font-bold text-[#ffd27d] text-[9.5px]">{t.name}</div>
+                    <div className="text-[7.5px] text-[#38bdf8]">
+                      {t.frameModel} · {t.reactor}
+                    </div>
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-1.5 pt-1">
+                <input
+                  type="text"
+                  maxLength={22}
+                  value={newPilotName}
+                  onChange={(e) => setNewPilotName(e.target.value)}
+                  placeholder="Pilot Callsign..."
+                  className="flex-1 bg-[#020617] border border-[#475569] rounded-xs px-2 py-1 text-[10px] text-white outline-none"
+                />
+                <button
+                  onClick={() => {
+                    createNewPilotGame(
+                      state,
+                      selectedTrait,
+                      newPilotName.trim() || `Pilot ${selectedTrait}`
+                    );
+                    soundSystem.playPowerup();
+                    setShowPilotModal(false);
+                  }}
+                  className="px-2.5 py-1 bg-[#facc15] hover:bg-[#fde047] text-[#05070a] font-bold rounded-xs text-[9.5px]"
+                >
+                  🚀 DEPLOY LV.1
+                </button>
+              </div>
+            </div>
+
+            {roster.length > 0 && (
+              <div className="border-t border-[#1e293b] pt-2 space-y-1">
+                <div className="text-[9px] text-[#94a3b8] font-bold">
+                  LOAD SAVED PILOT CHARACTER ({roster.length})
+                </div>
+                <div className="max-h-28 overflow-y-auto space-y-1 pr-0.5">
+                  {roster.map((entry) => (
+                    <div
+                      key={entry.pilotId}
+                      className="flex items-center justify-between p-1.5 bg-[#090d16] border border-[#1e293b] rounded-xs"
+                    >
+                      <div>
+                        <span className="font-bold text-[#ffd27d]">{entry.pilotName}</span>{' '}
+                        <span className="text-[8.5px] text-[#38bdf8]">
+                          ({entry.traitLine} · {entry.frameModel} · Lv.{entry.level})
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (loadPilotFromRoster(state, entry.pilotId)) {
+                            soundSystem.playPowerup();
+                            setShowPilotModal(false);
+                          }
+                        }}
+                        className="px-2 py-0.5 bg-[#0284c7] hover:bg-[#0369a1] text-white font-bold rounded-xs text-[8.5px]"
+                      >
+                        LOAD
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* 1. TOP BAR HUD CLUSTER (Standard Resolution, High-Contrast Cockpit Readouts) */}
       <header className="w-full flex items-start justify-between gap-2 pt-6 sm:pt-1">
         {/* LEFT CLUSTER: Pilot Profile & The Three Defense Layers */}
         <section aria-label="Defense Gauges" className="flex flex-col gap-1 max-w-[200px] sm:max-w-[230px]">
-          {/* Pilot Identity Header */}
-          <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] tracking-wider text-[#94a3b8] font-bold drop-shadow">
-            <span className="text-[#38bdf8] uppercase">VANE</span>
+          {/* Pilot Identity Header (Clickable to open §2.4 Pilot Creation / Load Roster) */}
+          <button
+            type="button"
+            onClick={() => {
+              soundSystem.playSelect();
+              setSelectedTrait(state.traitLine);
+              setNewPilotName(state.pilotName);
+              setShowPilotModal(true);
+            }}
+            title="Click to Create New Pilot or Switch Pilot Roster (§2.4)"
+            className="pointer-events-auto flex items-center gap-1.5 text-[9px] sm:text-[10px] tracking-wider text-[#94a3b8] font-bold drop-shadow hover:text-white cursor-pointer text-left"
+          >
+            <span className="text-[#38bdf8] uppercase truncate max-w-[95px]">
+              {state.pilotName}
+            </span>
             <span className="text-[#475569]">·</span>
-            <span className="text-[#cbd5e1]">{state.traitLine.toUpperCase()}</span>
+            <span className="text-[#cbd5e1]">
+              {(TRAIT_REGISTRY[state.traitLine]?.frameModel || state.traitLine).toUpperCase()}
+            </span>
             <span className="bg-[#1e293b]/90 text-[#38bdf8] border border-[#38bdf8]/40 px-1 py-0.2 rounded text-[8px] font-bold">
               LVL {state.level}
             </span>
-          </div>
+          </button>
 
           {/* Defense Gauges Stack */}
           <div className="flex flex-col gap-0.8 bg-[#0b1322]/85 backdrop-blur-[2px] p-1.5 rounded border border-[#334155]/60 shadow-lg">

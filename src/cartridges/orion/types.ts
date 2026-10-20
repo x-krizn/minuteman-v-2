@@ -480,10 +480,112 @@ export interface RegionDefinition {
   waygate?: WaygateNode;
 }
 
+export type FrameLoadCapacity = 'light' | 'medium' | 'heavy' | 'superheavy';
+export type WeaponWeightClass = 'light' | 'medium' | 'heavy';
+export type LevelBand = 'Lesson' | 'Challenge' | 'Expression';
+export type PilotSkillId =
+  | 'ballistics_kinetics'
+  | 'melee_cqc'
+  | 'propulsion_boost'
+  | 'heavy_chassis'
+  | 'reactor_flux';
+export type FeatTier = 'I' | 'II' | 'III' | 'IV' | 'V';
+export type FeatKind = 'system' | 'interface';
+
+export interface PilotSkillProgress {
+  id: PilotSkillId;
+  name: string;
+  level: number;
+  xp: number;
+  nextLevelXp: number;
+  relatedEquipment: string;
+}
+
+export interface FrameFeatDefinition {
+  id: string;
+  name: string;
+  tier: FeatTier;
+  kind: FeatKind;
+  requiredSkillId: PilotSkillId;
+  requiredSkillLevel: number;
+  gainDescription: string;
+  costDescription: string;
+  /** For system feats: how many steps (+1) this raises frame load capacity */
+  loadStepUp?: number;
+  /** For interface feats: zero-sum static budget modifiers */
+  modifiers?: {
+    damageMult?: number;
+    heatGenMult?: number;
+    shieldCapDelta?: number;
+    moveSpeedMult?: number;
+    swapTimeMult?: number;
+    heatVentMult?: number;
+    armorDurabilityDelta?: number;
+    cooldownMult?: number;
+    accuracyMult?: number;
+  };
+}
+
+export interface ActionModificationDefinition {
+  id: string;
+  name: string;
+  targetCategory: 'ranged' | 'melee' | 'mobility' | 'all';
+  gainDescription: string;
+  drawbackDescription: string;
+  modifiers: {
+    extraProjectiles?: number;
+    tellDurationMult?: number;
+    extraDashDurationSec?: number;
+    heatCostDelta?: number;
+    hyperArmorWindup?: boolean;
+    cooldownMult?: number;
+  };
+}
+
+export interface OrionEquipmentSlots {
+  /** Weapon Set 1 (2 slots, or 1 if two-handed) -> Actions 1-5 */
+  weaponSet1: [string, string | null];
+  /** Weapon Set 2 (2 slots, or 1 if two-handed) -> Actions 1-5 */
+  weaponSet2: [string, string | null];
+  /** Utility Slot (1 slot, sustain heal/repair) -> Action 6 */
+  utility: string | null;
+  /** Aux Slots (4 slots: specialized offensive/defensive/passive) -> Shared Actions 7-10 */
+  aux: [string | null, string | null, string | null, string | null];
+  /** Belt Slots (4 slots: stackable consumables) -> Shared Actions 7-10 */
+  belt: [string | null, string | null, string | null, string | null];
+  /** Armor & Generator Chassis Pieces */
+  armor: {
+    head: string;
+    torso: string;
+    arms: string;
+    legs: string;
+    generator: string;
+  };
+  /** Action Modifications installed per action slot key */
+  installedMods: Record<string, string>;
+}
+
+export interface LoadPenaltySummary {
+  frameLoad: FrameLoadCapacity;
+  weaponWeight: WeaponWeightClass;
+  mobilityMult: number;
+  heatMult: number;
+  swapTimeMult: number;
+  accuracyMult: number;
+  stealthBroken: boolean;
+  label: string;
+}
+
 // Trait Line Wiki Definition
 export interface TraitLineWikiDefinition {
   id: TraitLine;
   name: string;
+  /** Canonical Frame Model designation (e.g. PNSY W416, RAD HAU, Trinity DE-14) */
+  frameModel?: string;
+  /** Canonical base weight / load capacity class ('light' | 'medium' | 'heavy' | 'superheavy') */
+  weightClass?: FrameLoadCapacity;
+  /** Class default utility sustain item unlocked at Level 6 */
+  defaultUtilityItem?: string;
   reactor: ReactorFamily;
   defaultDamageStyle: DamageType;
   identity: string;
@@ -516,6 +618,8 @@ export interface WeaponDefinition {
   id: string;
   name: string;
   class: string;
+  /** Canonical weapon weight class ('light' | 'medium' | 'heavy') for the §3.4 Load Model */
+  weightClass?: WeaponWeightClass;
   description: string;
   lore: string;
   shotsPerChain: number; // 9 for Gladius Boltcaster
@@ -708,7 +812,12 @@ export interface OrionExecutionContext {
   sound: SoundSystem;
 }
 
-export type OrionActionSourceCategory = 'weapon' | 'hardware' | 'reactor';
+export type OrionActionSourceCategory =
+  | 'weapon'
+  | 'hardware'
+  | 'reactor'
+  | 'utility'
+  | 'belt';
 
 export interface OrionActionDescriptor {
   id: string;
@@ -716,8 +825,10 @@ export interface OrionActionDescriptor {
   shortLabel: string;
   sourceCategory: OrionActionSourceCategory;
   sourceLabel: string;
-  hardwareSlot?: 'Head' | 'Torso' | 'Arms' | 'Legs' | 'Reactor';
+  hardwareSlot?: 'Head' | 'Torso' | 'Arms' | 'Legs' | 'Reactor' | 'Utility' | 'Belt';
   weaponSkillSlot?: 1 | 2 | 3 | 4;
+  beltSlotIndex?: 0 | 1 | 2 | 3;
+  traitLineId?: TraitLine;
   sortOrder?: number;
   description: string;
   tellDurationSec: number;
@@ -737,8 +848,23 @@ export interface OrionAssignedActions {
   R: string; // Default: 'weapon_skill_2'
 }
 
+export interface OrionSavedPilotEntry {
+  pilotId: string;
+  pilotName: string;
+  traitLine: TraitLine;
+  frameModel: string;
+  reactor: ReactorFamily;
+  level: number;
+  areaId: string;
+  room: string;
+  tutorialActive: boolean;
+  updatedAt: number;
+  savedDataJson: string;
+}
+
 // Master Player / Orion State
 export interface OrionState {
+  pilotId?: string;
   regionId?: string;
   areaId: string;
   mapId?: string;
@@ -820,10 +946,13 @@ export interface OrionState {
   boosterDirX: number;
   boosterDirY: number;
 
-  // Inventory & Currencies
+  // Inventory, Currencies & 3-Layer Build State (Pilot Skills, Frame Feats, 13-Slot Equipment)
   salvageScrap: number; // Currency
   inventorySlots: Array<{ itemId: string; count: number }>;
   equippedFeats: string[];
+  pilotSkills?: Record<PilotSkillId, PilotSkillProgress>;
+  equipmentSlots?: OrionEquipmentSlots;
+  presence?: number; // Force-reaction field (decays unless maintained)
 
   // World & Incursion State
   clearedRooms: Record<string, boolean>;
@@ -865,16 +994,31 @@ export interface OrionSpawnAnchor {
 }
 
 export interface OrionCapabilityGates {
-  maxWeaponSlots: number; // 1 (Lvl 1), 2 (Lvl 3), 4 (Lvl 13)
-  unlockedSkillSlots: number[]; // [0] (Lvl 1), [0,1,2] (Lvl 4), [0,1,2,3,4] (Lvl 6)
-  canBoosterDash: boolean; // Lvl 2+ & hasBoosterKit (or bypass)
-  canWeaponSwap: boolean; // Lvl 3+ & >1 weapon equipped (or bypass)
-  heatSystemActive: boolean; // Lvl 5+ Generator slot
-  energySystemActive: boolean; // Lvl 5+ Generator slot
-  opticsActive: boolean; // Lvl 7+ Head slot
-  armSidearmActive: boolean; // Lvl 8+ Arm slot
-  defensiveSlots: number; // 0 -> 1 (Lvl 10) -> 3 (Lvl 11)
-  featSlots: number; // 0 -> 1 (Lvl 9) -> 2 (Lvl 12) -> 3 (Lvl 14) -> 4 (Lvl 16) -> 5 (Lvl 18)
-  presenceActive: boolean; // Lvl 15+ Presence system
-  coreSystemActive: boolean; // Lvl 17+ Core reactor identity
+  levelBand: LevelBand; // Lesson (1-5), Challenge (6-12), Expression (13-20)
+  standardProgressionUnlocked: boolean; // Locked out until tutorial is cleared (or bypass enabled)
+  maxWeaponSlots: number; // 1 (Lvl 1), 2 (Lvl 2), 4 (Lvl 13)
+  unlockedSkillSlots: number[]; // Set 1 active action slots (0..4)
+  set1UnlockedActions: number[]; // L1: [1], L2: [1,2], L3+: [1,2,3,4,5]
+  set2UnlockedActions: number[]; // L1: [], L2: [1], L3: [1,2], L4+: [1,2,3,4,5]
+  beltSlotsUnlocked: number; // L1: 2, L2+: 4
+  auxSlotsUnlocked: number; // L1-3: 0, L4: 2, L5+: 4
+  utilitySlotActive: boolean; // L6+
+  legsSlotActive: boolean; // L2+
+  headSlotActive: boolean; // L3+
+  generatorSlotActive: boolean; // L4+
+  armsSlotActive: boolean; // L5+
+  canBoosterDash: boolean; // L1 basic dash / L2+ Legs slot
+  canWeaponSwap: boolean; // L2+ (Poe interaction)
+  heatSystemActive: boolean; // L4+ Generator slot
+  energySystemActive: boolean; // L4+ Generator slot
+  opticsActive: boolean; // L3+ Head slot
+  armSidearmActive: boolean; // L5+ Arms slot
+  defensiveSlots: number; // Aux slots (0 -> 2 at L4 -> 4 at L5)
+  featSlots: number; // Number of unlocked Feat Tiers (I-V)
+  unlockedFeatTiers: FeatTier[]; // Tiers I-V gated by pilot skill levels
+  presenceActive: boolean; // Presence force-reaction field
+  coreSystemActive: boolean; // Reactor identity specialization
+  effectiveLoadCapacity: FrameLoadCapacity;
+  activeWeaponWeight: WeaponWeightClass;
+  loadPenalty: LoadPenaltySummary;
 }

@@ -69,18 +69,23 @@ Before the catastrophe, Camelot was a center of magic and governance with one of
 
 The campaign on Belldor is built as a lesson. You are never handed a tool before the world gives you a reason to need it, and the numbers on your mech do not grow. Two pilots at the same stage are equally strong, and what separates them is what they choose to do.
 
-### Choosing Your Frame
+### Choosing Your Frame (`v0.7` Canonical Spec)
 
 Your mech is a frame with a combat identity. Six are available, and none of them locks you in. They are frameworks, and the equipment you carry is what makes the build.
 
-| Frame | Role |
-| --- | --- |
-| **Warrior** | Frontline striker. Aggressive, high-throughput, runs hot. |
-| **Marauder** | Super-heavy artillery. Burst damage, natural presence, slow. |
-| **Guardian** | Defensive anchor. Draws focus, protects allies, sustains shields. |
-| **Rogue** | Stealth striker. Ambush and burst, lightest frame. |
-| **Wizard** | Energy artillery. Sustained beams, long range. |
-| **Cleric** | Support anchor. Repairs and buffs allies, manages who gets targeted. |
+| Trait Line | Frame Model | Reactor | Base Load | Lv.6 Class Utility (`Action 6`) | Role |
+| --- | --- | --- | --- | --- | --- |
+| **Warrior** | `PNSY W416` | Ichor | Medium | Ichor Field Injector | Frontline striker. Aggressive, high-throughput, runs hot. |
+| **Marauder** | `RAD HAU` | Ichor | Super-Heavy | RAD Siege Plating Autoweld | Super-heavy artillery. Burst damage, natural presence, slow. |
+| **Guardian** | `Trinity DE-14` | Mana | Heavy | Trinity Bastion Condenser | Defensive anchor. Draws focus, protects allies, sustains shields. |
+| **Rogue** | `VX Phantom` | Ether | Light | VX Phase Shroud Cell | Stealth striker. Ambush and burst, lightest frame. |
+| **Wizard** | `ARC Arclight` | Ether | Light | ARC Resonance Siphon | Energy artillery. Sustained beams, long range. |
+| **Cleric** | `SANC Sanctum` | Mana | Medium | Sanctum Reliquary Font | Support anchor. Repairs and buffs allies, manages who gets targeted. |
+
+#### The Three Layers of a Build (`Pilot → Frame → Equipment`)
+- **Pilot (`Skills`)**: Created at New Game (`Trait Line → Pilot Name → Level 1 in M00 The Bog`) and listed on the Load Game roster. Skills progress through equipment use (locked out during the `Levels 1–5` tutorial until `Level 6: Border Town Complete`) and unlock **Feat Tiers (`I–V`)**.
+- **Frame (`Feats`)**: **System Feats** step up Load Capacity (`light → medium → heavy → superheavy`); **Interface Feats** trade stats sideways within a fixed static budget.Feats can be re-distributed at any time.
+- **Equipment (`13 Slots + Mods`)**: Weapon Set 1 (`2`), Weapon Set 2 (`2`), Utility (`1`, `Action 6`), Aux (`4`, `Actions 7–10`), Belt (`4`, `Actions 7–10`), plus `Head`, `Torso`, `Arms`, `Legs`, and `Generator`. Action Modifications alter behavior with a paired drawback.
 
 ---
 

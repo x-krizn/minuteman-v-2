@@ -11,9 +11,16 @@ import {
 } from '../constants';
 import {
   ASSIGNABLE_ACTION_CATALOG,
+  getClassUtilityDefinition,
   getResolvedActionDescriptor,
   OrionActionDescriptor,
 } from '../database/equipment';
+import { getItemDefinition } from '../database/items';
+import {
+  ACTION_MODIFICATION_CATALOG,
+  awardPilotSkillXp,
+  computeInterfaceFeatModifiers,
+} from '../database/progression';
 import { getWeaponDefinition } from '../database/weapons';
 import {
   ArmorState,
@@ -168,51 +175,81 @@ export function isActionUnlocked(
   const desc = getResolvedActionDescriptor(state, actionId);
   const gates = state.gates;
   const lvl = state.level || 1;
+  const isSet2 = state.activeWeaponIndex > 0;
 
   if (desc.sourceCategory === 'weapon' && desc.weaponSkillSlot) {
-    const unlockedSlots = gates?.unlockedSkillSlots ?? [0, 1, 2];
+    const unlockedSlots = gates?.unlockedSkillSlots ?? [0];
     if (unlockedSlots.includes(desc.weaponSkillSlot)) {
       return { unlocked: true, reason: 'READY' };
     }
-    const reqLvl = desc.weaponSkillSlot <= 2 ? 4 : 6;
+    const actionNum = desc.weaponSkillSlot + 1;
+    const reqLvl = isSet2
+      ? actionNum <= 2
+        ? 3
+        : 4
+      : actionNum === 2
+        ? 2
+        : 3;
     return {
       unlocked: false,
-      reason: `UNLOCKS AT LEVEL ${reqLvl} (SKILL SLOT ${desc.weaponSkillSlot})`,
+      reason: `UNLOCKS AT LEVEL ${reqLvl} (SET ${isSet2 ? 2 : 1} ACTION ${actionNum})`,
     };
   }
 
   if (desc.sourceCategory === 'hardware') {
     if (desc.hardwareSlot === 'Legs') {
-      if (state.hasBoosterKit || lvl >= 2) {
-        return { unlocked: true, reason: 'READY (LEGS MODULE)' };
+      if (gates?.legsSlotActive || lvl >= 2) {
+        return { unlocked: true, reason: 'READY (LEGS SLOT · LVL 2)' };
       }
-      return { unlocked: false, reason: 'REQUIRES BOOSTER KIT [S] OR LEVEL 2' };
+      return { unlocked: false, reason: 'UNLOCKS AT LEVEL 2 (LEGS SLOT / POE)' };
     }
     if (desc.hardwareSlot === 'Head') {
-      if (gates?.opticsActive || lvl >= 7) {
-        return { unlocked: true, reason: 'READY (HEAD OPTICS)' };
+      if (gates?.headSlotActive || lvl >= 3) {
+        return { unlocked: true, reason: 'READY (HEAD SLOT · LVL 3)' };
       }
-      return { unlocked: false, reason: 'UNLOCKS AT LEVEL 7 (HEAD OPTICS)' };
-    }
-    if (desc.hardwareSlot === 'Arms') {
-      if (gates?.armSidearmActive || lvl >= 8) {
-        return { unlocked: true, reason: 'READY (ARMS SIDEARM)' };
-      }
-      return { unlocked: false, reason: 'UNLOCKS AT LEVEL 8 (ARMS SIDEARM)' };
+      return { unlocked: false, reason: 'UNLOCKS AT LEVEL 3 (HEAD SLOT / BORDER TOWN)' };
     }
     if (desc.hardwareSlot === 'Torso') {
-      if ((gates?.defensiveSlots ?? 0) >= 1 || lvl >= 10) {
-        return { unlocked: true, reason: 'READY (TORSO PLATING)' };
+      if ((gates?.auxSlotsUnlocked ?? 0) >= 2 || lvl >= 4) {
+        return { unlocked: true, reason: 'READY (AUX SLOTS 1–2 · LVL 4)' };
       }
-      return { unlocked: false, reason: 'UNLOCKS AT LEVEL 10 (DEFENSIVE SLOT)' };
+      return { unlocked: false, reason: 'UNLOCKS AT LEVEL 4 (AUX SLOTS 1–2)' };
+    }
+    if (desc.hardwareSlot === 'Arms') {
+      if (gates?.armsSlotActive || lvl >= 5) {
+        return { unlocked: true, reason: 'READY (ARMS SLOT & AUX 3–4 · LVL 5)' };
+      }
+      return { unlocked: false, reason: 'UNLOCKS AT LEVEL 5 (ARMS SLOT & AUX 3–4)' };
     }
   }
 
   if (desc.sourceCategory === 'reactor') {
-    if (gates?.heatSystemActive || lvl >= 5) {
-      return { unlocked: true, reason: 'READY (REACTOR CORE)' };
+    if (gates?.generatorSlotActive || lvl >= 4) {
+      return { unlocked: true, reason: 'READY (GENERATOR SLOT · LVL 4)' };
     }
-    return { unlocked: false, reason: 'UNLOCKS AT LEVEL 5 (REACTOR GENERATOR)' };
+    return { unlocked: false, reason: 'UNLOCKS AT LEVEL 4 (GENERATOR SLOT)' };
+  }
+
+  if (desc.sourceCategory === 'utility') {
+    if (gates?.utilitySlotActive || lvl >= 6) {
+      return { unlocked: true, reason: 'READY (UTILITY SLOT [ACTION 6] · LVL 6)' };
+    }
+    return {
+      unlocked: false,
+      reason: 'UNLOCKS AT LEVEL 6 (BORDER TOWN COMPLETE · UTILITY SLOT)',
+    };
+  }
+
+  if (desc.sourceCategory === 'belt') {
+    const idx = desc.beltSlotIndex ?? 0;
+    const reqLvl = idx === 0 || idx === 1 ? 1 : idx === 2 ? 5 : 12;
+    if (lvl >= reqLvl || (gates?.beltSlotsUnlocked ?? 2) > idx) {
+      return { unlocked: true, reason: `READY (BELT SLOT ${idx + 1} · LVL ${reqLvl})` };
+    }
+    return {
+      unlocked: false,
+      reason: `UNLOCKS AT LEVEL ${reqLvl} (BELT SLOT ${idx + 1})`,
+    };
   }
 
   return { unlocked: true, reason: 'READY' };
@@ -285,6 +322,18 @@ export function initiateTriggerAction(
   }
 
   const desc = getResolvedActionDescriptor(state, assignedId);
+  if (desc.sourceCategory === 'belt' && typeof desc.beltSlotIndex === 'number') {
+    const itemId = state.equipmentSlots?.belt?.[desc.beltSlotIndex];
+    const invSlot = itemId
+      ? state.inventorySlots.find((s) => s.itemId === itemId)
+      : undefined;
+    if (!itemId || !invSlot || invSlot.count <= 0) {
+      soundSystem.playMenuBeep();
+      ctx.say(`[${trigger}] BELT SLOT ${desc.beltSlotIndex + 1} EMPTY`);
+      return false;
+    }
+  }
+
   const cd = getActionCooldown(state, assignedId);
   if (cd > 0) {
     soundSystem.playMenuBeep();
@@ -292,23 +341,50 @@ export function initiateTriggerAction(
     return false;
   }
 
+  const featMods = computeInterfaceFeatModifiers(state.equippedFeats || []);
+  const heatPenaltyMult = state.gates?.loadPenalty?.heatMult ?? 1.0;
+  const installedMeleeModId = state.equipmentSlots?.installedMods?.melee;
+  const installedRangedModId = state.equipmentSlots?.installedMods?.ranged;
+  const activeMod = ACTION_MODIFICATION_CATALOG.find(
+    (m) => m.id === installedMeleeModId || m.id === installedRangedModId
+  );
+  const modCdMult = activeMod?.modifiers.cooldownMult ?? 1.0;
+  const modTellMult = activeMod?.modifiers.tellDurationMult ?? 1.0;
+
+  const finalCooldown = desc.cooldownSec * featMods.cooldownMult * modCdMult;
+
   state.actionCooldowns = state.actionCooldowns || {};
-  state.actionCooldowns[assignedId] = desc.cooldownSec;
+  state.actionCooldowns[assignedId] = finalCooldown;
   if (desc.sourceCategory === 'weapon' && desc.weaponSkillSlot) {
-    state.skillCooldowns[desc.weaponSkillSlot] = desc.cooldownSec;
+    state.skillCooldowns[desc.weaponSkillSlot] = finalCooldown;
     state.activeSkillSlot = desc.weaponSkillSlot;
   } else {
     state.activeSkillSlot = -1;
   }
 
   state.activeActionId = assignedId;
-  state.skillTellTimer = Math.max(0.05, desc.tellDurationSec);
+  state.skillTellTimer = Math.max(0.05, desc.tellDurationSec * modTellMult);
   state.skillActionTimer = Math.max(0.15, desc.actionDurationSec);
 
   if (desc.heatCost > 0) {
-    state.heat = Math.min(state.maxHeat, state.heat + desc.heatCost);
+    const scaledHeat = desc.heatCost * heatPenaltyMult * featMods.heatGenMult;
+    state.heat = Math.min(state.maxHeat, state.heat + scaledHeat);
   } else if (desc.heatCost < 0) {
     state.heat = Math.max(0, state.heat + desc.heatCost);
+  }
+
+  // Use-Based Pilot Skill Progression:
+  if (desc.sourceCategory === 'weapon') {
+    const currentWeaponId =
+      state.equippedWeapons[state.activeWeaponIndex] || 'gladius_boltcaster';
+    awardPilotSkillXp(
+      state,
+      currentWeaponId === 'khopesh' ? 'melee_cqc' : 'ballistics_kinetics',
+      12,
+      ctx
+    );
+  } else {
+    awardPilotSkillXp(state, 'reactor_flux', 14, ctx);
   }
 
   soundSystem.playCharge();
@@ -337,7 +413,8 @@ export function executeActionPayload(
   const isKhopesh = currentWeaponId === 'khopesh';
   const weapon = getWeaponDefinition(currentWeaponId);
 
-  const overdriveMult = (state.overdriveTimer || 0) > 0 ? 1.3 : 1.0;
+  const featMods = computeInterfaceFeatModifiers(state.equippedFeats || []);
+  const overdriveMult = ((state.overdriveTimer || 0) > 0 ? 1.3 : 1.0) * featMods.damageMult;
   const opticMult = (state.opticMarkTimer || 0) > 0 ? 1.25 : 1.0;
   const hasKnightsOath = state.equippedFeats.includes('knights_oath');
 
@@ -701,7 +778,174 @@ export function executeActionPayload(
     );
     soundSystem.playHeal();
     ctx.spawnParticles(state.x, state.y, state.z + 8, 12, '#77c7ff', '+35 SHIELD');
+    return;
   }
+
+  // 4. CLASS UTILITY SLOT (ACTION 6 · UNLOCKED AT LEVEL 6)
+  if (desc.sourceCategory === 'utility' || actionId === 'class_utility_slot') {
+    const utilDef = getClassUtilityDefinition(
+      state.equipmentSlots?.utility,
+      state.traitLine
+    );
+    if (utilDef.shieldRestore > 0) {
+      state.shields.overloaded = false;
+      state.shields.overloadTimer = 0;
+      state.shields.capacity = Math.min(
+        state.shields.maxCapacity,
+        state.shields.capacity + utilDef.shieldRestore
+      );
+    }
+    if (utilDef.armorRestore > 0) {
+      state.armor.durability = Math.min(
+        state.armor.maxDurability,
+        state.armor.durability + utilDef.armorRestore
+      );
+    }
+    if (utilDef.frameRestore > 0) {
+      state.frame.integrity = Math.min(
+        state.frame.maxIntegrity,
+        state.frame.integrity + utilDef.frameRestore
+      );
+      if (state.frame.integrity > 40) {
+        state.frame.state = 'Operational';
+      }
+    }
+    if (utilDef.energyRestore > 0) {
+      state.energy = Math.min(state.maxEnergy, state.energy + utilDef.energyRestore);
+    }
+    if (utilDef.grantsOverdriveSec) {
+      state.overdriveTimer = Math.max(
+        state.overdriveTimer || 0,
+        utilDef.grantsOverdriveSec
+      );
+    }
+    if (utilDef.grantsOpticMarkSec) {
+      state.opticMarkTimer = Math.max(
+        state.opticMarkTimer || 0,
+        utilDef.grantsOpticMarkSec
+      );
+    }
+    soundSystem.playHeal();
+    ctx.spawnParticles(
+      state.x,
+      state.y,
+      state.z + 10,
+      14,
+      '#4ade80',
+      `${utilDef.shortLabel} ONLINE`
+    );
+    awardPilotSkillXp(state, 'reactor_flux', 16, ctx);
+    return;
+  }
+
+  // 5. BELT SLOTS 1–4 (ACTIONS 7–10 · CONSUMABLE TACTICAL ITEMS)
+  if (desc.sourceCategory === 'belt' && typeof desc.beltSlotIndex === 'number') {
+    const idx = desc.beltSlotIndex;
+    const itemId = state.equipmentSlots?.belt?.[idx];
+    if (!itemId) return;
+    const invIdx = state.inventorySlots.findIndex((s) => s.itemId === itemId);
+    const itemDef = getItemDefinition(itemId);
+    if (invIdx < 0 || !itemDef) {
+      ctx.say(`BELT SLOT ${idx + 1} DEPLETED`);
+      return;
+    }
+
+    const used = itemDef.onUse
+      ? itemDef.onUse(state, { say: ctx.say, sound: ctx.sound })
+      : false;
+    if (used) {
+      state.inventorySlots[invIdx].count -= 1;
+      if (state.inventorySlots[invIdx].count <= 0) {
+        state.inventorySlots.splice(invIdx, 1);
+      }
+      ctx.spawnParticles(
+        state.x,
+        state.y,
+        state.z + 8,
+        10,
+        itemDef.iconColor || '#fbbf24',
+        itemDef.name.toUpperCase()
+      );
+      awardPilotSkillXp(state, 'heavy_chassis', 10, ctx);
+      notifyOrionStateChange();
+    }
+  }
+}
+
+export function activateUtilityOrBeltSlot(
+  state: OrionState,
+  actionId: string
+): boolean {
+  const status = isActionUnlocked(state, actionId);
+  const ctx: OrionCombatContext = {
+    state,
+    sound: soundSystem,
+    spawnParticles: (x, y, z, count, color, label) => {
+      for (let i = 0; i < count; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const sp = 14 + Math.random() * 28;
+        state.particles.push({
+          x,
+          y,
+          z,
+          vx: Math.cos(a) * sp,
+          vy: Math.sin(a) * sp,
+          vz: 15 + Math.random() * 25,
+          life: 0.35 + Math.random() * 0.25,
+          maxLife: 0.6,
+          color,
+          size: 2,
+          label: i === 0 ? label : undefined,
+          fade: true,
+        });
+      }
+    },
+    say: (text: string) => {
+      state.toastText = text;
+      state.toastTimer = 2.6;
+    },
+  };
+
+  if (!status.unlocked) {
+    soundSystem.playMenuBeep();
+    ctx.say(status.reason);
+    notifyOrionStateChange();
+    return false;
+  }
+
+  const desc = getResolvedActionDescriptor(state, actionId);
+  const cd = getActionCooldown(state, actionId);
+  if (cd > 0) {
+    soundSystem.playMenuBeep();
+    ctx.say(`${desc.shortLabel} COOLDOWN (${cd.toFixed(1)}S)`);
+    notifyOrionStateChange();
+    return false;
+  }
+
+  if (desc.sourceCategory === 'belt' && typeof desc.beltSlotIndex === 'number') {
+    const itemId = state.equipmentSlots?.belt?.[desc.beltSlotIndex];
+    const invSlot = itemId
+      ? state.inventorySlots.find((s) => s.itemId === itemId)
+      : undefined;
+    if (!itemId || !invSlot || invSlot.count <= 0) {
+      soundSystem.playMenuBeep();
+      ctx.say(`BELT SLOT ${desc.beltSlotIndex + 1} EMPTY`);
+      notifyOrionStateChange();
+      return false;
+    }
+  }
+
+  state.actionCooldowns = state.actionCooldowns || {};
+  state.actionCooldowns[actionId] = desc.cooldownSec;
+  if (desc.heatCost > 0) {
+    state.heat = Math.min(state.maxHeat, state.heat + desc.heatCost);
+  } else if (desc.heatCost < 0) {
+    state.heat = Math.max(0, state.heat + desc.heatCost);
+  }
+
+  executeActionPayload(state, ctx, actionId, () => undefined);
+  notifyOrionStateChange();
+  return true;
 }
 
 export function updateActionTimers(state: OrionState, dt: number): void {
@@ -728,6 +972,13 @@ export function performWeaponSwap(
   targetIndex?: number,
   bypassCooldown: boolean = false
 ): boolean {
+  if (!bypassCooldown && state.gates && !state.gates.canWeaponSwap) {
+    soundSystem.playMenuBeep();
+    ctx?.say('WEAPON SWAP LOCKED — INTERACT WITH THE POE [3,0] OR BEDIVERE [S] (LVL 2)');
+    notifyOrionStateChange();
+    return false;
+  }
+
   if (state.equippedWeapons.length <= 1) {
     soundSystem.playMenuBeep();
     ctx?.say('NO SECONDARY WEAPON EQUIPPED');
@@ -748,12 +999,17 @@ export function performWeaponSwap(
       : (state.activeWeaponIndex + 1) % state.equippedWeapons.length;
 
   state.activeWeaponIndex = nextIdx;
-  if (!bypassCooldown) {
-    state.weaponSwapCooldown = WEAPON_SWAP_COOLDOWN;
-  }
 
   const newWeaponId = state.equippedWeapons[state.activeWeaponIndex] || 'gladius_boltcaster';
   const newWeapon = getWeaponDefinition(newWeaponId);
+  const featMods = computeInterfaceFeatModifiers(state.equippedFeats || []);
+  const swapPenaltyMult = state.gates?.loadPenalty?.swapTimeMult ?? 1.0;
+
+  if (!bypassCooldown) {
+    state.weaponSwapCooldown =
+      WEAPON_SWAP_COOLDOWN * swapPenaltyMult * featMods.swapTimeMult;
+  }
+
   if (newWeapon) {
     state.maxAmmo = newWeapon.shotsPerChain;
     state.ammo = newWeapon.shotsPerChain;
@@ -879,10 +1135,14 @@ export function handleCombatInput(
       return;
     }
 
+    const installedRangedModId = state.equipmentSlots?.installedMods?.ranged;
+    const rangedMod = ACTION_MODIFICATION_CATALOG.find((m) => m.id === installedRangedModId);
+    const tellMult = currentWeaponId !== 'khopesh' ? (rangedMod?.modifiers.tellDurationMult ?? 1.0) : 1.0;
+
     const skill0 = weapon.moveset[0];
     state.activeSkillSlot = 0;
     state.activeActionId = null;
-    state.skillTellTimer = Math.max(0.04, skill0.tellDurationSec);
+    state.skillTellTimer = Math.max(0.04, skill0.tellDurationSec * tellMult);
     const perShotAction =
       currentWeaponId === 'khopesh'
         ? 0.22
@@ -904,6 +1164,9 @@ export function updateCombat(
   ctx: OrionCombatContext,
   dt: number
 ): void {
+  const featMods = computeInterfaceFeatModifiers(state.equippedFeats || []);
+  const loadPenalty = state.gates?.loadPenalty;
+
   if (state.weaponSwapCooldown > 0) {
     state.weaponSwapCooldown = Math.max(0, state.weaponSwapCooldown - dt);
   }
@@ -938,7 +1201,7 @@ export function updateCombat(
   }
 
   if (state.heat > 0 && !state.isContinuousBoosting) {
-    state.heat = Math.max(0, state.heat - 12 * dt);
+    state.heat = Math.max(0, state.heat - 12 * featMods.heatVentMult * dt);
   }
 
   if (state.activeSkillSlot !== null || state.activeActionId) {
@@ -968,14 +1231,38 @@ export function updateCombat(
           const action = weapon?.moveset[0];
           const aim = getCombatAimVector(state);
           const isKhopesh = currentWeaponId === 'khopesh';
-          const overdriveMult = (state.overdriveTimer || 0) > 0 ? 1.3 : 1.0;
+          const overdriveMult = ((state.overdriveTimer || 0) > 0 ? 1.3 : 1.0) * featMods.damageMult;
 
           if (action && state.ammo > 0) {
             state.ammo -= 1;
-            state.heat = Math.min(state.maxHeat, state.heat + action.heatCost);
+            const shotHeat =
+              action.heatCost * (loadPenalty?.heatMult ?? 1.0) * featMods.heatGenMult;
+            state.heat = Math.min(state.maxHeat, state.heat + shotHeat);
             const shotDmg = Math.round(action.damage * overdriveMult);
 
-            if (isKhopesh) {
+            // Use-Based Pilot Skill Progression: using weapon progresses its skill
+            awardPilotSkillXp(
+              state,
+              isKhopesh ? 'melee_cqc' : 'ballistics_kinetics',
+              6,
+              ctx
+            );
+
+            // §3.5 Critical Frame State (LOCKED): 15% misfire chance per shot when Frame Integrity <= 40 HP
+            const isCriticalMisfire =
+              state.frame.integrity <= 40 && Math.random() < 0.15;
+
+            if (isCriticalMisfire) {
+              soundSystem.playMenuBeep();
+              ctx.spawnParticles(
+                state.x + aim.dx * 8,
+                state.y + aim.dy * 8,
+                state.z + 8,
+                6,
+                '#f87171',
+                'MISFIRE! (CRITICAL)'
+              );
+            } else if (isKhopesh) {
               state.bladeTrails = state.bladeTrails || [];
               state.bladeTrails.push({
                 x: state.x,
@@ -1009,22 +1296,37 @@ export function updateCombat(
               ctx.spawnParticles(state.x + aim.dx * 12, state.y + aim.dy * 12, state.z + 6, 5, '#e879f9', '');
               soundSystem.playSword();
             } else {
-              state.projectiles.push({
-                x: state.x + aim.dx * 8,
-                y: state.y + aim.dy * 8,
-                z: state.z + 6,
-                vx: aim.dx * 185,
-                vy: aim.dy * 185,
-                vz: 0,
-                damage: shotDmg,
-                damageType: action.damageType,
-                isPlayer: true,
-                life: 0.75,
-                radius: 3,
-                color: '#ffd27d',
-                trailColor: '#f59e0b',
-                lightRadius: 18,
-              });
+              // Apply accuracy spread if Load Penalty or Interface Feat modifies accuracy
+              const accMult = (loadPenalty?.accuracyMult ?? 1.0) * featMods.accuracyMult;
+              const spreadRad = accMult < 1.0 ? (Math.random() - 0.5) * 0.22 : 0;
+              const baseAngle = Math.atan2(aim.dy, aim.dx) + spreadRad;
+
+              const installedRangedModId = state.equipmentSlots?.installedMods?.ranged;
+              const rangedMod = ACTION_MODIFICATION_CATALOG.find(
+                (m) => m.id === installedRangedModId
+              );
+              const extraCount = rangedMod?.modifiers.extraProjectiles || 0;
+              const offsets = extraCount > 0 ? [-0.07, 0.07] : [0];
+
+              for (const off of offsets) {
+                const ang = baseAngle + off;
+                state.projectiles.push({
+                  x: state.x + Math.cos(ang) * 8,
+                  y: state.y + Math.sin(ang) * 8,
+                  z: state.z + 6,
+                  vx: Math.cos(ang) * 185,
+                  vy: Math.sin(ang) * 185,
+                  vz: 0,
+                  damage: shotDmg,
+                  damageType: action.damageType,
+                  isPlayer: true,
+                  life: 0.75,
+                  radius: 3,
+                  color: '#ffd27d',
+                  trailColor: '#f59e0b',
+                  lightRadius: 18,
+                });
+              }
               soundSystem.playLaser();
             }
 
@@ -1069,6 +1371,8 @@ export function updateCombat(
           e.damageType,
           (count, color, label) => ctx.spawnParticles(state.x, state.y, state.z + 8, count, color, label)
         );
+        // Use-Based Pilot Skill Progression: absorbing hits progresses heavy_chassis
+        awardPilotSkillXp(state, 'heavy_chassis', 10, ctx);
       }
     }
   }

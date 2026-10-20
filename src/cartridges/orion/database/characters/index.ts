@@ -31,6 +31,8 @@ for (const [path, mod] of Object.entries(modules)) {
   }
 }
 
+export const TRAIT_LIST: TraitLineWikiDefinition[] = Object.values(TRAIT_REGISTRY);
+
 export function getTraitDefinition(id: TraitLine): TraitLineWikiDefinition {
   return TRAIT_REGISTRY[id] || warriorTrait;
 }

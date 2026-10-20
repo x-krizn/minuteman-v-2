@@ -9,6 +9,7 @@ export const khopeshWeapon: WeaponDefinition = {
   id: 'khopesh',
   name: 'Scout Khopesh',
   class: 'Curved Blade',
+  weightClass: 'light',
   description: 'A heavy curved sickle-sword salvaged from the fallen scout in M00.',
   lore:
     'Crafted from forged chassis alloy. In the hands of an agile pilot, its hook-shaped curve slices through armor joints with Pierce damage.',

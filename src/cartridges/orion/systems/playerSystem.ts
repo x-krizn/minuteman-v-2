@@ -21,18 +21,40 @@ import {
   WALK_SPEED,
 } from '../constants';
 import { TRAIT_REGISTRY } from '../database/characters';
+import {
+  ACTION_MODIFICATION_CATALOG,
+  awardPilotSkillXp,
+  computeEffectiveLoadCapacity,
+  computeInterfaceFeatModifiers,
+  computeLoadPenalty,
+  computeUnlockedFeatTiers,
+  createInitialEquipmentSlots,
+  createInitialPilotSkills,
+  getLevelBand,
+  isStandardProgressionUnlocked,
+} from '../database/progression';
 import { getWeaponDefinition } from '../database/weapons';
 import { getBiomeDefinition, getTileDefinition } from '../database/world';
-import { OrionCapabilityGates, OrionCombatContext, OrionState, TraitLine } from '../types';
+import {
+  OrionCapabilityGates,
+  OrionCombatContext,
+  OrionSavedPilotEntry,
+  OrionState,
+  TraitLine,
+} from '../types';
 import { cycleTargetLock, performWeaponSwap, updateTargetLock } from './combatSystem';
-import { updateParticles } from './entitySystem';
+import { spawnRoomEnemies, updateParticles } from './entitySystem';
 import {
   executeWorldInteraction,
   rebootAtSpawnAnchor,
   rehydrateAetherFogRooms,
+  syncRoomHierarchyState,
 } from './worldSystem';
 
 // ─── 1. REACTIVE STATE STORE & PERSISTENCE ───────────────────────────────────
+
+const ORION_ACTIVE_SAVE_KEY = 'orion_save_slot_canonical';
+const ORION_PILOT_ROSTER_KEY = 'orion_pilot_roster_v1';
 
 let orionStateRef: OrionState | null = null;
 let orionRoomsRef: Record<string, string[]> | null = null;
@@ -91,48 +113,191 @@ export function addOrionInventoryItem(
   }
 }
 
+function serializeOrionSaveData(state: OrionState) {
+  if (!state.pilotId) {
+    state.pilotId = `pilot_${state.traitLine.toLowerCase()}_${state.pilotName
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')}`;
+  }
+  return {
+    pilotId: state.pilotId,
+    pilotName: state.pilotName,
+    traitLine: state.traitLine,
+    reactor: state.reactor,
+    level: state.level,
+    heat: state.heat,
+    energy: state.energy,
+    shields: state.shields,
+    armor: state.armor,
+    frame: state.frame,
+    equippedWeapons: state.equippedWeapons,
+    activeWeaponIndex: state.activeWeaponIndex,
+    assignedActions: state.assignedActions,
+    equippedFeats: state.equippedFeats,
+    pilotSkills: state.pilotSkills,
+    equipmentSlots: state.equipmentSlots,
+    presence: state.presence,
+    hasBoosterKit: state.hasBoosterKit,
+    salvageScrap: state.salvageScrap,
+    inventorySlots: state.inventorySlots,
+    clearedRooms: state.clearedRooms,
+    lootedCaches: state.lootedCaches,
+    unlockedGates: state.unlockedGates,
+    incursionEnabled: state.incursionEnabled,
+    tutorialActive: state.tutorialActive,
+    tutorialStep: state.tutorialStep,
+    bypassProgressionGates: state.bypassProgressionGates,
+    flags: state.flags,
+    spawnAnchor: state.spawnAnchor,
+    regionId: state.regionId,
+    areaId: state.areaId,
+    mapId: state.mapId,
+    biomeId: state.biomeId,
+    discoveredWaystations: state.discoveredWaystations,
+    discoveredWaygates: state.discoveredWaygates,
+    room: state.room,
+    rx: state.rx,
+    ry: state.ry,
+    x: state.x,
+    y: state.y,
+    fogGraph: state.fogGraph,
+  };
+}
+
+function applySerializedSaveDataToState(
+  state: OrionState,
+  data: Record<string, any>
+): void {
+  state.pilotId = data.pilotId ?? state.pilotId;
+  state.pilotName = data.pilotName ?? state.pilotName;
+  state.traitLine = data.traitLine ?? state.traitLine;
+  state.reactor = data.reactor ?? state.reactor;
+  state.level = data.level ?? state.level;
+  state.heat = data.heat ?? state.heat;
+  state.energy = data.energy ?? state.energy;
+  state.shields = data.shields ?? state.shields;
+  state.armor = data.armor ?? state.armor;
+  state.frame = data.frame ?? state.frame;
+  state.equippedWeapons = data.equippedWeapons ?? state.equippedWeapons;
+  state.activeWeaponIndex = data.activeWeaponIndex ?? state.activeWeaponIndex;
+  if (data.assignedActions && typeof data.assignedActions === 'object') {
+    state.assignedActions = { ...state.assignedActions, ...data.assignedActions };
+  }
+  if (Array.isArray(data.equippedFeats)) {
+    state.equippedFeats = data.equippedFeats;
+  }
+  if (data.pilotSkills && typeof data.pilotSkills === 'object') {
+    state.pilotSkills = { ...createInitialPilotSkills(), ...data.pilotSkills };
+  }
+  if (data.equipmentSlots && typeof data.equipmentSlots === 'object') {
+    state.equipmentSlots = {
+      ...createInitialEquipmentSlots(state.traitLine),
+      ...data.equipmentSlots,
+    };
+  }
+  state.presence = data.presence ?? state.presence ?? 100;
+  state.hasBoosterKit = data.hasBoosterKit ?? state.hasBoosterKit;
+  state.salvageScrap = data.salvageScrap ?? state.salvageScrap;
+  state.inventorySlots = consolidateInventorySlots(
+    data.inventorySlots ?? state.inventorySlots
+  );
+  state.clearedRooms = data.clearedRooms ?? state.clearedRooms;
+  state.lootedCaches = data.lootedCaches ?? state.lootedCaches;
+  state.unlockedGates = data.unlockedGates ?? state.unlockedGates;
+  state.incursionEnabled = data.incursionEnabled ?? state.incursionEnabled;
+  state.tutorialActive = data.tutorialActive ?? state.tutorialActive;
+  state.tutorialStep = data.tutorialStep ?? state.tutorialStep;
+  state.bypassProgressionGates =
+    data.bypassProgressionGates ?? state.bypassProgressionGates;
+  state.flags = data.flags ?? state.flags;
+  state.spawnAnchor = data.spawnAnchor ?? state.spawnAnchor;
+  state.regionId = data.regionId ?? state.regionId;
+  state.areaId = data.areaId ?? state.areaId;
+  state.mapId = data.mapId ?? state.mapId;
+  state.biomeId = data.biomeId ?? state.biomeId;
+  if (Array.isArray(data.discoveredWaystations)) {
+    state.discoveredWaystations = data.discoveredWaystations;
+  }
+  if (Array.isArray(data.discoveredWaygates)) {
+    state.discoveredWaygates = data.discoveredWaygates;
+  }
+  state.room = data.room ?? state.room;
+  state.rx = data.rx ?? state.rx;
+  state.ry = data.ry ?? state.ry;
+  state.x = data.x ?? state.x;
+  state.y = data.y ?? state.y;
+  if (data.fogGraph && typeof data.fogGraph === 'object') {
+    state.fogGraph = data.fogGraph;
+    if (orionRoomsRef) {
+      rehydrateAetherFogRooms(orionRoomsRef, state);
+    }
+  }
+}
+
+export function loadPilotRoster(): OrionSavedPilotEntry[] {
+  try {
+    const raw = localStorage.getItem(ORION_PILOT_ROSTER_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      }
+    }
+    // Migrate single canonical slot into roster if present
+    const legacyRaw = localStorage.getItem(ORION_ACTIVE_SAVE_KEY);
+    if (legacyRaw) {
+      const data = JSON.parse(legacyRaw);
+      const trait = TRAIT_REGISTRY[(data.traitLine as TraitLine) || 'Warrior'] || TRAIT_REGISTRY.Warrior;
+      const entry: OrionSavedPilotEntry = {
+        pilotId: data.pilotId || `pilot_${(data.traitLine || 'warrior').toLowerCase()}_default`,
+        pilotName: data.pilotName || 'Pilot Vane',
+        traitLine: data.traitLine || 'Warrior',
+        frameModel: trait.frameModel || 'PNSY W416',
+        reactor: data.reactor || trait.reactor,
+        level: data.level || 1,
+        areaId: data.areaId || 'm00_the_bog',
+        room: data.room || '0,0',
+        tutorialActive: Boolean(data.tutorialActive ?? true),
+        updatedAt: Date.now(),
+        savedDataJson: legacyRaw,
+      };
+      localStorage.setItem(ORION_PILOT_ROSTER_KEY, JSON.stringify([entry]));
+      return [entry];
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
+
 export function saveOrionGame(state: OrionState): boolean {
   try {
-    const saveData = {
+    const saveData = serializeOrionSaveData(state);
+    const json = JSON.stringify(saveData);
+    localStorage.setItem(ORION_ACTIVE_SAVE_KEY, json);
+
+    // Also upsert into the §2.4 Pilot Character Roster
+    const roster = loadPilotRoster();
+    const trait = TRAIT_REGISTRY[state.traitLine] || TRAIT_REGISTRY.Warrior;
+    const entry: OrionSavedPilotEntry = {
+      pilotId: saveData.pilotId,
       pilotName: state.pilotName,
       traitLine: state.traitLine,
+      frameModel: trait.frameModel || 'PNSY W416',
       reactor: state.reactor,
       level: state.level,
-      heat: state.heat,
-      energy: state.energy,
-      shields: state.shields,
-      armor: state.armor,
-      frame: state.frame,
-      equippedWeapons: state.equippedWeapons,
-      activeWeaponIndex: state.activeWeaponIndex,
-      assignedActions: state.assignedActions,
-      equippedFeats: state.equippedFeats,
-      hasBoosterKit: state.hasBoosterKit,
-      salvageScrap: state.salvageScrap,
-      inventorySlots: state.inventorySlots,
-      clearedRooms: state.clearedRooms,
-      lootedCaches: state.lootedCaches,
-      unlockedGates: state.unlockedGates,
-      incursionEnabled: state.incursionEnabled,
-      tutorialActive: state.tutorialActive,
-      tutorialStep: state.tutorialStep,
-      bypassProgressionGates: state.bypassProgressionGates,
-      flags: state.flags,
-      spawnAnchor: state.spawnAnchor,
-      regionId: state.regionId,
       areaId: state.areaId,
-      mapId: state.mapId,
-      biomeId: state.biomeId,
-      discoveredWaystations: state.discoveredWaystations,
-      discoveredWaygates: state.discoveredWaygates,
       room: state.room,
-      rx: state.rx,
-      ry: state.ry,
-      x: state.x,
-      y: state.y,
-      fogGraph: state.fogGraph,
+      tutorialActive: state.tutorialActive,
+      updatedAt: Date.now(),
+      savedDataJson: json,
     };
-    localStorage.setItem('orion_save_slot_canonical', JSON.stringify(saveData));
+    const nextRoster = [
+      entry,
+      ...roster.filter((r) => r.pilotId !== entry.pilotId),
+    ].slice(0, 12);
+    localStorage.setItem(ORION_PILOT_ROSTER_KEY, JSON.stringify(nextRoster));
     return true;
   } catch {
     return false;
@@ -141,61 +306,15 @@ export function saveOrionGame(state: OrionState): boolean {
 
 export function loadOrionGame(state: OrionState): boolean {
   try {
-    const raw = localStorage.getItem('orion_save_slot_canonical');
+    const raw = localStorage.getItem(ORION_ACTIVE_SAVE_KEY);
     if (!raw) return false;
     const data = JSON.parse(raw);
-
-    state.pilotName = data.pilotName ?? state.pilotName;
-    state.traitLine = data.traitLine ?? state.traitLine;
-    state.reactor = data.reactor ?? state.reactor;
-    state.level = data.level ?? state.level;
-    state.heat = data.heat ?? state.heat;
-    state.energy = data.energy ?? state.energy;
-    state.shields = data.shields ?? state.shields;
-    state.armor = data.armor ?? state.armor;
-    state.frame = data.frame ?? state.frame;
-    state.equippedWeapons = data.equippedWeapons ?? state.equippedWeapons;
-    state.activeWeaponIndex = data.activeWeaponIndex ?? state.activeWeaponIndex;
-    if (data.assignedActions && typeof data.assignedActions === 'object') {
-      state.assignedActions = { ...state.assignedActions, ...data.assignedActions };
+    applySerializedSaveDataToState(state, data);
+    syncRoomHierarchyState(state);
+    if (orionRoomsRef) {
+      spawnRoomEnemies(orionRoomsRef, state);
     }
-    if (Array.isArray(data.equippedFeats)) {
-      state.equippedFeats = data.equippedFeats;
-    }
-    state.hasBoosterKit = data.hasBoosterKit ?? state.hasBoosterKit;
-    state.salvageScrap = data.salvageScrap ?? state.salvageScrap;
-    state.inventorySlots = consolidateInventorySlots(data.inventorySlots ?? state.inventorySlots);
-    state.clearedRooms = data.clearedRooms ?? state.clearedRooms;
-    state.lootedCaches = data.lootedCaches ?? state.lootedCaches;
-    state.unlockedGates = data.unlockedGates ?? state.unlockedGates;
-    state.incursionEnabled = data.incursionEnabled ?? state.incursionEnabled;
-    state.tutorialActive = data.tutorialActive ?? state.tutorialActive;
-    state.tutorialStep = data.tutorialStep ?? state.tutorialStep;
-    state.bypassProgressionGates = data.bypassProgressionGates ?? state.bypassProgressionGates;
-    state.flags = data.flags ?? state.flags;
-    state.spawnAnchor = data.spawnAnchor ?? state.spawnAnchor;
-    state.regionId = data.regionId ?? state.regionId;
-    state.areaId = data.areaId ?? state.areaId;
-    state.mapId = data.mapId ?? state.mapId;
-    state.biomeId = data.biomeId ?? state.biomeId;
-    if (Array.isArray(data.discoveredWaystations)) {
-      state.discoveredWaystations = data.discoveredWaystations;
-    }
-    if (Array.isArray(data.discoveredWaygates)) {
-      state.discoveredWaygates = data.discoveredWaygates;
-    }
-    state.room = data.room ?? state.room;
-    state.rx = data.rx ?? state.rx;
-    state.ry = data.ry ?? state.ry;
-    state.x = data.x ?? state.x;
-    state.y = data.y ?? state.y;
-    if (data.fogGraph && typeof data.fogGraph === 'object') {
-      state.fogGraph = data.fogGraph;
-      if (orionRoomsRef) {
-        rehydrateAetherFogRooms(orionRoomsRef, state);
-      }
-    }
-
+    syncStateGates(state);
     notifyOrionStateChange();
     return true;
   } catch {
@@ -203,9 +322,75 @@ export function loadOrionGame(state: OrionState): boolean {
   }
 }
 
-export function createInitialOrionState(): OrionState {
-  const defaultTrait = TRAIT_REGISTRY.Warrior;
+export function loadPilotFromRoster(state: OrionState, pilotId: string): boolean {
+  try {
+    const roster = loadPilotRoster();
+    const target = roster.find((r) => r.pilotId === pilotId);
+    if (!target) return false;
+    const data = JSON.parse(target.savedDataJson);
+    applySerializedSaveDataToState(state, data);
+    localStorage.setItem(ORION_ACTIVE_SAVE_KEY, target.savedDataJson);
+    syncRoomHierarchyState(state);
+    if (orionRoomsRef) {
+      spawnRoomEnemies(orionRoomsRef, state);
+    }
+    syncStateGates(state);
+    notifyOrionStateChange();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function deletePilotFromRoster(pilotId: string): OrionSavedPilotEntry[] {
+  try {
+    const roster = loadPilotRoster().filter((r) => r.pilotId !== pilotId);
+    localStorage.setItem(ORION_PILOT_ROSTER_KEY, JSON.stringify(roster));
+    return roster;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * §2.4 Pilot Creation (LOCKED):
+ * Created at New Game: trait line selection, then pilot name, then start at Level 1
+ * in the starting zone (M00 The Bog 0,0) with that trait line's default loadout.
+ */
+export function createNewPilotGame(
+  state: OrionState,
+  traitLine: TraitLine,
+  pilotName: string
+): void {
+  const cleanName = pilotName.trim() || `Pilot ${traitLine}`;
+  const fresh = createInitialOrionState(traitLine, cleanName);
+  fresh.pilotId = `pilot_${traitLine.toLowerCase()}_${Date.now().toString(36)}`;
+
+  Object.assign(state, fresh);
+  syncRoomHierarchyState(state);
+  if (orionRoomsRef) {
+    spawnRoomEnemies(orionRoomsRef, state);
+  }
+  syncStateGates(state);
+  saveOrionGame(state);
+  notifyOrionStateChange();
+}
+
+export function createInitialOrionState(
+  traitLine: TraitLine = 'Warrior',
+  pilotName: string = 'Pilot Vane'
+): OrionState {
+  const defaultTrait = TRAIT_REGISTRY[traitLine] || TRAIT_REGISTRY.Warrior;
+  const startingWeapons =
+    defaultTrait.startingWeapons?.length >= 2
+      ? [...defaultTrait.startingWeapons]
+      : ['gladius_boltcaster', 'khopesh'];
+  const primaryWeaponDef = getWeaponDefinition(startingWeapons[0]);
   return {
+    pilotId: `pilot_${traitLine.toLowerCase()}_${pilotName
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')}`,
     regionId: 'region_belldor_outskirts',
     areaId: 'm00_the_bog',
     mapId: 'map_bog_drop_zone',
@@ -228,8 +413,8 @@ export function createInitialOrionState(): OrionState {
     faceY: 1,
     t: 0,
 
-    pilotName: 'Pilot Vane',
-    traitLine: 'Warrior',
+    pilotName,
+    traitLine,
     reactor: defaultTrait.reactor,
 
     level: 1,
@@ -259,15 +444,15 @@ export function createInitialOrionState(): OrionState {
       state: 'Operational',
     },
 
-    equippedWeapons: ['gladius_boltcaster', 'khopesh'],
+    equippedWeapons: startingWeapons,
     activeWeaponIndex: 0,
     weaponSwapCooldown: 0,
 
-    ammo: 9,
-    maxAmmo: 9,
+    ammo: primaryWeaponDef?.shotsPerChain ?? 9,
+    maxAmmo: primaryWeaponDef?.shotsPerChain ?? 9,
     isReloading: false,
     reloadTimer: 0,
-    reloadDuration: 3.15,
+    reloadDuration: primaryWeaponDef?.reloadDurationSec ?? 3.15,
     skillCooldowns: [0, 0, 0, 0, 0],
 
     activeSkillSlot: null,
@@ -288,7 +473,7 @@ export function createInitialOrionState(): OrionState {
     yHoldTriggeredSwap: false,
     wasYHeld: false,
 
-    hasBoosterKit: false,
+    hasBoosterKit: true,
     isBoosterDashing: false,
     isContinuousBoosting: false,
     bHoldTimer: 0,
@@ -298,8 +483,14 @@ export function createInitialOrionState(): OrionState {
     boosterDirY: 1,
 
     salvageScrap: 0,
-    inventorySlots: [{ itemId: 'repair_kit', count: 2 }],
+    inventorySlots: [
+      { itemId: 'repair_kit', count: 2 },
+      { itemId: 'grail_water', count: 1 },
+    ],
     equippedFeats: [],
+    pilotSkills: createInitialPilotSkills(),
+    equipmentSlots: createInitialEquipmentSlots(traitLine),
+    presence: 100,
 
     clearedRooms: {},
     lootedCaches: {},
@@ -351,38 +542,75 @@ export function createInitialOrionState(): OrionState {
 export function computeCapabilityGates(state: OrionState): OrionCapabilityGates {
   const bypass = Boolean(state.bypassProgressionGates);
   const lvl = bypass ? 20 : Math.max(1, state.level);
+  const levelBand = getLevelBand(lvl);
+  const standardProgressionUnlocked = isStandardProgressionUnlocked(state);
 
-  const maxWeaponSlots = lvl >= 13 ? 4 : lvl >= 3 ? 2 : 1;
+  // §5 Level Sequence (LOCKED):
+  // L1 (Enter Bog): Weapon Set 1 Action 1, Basic Dash, Belt Slots 1-2, Torso
+  // L2 (Poe Interaction): Weapon Set 1 Action 2, Weapon Set 2 Action 1, Weapon Swap, Legs Slot, Belt Slots 3-4
+  // L3 (Enter Border Town): Weapon Set 1 Actions 3-5, Weapon Set 2 Action 2, Head Slot
+  // L4 (Border Town Midpoint): Generator Slot, Weapon Set 2 Actions 3-5, Aux Slots 1-2
+  // L5 (Border Town Benchmark): Arms Slot, Aux Slots 3-4
+  // L6 (Border Town Complete): Utility Slot active (Action 6) + Class Default Utility Item
+  const set1UnlockedActions =
+    lvl >= 3 || !state.tutorialActive ? [1, 2, 3, 4, 5] : lvl >= 2 ? [1, 2] : [1];
+  const set2UnlockedActions =
+    lvl >= 4 || !state.tutorialActive ? [1, 2, 3, 4, 5] : lvl >= 3 ? [1, 2] : lvl >= 2 ? [1] : [];
 
-  const unlockedSkillSlots: number[] = [0];
-  if (lvl >= 4 || !state.tutorialActive) {
-    unlockedSkillSlots.push(1, 2);
-  }
-  if (lvl >= 6) {
-    unlockedSkillSlots.push(3, 4);
-  }
+  const isWeaponSet2Active = state.activeWeaponIndex > 0;
+  const activeSetActions = isWeaponSet2Active ? set2UnlockedActions : set1UnlockedActions;
+  const unlockedSkillSlots = activeSetActions.map((a) => a - 1);
 
-  const canBoosterDash = bypass ? true : state.hasBoosterKit && (lvl >= 2 || !state.tutorialActive);
-  const canWeaponSwap = state.equippedWeapons.length > 1;
-  const heatSystemActive = lvl >= 5 || bypass;
-  const energySystemActive = lvl >= 5 || bypass;
-  const opticsActive = lvl >= 7 || bypass;
-  const armSidearmActive = lvl >= 8 || bypass;
-  const defensiveSlots = lvl >= 11 ? 3 : lvl >= 10 ? 1 : 0;
+  const maxWeaponSlots = lvl >= 13 ? 4 : lvl >= 2 || !state.tutorialActive ? 2 : 1;
+  const beltSlotsUnlocked = lvl >= 2 || bypass ? 4 : 2;
+  const auxSlotsUnlocked = lvl >= 5 || bypass ? 4 : lvl >= 4 ? 2 : 0;
 
-  let featSlots = 0;
-  if (lvl >= 18) featSlots = 5;
-  else if (lvl >= 16) featSlots = 4;
-  else if (lvl >= 14) featSlots = 3;
-  else if (lvl >= 12) featSlots = 2;
-  else if (lvl >= 9) featSlots = 1;
+  const utilitySlotActive = lvl >= 6 || bypass;
+  const legsSlotActive = lvl >= 2 || bypass || state.hasBoosterKit;
+  const headSlotActive = lvl >= 3 || bypass;
+  const generatorSlotActive = lvl >= 4 || bypass;
+  const armsSlotActive = lvl >= 5 || bypass;
 
-  const presenceActive = lvl >= 15 || bypass;
+  // Basic Dash is online at Level 1 (Enter Bog); Legs slot unlocks at Level 2
+  const canBoosterDash = true;
+  const canWeaponSwap =
+    (lvl >= 2 || !state.tutorialActive || bypass) && state.equippedWeapons.length > 1;
+  const heatSystemActive = generatorSlotActive;
+  const energySystemActive = generatorSlotActive;
+  const opticsActive = headSlotActive;
+  const armSidearmActive = armsSlotActive;
+  const defensiveSlots = auxSlotsUnlocked;
+
+  const unlockedFeatTiers = computeUnlockedFeatTiers(state.pilotSkills, bypass);
+  const featSlots = unlockedFeatTiers.length;
+
+  const presenceActive = lvl >= 11 || bypass;
   const coreSystemActive = lvl >= 17 || bypass;
 
+  const effectiveLoadCapacity = computeEffectiveLoadCapacity(
+    state.traitLine,
+    state.equippedFeats || []
+  );
+  const currentWeaponId =
+    state.equippedWeapons[state.activeWeaponIndex] || 'gladius_boltcaster';
+  const activeWeapon = getWeaponDefinition(currentWeaponId);
+  const activeWeaponWeight = activeWeapon?.weightClass || 'medium';
+  const loadPenalty = computeLoadPenalty(effectiveLoadCapacity, activeWeaponWeight);
+
   return {
+    levelBand,
+    standardProgressionUnlocked,
     maxWeaponSlots,
     unlockedSkillSlots,
+    set1UnlockedActions,
+    set2UnlockedActions,
+    beltSlotsUnlocked,
+    auxSlotsUnlocked,
+    utilitySlotActive,
+    legsSlotActive,
+    headSlotActive,
+    generatorSlotActive,
+    armsSlotActive,
     canBoosterDash,
     canWeaponSwap,
     heatSystemActive,
@@ -391,12 +619,52 @@ export function computeCapabilityGates(state: OrionState): OrionCapabilityGates 
     armSidearmActive,
     defensiveSlots,
     featSlots,
+    unlockedFeatTiers,
     presenceActive,
     coreSystemActive,
+    effectiveLoadCapacity,
+    activeWeaponWeight,
+    loadPenalty,
   };
 }
 
 export function syncStateGates(state: OrionState): OrionCapabilityGates {
+  if (!state.pilotSkills) {
+    state.pilotSkills = createInitialPilotSkills();
+  }
+  if (!state.equipmentSlots) {
+    state.equipmentSlots = createInitialEquipmentSlots(state.traitLine);
+  }
+  state.equipmentSlots.weaponSet1 = [
+    state.equippedWeapons[0] || 'gladius_boltcaster',
+    state.equipmentSlots.weaponSet1?.[1] || null,
+  ];
+  state.equipmentSlots.weaponSet2 = [
+    state.equippedWeapons[1] || 'khopesh',
+    state.equipmentSlots.weaponSet2?.[1] || null,
+  ];
+
+  // Apply Static Budget Interface Feat Modifiers to Max Shield & Max Armor Durability
+  const profile = TRAIT_REGISTRY[state.traitLine] || TRAIT_REGISTRY.Warrior;
+  const featMods = computeInterfaceFeatModifiers(state.equippedFeats || []);
+  const targetMaxShield = Math.max(
+    0,
+    profile.baseShield.capacity + featMods.shieldCapDelta
+  );
+  if (state.shields.maxCapacity !== targetMaxShield) {
+    state.shields.maxCapacity = targetMaxShield;
+    state.shields.capacity = Math.min(state.shields.capacity, state.shields.maxCapacity);
+  }
+
+  const targetMaxArmor = Math.max(
+    10,
+    profile.baseArmor.durability + featMods.armorDurabilityDelta
+  );
+  if (state.armor.maxDurability !== targetMaxArmor) {
+    state.armor.maxDurability = targetMaxArmor;
+    state.armor.durability = Math.min(state.armor.durability, state.armor.maxDurability);
+  }
+
   const gates = computeCapabilityGates(state);
   state.gates = gates;
 
@@ -465,6 +733,7 @@ export function applyTraitLineProfile(state: OrionState, traitLine: TraitLine): 
 
   state.traitLine = profile.id;
   state.reactor = profile.reactor;
+  state.equipmentSlots = createInitialEquipmentSlots(profile.id);
 
   state.shields = {
     type: profile.baseShield.type,
@@ -681,7 +950,7 @@ export function updateElevationPhysics(
   }
 }
 
-// ─── 4. TUTORIAL ONBOARDING PROGRESSION ──────────────────────────────────────
+// ─── 4. TUTORIAL ONBOARDING PROGRESSION (§5 LEVEL SEQUENCE 1–6) ──────────────
 
 export type TutorialStepId =
   | 'drop_pod_boot'
@@ -701,39 +970,39 @@ export interface TutorialStepDescriptor {
 export const TUTORIAL_STEP_DESCRIPTORS: Record<TutorialStepId, TutorialStepDescriptor> = {
   drop_pod_boot: {
     id: 'drop_pod_boot',
-    title: 'STEP 1: DROP-POD INITIALIZATION (LVL 1)',
-    objective: 'Test primary movement and Gladius Skill 0 [X], or sync at Drop-Pod Crater [D].',
+    title: 'LV 1 (ENTER BOG): SET 1 ACTION 1, BASIC DASH [B], BELT 1–2, TORSO',
+    objective: 'Test Basic Dash [B] and Set 1 Action 1 [X], then locate Bedivere [S] or The Poe [3,0].',
     targetLevel: 1,
   },
   locate_fallen_scout: {
     id: 'locate_fallen_scout',
-    title: 'STEP 2: FALLEN SCOUT SALVAGE (LVL 2–3)',
-    objective: 'Locate the Fallen Camelot Scout [S] to recover the Booster Kit [B] and Scout Khopesh [Y].',
+    title: 'LV 2 (POE / SCOUT): SET 1 ACTION 2, SET 2 ACTION 1, SWAP [Y], LEGS, BELT 3–4',
+    objective: 'Interact with The Poe [3,0] or Bedivere [S] to unlock Weapon Swap [Y], Legs Slot & Belt 3–4.',
     targetLevel: 2,
   },
   traverse_sinkhole: {
     id: 'traverse_sinkhole',
-    title: 'STEP 3: MOBILITY & WEAPON SWAP (LVL 3)',
-    objective: 'Use Jump [A] or Booster Dash [B] to cross chasms, and test Weapon Swap [Y].',
+    title: 'LV 3 (ENTER BORDER TOWN): SET 1 ACTIONS 3–5, SET 2 ACTION 2, HEAD SLOT',
+    objective: 'Unseal the Bog Exit [G] and enter Camelot Border Town [4,0] to bring Head Slot & Set 1 Actions 3–5 online.',
     targetLevel: 3,
   },
   marsh_combat_trial: {
     id: 'marsh_combat_trial',
-    title: 'STEP 4: THREE DEFENSE LAYERS & ACTIVE SKILLS (LVL 4)',
-    objective: 'Engage marsh hostiles to unlock Active Skill Slots 1–2 ([L] & [R]).',
+    title: 'LV 4 (BORDER TOWN MIDPOINT): GENERATOR, SET 2 ACTIONS 3–5, AUX 1–2',
+    objective: 'Clear a Border Town sector, activate a Grail Switch, or survive the Orc Raid for Generator & Aux 1–2.',
     targetLevel: 4,
   },
   unlock_perimeter_gate: {
     id: 'unlock_perimeter_gate',
-    title: 'STEP 5: PERIMETER BREAKTHROUGH',
-    objective: 'Defeat the Perimeter Vanguard or use a Rusted Gate Key at Gate [G].',
-    targetLevel: 4,
+    title: 'LV 5 (BORDER TOWN BENCHMARK): ARMS SLOT & AUX SLOTS 3–4',
+    objective: 'Engage the Knights or gather 2 Grail Fragments / Switches / Trust for Arms Slot & Aux 3–4.',
+    targetLevel: 5,
   },
   tutorial_complete: {
     id: 'tutorial_complete',
-    title: 'M00 ONBOARDING COMPLETE',
-    objective: 'Proceed into the Border Town Slums or continue exploring Belldor.',
-    targetLevel: 5,
+    title: 'LV 6 (BORDER TOWN COMPLETE): UTILITY SLOT (ACTION 6) & SKILL PROGRESSION ONLINE',
+    objective: 'Lesson band complete. Use equipment to level Pilot Skills -> Feat Tiers I–V (Cap Lv 20).',
+    targetLevel: 6,
   },
 };
 
@@ -746,7 +1015,7 @@ export function getTutorialPromptOverride(
   if (tileChar === 'S') {
     const scoutKey = `scout:${state.room}`;
     if (!state.lootedCaches[scoutKey]) {
-      return '[A] SALVAGE FALLEN SCOUT (BOOSTER KIT & KHOPESH · LVL 3)';
+      return '[A] SALVAGE FALLEN SCOUT (LEGS SLOT, KHOPESH SWAP [Y] & BELT 3–4 · LVL 2)';
     }
   }
 
@@ -765,8 +1034,8 @@ export function handleTutorialAnchorInteraction(
     if (!state.lootedCaches[scoutKey]) {
       state.lootedCaches[scoutKey] = true;
       state.hasBoosterKit = true;
-      if (state.level < 3) {
-        state.level = 3;
+      if (state.level < 2) {
+        state.level = 2;
       }
       if (!state.equippedWeapons.includes('khopesh')) {
         state.equippedWeapons.push('khopesh');
@@ -779,7 +1048,7 @@ export function handleTutorialAnchorInteraction(
       syncStateGates(state);
 
       soundSystem.playPowerup();
-      ctx.say('TUTORIAL LVL 3: BOOSTER [B] & KHOPESH SWAP [Y] UNLOCKED');
+      ctx.say('LEVEL 2 UNLOCKED: WEAPON SWAP [Y], LEGS SLOT & BELT SLOTS 3–4');
       notifyOrionStateChange();
       return true;
     }
@@ -802,30 +1071,76 @@ export function updateTutorialSystem(
     notifyOrionStateChange();
   }
 
-  const anyRoomCleared = Object.keys(state.clearedRooms).length > 0;
-  const anyCacheLooted = Object.keys(state.lootedCaches).some((k) => !k.startsWith('scout:'));
-
-  if ((anyRoomCleared || anyCacheLooted) && !getOrionFlag(state, 'tutorial_lvl4_unlocked', false)) {
-    setOrionFlag(state, 'tutorial_lvl4_unlocked', true);
-    if (state.level < 4) {
-      state.level = 4;
-      syncStateGates(state);
-      soundSystem.playPowerup();
-      ctx.say('LEVEL 4 UNLOCKED: ACTIVE SKILLS [L] & [R] ONLINE');
-      state.tutorialStep = 'unlock_perimeter_gate';
-      notifyOrionStateChange();
-    }
+  // Level 2 Fixed Event: Poe Interaction or Fallen Scout salvage
+  const poeHelped = state.flags?.poe_state === 'helped';
+  const scoutSalvaged = Boolean(state.flags?.scout_salvaged);
+  if ((poeHelped || scoutSalvaged) && state.level < 2) {
+    state.level = 2;
+    state.hasBoosterKit = true;
+    state.tutorialStep = 'traverse_sinkhole';
+    syncStateGates(state);
+    soundSystem.playPowerup();
+    ctx.say('LEVEL 2 (POE INTERACTION): SET 1 ACT 2, SET 2 ACT 1, SWAP [Y], LEGS & BELT 3–4');
+    notifyOrionStateChange();
   }
 
+  // Level 3 Fixed Event: Enter Border Town (or unseal Bog Gate)
+  const enteredBorderTown =
+    state.areaId === 'camelot_border_town' || Object.keys(state.unlockedGates).length > 0;
+  if (enteredBorderTown && state.level < 3) {
+    state.level = 3;
+    state.tutorialStep = 'marsh_combat_trial';
+    syncStateGates(state);
+    soundSystem.playPowerup();
+    ctx.say('LEVEL 3 (ENTER BORDER TOWN): SET 1 ACTIONS 3–5, SET 2 ACTION 2 & HEAD SLOT');
+    notifyOrionStateChange();
+  }
+
+  // Level 4 Fixed Event: Border Town Midpoint (Switch, Raid, or Combat Clear after Lv 3)
+  const switches = Number(state.flags?.dungeon_switches || 0);
+  const fragments = Number(state.flags?.grail_fragments || 0);
+  const trust = Number(state.flags?.town_trust || 0);
+  const midpointReached =
+    switches >= 1 ||
+    fragments >= 1 ||
+    trust >= 1 ||
+    Boolean(state.flags?.orc_raid_active) ||
+    (state.areaId === 'camelot_border_town' && Object.keys(state.clearedRooms).length >= 2);
+  if (midpointReached && state.level < 4) {
+    state.level = 4;
+    state.tutorialStep = 'unlock_perimeter_gate';
+    syncStateGates(state);
+    soundSystem.playPowerup();
+    ctx.say('LEVEL 4 (BORDER TOWN MIDPOINT): GENERATOR SLOT, SET 2 ACTIONS 3–5 & AUX 1–2');
+    notifyOrionStateChange();
+  }
+
+  // Level 5 Fixed Event: Border Town Benchmark
+  const benchmarkReached =
+    Boolean(state.flags?.knights_pulled_together) ||
+    switches >= 2 ||
+    fragments >= 2 ||
+    trust >= 2;
+  if (benchmarkReached && state.level < 5) {
+    state.level = 5;
+    syncStateGates(state);
+    soundSystem.playPowerup();
+    ctx.say('LEVEL 5 (BORDER TOWN BENCHMARK): ARMS SLOT & AUX SLOTS 3–4 ONLINE');
+    notifyOrionStateChange();
+  }
+
+  // Level 6 Fixed Event: Border Town Complete (Cathedral Door Open) -> Unlocks Standard Progression!
   if (
-    Object.keys(state.unlockedGates).length > 0 &&
+    Boolean(state.flags?.cathedral_door_open) &&
     state.tutorialStep !== 'tutorial_complete'
   ) {
     state.tutorialStep = 'tutorial_complete';
-    if (state.level < 5) {
-      state.level = 5;
-      syncStateGates(state);
+    if (state.level < 6) {
+      state.level = 6;
     }
+    syncStateGates(state);
+    soundSystem.playPowerup();
+    ctx.say('LEVEL 6 (BORDER TOWN COMPLETE): UTILITY SLOT (ACTION 6) & USE-BASED SKILL PROGRESSION UNLOCKED!');
     notifyOrionStateChange();
   }
 }
@@ -899,6 +1214,16 @@ export function updatePlayerSystem(
   }
 
   const gates = syncStateGates(state);
+  const featMods = computeInterfaceFeatModifiers(state.equippedFeats || []);
+  // §3.5 Critical Frame State (LOCKED): <= 40 HP (<= 20%) imposes -30% movement speed
+  const criticalSpeedMult = state.frame.integrity <= 40 ? 0.7 : 1.0;
+  const totalMobilityMult =
+    gates.loadPenalty.mobilityMult * featMods.moveSpeedMult * criticalSpeedMult;
+
+  const installedMobilityModId = state.equipmentSlots?.installedMods?.mobility;
+  const mobilityMod = ACTION_MODIFICATION_CATALOG.find((m) => m.id === installedMobilityModId);
+  const extraDashSec = mobilityMod?.modifiers.extraDashDurationSec || 0;
+  const extraDashHeat = mobilityMod?.modifiers.heatCostDelta || 0;
 
   // 1. Directional Movement & Input
   const p = input.pressed;
@@ -948,7 +1273,7 @@ export function updatePlayerSystem(
     state.bHoldTimer = 0;
     if (!gates.canBoosterDash) {
       soundSystem.playMenuBeep();
-      combatCtx.say('BOOSTER KIT OFFLINE — SALVAGE FALLEN SCOUT [S]');
+      combatCtx.say('BOOSTER KIT OFFLINE');
       notifyOrionStateChange();
     } else if (state.heat >= state.maxHeat) {
       soundSystem.playMenuBeep();
@@ -956,9 +1281,16 @@ export function updatePlayerSystem(
       notifyOrionStateChange();
     } else if (state.boosterCooldown <= 0) {
       state.isBoosterDashing = true;
-      state.boosterTimer = BOOSTER_DASH_DURATION;
+      state.boosterTimer = BOOSTER_DASH_DURATION + extraDashSec;
       state.boosterCooldown = BOOSTER_DASH_COOLDOWN * 0.65;
-      state.heat = Math.min(state.maxHeat, state.heat + BOOSTER_HEAT_COST * 0.7);
+      const dashHeat =
+        (BOOSTER_HEAT_COST * 0.7 + extraDashHeat) *
+        gates.loadPenalty.heatMult *
+        featMods.heatGenMult;
+      state.heat = Math.min(state.maxHeat, state.heat + dashHeat);
+
+      // Use-Based Pilot Skill Progression: Boosting progresses propulsion_boost
+      awardPilotSkillXp(state, 'propulsion_boost', 8, combatCtx);
 
       const dirInfo = DIR_VECTORS[state.dir] || DIR_VECTORS.S;
       state.boosterDirX = hasMoveInput ? normMoveX : state.faceX || dirInfo.dx;
@@ -983,7 +1315,7 @@ export function updatePlayerSystem(
     }
   }
 
-  if (h.b && gates.canBoosterDash) {
+  if (h.b && gates.legsSlotActive) {
     state.bHoldTimer = (state.bHoldTimer || 0) + dt;
     if (state.bHoldTimer >= B_HOLD_CONTINUOUS_THRESHOLD_SEC && state.heat < state.maxHeat) {
       state.isContinuousBoosting = true;
@@ -992,7 +1324,13 @@ export function updatePlayerSystem(
       state.boosterDirX = hasMoveInput ? normMoveX : state.boosterDirX || dirInfo.dx;
       state.boosterDirY = hasMoveInput ? normMoveY : state.boosterDirY || dirInfo.dy;
 
-      state.heat = Math.min(state.maxHeat, state.heat + CONTINUOUS_BOOST_HEAT_PER_SEC * dt);
+      const contHeat =
+        CONTINUOUS_BOOST_HEAT_PER_SEC *
+        gates.loadPenalty.heatMult *
+        featMods.heatGenMult *
+        dt;
+      state.heat = Math.min(state.maxHeat, state.heat + contHeat);
+      awardPilotSkillXp(state, 'propulsion_boost', 6 * dt, combatCtx);
 
       if (Math.random() < 0.75) {
         state.particles.push({
@@ -1035,7 +1373,8 @@ export function updatePlayerSystem(
         state.isBoosterDashing = false;
       }
     }
-    const boostSpeed = state.isContinuousBoosting ? BOOSTER_SPEED * 0.88 : BOOSTER_SPEED;
+    const boostSpeed =
+      (state.isContinuousBoosting ? BOOSTER_SPEED * 0.88 : BOOSTER_SPEED) * totalMobilityMult;
     const step = boostSpeed * dt;
     state.x = moveEntityX(rooms, state, state.x, state.y, state.z, state.boosterDirX * step);
     state.y = moveEntityY(rooms, state, state.x, state.y, state.z, state.boosterDirY * step);
@@ -1046,7 +1385,7 @@ export function updatePlayerSystem(
     const inMud = curChar === '~' && state.z <= 0;
     const biomeMudMult =
       getBiomeDefinition(state.biomeId).tileRules?.mudSlowMultiplier ?? MUD_SPEED_PENALTY;
-    const speed = WALK_SPEED * (inMud ? biomeMudMult : 1.0);
+    const speed = WALK_SPEED * (inMud ? biomeMudMult : 1.0) * totalMobilityMult;
 
     const stepX = normMoveX * speed * dt;
     const stepY = normMoveY * speed * dt;

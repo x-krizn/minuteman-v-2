@@ -17,5 +17,5 @@ export const warriorTrait: TraitLineWikiDefinition = {
   lore: 'Frontline mechs deployed to hold ground and absorb sustained kinetic fire.',
   baseShield: { type: 'energy', capacity: 60 },
   baseArmor: { type: 'Reactive', threshold: 6, rating: 4, durability: 80 },
-  startingWeapons: ['gladius_boltcaster'],
+  startingWeapons: ['long_sword', 'gladius_boltcaster'],
 };

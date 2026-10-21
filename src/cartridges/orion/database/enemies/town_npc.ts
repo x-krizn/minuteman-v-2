@@ -98,8 +98,25 @@ export const townNpcEntity: EnemyWikiDefinition = {
         if (e.stateTimer <= 0) {
           e.state = 'attack';
           e.stateTimer = 0.2;
-          e.x += (dx / dist) * 10;
-          e.y += (dy / dist) * 10;
+          e.hasStruckThisAttack = false;
+          const ang = e.attackAngle ?? Math.atan2(dy, dx);
+          e.x += Math.cos(ang) * 10;
+          e.y += Math.sin(ang) * 10;
+          state.bladeTrails = state.bladeTrails || [];
+          state.bladeTrails.push({
+            x: e.x,
+            y: e.y,
+            z: e.z,
+            angle: ang,
+            arcSpan: e.isLoyalist ? Math.PI * 0.85 : Math.PI * 0.6,
+            radius: e.isLoyalist ? 22 : 20,
+            style: e.isLoyalist ? 'slash' : 'chop',
+            color: e.isLoyalist ? '#93c5fd' : '#f87171',
+            coreColor: '#ffffff',
+            life: 0.2,
+            maxLife: 0.2,
+            isEnemy: true,
+          });
         }
         return;
       }
@@ -114,6 +131,8 @@ export const townNpcEntity: EnemyWikiDefinition = {
       if (dist <= 24 && e.attackCd <= 0) {
         e.state = 'windup';
         e.stateTimer = this.tellDurationSec;
+        e.attackAngle = Math.atan2(dy, dx);
+        e.hasStruckThisAttack = false;
         return;
       }
       if (dist > 16) {

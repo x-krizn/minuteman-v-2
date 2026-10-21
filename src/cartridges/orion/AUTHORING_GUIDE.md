@@ -561,18 +561,30 @@ lightSource: {
 
 ## 6. Three-Layer Build & Progression Architecture (`v0.7` Canonical Spec) & `u00` Zone Seals
 
-### 6.1 The Three-Layer Progression Loop (`database/progression/index.ts`)
-Progression is flat (`Static Budget Rule`): total base stats never inflate. Capability grows through skill use, feat allocation, and equipment variation across 20 levels (`Level 1–5 Lesson`, `Level 6–12 Challenge`, `Level 13–20 Expression`):
+### 6.1 The Nine-Gemstone & Three-Layer Progression Loop (`database/progression/index.ts`, `database/items/gemstones.ts`)
+Progression is flat (`Static Budget Rule`): total base stats never inflate. **Gems** are a single unified build currency with three uses across the progression chain:
 
 ```
-Use Equipment ──▶ Pilot Skills Level ──▶ Feat Tiers (I–V) Open ──▶ System & Interface Feats ──▶ 13-Slot Equipment & Mods
+Frame Level (1–20 Tutorial, No Gems) ──▶ Pilot Skill Level (6 Trait Line Skills, Lv 1–20, Gems Permanently Consumed)
+  ──▶ Feat Node (Tiers I–V, Trait + Reactor Gems Socketed & Retained in Build, Refunded on Unsocket)
+  ──▶ Feat (Unlocks Equipment & Mods, No Gems)
+  ──▶ Equipment Mod (1–2 Gems Permanently Spent to Generate; Mod Retained)
 ```
 
-1. **Layer 1: Pilot (`§2`)**:
+1. **The Nine Canonical Gemstones (`database/items/gemstones.ts`)**:
+   - **White — `moonstone`**: Mana Reactor (`Guardian`, `Cleric`)
+   - **Red — `spinel`**: `Warrior` (Heat / Ichor)
+   - **Orange — `carnelian`**: `Marauder` (Heat / Ichor)
+   - **Yellow — `titanite`**: `Guardian` (Presence / Mana)
+   - **Green — `demantoid`**: `Cleric` (Energy / Mana)
+   - **Blue — `kyanite`**: `Wizard` (Energy / Ether)
+   - **Purple — `charoite`**: `Rogue` (Energy / Ether)
+   - **Magenta — `rubellite`**: Ether Reactor (`Rogue`, `Wizard`)
+   - **Black — `hematite`**: Ichor Reactor (`Warrior`, `Marauder`)
+2. **Layer 1: Pilot (`§2`)**:
    - **Pilot Creation (`§2.4`)**: Created at New Game (`Trait Line Selection → Pilot Name → Deploy at Level 1 in M00 The Bog`) and persisted in the multi-pilot **Load Game Roster** (`orion_pilot_roster_v1`).
-   - **Use-Based Skill Progression (`§2.3`)**: 6 skills (`heavy_armor`, `propulsion_boost`, `ballistics_kinetics`, `melee_cqc`, `reactor_flux`, `aether_attunement`) gain XP through matching equipment actions.
-   - **Tutorial Lockout Rule**: Standard use-based XP progression is locked while `tutorialActive` is true (`Levels 1–5`) until the onboarding tutorial is cleared at Level 6 (`Border Town Complete`) or bypassed in the Gate Controller.
-2. **Layer 2: Frame (`§3`)**:
+   - **Pilot Skill Leveling (`Gem Use 1`)**: 6 Trait Line Pilot Skills (`Warrior`, `Marauder`, `Guardian`, `Cleric`, `Wizard`, `Rogue`, Levels `1–20`). Spending a skill's assigned **Trait Gem** or **Reactor Gem** permanently consumes `1` Gem to raise that skill by `+1 Level`, unlocking **Feat Tiers I–V** (`Lv 2 → Tier I`, `Lv 5 → Tier II`, `Lv 9 → Tier III`, `Lv 14 → Tier IV`, `Lv 18 → Tier V`).
+3. **Layer 2: Frame (`§3`)**:
    - **Canonical Frames by Trait Line (`§3.2`)**:
      - `Warrior`: `PNSY W416` (`Ichor`, `medium` load)
      - `Marauder`: `RAD HAU` (`Ichor`, `superheavy` load)
@@ -580,13 +592,14 @@ Use Equipment ──▶ Pilot Skills Level ──▶ Feat Tiers (I–V) Open ─
      - `Rogue`: `VX Phantom` (`Ether`, `light` load)
      - `Wizard`: `ARC Arclight` (`Ether`, `light` load)
      - `Cleric`: `SANC Sanctum` (`Mana`, `medium` load)
-   - **Re-Distributable Feats (`§3.3`)**:
+   - **Feat Node Gem Sockets (`§3.3` · `Gem Use 2`)**:
+     - Installing a Feat Node requires specific **Trait Gem + Reactor Gem** sockets (`feat.gemSockets`). Socketed gems are removed from inventory and **retained in the build** (`state.socketedFeatGems`), and are **100% refunded to inventory** whenever the node is unsocketed.
      - **System Feats**: Step up the frame's effective Load Capacity (`light → medium → heavy → superheavy`) to eliminate heavy weapon penalties (`§3.4`).
      - **Interface Feats**: Zero-sum stat trade-offs within the static budget (e.g., `+20% Damage / +18% Heat Generation`).
    - **Critical Frame State (`§3.5`)**: At `≤ 40 HP`, movement speed drops by `-30%` and weapon attacks suffer a `15%` misfire chance per shot until repaired.
-3. **Layer 3: Equipment (`§4`)**:
+4. **Layer 3: Equipment (`§4`)**:
    - **13-Slot Equipment & 5-Piece Armor Taxonomy**: Weapon Set 1 (`2`), Weapon Set 2 (`2`), Class Utility (`1`, `Action 6` unlocked at `Lv 6`), Aux (`4`, `Actions 7–10`), Belt (`4`, `Actions 7–10`), plus `Head`, `Torso`, `Arms`, `Legs`, and `Generator`.
-   - **Action Modifications (`§4.2`)**: Installed per category (`ranged`, `melee`, `mobility`), altering how actions behave with a paired drawback.
+   - **Gem-Generated Equipment Mods (`§4.2` · `Gem Use 3`)**: Spending `1–2` Gems permanently generates an Action Modification (`state.equipment.unlockedMods`). The generated mod is permanently retained by the pilot and can be freely installed or swapped across `ranged`, `melee`, and `mobility` slots; the spent gems are not retained.
 
 ### 6.2 `u00 Universe` Canonical `LOCKED` vs. `UNDEFINED` Zone Seal Conventions (`database/world/universe.ts`)
 Only **M00 The Bog (`bog-v2.md`)** and **Camelot Border Town (`border-town-v1.md`)** have `LOCKED` zone specifications. All other zones (`m01_orc_encampment`, `camelot_interior`, and the other 19 worlds in `U00_UNIVERSE_CATALOG`) carry `worldStatus: 'undefined_spec'` and are sealed in standard campaign mode until their canonical design specifications are authored.

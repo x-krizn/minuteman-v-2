@@ -4,12 +4,15 @@
  */
 
 import { WeaponDefinition } from '../../types';
+import { SHORT_SPEAR_STRIP_BASE64 } from './short_spear';
 
 export const avalonSiegeLanceWeapon: WeaponDefinition = {
   id: 'avalon_siege_lance',
   name: 'Avalon Heavy Lance',
   class: 'Heavy Artillery Lance',
+  equipmentRole: 'melee',
   weightClass: 'heavy',
+  bladeTrailColor: '#f8fafc',
   description: 'Heavy two-stage kinetic siege lance requiring Heavy load capacity or System Feats to mount without penalty.',
   lore:
     'Standard garrison heavy weapon of the Camelot Barracks Quarter. Delivers high-commitment Impact and Blast payloads at the cost of heavy chassis load.',
@@ -18,6 +21,26 @@ export const avalonSiegeLanceWeapon: WeaponDefinition = {
   chainDurationSec: 1.8,
   reloadDurationSec: 3.6,
   primaryDamageType: 'Impact',
+  variantStripBase64: SHORT_SPEAR_STRIP_BASE64,
+  hardpointSprite: {
+    base64: SHORT_SPEAR_STRIP_BASE64,
+    cellWidth: 16,
+    cellHeight: 16,
+    col: 0,
+    row: 0,
+    renderWidth: 16,
+    renderHeight: 16,
+    anchor: 'center',
+    orientFromEast: true,
+  },
+  iconSprite: {
+    base64: SHORT_SPEAR_STRIP_BASE64,
+    cellWidth: 16,
+    cellHeight: 16,
+    col: 0,
+    row: 0,
+    anchor: 'center',
+  },
   renderHardpoint25D(g, wx, wy, _dirDx, dirDy) {
     g.fillStyle = '#475569';
     g.fillRect(wx - 2, wy - 1, 4, 8);

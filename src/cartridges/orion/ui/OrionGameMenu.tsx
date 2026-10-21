@@ -590,10 +590,24 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
           </div>
 
           {/* Bottom Exit Bar */}
-          <div className="flex items-center justify-between pt-1.5 border-t border-[#1e293b]">
+          <div className="flex items-center gap-1.5 pt-1.5 border-t border-[#1e293b]">
+            <button
+              onClick={() => {
+                const state = getOrionStateRef();
+                if (state) {
+                  saveOrionGame(state);
+                  state.atTitleMenu = true;
+                }
+                soundSystem.playSelect();
+                onResume();
+              }}
+              className="flex-1 py-1 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#38bdf8]/50 rounded-xs text-[10px] font-bold text-[#7dd3fc] text-center cursor-pointer"
+            >
+              MAIN TITLE / PILOT MENU
+            </button>
             <button
               onClick={handleSaveAndExit}
-              className="w-full py-1 px-2 bg-[#7f1d1d]/60 hover:bg-[#991b1b] border border-[#ef4444]/50 rounded-xs text-[10px] font-bold text-[#fecaca] text-center"
+              className="flex-1 py-1 px-2 bg-[#7f1d1d]/60 hover:bg-[#991b1b] border border-[#ef4444]/50 rounded-xs text-[10px] font-bold text-[#fecaca] text-center cursor-pointer"
             >
               SAVE & EXIT CARTRIDGE
             </button>

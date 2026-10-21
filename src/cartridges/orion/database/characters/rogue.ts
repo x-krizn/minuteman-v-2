@@ -17,5 +17,5 @@ export const rogueTrait: TraitLineWikiDefinition = {
   lore: 'Ablative shielding deflects high-energy single hits during swift flanking runs; heavy weapons break stealth without System Feats.',
   baseShield: { type: 'energy', capacity: 40 },
   baseArmor: { type: 'Ablative', threshold: 12, rating: 8, durability: 40 },
-  startingWeapons: ['gladius_boltcaster'],
+  startingWeapons: ['khopesh', 'buckler_shield'],
 };

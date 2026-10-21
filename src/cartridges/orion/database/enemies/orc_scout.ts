@@ -84,12 +84,30 @@ export const orcScoutEnemy: EnemyWikiDefinition = {
       if (e.stateTimer <= 0) {
         e.state = 'attack';
         e.stateTimer = 0.15;
+        const ang = e.attackAngle ?? Math.atan2(dy, dx);
+        const ldx = Math.cos(ang);
+        const ldy = Math.sin(ang);
+        state.bladeTrails = state.bladeTrails || [];
+        state.bladeTrails.push({
+          x: e.x,
+          y: e.y,
+          z: e.z,
+          angle: ang,
+          arcSpan: Math.PI * 0.42,
+          radius: 14,
+          style: 'volley',
+          color: '#fb923c',
+          coreColor: '#ffedd5',
+          life: 0.16,
+          maxLife: 0.16,
+          isEnemy: true,
+        });
         state.projectiles.push({
-          x: e.x + (dx / dist) * 8,
-          y: e.y + (dy / dist) * 8,
+          x: e.x + ldx * 8,
+          y: e.y + ldy * 8,
           z: 6,
-          vx: (dx / dist) * 115,
-          vy: (dy / dist) * 115,
+          vx: ldx * 115,
+          vy: ldy * 115,
           vz: 0,
           damage: e.damage,
           damageType: 'Pierce',
@@ -124,6 +142,7 @@ export const orcScoutEnemy: EnemyWikiDefinition = {
     if (dist <= 105 && e.attackCd <= 0) {
       e.state = 'windup';
       e.stateTimer = this.tellDurationSec;
+      e.attackAngle = Math.atan2(dy, dx);
     }
   },
 };

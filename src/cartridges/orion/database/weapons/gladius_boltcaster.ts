@@ -5,21 +5,49 @@
 
 import { WeaponDefinition } from '../../types';
 
+/**
+ * Row 12 (row = 11): Bolt Caster 144x16 (9 cols x 16px) Self-Contained Base64 PNG Strip
+ * Col 0 = Base / White (Moonstone), Cols 1..8 = Red, Orange, Yellow, Green, Blue, Purple, Magenta, Black
+ */
+export const BOLT_CASTER_STRIP_BASE64 =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJAAAAAQCAYAAAD59vZgAAAA8klEQVR42u2VMQrCMBhGc5IO3Ry6tIMImQtSEHUs6GIpOjn0AILYG0ghuDs4u3mBDh6h13DpEkmovwVLWnSSfg8eGcJLIPwQxgAAAAAAAAAAAAAAAAAAAP4DIYRsU4EefWPMGOvqB+rgyLJk5jjanHOyDALS1J8WTEpReX9blgFp6rPMkXnOtUUxJLv2POPSv/jaMA/JqIxIUz+erOVytdfuDmcyDK+kqXfdrZwOYm06F2SSPMi2909HG+1tdiS7vr9abNvWep5HxnFMNvZqeNRmPTLZdLk6A30P+/rwfPPtvS6vphN9z3r2y/DUBxB9P/snNOgshRDu7iEAAAAASUVORK5CYII=';
+
 export const gladiusBoltcasterWeapon: WeaponDefinition = {
   id: 'gladius_boltcaster',
-  name: 'Gladius Boltcaster',
-  class: 'Boltcaster / Rifle',
+  name: 'Gladius Bolt Caster',
+  class: 'Bolt Caster / Rifle',
+  equipmentRole: 'ranged',
   weightClass: 'medium',
-  description: 'The standard-issue reference ballistic rifle of the expeditionary pilots.',
+  bladeTrailColor: '#f8fafc',
+  description: 'The standard-issue reference ballistic bolt caster of the expeditionary pilots.',
   lore:
-    'The Gladius Boltcaster fires high-velocity armor-piercing bolts in 9-round salvos. Its full burst defines the Base Combat Unit (54 BCU).',
+    'The Gladius Bolt Caster fires high-velocity armor-piercing bolts in 9-round salvos. Its full burst defines the Base Combat Unit (54 BCU).',
   shotsPerChain: 9,
   damagePerShot: 6,
   chainDurationSec: 1.5,
-  reloadDurationSec: 3.15, // 9 * 0.35s
+  reloadDurationSec: 3.15,
   primaryDamageType: 'Pierce',
+  variantStripBase64: BOLT_CASTER_STRIP_BASE64,
+  hardpointSprite: {
+    base64: BOLT_CASTER_STRIP_BASE64,
+    cellWidth: 16,
+    cellHeight: 16,
+    col: 0,
+    row: 0,
+    renderWidth: 14,
+    renderHeight: 14,
+    anchor: 'center',
+    orientFromEast: true,
+  },
+  iconSprite: {
+    base64: BOLT_CASTER_STRIP_BASE64,
+    cellWidth: 16,
+    cellHeight: 16,
+    col: 0,
+    row: 0,
+    anchor: 'center',
+  },
   renderHardpoint25D(g, wx, wy, _dirDx, dirDy) {
-    // Gladius Boltcaster: Steel rifle barrel with amber muzzle
     g.fillStyle = '#94a3b8';
     g.fillRect(wx - 1, wy, 3, 6);
     g.fillStyle = '#fbbf24';
@@ -50,7 +78,7 @@ export const gladiusBoltcasterWeapon: WeaponDefinition = {
       cooldownSec: 4.0,
       heatCost: 15,
       range: 110,
-      description: 'Heavy armor-piercing round that punches straight through high-threshold armor.',
+      description: 'Heavy armor-piercing bolt that punches straight through high-threshold armor.',
     },
     {
       slot: 2,

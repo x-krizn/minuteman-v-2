@@ -19,7 +19,8 @@ import {
 } from '../constants';
 import { getTraitDefinition } from '../database/characters';
 import { getEnemyDefinition } from '../database/enemies';
-import { getItemDefinition } from '../database/items';
+import { getCoinPickupSpriteBase64, getItemDefinition } from '../database/items';
+import { getWeaponGemVisuals } from '../database/progression';
 import { getWeaponDefinition } from '../database/weapons';
 import { getBiomeDefinition, getTileDefinition } from '../database/world';
 import {
@@ -201,6 +202,45 @@ export interface DrawBase64SpriteOptions {
   defaultAnchor?: 'top-left' | 'center' | 'bottom-center';
   defaultWidth?: number;
   defaultHeight?: number;
+  /** If true, transforms a sprite authored facing East ('E') to match `dir` */
+  transformFromEast?: boolean;
+  /** Additional rotation offset in radians */
+  extraRotationRad?: number;
+}
+
+/**
+ * Computes 2D canvas scale & rotation transforms for sprites authored with the character facing East ('E').
+ * - East ('E'): identity (scaleX = 1, scaleY = 1, rot = 0)
+ * - West ('W'): horizontal flip (scaleX = -1, scaleY = 1, rot = 0)
+ * - South ('S'): +90 deg clockwise rotation (scaleX = 1, scaleY = 1, rot = +PI/2)
+ * - North ('N'): -90 deg counter-clockwise rotation (scaleX = 1, scaleY = 1, rot = -PI/2)
+ * - Intercardinals ('NE', 'SE', 'NW', 'SW'): East or West-mirrored with +/-45 deg rotation
+ */
+export function getEastDirectionalTransform(dir: OrionDir = 'E'): {
+  scaleX: number;
+  scaleY: number;
+  rotationRad: number;
+} {
+  switch (dir) {
+    case 'E':
+      return { scaleX: 1, scaleY: 1, rotationRad: 0 };
+    case 'W':
+      return { scaleX: -1, scaleY: 1, rotationRad: 0 };
+    case 'S':
+      return { scaleX: 1, scaleY: 1, rotationRad: Math.PI / 2 };
+    case 'N':
+      return { scaleX: 1, scaleY: 1, rotationRad: -Math.PI / 2 };
+    case 'SE':
+      return { scaleX: 1, scaleY: 1, rotationRad: Math.PI / 4 };
+    case 'NE':
+      return { scaleX: 1, scaleY: 1, rotationRad: -Math.PI / 4 };
+    case 'SW':
+      return { scaleX: -1, scaleY: 1, rotationRad: -Math.PI / 4 };
+    case 'NW':
+      return { scaleX: -1, scaleY: 1, rotationRad: Math.PI / 4 };
+    default:
+      return { scaleX: 1, scaleY: 1, rotationRad: 0 };
+  }
 }
 
 export function drawBase64Sprite(
@@ -248,8 +288,21 @@ export function drawBase64Sprite(
   const destH = (config.renderHeight ?? options?.defaultHeight ?? cellH) * scale;
 
   const anchor = config.anchor ?? options?.defaultAnchor ?? 'top-left';
-  let drawX = sx + (config.offsetX ?? 0);
-  let drawY = sy + (config.offsetY ?? 0);
+  const pivotX = sx + (config.offsetX ?? 0);
+  const pivotY = sy + (config.offsetY ?? 0);
+
+  const useEastTransform = Boolean(
+    (config.orientFromEast || options?.transformFromEast) && options?.dir
+  );
+  const eastTransform = useEastTransform
+    ? getEastDirectionalTransform(options!.dir!)
+    : { scaleX: 1, scaleY: 1, rotationRad: 0 };
+  const totalRotation = eastTransform.rotationRad + (options?.extraRotationRad ?? 0);
+  const hasTransform =
+    eastTransform.scaleX !== 1 || eastTransform.scaleY !== 1 || totalRotation !== 0;
+
+  let drawX = hasTransform ? 0 : pivotX;
+  let drawY = hasTransform ? 0 : pivotY;
 
   if (anchor === 'center') {
     drawX -= destW / 2;
@@ -261,6 +314,17 @@ export function drawBase64Sprite(
 
   const prevSmoothing = g.imageSmoothingEnabled;
   g.imageSmoothingEnabled = false;
+
+  if (hasTransform) {
+    g.save();
+    g.translate(Math.round(pivotX), Math.round(pivotY));
+    if (eastTransform.scaleX !== 1 || eastTransform.scaleY !== 1) {
+      g.scale(eastTransform.scaleX, eastTransform.scaleY);
+    }
+    if (totalRotation !== 0) {
+      g.rotate(totalRotation);
+    }
+  }
 
   const activeOutline = config.outlineColor || options?.outlineColor;
   if (activeOutline) {
@@ -315,6 +379,10 @@ export function drawBase64Sprite(
   if (options?.isHurt) {
     g.fillStyle = 'rgba(255, 255, 255, 0.6)';
     g.fillRect(Math.round(drawX), Math.round(drawY), destW, destH);
+  }
+
+  if (hasTransform) {
+    g.restore();
   }
 
   g.imageSmoothingEnabled = prevSmoothing;
@@ -1572,25 +1640,336 @@ export function drawEnhancedProjectilesAndBladeTrails(
       const progress = 1 - Math.max(0, trail.life / Math.max(0.01, trail.maxLife));
       const alpha = Math.max(0, 1 - progress * progress);
       const cy = trail.y - trail.z * Z_SCALE - 6;
-      const startAngle = trail.angle - trail.arcSpan * 0.5;
-      const endAngle = trail.angle + trail.arcSpan * 0.5;
+      const style = trail.style || 'slash';
+      const coreColor = trail.coreColor || '#ffffff';
+      const cos = Math.cos(trail.angle);
+      const sin = Math.sin(trail.angle);
+      const px = -sin;
+      const py = cos;
 
       g.save();
       g.globalCompositeOperation = 'lighter';
-      g.globalAlpha = alpha * 0.55;
-      g.strokeStyle = trail.color;
-      g.lineWidth = 6 * (1 - progress * 0.4);
-      g.lineCap = 'round';
-      g.beginPath();
-      g.arc(trail.x, cy, trail.radius + progress * 2, startAngle, endAngle);
-      g.stroke();
 
-      g.globalAlpha = alpha * 0.9;
-      g.strokeStyle = trail.coreColor || '#ffffff';
-      g.lineWidth = 2;
-      g.beginPath();
-      g.arc(trail.x, cy, trail.radius + 1 + progress * 2, startAngle + progress * 0.25, endAngle);
-      g.stroke();
+      if (style === 'thrust') {
+        // 1. LINEAR PIERCING THRUST (Short Spear, Avalon Lance, Stinger Thrust, Enraged Bors Lunge)
+        const reach = (trail.length || trail.radius || 36) * (0.65 + 0.35 * Math.min(1, progress * 2.2));
+        const halfW = (trail.width || 9) * 0.5 * (1 - progress * 0.35);
+        const startDist = 5 + progress * 4;
+        const sx = trail.x + cos * startDist;
+        const sy = cy + sin * startDist;
+        const tipX = trail.x + cos * reach;
+        const tipY = cy + sin * reach;
+        const neckX = trail.x + cos * Math.max(startDist, reach - 7);
+        const neckY = cy + sin * Math.max(startDist, reach - 7);
+
+        // Outer piercing corridor diamond/lance body
+        g.globalAlpha = alpha * 0.52;
+        g.fillStyle = trail.color;
+        g.beginPath();
+        g.moveTo(sx, sy);
+        g.lineTo(neckX + px * halfW, neckY + py * halfW);
+        g.lineTo(tipX + cos * 3, tipY + sin * 3);
+        g.lineTo(neckX - px * halfW, neckY - py * halfW);
+        g.closePath();
+        g.fill();
+
+        // Air-displacement shock ring along the spear shaft
+        const ringDist = startDist + (reach - startDist) * (0.45 + progress * 0.35);
+        g.globalAlpha = alpha * 0.6;
+        g.strokeStyle = trail.color;
+        g.lineWidth = 1.4;
+        g.beginPath();
+        g.ellipse(
+          trail.x + cos * ringDist,
+          cy + sin * ringDist,
+          2.5,
+          halfW * 1.15,
+          trail.angle,
+          0,
+          Math.PI * 2
+        );
+        g.stroke();
+
+        // Razor-sharp inner needle core & tip flash
+        g.globalAlpha = alpha * 0.95;
+        g.strokeStyle = coreColor;
+        g.lineWidth = 2;
+        g.lineCap = 'round';
+        g.beginPath();
+        g.moveTo(sx, sy);
+        g.lineTo(tipX + cos * 2, tipY + sin * 2);
+        g.stroke();
+
+        g.fillStyle = coreColor;
+        g.beginPath();
+        g.arc(tipX, tipY, 2.2 * (1 - progress * 0.4), 0, Math.PI * 2);
+        g.fill();
+      } else if (style === 'slam') {
+        // 2. BLUNT OVERHEAD CRUSH & GROUND IMPACT CRATER (Mace, Pavise Tremor, Normal Sir Bors)
+        const offset = trail.length ?? 15;
+        const impactR = (trail.width || trail.radius || 18) * (0.55 + progress * 0.55);
+        const ix = trail.x + cos * offset;
+        const iy = trail.y + sin * offset - trail.z * Z_SCALE;
+
+        // Overhead downward crush streak
+        if (offset > 0) {
+          g.globalAlpha = alpha * 0.7;
+          g.strokeStyle = trail.color;
+          g.lineWidth = 5 * (1 - progress * 0.4);
+          g.lineCap = 'round';
+          g.beginPath();
+          g.moveTo(trail.x + cos * 4, cy - 5 * (1 - progress));
+          g.lineTo(ix, iy - 2);
+          g.stroke();
+
+          g.globalAlpha = alpha * 0.95;
+          g.strokeStyle = coreColor;
+          g.lineWidth = 2;
+          g.beginPath();
+          g.moveTo(trail.x + cos * 5, cy - 4 * (1 - progress));
+          g.lineTo(ix, iy - 2);
+          g.stroke();
+        }
+
+        // Ground-plane concussive crater ring (2.5D perspective ellipse)
+        g.globalAlpha = alpha * 0.65;
+        g.strokeStyle = trail.color;
+        g.lineWidth = 3 * (1 - progress * 0.45);
+        g.beginPath();
+        g.ellipse(ix, iy + 2, impactR, impactR * 0.62, 0, 0, Math.PI * 2);
+        g.stroke();
+
+        g.globalAlpha = alpha * 0.9;
+        g.strokeStyle = coreColor;
+        g.lineWidth = 1.3;
+        g.beginPath();
+        g.ellipse(ix, iy + 2, impactR * 0.68, impactR * 0.42, 0, 0, Math.PI * 2);
+        g.stroke();
+
+        // Radial fracture spikes bursting from impact center
+        g.strokeStyle = coreColor;
+        g.lineWidth = 1.4;
+        for (let k = 0; k < 6; k++) {
+          const spkAng = trail.angle + (k * Math.PI) / 3 + 0.25;
+          const r0 = impactR * 0.35;
+          const r1 = impactR * 1.08;
+          g.beginPath();
+          g.moveTo(ix + Math.cos(spkAng) * r0, iy + 2 + Math.sin(spkAng) * r0 * 0.62);
+          g.lineTo(ix + Math.cos(spkAng) * r1, iy + 2 + Math.sin(spkAng) * r1 * 0.62);
+          g.stroke();
+        }
+      } else if (style === 'bash') {
+        // 3. SHIELD BASH / PHALANX BARRIER SHOVE (Buckler, Heater, Pavise, Sir Percival)
+        const pushDist = (trail.radius || 22) * (0.45 + progress * 0.55);
+        const span = trail.arcSpan || Math.PI * 0.65;
+        const startAng = trail.angle - span * 0.5;
+        const endAng = trail.angle + span * 0.5;
+
+        // Kinetic force lines pushing outward from wielder
+        g.globalAlpha = alpha * 0.45;
+        g.strokeStyle = trail.color;
+        g.lineWidth = 2;
+        for (const frac of [-0.32, 0, 0.32]) {
+          const a = trail.angle + span * frac;
+          g.beginPath();
+          g.moveTo(trail.x + Math.cos(a) * 6, cy + Math.sin(a) * 6);
+          g.lineTo(trail.x + Math.cos(a) * (pushDist - 2), cy + Math.sin(a) * (pushDist - 2));
+          g.stroke();
+        }
+
+        // Thick double-banded phalanx wall arc
+        g.globalAlpha = alpha * 0.65;
+        g.strokeStyle = trail.color;
+        g.lineWidth = 6.5 * (1 - progress * 0.3);
+        g.lineCap = 'butt';
+        g.beginPath();
+        g.arc(trail.x, cy, pushDist, startAng, endAng);
+        g.stroke();
+
+        g.globalAlpha = alpha * 0.95;
+        g.strokeStyle = coreColor;
+        g.lineWidth = 2.2;
+        g.beginPath();
+        g.arc(trail.x, cy, pushDist + 1.5, startAng + 0.06, endAng - 0.06);
+        g.stroke();
+      } else if (style === 'chop') {
+        // 4. HEAVY WEDGE AXE CHOP (Hand Axe, Orc Warrior, Scavenger)
+        const dirSign = trail.flipDir ? -1 : 1;
+        const span = trail.arcSpan || Math.PI * 0.62;
+        const headAng = trail.angle + dirSign * span * (-0.45 + progress * 0.9);
+        const tailAng = trail.angle - dirSign * span * 0.48;
+        const rOuter = (trail.radius || 22) + progress * 2;
+        const rInner = Math.max(6, rOuter - (trail.width || 12));
+
+        // Heavy bearded-axe wedge polygon (thick at chopping head, narrow at tail)
+        g.globalAlpha = alpha * 0.62;
+        g.fillStyle = trail.color;
+        g.beginPath();
+        g.arc(trail.x, cy, rOuter, Math.min(tailAng, headAng), Math.max(tailAng, headAng));
+        g.lineTo(
+          trail.x + Math.cos(headAng) * rInner,
+          cy + Math.sin(headAng) * rInner
+        );
+        g.arc(
+          trail.x,
+          cy,
+          rInner + 4,
+          Math.max(tailAng, headAng),
+          Math.min(tailAng, headAng),
+          true
+        );
+        g.closePath();
+        g.fill();
+
+        // Crisp outer cutting edge + chop impact spark at leading edge
+        g.globalAlpha = alpha * 0.95;
+        g.strokeStyle = coreColor;
+        g.lineWidth = 2.4;
+        g.lineCap = 'round';
+        g.beginPath();
+        g.arc(trail.x, cy, rOuter, Math.min(tailAng, headAng), Math.max(tailAng, headAng));
+        g.stroke();
+
+        const biteX = trail.x + Math.cos(headAng) * rOuter;
+        const biteY = cy + Math.sin(headAng) * rOuter;
+        g.fillStyle = coreColor;
+        g.beginPath();
+        g.arc(biteX, biteY, 2.5 * (1 - progress * 0.3), 0, Math.PI * 2);
+        g.fill();
+      } else if (style === 'whirlwind') {
+        // 5. 360-DEGREE WHIRLWIND VORTEX CLEAVE (Whirlwind Sever, Berserker Cyclone)
+        const r = (trail.radius || 28) * (0.8 + progress * 0.25);
+        const rot = trail.angle + progress * Math.PI * 2.2;
+
+        g.globalAlpha = alpha * 0.55;
+        g.strokeStyle = trail.color;
+        g.lineWidth = 6 * (1 - progress * 0.35);
+        g.beginPath();
+        g.arc(trail.x, cy, r, 0, Math.PI * 2);
+        g.stroke();
+
+        // Dual spinning inner & outer razor arcs
+        g.globalAlpha = alpha * 0.95;
+        g.strokeStyle = coreColor;
+        g.lineWidth = 2.2;
+        for (let b = 0; b < 2; b++) {
+          const a0 = rot + b * Math.PI;
+          g.beginPath();
+          g.arc(trail.x, cy, r + (b === 0 ? 1.5 : -2), a0, a0 + Math.PI * 0.78);
+          g.stroke();
+        }
+      } else if (style === 'shockwave') {
+        // 6. EXPANDING 2.5D GROUND SHOCKWAVE / PULSE RING (Bell-Toll, Consecration, Bog Wurm, Reactor)
+        const maxR = trail.radius || 32;
+        const curR = maxR * (0.32 + progress * 0.68);
+        const groundY = trail.y - trail.z * Z_SCALE + 1;
+
+        g.globalAlpha = alpha * 0.6;
+        g.strokeStyle = trail.color;
+        g.lineWidth = 3.5 * (1 - progress * 0.45);
+        g.beginPath();
+        g.ellipse(trail.x, groundY, curR, curR * 0.65, 0, 0, Math.PI * 2);
+        g.stroke();
+
+        g.globalAlpha = alpha * 0.9;
+        g.strokeStyle = coreColor;
+        g.lineWidth = 1.4;
+        g.beginPath();
+        g.ellipse(trail.x, groundY, curR * 0.72, curR * 0.46, 0, 0, Math.PI * 2);
+        g.stroke();
+      } else if (style === 'claw_bite') {
+        // 7. TWIN FANG / CLAW RAKE LUNGE (Bog Crawler, Bog Wurm, Feral Ambush)
+        const reach = (trail.length || trail.radius || 22) * (0.55 + progress * 0.45);
+        const spread = (trail.width || 12) * 0.5;
+        for (const side of [-1, 1]) {
+          const sx = trail.x + px * side * spread * 0.9;
+          const sy = cy + py * side * spread * 0.9;
+          const midX = trail.x + cos * (reach * 0.55) + px * side * spread * 0.55;
+          const midY = cy + sin * (reach * 0.55) + py * side * spread * 0.55;
+          const ex = trail.x + cos * reach + px * side * 1.5;
+          const ey = cy + sin * reach + py * side * 1.5;
+
+          g.globalAlpha = alpha * 0.65;
+          g.strokeStyle = trail.color;
+          g.lineWidth = 3.5 * (1 - progress * 0.35);
+          g.lineCap = 'round';
+          g.beginPath();
+          g.moveTo(sx, sy);
+          g.quadraticCurveTo(midX, midY, ex, ey);
+          g.stroke();
+
+          g.globalAlpha = alpha * 0.95;
+          g.strokeStyle = coreColor;
+          g.lineWidth = 1.5;
+          g.beginPath();
+          g.moveTo(sx, sy);
+          g.quadraticCurveTo(midX, midY, ex, ey);
+          g.stroke();
+        }
+      } else if (style === 'volley') {
+        // 8. BOW RELEASE / BOLTCASTER MUZZLE CHEVRON WAVE (Great Bow, Gladius, Quiver, Tristan, Scout)
+        const r = (trail.radius || 15) * (0.6 + progress * 0.5);
+        const span = trail.arcSpan || Math.PI * 0.45;
+        g.globalAlpha = alpha * 0.55;
+        g.strokeStyle = trail.color;
+        g.lineWidth = 3 * (1 - progress * 0.4);
+        g.lineCap = 'round';
+        g.beginPath();
+        g.arc(trail.x, cy, r, trail.angle - span * 0.5, trail.angle + span * 0.5);
+        g.stroke();
+
+        g.globalAlpha = alpha * 0.9;
+        g.strokeStyle = coreColor;
+        g.lineWidth = 1.5;
+        g.beginPath();
+        g.moveTo(trail.x + cos * 5, cy + sin * 5);
+        g.lineTo(trail.x + cos * (r + 4), cy + sin * (r + 4));
+        g.stroke();
+      } else {
+        // 9. DIRECTIONAL CRESCENT SWORD / SHOTEL SLASH (Long Sword, Khopesh, Loyalist)
+        const dirSign = trail.flipDir ? -1 : 1;
+        const startAngle = trail.angle - trail.arcSpan * 0.5;
+        const endAngle = trail.angle + trail.arcSpan * 0.5;
+        const r = trail.radius + progress * 2.5;
+
+        // Crescent fill body (thick in middle, tapered at ends)
+        g.globalAlpha = alpha * 0.42;
+        g.fillStyle = trail.color;
+        g.beginPath();
+        g.arc(trail.x, cy, r + 2, startAngle, endAngle);
+        g.arc(
+          trail.x - cos * 3,
+          cy - sin * 3,
+          Math.max(4, r - 4.5),
+          endAngle,
+          startAngle,
+          true
+        );
+        g.closePath();
+        g.fill();
+
+        // Outer glowing slash trail
+        g.globalAlpha = alpha * 0.65;
+        g.strokeStyle = trail.color;
+        g.lineWidth = 4.5 * (1 - progress * 0.4);
+        g.lineCap = 'round';
+        g.beginPath();
+        g.arc(trail.x, cy, r, startAngle, endAngle);
+        g.stroke();
+
+        // Leading razor edge core
+        const coreStart =
+          dirSign > 0 ? startAngle + progress * trail.arcSpan * 0.25 : startAngle;
+        const coreEnd =
+          dirSign > 0 ? endAngle : endAngle - progress * trail.arcSpan * 0.25;
+        g.globalAlpha = alpha * 0.95;
+        g.strokeStyle = coreColor;
+        g.lineWidth = 2;
+        g.beginPath();
+        g.arc(trail.x, cy, r + 1, coreStart, coreEnd);
+        g.stroke();
+      }
+
       g.restore();
     }
     g.restore();
@@ -2008,9 +2387,31 @@ export function drawOrionGame(
         const bob = Math.sin(p.t * 5) * 2;
         const itemDef = p.itemId ? getItemDefinition(p.itemId) : undefined;
 
-        const drewIcon = drawBase64Sprite(g, itemDef?.iconSprite, p.x, py + bob, state.t, {
-          defaultAnchor: 'bottom-center',
-        });
+        const coinSpriteConfig =
+          p.kind === 'scrap'
+            ? {
+                base64: getCoinPickupSpriteBase64(p.value || 1),
+                cellWidth: 16,
+                cellHeight: 16,
+                col: 0,
+                row: 0,
+                renderWidth: 10,
+                renderHeight: 10,
+                anchor: 'bottom-center' as const,
+                outlineColor: '#05070a',
+              }
+            : undefined;
+
+        const drewIcon = drawBase64Sprite(
+          g,
+          itemDef?.iconSprite || coinSpriteConfig,
+          p.x,
+          py + bob,
+          state.t,
+          {
+            defaultAnchor: 'bottom-center',
+          }
+        );
 
         if (!drewIcon) {
           if (p.kind === 'scrap') {
@@ -2048,11 +2449,104 @@ export function drawOrionGame(
         g.fill();
 
         if (isWindup) {
-          g.strokeStyle = '#ffd27d';
-          g.lineWidth = 1.5;
-          g.beginPath();
-          g.arc(e.x, e.y, e.tellRadius || 24, 0, Math.PI * 2);
-          g.stroke();
+          const tellAng = e.attackAngle ?? Math.atan2(state.y - e.y, state.x - e.x);
+          const tCos = Math.cos(tellAng);
+          const tSin = Math.sin(tellAng);
+          const tPx = -tSin;
+          const tPy = tCos;
+          const tellColor = e.emissiveColor || '#ffd27d';
+
+          g.save();
+          g.strokeStyle = tellColor;
+          g.fillStyle = tellColor;
+          g.lineWidth = 1.3;
+
+          if (e.type === 'bors_knight' && e.enraged) {
+            // Enraged Sir Bors: Long linear piercing lunge corridor telegraph
+            const len = 38;
+            const hw = 11;
+            g.globalAlpha = 0.22;
+            g.beginPath();
+            g.moveTo(e.x + tPx * hw, e.y + tPy * hw);
+            g.lineTo(e.x + tCos * len + tPx * hw, e.y + tSin * len + tPy * hw);
+            g.lineTo(e.x + tCos * (len + 6), e.y + tSin * (len + 6));
+            g.lineTo(e.x + tCos * len - tPx * hw, e.y + tSin * len - tPy * hw);
+            g.lineTo(e.x - tPx * hw, e.y - tPy * hw);
+            g.closePath();
+            g.fill();
+            g.globalAlpha = 0.85;
+            g.stroke();
+          } else if (e.type === 'bors_knight') {
+            // Normal Sir Bors: Frontal ground slam impact circle telegraph
+            const ix = e.x + tCos * 14;
+            const iy = e.y + tSin * 14;
+            g.globalAlpha = 0.2;
+            g.beginPath();
+            g.ellipse(ix, iy, 19, 13, 0, 0, Math.PI * 2);
+            g.fill();
+            g.globalAlpha = 0.85;
+            g.stroke();
+          } else if (e.type === 'percival_knight') {
+            // Sir Percival: Wide phalanx shield-charge cone telegraph
+            const r = 28;
+            const span = Math.PI * 0.72;
+            g.globalAlpha = 0.2;
+            g.beginPath();
+            g.moveTo(e.x, e.y);
+            g.arc(e.x, e.y, r, tellAng - span * 0.5, tellAng + span * 0.5);
+            g.closePath();
+            g.fill();
+            g.globalAlpha = 0.85;
+            g.stroke();
+          } else if (e.type === 'tristan_knight') {
+            // Sir Tristan: 3-arrow fan trajectory lines
+            g.globalAlpha = 0.75;
+            for (const off of [-0.18, 0, 0.18]) {
+              const a = tellAng + off;
+              g.beginPath();
+              g.moveTo(e.x + Math.cos(a) * 6, ey - 6 + Math.sin(a) * 6);
+              g.lineTo(e.x + Math.cos(a) * 48, ey - 6 + Math.sin(a) * 48);
+              g.stroke();
+            }
+          } else if (e.type === 'orc_scout') {
+            // Orc Scout: Single ranged sightline ray
+            g.globalAlpha = 0.75;
+            g.beginPath();
+            g.moveTo(e.x + tCos * 6, ey - 6 + tSin * 6);
+            g.lineTo(e.x + tCos * 52, ey - 6 + tSin * 52);
+            g.stroke();
+          } else if (e.type === 'lady_of_the_lake') {
+            // Lady of the Lake: 5-ray wave fan + radial water pulse ring
+            g.globalAlpha = 0.65;
+            for (const off of [-0.45, -0.22, 0, 0.22, 0.45]) {
+              const a = tellAng + off;
+              g.beginPath();
+              g.moveTo(e.x + Math.cos(a) * 8, e.y + Math.sin(a) * 8);
+              g.lineTo(e.x + Math.cos(a) * 42, e.y + Math.sin(a) * 42);
+              g.stroke();
+            }
+            g.beginPath();
+            g.ellipse(e.x, e.y, 26, 16, 0, 0, Math.PI * 2);
+            g.stroke();
+          } else {
+            // Orc Warrior / Bog Crawler / Bog Wurm / Feral NPC: Directional attack sector
+            const r = e.type === 'bog_wurm' ? 26 : 23;
+            const span =
+              e.type === 'bog_crawler'
+                ? Math.PI * 0.55
+                : e.type === 'orc_warrior'
+                  ? Math.PI * 0.8
+                  : Math.PI * 0.7;
+            g.globalAlpha = 0.18;
+            g.beginPath();
+            g.moveTo(e.x, e.y);
+            g.arc(e.x, e.y, r, tellAng - span * 0.5, tellAng + span * 0.5);
+            g.closePath();
+            g.fill();
+            g.globalAlpha = 0.82;
+            g.stroke();
+          }
+          g.restore();
         }
 
         const drewEnemySprite = drawBase64Sprite(g, def?.sprite, e.x, ey, state.t, {
@@ -2146,6 +2640,107 @@ export function drawOrionGame(
         g.fill();
       }
 
+      const dirInfo = DIR_VECTORS[state.dir] || DIR_VECTORS.S;
+      const isFacingNorth = state.dir === 'N' || state.dir === 'NE' || state.dir === 'NW';
+      const activeWeaponId = state.equippedWeapons[state.activeWeaponIndex] || 'gladius_boltcaster';
+      const weaponDef = getWeaponDefinition(activeWeaponId);
+      const gemVis = getWeaponGemVisuals(state, activeWeaponId);
+
+      const drawOffhandHardpoint = () => {
+        if (state.equippedWeapons.length <= 1) return;
+        const offIdx = (state.activeWeaponIndex + 1) % state.equippedWeapons.length;
+        const offWeaponId = state.equippedWeapons[offIdx];
+        const offDef = offWeaponId ? getWeaponDefinition(offWeaponId) : undefined;
+        if (
+          offDef &&
+          (offDef.equipmentRole === 'shield' || offDef.equipmentRole === 'quiver') &&
+          offDef.hardpointSprite
+        ) {
+          const offGemVis = getWeaponGemVisuals(state, offWeaponId);
+          const ox = state.x - dirInfo.dx * 5 - dirInfo.dy * 4;
+          const oy = py - 8 - dirInfo.dy * 3;
+          drawBase64Sprite(
+            g,
+            {
+              ...offDef.hardpointSprite,
+              col: offGemVis.colIndex,
+              renderWidth: 10,
+              renderHeight: 10,
+              orientFromEast: true,
+            },
+            ox,
+            oy,
+            state.t,
+            {
+              dir: state.dir,
+              defaultAnchor: 'center',
+              transformFromEast: true,
+            }
+          );
+        }
+      };
+
+      const drawMainWeaponHardpoint = () => {
+        const isAttacking = state.activeSkillSlot !== null && state.skillActionTimer > 0;
+        const isSpearOrLance =
+          activeWeaponId === 'short_spear' || activeWeaponId === 'avalon_siege_lance';
+        const isMace = activeWeaponId === 'mace';
+        const isShield = weaponDef?.equipmentRole === 'shield';
+        const isRanged =
+          weaponDef?.equipmentRole === 'ranged' || weaponDef?.equipmentRole === 'quiver';
+
+        const thrustOffset = isAttacking
+          ? isSpearOrLance
+            ? 7
+            : isShield
+              ? 5
+              : isRanged
+                ? -1.5
+                : 3
+          : 0;
+        const swingRot = isAttacking
+          ? isSpearOrLance || isShield || isRanged
+            ? 0
+            : isMace
+              ? 0.65
+              : (state.ammo % 2 === 0 ? 1 : -1) * 0.52
+          : 0;
+        const slamDropY = isAttacking && isMace ? 3 : 0;
+
+        const wx = state.x + dirInfo.dx * (7 + thrustOffset);
+        const wy = py - 9 + dirInfo.dy * (5 + thrustOffset) + slamDropY;
+        const mainHardpointSprite = weaponDef?.hardpointSprite
+          ? {
+              ...weaponDef.hardpointSprite,
+              col: gemVis.colIndex,
+              orientFromEast: true,
+            }
+          : undefined;
+
+        const drewHardpointSprite = drawBase64Sprite(g, mainHardpointSprite, wx, wy, state.t, {
+          dir: state.dir,
+          defaultAnchor: 'center',
+          transformFromEast: true,
+          extraRotationRad: swingRot,
+        });
+
+        if (!drewHardpointSprite) {
+          if (weaponDef?.renderHardpoint25D) {
+            weaponDef.renderHardpoint25D(g, wx, wy, dirInfo.dx, dirInfo.dy, state);
+          } else {
+            g.fillStyle = '#94a3b8';
+            g.fillRect(wx - 1, wy, 3, 6);
+          }
+        }
+      };
+
+      // When facing North, main weapon is in front of character (up-screen / behind body)
+      if (isFacingNorth) {
+        drawMainWeaponHardpoint();
+      } else {
+        drawOffhandHardpoint();
+      }
+
       const traitDef = getTraitDefinition(state.traitLine);
       const drewPlayerSprite = drawBase64Sprite(g, traitDef?.sprite, state.x, py, state.t, {
         dir: state.dir,
@@ -2168,24 +2763,10 @@ export function drawOrionGame(
         g.fillRect(state.x - 1, py - 15, 2, 1);
       }
 
-      const dirInfo = DIR_VECTORS[state.dir] || DIR_VECTORS.S;
-      const activeWeaponId = state.equippedWeapons[state.activeWeaponIndex] || 'gladius_boltcaster';
-      const weaponDef = getWeaponDefinition(activeWeaponId);
-      const wx = state.x + dirInfo.dx * 7;
-      const wy = py - 9 + dirInfo.dy * 5;
-
-      const drewHardpointSprite = drawBase64Sprite(g, weaponDef?.hardpointSprite, wx, wy, state.t, {
-        dir: state.dir,
-        defaultAnchor: 'center',
-      });
-
-      if (!drewHardpointSprite) {
-        if (weaponDef?.renderHardpoint25D) {
-          weaponDef.renderHardpoint25D(g, wx, wy, dirInfo.dx, dirInfo.dy, state);
-        } else {
-          g.fillStyle = '#94a3b8';
-          g.fillRect(wx - 1, wy, 3, 6);
-        }
+      if (isFacingNorth) {
+        drawOffhandHardpoint();
+      } else {
+        drawMainWeaponHardpoint();
       }
 
       g.restore();

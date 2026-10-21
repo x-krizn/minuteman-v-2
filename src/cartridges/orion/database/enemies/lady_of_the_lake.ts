@@ -29,12 +29,14 @@ export const ladyOfTheLakeEnemy: EnemyWikiDefinition = {
     { itemId: 'salvage_scrap', chance: 1.0, count: 100 },
     { itemId: 'corrupted_shard', chance: 1.0, count: 3 },
     { itemId: 'grail_water', chance: 1.0, count: 2 },
+    { itemId: 'titanite', chance: 1.0, count: 1 },
+    { itemId: 'moonstone', chance: 1.0, count: 1 },
   ],
   onDeath(state, _e, ctx) {
     state.flags = state.flags || {};
     state.flags.lady_of_the_lake_defeated = true;
     soundSystem.playPowerup();
-    ctx.say('THE LADY OF THE LAKE HAS BEEN VANQUISHED!');
+    ctx.say("THE LADY OF THE LAKE VANQUISHED! · KNIGHT'S OATH FEAT NODE & TITANITE/MOONSTONE DROPPED!");
     notifyOrionStateChange();
   },
   render25D(g, e, _state, ey, isHurt) {
@@ -65,7 +67,37 @@ export const ladyOfTheLakeEnemy: EnemyWikiDefinition = {
       if (e.stateTimer <= 0) {
         e.state = 'attack';
         e.stateTimer = 0.3;
-        const baseAngle = Math.atan2(dy, dx);
+        e.hasStruckThisAttack = false;
+        const baseAngle = e.attackAngle ?? Math.atan2(dy, dx);
+        state.bladeTrails = state.bladeTrails || [];
+        state.bladeTrails.push({
+          x: e.x,
+          y: e.y,
+          z: e.z,
+          angle: baseAngle,
+          arcSpan: Math.PI * 0.95,
+          radius: 26,
+          style: 'volley',
+          color: '#c084fc',
+          coreColor: '#f5d0fe',
+          life: 0.26,
+          maxLife: 0.26,
+          isEnemy: true,
+        });
+        state.bladeTrails.push({
+          x: e.x,
+          y: e.y,
+          z: e.z,
+          angle: baseAngle,
+          arcSpan: Math.PI * 2,
+          radius: 28,
+          style: 'shockwave',
+          color: '#38bdf8',
+          coreColor: '#e0f2fe',
+          life: 0.28,
+          maxLife: 0.28,
+          isEnemy: true,
+        });
         for (const offset of [-0.45, -0.22, 0, 0.22, 0.45]) {
           const ang = baseAngle + offset;
           state.projectiles.push({
@@ -111,6 +143,8 @@ export const ladyOfTheLakeEnemy: EnemyWikiDefinition = {
     if (e.attackCd <= 0) {
       e.state = 'windup';
       e.stateTimer = this.tellDurationSec;
+      e.attackAngle = Math.atan2(dy, dx);
+      e.hasStruckThisAttack = false;
     }
   },
 };

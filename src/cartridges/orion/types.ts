@@ -114,6 +114,8 @@ export interface Base64SpriteConfig {
   anchor?: 'top-left' | 'center' | 'bottom-center';
   /** Optional 1px pixel-art silhouette outline color baked automatically offscreen */
   outlineColor?: string;
+  /** If true, sprite is authored facing East ('E') and uses 2D canvas transforms for other directions */
+  orientFromEast?: boolean;
 }
 
 export interface LightSourceConfig {
@@ -141,6 +143,17 @@ export interface BiomePostProcessConfig {
   scanlines?: boolean;
 }
 
+export type ActionEffectStyle =
+  | 'slash'
+  | 'chop'
+  | 'thrust'
+  | 'slam'
+  | 'bash'
+  | 'whirlwind'
+  | 'shockwave'
+  | 'claw_bite'
+  | 'volley';
+
 export interface BladeTrailEffect {
   x: number;
   y: number;
@@ -153,6 +166,15 @@ export interface BladeTrailEffect {
   life: number;
   maxLife: number;
   flipDir?: boolean;
+  style?: ActionEffectStyle;
+  /** Linear reach for thrust/lunge corridors or forward offset for slams */
+  length?: number;
+  /** Corridor width for thrusts, shield wall width for bashes, or impact radius for slams */
+  width?: number;
+  /** Optional inner radius for shockwaves or thick cleaves */
+  innerRadius?: number;
+  /** True when emitted by an enemy attack */
+  isEnemy?: boolean;
 }
 
 export interface BiomeTilesetCell {
@@ -483,12 +505,36 @@ export interface RegionDefinition {
 export type FrameLoadCapacity = 'light' | 'medium' | 'heavy' | 'superheavy';
 export type WeaponWeightClass = 'light' | 'medium' | 'heavy';
 export type LevelBand = 'Lesson' | 'Challenge' | 'Expression';
-export type PilotSkillId =
-  | 'ballistics_kinetics'
-  | 'melee_cqc'
-  | 'propulsion_boost'
-  | 'heavy_chassis'
-  | 'reactor_flux';
+
+export type GemId =
+  | 'moonstone'
+  | 'spinel'
+  | 'carnelian'
+  | 'titanite'
+  | 'demantoid'
+  | 'kyanite'
+  | 'charoite'
+  | 'rubellite'
+  | 'hematite';
+
+export interface GemDefinition {
+  id: GemId;
+  name: string;
+  colorName: string;
+  hexColor: string;
+  coreHexColor?: string;
+  /** Column index (0..8) defined by Row 2 of the equipment & gem matrix */
+  colIndex: number;
+  /** Self-contained 16x16 Base64 PNG icon for this gemstone */
+  iconBase64: string;
+  assignment: string;
+  identity: string;
+  primaryResource: 'Heat' | 'Presence' | 'Energy' | 'n/a';
+  reactor: ReactorFamily | 'n/a';
+  fundsSkills: TraitLine[];
+}
+
+export type PilotSkillId = TraitLine;
 export type FeatTier = 'I' | 'II' | 'III' | 'IV' | 'V';
 export type FeatKind = 'system' | 'interface';
 
@@ -499,6 +545,8 @@ export interface PilotSkillProgress {
   xp: number;
   nextLevelXp: number;
   relatedEquipment: string;
+  gemsInvested?: number;
+  fundingGems?: GemId[];
 }
 
 export interface FrameFeatDefinition {
@@ -510,6 +558,10 @@ export interface FrameFeatDefinition {
   requiredSkillLevel: number;
   gainDescription: string;
   costDescription: string;
+  /** Specific Trait + Reactor Gem Socket requirements (retained in build, refunded on unsocket) */
+  gemSockets: Array<{ gemId: GemId; count: number }>;
+  /** Equipment or mod capability unlocked by this feat */
+  unlocksDescription?: string;
   /** For system feats: how many steps (+1) this raises frame load capacity */
   loadStepUp?: number;
   /** For interface feats: zero-sum static budget modifiers */
@@ -532,6 +584,8 @@ export interface ActionModificationDefinition {
   targetCategory: 'ranged' | 'melee' | 'mobility' | 'all';
   gainDescription: string;
   drawbackDescription: string;
+  /** 1-2 Gem cost permanently spent to generate this mod (mod is retained, gems are not) */
+  gemCost: Array<{ gemId: GemId; count: number }>;
   modifiers: {
     extraProjectiles?: number;
     tellDurationMult?: number;
@@ -563,6 +617,12 @@ export interface OrionEquipmentSlots {
   };
   /** Action Modifications installed per action slot key */
   installedMods: Record<string, string>;
+  /** Action Modifications permanently generated via Gem synthesis and retained by the pilot */
+  unlockedMods?: string[];
+  /** Weapons, shields, and quivers discovered, salvaged, or unlocked by this pilot */
+  unlockedEquipment?: string[];
+  /** Per-weapon/shield/quiver Gem modification (null/undefined = unmodified Col 0; GemId = Col 0..8 & VFX color) */
+  weaponGemMods?: Record<string, GemId | null>;
 }
 
 export interface LoadPenaltySummary {
@@ -613,13 +673,19 @@ export interface ActionDefinition {
   execute?: (state: OrionState, ctx: OrionCombatContext) => void;
 }
 
-// Weapon Definition
+// Weapon / Shield / Quiver Definition
 export interface WeaponDefinition {
   id: string;
   name: string;
   class: string;
+  /** Archetype role ('melee' | 'ranged' | 'shield' | 'quiver') */
+  equipmentRole?: 'melee' | 'ranged' | 'shield' | 'quiver';
   /** Canonical weapon weight class ('light' | 'medium' | 'heavy') for the §3.4 Load Model */
   weightClass?: WeaponWeightClass;
+  /** Passive Shield Capacity bonus when equipped (e.g. Heater / Buckler / Pavise shields) */
+  passiveShieldBonus?: number;
+  /** Default blade trail or projectile color when unmodified */
+  bladeTrailColor?: string;
   description: string;
   lore: string;
   shotsPerChain: number; // 9 for Gladius Boltcaster
@@ -628,6 +694,10 @@ export interface WeaponDefinition {
   reloadDurationSec: number; // 3.15s
   primaryDamageType: DamageType;
   moveset: ActionDefinition[]; // 5 actions
+  /** Self-contained 144x16 (9 cols x 16px) Base64 PNG strip for Col 0..8 Gem variants */
+  variantStripBase64?: string;
+  /** Self-contained 16x16 Base64 PNG icons indexed by column (0..8) or GemId */
+  gemVariantBase64?: Record<GemId, string>;
   /** Optional embedded Base64 PNG or directional spritesheet for the mech hardpoint */
   hardpointSprite?: Base64SpriteConfig;
   /** Optional embedded Base64 PNG icon for UI displays */
@@ -675,6 +745,8 @@ export interface EnemyEntity {
   npcDisposition?: 'calm' | 'linger' | 'feral';
   isLoyalist?: boolean;
   lingerTimer?: number;
+  attackAngle?: number;
+  hasStruckThisAttack?: boolean;
 }
 
 // Enemy Wiki Definition (Self-Contained Entity Module Contract)
@@ -950,6 +1022,7 @@ export interface OrionState {
   salvageScrap: number; // Currency
   inventorySlots: Array<{ itemId: string; count: number }>;
   equippedFeats: string[];
+  socketedFeatGems?: Record<string, Partial<Record<GemId, number>>>; // Gems retained in build per Feat Node (refunded on unsocket)
   pilotSkills?: Record<PilotSkillId, PilotSkillProgress>;
   equipmentSlots?: OrionEquipmentSlots;
   presence?: number; // Force-reaction field (decays unless maintained)
@@ -984,6 +1057,7 @@ export interface OrionState {
   useStandardResolutionHud?: boolean;
   isFallingIntoPit?: boolean; // Falling into abyssal sinkhole / pit
   dismissedPromptKey?: string | null; // Currently dismissed interactive prompt tile
+  atTitleMenu?: boolean; // True on cartridge boot until New Game / Load Game / Continue is chosen
 }
 
 export interface OrionSpawnAnchor {

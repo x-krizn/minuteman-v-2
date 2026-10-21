@@ -8,6 +8,7 @@ import {
   FeatTier,
   FrameFeatDefinition,
   FrameLoadCapacity,
+  GemId,
   LevelBand,
   LoadPenaltySummary,
   OrionEquipmentSlots,
@@ -18,6 +19,9 @@ import {
   WeaponWeightClass,
 } from '../../types';
 import { TRAIT_REGISTRY } from '../characters';
+import { GEMSTONE_CATALOG, GEMSTONE_REGISTRY, TRAIT_FUNDING_GEMS } from '../items/gemstones';
+
+export { GEMSTONE_CATALOG, GEMSTONE_REGISTRY, TRAIT_FUNDING_GEMS };
 
 export interface LevelUnlockInfo {
   level: number;
@@ -29,10 +33,7 @@ export interface LevelUnlockInfo {
 
 /**
  * §5 LEVEL SEQUENCE (LOCKED — pilot-frame-equipment-v0.md v0.7)
- * Bands:
- * - Lesson (1–5): Onboarding. Mechanics unlock one at a time via fixed world events.
- * - Challenge (6–12): Content tests the mechanics unlocked in the Lesson band; use-based skill progression opens.
- * - Expression (13–20): Full build is online. Content asks how the player puts it together. Level 20 is cap.
+ * Frame Level (1–20): Tutorial & onboarding milestones. Gem handling: None.
  */
 export const LEVEL_UNLOCK_SEQUENCE: LevelUnlockInfo[] = [
   {
@@ -74,20 +75,20 @@ export const LEVEL_UNLOCK_SEQUENCE: LevelUnlockInfo[] = [
     level: 6,
     band: 'Challenge',
     fixedEvent: 'Border Town Complete (Cathedral Door)',
-    unlock: 'Utility Slot active (Action 6) + Class Default Utility Item; Use-Based Skill Progression Unlocks',
-    learningFocus: 'Self-sustain utility & standard Pilot Skill -> Feat Tier loop',
+    unlock: 'Utility Slot active (Action 6) + Class Default Utility Item; Gem Skill Progression Unlocks',
+    learningFocus: 'Self-sustain utility & Gemstone -> Pilot Skill -> Feat Node loop',
   },
   {
     level: 7,
     band: 'Challenge',
-    unlock: 'Feat Tier I calibration (System & Interface Feats unlocked via Pilot Skills)',
-    learningFocus: 'First frame feature allocation & static budget trade-offs',
+    unlock: 'Feat Tier I calibration (System & Interface Feat Nodes unlocked via Pilot Skills)',
+    learningFocus: 'Socketing Trait + Reactor Gems into Tier I Feat Nodes',
   },
   {
     level: 8,
     band: 'Challenge',
-    unlock: 'Action Modification Slot 1 (Gain + Drawback behavior mods)',
-    learningFocus: 'Modifying weapon & mobility action behavior',
+    unlock: 'Action Modification Slot 1 (Gem-generated Gain + Drawback behavior mods)',
+    learningFocus: 'Spending 1–2 Gems to generate retained Equipment Mods',
   },
   {
     level: 9,
@@ -147,7 +148,7 @@ export const LEVEL_UNLOCK_SEQUENCE: LevelUnlockInfo[] = [
     level: 18,
     band: 'Expression',
     unlock: 'Feat Tier V access via Pilot Skill threshold (Lv 18)',
-    learningFocus: 'Capstone System & Interface Feats',
+    learningFocus: 'Capstone System & Interface Feat Nodes',
   },
   {
     level: 19,
@@ -158,7 +159,7 @@ export const LEVEL_UNLOCK_SEQUENCE: LevelUnlockInfo[] = [
   {
     level: 20,
     band: 'Expression',
-    unlock: 'Level 20 Cap — All Pilot Skills, Feat Tiers I–V & 13 Equipment Slots mastered',
+    unlock: 'Level 20 Cap — All 6 Trait Line Skills, Feat Tiers I–V & 13 Equipment Slots mastered',
     learningFocus: 'Horizontal endgame expression (flat power, full versatility)',
   },
 ];
@@ -172,86 +173,92 @@ export const CORE_COMBAT_LAWS = [
   'Law 6: Stats are marginal; action is primary.',
 ];
 
-// ─── LAYER 1: PILOT SKILLS (Use-Based Progression) ───────────────────────────
+// ─── LAYER 1: 6 TRAIT LINE PILOT SKILLS (Funded by Matching Gems) ────────────
 
 export const PILOT_SKILL_DEFINITIONS: Array<{
   id: PilotSkillId;
   name: string;
+  fundingGems: [GemId, GemId];
   relatedEquipment: string;
 }> = [
   {
-    id: 'ballistics_kinetics',
-    name: 'Ballistics & Ranged Ordnance',
-    relatedEquipment: 'Firing ranged / kinetic / beam weapons (Gladius, Avalon Lance)',
+    id: 'Warrior',
+    name: 'Warrior (Fighter Mastery)',
+    fundingGems: ['spinel', 'hematite'],
+    relatedEquipment: 'Funded by Spinel (Trait) or Hematite (Ichor Reactor). Unlocks frontline & heat-driven Feat Nodes.',
   },
   {
-    id: 'melee_cqc',
-    name: 'Close-Quarters Blade Arts',
-    relatedEquipment: 'Striking with melee blades & lunges (Scout Khopesh)',
+    id: 'Marauder',
+    name: 'Marauder (Barbarian Siege)',
+    fundingGems: ['carnelian', 'hematite'],
+    relatedEquipment: 'Funded by Carnelian (Trait) or Hematite (Ichor Reactor). Unlocks super-heavy load & Presence Feat Nodes.',
   },
   {
-    id: 'propulsion_boost',
-    name: 'Thruster & Evasion Rigging',
-    relatedEquipment: 'Executing Basic Dash [B] and Continuous Boost',
+    id: 'Guardian',
+    name: 'Guardian (Paladin Vanguard)',
+    fundingGems: ['titanite', 'moonstone'],
+    relatedEquipment: 'Funded by Titanite (Trait) or Moonstone (Mana Reactor). Unlocks shield bastion & Presence priority Feat Nodes.',
   },
   {
-    id: 'heavy_chassis',
-    name: 'Chassis Load & Plating',
-    relatedEquipment: 'Absorbing hits on Armor/Shields & operating Heavy/Superheavy frames',
+    id: 'Cleric',
+    name: 'Cleric (Mage Support)',
+    fundingGems: ['demantoid', 'moonstone'],
+    relatedEquipment: 'Funded by Demantoid (Trait) or Moonstone (Mana Reactor). Unlocks repair, thermal venting & aura Feat Nodes.',
   },
   {
-    id: 'reactor_flux',
-    name: 'Reactor Flux & Aux Systems',
-    relatedEquipment: 'Triggering Aux/Utility modules & managing Reactor Heat/Energy',
+    id: 'Wizard',
+    name: 'Wizard (Sorcerer Artillery)',
+    fundingGems: ['kyanite', 'rubellite'],
+    relatedEquipment: 'Funded by Kyanite (Trait) or Rubellite (Ether Reactor). Unlocks beam accuracy & Æther conduit Feat Nodes.',
+  },
+  {
+    id: 'Rogue',
+    name: 'Rogue (Thief Assassin)',
+    fundingGems: ['charoite', 'rubellite'],
+    relatedEquipment: 'Funded by Charoite (Trait) or Rubellite (Ether Reactor). Unlocks CQC gyros, evasion & stealth Feat Nodes.',
   },
 ];
 
 export function createInitialPilotSkills(): Record<PilotSkillId, PilotSkillProgress> {
-  return {
-    ballistics_kinetics: {
-      id: 'ballistics_kinetics',
-      name: 'Ballistics & Ranged Ordnance',
-      level: 1,
-      xp: 0,
-      nextLevelXp: 40,
-      relatedEquipment: 'Firing ranged / kinetic / beam weapons',
+  return PILOT_SKILL_DEFINITIONS.reduce(
+    (acc, def) => {
+      acc[def.id] = {
+        id: def.id,
+        name: def.name,
+        level: 1,
+        xp: 0,
+        nextLevelXp: 1,
+        relatedEquipment: def.relatedEquipment,
+        gemsInvested: 0,
+        fundingGems: [...def.fundingGems],
+      };
+      return acc;
     },
-    melee_cqc: {
-      id: 'melee_cqc',
-      name: 'Close-Quarters Blade Arts',
-      level: 1,
-      xp: 0,
-      nextLevelXp: 40,
-      relatedEquipment: 'Striking with melee blades & lunges',
-    },
-    propulsion_boost: {
-      id: 'propulsion_boost',
-      name: 'Thruster & Evasion Rigging',
-      level: 1,
-      xp: 0,
-      nextLevelXp: 40,
-      relatedEquipment: 'Executing Basic Dash [B] and Continuous Boost',
-    },
-    heavy_chassis: {
-      id: 'heavy_chassis',
-      name: 'Chassis Load & Plating',
-      level: 1,
-      xp: 0,
-      nextLevelXp: 40,
-      relatedEquipment: 'Absorbing hits on Armor/Shields & heavy frames',
-    },
-    reactor_flux: {
-      id: 'reactor_flux',
-      name: 'Reactor Flux & Aux Systems',
-      level: 1,
-      xp: 0,
-      nextLevelXp: 40,
-      relatedEquipment: 'Triggering Aux/Utility modules & venting Reactor Heat',
-    },
-  };
+    {} as Record<PilotSkillId, PilotSkillProgress>
+  );
 }
 
-// ─── LAYER 2: FRAME FEATS (System vs. Interface, Static Budget) ──────────────
+export function normalizePilotSkills(
+  raw?: Record<string, any>
+): Record<PilotSkillId, PilotSkillProgress> {
+  const base = createInitialPilotSkills();
+  if (!raw || typeof raw !== 'object') return base;
+
+  for (const def of PILOT_SKILL_DEFINITIONS) {
+    const existing = raw[def.id];
+    if (existing && typeof existing === 'object') {
+      base[def.id] = {
+        ...base[def.id],
+        level: Math.max(1, Math.min(20, Number(existing.level) || 1)),
+        xp: Number(existing.xp) || 0,
+        gemsInvested: Number(existing.gemsInvested) || 0,
+      };
+    }
+  }
+  return base;
+}
+
+// ─── LAYER 2: FRAME FEAT NODES (Specific Trait + Reactor Gem Sockets) ────────
 
 export const FEAT_TIER_SKILL_THRESHOLDS: Record<FeatTier, number> = {
   I: 2,
@@ -267,10 +274,15 @@ export const FRAME_FEAT_CATALOG: FrameFeatDefinition[] = [
     name: 'System Feat I: Reinforced Hardpoint Servos',
     tier: 'I',
     kind: 'system',
-    requiredSkillId: 'heavy_chassis',
+    requiredSkillId: 'Warrior',
     requiredSkillLevel: 2,
-    gainDescription: '+1 Frame Load Capacity Step (e.g. Light -> Medium, Medium -> Heavy)',
-    costDescription: 'Allocates Tier I System capacity instead of Interface stat trade',
+    gainDescription: '+1 Frame Load Capacity Step (Light → Medium, Medium → Heavy)',
+    costDescription: 'Sockets 1 Spinel + 1 Hematite (Retained in build, refunded on unsocket)',
+    gemSockets: [
+      { gemId: 'spinel', count: 1 },
+      { gemId: 'hematite', count: 1 },
+    ],
+    unlocksDescription: 'Unlocks Medium/Heavy weapon mounting without overload penalties',
     loadStepUp: 1,
   },
   {
@@ -278,10 +290,15 @@ export const FRAME_FEAT_CATALOG: FrameFeatDefinition[] = [
     name: 'Interface Feat I: Overclocked Firing Actuator',
     tier: 'I',
     kind: 'interface',
-    requiredSkillId: 'ballistics_kinetics',
+    requiredSkillId: 'Warrior',
     requiredSkillLevel: 2,
     gainDescription: '+15% Weapon Damage Output',
     costDescription: '+15% Weapon Heat Generation (Static Budget Trade)',
+    gemSockets: [
+      { gemId: 'spinel', count: 1 },
+      { gemId: 'hematite', count: 1 },
+    ],
+    unlocksDescription: 'Unlocks high-heat frontline striker cadence',
     modifiers: {
       damageMult: 1.15,
       heatGenMult: 1.15,
@@ -292,10 +309,15 @@ export const FRAME_FEAT_CATALOG: FrameFeatDefinition[] = [
     name: 'Interface Feat I: CQC Counter-Gyros',
     tier: 'I',
     kind: 'interface',
-    requiredSkillId: 'melee_cqc',
+    requiredSkillId: 'Rogue',
     requiredSkillLevel: 2,
     gainDescription: '+10% Walk & Boost Mobility Speed',
     costDescription: '-10 Shield Max Capacity (Static Budget Trade)',
+    gemSockets: [
+      { gemId: 'charoite', count: 1 },
+      { gemId: 'rubellite', count: 1 },
+    ],
+    unlocksDescription: 'Unlocks rapid CQC ambush & thruster evasion profiling',
     modifiers: {
       moveSpeedMult: 1.1,
       shieldCapDelta: -10,
@@ -306,10 +328,15 @@ export const FRAME_FEAT_CATALOG: FrameFeatDefinition[] = [
     name: 'System Feat II: Load-Bearing Torsion Struts',
     tier: 'II',
     kind: 'system',
-    requiredSkillId: 'heavy_chassis',
+    requiredSkillId: 'Marauder',
     requiredSkillLevel: 5,
     gainDescription: '+1 Frame Load Capacity Step (mounts Heavy/Superheavy gear without penalty)',
-    costDescription: 'Allocates Tier II System capacity',
+    costDescription: 'Sockets 1 Carnelian + 1 Hematite (Retained in build)',
+    gemSockets: [
+      { gemId: 'carnelian', count: 1 },
+      { gemId: 'hematite', count: 1 },
+    ],
+    unlocksDescription: 'Unlocks Heavy/Superheavy artillery hardpoint clearance',
     loadStepUp: 1,
   },
   {
@@ -317,10 +344,15 @@ export const FRAME_FEAT_CATALOG: FrameFeatDefinition[] = [
     name: 'Interface Feat II: Shield Capacitor Shunt',
     tier: 'II',
     kind: 'interface',
-    requiredSkillId: 'reactor_flux',
+    requiredSkillId: 'Guardian',
     requiredSkillLevel: 5,
     gainDescription: '+25 Shield Max Capacity',
     costDescription: '-12% Walk & Boost Speed (Static Budget Trade)',
+    gemSockets: [
+      { gemId: 'titanite', count: 1 },
+      { gemId: 'moonstone', count: 1 },
+    ],
+    unlocksDescription: 'Unlocks vanguard aegis fortification & Presence soaking',
     modifiers: {
       shieldCapDelta: 25,
       moveSpeedMult: 0.88,
@@ -331,10 +363,15 @@ export const FRAME_FEAT_CATALOG: FrameFeatDefinition[] = [
     name: 'Interface Feat II: Gyroscopic Counterweight',
     tier: 'II',
     kind: 'interface',
-    requiredSkillId: 'propulsion_boost',
+    requiredSkillId: 'Wizard',
     requiredSkillLevel: 5,
     gainDescription: '+15% Projectile Accuracy & Stability',
-    costDescription: '+20% Weapon Swap Cooldown (5.0s -> 6.0s)',
+    costDescription: '+20% Weapon Swap Cooldown (5.0s → 6.0s)',
+    gemSockets: [
+      { gemId: 'kyanite', count: 1 },
+      { gemId: 'rubellite', count: 1 },
+    ],
+    unlocksDescription: 'Unlocks precision beam suppression & ranged mod stability',
     modifiers: {
       accuracyMult: 1.15,
       swapTimeMult: 1.2,
@@ -345,10 +382,15 @@ export const FRAME_FEAT_CATALOG: FrameFeatDefinition[] = [
     name: 'Interface Feat III: Thermal Bleed Louvers',
     tier: 'III',
     kind: 'interface',
-    requiredSkillId: 'reactor_flux',
+    requiredSkillId: 'Cleric',
     requiredSkillLevel: 9,
     gainDescription: '+35% Passive Heat Venting Rate',
     costDescription: '-20 Armor Max Durability (Exposed Louvers)',
+    gemSockets: [
+      { gemId: 'demantoid', count: 1 },
+      { gemId: 'moonstone', count: 1 },
+    ],
+    unlocksDescription: 'Unlocks rapid reactor cooling for sustained support cycling',
     modifiers: {
       heatVentMult: 1.35,
       armorDurabilityDelta: -20,
@@ -359,10 +401,15 @@ export const FRAME_FEAT_CATALOG: FrameFeatDefinition[] = [
     name: 'System Feat IV: Superheavy Siege Gantry',
     tier: 'IV',
     kind: 'system',
-    requiredSkillId: 'heavy_chassis',
+    requiredSkillId: 'Marauder',
     requiredSkillLevel: 14,
     gainDescription: '+1 Frame Load Capacity Step (unlocks Superheavy Ceiling on any Frame)',
-    costDescription: 'Allocates Tier IV System capacity',
+    costDescription: 'Sockets 2 Carnelian + 1 Hematite (Retained in build)',
+    gemSockets: [
+      { gemId: 'carnelian', count: 2 },
+      { gemId: 'hematite', count: 1 },
+    ],
+    unlocksDescription: 'Unlocks full Superheavy ordnance across any Trait Line frame',
     loadStepUp: 1,
   },
   {
@@ -370,10 +417,15 @@ export const FRAME_FEAT_CATALOG: FrameFeatDefinition[] = [
     name: 'Interface Feat V: Æther-Synced Core Conduit',
     tier: 'V',
     kind: 'interface',
-    requiredSkillId: 'reactor_flux',
+    requiredSkillId: 'Wizard',
     requiredSkillLevel: 18,
     gainDescription: '-25% Active Skill & Aux Cooldowns, -20% Weapon Swap Time',
     costDescription: '+15% Weapon Heat Generation (Static Budget Trade)',
+    gemSockets: [
+      { gemId: 'kyanite', count: 2 },
+      { gemId: 'rubellite', count: 1 },
+    ],
+    unlocksDescription: 'Unlocks capstone Tier V rapid multi-weapon & Aux expression',
     modifiers: {
       cooldownMult: 0.75,
       swapTimeMult: 0.8,
@@ -385,15 +437,20 @@ export const FRAME_FEAT_CATALOG: FrameFeatDefinition[] = [
     name: "Relic Feat: Knight's Oath (Lady of the Lake)",
     tier: 'I',
     kind: 'interface',
-    requiredSkillId: 'melee_cqc',
+    requiredSkillId: 'Guardian',
     requiredSkillLevel: 1,
     gainDescription: '+25% Damage vs. Camelot Knights & Sanctum Constructs',
-    costDescription: 'Earned by defeating the Lady of the Lake or completing the Three Knights Trial',
+    costDescription: 'Sockets 1 Titanite + 1 Moonstone (or earned via Lady of the Lake)',
+    gemSockets: [
+      { gemId: 'titanite', count: 1 },
+      { gemId: 'moonstone', count: 1 },
+    ],
+    unlocksDescription: 'Unlocks Belldor Sanctum knight-breaker resonance',
     modifiers: {},
   },
 ];
 
-// ─── LAYER 3: EQUIPMENT SLOTS (13-Slot Taxonomy) & ACTION MODIFICATIONS ──────
+// ─── LAYER 3: EQUIPMENT SLOTS & GEM-GENERATED ACTION MODIFICATIONS ───────────
 
 export const ACTION_MODIFICATION_CATALOG: ActionModificationDefinition[] = [
   {
@@ -402,6 +459,10 @@ export const ACTION_MODIFICATION_CATALOG: ActionModificationDefinition[] = [
     targetCategory: 'ranged',
     gainDescription: 'Fires +1 extra splinter projectile per ranged attack',
     drawbackDescription: '+25% Tell Windup Duration (slower commitment)',
+    gemCost: [
+      { gemId: 'kyanite', count: 1 },
+      { gemId: 'rubellite', count: 1 },
+    ],
     modifiers: {
       extraProjectiles: 1,
       tellDurationMult: 1.25,
@@ -413,6 +474,10 @@ export const ACTION_MODIFICATION_CATALOG: ActionModificationDefinition[] = [
     targetCategory: 'mobility',
     gainDescription: '+0.10s Booster Dash Duration & Evasion Window',
     drawbackDescription: '+8 Booster Heat Cost per Dash',
+    gemCost: [
+      { gemId: 'charoite', count: 1 },
+      { gemId: 'rubellite', count: 1 },
+    ],
     modifiers: {
       extraDashDurationSec: 0.1,
       heatCostDelta: 8,
@@ -424,10 +489,26 @@ export const ACTION_MODIFICATION_CATALOG: ActionModificationDefinition[] = [
     targetCategory: 'melee',
     gainDescription: '-20% Skill Cooldowns on CQC & Hardware Actions',
     drawbackDescription: '+20% Tell Windup Duration',
+    gemCost: [
+      { gemId: 'spinel', count: 1 },
+      { gemId: 'hematite', count: 1 },
+    ],
     modifiers: {
       hyperArmorWindup: true,
       cooldownMult: 0.8,
       tellDurationMult: 1.2,
+    },
+  },
+  {
+    id: 'mod_sanctum_vent_coil',
+    name: 'Sanctum Harmonic Vent Coil',
+    targetCategory: 'all',
+    gainDescription: '-15% Active Skill Cooldowns across both Weapon Sets',
+    drawbackDescription: '+4 Reactor Heat Cost per Action',
+    gemCost: [{ gemId: 'moonstone', count: 1 }],
+    modifiers: {
+      cooldownMult: 0.85,
+      heatCostDelta: 4,
     },
   },
 ];
@@ -441,11 +522,30 @@ const DEFAULT_UTILITY_BY_TRAIT: Record<TraitLine, string> = {
   Cleric: 'utility_sanctum_font',
 };
 
+export function createStarterGemPouch(
+  traitLine: TraitLine = 'Warrior'
+): Array<{ itemId: string; count: number }> {
+  const [traitGem, reactorGem] = TRAIT_FUNDING_GEMS[traitLine] || ['spinel', 'hematite'];
+  const map = new Map<string, number>();
+  const setCount = (id: string, c: number) => map.set(id, c);
+
+  // 1 of each Reactor Gem tradition (Moonstone / Rubellite / Hematite)
+  setCount('moonstone', 1);
+  setCount('rubellite', 1);
+  setCount('hematite', 1);
+  // 2 of the Pilot's Primary Trait Gem + 2 of the Pilot's Primary Reactor Gem
+  setCount(traitGem, 2);
+  setCount(reactorGem, 2);
+
+  return Array.from(map.entries()).map(([itemId, count]) => ({ itemId, count }));
+}
+
 export function createInitialEquipmentSlots(traitLine: TraitLine = 'Warrior'): OrionEquipmentSlots {
   const trait = TRAIT_REGISTRY[traitLine] || TRAIT_REGISTRY.Warrior;
+  const w1 = trait.startingWeapons?.[0] || 'long_sword';
   return {
-    weaponSet1: ['gladius_boltcaster', null],
-    weaponSet2: ['khopesh', null],
+    weaponSet1: [w1, null],
+    weaponSet2: ['', null],
     utility: DEFAULT_UTILITY_BY_TRAIT[traitLine] || 'utility_ichor_surge',
     aux: [
       'mod_head_optic_scan',
@@ -453,7 +553,7 @@ export function createInitialEquipmentSlots(traitLine: TraitLine = 'Warrior'): O
       'mod_arms_shock_grapple',
       'mod_legs_seismic_stomp',
     ],
-    belt: ['repair_kit', 'grail_water', 'corrupted_shard', null],
+    belt: ['repair_kit', 'grail_water', 'spinel_flask', 'kyanite_flask'],
     armor: {
       head: `${trait.frameModel || 'Mark-IV'} Sensor Visor`,
       torso: `${trait.frameModel || 'Mark-IV'} ${trait.baseArmor.type} Cuirass`,
@@ -462,10 +562,333 @@ export function createInitialEquipmentSlots(traitLine: TraitLine = 'Warrior'): O
       generator: `${trait.reactor} Core Generator`,
     },
     installedMods: {},
+    unlockedMods: [],
+    unlockedEquipment: [w1],
+    weaponGemMods: {},
   };
 }
 
-// ─── GATING CHAIN & LOAD CAPACITY CALCULATIONS (§3.4) ────────────────────────
+/**
+ * Checks whether a weapon, shield, or quiver is unlocked/owned by the pilot.
+ * When `bypassProgressionGates` is enabled (or tutorial is toggled off in sandbox), all 12 items are available.
+ */
+export function isEquipmentUnlocked(state: OrionState, weaponId: string): boolean {
+  if (!weaponId) return false;
+  if (state.bypassProgressionGates || !state.tutorialActive) return true;
+  if (state.equippedWeapons?.includes(weaponId)) return true;
+  const unlocked = state.equipmentSlots?.unlockedEquipment || [];
+  return unlocked.includes(weaponId);
+}
+
+/**
+ * Unlocks a weapon, shield, or quiver into `state.equipmentSlots.unlockedEquipment`.
+ * If the pilot is at Level 2+ and only has 1 weapon equipped, automatically equips the new item into Set 2.
+ */
+export function unlockEquipmentItem(
+  state: OrionState,
+  weaponId: string,
+  ctx?: { say: (text: string) => void }
+): boolean {
+  if (!weaponId) return false;
+  if (!state.equipmentSlots) {
+    state.equipmentSlots = createInitialEquipmentSlots(state.traitLine);
+  }
+  state.equipmentSlots.unlockedEquipment = state.equipmentSlots.unlockedEquipment || [
+    state.equippedWeapons[0] || 'long_sword',
+  ];
+
+  const wasNew = !state.equipmentSlots.unlockedEquipment.includes(weaponId);
+  if (wasNew) {
+    state.equipmentSlots.unlockedEquipment.push(weaponId);
+  }
+
+  if (
+    state.equippedWeapons.length < 2 &&
+    (state.level >= 2 || !state.tutorialActive || state.bypassProgressionGates) &&
+    state.equippedWeapons[0] !== weaponId
+  ) {
+    state.equippedWeapons.push(weaponId);
+    state.equipmentSlots.weaponSet2 = [weaponId, null];
+  }
+
+  if (wasNew && ctx) {
+    ctx.say(`DISCOVERED GEAR: ${weaponId.replace(/_/g, ' ').toUpperCase()} UNLOCKED IN SATCHEL`);
+  }
+  return wasNew;
+}
+
+/**
+ * Unlocks the pilot's canonical Weapon Set 2 item (`startingWeapons[1]`) when reaching Level 2
+ * (helping/resolving The Poe or salvaging Bedivere `[S]`).
+ */
+export function unlockLevel2SecondaryWeapon(state: OrionState): string {
+  const trait = TRAIT_REGISTRY[state.traitLine] || TRAIT_REGISTRY.Warrior;
+  const primary = state.equippedWeapons[0] || trait.startingWeapons?.[0] || 'long_sword';
+  const secondary =
+    trait.startingWeapons?.[1] && trait.startingWeapons[1] !== primary
+      ? trait.startingWeapons[1]
+      : primary === 'gladius_boltcaster'
+        ? 'khopesh'
+        : 'gladius_boltcaster';
+
+  unlockEquipmentItem(state, primary);
+  unlockEquipmentItem(state, secondary);
+
+  if (state.equippedWeapons.length === 0) {
+    state.equippedWeapons = [primary, secondary];
+  } else if (state.equippedWeapons.length === 1) {
+    state.equippedWeapons.push(secondary);
+  }
+  if (state.equipmentSlots) {
+    state.equipmentSlots.weaponSet1 = [state.equippedWeapons[0], null];
+    state.equipmentSlots.weaponSet2 = [state.equippedWeapons[1] || secondary, null];
+  }
+  return secondary;
+}
+
+export interface WeaponGemCombatModifiers {
+  gemId: GemId | null;
+  damageMult: number;
+  lockedOrStaggeredDamageMult: number;
+  maxShieldBonus: number;
+  skillCooldownMult: number;
+  skillHeatCostMult: number;
+  projectileSpeedMult: number;
+  moveSpeedMult: number;
+  bonusMaxAmmo: number;
+  extraArmorDentOnHit: number;
+  presenceGainOnHit: number;
+  shieldRestoreOnSkillHit: number;
+  frameRepairOnSkillHit: number;
+  heatVentOnBasicHit: number;
+  armorRestoreOnKill: number;
+  summaryLabel: string;
+}
+
+export const WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS: Record<GemId, string> = {
+  moonstone: '+8 Max Shield & -10% Skill Cooldowns',
+  spinel: '+15% Weapon DMG (+22% at ≥50 Heat)',
+  carnelian: '+4 Armor Shred on Hit & +15 Presence',
+  titanite: '+15 Max Shield & +4 Shield on Skill Hit',
+  demantoid: '+3 Frame HP on Skill Hit & -15% Skill Heat Cost',
+  kyanite: '+15% Projectile Speed/Range & -12% Skill Cooldowns',
+  charoite: '+20% Locked/Staggered DMG & +8% Move Speed',
+  rubellite: '+12% All Weapon DMG & +1 Max Chain Ammo',
+  hematite: '-4 Heat per Basic Hit & +4 Armor on Kill',
+};
+
+/**
+ * Resolves the active Gem modification (`Col 0..8`) for a given weapon/shield/quiver ID.
+ * - If explicitly modified in `state.equipmentSlots.weaponGemMods[weaponId]`, uses that Gem.
+ * - Otherwise, if an Action Mod is installed for the weapon's category, uses that Action Mod's primary Gem.
+ * - Otherwise returns `null` (Base column `0`).
+ */
+export function getWeaponActiveGemId(
+  state: OrionState,
+  weaponId: string
+): GemId | null {
+  const explicit = state.equipmentSlots?.weaponGemMods?.[weaponId];
+  if (explicit && explicit in GEMSTONE_REGISTRY) {
+    return explicit;
+  }
+
+  const isRanged =
+    weaponId === 'gladius_boltcaster' ||
+    weaponId === 'great_bow' ||
+    weaponId === 'quiver' ||
+    weaponId === 'avalon_siege_lance';
+  const installedModId = isRanged
+    ? state.equipmentSlots?.installedMods?.ranged
+    : state.equipmentSlots?.installedMods?.melee;
+  if (installedModId) {
+    const mod = ACTION_MODIFICATION_CATALOG.find((m) => m.id === installedModId);
+    const firstGem = mod?.gemCost?.[0]?.gemId;
+    if (firstGem && firstGem in GEMSTONE_REGISTRY) {
+      return firstGem;
+    }
+  }
+  return null;
+}
+
+/**
+ * Computes the stone-specific combat bonus for a weapon, shield, or quiver modified with a Gemstone (`Cols 0..8`).
+ */
+export function getWeaponGemCombatModifiers(
+  state: OrionState,
+  weaponId?: string
+): WeaponGemCombatModifiers {
+  const targetWpnId =
+    weaponId || state.equippedWeapons[state.activeWeaponIndex] || 'gladius_boltcaster';
+  const gemId = getWeaponActiveGemId(state, targetWpnId);
+
+  const base: WeaponGemCombatModifiers = {
+    gemId,
+    damageMult: 1.0,
+    lockedOrStaggeredDamageMult: 1.0,
+    maxShieldBonus: 0,
+    skillCooldownMult: 1.0,
+    skillHeatCostMult: 1.0,
+    projectileSpeedMult: 1.0,
+    moveSpeedMult: 1.0,
+    bonusMaxAmmo: 0,
+    extraArmorDentOnHit: 0,
+    presenceGainOnHit: 0,
+    shieldRestoreOnSkillHit: 0,
+    frameRepairOnSkillHit: 0,
+    heatVentOnBasicHit: 0,
+    armorRestoreOnKill: 0,
+    summaryLabel: 'Unmodified Base Equipment (Col 0)',
+  };
+
+  if (!gemId) return base;
+  base.summaryLabel = WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS[gemId] || base.summaryLabel;
+
+  switch (gemId) {
+    case 'moonstone':
+      base.maxShieldBonus = 8;
+      base.skillCooldownMult = 0.9;
+      break;
+    case 'spinel':
+      base.damageMult = state.heat >= 50 ? 1.22 : 1.15;
+      break;
+    case 'carnelian':
+      base.extraArmorDentOnHit = 4;
+      base.presenceGainOnHit = 15;
+      break;
+    case 'titanite':
+      base.maxShieldBonus = 15;
+      base.shieldRestoreOnSkillHit = 4;
+      break;
+    case 'demantoid':
+      base.frameRepairOnSkillHit = 3;
+      base.skillHeatCostMult = 0.85;
+      break;
+    case 'kyanite':
+      base.projectileSpeedMult = 1.15;
+      base.skillCooldownMult = 0.88;
+      break;
+    case 'charoite':
+      base.lockedOrStaggeredDamageMult = 1.2;
+      base.moveSpeedMult = 1.08;
+      break;
+    case 'rubellite':
+      base.damageMult = 1.12;
+      base.bonusMaxAmmo = 1;
+      break;
+    case 'hematite':
+      base.heatVentOnBasicHit = 4;
+      base.armorRestoreOnKill = 4;
+      break;
+  }
+
+  return base;
+}
+
+/**
+ * Resolves the sprite sheet column (`0..8`), Gem-colored blade trail / projectile VFX palette,
+ * and stone-specific combat bonus label for any weapon, shield, or quiver (`Rows 4–14`).
+ */
+export function getWeaponGemVisuals(
+  state: OrionState,
+  weaponId: string
+): {
+  gemId: GemId | null;
+  colIndex: number;
+  color: string;
+  coreColor: string;
+  label: string;
+  bonusDescription: string;
+} {
+  const gemId = getWeaponActiveGemId(state, weaponId);
+  if (!gemId) {
+    return {
+      gemId: null,
+      colIndex: 0,
+      color: '#e2e8f0',
+      coreColor: '#ffffff',
+      label: 'BASE (COL 0)',
+      bonusDescription: 'Unmodified Base Equipment',
+    };
+  }
+  const gem = GEMSTONE_REGISTRY[gemId];
+  if (!gem) {
+    return {
+      gemId: null,
+      colIndex: 0,
+      color: '#e2e8f0',
+      coreColor: '#ffffff',
+      label: 'BASE (COL 0)',
+      bonusDescription: 'Unmodified Base Equipment',
+    };
+  }
+  return {
+    gemId,
+    colIndex: gem.colIndex,
+    color: gem.hexColor,
+    coreColor: gem.coreHexColor || gem.hexColor,
+    label: gem.name.toUpperCase(),
+    bonusDescription: WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS[gemId] || '',
+  };
+}
+
+/**
+ * Modifies a weapon, shield, or quiver with a Gem (`Col 0..8`) to shift its sprite column,
+ * tint its blade trails / projectiles with that Gem's color, and apply its stone-specific combat bonus.
+ * Gated behind Level 6 (`isStandardProgressionUnlocked`) or Sandbox Bypass.
+ */
+export function modifyWeaponWithGem(
+  state: OrionState,
+  weaponId: string,
+  gemId: GemId | null,
+  ctx?: { say: (text: string) => void }
+): boolean {
+  if (!state.equipmentSlots) {
+    state.equipmentSlots = createInitialEquipmentSlots(state.traitLine);
+  }
+  state.equipmentSlots.weaponGemMods = state.equipmentSlots.weaponGemMods || {};
+  state.equipmentSlots.unlockedMods = state.equipmentSlots.unlockedMods || [];
+
+  if (gemId === null) {
+    state.equipmentSlots.weaponGemMods[weaponId] = null;
+    ctx?.say(`${weaponId.replace(/_/g, ' ').toUpperCase()} RESTORED TO BASE (COL 0)`);
+    return true;
+  }
+
+  if (!isStandardProgressionUnlocked(state)) {
+    ctx?.say(
+      'EQUIPMENT GEM MODIFICATION LOCKED UNTIL LEVEL 6 (BORDER TOWN COMPLETE) OR BYPASS'
+    );
+    return false;
+  }
+
+  const gem = GEMSTONE_REGISTRY[gemId];
+  if (!gem) return false;
+
+  const unlockTag = `wpn_gem:${weaponId}:${gemId}`;
+  const alreadyUnlocked =
+    state.equipmentSlots.unlockedMods.includes(unlockTag) ||
+    Boolean(state.bypassProgressionGates);
+
+  if (!alreadyUnlocked) {
+    if (!consumeInventoryGem(state, gemId, 1)) {
+      ctx?.say(
+        `REQUIRES 1 ${gem.name.toUpperCase()} TO MODIFY EQUIPMENT`
+      );
+      return false;
+    }
+    state.equipmentSlots.unlockedMods.push(unlockTag);
+  }
+
+  state.equipmentSlots.weaponGemMods[weaponId] = gemId;
+  const bonusDesc = WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS[gemId];
+  ctx?.say(
+    `${weaponId.replace(/_/g, ' ').toUpperCase()} → ${gem.name.toUpperCase()} (${bonusDesc.toUpperCase()})`
+  );
+  syncPostTutorialFrameLevel(state, ctx);
+  return true;
+}
+
+// ─── GATING CHAIN, GEM TRANSACTIONS & LOAD CAPACITY CALCULATIONS ─────────────
 
 const LOAD_ORDER: FrameLoadCapacity[] = ['light', 'medium', 'heavy', 'superheavy'];
 
@@ -483,12 +906,54 @@ export function isStandardProgressionUnlocked(state: OrionState): boolean {
   return false;
 }
 
+/**
+ * Advances Frame Level from 6 up to 20 naturally as the pilot invests Gemstones into
+ * Pilot Skills, sockets Feat Nodes, generates Equipment/Weapon Mods, and clears bosses/trials.
+ */
+export function syncPostTutorialFrameLevel(
+  state: OrionState,
+  ctx?: { say: (text: string) => void }
+): boolean {
+  if (!isStandardProgressionUnlocked(state)) return false;
+
+  const skills = normalizePilotSkills(state.pilotSkills);
+  const totalSkillLevelsGained = Object.values(skills).reduce(
+    (sum, s) => sum + Math.max(0, (s.level || 1) - 1),
+    0
+  );
+  const socketedFeatsCount = (state.equippedFeats || []).length;
+  const unlockedModsList = state.equipmentSlots?.unlockedMods || [];
+  const actionModsCount = unlockedModsList.filter((m) => !m.startsWith('wpn_gem:')).length;
+  const weaponGemModsCount = unlockedModsList.filter((m) => m.startsWith('wpn_gem:')).length;
+  const grailFragments = Number(state.flags?.grail_fragments || 0);
+  const ladyDefeatedBonus = state.flags?.lady_of_the_lake_defeated ? 2 : 0;
+
+  const milestonePoints =
+    Math.floor((totalSkillLevelsGained + 1) / 2) +
+    socketedFeatsCount +
+    actionModsCount +
+    Math.floor((weaponGemModsCount + 1) / 2) +
+    Math.max(0, grailFragments - 1) +
+    ladyDefeatedBonus;
+
+  const computedLevel = Math.min(20, 6 + milestonePoints);
+  if (computedLevel > state.level) {
+    state.level = computedLevel;
+    const lvlInfo = LEVEL_UNLOCK_SEQUENCE.find((l) => l.level === state.level);
+    if (ctx && lvlInfo) {
+      ctx.say(`FRAME LEVEL ${state.level} [${lvlInfo.band.toUpperCase()}]: ${lvlInfo.unlock.toUpperCase()}`);
+    }
+    return true;
+  }
+  return false;
+}
+
 export function computeUnlockedFeatTiers(
   pilotSkills?: Record<PilotSkillId, PilotSkillProgress>,
   bypass: boolean = false
 ): FeatTier[] {
   if (bypass) return ['I', 'II', 'III', 'IV', 'V'];
-  const skills = pilotSkills || createInitialPilotSkills();
+  const skills = normalizePilotSkills(pilotSkills);
   const maxSkillLevel = Math.max(
     1,
     ...Object.values(skills).map((s) => s.level)
@@ -501,6 +966,289 @@ export function computeUnlockedFeatTiers(
     }
   });
   return unlocked;
+}
+
+export function isFeatNodeAvailable(
+  state: OrionState,
+  feat: FrameFeatDefinition
+): boolean {
+  if (state.bypassProgressionGates) return true;
+  if (feat.id === 'knights_oath' && Boolean(state.flags?.lady_of_the_lake_defeated)) {
+    return true;
+  }
+  const skills = normalizePilotSkills(state.pilotSkills);
+  const reqSkillLvl = skills[feat.requiredSkillId]?.level || 1;
+  const maxSkillLvl = Math.max(1, ...Object.values(skills).map((s) => s.level));
+  return (
+    reqSkillLvl >= feat.requiredSkillLevel ||
+    maxSkillLvl >= FEAT_TIER_SKILL_THRESHOLDS[feat.tier]
+  );
+}
+
+export function getInventoryGemCount(state: OrionState, gemId: GemId): number {
+  const slot = state.inventorySlots.find((s) => s.itemId === gemId);
+  return slot ? slot.count : 0;
+}
+
+export function consumeInventoryGem(
+  state: OrionState,
+  gemId: GemId,
+  count: number = 1
+): boolean {
+  const idx = state.inventorySlots.findIndex((s) => s.itemId === gemId);
+  if (idx < 0 || state.inventorySlots[idx].count < count) return false;
+  state.inventorySlots[idx].count -= count;
+  if (state.inventorySlots[idx].count <= 0) {
+    state.inventorySlots.splice(idx, 1);
+  }
+  return true;
+}
+
+export function refundInventoryGem(
+  state: OrionState,
+  gemId: GemId,
+  count: number = 1
+): void {
+  if (count <= 0) return;
+  const existing = state.inventorySlots.find((s) => s.itemId === gemId);
+  if (existing) {
+    existing.count += count;
+  } else {
+    state.inventorySlots.push({ itemId: gemId, count });
+  }
+}
+
+export function getRetainedBuildGemCounts(state: OrionState): Record<GemId, number> {
+  const counts: Record<GemId, number> = {
+    moonstone: 0,
+    spinel: 0,
+    carnelian: 0,
+    titanite: 0,
+    demantoid: 0,
+    kyanite: 0,
+    charoite: 0,
+    rubellite: 0,
+    hematite: 0,
+  };
+  const socketed = state.socketedFeatGems || {};
+  for (const featId of state.equippedFeats) {
+    const rec = socketed[featId];
+    if (!rec) continue;
+    for (const [gemId, amt] of Object.entries(rec)) {
+      if (gemId in counts && typeof amt === 'number') {
+        counts[gemId as GemId] += amt;
+      }
+    }
+  }
+  return counts;
+}
+
+/**
+ * GEM USE 1 — PILOT SKILL LEVEL (Gems Permanently Consumed):
+ * Consumes 1 assigned Trait Gem or Reactor Gem from inventory to raise a Trait Line Pilot Skill level (1–20).
+ * Unlocking skill levels opens the 5 Feat Tiers (I–V) and Feat Node availability.
+ */
+export function fundPilotSkillWithGem(
+  state: OrionState,
+  skillId: PilotSkillId,
+  gemId: GemId,
+  ctx?: { say: (text: string) => void }
+): boolean {
+  state.pilotSkills = normalizePilotSkills(state.pilotSkills);
+  const skill = state.pilotSkills[skillId];
+  if (!skill) return false;
+
+  if (!isStandardProgressionUnlocked(state)) {
+    ctx?.say(
+      'PILOT SKILL LEVELING LOCKED UNTIL TUTORIAL CLEARED (LV 6) OR BYPASS ENABLED'
+    );
+    return false;
+  }
+
+  if (skill.level >= 20) {
+    ctx?.say(`${skill.name.toUpperCase()} IS AT LEVEL 20 CAP`);
+    return false;
+  }
+
+  const validGems = TRAIT_FUNDING_GEMS[skillId] || [];
+  if (!validGems.includes(gemId)) {
+    ctx?.say(
+      `${GEMSTONE_REGISTRY[gemId]?.name.toUpperCase() || gemId} DOES NOT FUND ${skillId.toUpperCase()}`
+    );
+    return false;
+  }
+
+  if (!consumeInventoryGem(state, gemId, 1)) {
+    ctx?.say(
+      `REQUIRES 1 ${GEMSTONE_REGISTRY[gemId]?.name.toUpperCase()} IN SATCHEL`
+    );
+    return false;
+  }
+
+  const prevTiers = computeUnlockedFeatTiers(state.pilotSkills, false);
+  skill.level += 1;
+  skill.gemsInvested = (skill.gemsInvested || 0) + 1;
+  const nextTiers = computeUnlockedFeatTiers(state.pilotSkills, false);
+
+  const newlyOpenedTier = nextTiers.find((t) => !prevTiers.includes(t));
+  const gemName = GEMSTONE_REGISTRY[gemId]?.name || gemId;
+
+  if (newlyOpenedTier) {
+    ctx?.say(
+      `CONSUMED 1 ${gemName.toUpperCase()} → ${skillId.toUpperCase()} SKILL LV ${skill.level} · FEAT TIER ${newlyOpenedTier} UNLOCKED!`
+    );
+  } else {
+    ctx?.say(
+      `CONSUMED 1 ${gemName.toUpperCase()} → ${skillId.toUpperCase()} PILOT SKILL LV ${skill.level}/20`
+    );
+  }
+  syncPostTutorialFrameLevel(state);
+  return true;
+}
+
+/**
+ * GEM USE 2 — FEAT NODE SOCKETING (Gems Removed from Inventory, Retained in Build, Refunded on Unsocket):
+ * Installing the required Trait + Reactor Gems unlocks and activates the Feat Node.
+ * Unsocketing the Feat Node returns all retained gems back to the player's inventory.
+ */
+export function toggleFeatNodeGemSocket(
+  state: OrionState,
+  featId: string,
+  ctx?: { say: (text: string) => void }
+): boolean {
+  const feat = FRAME_FEAT_CATALOG.find((f) => f.id === featId);
+  if (!feat) return false;
+
+  state.socketedFeatGems = state.socketedFeatGems || {};
+  const isEquipped = state.equippedFeats.includes(feat.id);
+
+  // Unsocket: deactivate node and refund retained gems back to inventory
+  if (isEquipped) {
+    state.equippedFeats = state.equippedFeats.filter((id) => id !== feat.id);
+    const retained = state.socketedFeatGems[feat.id];
+    const refundedLabels: string[] = [];
+    if (retained) {
+      for (const [gId, count] of Object.entries(retained)) {
+        if (typeof count === 'number' && count > 0) {
+          refundInventoryGem(state, gId as GemId, count);
+          refundedLabels.push(
+            `${count} ${GEMSTONE_REGISTRY[gId as GemId]?.name || gId}`
+          );
+        }
+      }
+      delete state.socketedFeatGems[feat.id];
+    }
+    ctx?.say(
+      refundedLabels.length > 0
+        ? `UNSOCKETED ${feat.name.toUpperCase()} · REFUNDED ${refundedLabels.join(' + ').toUpperCase()}`
+        : `DEACTIVATED ${feat.name.toUpperCase()}`
+    );
+    return true;
+  }
+
+  if (!isStandardProgressionUnlocked(state)) {
+    ctx?.say(
+      'FEAT NODE SOCKETING LOCKED UNTIL LEVEL 6 (BORDER TOWN COMPLETE) OR BYPASS'
+    );
+    return false;
+  }
+
+  // Socket: check skill/tier availability first
+  if (!isFeatNodeAvailable(state, feat)) {
+    ctx?.say(
+      `FEAT NODE LOCKED: REQUIRES ${feat.requiredSkillId.toUpperCase()} SKILL LV ${feat.requiredSkillLevel} (TIER ${feat.tier})`
+    );
+    return false;
+  }
+
+  // Check if player has all required Trait + Reactor Gems in inventory
+  const missing: string[] = [];
+  for (const req of feat.gemSockets) {
+    const have = getInventoryGemCount(state, req.gemId);
+    if (have < req.count) {
+      const gDef = GEMSTONE_REGISTRY[req.gemId];
+      missing.push(`${req.count} ${gDef?.name || req.gemId}`);
+    }
+  }
+
+  if (missing.length > 0) {
+    ctx?.say(`MISSING SOCKET GEMS: ${missing.join(' + ').toUpperCase()}`);
+    return false;
+  }
+
+  // Remove from inventory and retain in build under socketedFeatGems[feat.id]
+  const socketRecord: Partial<Record<GemId, number>> = {};
+  const socketedLabels: string[] = [];
+  for (const req of feat.gemSockets) {
+    consumeInventoryGem(state, req.gemId, req.count);
+    socketRecord[req.gemId] = (socketRecord[req.gemId] || 0) + req.count;
+    socketedLabels.push(`${req.count} ${GEMSTONE_REGISTRY[req.gemId]?.name || req.gemId}`);
+  }
+
+  state.socketedFeatGems[feat.id] = socketRecord;
+  state.equippedFeats = [...state.equippedFeats, feat.id];
+  ctx?.say(
+    `SOCKETED ${socketedLabels.join(' + ').toUpperCase()} (RETAINED IN BUILD) → ${feat.name.toUpperCase()} ACTIVE`
+  );
+  syncPostTutorialFrameLevel(state);
+  return true;
+}
+
+/**
+ * GEM USE 3 — EQUIPMENT MOD GENERATION (Gems Spent; Mod Retained, Gems Are Not):
+ * Spends 1–2 Gems from inventory to permanently generate an Equipment Mod in `unlockedMods`.
+ */
+export function generateEquipmentModWithGems(
+  state: OrionState,
+  modId: string,
+  ctx?: { say: (text: string) => void }
+): boolean {
+  const mod = ACTION_MODIFICATION_CATALOG.find((m) => m.id === modId);
+  if (!mod) return false;
+
+  if (!isStandardProgressionUnlocked(state)) {
+    ctx?.say(
+      'EQUIPMENT MOD GENERATION LOCKED UNTIL LEVEL 6 (BORDER TOWN COMPLETE) OR BYPASS'
+    );
+    return false;
+  }
+
+  if (!state.equipmentSlots) {
+    state.equipmentSlots = createInitialEquipmentSlots(state.traitLine);
+  }
+  state.equipmentSlots.unlockedMods = state.equipmentSlots.unlockedMods || [];
+
+  if (state.equipmentSlots.unlockedMods.includes(mod.id)) {
+    ctx?.say(`${mod.name.toUpperCase()} ALREADY GENERATED & RETAINED`);
+    return false;
+  }
+
+  const missing: string[] = [];
+  for (const req of mod.gemCost) {
+    const have = getInventoryGemCount(state, req.gemId);
+    if (have < req.count) {
+      const gDef = GEMSTONE_REGISTRY[req.gemId];
+      missing.push(`${req.count} ${gDef?.name || req.gemId}`);
+    }
+  }
+
+  if (missing.length > 0) {
+    ctx?.say(`REQUIRES ${missing.join(' + ').toUpperCase()} TO GENERATE MOD`);
+    return false;
+  }
+
+  const spentLabels: string[] = [];
+  for (const req of mod.gemCost) {
+    consumeInventoryGem(state, req.gemId, req.count);
+    spentLabels.push(`${req.count} ${GEMSTONE_REGISTRY[req.gemId]?.name || req.gemId}`);
+  }
+
+  state.equipmentSlots.unlockedMods.push(mod.id);
+  ctx?.say(
+    `SPENT ${spentLabels.join(' + ').toUpperCase()} → GENERATED & RETAINED ${mod.name.toUpperCase()}`
+  );
+  syncPostTutorialFrameLevel(state);
+  return true;
 }
 
 export function computeEffectiveLoadCapacity(
@@ -667,53 +1415,14 @@ export function computeInterfaceFeatModifiers(equippedFeats: string[]): {
 }
 
 /**
- * Use-Based Pilot Skill Progression (`§2.3`).
- * Locked out while the onboarding tutorial is active (`!isStandardProgressionUnlocked(state)`),
- * so tutorial levels 1–5 are never overridden prematurely.
+ * Gemstones are the sole currency for Pilot Skills, Feat Sockets, and Equipment Mods.
+ * Preserved as a no-op hook for backward compatibility with combat callers.
  */
 export function awardPilotSkillXp(
-  state: OrionState,
-  skillId: PilotSkillId,
-  amount: number,
-  ctx?: { say: (text: string) => void }
+  _state: OrionState,
+  _skillId: PilotSkillId,
+  _amount: number,
+  _ctx?: { say: (text: string) => void }
 ): boolean {
-  if (!state.pilotSkills) {
-    state.pilotSkills = createInitialPilotSkills();
-  }
-
-  // Tutorial Lockout Rule: Do not advance standard use-based progression until tutorial is cleared
-  if (!isStandardProgressionUnlocked(state)) {
-    return false;
-  }
-
-  const skill = state.pilotSkills[skillId];
-  if (!skill || skill.level >= 20) return false;
-
-  skill.xp += amount;
-  let leveledUp = false;
-
-  while (skill.xp >= skill.nextLevelXp && skill.level < 20) {
-    skill.xp -= skill.nextLevelXp;
-    skill.level += 1;
-    skill.nextLevelXp = Math.round(40 + skill.level * 15);
-    leveledUp = true;
-
-    // Advance Pilot Level (up to Level 20 cap) when aggregate skill milestones are reached
-    const totalSkillLevels = Object.values(state.pilotSkills).reduce(
-      (sum, s) => sum + (s.level - 1),
-      0
-    );
-    const derivedPilotLevel = Math.min(20, Math.max(state.level, 6 + Math.floor(totalSkillLevels / 2)));
-    if (derivedPilotLevel > state.level) {
-      state.level = derivedPilotLevel;
-      const unlockInfo = LEVEL_UNLOCK_SEQUENCE.find((u) => u.level === state.level);
-      ctx?.say(
-        `PILOT LEVEL ${state.level} (${getLevelBand(state.level).toUpperCase()}) · ${unlockInfo?.unlock.toUpperCase() || 'NEW CAPABILITIES'}`
-      );
-    } else {
-      ctx?.say(`PILOT SKILL UP: ${skill.name.toUpperCase()} LV ${skill.level}`);
-    }
-  }
-
-  return leveledUp;
+  return false;
 }

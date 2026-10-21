@@ -7,9 +7,16 @@ import { soundSystem } from '../../../engine/core/soundSystem';
 import { GRAVITY, TILE_SIZE } from '../constants';
 import { CHAR_TO_ENEMY_TYPE, getEnemyDefinition } from '../database/enemies';
 import { getItemDefinition } from '../database/items';
+import {
+  getWeaponGemCombatModifiers,
+  syncPostTutorialFrameLevel,
+  unlockEquipmentItem,
+  unlockLevel2SecondaryWeapon,
+} from '../database/progression';
+import { getWeaponDefinition } from '../database/weapons';
 import { EnemyEntity, OrionCombatContext, OrionExecutionContext, OrionState } from '../types';
 import { applyDamageToLayers } from './combatSystem';
-import { addOrionInventoryItem, isSolidAt, notifyOrionStateChange } from './playerSystem';
+import { addOrionInventoryItem, isSolidAt, notifyOrionStateChange, syncStateGates } from './playerSystem';
 
 // ─── 1. 2.5D PARTICLES ───────────────────────────────────────────────────────
 
@@ -214,11 +221,12 @@ export function updateEnemies(
         });
       }
 
+      let pId = 1000 + Math.floor(Math.random() * 9000);
       if (def?.lootTable) {
-        let pId = 1000 + Math.floor(Math.random() * 9000);
         for (const drop of def.lootTable) {
           if (Math.random() <= drop.chance) {
             const count = drop.count || 1;
+            const dropDef = getItemDefinition(drop.itemId);
             for (let c = 0; c < count; c++) {
               state.pickups.push({
                 id: pId++,
@@ -229,7 +237,10 @@ export function updateEnemies(
                 kind: drop.itemId === 'salvage_scrap' ? 'scrap' : 'item',
                 itemId: drop.itemId,
                 value: 1,
-                color: drop.itemId === 'salvage_scrap' ? '#ffd27d' : '#77c7ff',
+                color:
+                  drop.itemId === 'salvage_scrap'
+                    ? '#ffd27d'
+                    : dropDef?.iconColor || '#77c7ff',
                 t: Math.random() * 5,
               });
             }
@@ -237,11 +248,85 @@ export function updateEnemies(
         }
       }
 
+      // Canonical Gemstone Drop Table by Enemy Faction / Archetype (Tiered Drop Rates)
+      if (e.faction !== 'poe' && e.faction !== 'npc') {
+        const gemPoolByEnemy: Record<string, string[]> = {
+          bog_crawler: ['hematite', 'spinel', 'charoite'],
+          bog_wurm: ['rubellite', 'kyanite', 'charoite'],
+          orc_scout: ['carnelian', 'hematite', 'spinel'],
+          orc_warrior: ['carnelian', 'hematite', 'spinel'],
+          percival_knight: ['titanite', 'moonstone', 'demantoid'],
+          tristan_knight: ['charoite', 'rubellite', 'moonstone'],
+          bors_knight: ['titanite', 'moonstone', 'spinel'],
+          lady_of_the_lake: ['moonstone', 'rubellite', 'demantoid', 'kyanite'],
+        };
+        const dropChanceByEnemy: Record<string, number> = {
+          bog_crawler: 0.22,
+          orc_scout: 0.22,
+          orc_warrior: 0.28,
+          bog_wurm: 0.65,
+          percival_knight: 1.0,
+          tristan_knight: 1.0,
+          bors_knight: 1.0,
+          lady_of_the_lake: 1.0,
+        };
+        const dropChance = dropChanceByEnemy[e.type] ?? 0.25;
+        if (Math.random() <= dropChance) {
+          const pool = gemPoolByEnemy[e.type] || ['moonstone', 'rubellite', 'hematite'];
+          const chosenGemId = pool[Math.floor(Math.random() * pool.length)];
+          const gemDef = getItemDefinition(chosenGemId);
+          state.pickups.push({
+            id: pId++,
+            x: e.x + (Math.random() - 0.5) * 10,
+            y: e.y + (Math.random() - 0.5) * 10,
+            z: 8,
+            vz: 36,
+            kind: 'item',
+            itemId: chosenGemId,
+            value: 1,
+            color: gemDef?.iconColor || '#f8fafc',
+            t: Math.random() * 5,
+          });
+        }
+      }
+
+      // Hematite weapon modification bonus: +4 Armor Durability restored on enemy kill
+      const gemCombatMods = getWeaponGemCombatModifiers(state);
+      if (gemCombatMods.armorRestoreOnKill > 0 && e.faction !== 'poe' && e.faction !== 'npc') {
+        state.armor.durability = Math.min(
+          state.armor.maxDurability,
+          state.armor.durability + gemCombatMods.armorRestoreOnKill
+        );
+      }
+
+      // Boss & Elite Equipment Discovery Unlocks
+      const bossWeaponUnlockMap: Record<string, string> = {
+        bog_wurm: 'short_spear',
+        percival_knight: 'pavise_shield',
+        tristan_knight: 'gladius_boltcaster',
+        bors_knight: 'long_sword',
+        lady_of_the_lake: 'avalon_siege_lance',
+      };
+      const bossWeaponId = bossWeaponUnlockMap[e.type];
+      if (bossWeaponId && unlockEquipmentItem(state, bossWeaponId)) {
+        const wName = getWeaponDefinition(bossWeaponId)?.name || bossWeaponId;
+        ctx.say(`SALVAGED BOSS ARMAMENT: ${wName.toUpperCase()} UNLOCKED IN SATCHEL!`);
+      }
+
+      if (e.faction === 'poe') {
+        if (state.level < 2) {
+          state.level = 2;
+        }
+        unlockLevel2SecondaryWeapon(state);
+      }
+
       const defeatedFaction = e.faction;
       state.enemies.splice(i, 1);
       state.flags = state.flags || {};
 
       def?.onDeath?.(state, e, ctx);
+      syncPostTutorialFrameLevel(state, ctx);
+      syncStateGates(state);
 
       if (state.flags.orc_raid_active) {
         const remainingOrcs = state.enemies.filter((rem) => rem.faction === 'orc');

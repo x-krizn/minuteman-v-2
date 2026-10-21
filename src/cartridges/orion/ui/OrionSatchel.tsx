@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { soundSystem } from '../../../engine/core/soundSystem';
 import { TRAIT_REGISTRY } from '../database/characters';
 import {
@@ -12,14 +12,27 @@ import {
   getResolvedActionDescriptor,
 } from '../database/equipment';
 import { getItemDefinition } from '../database/items';
+import { getCoinPickupSpriteBase64 } from '../database/items/salvage_scrap';
 import {
   ACTION_MODIFICATION_CATALOG,
-  awardPilotSkillXp,
   CORE_COMBAT_LAWS,
-  FEAT_TIER_SKILL_THRESHOLDS,
   FRAME_FEAT_CATALOG,
+  fundPilotSkillWithGem,
+  GEMSTONE_CATALOG,
+  GEMSTONE_REGISTRY,
+  generateEquipmentModWithGems,
+  getInventoryGemCount,
+  getRetainedBuildGemCounts,
+  getWeaponGemVisuals,
+  isEquipmentUnlocked,
+  isFeatNodeAvailable,
   LEVEL_UNLOCK_SEQUENCE,
+  modifyWeaponWithGem,
+  normalizePilotSkills,
   PILOT_SKILL_DEFINITIONS,
+  refundInventoryGem,
+  toggleFeatNodeGemSocket,
+  WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS,
 } from '../database/progression';
 import { getWeaponDefinition, WEAPON_REGISTRY } from '../database/weapons';
 import {
@@ -35,6 +48,7 @@ import {
 } from '../database/world';
 import {
   activateUtilityOrBeltSlot,
+  addOrionInventoryItem,
   applyTraitLineProfile,
   ASSIGNABLE_ACTION_CATALOG,
   assignTriggerAction,
@@ -79,6 +93,43 @@ const ALL_TRAIT_LINES: TraitLine[] = [
   'Wizard',
   'Cleric',
 ];
+
+const SpriteCanvasIcon: React.FC<{
+  base64?: string;
+  col?: number;
+  cellWidth?: number;
+  cellHeight?: number;
+  sizeClass?: string;
+}> = ({ base64, col = 0, cellWidth = 16, cellHeight = 16, sizeClass = 'w-4 h-4' }) => {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  useEffect(() => {
+    const cvs = canvasRef.current;
+    if (!cvs || !base64) return;
+    const ctx = cvs.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, 16, 16);
+    const dataUri = base64.startsWith('data:image/')
+      ? base64
+      : `data:image/png;base64,${base64}`;
+    const img = new Image();
+    img.onload = () => {
+      ctx.clearRect(0, 0, 16, 16);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(img, col * cellWidth, 0, cellWidth, cellHeight, 0, 0, 16, 16);
+    };
+    img.src = dataUri;
+  }, [base64, col, cellWidth, cellHeight]);
+
+  if (!base64) return null;
+  return (
+    <canvas
+      ref={canvasRef}
+      width={16}
+      height={16}
+      className={`${sizeClass} shrink-0 [image-rendering:pixelated]`}
+    />
+  );
+};
 
 export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
   const [tab, setTab] = useState<'status' | 'weapons' | 'inventory' | 'world' | 'progression'>('status');
@@ -208,17 +259,39 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
       </div>
 
       {/* Currency Strip */}
-      <div className="flex items-center justify-between px-2 py-1 bg-[#090d14] rounded-xs border border-[#1e293b] mb-1.5 text-[10px]">
-        <span>
-          PILOT: <b className="text-[#38bdf8]">{state.pilotName}</b> ({state.traitLine})
-        </span>
-        <span>
-          REACTOR: <b className="text-[#c084fc]">{state.reactor}</b>
-        </span>
-        <span>
-          SCRAP: <b className="text-[#ffd27d]">{state.salvageScrap}</b>
-        </span>
-      </div>
+      {(() => {
+        const totalInvGems = GEMSTONE_CATALOG.reduce(
+          (sum, g) => sum + getInventoryGemCount(state, g.id),
+          0
+        );
+        const retainedMap = getRetainedBuildGemCounts(state);
+        const totalRetainedGems = Object.values(retainedMap).reduce((a, b) => a + b, 0);
+        return (
+          <div className="flex flex-wrap items-center justify-between gap-2 px-2 py-1 bg-[#090d14] rounded-xs border border-[#1e293b] mb-1.5 text-[10px]">
+            <span>
+              PILOT: <b className="text-[#38bdf8]">{state.pilotName}</b> ({state.traitLine})
+            </span>
+            <span>
+              REACTOR: <b className="text-[#c084fc]">{state.reactor}</b>
+            </span>
+            <span className="flex items-center gap-1">
+              <SpriteCanvasIcon
+                base64={GEMSTONE_REGISTRY.moonstone.iconBase64}
+                sizeClass="w-3.5 h-3.5"
+              />
+              GEMS: <b className="text-[#4ade80]">{totalInvGems} INV</b> ·{' '}
+              <b className="text-[#7dd3fc]">{totalRetainedGems} SOCKETED</b>
+            </span>
+            <span className="flex items-center gap-1">
+              <SpriteCanvasIcon
+                base64={getCoinPickupSpriteBase64(state.salvageScrap || 1)}
+                sizeClass="w-3.5 h-3.5"
+              />
+              COINS / SCRAP: <b className="text-[#ffd27d]">{state.salvageScrap}</b>
+            </span>
+          </div>
+        );
+      })()}
 
       {/* Tab: MECH STATUS & THREE DEFENSE LAYERS */}
       {tab === 'status' && (
@@ -315,17 +388,27 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
               {ALL_TRAIT_LINES.map((tl) => {
                 const prof = TRAIT_REGISTRY[tl];
                 const isCurrent = state.traitLine === tl;
+                const canSwitchClass = Boolean(state.bypassProgressionGates) || isCurrent;
                 return (
                   <button
                     key={tl}
+                    disabled={!canSwitchClass}
                     onClick={() => {
+                      if (!canSwitchClass) return;
                       soundSystem.playSelect();
                       applyTraitLineProfile(state, tl);
                     }}
-                    className={`px-1.5 py-1 rounded-xs border text-left transition-colors cursor-pointer ${
+                    title={
+                      canSwitchClass
+                        ? `${tl} (${prof.frameModel})`
+                        : 'Trait Line is locked at Pilot Creation (Enable Gate Bypass to hot-swap)'
+                    }
+                    className={`px-1.5 py-1 rounded-xs border text-left transition-colors ${
                       isCurrent
                         ? 'bg-[#172554]/80 border-[#38bdf8] text-[#e2e8f0]'
-                        : 'bg-[#0f172a] border-[#1e293b] text-[#94a3b8] hover:border-[#475569]'
+                        : canSwitchClass
+                          ? 'bg-[#0f172a] border-[#1e293b] text-[#94a3b8] hover:border-[#475569] cursor-pointer'
+                          : 'bg-[#090d14] border-[#1e293b]/50 text-[#475569] opacity-65 cursor-not-allowed'
                     }`}
                   >
                     <div className="flex items-center justify-between">
@@ -552,22 +635,25 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
             </div>
           </div>
 
-          {/* Equipped Weapon Sets (Set 1 & Set 2) + Weapon Weight Class Swapper */}
+          {/* Equipped Weapon Sets (Set 1 & Set 2) + 11 Equipment Types + Gem Column Modifier (Cols 0..8) */}
           <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">
             <div className="flex items-center justify-between text-[9.5px] font-bold text-[#94a3b8]">
               <span>
-                WEAPON SETS 1 & 2 (5.0S BASE SWAP CD · EFF LOAD: {gates.effectiveLoadCapacity.toUpperCase()})
+                WEAPON SETS 1 & 2 (11 WEAPONS, SHIELDS & QUIVERS · EFF LOAD: {gates.effectiveLoadCapacity.toUpperCase()})
               </span>
               <span className="text-[#ffd27d]">{gates.loadPenalty.label}</span>
             </div>
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
               {state.equippedWeapons.map((wId, idx) => {
                 const wDef = getWeaponDefinition(wId);
                 const isSelected = idx === state.activeWeaponIndex;
+                const gemVis = getWeaponGemVisuals(state, wId);
+                const stripBase64 = wDef?.variantStripBase64 || wDef?.hardpointSprite?.base64;
+
                 return (
                   <div
                     key={`${wId}-${idx}`}
-                    className={`p-1.5 rounded-xs border transition-colors ${
+                    className={`p-1.5 rounded-xs border transition-colors space-y-1 ${
                       isSelected
                         ? 'bg-[#172554]/70 border-[#38bdf8]'
                         : 'bg-[#0f172a] border-[#1e293b]'
@@ -575,7 +661,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-[8px] font-bold text-[#94a3b8]">
-                        WEAPON SET {idx + 1} ({wDef?.weightClass?.toUpperCase() || 'MEDIUM'})
+                        WEAPON SET {idx + 1} · {(wDef?.equipmentRole || 'melee').toUpperCase()} ({wDef?.weightClass?.toUpperCase() || 'MEDIUM'})
                       </span>
                       <button
                         onClick={() => {
@@ -602,33 +688,152 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                         {isSelected ? 'ACTIVE SET' : 'ACTIVATE'}
                       </button>
                     </div>
-                    <div className="text-[10px] font-bold text-[#ffd27d] mt-0.5 truncate">
-                      {wDef?.name || wId}
+
+                    <div className="flex items-center justify-between gap-1.5 bg-[#090d14] px-1.5 py-1 rounded-xs border border-[#1e293b]">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <SpriteCanvasIcon
+                          base64={stripBase64}
+                          col={gemVis.colIndex}
+                          sizeClass="w-5 h-5"
+                        />
+                         <div className="min-w-0">
+                          <div className="text-[10px] font-bold text-[#ffd27d] truncate">
+                            {wDef?.name || wId}
+                          </div>
+                          <div className="text-[7.5px] text-[#7dd3fc] truncate">
+                            MOD: {gemVis.label} · {gemVis.bonusDescription}
+                            {wDef?.passiveShieldBonus ? ` · +${wDef.passiveShieldBonus} SHIELD` : ''}
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1 mt-1">
-                      {Object.values(WEAPON_REGISTRY).map((candidate) => (
+
+                    {/* Gem Modification Selector (Col 0 = Base, Cols 0..8 = Stone Names + Combat Bonuses, Gated at Lv 6+) */}
+                    <div className="space-y-0.5 pt-0.5">
+                      <div className="flex items-center justify-between text-[7.5px] text-[#94a3b8] font-bold">
+                        <span>GEMSTONE MODIFY SPRITE, TRAIL & COMBAT BONUS (LV 6+):</span>
+                        <span className={gates.standardProgressionUnlocked ? 'text-[#4ade80]' : 'text-[#fbbf24]'}>
+                          {gates.standardProgressionUnlocked ? 'ONLINE' : 'LOCKED UNTIL LV 6'}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1">
                         <button
-                          key={candidate.id}
                           onClick={() => {
                             soundSystem.playSelect();
-                            state.equippedWeapons[idx] = candidate.id;
-                            if (idx === state.activeWeaponIndex) {
-                              state.maxAmmo = candidate.shotsPerChain;
-                              state.ammo = candidate.shotsPerChain;
-                              state.reloadDuration = candidate.reloadDurationSec;
-                            }
+                            modifyWeaponWithGem(state, wId, null, {
+                              say: (txt) => {
+                                state.toastText = txt;
+                                state.toastTimer = 2.4;
+                              },
+                            });
                             syncStateGates(state);
                             notifyOrionStateChange();
                           }}
-                          className={`px-1 py-0.5 rounded-xs text-[7.5px] font-bold border cursor-pointer ${
-                            wId === candidate.id
-                              ? 'bg-[#ffd27d] text-[#05070a] border-[#fbbf24]'
+                          className={`px-1 py-0.5 rounded-xs text-[7px] font-bold border cursor-pointer ${
+                            gemVis.gemId === null
+                              ? 'bg-[#e2e8f0] text-[#05070a] border-white'
                               : 'bg-[#090d14] text-[#94a3b8] border-[#334155]'
                           }`}
+                          title="Reset to Unmodified Base (Col 0)"
                         >
-                          {candidate.weightClass?.toUpperCase()}: {candidate.name.split(' ')[0]}
+                          BASE
                         </button>
-                      ))}
+                        {GEMSTONE_CATALOG.map((gem) => {
+                          const isCurrentGem = gemVis.gemId === gem.id;
+                          const unlockTag = `wpn_gem:${wId}:${gem.id}`;
+                          const isUnlocked =
+                            (state.equipmentSlots?.unlockedMods || []).includes(unlockTag) ||
+                            Boolean(state.bypassProgressionGates);
+                          const invCount = getInventoryGemCount(state, gem.id);
+                          const bonusDesc = WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS[gem.id];
+                          return (
+                            <button
+                              key={gem.id}
+                              onClick={() => {
+                                const ok = modifyWeaponWithGem(state, wId, gem.id, {
+                                  say: (txt) => {
+                                    state.toastText = txt;
+                                    state.toastTimer = 2.5;
+                                  },
+                                });
+                                if (ok) soundSystem.playPowerup();
+                                else soundSystem.playMenuBeep();
+                                syncStateGates(state);
+                                notifyOrionStateChange();
+                              }}
+                              title={`${gem.name} (Col ${gem.colIndex}): ${bonusDesc} — ${isUnlocked ? 'Unlocked' : `1 ${gem.name} (${invCount} in satchel)`}`}
+                              className={`flex items-center gap-0.5 px-1 py-0.5 rounded-xs text-[7px] font-bold border cursor-pointer ${
+                                isCurrentGem
+                                  ? 'bg-[#3b0764] text-white border-[#e879f9]'
+                                  : isUnlocked || invCount > 0
+                                    ? 'bg-[#090d14] text-[#cbd5e1] border-[#334155] hover:border-[#38bdf8]'
+                                    : 'bg-[#090d14] text-[#475569] border-[#1e293b]'
+                              }`}
+                            >
+                              <SpriteCanvasIcon
+                                base64={gem.iconBase64}
+                                sizeClass="w-3 h-3"
+                              />
+                              <span>{gem.name.toUpperCase()}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Discovered / Unlocked Equippable Weapons, Shields & Quivers */}
+                    <div className="space-y-0.5 pt-0.5">
+                      <div className="text-[7.5px] text-[#94a3b8] font-bold">
+                        EQUIP DISCOVERED GEAR INTO SET {idx + 1}:
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1">
+                        {Object.values(WEAPON_REGISTRY).map((candidate) => {
+                          const candGemVis = getWeaponGemVisuals(state, candidate.id);
+                          const candStrip =
+                            candidate.variantStripBase64 || candidate.hardpointSprite?.base64;
+                          const unlocked = isEquipmentUnlocked(state, candidate.id);
+                          return (
+                            <button
+                              key={candidate.id}
+                              disabled={!unlocked}
+                              onClick={() => {
+                                if (!unlocked) return;
+                                soundSystem.playSelect();
+                                state.equippedWeapons[idx] = candidate.id;
+                                if (idx === state.activeWeaponIndex) {
+                                  state.maxAmmo = candidate.shotsPerChain;
+                                  state.ammo = candidate.shotsPerChain;
+                                  state.reloadDuration = candidate.reloadDurationSec;
+                                }
+                                syncStateGates(state);
+                                notifyOrionStateChange();
+                              }}
+                              title={
+                                unlocked
+                                  ? `${candidate.name} (${candidate.equipmentRole || 'weapon'} · ${candidate.weightClass})`
+                                  : `${candidate.name} — Undiscovered (Salvage from world caches, scavengers, or bosses)`
+                              }
+                              className={`flex items-center gap-1 px-1 py-0.5 rounded-xs text-[7px] font-bold border ${
+                                wId === candidate.id
+                                  ? 'bg-[#ffd27d] text-[#05070a] border-[#fbbf24] cursor-pointer'
+                                  : unlocked
+                                    ? 'bg-[#090d14] text-[#94a3b8] border-[#334155] hover:border-[#64748b] cursor-pointer'
+                                    : 'bg-[#090d14] text-[#475569] border-[#1e293b]/60 opacity-50 cursor-not-allowed'
+                              }`}
+                            >
+                              <SpriteCanvasIcon
+                                base64={candStrip}
+                                col={candGemVis.colIndex}
+                                sizeClass="w-3 h-3"
+                              />
+                              <span>
+                                {candidate.name.split(' ')[0]}
+                                {!unlocked ? ' 🔒' : ''}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 );
@@ -636,47 +841,121 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
             </div>
           </div>
 
-          {/* §4.2 Equipment Action Modifications (Gain + Drawback) */}
-          <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1">
-            <div className="text-[9.5px] font-bold text-[#c084fc]">
-              EQUIPMENT ACTION MODIFICATIONS (§4.2 — BEHAVIOR GAIN + DRAWBACK):
+          {/* §4.2 Equipment Action Modifications (Gem Use 3: Gems Spent to Generate; Mod Retained) */}
+          <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[9.5px] font-bold text-[#c084fc]">
+                EQUIPMENT ACTION MODS (GEM USE 3 — GEMS SPENT TO GENERATE; MOD RETAINED):
+              </span>
+              <span className="text-[8px] text-[#94a3b8]">
+                {(state.equipmentSlots?.unlockedMods || []).length} / {ACTION_MODIFICATION_CATALOG.length} MODS RETAINED
+              </span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
               {ACTION_MODIFICATION_CATALOG.map((mod) => {
-                const slotKey = mod.targetCategory;
+                const slotKey = mod.targetCategory === 'all' ? 'ranged' : mod.targetCategory;
+                const unlockedMods = state.equipmentSlots?.unlockedMods || [];
+                const isGenerated =
+                  unlockedMods.includes(mod.id) || Boolean(state.bypassProgressionGates);
                 const isInstalled = state.equipmentSlots?.installedMods?.[slotKey] === mod.id;
+                const costText = mod.gemCost
+                  .map((c) => {
+                    const g = GEMSTONE_REGISTRY[c.gemId];
+                    const have = getInventoryGemCount(state, c.gemId);
+                    return `${c.count} ${g?.name || c.gemId} (${have})`;
+                  })
+                  .join(' + ');
+
                 return (
-                  <button
+                  <div
                     key={mod.id}
-                    onClick={() => {
-                      soundSystem.playSelect();
-                      if (!state.equipmentSlots) return;
-                      state.equipmentSlots.installedMods =
-                        state.equipmentSlots.installedMods || {};
-                      if (isInstalled) {
-                        delete state.equipmentSlots.installedMods[slotKey];
-                      } else {
-                        state.equipmentSlots.installedMods[slotKey] = mod.id;
-                      }
-                      notifyOrionStateChange();
-                    }}
-                    className={`p-1.5 rounded-xs border text-left cursor-pointer ${
+                    className={`p-1.5 rounded-xs border flex flex-col justify-between gap-1 ${
                       isInstalled
                         ? 'bg-[#2e1065]/70 border-[#c084fc]'
-                        : 'bg-[#0f172a] border-[#1e293b] hover:border-[#475569]'
+                        : isGenerated
+                          ? 'bg-[#0f172a] border-[#334155]'
+                          : 'bg-[#0b111d] border-[#1e293b]'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-[8.5px] text-[#e2e8f0] truncate">
-                        {mod.name}
-                      </span>
-                      <span className="text-[7px] font-bold px-1 rounded-xs bg-[#1e293b] text-[#c084fc]">
-                        {isInstalled ? 'INSTALLED' : 'INSTALL'}
-                      </span>
+                    <div>
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="font-bold text-[8.5px] text-[#e2e8f0] truncate">
+                          {mod.name} [{mod.targetCategory.toUpperCase()}]
+                        </span>
+                        <span
+                          className={`text-[7px] font-bold px-1 rounded-xs ${
+                            isInstalled
+                              ? 'bg-[#c084fc] text-[#05070a]'
+                              : isGenerated
+                                ? 'bg-[#064e3b] text-[#6ee7b7]'
+                                : 'bg-[#1e293b] text-[#fbbf24]'
+                          }`}
+                        >
+                          {isInstalled
+                            ? 'INSTALLED'
+                            : isGenerated
+                              ? 'RETAINED'
+                              : 'UNSYNTHESIZED'}
+                        </span>
+                      </div>
+                      <div className="text-[7.5px] text-[#86efac] mt-0.5">
+                        + {mod.gainDescription}
+                      </div>
+                      <div className="text-[7.5px] text-[#f87171]">
+                        − {mod.drawbackDescription}
+                      </div>
                     </div>
-                    <div className="text-[7.5px] text-[#86efac] mt-0.5">+ {mod.gainDescription}</div>
-                    <div className="text-[7.5px] text-[#f87171]">− {mod.drawbackDescription}</div>
-                  </button>
+
+                    <div className="flex items-center justify-between gap-1 pt-1 border-t border-[#1e293b]/80">
+                      <span className="text-[7.5px] text-[#cbd5e1] truncate">
+                        {isGenerated ? 'Mod Retained in Build' : `Recipe: ${costText}`}
+                      </span>
+                      {isGenerated ? (
+                        <button
+                          onClick={() => {
+                            soundSystem.playSelect();
+                            if (!state.equipmentSlots) return;
+                            state.equipmentSlots.installedMods =
+                              state.equipmentSlots.installedMods || {};
+                            if (isInstalled) {
+                              delete state.equipmentSlots.installedMods[slotKey];
+                            } else {
+                              state.equipmentSlots.installedMods[slotKey] = mod.id;
+                            }
+                            notifyOrionStateChange();
+                          }}
+                          className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#c084fc]/60 rounded-xs text-[7.5px] font-bold text-[#e9d5ff] cursor-pointer shrink-0"
+                        >
+                          {isInstalled ? 'UNINSTALL' : 'INSTALL MOD'}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            const ok = generateEquipmentModWithGems(state, mod.id, {
+                              say: (txt) => {
+                                state.toastText = txt;
+                                state.toastTimer = 2.6;
+                              },
+                            });
+                            if (ok) {
+                              soundSystem.playPowerup();
+                              if (state.equipmentSlots) {
+                                state.equipmentSlots.installedMods =
+                                  state.equipmentSlots.installedMods || {};
+                                state.equipmentSlots.installedMods[slotKey] = mod.id;
+                              }
+                            } else {
+                              soundSystem.playMenuBeep();
+                            }
+                            notifyOrionStateChange();
+                          }}
+                          className="px-2 py-0.5 bg-[#4c1d95] hover:bg-[#5b21b6] border border-[#a855f7] rounded-xs text-[7.5px] font-bold text-white cursor-pointer shrink-0"
+                        >
+                          ◆ GENERATE MOD
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 );
               })}
             </div>
@@ -703,20 +982,31 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                   state.equipmentSlots?.utility ||
                   getClassUtilityDefinition(undefined, state.traitLine).id;
                 const isSelected = currentUtilId === u.id;
+                const canEquipUtil =
+                  Boolean(state.bypassProgressionGates) || u.traitLine === state.traitLine;
                 return (
                   <button
                     key={u.id}
+                    disabled={!canEquipUtil}
                     onClick={() => {
+                      if (!canEquipUtil) return;
                       soundSystem.playSelect();
                       if (state.equipmentSlots) {
                         state.equipmentSlots.utility = u.id;
                         notifyOrionStateChange();
                       }
                     }}
-                    className={`p-1.5 rounded-xs border text-left cursor-pointer ${
+                    title={
+                      canEquipUtil
+                        ? `${u.name} (${u.traitLine})`
+                        : `Class Utility specific to ${u.traitLine} (Enable Gate Bypass to cross-equip)`
+                    }
+                    className={`p-1.5 rounded-xs border text-left ${
                       isSelected
                         ? 'bg-[#052e16]/80 border-[#4ade80]'
-                        : 'bg-[#0f172a] border-[#1e293b] hover:border-[#475569]'
+                        : canEquipUtil
+                          ? 'bg-[#0f172a] border-[#1e293b] hover:border-[#475569] cursor-pointer'
+                          : 'bg-[#090d14] border-[#1e293b]/50 opacity-55 cursor-not-allowed'
                     }`}
                   >
                     <div className="flex items-center justify-between">
@@ -845,28 +1135,116 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
       {/* Tab: SATCHEL & INVENTORY */}
       {tab === 'inventory' && (
         <div className="flex-1 overflow-y-auto space-y-1.5 pr-0.5 text-[10px]">
-          <div className="text-[10px] font-bold text-[#94a3b8]">SALVAGED CONSUMABLES & ARTIFACTS:</div>
+          <div className="flex flex-wrap items-center justify-between gap-1">
+            <span className="text-[10px] font-bold text-[#94a3b8]">
+              SALVAGED CONSUMABLES, GEMSTONES, RELICS & BELT FLASKS:
+            </span>
+            {state.bypassProgressionGates && (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => {
+                    soundSystem.playPowerup();
+                    for (const flaskId of [
+                      'grail_water',
+                      'repair_kit',
+                      'spinel_flask',
+                      'carnelian_flask',
+                      'titanite_flask',
+                      'kyanite_flask',
+                      'charoite_flask',
+                      'rubellite_flask',
+                      'hematite_flask',
+                    ]) {
+                      addOrionInventoryItem(state, flaskId, 1);
+                    }
+                    state.toastText = 'ADDED +1 OF ALL 9 GEMSTONE BELT FLASKS TO SATCHEL';
+                    state.toastTimer = 2.5;
+                    notifyOrionStateChange();
+                  }}
+                  className="px-1.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#8dd7ad]/60 rounded-xs font-bold text-[8px] text-[#8dd7ad] cursor-pointer"
+                >
+                  +1 ALL 9 FLASKS
+                </button>
+                <button
+                  onClick={() => {
+                    soundSystem.playPowerup();
+                    for (const relicId of [
+                      'rusted_gate_key',
+                      'sanctum_lock',
+                      'bedivere_ring',
+                      'bedivere_list',
+                      'bedivere_relic',
+                      'poe_lantern_charm',
+                    ]) {
+                      addOrionInventoryItem(state, relicId, 1);
+                    }
+                    state.toastText = 'ADDED ROW 1 KEYS, LOCK & RELIC ARTIFACTS TO SATCHEL';
+                    state.toastTimer = 2.5;
+                    notifyOrionStateChange();
+                  }}
+                  className="px-1.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#ffd27d]/60 rounded-xs font-bold text-[8px] text-[#ffd27d] cursor-pointer"
+                >
+                  +1 RELICS & KEYS
+                </button>
+              </div>
+            )}
+          </div>
           {state.inventorySlots.length === 0 ? (
             <div className="text-center text-[#64748b] py-6 italic">No salvage in satchel. Explore drop-pod marshlands and loot caches.</div>
           ) : (
             consolidateInventorySlots(state.inventorySlots).map((slot, idx) => {
               const def = getItemDefinition(slot.itemId);
               if (!def) return null;
+              const isGem = slot.itemId in GEMSTONE_REGISTRY;
               return (
                 <div
                   key={`${slot.itemId}-${idx}`}
                   className="flex items-center justify-between p-1.5 bg-[#090d14] rounded-xs border border-[#1e293b]"
                 >
-                  <div className="space-y-0.5">
-                    <div className="font-bold text-[#ffd27d]">
-                      {def.name} <span className="text-[#94a3b8]">×{slot.count}</span>
+                  <div className="space-y-0.5 min-w-0 flex-1">
+                    <div className="font-bold text-[#ffd27d] flex items-center gap-1.5 flex-wrap">
+                      {def.iconSprite?.base64 ? (
+                        <SpriteCanvasIcon
+                          base64={def.iconSprite.base64}
+                          col={def.iconSprite.col || 0}
+                          sizeClass="w-4 h-4"
+                        />
+                      ) : (
+                        <span className="text-[#38bdf8]">◆</span>
+                      )}
+                      <span>{def.name}</span>
+                      <span className="text-[#94a3b8]">×{slot.count}</span>
                       <span className="ml-1 text-[8px] uppercase px-1 py-0.2 rounded-xs bg-[#1e293b] text-[#94a3b8]">
-                        {def.category}
+                        {isGem ? 'gemstone' : def.category}
                       </span>
                     </div>
                     <div className="text-[9px] text-[#94a3b8]">{def.description}</div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0 ml-2">
+                    {isGem && (
+                      <>
+                        <button
+                          onClick={() => {
+                            soundSystem.playSelect();
+                            setTab('progression');
+                          }}
+                          className="px-1.5 py-1 bg-[#172554] hover:bg-[#1e3a8a] text-[#7dd3fc] font-bold rounded-xs border border-[#38bdf8]/60 text-[8px] cursor-pointer"
+                          title="Level Pilot Skills or Socket Feat Nodes with this Gem"
+                        >
+                          SKILLS / FEATS
+                        </button>
+                        <button
+                          onClick={() => {
+                            soundSystem.playSelect();
+                            setTab('weapons');
+                          }}
+                          className="px-1.5 py-1 bg-[#3b0764] hover:bg-[#4c1d95] text-[#e9d5ff] font-bold rounded-xs border border-[#c084fc]/60 text-[8px] cursor-pointer"
+                          title="Modify Weapons or Generate Equipment Action Mods with this Gem"
+                        >
+                          MODIFY GEAR
+                        </button>
+                      </>
+                    )}
                     {def.category === 'consumable' &&
                       [0, 1, 2, 3].map((bIdx) => {
                         const isSlotted = state.equipmentSlots?.belt?.[bIdx] === slot.itemId;
@@ -955,28 +1333,32 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                 </div>
               </div>
               <div className="flex items-center gap-1 shrink-0 ml-2">
-                <button
-                  onClick={() => {
-                    soundSystem.playMenuBeep();
-                    state.level = Math.max(1, state.level - 1);
-                    syncStateGates(state);
-                    notifyOrionStateChange();
-                  }}
-                  className="px-1.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs font-bold text-[9px] cursor-pointer"
-                >
-                  -1
-                </button>
-                <button
-                  onClick={() => {
-                    soundSystem.playMenuBeep();
-                    state.level = Math.min(20, state.level + 1);
-                    syncStateGates(state);
-                    notifyOrionStateChange();
-                  }}
-                  className="px-1.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs font-bold text-[9px] cursor-pointer"
-                >
-                  +1
-                </button>
+                {state.bypassProgressionGates && (
+                  <>
+                    <button
+                      onClick={() => {
+                        soundSystem.playMenuBeep();
+                        state.level = Math.max(1, state.level - 1);
+                        syncStateGates(state);
+                        notifyOrionStateChange();
+                      }}
+                      className="px-1.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs font-bold text-[9px] cursor-pointer"
+                    >
+                      -1
+                    </button>
+                    <button
+                      onClick={() => {
+                        soundSystem.playMenuBeep();
+                        state.level = Math.min(20, state.level + 1);
+                        syncStateGates(state);
+                        notifyOrionStateChange();
+                      }}
+                      className="px-1.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs font-bold text-[9px] cursor-pointer"
+                    >
+                      +1
+                    </button>
+                  </>
+                )}
                 <button
                   onClick={() => {
                     soundSystem.playSelect();
@@ -998,7 +1380,9 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
           <div className="p-2 bg-[#090d14] rounded-xs border border-[#c084fc]/40 space-y-1.5">
             <div className="text-[#c084fc] font-bold text-[10px] flex items-center justify-between">
               <span>BELLDOR CAMPAIGN & SECRETS STATE (STAGE 1 & 2)</span>
-              <span className="text-[8.5px] text-[#94a3b8]">PROJECT ORION INDEX</span>
+              <span className="text-[8.5px] text-[#94a3b8]">
+                {state.bypassProgressionGates ? 'SANDBOX OVERRIDES ONLINE' : 'LIVE WORLD STATE'}
+              </span>
             </div>
 
             {/* Stage 1: The Poe & Bog Exit */}
@@ -1011,21 +1395,23 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                   Bog Exit: {state.flags.bog_exit_revealed ? 'REVEALED' : 'HIDDEN'} · Wurm Gift: {state.flags.poe_lantern_gift ? 'ACTIVE' : 'NONE'}
                 </div>
               </div>
-              <button
-                onClick={() => {
-                  const order = ['unmet', 'helped', 'ignored', 'killed'];
-                  const cur = String(state.flags.poe_state || 'unmet');
-                  const next = order[(order.indexOf(cur) + 1) % order.length];
-                  state.flags.poe_state = next;
-                  state.flags.poe_lantern_gift = next === 'helped';
-                  state.flags.bog_exit_revealed = next !== 'unmet';
-                  soundSystem.playSelect();
-                  notifyOrionStateChange();
-                }}
-                className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs font-bold text-[8.5px] text-[#38bdf8] cursor-pointer shrink-0 ml-2"
-              >
-                CYCLE POE
-              </button>
+              {state.bypassProgressionGates && (
+                <button
+                  onClick={() => {
+                    const order = ['unmet', 'helped', 'ignored', 'killed'];
+                    const cur = String(state.flags.poe_state || 'unmet');
+                    const next = order[(order.indexOf(cur) + 1) % order.length];
+                    state.flags.poe_state = next;
+                    state.flags.poe_lantern_gift = next === 'helped';
+                    state.flags.bog_exit_revealed = next !== 'unmet';
+                    soundSystem.playSelect();
+                    notifyOrionStateChange();
+                  }}
+                  className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs font-bold text-[8.5px] text-[#38bdf8] cursor-pointer shrink-0 ml-2"
+                >
+                  CYCLE POE
+                </button>
+              )}
             </div>
 
             {/* Part V Secrets: Bedivere's Ring, Numbered List & Lady of the Lake */}
@@ -1038,41 +1424,43 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                   Ring taken = Loyalists hostile (+2 Trust needed). List 3/3 = Lady of the Lake.
                 </div>
               </div>
-              <div className="flex items-center gap-1 shrink-0 ml-2">
-                <button
-                  onClick={() => {
-                    const order = ['unchosen', 'taken', 'left'];
-                    const cur = String(state.flags.bedivere_ring_choice || 'unchosen');
-                    state.flags.bedivere_ring_choice = order[(order.indexOf(cur) + 1) % order.length];
-                    soundSystem.playSelect();
-                    notifyOrionStateChange();
-                  }}
-                  className="px-1.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs font-bold text-[8px] cursor-pointer"
-                >
-                  RING
-                </button>
-                <button
-                  onClick={() => {
-                    const next = (Number(state.flags.bedivere_list_items || 0) + 1) % 4;
-                    state.flags.bedivere_list_items = next;
-                    soundSystem.playSelect();
-                    notifyOrionStateChange();
-                  }}
-                  className="px-1.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs font-bold text-[8px] cursor-pointer"
-                >
-                  LIST +1
-                </button>
-                <button
-                  onClick={() => {
-                    state.flags.bedivere_list_items = 3;
-                    awakenLadyOfTheLake(state);
-                    onResume();
-                  }}
-                  className="px-1.5 py-0.5 bg-[#7e22ce] hover:bg-[#6b21a8] text-white rounded-xs font-bold text-[8px] cursor-pointer"
-                >
-                  LADY BOSS
-                </button>
-              </div>
+              {state.bypassProgressionGates && (
+                <div className="flex items-center gap-1 shrink-0 ml-2">
+                  <button
+                    onClick={() => {
+                      const order = ['unchosen', 'taken', 'left'];
+                      const cur = String(state.flags.bedivere_ring_choice || 'unchosen');
+                      state.flags.bedivere_ring_choice = order[(order.indexOf(cur) + 1) % order.length];
+                      soundSystem.playSelect();
+                      notifyOrionStateChange();
+                    }}
+                    className="px-1.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs font-bold text-[8px] cursor-pointer"
+                  >
+                    RING
+                  </button>
+                  <button
+                    onClick={() => {
+                      const next = (Number(state.flags.bedivere_list_items || 0) + 1) % 4;
+                      state.flags.bedivere_list_items = next;
+                      soundSystem.playSelect();
+                      notifyOrionStateChange();
+                    }}
+                    className="px-1.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs font-bold text-[8px] cursor-pointer"
+                  >
+                    LIST +1
+                  </button>
+                  <button
+                    onClick={() => {
+                      state.flags.bedivere_list_items = 3;
+                      awakenLadyOfTheLake(state);
+                      onResume();
+                    }}
+                    className="px-1.5 py-0.5 bg-[#7e22ce] hover:bg-[#6b21a8] text-white rounded-xs font-bold text-[8px] cursor-pointer"
+                  >
+                    LADY BOSS
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Stage 2: Orc Raid & Border Town Trust */}
@@ -1085,27 +1473,29 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                   Orcs target NPCs first during raids. Saving NPCs increases Town Trust.
                 </div>
               </div>
-              <div className="flex items-center gap-1 shrink-0 ml-2">
-                <button
-                  onClick={() => {
-                    state.flags.town_trust = (Number(state.flags.town_trust || 0) + 1) % 6;
-                    soundSystem.playMenuBeep();
-                    notifyOrionStateChange();
-                  }}
-                  className="px-1.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs font-bold text-[8px] cursor-pointer"
-                >
-                  TRUST +1
-                </button>
-                <button
-                  onClick={() => {
-                    triggerOrcRaid(state);
-                    onResume();
-                  }}
-                  className="px-1.5 py-0.5 bg-[#9a3412] hover:bg-[#7c2d12] text-white rounded-xs font-bold text-[8px] cursor-pointer"
-                >
-                  START RAID
-                </button>
-              </div>
+              {state.bypassProgressionGates && (
+                <div className="flex items-center gap-1 shrink-0 ml-2">
+                  <button
+                    onClick={() => {
+                      state.flags.town_trust = (Number(state.flags.town_trust || 0) + 1) % 6;
+                      soundSystem.playMenuBeep();
+                      notifyOrionStateChange();
+                    }}
+                    className="px-1.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs font-bold text-[8px] cursor-pointer"
+                  >
+                    TRUST +1
+                  </button>
+                  <button
+                    onClick={() => {
+                      triggerOrcRaid(state);
+                      onResume();
+                    }}
+                    className="px-1.5 py-0.5 bg-[#9a3412] hover:bg-[#7c2d12] text-white rounded-xs font-bold text-[8px] cursor-pointer"
+                  >
+                    START RAID
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Stage 2: Three Knights & 3-Way Cathedral Dungeon Door */}
@@ -1116,185 +1506,322 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                 </div>
                 <div className="text-[8px] text-[#94a3b8]">{doorStatus.reason}</div>
               </div>
-              <div className="flex items-center gap-1 shrink-0 ml-2">
-                <button
-                  onClick={() => {
-                    state.flags.grail_fragments = (Number(state.flags.grail_fragments || 0) + 1) % 4;
-                    soundSystem.playMenuBeep();
-                    notifyOrionStateChange();
-                  }}
-                  className="px-1.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs font-bold text-[8px] cursor-pointer"
-                >
-                  GRAIL +1
-                </button>
-                <button
-                  onClick={() => {
-                    state.flags.dungeon_switches = (Number(state.flags.dungeon_switches || 0) + 1) % 4;
-                    soundSystem.playMenuBeep();
-                    notifyOrionStateChange();
-                  }}
-                  className="px-1.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs font-bold text-[8px] cursor-pointer"
-                >
-                  SWITCH +1
-                </button>
-                <button
-                  onClick={() => {
-                    triggerThreeKnightsTrial(state);
-                    onResume();
-                  }}
-                  className="px-1.5 py-0.5 bg-[#312e81] hover:bg-[#3730a3] text-[#e2e8f0] border border-[#818cf8] rounded-xs font-bold text-[8px] cursor-pointer"
-                >
-                  3 KNIGHTS
-                </button>
-              </div>
+              {state.bypassProgressionGates && (
+                <div className="flex items-center gap-1 shrink-0 ml-2">
+                  <button
+                    onClick={() => {
+                      state.flags.grail_fragments = (Number(state.flags.grail_fragments || 0) + 1) % 4;
+                      soundSystem.playMenuBeep();
+                      notifyOrionStateChange();
+                    }}
+                    className="px-1.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs font-bold text-[8px] cursor-pointer"
+                  >
+                    GRAIL +1
+                  </button>
+                  <button
+                    onClick={() => {
+                      state.flags.dungeon_switches = (Number(state.flags.dungeon_switches || 0) + 1) % 4;
+                      soundSystem.playMenuBeep();
+                      notifyOrionStateChange();
+                    }}
+                    className="px-1.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs font-bold text-[8px] cursor-pointer"
+                  >
+                    SWITCH +1
+                  </button>
+                  <button
+                    onClick={() => {
+                      triggerThreeKnightsTrial(state);
+                      onResume();
+                    }}
+                    className="px-1.5 py-0.5 bg-[#312e81] hover:bg-[#3730a3] text-[#e2e8f0] border border-[#818cf8] rounded-xs font-bold text-[8px] cursor-pointer"
+                  >
+                    3 KNIGHTS
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* LAYER 1 & LAYER 2: PILOT SKILLS -> FEAT TIERS (I–V) -> SYSTEM & INTERFACE FEATS */}
-          <div className="p-2 bg-[#090d14] rounded-xs border border-[#38bdf8]/40 space-y-1.5">
-            <div className="flex items-center justify-between">
-              <span className="text-[#38bdf8] font-bold text-[10px]">
-                3-LAYER GATING CHAIN: PILOT SKILLS → FEAT TIERS → FRAME FEATS (v0.7)
-              </span>
-              <span
-                className={`px-1.5 py-0.5 rounded-xs font-bold text-[8px] ${
-                  gates.standardProgressionUnlocked
-                    ? 'bg-[#064e3b] text-[#6ee7b7] border border-[#059669]'
-                    : 'bg-[#451a03] text-[#fcd34d] border border-[#b45309]'
-                }`}
-              >
-                {gates.standardProgressionUnlocked
-                  ? 'USE-BASED PROGRESSION UNLOCKED'
-                  : 'LOCKED UNTIL TUTORIAL CLEARED (LV 6)'}
-              </span>
-            </div>
+          {/* NINE-GEMSTONE MATRIX & 3-WAY GEM PROGRESSION ENGINE */}
+          {(() => {
+            const normalizedSkills = normalizePilotSkills(state.pilotSkills);
+            const retainedGems = getRetainedBuildGemCounts(state);
 
-            <div className="text-[8.5px] text-[#94a3b8]">
-              Use equipment → Pilot skills level → Feat Tiers open (I: Lv2, II: Lv5, III: Lv9, IV: Lv14, V: Lv18) → System Feats raise Load Limit & Interface Feats trade Static Budget stats.
-            </div>
-
-            {/* Pilot Skills List */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-              {PILOT_SKILL_DEFINITIONS.map((def) => {
-                const prog = state.pilotSkills?.[def.id];
-                const lvl = prog?.level || 1;
-                const xp = Math.round(prog?.xp || 0);
-                const nextXp = prog?.nextLevelXp || 40;
-                return (
-                  <div
-                    key={def.id}
-                    className="p-1.5 bg-[#0f172a] rounded-xs border border-[#1e293b] flex items-center justify-between gap-2"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between text-[8.5px]">
-                        <span className="font-bold text-[#e2e8f0] truncate">{def.name}</span>
-                        <span className="font-bold text-[#38bdf8]">
-                          LV {lvl} ({xp}/{nextXp} XP)
-                        </span>
-                      </div>
-                      <div className="text-[7.5px] text-[#64748b] truncate">
-                        {def.relatedEquipment}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => {
-                        soundSystem.playSelect();
-                        if (!gates.standardProgressionUnlocked) {
-                          state.toastText =
-                            'STANDARD SKILL PROGRESSION LOCKED UNTIL TUTORIAL CLEARED (OR TURN TUTORIAL OFF)';
-                          state.toastTimer = 2.6;
-                        } else {
-                          awardPilotSkillXp(state, def.id, 25, {
-                            say: (txt) => {
-                              state.toastText = txt;
-                              state.toastTimer = 2.5;
-                            },
-                          });
-                        }
-                        syncStateGates(state);
-                        notifyOrionStateChange();
-                      }}
-                      className="px-1.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs font-bold text-[8px] text-[#ffd27d] cursor-pointer shrink-0"
-                    >
-                      +25 XP
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Frame Feats (System vs Interface — Re-distributable at any time, no active cap) */}
-            <div className="pt-1 border-t border-[#1e293b] space-y-1">
-              <div className="flex items-center justify-between text-[8.5px]">
-                <span className="font-bold text-[#ffd27d]">
-                  FRAME FEATURES (FEATS) — RE-DISTRIBUTABLE AT ANY TIME (NO ACTIVE LIMIT):
-                </span>
-                <span className="text-[#7dd3fc] font-bold">
-                  OPEN TIERS: {gates.unlockedFeatTiers.length > 0 ? gates.unlockedFeatTiers.join(', ') : 'NONE (LEVEL SKILLS TO LV 2)'}
-                </span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-                {FRAME_FEAT_CATALOG.map((feat) => {
-                  const skillLvl = state.pilotSkills?.[feat.requiredSkillId]?.level || 1;
-                  const isTierOpen =
-                    Boolean(state.bypassProgressionGates) ||
-                    gates.unlockedFeatTiers.includes(feat.tier) ||
-                    skillLvl >= feat.requiredSkillLevel ||
-                    (feat.id === 'knights_oath' && Boolean(state.flags?.lady_of_the_lake_defeated));
-                  const isEquipped = state.equippedFeats.includes(feat.id);
-
-                  return (
-                    <button
-                      key={feat.id}
-                      onClick={() => {
-                        if (!isTierOpen) {
-                          soundSystem.playMenuBeep();
-                          state.toastText = `TIER ${feat.tier} LOCKED: REQUIRES ${feat.requiredSkillId.toUpperCase()} LV ${FEAT_TIER_SKILL_THRESHOLDS[feat.tier]}`;
-                          state.toastTimer = 2.5;
-                          notifyOrionStateChange();
-                          return;
-                        }
-                        soundSystem.playSelect();
-                        if (isEquipped) {
-                          state.equippedFeats = state.equippedFeats.filter((id) => id !== feat.id);
-                        } else {
-                          state.equippedFeats = [...state.equippedFeats, feat.id];
-                        }
-                        syncStateGates(state);
-                        notifyOrionStateChange();
-                      }}
-                      className={`p-1.5 rounded-xs border text-left transition-colors cursor-pointer ${
-                        isEquipped
-                          ? 'bg-[#172554]/80 border-[#38bdf8]'
-                          : isTierOpen
-                            ? 'bg-[#0f172a] border-[#1e293b] hover:border-[#475569]'
-                            : 'bg-[#090d14] border-[#1e293b]/50 opacity-60'
+            return (
+              <div className="p-2 bg-[#090d14] rounded-xs border border-[#38bdf8]/40 space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-1 border-b border-[#1e293b] pb-1">
+                  <span className="text-[#38bdf8] font-bold text-[10px]">
+                    NINE-GEMSTONE SYSTEM — PILOT SKILLS · FEAT NODE SOCKETS · EQUIPMENT MODS
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={`px-1.5 py-0.5 rounded-xs font-bold text-[8px] ${
+                        gates.standardProgressionUnlocked
+                          ? 'bg-[#064e3b] text-[#6ee7b7] border border-[#059669]'
+                          : 'bg-[#451a03] text-[#fcd34d] border border-[#b45309]'
                       }`}
                     >
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="font-bold text-[8.5px] text-[#e2e8f0] truncate">
-                          [{feat.tier}] {feat.name}
-                        </span>
-                        <span
-                          className={`px-1 py-0.2 rounded-xs text-[7px] font-bold shrink-0 ${
-                            isEquipped
-                              ? 'bg-[#38bdf8] text-[#05070a]'
-                              : feat.kind === 'system'
-                                ? 'bg-[#064e3b] text-[#6ee7b7]'
-                                : 'bg-[#3b0764] text-[#e879f9]'
+                      {gates.standardProgressionUnlocked
+                        ? 'GEM SKILL PROGRESSION ONLINE'
+                        : 'TUTORIAL LOCKOUT (CLEAR TUTORIAL / LV 6 OR BYPASS)'}
+                    </span>
+                    {state.bypassProgressionGates && (
+                      <button
+                        onClick={() => {
+                          soundSystem.playPowerup();
+                          for (const gem of GEMSTONE_CATALOG) {
+                            refundInventoryGem(state, gem.id, 1);
+                          }
+                          state.toastText = 'ADDED +1 OF ALL 9 CANONICAL GEMSTONES TO SATCHEL';
+                          state.toastTimer = 2.4;
+                          notifyOrionStateChange();
+                        }}
+                        className="px-1.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#38bdf8]/60 rounded-xs font-bold text-[8px] text-[#7dd3fc] cursor-pointer"
+                      >
+                        +1 ALL 9 GEMS
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Canonical 9-Gemstone Key & Pouch Table */}
+                <div className="space-y-1">
+                  <div className="text-[8.5px] text-[#94a3b8]">
+                    <b>Gem Uses:</b> (1) <b>Pilot Skill Level</b> = Gems permanently consumed · (2) <b>Feat Node</b> = Gems removed from inventory, retained in build & refunded on unsocket · (3) <b>Equipment Mod</b> = Gems spent, mod retained.
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-1">
+                    {GEMSTONE_CATALOG.map((gem) => {
+                      const invCount = getInventoryGemCount(state, gem.id);
+                      const retainedCount = retainedGems[gem.id] || 0;
+                      return (
+                        <div
+                          key={gem.id}
+                          className="p-1.5 bg-[#0f172a] rounded-xs border border-[#1e293b] flex items-center justify-between gap-1.5"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1 text-[8.5px] font-bold">
+                              <SpriteCanvasIcon
+                                base64={gem.iconBase64}
+                                sizeClass="w-3.5 h-3.5"
+                              />
+                              <span className="text-[#f8fafc] truncate">
+                                {gem.name} (Col {gem.colIndex})
+                              </span>
+                            </div>
+                            <div className="text-[7.5px] text-[#94a3b8] truncate">
+                              {gem.assignment} · Res: {gem.primaryResource} · Funds: {gem.fundsSkills.join(', ')}
+                            </div>
+                            <div className="text-[7.5px] text-[#cbd5e1] mt-0.5">
+                              Inv: <b className="text-[#4ade80]">{invCount}</b>
+                              {retainedCount > 0 ? (
+                                <>
+                                  {' '}
+                                  · Retained: <b className="text-[#38bdf8]">{retainedCount}</b>
+                                </>
+                              ) : null}
+                            </div>
+                          </div>
+                          {state.bypassProgressionGates && (
+                            <button
+                              onClick={() => {
+                                soundSystem.playCoin();
+                                refundInventoryGem(state, gem.id, 1);
+                                notifyOrionStateChange();
+                              }}
+                              className="px-1.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs font-bold text-[7.5px] text-[#ffd27d] cursor-pointer shrink-0"
+                              title={`Add 1 ${gem.name} to Satchel`}
+                            >
+                              +1
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Gem Use 1: 6 Trait Line Pilot Skills (Levels 1-20 -> Unlocks 5 Feat Tiers I-V) */}
+                <div className="pt-1 border-t border-[#1e293b] space-y-1">
+                  <div className="flex items-center justify-between text-[8.5px]">
+                    <span className="font-bold text-[#ffd27d]">
+                      GEM USE 1 — 6 TRAIT LINE PILOT SKILLS (LV 1–20 · GEMS PERMANENTLY CONSUMED):
+                    </span>
+                    <span className="text-[#7dd3fc] font-bold">
+                      UNLOCKED FEAT TIERS: {gates.unlockedFeatTiers.length > 0 ? gates.unlockedFeatTiers.join(', ') : 'NONE (REACH SKILL LV 2)'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {PILOT_SKILL_DEFINITIONS.map((def) => {
+                      const prog = normalizedSkills[def.id];
+                      const lvl = prog?.level || 1;
+                      const invested = prog?.gemsInvested || 0;
+                      const [traitGemId, reactorGemId] = def.fundingGems;
+                      const traitGem = GEMSTONE_REGISTRY[traitGemId];
+                      const reactorGem = GEMSTONE_REGISTRY[reactorGemId];
+                      const haveTraitGem = getInventoryGemCount(state, traitGemId);
+                      const haveReactorGem = getInventoryGemCount(state, reactorGemId);
+                      const isActiveTrait = state.traitLine === def.id;
+
+                      return (
+                        <div
+                          key={def.id}
+                          className={`p-1.5 rounded-xs border space-y-1 ${
+                            isActiveTrait
+                              ? 'bg-[#172554]/50 border-[#38bdf8]/70'
+                              : 'bg-[#0f172a] border-[#1e293b]'
                           }`}
                         >
-                          {isEquipped ? 'ACTIVE' : feat.kind.toUpperCase()}
-                        </span>
-                      </div>
-                      <div className="text-[7.5px] text-[#86efac] mt-0.5">+ {feat.gainDescription}</div>
-                      <div className="text-[7.5px] text-[#fbbf24]">⚖ {feat.costDescription}</div>
-                    </button>
-                  );
-                })}
+                          <div className="flex items-center justify-between text-[8.5px]">
+                            <span className="font-bold text-[#e2e8f0] truncate">
+                              {def.name} {isActiveTrait ? '★' : ''}
+                            </span>
+                            <span className="font-bold text-[#38bdf8] shrink-0">
+                              LV {lvl} / 20 ({invested} Gems)
+                            </span>
+                          </div>
+                          <div className="text-[7.5px] text-[#94a3b8] leading-tight">
+                            {def.relatedEquipment}
+                          </div>
+                          <div className="flex items-center gap-1 pt-0.5">
+                            <button
+                              onClick={() => {
+                                const ok = fundPilotSkillWithGem(state, def.id, traitGemId, {
+                                  say: (txt) => {
+                                    state.toastText = txt;
+                                    state.toastTimer = 2.6;
+                                  },
+                                });
+                                if (ok) soundSystem.playPowerup();
+                                else soundSystem.playMenuBeep();
+                                syncStateGates(state);
+                                notifyOrionStateChange();
+                              }}
+                              className={`flex-1 flex items-center justify-center gap-1 px-1.5 py-0.5 rounded-xs border text-[7.5px] font-bold cursor-pointer truncate ${
+                                haveTraitGem > 0 && lvl < 20
+                                  ? 'bg-[#1e293b] hover:bg-[#334155] border-[#facc15]/60 text-[#fef08a]'
+                                  : 'bg-[#090d14] border-[#1e293b] text-[#64748b]'
+                              }`}
+                            >
+                              <SpriteCanvasIcon
+                                base64={traitGem.iconBase64}
+                                sizeClass="w-3 h-3"
+                              />
+                              <span>Spend {traitGem.name} ({haveTraitGem})</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                const ok = fundPilotSkillWithGem(state, def.id, reactorGemId, {
+                                  say: (txt) => {
+                                    state.toastText = txt;
+                                    state.toastTimer = 2.6;
+                                  },
+                                });
+                                if (ok) soundSystem.playPowerup();
+                                else soundSystem.playMenuBeep();
+                                syncStateGates(state);
+                                notifyOrionStateChange();
+                              }}
+                              className={`flex-1 flex items-center justify-center gap-1 px-1.5 py-0.5 rounded-xs border text-[7.5px] font-bold cursor-pointer truncate ${
+                                haveReactorGem > 0 && lvl < 20
+                                  ? 'bg-[#1e293b] hover:bg-[#334155] border-[#38bdf8]/60 text-[#e0f2fe]'
+                                  : 'bg-[#090d14] border-[#1e293b] text-[#64748b]'
+                              }`}
+                            >
+                              <SpriteCanvasIcon
+                                base64={reactorGem.iconBase64}
+                                sizeClass="w-3 h-3"
+                              />
+                              <span>Spend {reactorGem.name} ({haveReactorGem})</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Gem Use 2: Feat Nodes (Tiers I-V, Specific Trait + Reactor Gem Sockets, Refunded on Unsocket) */}
+                <div className="pt-1 border-t border-[#1e293b] space-y-1">
+                  <div className="flex items-center justify-between text-[8.5px]">
+                    <span className="font-bold text-[#ffd27d]">
+                      GEM USE 2 — FEAT NODES (SOCKET GEMS RETAINED IN BUILD · REFUNDED ON UNSOCKET):
+                    </span>
+                    <span className="text-[#86efac] font-bold">
+                      ACTIVE FEATS: {state.equippedFeats.length}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {FRAME_FEAT_CATALOG.map((feat) => {
+                      const isTierOpen = isFeatNodeAvailable(state, feat);
+                      const isEquipped = state.equippedFeats.includes(feat.id);
+                      const socketSummary = feat.gemSockets
+                        .map((s) => {
+                          const g = GEMSTONE_REGISTRY[s.gemId];
+                          const inv = getInventoryGemCount(state, s.gemId);
+                          return `${s.count} ${g?.name || s.gemId} (${inv} inv)`;
+                        })
+                        .join(' + ');
+
+                      return (
+                        <button
+                          key={feat.id}
+                          onClick={() => {
+                            const ok = toggleFeatNodeGemSocket(state, feat.id, {
+                              say: (txt) => {
+                                state.toastText = txt;
+                                state.toastTimer = 2.6;
+                              },
+                            });
+                            if (ok) soundSystem.playSelect();
+                            else soundSystem.playMenuBeep();
+                            syncStateGates(state);
+                            notifyOrionStateChange();
+                          }}
+                          className={`p-1.5 rounded-xs border text-left transition-colors cursor-pointer ${
+                            isEquipped
+                              ? 'bg-[#172554]/80 border-[#38bdf8]'
+                              : isTierOpen
+                                ? 'bg-[#0f172a] border-[#1e293b] hover:border-[#475569]'
+                                : 'bg-[#090d14] border-[#1e293b]/50 opacity-65'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="font-bold text-[8.5px] text-[#e2e8f0] truncate">
+                              [{feat.tier} · {feat.requiredSkillId} Lv.{feat.requiredSkillLevel}] {feat.name}
+                            </span>
+                            <span
+                              className={`px-1 py-0.2 rounded-xs text-[7px] font-bold shrink-0 ${
+                                isEquipped
+                                  ? 'bg-[#38bdf8] text-[#05070a]'
+                                  : feat.kind === 'system'
+                                    ? 'bg-[#064e3b] text-[#6ee7b7]'
+                                    : 'bg-[#3b0764] text-[#e879f9]'
+                              }`}
+                            >
+                              {isEquipped
+                                ? 'SOCKETED (CLICK TO REFUND)'
+                                : `SOCKET (${feat.kind.toUpperCase()})`}
+                            </span>
+                          </div>
+                          <div className="text-[7.5px] text-[#86efac] mt-0.5">
+                            + {feat.gainDescription}
+                          </div>
+                          <div className="text-[7.5px] text-[#fbbf24]">
+                            ◆ Sockets: {socketSummary}
+                          </div>
+                          {feat.unlocksDescription && (
+                            <div className="text-[7px] text-[#94a3b8]">
+                              ↳ {feat.unlocksDescription}
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            );
+          })()}
 
           {/* Core Combat Laws */}
           <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1">
@@ -1354,17 +1881,19 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                 <span className="font-bold text-[#22d3ee] text-[10px]">
                   ACTIVE 5-TIER NESTED WORLD HIERARCHY (ON-FOOT & LORE TRANSIT)
                 </span>
-                <button
-                  onClick={() => {
-                    state.discoveredWaystations = Object.keys(WAYSTATION_REGISTRY);
-                    state.discoveredWaygates = Object.keys(WAYGATE_REGISTRY);
-                    soundSystem.playPowerup();
-                    notifyOrionStateChange();
-                  }}
-                  className="px-1.5 py-0.5 bg-[#164e63] hover:bg-[#0e7490] text-[#e0f2fe] border border-[#22d3ee]/60 rounded-xs font-bold text-[8px] cursor-pointer"
-                >
-                  ATTUNE ALL WAYSTATIONS & WAYGATES
-                </button>
+                {state.bypassProgressionGates && (
+                  <button
+                    onClick={() => {
+                      state.discoveredWaystations = Object.keys(WAYSTATION_REGISTRY);
+                      state.discoveredWaygates = Object.keys(WAYGATE_REGISTRY);
+                      soundSystem.playPowerup();
+                      notifyOrionStateChange();
+                    }}
+                    className="px-1.5 py-0.5 bg-[#164e63] hover:bg-[#0e7490] text-[#e0f2fe] border border-[#22d3ee]/60 rounded-xs font-bold text-[8px] cursor-pointer"
+                  >
+                    ATTUNE ALL WAYSTATIONS & WAYGATES
+                  </button>
+                )}
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-1 pt-1">
                 <div className="p-1 bg-[#090d14] rounded-xs border border-[#1e293b]">

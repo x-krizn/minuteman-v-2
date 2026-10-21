@@ -98,7 +98,22 @@ export const tristanKnightEnemy: EnemyWikiDefinition = {
       if (e.stateTimer <= 0) {
         e.state = 'attack';
         e.stateTimer = 0.2;
-        const baseAngle = Math.atan2(dy, dx);
+        const baseAngle = e.attackAngle ?? Math.atan2(dy, dx);
+        state.bladeTrails = state.bladeTrails || [];
+        state.bladeTrails.push({
+          x: e.x,
+          y: e.y,
+          z: e.z,
+          angle: baseAngle,
+          arcSpan: Math.PI * 0.52,
+          radius: 18,
+          style: 'volley',
+          color: '#4ade80',
+          coreColor: '#dcfce7',
+          life: 0.2,
+          maxLife: 0.2,
+          isEnemy: true,
+        });
         for (const offset of [-0.18, 0, 0.18]) {
           const ang = baseAngle + offset;
           state.projectiles.push({
@@ -134,6 +149,7 @@ export const tristanKnightEnemy: EnemyWikiDefinition = {
     if (e.attackCd <= 0) {
       e.state = 'windup';
       e.stateTimer = this.tellDurationSec;
+      e.attackAngle = Math.atan2(dy, dx);
     }
   },
 };

@@ -17,5 +17,5 @@ export const guardianTrait: TraitLineWikiDefinition = {
   lore: 'Equipped with heavy physical barriers that do not suffer energy overload and draw focus via Presence.',
   baseShield: { type: 'physical', capacity: 100 },
   baseArmor: { type: 'Layered', threshold: 7, rating: 5, durability: 100 },
-  startingWeapons: ['gladius_boltcaster'],
+  startingWeapons: ['short_spear', 'heater_shield'],
 };

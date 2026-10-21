@@ -86,9 +86,47 @@ export const borsKnightEnemy: EnemyWikiDefinition = {
       if (e.stateTimer <= 0) {
         e.state = 'attack';
         e.stateTimer = 0.25;
+        e.hasStruckThisAttack = false;
+        const ang = e.attackAngle ?? Math.atan2(dy, dx);
         const lungeDist = e.enraged ? 26 : 14;
-        e.x = Math.max(12, Math.min(148, e.x + (dx / dist) * lungeDist));
-        e.y = Math.max(12, Math.min(132, e.y + (dy / dist) * lungeDist));
+        e.x = Math.max(12, Math.min(148, e.x + Math.cos(ang) * lungeDist));
+        e.y = Math.max(12, Math.min(132, e.y + Math.sin(ang) * lungeDist));
+        state.bladeTrails = state.bladeTrails || [];
+        if (e.enraged) {
+          state.bladeTrails.push({
+            x: e.x - Math.cos(ang) * 8,
+            y: e.y - Math.sin(ang) * 8,
+            z: e.z,
+            angle: ang,
+            arcSpan: Math.PI * 0.35,
+            radius: 36,
+            length: 38,
+            width: 14,
+            style: 'thrust',
+            color: '#ef4444',
+            coreColor: '#fecaca',
+            life: 0.26,
+            maxLife: 0.26,
+            isEnemy: true,
+          });
+        } else {
+          state.bladeTrails.push({
+            x: e.x,
+            y: e.y,
+            z: e.z,
+            angle: ang,
+            arcSpan: Math.PI * 0.7,
+            radius: 22,
+            length: 16,
+            width: 18,
+            style: 'slam',
+            color: '#b8a4ff',
+            coreColor: '#f3e8ff',
+            life: 0.25,
+            maxLife: 0.25,
+            isEnemy: true,
+          });
+        }
       }
       return;
     }
@@ -106,6 +144,8 @@ export const borsKnightEnemy: EnemyWikiDefinition = {
       if (dist <= (e.enraged ? 44 : 32) && e.attackCd <= 0) {
         e.state = 'windup';
         e.stateTimer = this.tellDurationSec;
+        e.attackAngle = Math.atan2(dy, dx);
+        e.hasStruckThisAttack = false;
         return;
       }
 

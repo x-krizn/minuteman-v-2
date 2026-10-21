@@ -17,5 +17,5 @@ export const marauderTrait: TraitLineWikiDefinition = {
   lore: 'Super-heavy frame stripped of shielding to mount thick, hardened composite plates without load penalty.',
   baseShield: { type: 'energy', capacity: 0 },
   baseArmor: { type: 'Hardened', threshold: 8, rating: 6, durability: 120 },
-  startingWeapons: ['gladius_boltcaster'],
+  startingWeapons: ['hand_axe', 'pavise_shield'],
 };

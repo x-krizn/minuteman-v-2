@@ -6,10 +6,19 @@
 import React, { useEffect, useState } from 'react';
 import { soundSystem } from '../../../engine/core/soundSystem';
 import { TRAIT_LIST, TRAIT_REGISTRY } from '../database/characters';
+import { getClassUtilityDefinition } from '../database/equipment';
+import {
+  GEMSTONE_CATALOG,
+  GEMSTONE_REGISTRY,
+  getInventoryGemCount,
+  TRAIT_FUNDING_GEMS,
+} from '../database/progression';
 import { getWeaponDefinition } from '../database/weapons';
 import {
+  applyTraitLineProfile,
   createNewPilotGame,
   cycleTargetLock,
+  deletePilotFromRoster,
   getActionCooldown,
   getLockedTarget,
   getOrionStateRef,
@@ -24,11 +33,19 @@ import {
 } from '../systems';
 import { TraitLine } from '../types';
 
+const DEFAULT_CALLSIGNS: Record<TraitLine, string> = {
+  Warrior: 'Pilot Vane',
+  Marauder: 'Pilot Kael',
+  Guardian: 'Pilot Seraph',
+  Rogue: 'Pilot Nyx',
+  Wizard: 'Pilot Soren',
+  Cleric: 'Pilot Lyra',
+};
+
 export const OrionHud: React.FC = () => {
   const [, setTick] = useState(0);
   const [showPilotModal, setShowPilotModal] = useState(false);
-  const [selectedTrait, setSelectedTrait] = useState<TraitLine>('Warrior');
-  const [newPilotName, setNewPilotName] = useState('Pilot Vane');
+  const [titleTab, setTitleTab] = useState<'new' | 'load'>('new');
 
   useEffect(() => {
     let animId: number;
@@ -46,7 +63,337 @@ export const OrionHud: React.FC = () => {
   }, []);
 
   const state = getOrionStateRef();
-  if (!state || state.useStandardResolutionHud === false) return null;
+  if (!state) return null;
+
+  const isTitleMenuOpen = Boolean(state.atTitleMenu) || showPilotModal;
+
+  if (isTitleMenuOpen) {
+    const roster = loadPilotRoster();
+    const activeTrait = state.traitLine || 'Warrior';
+    const traitProfile = TRAIT_REGISTRY[activeTrait] || TRAIT_REGISTRY.Warrior;
+    const utilDef = getClassUtilityDefinition(undefined, activeTrait);
+
+    return (
+      <aside
+        aria-label="Project Orion Main Menu & Pilot Creation"
+        className="absolute inset-0 z-40 pointer-events-auto bg-[#05070a]/92 backdrop-blur-xs flex flex-col justify-between p-2.5 sm:p-3.5 select-none font-mono text-[#e2e8f0] overflow-y-auto"
+      >
+        {/* Top Title Banner */}
+        <div className="border-b border-[#1e293b] pb-2 flex items-center justify-between gap-2">
+          <div>
+            <div className="text-xs sm:text-sm font-black tracking-wider text-[#ffd27d] flex items-center gap-2">
+              <span>PROJECT ORION: BELLDOR EXPEDITION</span>
+              <span className="text-[8.5px] px-1.5 py-0.5 bg-[#1e293b] text-[#38bdf8] border border-[#38bdf8]/40 rounded-xs font-bold">
+                MAIN MENU
+              </span>
+            </div>
+            <div className="text-[8.5px] text-[#94a3b8] tracking-wide mt-0.5">
+              D-PAD / CLICK: SELECT TRAIT LINE · [A] DEPLOY NEW PILOT · [Y] CONTINUE
+            </div>
+          </div>
+
+          {!state.atTitleMenu && (
+            <button
+              type="button"
+              onClick={() => {
+                soundSystem.playMenuBeep();
+                setShowPilotModal(false);
+              }}
+              className="px-2 py-1 bg-[#1e293b] hover:bg-[#334155] text-[#facc15] border border-[#475569] rounded-xs text-[9.5px] font-bold cursor-pointer"
+            >
+              ✕ RESUME COCKPIT
+            </button>
+          )}
+        </div>
+
+        {/* Mode Switcher Bar: NEW GAME / LOAD GAME ROSTER / QUICK CONTINUE */}
+        <div className="flex flex-wrap items-center justify-between gap-1.5 my-2">
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                soundSystem.playSelect();
+                setTitleTab('new');
+              }}
+              className={`px-2.5 py-1 rounded-xs text-[10px] font-bold border cursor-pointer transition-colors ${
+                titleTab === 'new'
+                  ? 'bg-[#facc15] text-[#05070a] border-[#fde047]'
+                  : 'bg-[#0f172a] text-[#cbd5e1] border-[#334155] hover:border-[#facc15]'
+              }`}
+            >
+              ✨ NEW GAME (CREATE PILOT)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                soundSystem.playSelect();
+                setTitleTab('load');
+              }}
+              className={`px-2.5 py-1 rounded-xs text-[10px] font-bold border cursor-pointer transition-colors ${
+                titleTab === 'load'
+                  ? 'bg-[#38bdf8] text-[#05070a] border-[#7dd3fc]'
+                  : 'bg-[#0f172a] text-[#cbd5e1] border-[#334155] hover:border-[#38bdf8]'
+              }`}
+            >
+              📂 LOAD GAME ({roster.length})
+            </button>
+          </div>
+
+          {roster.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                if (loadPilotFromRoster(state, roster[0].pilotId)) {
+                  soundSystem.playPowerup();
+                  state.atTitleMenu = false;
+                  setShowPilotModal(false);
+                  notifyOrionStateChange();
+                }
+              }}
+              className="px-2.5 py-1 bg-[#0284c7] hover:bg-[#0369a1] text-white border border-[#38bdf8] rounded-xs text-[9.5px] font-bold cursor-pointer"
+            >
+              ▶ [Y] CONTINUE: {roster[0].pilotName.toUpperCase()} ({roster[0].traitLine} LV.{roster[0].level})
+            </button>
+          )}
+        </div>
+
+        {/* Main Content Area */}
+        {titleTab === 'new' ? (
+          <div className="flex-1 flex flex-col justify-between space-y-2 text-[10px]">
+            {/* Step 1: Trait Line Selection */}
+            <div>
+              <div className="text-[9px] font-bold text-[#94a3b8] mb-1">
+                STEP 1 — SELECT TRAIT LINE & MECH FRAME (§2.4 LOCKED)
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {TRAIT_LIST.map((t) => {
+                  const isSel = activeTrait === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => {
+                        soundSystem.playSelect();
+                        const isDefault =
+                          Object.values(DEFAULT_CALLSIGNS).includes(state.pilotName) ||
+                          !state.pilotName.trim();
+                        applyTraitLineProfile(state, t.id);
+                        if (isDefault) {
+                          state.pilotName = DEFAULT_CALLSIGNS[t.id];
+                        }
+                        notifyOrionStateChange();
+                      }}
+                      className={`p-1.5 rounded-xs border text-left cursor-pointer transition-colors ${
+                        isSel
+                          ? 'bg-[#1e293b] border-[#facc15] shadow-[0_0_8px_rgba(250,204,21,0.25)]'
+                          : 'bg-[#090d16] border-[#1e293b] hover:border-[#475569]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-[#ffd27d] text-[10px]">{t.name}</span>
+                        <span className="text-[7.5px] px-1 bg-[#0f172a] text-[#38bdf8] border border-[#1e293b] rounded-xs font-bold">
+                          {t.reactor}
+                        </span>
+                      </div>
+                      <div className="text-[8px] text-[#cbd5e1] mt-0.5 truncate">
+                        {t.frameModel} · {(t.weightClass || 'medium').toUpperCase()}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Selected Frame Specification Card */}
+            <div className="p-2 bg-[#0b111e] border border-[#334155] rounded-xs space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-[#38bdf8] text-[10px]">
+                  FRAME: {traitProfile.frameModel} — {traitProfile.name.toUpperCase()}
+                </span>
+                <span className="text-[8px] px-1.5 py-0.5 bg-[#1e293b] text-[#facc15] rounded-xs font-bold">
+                  BASE LOAD: {(traitProfile.weightClass || 'medium').toUpperCase()} · INTEGRITY: 200 HP
+                </span>
+              </div>
+              <div className="text-[8.5px] text-[#cbd5e1] leading-snug">
+                {traitProfile.identity}
+              </div>
+              <div className="grid grid-cols-4 gap-1 pt-0.5 text-[8px]">
+                <div className="p-1 bg-[#090d16] border border-[#1e293b] rounded-xs">
+                  <div className="text-[#94a3b8]">LAYER 1 SHIELD</div>
+                  <div className="text-[#7dd3fc] font-bold">
+                    {traitProfile.baseShield.capacity} ({traitProfile.baseShield.type.toUpperCase()})
+                  </div>
+                </div>
+                <div className="p-1 bg-[#090d16] border border-[#1e293b] rounded-xs">
+                  <div className="text-[#94a3b8]">LAYER 2 ARMOR</div>
+                  <div className="text-[#fbbf24] font-bold">
+                    {traitProfile.baseArmor.type} ({traitProfile.baseArmor.durability} DUR)
+                  </div>
+                </div>
+                <div className="p-1 bg-[#090d16] border border-[#1e293b] rounded-xs">
+                  <div className="text-[#94a3b8]">LV.6 UTILITY [ACT 6]</div>
+                  <div className="text-[#4ade80] font-bold truncate">{utilDef.shortLabel}</div>
+                </div>
+                <div className="p-1 bg-[#090d16] border border-[#1e293b] rounded-xs">
+                  <div className="text-[#94a3b8]">STARTER GEM POUCH</div>
+                  {(() => {
+                    const [tGemId, rGemId] = TRAIT_FUNDING_GEMS[activeTrait] || [
+                      'spinel',
+                      'hematite',
+                    ];
+                    const tGem = GEMSTONE_REGISTRY[tGemId];
+                    const rGem = GEMSTONE_REGISTRY[rGemId];
+                    return (
+                      <div className="font-bold text-[#f8fafc] truncate">
+                        <span style={{ color: tGem.hexColor }}>◆</span> {tGem.name} +{' '}
+                        <span style={{ color: rGem.hexColor }}>◆</span> {rGem.name}
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+
+            {/* Step 2 & 3: Pilot Name Input + Deploy Button */}
+            <div className="p-2 bg-[#0b111e] border border-[#facc15]/50 rounded-xs space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-[9px] font-bold text-[#ffd27d]">
+                  STEP 2 — ENTER PILOT CALLSIGN & DEPLOY AT LEVEL 1 (M00: THE BOG)
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    soundSystem.playMenuBeep();
+                    state.pilotName = DEFAULT_CALLSIGNS[activeTrait];
+                    notifyOrionStateChange();
+                  }}
+                  className="text-[8px] text-[#38bdf8] hover:underline cursor-pointer"
+                >
+                  Reset Callsign ({DEFAULT_CALLSIGNS[activeTrait]})
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  maxLength={22}
+                  value={state.pilotName}
+                  onChange={(e) => {
+                    state.pilotName = e.target.value;
+                    setTick((t) => t + 1);
+                  }}
+                  placeholder="Enter Pilot Name..."
+                  className="flex-1 bg-[#020617] border border-[#475569] focus:border-[#facc15] rounded-xs px-2.5 py-1.5 text-[11px] text-white font-mono outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const finalName =
+                      state.pilotName.trim() || DEFAULT_CALLSIGNS[activeTrait];
+                    createNewPilotGame(state, activeTrait, finalName);
+                    state.atTitleMenu = false;
+                    setShowPilotModal(false);
+                    soundSystem.playPowerup();
+                    notifyOrionStateChange();
+                  }}
+                  className="px-3.5 py-1.5 bg-[#facc15] hover:bg-[#fde047] text-[#05070a] font-black text-[10.5px] rounded-xs shadow-md cursor-pointer shrink-0"
+                >
+                  🚀 [A] DEPLOY LV.1 (M00 BOG)
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* LOAD GAME — SAVED PILOT CHARACTER ROSTER (§2.4) */
+          <div className="flex-1 flex flex-col justify-between space-y-2 text-[10px]">
+            <div className="space-y-1.5">
+              <div className="text-[9px] font-bold text-[#94a3b8]">
+                SAVED PILOT CHARACTER ROSTER (§2.4 — SELECT A PILOT TO LOAD)
+              </div>
+              {roster.length === 0 ? (
+                <div className="p-6 bg-[#0b111e] border border-[#1e293b] rounded-xs text-center space-y-2">
+                  <div className="text-[#94a3b8]">
+                    No saved pilots found in localStorage roster yet.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setTitleTab('new')}
+                    className="px-3 py-1 bg-[#facc15] text-[#05070a] font-bold rounded-xs text-[10px] cursor-pointer"
+                  >
+                    + CREATE YOUR FIRST PILOT
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-1.5 max-h-[240px] overflow-y-auto pr-1">
+                  {roster.map((entry) => {
+                    const zoneLabel =
+                      entry.areaId === 'camelot_border_town'
+                        ? 'Camelot Border Town'
+                        : entry.areaId === 'm01_orc_encampment'
+                          ? 'M01 Orc Encampment'
+                          : 'M00 The Bog';
+                    return (
+                      <div
+                        key={entry.pilotId}
+                        className="p-2 bg-[#0b111e] border border-[#334155] rounded-xs flex items-center justify-between gap-2"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-[11px] text-[#ffd27d] truncate">
+                              {entry.pilotName}
+                            </span>
+                            <span className="text-[8.5px] px-1.5 py-0.2 bg-[#090d16] text-[#38bdf8] border border-[#1e293b] rounded-xs font-bold">
+                              LV.{entry.level} {entry.traitLine.toUpperCase()}
+                            </span>
+                            <span className="text-[8px] text-[#94a3b8]">
+                              [{entry.frameModel} · {entry.reactor}]
+                            </span>
+                          </div>
+                          <div className="text-[8.5px] text-[#94a3b8] mt-0.5">
+                            Zone: <span className="text-[#cbd5e1]">{zoneLabel}</span> ({entry.room}) ·{' '}
+                            {entry.tutorialActive ? 'Tutorial Onboarding' : 'Standard Progression'}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (loadPilotFromRoster(state, entry.pilotId)) {
+                                state.atTitleMenu = false;
+                                setShowPilotModal(false);
+                                soundSystem.playPowerup();
+                                notifyOrionStateChange();
+                              }
+                            }}
+                            className="px-2.5 py-1 bg-[#0284c7] hover:bg-[#0369a1] text-white font-bold rounded-xs text-[9.5px] cursor-pointer"
+                          >
+                            ▶ LOAD PILOT
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              soundSystem.playMenuBeep();
+                              deletePilotFromRoster(entry.pilotId);
+                              setTick((t) => t + 1);
+                            }}
+                            className="px-2 py-1 bg-[#1e293b] hover:bg-[#7f1d1d] text-[#fca5a5] font-bold rounded-xs text-[9px] border border-[#334155] cursor-pointer"
+                            title="Delete Pilot from Roster"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </aside>
+    );
+  }
+
+  if (state.useStandardResolutionHud === false) return null;
 
   // The Three Defense Layers
   const shieldCap = state.shields.capacity;
@@ -94,120 +441,12 @@ export const OrionHud: React.FC = () => {
   const cdR = getActionCooldown(state, actionR.id);
   const lockedEnemy = getLockedTarget(state);
   const yHoldPct = Math.min(100, ((state.yHoldTimer || 0) / 0.32) * 100);
-  const roster = showPilotModal ? loadPilotRoster() : [];
 
   return (
     <aside
       aria-label="Pilot Mech Cockpit Telemetry"
       className="absolute inset-0 pointer-events-none flex flex-col justify-between p-1.5 sm:p-2 z-20 select-none font-mono text-[#e2e8f0]"
     >
-      {/* Optional Quick Pilot Creation & Roster Prompt Modal (§2.4) */}
-      {showPilotModal && (
-        <div className="pointer-events-auto fixed inset-0 z-50 bg-[#05070a]/90 backdrop-blur-xs flex items-center justify-center p-3">
-          <div className="w-full max-w-md bg-[#0b111e] border border-[#38bdf8]/60 rounded-xs p-3 space-y-2.5 shadow-2xl text-[10px]">
-            <div className="flex items-center justify-between border-b border-[#1e293b] pb-1.5">
-              <span className="font-bold text-[#ffd27d] text-[11px]">
-                §2.4 PILOT BONDING & ROSTER TERMINAL
-              </span>
-              <button
-                onClick={() => {
-                  soundSystem.playMenuBeep();
-                  setShowPilotModal(false);
-                }}
-                className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#facc15] rounded-xs font-bold"
-              >
-                ✕ CLOSE
-              </button>
-            </div>
-
-            <div className="space-y-1.5">
-              <div className="text-[9px] text-[#94a3b8] font-bold">
-                NEW GAME: SELECT TRAIT LINE → PILOT NAME → DEPLOY LV.1 (M00 BOG)
-              </div>
-              <div className="grid grid-cols-3 gap-1">
-                {TRAIT_LIST.map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => {
-                      soundSystem.playSelect();
-                      setSelectedTrait(t.id);
-                    }}
-                    className={`p-1 rounded-xs border text-left ${
-                      selectedTrait === t.id
-                        ? 'bg-[#1e293b] border-[#facc15] text-white'
-                        : 'bg-[#090d16] border-[#1e293b] text-[#94a3b8]'
-                    }`}
-                  >
-                    <div className="font-bold text-[#ffd27d] text-[9.5px]">{t.name}</div>
-                    <div className="text-[7.5px] text-[#38bdf8]">
-                      {t.frameModel} · {t.reactor}
-                    </div>
-                  </button>
-                ))}
-              </div>
-              <div className="flex items-center gap-1.5 pt-1">
-                <input
-                  type="text"
-                  maxLength={22}
-                  value={newPilotName}
-                  onChange={(e) => setNewPilotName(e.target.value)}
-                  placeholder="Pilot Callsign..."
-                  className="flex-1 bg-[#020617] border border-[#475569] rounded-xs px-2 py-1 text-[10px] text-white outline-none"
-                />
-                <button
-                  onClick={() => {
-                    createNewPilotGame(
-                      state,
-                      selectedTrait,
-                      newPilotName.trim() || `Pilot ${selectedTrait}`
-                    );
-                    soundSystem.playPowerup();
-                    setShowPilotModal(false);
-                  }}
-                  className="px-2.5 py-1 bg-[#facc15] hover:bg-[#fde047] text-[#05070a] font-bold rounded-xs text-[9.5px]"
-                >
-                  🚀 DEPLOY LV.1
-                </button>
-              </div>
-            </div>
-
-            {roster.length > 0 && (
-              <div className="border-t border-[#1e293b] pt-2 space-y-1">
-                <div className="text-[9px] text-[#94a3b8] font-bold">
-                  LOAD SAVED PILOT CHARACTER ({roster.length})
-                </div>
-                <div className="max-h-28 overflow-y-auto space-y-1 pr-0.5">
-                  {roster.map((entry) => (
-                    <div
-                      key={entry.pilotId}
-                      className="flex items-center justify-between p-1.5 bg-[#090d16] border border-[#1e293b] rounded-xs"
-                    >
-                      <div>
-                        <span className="font-bold text-[#ffd27d]">{entry.pilotName}</span>{' '}
-                        <span className="text-[8.5px] text-[#38bdf8]">
-                          ({entry.traitLine} · {entry.frameModel} · Lv.{entry.level})
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => {
-                          if (loadPilotFromRoster(state, entry.pilotId)) {
-                            soundSystem.playPowerup();
-                            setShowPilotModal(false);
-                          }
-                        }}
-                        className="px-2 py-0.5 bg-[#0284c7] hover:bg-[#0369a1] text-white font-bold rounded-xs text-[8.5px]"
-                      >
-                        LOAD
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* 1. TOP BAR HUD CLUSTER (Standard Resolution, High-Contrast Cockpit Readouts) */}
       <header className="w-full flex items-start justify-between gap-2 pt-6 sm:pt-1">
         {/* LEFT CLUSTER: Pilot Profile & The Three Defense Layers */}
@@ -217,8 +456,6 @@ export const OrionHud: React.FC = () => {
             type="button"
             onClick={() => {
               soundSystem.playSelect();
-              setSelectedTrait(state.traitLine);
-              setNewPilotName(state.pilotName);
               setShowPilotModal(true);
             }}
             title="Click to Create New Pilot or Switch Pilot Roster (§2.4)"
@@ -378,13 +615,19 @@ export const OrionHud: React.FC = () => {
 
         {/* RIGHT CLUSTER: Munitions, Scrap & Hardpoint */}
         <section aria-label="Munitions & Salvage" className="flex flex-col items-end gap-1 max-w-[175px]">
-          {/* Salvage Scrap Counter */}
+          {/* Salvage Scrap & Gemstone Counter */}
           <div className="flex items-center gap-1.5 bg-[#090d14]/85 border border-[#ca8a04]/50 px-2 py-0.8 rounded shadow-md backdrop-blur-xs">
             <span className="text-[#eab308]">⚙️</span>
             <span className="text-[10.5px] font-black text-[#fef08a] tracking-wider">
               {state.salvageScrap}
             </span>
             <span className="text-[8px] text-[#ca8a04] font-bold uppercase tracking-widest">SCRAP</span>
+            <span className="text-[#334155]">·</span>
+            <span className="text-[#38bdf8]">◆</span>
+            <span className="text-[10.5px] font-black text-[#7dd3fc] tracking-wider">
+              {GEMSTONE_CATALOG.reduce((sum, g) => sum + getInventoryGemCount(state, g.id), 0)}
+            </span>
+            <span className="text-[8px] text-[#38bdf8] font-bold uppercase tracking-widest">GEMS</span>
           </div>
 
           {/* Weapon Status & Ammo Magazine Box */}

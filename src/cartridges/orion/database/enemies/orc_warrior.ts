@@ -77,8 +77,26 @@ export const orcWarriorEnemy: EnemyWikiDefinition = {
       if (e.stateTimer <= 0) {
         e.state = 'attack';
         e.stateTimer = 0.22;
-        e.x += (dx / dist) * 12;
-        e.y += (dy / dist) * 12;
+        e.hasStruckThisAttack = false;
+        const ang = e.attackAngle ?? Math.atan2(dy, dx);
+        e.x += Math.cos(ang) * 12;
+        e.y += Math.sin(ang) * 12;
+        state.bladeTrails = state.bladeTrails || [];
+        state.bladeTrails.push({
+          x: e.x,
+          y: e.y,
+          z: e.z,
+          angle: ang,
+          arcSpan: Math.PI * 0.8,
+          radius: 24,
+          width: 14,
+          style: 'chop',
+          color: '#fb923c',
+          coreColor: '#ffedd5',
+          life: 0.22,
+          maxLife: 0.22,
+          isEnemy: true,
+        });
         if (target.isNpc && target.npcEntity && dist < 24) {
           target.npcEntity.frame.integrity = Math.max(
             0,
@@ -101,6 +119,8 @@ export const orcWarriorEnemy: EnemyWikiDefinition = {
     if (dist <= 26 && e.attackCd <= 0) {
       e.state = 'windup';
       e.stateTimer = this.tellDurationSec;
+      e.attackAngle = Math.atan2(dy, dx);
+      e.hasStruckThisAttack = false;
       return;
     }
 

@@ -32,3 +32,7 @@ for (const [path, mod] of Object.entries(modules)) {
 export function getItemDefinition(id: string): ItemWikiDefinition | undefined {
   return ITEM_REGISTRY[id];
 }
+
+export * from './gemstones';
+export * from './salvage_scrap';
+

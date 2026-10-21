@@ -52,11 +52,29 @@ export const bogCrawlerEnemy: EnemyWikiDefinition = {
       if (e.stateTimer <= 0) {
         e.state = 'attack';
         e.stateTimer = 0.2;
-        const dx = state.x - e.x;
-        const dy = state.y - e.y;
-        const norm = Math.hypot(dx, dy) || 1;
-        e.x += (dx / norm) * 14;
-        e.y += (dy / norm) * 14;
+        e.hasStruckThisAttack = false;
+        const ang = e.attackAngle ?? Math.atan2(state.y - e.y, state.x - e.x);
+        const ldx = Math.cos(ang);
+        const ldy = Math.sin(ang);
+        e.x += ldx * 14;
+        e.y += ldy * 14;
+        state.bladeTrails = state.bladeTrails || [];
+        state.bladeTrails.push({
+          x: e.x,
+          y: e.y,
+          z: e.z,
+          angle: ang,
+          arcSpan: Math.PI * 0.55,
+          radius: 20,
+          length: 22,
+          width: 12,
+          style: 'claw_bite',
+          color: '#fbbf24',
+          coreColor: '#fef08a',
+          life: 0.2,
+          maxLife: 0.2,
+          isEnemy: true,
+        });
       }
       return;
     }
@@ -87,6 +105,8 @@ export const bogCrawlerEnemy: EnemyWikiDefinition = {
       if (distToPlayer <= 26 && e.attackCd <= 0) {
         e.state = 'windup';
         e.stateTimer = this.tellDurationSec;
+        e.attackAngle = Math.atan2(dy, dx);
+        e.hasStruckThisAttack = false;
         return;
       }
 

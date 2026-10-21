@@ -31,6 +31,12 @@ import {
 } from '../types';
 import { spawnEnemyByType, spawnRoomEnemies } from './entitySystem';
 import {
+  isEquipmentUnlocked,
+  unlockEquipmentItem,
+  unlockLevel2SecondaryWeapon,
+} from '../database/progression';
+import { getWeaponDefinition } from '../database/weapons';
+import {
   addOrionInventoryItem,
   getTutorialPromptOverride,
   handleTutorialAnchorInteraction,
@@ -1669,12 +1675,17 @@ export function executeWorldInteraction(
     state.flags.poe_state = 'helped';
     state.flags.poe_lantern_gift = true;
     state.flags.bog_exit_revealed = true;
+    if (state.level < 2) {
+      state.level = 2;
+    }
+    unlockLevel2SecondaryWeapon(state);
     addOrionInventoryItem(state, 'poe_lantern_charm', 1);
     for (const e of state.enemies) {
       if (e.type === 'bog_wurm') e.isSubmerged = false;
     }
+    syncStateGates(state);
     soundSystem.playPowerup();
-    ctx.say('POE RETURNED TO LANTERN · GIFT REVEALS BOG WURM & FOG PATHS!');
+    ctx.say('POE HELPED · LV 2 WEAPON SET 2 ONLINE & POE LANTERN GIFT GRANTED!');
     notifyOrionStateChange();
     return true;
   }
@@ -1694,21 +1705,37 @@ export function executeWorldInteraction(
         ctx.say('LOYALIST: "YOU ROBBED BEDIVERE’S CORPSE! DIE, GRAVE ROBBER!"');
       } else {
         soundSystem.playSelect();
-        ctx.say('LOYALIST: "YOU HONORED BEDIVERE. TAKE THIS FIELD PATCH."');
         if (!state.lootedCaches[`npc_gift:${nearbyCalmNpc.id}`]) {
           state.lootedCaches[`npc_gift:${nearbyCalmNpc.id}`] = true;
           addOrionInventoryItem(state, 'repair_kit', 1);
+          const giftedHeater = unlockEquipmentItem(state, 'heater_shield');
+          ctx.say(
+            giftedHeater
+              ? 'LOYALIST: "YOU HONORED BEDIVERE. TAKE THIS HEATER SHIELD & FIELD PATCH!"'
+              : 'LOYALIST: "YOU HONORED BEDIVERE. TAKE THIS FIELD PATCH."'
+          );
+        } else {
+          ctx.say('LOYALIST: "MAY AVALON GUARD YOUR CHASSIS, PILOT."');
         }
       }
     } else {
       if (state.salvageScrap >= 15) {
         state.salvageScrap -= 15;
         addOrionInventoryItem(state, 'repair_kit', 1);
-        soundSystem.playCoin();
-        ctx.say('TRADED 15 SCRAP FOR FIELD REPAIR KIT');
+        const scavGearPool = ['buckler_shield', 'hand_axe', 'quiver', 'great_bow'];
+        const nextGear = scavGearPool.find((id) => !isEquipmentUnlocked(state, id));
+        if (nextGear) {
+          unlockEquipmentItem(state, nextGear);
+          const gName = getWeaponDefinition(nextGear)?.name || nextGear.toUpperCase();
+          soundSystem.playPowerup();
+          ctx.say(`TRADED 15 SCRAP: REPAIR KIT + SALVAGED ${gName.toUpperCase()} UNLOCKED!`);
+        } else {
+          soundSystem.playCoin();
+          ctx.say('TRADED 15 SCRAP FOR FIELD REPAIR KIT');
+        }
       } else {
         soundSystem.playMenuBeep();
-        ctx.say('SCAVENGER: "15 SCRAP FOR A REPAIR KIT, PILOT."');
+        ctx.say('SCAVENGER: "15 SCRAP FOR A REPAIR KIT & SALVAGED HARDPOINT GEAR, PILOT."');
       }
     }
     notifyOrionStateChange();
@@ -1790,9 +1817,11 @@ export function executeWorldInteraction(
       handleTutorialAnchorInteraction(state, ctx, 'S');
       state.lootedCaches[scoutKey] = true;
       state.hasBoosterKit = true;
-      if (!state.equippedWeapons.includes('khopesh')) {
-        state.equippedWeapons.push('khopesh');
+      if (state.level < 2) {
+        state.level = 2;
       }
+      unlockLevel2SecondaryWeapon(state);
+      unlockEquipmentItem(state, 'khopesh');
       addOrionInventoryItem(state, 'bedivere_list', 1);
       addOrionInventoryItem(state, 'repair_kit', 1);
       state.flags.bedivere_list_collected = true;
@@ -1824,11 +1853,44 @@ export function executeWorldInteraction(
       for (const item of cacheDef.items) {
         addOrionInventoryItem(state, item.itemId, item.count);
       }
+      const traitGemByLine: Record<string, [string, string]> = {
+        Warrior: ['spinel', 'hematite'],
+        Marauder: ['carnelian', 'hematite'],
+        Guardian: ['titanite', 'moonstone'],
+        Cleric: ['demantoid', 'moonstone'],
+        Wizard: ['kyanite', 'rubellite'],
+        Rogue: ['charoite', 'rubellite'],
+      };
+      const [traitGem, reactorGem] = traitGemByLine[state.traitLine] || ['spinel', 'hematite'];
+      addOrionInventoryItem(state, traitGem, 1);
+      addOrionInventoryItem(state, reactorGem, 1);
+
+      // Unlock a salvageable world weapon/shield/quiver from the cache pool
+      const cacheWeaponOrder = [
+        'short_spear',
+        'buckler_shield',
+        'hand_axe',
+        'mace',
+        'heater_shield',
+        'great_bow',
+        'quiver',
+        'long_sword',
+      ];
+      const unlockedGearId = cacheWeaponOrder.find((wId) => !isEquipmentUnlocked(state, wId));
+      let gearSuffix = '';
+      if (unlockedGearId) {
+        unlockEquipmentItem(state, unlockedGearId);
+        const gearName = getWeaponDefinition(unlockedGearId)?.name || unlockedGearId;
+        gearSuffix = ` · UNLOCKED ${gearName.toUpperCase()}`;
+      }
+
       if (Number(state.flags.bedivere_list_items || 0) < 3) {
         state.flags.bedivere_list_items = Number(state.flags.bedivere_list_items || 0) + 1;
         addOrionInventoryItem(state, 'bedivere_relic', 1);
       }
-      ctx.say(`${cacheDef.toast} · LIST RELIC (${state.flags.bedivere_list_items}/3)`);
+      ctx.say(
+        `${cacheDef.toast} · +1 ${traitGem.toUpperCase()} & +1 ${reactorGem.toUpperCase()}${gearSuffix}`
+      );
       notifyOrionStateChange();
       return true;
     }

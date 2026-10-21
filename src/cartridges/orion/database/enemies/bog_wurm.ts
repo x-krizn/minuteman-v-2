@@ -69,8 +69,41 @@ export const bogWurmEnemy: EnemyWikiDefinition = {
       if (e.stateTimer <= 0) {
         e.state = 'attack';
         e.stateTimer = 0.25;
-        e.x += (dx / dist) * 18;
-        e.y += (dy / dist) * 18;
+        e.hasStruckThisAttack = false;
+        const ang = e.attackAngle ?? Math.atan2(dy, dx);
+        e.x += Math.cos(ang) * 18;
+        e.y += Math.sin(ang) * 18;
+        state.bladeTrails = state.bladeTrails || [];
+        state.bladeTrails.push({
+          x: e.x,
+          y: e.y,
+          z: e.z,
+          angle: ang,
+          arcSpan: Math.PI * 0.75,
+          radius: 26,
+          length: 26,
+          width: 14,
+          style: 'claw_bite',
+          color: '#38bdf8',
+          coreColor: '#e0f2fe',
+          life: 0.24,
+          maxLife: 0.24,
+          isEnemy: true,
+        });
+        state.bladeTrails.push({
+          x: e.x,
+          y: e.y,
+          z: e.z,
+          angle: ang,
+          arcSpan: Math.PI * 2,
+          radius: 24,
+          style: 'shockwave',
+          color: '#38bdf8',
+          coreColor: '#bae6fd',
+          life: 0.26,
+          maxLife: 0.26,
+          isEnemy: true,
+        });
       }
       return;
     }
@@ -108,6 +141,8 @@ export const bogWurmEnemy: EnemyWikiDefinition = {
     if (dist <= 34 && e.attackCd <= 0) {
       e.state = 'windup';
       e.stateTimer = this.tellDurationSec;
+      e.attackAngle = Math.atan2(dy, dx);
+      e.hasStruckThisAttack = false;
       return;
     }
 

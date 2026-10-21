@@ -80,8 +80,26 @@ export const percivalKnightEnemy: EnemyWikiDefinition = {
       if (e.stateTimer <= 0) {
         e.state = 'attack';
         e.stateTimer = 0.28;
-        e.x = Math.max(16, Math.min(144, e.x + (dx / dist) * 24));
-        e.y = Math.max(16, Math.min(128, e.y + (dy / dist) * 24));
+        e.hasStruckThisAttack = false;
+        const ang = e.attackAngle ?? Math.atan2(dy, dx);
+        e.x = Math.max(16, Math.min(144, e.x + Math.cos(ang) * 24));
+        e.y = Math.max(16, Math.min(128, e.y + Math.sin(ang) * 24));
+        state.bladeTrails = state.bladeTrails || [];
+        state.bladeTrails.push({
+          x: e.x,
+          y: e.y,
+          z: e.z,
+          angle: ang,
+          arcSpan: Math.PI * 0.72,
+          radius: 26,
+          width: 18,
+          style: 'bash',
+          color: '#60a5fa',
+          coreColor: '#e0f2fe',
+          life: 0.26,
+          maxLife: 0.26,
+          isEnemy: true,
+        });
       }
       return;
     }
@@ -98,6 +116,8 @@ export const percivalKnightEnemy: EnemyWikiDefinition = {
     if (dist <= 48 && e.attackCd <= 0) {
       e.state = 'windup';
       e.stateTimer = this.tellDurationSec;
+      e.attackAngle = Math.atan2(dy, dx);
+      e.hasStruckThisAttack = false;
       return;
     }
 

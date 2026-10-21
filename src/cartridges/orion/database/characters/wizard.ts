@@ -17,5 +17,5 @@ export const wizardTrait: TraitLineWikiDefinition = {
   lore: 'Channels reactor Ether into sustained beams and devastating wave energy.',
   baseShield: { type: 'energy', capacity: 80 },
   baseArmor: { type: 'Layered', threshold: 5, rating: 4, durability: 60 },
-  startingWeapons: ['gladius_boltcaster'],
+  startingWeapons: ['great_bow', 'quiver'],
 };

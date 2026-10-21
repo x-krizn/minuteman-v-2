@@ -12,12 +12,17 @@ import {
   CartridgeSurface,
 } from '../../types/cartridge';
 import { GameInput } from '../../types/input';
+import { TRAIT_LIST } from './database/characters';
 import {
+  applyTraitLineProfile,
   checkWorldInteractivePrompt,
   createInitialOrionState,
+  createNewPilotGame,
   drawOrionGame,
   handleCombatInput,
   handleWorldRoomTransition,
+  loadPilotFromRoster,
+  loadPilotRoster,
   ORION_TUTORIAL_ROOMS,
   setOrionRoomsRef,
   setOrionStateRef,
@@ -33,8 +38,17 @@ import {
   updatePlayerSystem,
   updateProjectiles,
 } from './systems';
-import { OrionCombatContext, OrionState } from './types';
+import { OrionCombatContext, OrionState, TraitLine } from './types';
 import { OrionGameMenu, OrionHud, OrionSatchel } from './ui';
+
+const DEFAULT_CALLSIGNS: Record<TraitLine, string> = {
+  Warrior: 'Pilot Vane',
+  Marauder: 'Pilot Kael',
+  Guardian: 'Pilot Seraph',
+  Rogue: 'Pilot Nyx',
+  Wizard: 'Pilot Soren',
+  Cleric: 'Pilot Lyra',
+};
 
 export function createOrionCartridge(): Cartridge {
   const rooms: Record<string, string[]> = { ...ORION_TUTORIAL_ROOMS };
@@ -46,6 +60,7 @@ export function createOrionCartridge(): Cartridge {
   setOrionStateRef(state);
 
   let currentMenuMode: CartridgeMenuMode = 'none';
+  let titleMenuBootGuard = 0.35;
 
   const combatCtx: OrionCombatContext = {
     state,
@@ -67,6 +82,8 @@ export function createOrionCartridge(): Cartridge {
       'A 2.5D action-adventure Metroid-Souls RPG with Golden Sun baked perspective, 8-way traversal, Three Defense Layers, and orbital drop-pod Belldor lore.',
 
     init(_surface: CartridgeSurface) {
+      state.atTitleMenu = true;
+      titleMenuBootGuard = 0.35;
       syncRoomHierarchyState(state);
       syncStateGates(state);
       spawnRoomEnemies(rooms, state);
@@ -83,6 +100,59 @@ export function createOrionCartridge(): Cartridge {
 
       const dt = Math.min(0.05, dtSeconds);
       state.t += dt;
+
+      // While on the boot Main Menu / Pilot Creation screen, animate ambient world and handle gamepad selection
+      if (state.atTitleMenu) {
+        updateParticles(state, dt);
+        if (titleMenuBootGuard > 0) {
+          titleMenuBootGuard = Math.max(0, titleMenuBootGuard - dt);
+          return;
+        }
+        const isTypingInput =
+          typeof document !== 'undefined' &&
+          document.activeElement?.tagName === 'INPUT';
+        if (!isTypingInput) {
+          const p = input.pressed;
+          const traitIds = TRAIT_LIST.map((t) => t.id);
+          const curIdx = Math.max(0, traitIds.indexOf(state.traitLine));
+
+          if (p.left || p.up) {
+            const nextTrait =
+              traitIds[(curIdx + traitIds.length - 1) % traitIds.length];
+            const isDefaultCallsign = Object.values(DEFAULT_CALLSIGNS).includes(
+              state.pilotName
+            );
+            applyTraitLineProfile(state, nextTrait);
+            if (isDefaultCallsign) {
+              state.pilotName = DEFAULT_CALLSIGNS[nextTrait];
+            }
+            soundSystem.playMenuBeep();
+          } else if (p.right || p.down) {
+            const nextTrait = traitIds[(curIdx + 1) % traitIds.length];
+            const isDefaultCallsign = Object.values(DEFAULT_CALLSIGNS).includes(
+              state.pilotName
+            );
+            applyTraitLineProfile(state, nextTrait);
+            if (isDefaultCallsign) {
+              state.pilotName = DEFAULT_CALLSIGNS[nextTrait];
+            }
+            soundSystem.playMenuBeep();
+          } else if (p.a) {
+            createNewPilotGame(
+              state,
+              state.traitLine,
+              state.pilotName || DEFAULT_CALLSIGNS[state.traitLine]
+            );
+            soundSystem.playPowerup();
+          } else if (p.y) {
+            const roster = loadPilotRoster();
+            if (roster.length > 0 && loadPilotFromRoster(state, roster[0].pilotId)) {
+              soundSystem.playPowerup();
+            }
+          }
+        }
+        return;
+      }
 
       // 1. Player Controller, 2.5D Physics, Boosters, Jump/Interact, Tutorial & Defeat Reboot
       const canContinue = updatePlayerSystem(input, rooms, state, combatCtx, dt);

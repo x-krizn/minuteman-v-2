@@ -1,6 +1,6 @@
 {
-  "summary":  "Implementation plan to complete all remaining Project Orion systems: (1) §2.4 New Game Pilot Creation (Trait Line selection -> Pilot Name -> Level 1 starting zone loadout) and multi-character Load Game Roster in the Start Menu and optional boot prompt, (2) Level 6 Class Utility Item (Action 6) and Belt Slots (Actions 7-10) bindable to [L]/[R] and usable in combat, (3) deduplicating OrionState initialization in orionCartridge.ts, and (4) syncing Project Orion — Index.md and AUTHORING_GUIDE.md with v0.7 and u00 specs.",
-  "updatedAt":  "2026-10-20T13:06:38.580045520Z",
+  "summary":  "Implementation plan to align Project Orion's game-side progression: starting with Weapon Set 1 and unlocking Set 2 + world gear through exploration/combat, unifying Gemstones as the sole currency for Pilot Skills/Feats/Mods with natural Level 6-20 advancement, adding Lv 6+ stone-specific combat bonuses to Gemstone-modified equipment, aligning Belt Slots 3-4 to Level 2, tuning enemy Gemstone drop rates by tier, and gating Satchel debug tools behind Sandbox Bypass.",
+  "updatedAt":  "2026-10-21T19:00:57.547049625Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

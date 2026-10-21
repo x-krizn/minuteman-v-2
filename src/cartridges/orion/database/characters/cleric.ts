@@ -17,5 +17,5 @@ export const clericTrait: TraitLineWikiDefinition = {
   lore: 'Capable of repairing frame integrity and managing target priority during engagements.',
   baseShield: { type: 'energy', capacity: 60 },
   baseArmor: { type: 'Reactive', threshold: 6, rating: 4, durability: 80 },
-  startingWeapons: ['gladius_boltcaster'],
+  startingWeapons: ['mace', 'heater_shield'],
 };

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { getDirFromVector } from '../../constants';
+import { getDirFromVector, getRoomDimensions } from '../../constants';
 import { EnemyEntity, EnemyWikiDefinition, OrionState } from '../../types';
 
 function getOrcTarget(
@@ -57,13 +57,14 @@ export const orcScoutEnemy: EnemyWikiDefinition = {
     g.fillStyle = '#fed7aa';
     g.fillRect(e.x + 3, ey - 10, 4, 3);
   },
-  update(_rooms, state: OrionState, e: EnemyEntity, dt: number) {
+  update(rooms, state: OrionState, e: EnemyEntity, dt: number) {
     if (e.stun > 0) {
       e.stun -= dt;
       return;
     }
     if (e.attackCd > 0) e.attackCd -= dt;
 
+    const { widthPx, heightPx } = getRoomDimensions(rooms[state.room]);
     const target = getOrcTarget(state, e);
     const dx = target.x - e.x;
     const dy = target.y - e.y;
@@ -73,8 +74,8 @@ export const orcScoutEnemy: EnemyWikiDefinition = {
     // Slip away to heal when hurt (<60% HP)
     const isHurtRetreating = e.frame.integrity < e.frame.maxIntegrity * 0.6;
     if (isHurtRetreating && dist < 75) {
-      e.x = Math.max(16, Math.min(144, e.x - (dx / dist) * e.speed * 1.1 * dt));
-      e.y = Math.max(16, Math.min(128, e.y - (dy / dist) * e.speed * 1.1 * dt));
+      e.x = Math.max(16, Math.min(widthPx - 16, e.x - (dx / dist) * e.speed * 1.1 * dt));
+      e.y = Math.max(16, Math.min(heightPx - 16, e.y - (dy / dist) * e.speed * 1.1 * dt));
       e.frame.integrity = Math.min(e.frame.maxIntegrity, e.frame.integrity + 7 * dt);
       return;
     }
@@ -132,8 +133,8 @@ export const orcScoutEnemy: EnemyWikiDefinition = {
     }
 
     if (dist < 42) {
-      e.x = Math.max(16, Math.min(144, e.x - (dx / dist) * e.speed * 0.85 * dt));
-      e.y = Math.max(16, Math.min(128, e.y - (dy / dist) * e.speed * 0.85 * dt));
+      e.x = Math.max(16, Math.min(widthPx - 16, e.x - (dx / dist) * e.speed * 0.85 * dt));
+      e.y = Math.max(16, Math.min(heightPx - 16, e.y - (dy / dist) * e.speed * 0.85 * dt));
     } else if (dist > 88) {
       e.x += (dx / dist) * e.speed * 0.8 * dt;
       e.y += (dy / dist) * e.speed * 0.8 * dt;

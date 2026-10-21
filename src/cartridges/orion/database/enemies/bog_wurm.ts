@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { getDirFromVector, TILE_SIZE } from '../../constants';
+import { getDirFromVector, getRoomDimensions, TILE_SIZE } from '../../constants';
 import { EnemyEntity, EnemyWikiDefinition, OrionState } from '../../types';
 
 export const bogWurmEnemy: EnemyWikiDefinition = {
@@ -127,12 +127,14 @@ export const bogWurmEnemy: EnemyWikiDefinition = {
       return;
     }
 
+    const { widthPx, heightPx } = getRoomDimensions(rooms[state.room]);
+
     if (e.frame.integrity < e.frame.maxIntegrity * 0.65 && e.attackCd > 0.4) {
       e.isSubmerged = !lanternReveals;
       e.frame.integrity = Math.min(e.frame.maxIntegrity, e.frame.integrity + 9 * dt);
       e.t += dt * 3;
-      e.x = Math.max(20, Math.min(140, e.x + Math.cos(e.t) * e.speed * dt));
-      e.y = Math.max(20, Math.min(124, e.y + Math.sin(e.t) * e.speed * dt));
+      e.x = Math.max(20, Math.min(widthPx - 20, e.x + Math.cos(e.t) * e.speed * dt));
+      e.y = Math.max(20, Math.min(heightPx - 20, e.y + Math.sin(e.t) * e.speed * dt));
       return;
     }
 

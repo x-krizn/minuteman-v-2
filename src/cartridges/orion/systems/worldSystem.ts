@@ -4,7 +4,12 @@
  */
 
 import { soundSystem } from '../../../engine/core/soundSystem';
-import { COLS, DIR_VECTORS, ROWS, TILE_SIZE } from '../constants';
+import {
+  DIR_VECTORS,
+  getRoomDimensions,
+  getRoomDoorwayCenterPx,
+  TILE_SIZE,
+} from '../constants';
 import {
   AREA_REGISTRY,
   getAreaDefinition,
@@ -178,50 +183,111 @@ function getPrimaryKeyExitDir(coord: string): AetherCardinalDir | undefined {
  * - `key`, `general`, `side`, and `loop` nodes have all 4 cardinal doorways open so no room has a literal wall border.
  * - `end` nodes have ONLY their single `returnDir` doorway open (the other 3 walls are dead ends).
  */
+function isDoorwayOpeningChar(ch: string | undefined): boolean {
+  if (!ch) return false;
+  return ch !== '#' && ch !== 'P' && ch !== '_';
+}
+
+export { getRoomDoorwayCenterPx };
+
+/**
+ * Carves open or seals cardinal perimeter doorways (`N`, `S`, `E`, `W`) on a room grid of any size (`cols x rows`).
+ * Preserves authored doorway openings when present, or carves a centered 2-tile doorway along solid walls.
+ */
 export function carveRoomCardinalDoors(
   rawGrid: string[],
   openDirs: AetherCardinalDir[]
 ): string[] {
+  const { cols, rows } = getRoomDimensions(rawGrid);
   const openSet = new Set<AetherCardinalDir>(openDirs);
-  const matrix = rawGrid.map((row) => row.split(''));
+  const matrix = rawGrid.map((row) => row.padEnd(cols, '#').split(''));
 
+  const nx1 = Math.max(1, Math.floor(cols / 2) - 1);
+  const nx2 = Math.min(cols - 2, nx1 + 1);
+  const wy1 = rows === 9 ? 5 : Math.max(1, Math.floor(rows / 2));
+  const wy2 = Math.min(rows - 2, wy1 + 1);
+
+  // North Wall (row = 0)
   const openNorth = openSet.has('N');
   if (matrix[0]) {
-    matrix[0][4] = openNorth ? '.' : '#';
-    matrix[0][5] = openNorth ? '.' : '#';
-  }
-  if (openNorth && matrix[1]) {
-    if (matrix[1][4] === '#') matrix[1][4] = '.';
-    if (matrix[1][5] === '#') matrix[1][5] = '.';
-  }
-
-  const openSouth = openSet.has('S');
-  if (matrix[ROWS - 1]) {
-    matrix[ROWS - 1][4] = openSouth ? '.' : '#';
-    matrix[ROWS - 1][5] = openSouth ? '.' : '#';
-  }
-  if (openSouth && matrix[ROWS - 2]) {
-    if (matrix[ROWS - 2][4] === '#') matrix[ROWS - 2][4] = '.';
-    if (matrix[ROWS - 2][5] === '#') matrix[ROWS - 2][5] = '.';
-  }
-
-  const openWest = openSet.has('W');
-  if (matrix[5] && matrix[6]) {
-    matrix[5][0] = openWest ? '.' : '#';
-    matrix[6][0] = openWest ? '.' : '#';
-    if (openWest) {
-      if (matrix[5][1] === '#') matrix[5][1] = '.';
-      if (matrix[6][1] === '#') matrix[6][1] = '.';
+    if (!openNorth) {
+      for (let c = 0; c < cols; c++) matrix[0][c] = '#';
+    } else {
+      const hasExistingNorth = matrix[0].some((ch) => isDoorwayOpeningChar(ch));
+      if (!hasExistingNorth) {
+        matrix[0][nx1] = '.';
+        matrix[0][nx2] = '.';
+      }
+      if (matrix[1]) {
+        for (let c = 1; c < cols - 1; c++) {
+          if (isDoorwayOpeningChar(matrix[0][c]) && matrix[1][c] === '#') {
+            matrix[1][c] = '.';
+          }
+        }
+      }
     }
   }
 
+  // South Wall (row = rows - 1)
+  const openSouth = openSet.has('S');
+  if (matrix[rows - 1]) {
+    if (!openSouth) {
+      for (let c = 0; c < cols; c++) matrix[rows - 1][c] = '#';
+    } else {
+      const hasExistingSouth = matrix[rows - 1].some((ch) => isDoorwayOpeningChar(ch));
+      if (!hasExistingSouth) {
+        matrix[rows - 1][nx1] = '.';
+        matrix[rows - 1][nx2] = '.';
+      }
+      if (matrix[rows - 2]) {
+        for (let c = 1; c < cols - 1; c++) {
+          if (isDoorwayOpeningChar(matrix[rows - 1][c]) && matrix[rows - 2][c] === '#') {
+            matrix[rows - 2][c] = '.';
+          }
+        }
+      }
+    }
+  }
+
+  // West Wall (col = 0)
+  const openWest = openSet.has('W');
+  if (!openWest) {
+    for (let r = 0; r < rows; r++) {
+      if (matrix[r]) matrix[r][0] = '#';
+    }
+  } else {
+    const hasExistingWest = matrix.some((row) => isDoorwayOpeningChar(row[0]));
+    if (!hasExistingWest && matrix[wy1] && matrix[wy2]) {
+      matrix[wy1][0] = '.';
+      matrix[wy2][0] = '.';
+    }
+    for (let r = 1; r < rows - 1; r++) {
+      if (matrix[r] && isDoorwayOpeningChar(matrix[r][0]) && matrix[r][1] === '#') {
+        matrix[r][1] = '.';
+      }
+    }
+  }
+
+  // East Wall (col = cols - 1)
   const openEast = openSet.has('E');
-  if (matrix[5] && matrix[6]) {
-    matrix[5][COLS - 1] = openEast ? '.' : '#';
-    matrix[6][COLS - 1] = openEast ? '.' : '#';
-    if (openEast) {
-      if (matrix[5][COLS - 2] === '#') matrix[5][COLS - 2] = '.';
-      if (matrix[6][COLS - 2] === '#') matrix[6][COLS - 2] = '.';
+  if (!openEast) {
+    for (let r = 0; r < rows; r++) {
+      if (matrix[r]) matrix[r][cols - 1] = '#';
+    }
+  } else {
+    const hasExistingEast = matrix.some((row) => isDoorwayOpeningChar(row[cols - 1]));
+    if (!hasExistingEast && matrix[wy1] && matrix[wy2]) {
+      matrix[wy1][cols - 1] = '.';
+      matrix[wy2][cols - 1] = '.';
+    }
+    for (let r = 1; r < rows - 1; r++) {
+      if (
+        matrix[r] &&
+        isDoorwayOpeningChar(matrix[r][cols - 1]) &&
+        matrix[r][cols - 2] === '#'
+      ) {
+        matrix[r][cols - 2] = '.';
+      }
     }
   }
 
@@ -537,6 +603,20 @@ function pickTrueExitDir(
   return candidates[hashVal % candidates.length] || entryFromParentDir;
 }
 
+const MINI_BOSS_ARENA_TEMPLATE_GRID: string[] = [
+  '######..######',
+  '#..:..::..:..#',
+  '#.P........P.#',
+  '#...~~..~~...#',
+  '#............#',
+  '.....:..:.....',
+  '.....:..:.....',
+  '#............#',
+  '#.P.~~..~~.P.#',
+  '#..:......:..#',
+  '######..######',
+];
+
 function decorateDynamicRoomGrid(
   baseGrid: string[],
   nodeType: AetherNodeType,
@@ -545,30 +625,51 @@ function decorateDynamicRoomGrid(
   endFeature: AetherEndFeature | undefined,
   hashVal: number
 ): string[] {
-  const carved = carveRoomCardinalDoors(baseGrid, openDirs);
+  const sourceGrid =
+    nodeType === 'end' && endFeature === 'mini_boss'
+      ? MINI_BOSS_ARENA_TEMPLATE_GRID
+      : baseGrid;
+  const carved = carveRoomCardinalDoors(sourceGrid, openDirs);
+  const { cols, rows } = getRoomDimensions(carved);
   const matrix = carved.map((r) => r.split(''));
+
+  const nx1 = Math.max(1, Math.floor(cols / 2) - 1);
+  const nx2 = Math.min(cols - 2, nx1 + 1);
+  const wy1 = rows === 9 ? 5 : Math.max(1, Math.floor(rows / 2));
+  const wy2 = Math.min(rows - 2, wy1 + 1);
+  const midX = Math.floor(cols / 2);
+  const midY = Math.floor(rows / 2);
 
   // Subtle Environmental Tell: Place weathered ruin flagstones (':') flanking the trueExitDir threshold
   if (trueExitDir && (nodeType === 'general' || nodeType === 'side' || nodeType === 'loop')) {
+    const flLeft = Math.max(1, nx1 - 1);
+    const flRight = Math.min(cols - 2, nx2 + 1);
+    const flTop = Math.max(1, wy1 - 1);
+    const flBot = Math.min(rows - 2, wy2 + 1);
+
     if (trueExitDir === 'N' && matrix[1]) {
-      if (matrix[1][3] === '.' || matrix[1][3] === ',') matrix[1][3] = ':';
-      if (matrix[1][6] === '.' || matrix[1][6] === ',') matrix[1][6] = ':';
-    } else if (trueExitDir === 'S' && matrix[ROWS - 2]) {
-      if (matrix[ROWS - 2][3] === '.' || matrix[ROWS - 2][3] === ',') matrix[ROWS - 2][3] = ':';
-      if (matrix[ROWS - 2][6] === '.' || matrix[ROWS - 2][6] === ',') matrix[ROWS - 2][6] = ':';
-    } else if (trueExitDir === 'W' && matrix[4] && matrix[7]) {
-      if (matrix[4][1] === '.' || matrix[4][1] === ',') matrix[4][1] = ':';
-      if (matrix[7][1] === '.' || matrix[7][1] === ',') matrix[7][1] = ':';
-    } else if (trueExitDir === 'E' && matrix[4] && matrix[7]) {
-      if (matrix[4][COLS - 2] === '.' || matrix[4][COLS - 2] === ',') matrix[4][COLS - 2] = ':';
-      if (matrix[7][COLS - 2] === '.' || matrix[7][COLS - 2] === ',') matrix[7][COLS - 2] = ':';
+      if (matrix[1][flLeft] === '.' || matrix[1][flLeft] === ',') matrix[1][flLeft] = ':';
+      if (matrix[1][flRight] === '.' || matrix[1][flRight] === ',') matrix[1][flRight] = ':';
+    } else if (trueExitDir === 'S' && matrix[rows - 2]) {
+      if (matrix[rows - 2][flLeft] === '.' || matrix[rows - 2][flLeft] === ',')
+        matrix[rows - 2][flLeft] = ':';
+      if (matrix[rows - 2][flRight] === '.' || matrix[rows - 2][flRight] === ',')
+        matrix[rows - 2][flRight] = ':';
+    } else if (trueExitDir === 'W' && matrix[flTop] && matrix[flBot]) {
+      if (matrix[flTop][1] === '.' || matrix[flTop][1] === ',') matrix[flTop][1] = ':';
+      if (matrix[flBot][1] === '.' || matrix[flBot][1] === ',') matrix[flBot][1] = ':';
+    } else if (trueExitDir === 'E' && matrix[flTop] && matrix[flBot]) {
+      if (matrix[flTop][cols - 2] === '.' || matrix[flTop][cols - 2] === ',')
+        matrix[flTop][cols - 2] = ':';
+      if (matrix[flBot][cols - 2] === '.' || matrix[flBot][cols - 2] === ',')
+        matrix[flBot][cols - 2] = ':';
     }
   }
 
   // Populate END node special features (Loot Cache, Mini-Boss, Secret Switch, or Dead-End Ruins)
   if (nodeType === 'end') {
-    for (let y = 1; y < ROWS - 1; y++) {
-      for (let x = 1; x < COLS - 1; x++) {
+    for (let y = 1; y < rows - 1; y++) {
+      for (let x = 1; x < cols - 1; x++) {
         if (matrix[y][x] === 'E' || matrix[y][x] === 'o') {
           matrix[y][x] = '.';
         }
@@ -576,32 +677,34 @@ function decorateDynamicRoomGrid(
     }
 
     if (endFeature === 'loot_cache') {
-      matrix[4][4] = ':';
-      matrix[4][5] = 'C';
-      matrix[3][4] = 'P';
-      matrix[3][6] = 'P';
+      matrix[midY][midX - 1] = ':';
+      matrix[midY][midX] = 'C';
+      if (matrix[midY - 1]) {
+        matrix[midY - 1][midX - 1] = 'P';
+        matrix[midY - 1][Math.min(cols - 2, midX + 1)] = 'P';
+      }
     } else if (endFeature === 'mini_boss') {
-      matrix[2][4] = 'C';
-      matrix[2][5] = ':';
-      matrix[4][4] = '.';
-      matrix[4][5] = '.';
+      matrix[2][midX - 1] = 'C';
+      matrix[2][midX] = ':';
+      matrix[midY][midX - 1] = '.';
+      matrix[midY][midX] = '.';
     } else if (endFeature === 'secret_switch') {
       const switchChar = String((hashVal % 3) + 1);
-      matrix[3][3] = 'L';
-      matrix[3][5] = switchChar;
-      matrix[4][6] = 'C';
+      matrix[Math.max(2, midY - 1)][Math.max(2, midX - 2)] = 'L';
+      matrix[Math.max(2, midY - 1)][midX] = switchChar;
+      matrix[midY][Math.min(cols - 2, midX + 1)] = 'C';
     } else if (endFeature === 'dead_end') {
-      matrix[3][4] = 'P';
-      matrix[3][5] = 'P';
-      matrix[4][4] = ':';
-      matrix[4][5] = ':';
+      matrix[Math.max(2, midY - 1)][midX - 1] = 'P';
+      matrix[Math.max(2, midY - 1)][midX] = 'P';
+      matrix[midY][midX - 1] = ':';
+      matrix[midY][midX] = ':';
     }
   }
 
   // Loop nodes have eerie shifting Aether pools and Poe lantern echoes
-  if (nodeType === 'loop') {
-    matrix[4][4] = '~';
-    matrix[4][5] = '~';
+  if (nodeType === 'loop' && matrix[midY]) {
+    matrix[midY][midX - 1] = '~';
+    matrix[midY][midX] = '~';
   }
 
   return matrix.map((r) => r.join(''));
@@ -904,8 +1007,13 @@ function resolveNextAetherNode(
   };
 }
 
-function spawnDynamicNodeFeatures(state: OrionState, node: AetherGraphNode): void {
+function spawnDynamicNodeFeatures(
+  rooms: Record<string, string[]>,
+  state: OrionState,
+  node: AetherGraphNode
+): void {
   if (state.clearedRooms[node.id]) return;
+  const { widthPx, heightPx } = getRoomDimensions(rooms[node.id]);
 
   if (node.nodeType === 'end' && node.endFeature === 'mini_boss') {
     const bossPool = [
@@ -914,7 +1022,7 @@ function spawnDynamicNodeFeatures(state: OrionState, node: AetherGraphNode): voi
       { type: 'tristan_knight', title: 'Phantom Blade of the Mist (Mini-Boss)' },
     ];
     const pick = bossPool[node.id.length % bossPool.length];
-    spawnEnemyByType(state, pick.type, 80, 68, {
+    spawnEnemyByType(state, pick.type, Math.round(widthPx * 0.5), Math.round(heightPx * 0.46), {
       name: pick.title,
       emissiveColor: '#f43f5e',
       damage: 22,
@@ -923,8 +1031,8 @@ function spawnDynamicNodeFeatures(state: OrionState, node: AetherGraphNode): voi
     for (let i = 0; i < 3; i++) {
       state.pickups.push({
         id: 7000 + i + Math.floor(Math.random() * 1000),
-        x: 64 + i * 16,
-        y: 72 + (i % 2) * 10,
+        x: Math.round(widthPx * 0.5 - 16 + i * 16),
+        y: Math.round(heightPx * 0.5 + (i % 2) * 10),
         z: 4,
         vz: 18,
         kind: 'scrap',
@@ -945,6 +1053,9 @@ export function transitionViaAetherDoor(
 ): boolean {
   const graph = ensureAetherFogGraph(state);
   const currentNode = getActiveAetherNode(state);
+  const prevRoomGrid = rooms[state.room];
+  const departureDoor = getRoomDoorwayCenterPx(prevRoomGrid, dir);
+
   const { targetNode, isLoopCycle, escapedLoop } = resolveNextAetherNode(
     rooms,
     state,
@@ -952,27 +1063,31 @@ export function transitionViaAetherDoor(
     dir
   );
 
-  if (!rooms[targetNode.id]) return false;
+  const targetRoomGrid = rooms[targetNode.id];
+  if (!targetRoomGrid) return false;
 
-  const roomW = COLS * TILE_SIZE;
-  const roomH = ROWS * TILE_SIZE;
+  const nextDim = getRoomDimensions(targetRoomGrid);
+  const arrivalEdge = getOppositeCardinalDir(dir);
+  const arrivalDoor = getRoomDoorwayCenterPx(targetRoomGrid, arrivalEdge);
 
-  if (dir === 'E') {
-    state.x = 10;
-    state.y = Math.max(84, Math.min(108, state.y));
-  } else if (dir === 'W') {
-    state.x = roomW - 10;
-    state.y = Math.max(84, Math.min(108, state.y));
-  } else if (dir === 'N') {
-    state.y = roomH - 10;
-    state.x = Math.max(68, Math.min(92, state.x));
-  } else if (dir === 'S') {
-    state.y = 10;
-    state.x = Math.max(68, Math.min(92, state.x));
+  if (dir === 'E' || dir === 'W') {
+    const depSpan = Math.max(1, departureDoor.maxPx - departureDoor.minPx);
+    const tNorm = Math.max(0, Math.min(1, (state.y - departureDoor.minPx) / depSpan));
+    const alignedY =
+      arrivalDoor.minPx + tNorm * Math.max(0, arrivalDoor.maxPx - arrivalDoor.minPx);
+    state.x = dir === 'E' ? 10 : nextDim.widthPx - 10;
+    state.y = Math.max(arrivalDoor.minPx, Math.min(arrivalDoor.maxPx, alignedY));
+  } else {
+    const depSpan = Math.max(1, departureDoor.maxPx - departureDoor.minPx);
+    const tNorm = Math.max(0, Math.min(1, (state.x - departureDoor.minPx) / depSpan));
+    const alignedX =
+      arrivalDoor.minPx + tNorm * Math.max(0, arrivalDoor.maxPx - arrivalDoor.minPx);
+    state.y = dir === 'S' ? 10 : nextDim.heightPx - 10;
+    state.x = Math.max(arrivalDoor.minPx, Math.min(arrivalDoor.maxPx, alignedX));
   }
 
   const [rxStr, ryStr] = targetNode.coord.split(',');
-  if (! isLoopCycle) {
+  if (!isLoopCycle) {
     if (dir === 'E') state.rx = (Number(rxStr) || state.rx) + (targetNode.nodeType === 'key' ? 0 : 1);
     else if (dir === 'W') state.rx = (Number(rxStr) || state.rx) - (targetNode.nodeType === 'key' ? 0 : 1);
     else if (dir === 'S') state.ry = (Number(ryStr) || state.ry) + (targetNode.nodeType === 'key' ? 0 : 1);
@@ -1001,7 +1116,7 @@ export function transitionViaAetherDoor(
   syncRoomHierarchyState(state);
 
   spawnRoomEnemies(rooms, state);
-  spawnDynamicNodeFeatures(state, targetNode);
+  spawnDynamicNodeFeatures(rooms, state, targetNode);
 
   soundSystem.playSelect();
   const info = getRoomWorldInfo(state);
@@ -1101,6 +1216,8 @@ export function triggerOrcRaid(state: OrionState, ctx?: OrionCombatContext): voi
   state.flags.orc_raid_active = true;
   state.flickerTimer = 1.0;
 
+  const { widthPx, heightPx } = getRoomDimensions(ORION_TUTORIAL_ROOMS[state.room]);
+
   let npcCount = 0;
   for (const e of state.enemies) {
     if (e.type === 'town_npc') {
@@ -1111,20 +1228,20 @@ export function triggerOrcRaid(state: OrionState, ctx?: OrionCombatContext): voi
   }
 
   if (npcCount === 0) {
-    spawnEnemyByType(state, 'town_npc', 52, 56, {
+    spawnEnemyByType(state, 'town_npc', Math.round(widthPx * 0.34), Math.round(heightPx * 0.42), {
       npcDisposition: 'feral',
       faction: 'npc',
       name: 'Panicked Town Citizen',
     });
-    spawnEnemyByType(state, 'town_npc', 104, 88, {
+    spawnEnemyByType(state, 'town_npc', Math.round(widthPx * 0.66), Math.round(heightPx * 0.62), {
       npcDisposition: 'feral',
       faction: 'npc',
       name: 'Panicked Town Merchant',
     });
   }
 
-  spawnEnemyByType(state, 'orc_warrior', 32, 36);
-  spawnEnemyByType(state, 'orc_scout', 124, 36);
+  spawnEnemyByType(state, 'orc_warrior', Math.round(widthPx * 0.25), 36);
+  spawnEnemyByType(state, 'orc_scout', Math.round(widthPx * 0.75), 36);
 
   soundSystem.playExplosion();
   const msg = 'WAR HORN! ORC RAID — BOG EXIT SEALED & NPCS FERAL!';
@@ -1141,6 +1258,8 @@ export function triggerThreeKnightsTrial(state: OrionState, ctx?: OrionCombatCon
   state.flags = state.flags || {};
   state.flags.knights_pulled_together = true;
 
+  const { widthPx, heightPx } = getRoomDimensions(ORION_TUTORIAL_ROOMS[state.room]);
+
   state.enemies = state.enemies.filter(
     (e) =>
       e.type !== 'percival_knight' &&
@@ -1148,9 +1267,9 @@ export function triggerThreeKnightsTrial(state: OrionState, ctx?: OrionCombatCon
       e.type !== 'bors_knight'
   );
 
-  spawnEnemyByType(state, 'percival_knight', 44, 42);
-  spawnEnemyByType(state, 'tristan_knight', 116, 42);
-  spawnEnemyByType(state, 'bors_knight', 80, 34);
+  spawnEnemyByType(state, 'percival_knight', Math.round(widthPx * 0.28), Math.round(heightPx * 0.34));
+  spawnEnemyByType(state, 'tristan_knight', Math.round(widthPx * 0.72), Math.round(heightPx * 0.34));
+  spawnEnemyByType(state, 'bors_knight', Math.round(widthPx * 0.5), Math.round(heightPx * 0.26));
 
   soundSystem.playCharge();
   const msg = 'THE THREE KNIGHTS ENGAGED AT ONCE — KNIGHT’S OATH TRIAL!';
@@ -1168,7 +1287,13 @@ export function awakenLadyOfTheLake(state: OrionState, ctx?: OrionCombatContext)
   const existing = state.enemies.some((e) => e.type === 'lady_of_the_lake');
   if (existing) return false;
 
-  spawnEnemyByType(state, 'lady_of_the_lake', 80, 64);
+  const { widthPx, heightPx } = getRoomDimensions(ORION_TUTORIAL_ROOMS[state.room]);
+  spawnEnemyByType(
+    state,
+    'lady_of_the_lake',
+    Math.round(widthPx * 0.5),
+    Math.round(heightPx * 0.45)
+  );
   soundSystem.playPowerup();
   const msg = 'THE WATER ANSWERS BEDIVERE’S LIST — LADY OF THE LAKE AWAKENED!';
   if (ctx) {
@@ -1461,11 +1586,23 @@ export function rebootAtSpawnAnchor(
   notifyOrionStateChange();
 }
 
-function getNearbyDoorwayDirection(tx: number, ty: number): AetherCardinalDir | null {
-  if (ty <= 1 && tx >= 3 && tx <= 6) return 'N';
-  if (ty >= ROWS - 2 && tx >= 3 && tx <= 6) return 'S';
-  if (tx <= 1 && ty >= 4 && ty <= 7) return 'W';
-  if (tx >= COLS - 2 && ty >= 4 && ty <= 7) return 'E';
+function getNearbyDoorwayDirection(
+  roomData: string[],
+  tx: number,
+  ty: number
+): AetherCardinalDir | null {
+  const { cols, rows } = getRoomDimensions(roomData);
+  const nDoor = getRoomDoorwayCenterPx(roomData, 'N');
+  const sDoor = getRoomDoorwayCenterPx(roomData, 'S');
+  const wDoor = getRoomDoorwayCenterPx(roomData, 'W');
+  const eDoor = getRoomDoorwayCenterPx(roomData, 'E');
+  const px = tx * TILE_SIZE + 8;
+  const py = ty * TILE_SIZE + 8;
+
+  if (ty <= 1 && Math.abs(px - nDoor.x) <= 28) return 'N';
+  if (ty >= rows - 2 && Math.abs(px - sDoor.x) <= 28) return 'S';
+  if (tx <= 1 && Math.abs(py - wDoor.y) <= 28) return 'W';
+  if (tx >= cols - 2 && Math.abs(py - eDoor.y) <= 28) return 'E';
   return null;
 }
 
@@ -1612,7 +1749,7 @@ export function checkWorldInteractivePrompt(
   } else {
     // Contextual Aether Fog doorway wayfinding cues
     const activeNode = getActiveAetherNode(state);
-    const nearDir = getNearbyDoorwayDirection(tx, ty);
+    const nearDir = getNearbyDoorwayDirection(roomData, tx, ty);
     if (nearDir && activeNode.trueExitDir) {
       const hasLantern = hasPoeLanternGuidance(state);
       if (nearDir === activeNode.trueExitDir) {
@@ -1985,8 +2122,7 @@ export function handleWorldRoomTransition(
   state: OrionState,
   ctx: OrionCombatContext
 ): void {
-  const roomW = COLS * TILE_SIZE;
-  const roomH = ROWS * TILE_SIZE;
+  const { widthPx: roomW, heightPx: roomH } = getRoomDimensions(rooms[state.room]);
 
   if (state.x >= roomW) {
     transitionViaAetherDoor(rooms, state, 'E', ctx);

@@ -24,7 +24,7 @@ export const m00TheBogArea: AreaWikiDefinition = {
   globalMapIds: ['global_wetland_expanse_map'],
   connectedAreaIds: ['camelot_border_town', 'm01_orc_encampment', 'global_shattered_wilds_area'],
   spawnAnchor: { room: '0,0', x: 48, y: 72 },
-  exitAnchor: { room: '3,0', x: 120, y: 96 },
+  exitAnchor: { room: '3,0', x: 184, y: 96 },
   waystation: {
     id: 'ws_bog_drop_pod',
     name: 'M00 Drop-Pod Beacon',

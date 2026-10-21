@@ -1,6 +1,6 @@
 {
-  "summary":  "Implementation plan to align Project Orion's game-side progression: starting with Weapon Set 1 and unlocking Set 2 + world gear through exploration/combat, unifying Gemstones as the sole currency for Pilot Skills/Feats/Mods with natural Level 6-20 advancement, adding Lv 6+ stone-specific combat bonuses to Gemstone-modified equipment, aligning Belt Slots 3-4 to Level 2, tuning enemy Gemstone drop rates by tier, and gating Satchel debug tools behind Sandbox Bypass.",
-  "updatedAt":  "2026-10-21T19:00:57.547049625Z",
+  "summary":  "Architectural and gameplay plan for dynamic room sizes in Orion: Belldor Expedition, including smooth viewport-clamped camera tracking, automatic doorway alignment across variable-dimension room transitions, and expanded story/boss/hub/Aether Fog arenas.",
+  "updatedAt":  "2026-10-21T21:17:14.879959495Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

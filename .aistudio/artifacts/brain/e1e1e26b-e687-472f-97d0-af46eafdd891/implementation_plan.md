@@ -1,59 +1,76 @@
-# Game-Side Progression Alignment Plan
+# Orion: Dynamic Room Sizes, Smooth Camera & Expanded Story/Boss Arenas
 
-## 1. Overview & Goals
-Audit and align Project Orion's campaign, equipment, gemstone, and level progression systems so that standard gameplay follows the canonical Belldor progression rules without debug leakage or conflicting state gates:
-- **Weapon Set 1 → Set 2 & World Gear Discovery**: Start at Level 1 with only the pilot's primary weapon (`Weapon Set 1`), unlock `Weapon Set 2` at Level 2 (Poe / Bedivere), and earn the remaining 10 weapons, shields, and quivers through world caches, bosses, and scavenger trade.
-- **Unified Gemstone Currency & Level 6–20 Advancement**: Make the 9 Gemstones the sole progression currency for Pilot Skills, Feat Sockets, and Equipment Mods (unlocking at Level 6), and allow Frame Level to advance from `6` to `20` through Gemstone build milestones and boss/trial completions.
-- **Gemstone-Modified Equipment Combat Effects (Lv 6+)**: Give each of the 9 Gemstones (`Cols 0–8`) a stone-specific combat bonus in addition to its sprite column and blade trail / projectile VFX tint, gated behind Level 6+ progression.
-- **Gate Consistency, Drop Tuning & Sandbox Isolation**: Fix the Belt Slot 3–4 level gate mismatch (`Level 2` everywhere), tune enemy Gemstone drop rates by enemy tier, and hide Satchel debug/cheat buttons unless `bypassProgressionGates` (`BYPASS ON`) is active.
+## 1. Executive Summary
+Rooms in **Orion: Belldor Expedition** will support variable grid dimensions (`cols × rows`) instead of being locked to the single-screen `10 × 9` (`160 × 144 px`) viewport. Standard rooms remain `10 × 9` for crisp single-screen pacing, while key boss trials, story hubs, Colossal Waygate sanctums, and Aether Fog corridors/mini-boss lairs expand into multi-screen or custom-aspect arenas with smooth camera tracking and intelligent doorway alignment.
 
 ---
 
-## 2. Planned Changes by System
+## 2. Core Systems Architecture
 
-### A. Weapon Acquisition, Set 1 → Set 2 Unlock & World Loot (`types.ts`, `playerSystem.ts`, `worldSystem.ts`, `entitySystem.ts`)
-- **Owned Gear Tracking (`OrionEquipmentSlots.unlockedEquipment`)**:
-  - Add `unlockedEquipment?: string[]` to `OrionEquipmentSlots`.
-  - At New Game (`Level 1` in `M00 The Bog [0,0]`), initialize `equippedWeapons` with `[startingWeapons[0]]` (1 weapon in Set 1) and seed `unlockedEquipment` with `[startingWeapons[0]]`.
-- **Level 2 Weapon Set 2 Unlock (`Poe` / `Bedivere [S]`)**:
-  - When reaching Level 2 via helping/resolving The Poe or salvaging Bedivere (`[S]`), unlock the pilot's canonical secondary gear (`startingWeapons[1]`, plus `khopesh` from Bedivere's salvage) into `unlockedEquipment` and populate `equippedWeapons[1]` (Weapon Set 2) cleanly—preventing duplicate or 3-element `equippedWeapons` arrays.
-- **World Gear Discovery & Boss/Cache Drops**:
-  - Distribute the remaining weapons, shields, and quivers across Belldor caches, bosses, and merchants:
-    - **Bog Caches & Bog Wurm**: Unlock `short_spear`, `buckler_shield`, and `hand_axe`.
-    - **Border Town Caches & Scavenger Trade**: Unlock `mace`, `heater_shield`, `great_bow`, and `quiver`.
-    - **Three Corrupted Knights (`Percival`, `Tristan`, `Bors`) & Lady of the Lake**: Drop/unlock `pavise_shield`, `long_sword`, `gladius_boltcaster`, and `avalon_siege_lance`.
-  - Collecting or unlocking any weapon/shield/quiver adds its ID to `state.equipmentSlots.unlockedEquipment` with a discovery toast.
+```
++-------------------------------------------------------------------------+
+|                       ROOM DIMENSION RESOLVER                           |
+|   Room Grid (string[]) ---> { cols, rows, widthPx, heightPx }           |
+|   Default Fallback: 10 cols x 9 rows (160 x 144 px)                     |
++------------------------------------+------------------------------------+
+                                     |
+         +---------------------------+---------------------------+
+         |                                                       |
+         v                                                       v
++------------------------------------+  +---------------------------------+
+|   CAMERA & RENDER PIPELINE         |  |   DOORWAY & WORLD TRANSITIONS   |
+|                                    |  |                                 |
+| 1. Target: Pilot (x, y) centered   |  | 1. Scan arrival wall (N/S/E/W)  |
+|    in 160x144 viewport             |  |    for carved open doorway      |
+| 2. If room > viewport:             |  |    tiles ('.', ':', '~')        |
+|    Smooth lerp & clamp to          |  | 2. Align pilot to target door   |
+|    [0 .. roomPx - screenPx]        |  |    center (or proportional      |
+| 3. If room <= viewport:            |  |    coordinate fallback)         |
+|    Center room in viewport         |  | 3. Snap camera immediately to   |
+| 4. World layers (0..3.5, lights)   |  |    new room entry position      |
+|    translated by (-camX, -camY)    |  | 4. Scale collision, AI bounds,  |
+| 5. Screen layers (Vignette, HUD)   |  |    & projectiles to roomPx      |
+|    fixed to 160x144 screen space   |  |                                 |
++------------------------------------+  +---------------------------------+
+```
 
-### B. Unified Gemstone Progression & Frame Level 6–20 Advancement (`database/progression/index.ts`, `playerSystem.ts`)
-- **Single-Currency Pilot Skill Progression**:
-  - Remove the unused `0–100` combat XP accumulation in `awardPilotSkillXp` so Pilot Skills (`Levels 1–20` across the 6 Trait Lines) are funded exclusively by spending matching Trait or Reactor Gemstones via `fundPilotSkillWithGem` once Level 6 (`isStandardProgressionUnlocked`) is active.
-- **Natural Frame Level 6 → 20 Progression**:
-  - Add `syncPostTutorialFrameLevel(state, ctx)` in `playerSystem.ts`: once `isStandardProgressionUnlocked(state)` is true (`Level 6+`), calculate the pilot's progression milestones (total Gemstones invested in Pilot Skills, active socketed Feat Nodes, generated Action/Weapon Mods, Corrupted Knights defeated, and Lady of the Lake defeated) to advance `state.level` smoothly from `6` up to `20` during real gameplay.
+### A. Dynamic Room Dimension Resolver
+- Every room grid (`string[]`) dynamically resolves its own `rows` (`grid.length`), `cols` (`max row length`), `widthPx` (`cols × 16`), and `heightPx` (`rows × 16`).
+- Optional explicit `cols` and `rows` metadata on room definitions is supported for validation and procedural Aether Fog generation, while defaulting to `10 × 9` whenever unspecified.
 
-### C. Gemstone Weapon Modification Combat Bonuses (`database/progression/index.ts`, `combatSystem.ts`)
-- **Level 6+ Gate**:
-  - Gate `modifyWeaponWithGem` behind `isStandardProgressionUnlocked(state)` (Level 6: Border Town Complete, or Sandbox Bypass).
-- **Stone-Specific Combat Modifiers (`getWeaponGemCombatModifiers`)**:
-  - Define and apply per-stone combat bonuses whenever a weapon, shield, or quiver is modified with a Gemstone (`Cols 0–8`):
-    - **Moonstone (`Col 0`)**: `+8 Max Shield Capacity` and `-10% Active Skill Cooldowns`.
-    - **Spinel (`Col 1`)**: `+15% Weapon Damage` (scales to `+22%` when Reactor Heat `≥ 50`).
-    - **Carnelian (`Col 2`)**: `+25% Bonus Armor Durability Damage` and `+15 Presence` on hit.
-    - **Titanite (`Col 3`)**: `+15 Max Shield Capacity` and restores `+4 Shield` on skill hit.
-    - **Demantoid (`Col 4`)**: Repairs `+3 Frame Integrity` on skill hit and `-15% Skill Heat Cost`.
-    - **Kyanite (`Col 5`)**: `+15% Projectile Velocity / Range` and `-12% Skill Cooldowns`.
-    - **Charoite (`Col 6`)**: `+20% Damage vs. Locked-On or Submerged/Staggered Targets` and `+8% Move Speed`.
-    - **Rubellite (`Col 7`)**: `+12% All Weapon Damage` and `+1 Max Chain Ammo`.
-    - **Hematite (`Col 8`)**: Vents `-4 Reactor Heat` per basic hit and restores `+4 Armor Durability` on kill.
+### B. Viewport Camera Tracking (`160 × 144` Screen Space vs. World Space)
+- **Smooth Clamped Follow**: When a room's width or height exceeds `160 × 144 px`, the camera smoothly tracks the pilot (`camX`, `camY`) and clamps strictly to `[0, widthPx - 160]` horizontally and `[0, heightPx - 144]` vertically so no out-of-bounds void appears around oversized rooms.
+- **Centered Compact Rooms**: If a narrow corridor or shrine axis is smaller than `10` columns or `9` rows, that axis centers cleanly inside the `160 × 144` viewport.
+- **Instant Snap on Room Entry**: Crossing an Aether Doorway or teleporting via Waystation/Waygate immediately snaps `camX` and `camY` to the pilot's entry position on the first frame so the camera never sweeps across the room on load.
+- **Layer Separation**:
+  - **World-Space Layers** (Floor, Elevation Walls, Water Reflections, Y-Sorted Entities/Props, Projectiles/Blade Trails/Particles, Doorway Motes, Wisp Tether, and Dynamic Point Lights) render with `(-camX, -camY)` translation and viewport frustum culling for visible tile ranges.
+  - **Screen-Space Layers** (Ambient Darkness/Vignette, Weather Overlay, Scanlines, and Top/Bottom HUD Bars) remain anchored to the `160 × 144` screen.
 
-### D. Belt Slot Alignment, Enemy Gemstone Drop Rates & Satchel Bypass Gating (`combatSystem.ts`, `entitySystem.ts`, `OrionSatchel.tsx`)
-- **Belt Slots 3–4 at Level 2**:
-  - Update `isActionUnlocked` in `combatSystem.ts` so Belt Slots 1–2 require Level 1 and Belt Slots 3–4 require Level 2 (`reqLvl = idx <= 1 ? 1 : 2`), matching `computeCapabilityGates` and `LEVEL_UNLOCK_SEQUENCE`.
-- **Tiered Enemy Gemstone Drop Rates (`entitySystem.ts`)**:
-  - Replace the 100% guaranteed Gemstone drop on all enemies with tiered drop chances:
-    - Basic enemies (`bog_crawler`, `orc_scout`, `orc_warrior`): `22%` drop chance.
-    - Elite / Sub-bosses (`bog_wurm`): `60%` drop chance (`1–2` Gemstones).
-    - Bosses & Trials (`percival_knight`, `tristan_knight`, `bors_knight`, `lady_of_the_lake`, Fog Mini-Bosses): `100%` guaranteed drop (`1–2` Gemstones).
-- **Satchel Sandbox Gate Isolation (`OrionSatchel.tsx`)**:
-  - In `OrionSatchel.tsx`, only allow equipping weapons/shields/quivers present in `unlockedEquipment` (or all 12 when `state.bypassProgressionGates` is enabled).
-  - Lock mid-run Trait Line frame switching and cross-class Utility selection when `state.bypassProgressionGates` is off.
-  - Gate debug buttons (`+1 ALL 9 GEMS`, `+1 ALL 9 FLASKS`, `+1 RELICS & KEYS`, manual Level `-1/+1`, campaign flag cyclers, and `ATTUNE ALL WAYSTATIONS & WAYGATES`) behind `state.bypassProgressionGates`, while keeping the **Sandbox Gate Bypass (`STRICT` / `BYPASS ON`)** toggle accessible in the `STATES & LAWS` tab for testing.
+### C. Doorway Carving & Cross-Size Room Transitions
+- **Dynamic Cardinal Door Carving**: Procedural and Aether Fog doorway carving automatically centers 2-tile cardinal doorways (`N`/`S` at `floor(cols / 2) - 1 .. floor(cols / 2)`, `W`/`E` at `floor(rows / 2) .. floor(rows / 2) + 1`) while respecting any pre-authored door openings in custom room grids.
+- **Auto-Locating Arrival Doorways**: When transitioning across `N`, `S`, `E`, or `W` edges between two rooms of different sizes (e.g., walking East from a `10 × 9` room into a `16 × 12` plaza), the transition system scans the arrival wall of the destination room for open doorway tiles and places the pilot directly inside the matching doorway opening. If a wall has a wide open edge, proportional coordinate mapping preserves the pilot's relative offset along that edge.
+- **Dynamic Physics & Combat Bounds**: Tile collision checks, enemy patrol/dash/reposition bounds, combat knockback clamping, and projectile despawn boundaries all query the active room's `widthPx` and `heightPx` rather than fixed `160 × 144` constants.
+
+---
+
+## 3. Expanded Story, Boss, Hub & Aether Fog Rooms
+
+### 1. Boss & Trial Arenas
+- **Three Knights Cathedral Plaza (`[5,0]`) — `16 × 12` (`256 × 192 px`)**:
+  - Expanded grand ruined cathedral courtyard giving the Three Knights (Gawain, Lancelot, Percival) room for synchronized formation charges, flanking arcs, and pillar cover around the northern exit gate.
+- **Lady of the Lake Sanctum (`[2,1]`) — `14 × 11` (`224 × 176 px`)**:
+  - Expanded subterranean water sanctum featuring a wider central island dais surrounded by deep mystical channels, sunken ruin pillars, and the Excalibur pedestal.
+- **Poe & Bog Wurm Clearing (`[3,0]`) — `14 × 11` (`224 × 176 px`)**:
+  - Expanded misty bog arena with staggered mire pools, ancient root clusters, and lantern posts that give the burrowing Bog Wurm and Poe multi-angle ambush lanes.
+
+### 2. Hub & Story Landmarks
+- **Camelot Border Town Square (`[4,0]`) — `16 × 12` (`256 × 192 px`)**:
+  - Expanded fortified settlement hub with distinct districts: western gate approach, central town plaza and fountain/hearth, garrison quartermaster stalls, and the northern cathedral approach.
+- **Colossal Waygate Sanctums (`[6,0]` & Region Waygates) — `14 × 12` (`224 × 192 px`)**:
+  - Monumental ancient monolith chambers with a ceremonial flagstone causeway, flanking ruin colonnades, and a spacious northern sanctum housing the Colossal Waygate arch.
+
+### 3. Aether Fog Dynamic Templates
+- **Aether Fog End Mini-Boss Lair**:
+  - When a procedural Aether Fog `end` node rolls a `mini_boss` encounter, its room grid upgrades to an expanded `14 × 11` arena with pillars and hazard pockets suited for elite combat.
+- **Aether Fog Bridge & Corridor Templates**:
+  - Adds elongated causeway/bridge templates (such as `14 × 9` horizontal causeways and `10 × 13` vertical spans) to the global template pool so Aether Fog traversal features varied spatial rhythm between standard rooms and boss arenas.

@@ -4,7 +4,7 @@
  */
 
 import { soundSystem } from '../../../../engine/core/soundSystem';
-import { getDirFromVector } from '../../constants';
+import { getDirFromVector, getRoomDimensions } from '../../constants';
 import { notifyOrionStateChange } from '../../systems/playerSystem';
 import { EnemyEntity, EnemyWikiDefinition, OrionState } from '../../types';
 
@@ -50,7 +50,7 @@ export const ladyOfTheLakeEnemy: EnemyWikiDefinition = {
     g.fillStyle = '#e879f9';
     g.fillRect(e.x - 4, ey - 18, 8, 10);
   },
-  update(_rooms, state: OrionState, e: EnemyEntity, dt: number) {
+  update(rooms, state: OrionState, e: EnemyEntity, dt: number) {
     if (e.stun > 0) {
       e.stun -= dt;
       return;
@@ -130,14 +130,15 @@ export const ladyOfTheLakeEnemy: EnemyWikiDefinition = {
       return;
     }
 
+    const { widthPx, heightPx } = getRoomDimensions(rooms[state.room]);
     e.t += dt;
     e.x = Math.max(
       20,
-      Math.min(140, e.x + (dx / dist) * e.speed * 0.6 * dt + Math.cos(e.t * 2) * 12 * dt)
+      Math.min(widthPx - 20, e.x + (dx / dist) * e.speed * 0.6 * dt + Math.cos(e.t * 2) * 12 * dt)
     );
     e.y = Math.max(
       20,
-      Math.min(124, e.y + (dy / dist) * e.speed * 0.6 * dt + Math.sin(e.t * 2) * 12 * dt)
+      Math.min(heightPx - 20, e.y + (dy / dist) * e.speed * 0.6 * dt + Math.sin(e.t * 2) * 12 * dt)
     );
 
     if (e.attackCd <= 0) {

@@ -33,12 +33,12 @@ import {
   OrionState,
   ShieldState,
 } from '../types';
-import { notifyOrionStateChange } from './playerSystem';
+import { getActiveRoomBounds, notifyOrionStateChange } from './playerSystem';
 import { updateBladeTrails } from './renderSystem';
 
 // ─── 1. TARGET LOCK-ON & AIMING ──────────────────────────────────────────────
 
-const MAX_LOCK_ON_RANGE = 135;
+const MAX_LOCK_ON_RANGE = 165;
 
 export function isTargetableEnemy(e: EnemyEntity): boolean {
   if (e.frame.integrity <= 0) return false;
@@ -527,11 +527,12 @@ export function executeActionPayload(
       e.armor.durability = Math.max(0, e.armor.durability - totalArmorDent);
     }
     if (knockbackDist !== 0) {
+      const bounds = getActiveRoomBounds(state);
       const kdx = e.x - state.x;
       const kdy = e.y - state.y;
       const kNorm = Math.hypot(kdx, kdy) || 1;
-      e.x = Math.max(12, Math.min(148, e.x + (kdx / kNorm) * knockbackDist));
-      e.y = Math.max(12, Math.min(132, e.y + (kdy / kNorm) * knockbackDist));
+      e.x = Math.max(12, Math.min(bounds.widthPx - 12, e.x + (kdx / kNorm) * knockbackDist));
+      e.y = Math.max(12, Math.min(bounds.heightPx - 12, e.y + (kdy / kNorm) * knockbackDist));
     }
     if (!skillHitGrantedBonus) {
       skillHitGrantedBonus = true;
@@ -996,8 +997,9 @@ export function executeActionPayload(
           life: 0.24,
           maxLife: 0.24,
         });
-        state.x = Math.max(12, Math.min(148, state.x - aim.dx * 7));
-        state.y = Math.max(12, Math.min(132, state.y - aim.dy * 7));
+        const bounds = getActiveRoomBounds(state);
+        state.x = Math.max(12, Math.min(bounds.widthPx - 12, state.x - aim.dx * 7));
+        state.y = Math.max(12, Math.min(bounds.heightPx - 12, state.y - aim.dy * 7));
         for (const e of state.enemies) {
           if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
           if (isTargetInDirectionalArc(state.x, state.y, aimAngle, 32, Math.PI * 1.15, e.x, e.y)) {
@@ -2421,11 +2423,12 @@ export function updateCombat(
                   e.armor.durability = Math.max(0, e.armor.durability - totalDent);
                 }
                 if (knockbackDist > 0) {
+                  const bounds = getActiveRoomBounds(state);
                   const kdx = e.x - state.x;
                   const kdy = e.y - state.y;
                   const kNorm = Math.hypot(kdx, kdy) || 1;
-                  e.x = Math.max(12, Math.min(148, e.x + (kdx / kNorm) * knockbackDist));
-                  e.y = Math.max(12, Math.min(132, e.y + (kdy / kNorm) * knockbackDist));
+                  e.x = Math.max(12, Math.min(bounds.widthPx - 12, e.x + (kdx / kNorm) * knockbackDist));
+                  e.y = Math.max(12, Math.min(bounds.heightPx - 12, e.y + (kdy / kNorm) * knockbackDist));
                 }
                 if (!basicHitGrantedBonus) {
                   basicHitGrantedBonus = true;

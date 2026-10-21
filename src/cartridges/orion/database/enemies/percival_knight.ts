@@ -4,7 +4,7 @@
  */
 
 import { soundSystem } from '../../../../engine/core/soundSystem';
-import { getDirFromVector } from '../../constants';
+import { getDirFromVector, getRoomDimensions } from '../../constants';
 import { addOrionInventoryItem, notifyOrionStateChange } from '../../systems/playerSystem';
 import { EnemyEntity, EnemyWikiDefinition, OrionCombatContext, OrionState } from '../../types';
 
@@ -59,13 +59,14 @@ export const percivalKnightEnemy: EnemyWikiDefinition = {
     g.fillStyle = '#7dd3fc';
     g.fillRect(e.x - 9, ey - 14, 4, 12);
   },
-  update(_rooms, state: OrionState, e: EnemyEntity, dt: number) {
+  update(rooms, state: OrionState, e: EnemyEntity, dt: number) {
     if (e.stun > 0) {
       e.stun -= dt;
       return;
     }
     if (e.attackCd > 0) e.attackCd -= dt;
 
+    const { widthPx, heightPx } = getRoomDimensions(rooms[state.room]);
     const dx = state.x - e.x;
     const dy = state.y - e.y;
     const dist = Math.hypot(dx, dy) || 1;
@@ -82,8 +83,8 @@ export const percivalKnightEnemy: EnemyWikiDefinition = {
         e.stateTimer = 0.28;
         e.hasStruckThisAttack = false;
         const ang = e.attackAngle ?? Math.atan2(dy, dx);
-        e.x = Math.max(16, Math.min(144, e.x + Math.cos(ang) * 24));
-        e.y = Math.max(16, Math.min(128, e.y + Math.sin(ang) * 24));
+        e.x = Math.max(16, Math.min(widthPx - 16, e.x + Math.cos(ang) * 24));
+        e.y = Math.max(16, Math.min(heightPx - 16, e.y + Math.sin(ang) * 24));
         state.bladeTrails = state.bladeTrails || [];
         state.bladeTrails.push({
           x: e.x,

@@ -26,7 +26,7 @@ export const camelotWaygateDepthsArea: AreaWikiDefinition = {
     'global_aether_drift_corridor_area',
   ],
   spawnAnchor: { room: '6,0', x: 32, y: 96 },
-  exitAnchor: { room: '6,0', x: 136, y: 96 },
+  exitAnchor: { room: '6,0', x: 192, y: 96 },
   waystation: {
     id: 'ws_camelot_waygate_sanctum',
     name: 'Waygate Sanctum Plinth',
@@ -34,7 +34,7 @@ export const camelotWaygateDepthsArea: AreaWikiDefinition = {
     areaId: 'camelot_waygate_depths',
     mapId: 'map_camelot_waygate_depths',
     room: '6,0',
-    x: 48,
+    x: 72,
     y: 40,
     lore: 'Subterranean calibration plinth adjacent to the colossal Camelot Waygate.',
   },

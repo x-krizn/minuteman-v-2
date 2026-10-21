@@ -4,7 +4,7 @@
  */
 
 import { soundSystem } from '../../../../engine/core/soundSystem';
-import { getDirFromVector } from '../../constants';
+import { getDirFromVector, getRoomDimensions } from '../../constants';
 import { addOrionInventoryItem, notifyOrionStateChange } from '../../systems/playerSystem';
 import { EnemyEntity, EnemyWikiDefinition, OrionCombatContext, OrionState } from '../../types';
 
@@ -61,7 +61,7 @@ export const borsKnightEnemy: EnemyWikiDefinition = {
     g.fillStyle = (e.hitsLanded || 0) > 0 ? '#f43f5e' : '#b8a4ff';
     g.fillRect(e.x - 6, ey - 18, 12, 12);
   },
-  update(_rooms, state: OrionState, e: EnemyEntity, dt: number) {
+  update(rooms, state: OrionState, e: EnemyEntity, dt: number) {
     if (e.stun > 0) {
       e.stun -= dt;
       return;
@@ -76,6 +76,7 @@ export const borsKnightEnemy: EnemyWikiDefinition = {
       state.toastTimer = 2.2;
     }
 
+    const { widthPx, heightPx } = getRoomDimensions(rooms[state.room]);
     const dx = state.x - e.x;
     const dy = state.y - e.y;
     const dist = Math.hypot(dx, dy) || 1;
@@ -89,8 +90,8 @@ export const borsKnightEnemy: EnemyWikiDefinition = {
         e.hasStruckThisAttack = false;
         const ang = e.attackAngle ?? Math.atan2(dy, dx);
         const lungeDist = e.enraged ? 26 : 14;
-        e.x = Math.max(12, Math.min(148, e.x + Math.cos(ang) * lungeDist));
-        e.y = Math.max(12, Math.min(132, e.y + Math.sin(ang) * lungeDist));
+        e.x = Math.max(12, Math.min(widthPx - 12, e.x + Math.cos(ang) * lungeDist));
+        e.y = Math.max(12, Math.min(heightPx - 12, e.y + Math.sin(ang) * lungeDist));
         state.bladeTrails = state.bladeTrails || [];
         if (e.enraged) {
           state.bladeTrails.push({
@@ -140,7 +141,7 @@ export const borsKnightEnemy: EnemyWikiDefinition = {
       return;
     }
 
-    if (dist < 110) {
+    if (dist < 180) {
       if (dist <= (e.enraged ? 44 : 32) && e.attackCd <= 0) {
         e.state = 'windup';
         e.stateTimer = this.tellDurationSec;

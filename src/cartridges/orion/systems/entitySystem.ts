@@ -165,10 +165,11 @@ export function spawnRoomEnemies(
         const hasExplicitCompanion =
           def.companionSpawnChar && room.some((r) => r.includes(def.companionSpawnChar!));
         if (!hasExplicitCompanion) {
+          const maxRoomX = (room[0]?.length || 10) * TILE_SIZE - 20;
           spawnEnemyByType(
             state,
             def.companionSpawnType,
-            Math.min(140, px + 18),
+            Math.min(maxRoomX, px + 18),
             Math.max(20, py - 12)
           );
         }

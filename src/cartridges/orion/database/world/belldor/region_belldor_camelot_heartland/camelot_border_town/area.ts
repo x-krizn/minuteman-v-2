@@ -29,7 +29,7 @@ export const camelotBorderTownArea: AreaWikiDefinition = {
   globalMapIds: ['global_desync_outskirts_map'],
   connectedAreaIds: ['m00_the_bog', 'camelot_interior', 'global_shattered_wilds_area'],
   spawnAnchor: { room: '4,0', x: 32, y: 96 },
-  exitAnchor: { room: '5,0', x: 140, y: 96 },
+  exitAnchor: { room: '5,0', x: 208, y: 96 },
   waystation: {
     id: 'ws_border_town_market',
     name: 'Border Town Market Waystation',
@@ -37,8 +37,8 @@ export const camelotBorderTownArea: AreaWikiDefinition = {
     areaId: 'camelot_border_town',
     mapId: 'map_border_town_market',
     room: '4,0',
-    x: 112,
-    y: 72,
+    x: 200,
+    y: 88,
     lore: 'Flickering market spire in the central hub that holds local alignment despite the town’s temporal drift.',
   },
   zoneFeatures: [

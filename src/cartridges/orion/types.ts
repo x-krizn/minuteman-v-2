@@ -356,6 +356,9 @@ export interface RoomDefinition {
   biomeId?: string;
   title: string;
   bannerTitle: string;
+  /** Optional explicit grid column/row dimensions (derived automatically from grid if omitted) */
+  cols?: number;
+  rows?: number;
   grid: string[];
   /** Allowed doorway directions for global procedural template rooms */
   doorDirs?: Array<'N' | 'S' | 'E' | 'W'>;
@@ -959,6 +962,10 @@ export interface OrionState {
   faceX: number;
   faceY: number;
   t: number;
+  /** Viewport camera top-left offset in world pixels (smoothly clamped to room bounds, or centered if smaller) */
+  camX?: number;
+  camY?: number;
+  camRoomId?: string;
 
   // Pilot & Trait Line Identity
   pilotName: string;

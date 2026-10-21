@@ -4,7 +4,7 @@
  */
 
 import { soundSystem } from '../../../../engine/core/soundSystem';
-import { getDirFromVector } from '../../constants';
+import { getDirFromVector, getRoomDimensions } from '../../constants';
 import { addOrionInventoryItem, notifyOrionStateChange } from '../../systems/playerSystem';
 import { EnemyEntity, EnemyWikiDefinition, OrionCombatContext, OrionState } from '../../types';
 
@@ -60,13 +60,14 @@ export const tristanKnightEnemy: EnemyWikiDefinition = {
     g.fillStyle = '#6ee7b7';
     g.fillRect(e.x + 4, ey - 13, 4, 7);
   },
-  update(_rooms, state: OrionState, e: EnemyEntity, dt: number) {
+  update(rooms, state: OrionState, e: EnemyEntity, dt: number) {
     if (e.stun > 0) {
       e.stun -= dt;
       return;
     }
     if (e.attackCd > 0) e.attackCd -= dt;
 
+    const { widthPx, heightPx } = getRoomDimensions(rooms[state.room]);
     const dx = state.x - e.x;
     const dy = state.y - e.y;
     const dist = Math.hypot(dx, dy) || 1;
@@ -88,8 +89,8 @@ export const tristanKnightEnemy: EnemyWikiDefinition = {
           fade: true,
         });
       }
-      e.x = state.x > 80 ? 28 : 132;
-      e.y = state.y > 72 ? 28 : 116;
+      e.x = state.x > widthPx * 0.5 ? 28 : widthPx - 28;
+      e.y = state.y > heightPx * 0.5 ? 28 : heightPx - 28;
       return;
     }
 

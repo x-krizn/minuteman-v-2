@@ -10,13 +10,13 @@ import {
   BOOSTER_DASH_DURATION,
   BOOSTER_HEAT_COST,
   BOOSTER_SPEED,
-  COLS,
   DIR_VECTORS,
   getDirFromVector,
+  getRoomDimensions,
   GRAVITY,
   JUMP_VELOCITY,
   MUD_SPEED_PENALTY,
-  ROWS,
+  RoomDimensions,
   TILE_SIZE,
   WALK_SPEED,
 } from '../constants';
@@ -82,6 +82,14 @@ export function setOrionRoomsRef(rooms: Record<string, string[]>): void {
 
 export function getOrionRoomsRef(): Record<string, string[]> | null {
   return orionRoomsRef;
+}
+
+export function getActiveRoomBounds(
+  state: OrionState,
+  rooms?: Record<string, string[]> | null
+): RoomDimensions {
+  const mapRef = rooms || orionRoomsRef;
+  return getRoomDimensions(mapRef?.[state.room]);
 }
 
 export function subscribeOrionStateChange(listener: () => void): () => void {
@@ -859,11 +867,13 @@ export function isSolidAt(
   ty: number,
   z: number = 0
 ): boolean {
-  if (tx >= 0 && tx < COLS && ty >= 0 && ty < ROWS) {
-    const room = rooms[state.room];
-    if (!room || !room[ty]) return true;
+  const currentRoom = rooms[state.room];
+  const { cols, rows } = getRoomDimensions(currentRoom);
 
-    const char = room[ty][tx] || '.';
+  if (tx >= 0 && tx < cols && ty >= 0 && ty < rows) {
+    if (!currentRoom || !currentRoom[ty]) return true;
+
+    const char = currentRoom[ty][tx] || '.';
     const tile = getTileDefinition(char, state.biomeId);
     if (tile.checkSolid) {
       return tile.checkSolid(state, state.room);
@@ -881,8 +891,8 @@ export function isSolidAt(
     return z < tile.blocksHeight * 12;
   }
 
-  const dx = tx < 0 ? -1 : tx >= COLS ? 1 : 0;
-  const dy = ty < 0 ? -1 : ty >= ROWS ? 1 : 0;
+  const dx = tx < 0 ? -1 : tx >= cols ? 1 : 0;
+  const dy = ty < 0 ? -1 : ty >= rows ? 1 : 0;
 
   if (dx !== 0 && dy !== 0) {
     return true;
@@ -891,10 +901,9 @@ export function isSolidAt(
   // Borderless Aether Fog doorway rule: if the perimeter tile at the edge of the current room
   // is an open doorway (non-solid), stepping across the room boundary is passable and will
   // resolve or dynamically generate the connected Aether Fog node on transition.
-  const currentRoom = rooms[state.room];
   if (!currentRoom) return true;
-  const edgeTx = Math.max(0, Math.min(COLS - 1, tx));
-  const edgeTy = Math.max(0, Math.min(ROWS - 1, ty));
+  const edgeTx = Math.max(0, Math.min(cols - 1, tx));
+  const edgeTy = Math.max(0, Math.min(rows - 1, ty));
   const edgeChar = currentRoom[edgeTy]?.[edgeTx] || '#';
   const edgeTile = getTileDefinition(edgeChar, state.biomeId);
 
@@ -919,6 +928,7 @@ export function moveEntityX(
 ): number {
   if (dx === 0) return x;
 
+  const { rows } = getRoomDimensions(rooms[state.room]);
   const targetX = x + dx;
   const sign = Math.sign(dx);
   const checkX = targetX + sign * radius;
@@ -927,8 +937,8 @@ export function moveEntityX(
   const bottomY = y + radius * 0.5;
 
   const tx = Math.floor(checkX / TILE_SIZE);
-  const ty1 = Math.max(0, Math.min(ROWS - 1, Math.floor(topY / TILE_SIZE)));
-  const ty2 = Math.max(0, Math.min(ROWS - 1, Math.floor(bottomY / TILE_SIZE)));
+  const ty1 = Math.max(0, Math.min(rows - 1, Math.floor(topY / TILE_SIZE)));
+  const ty2 = Math.max(0, Math.min(rows - 1, Math.floor(bottomY / TILE_SIZE)));
 
   if (
     isSolidAt(rooms, state, tx, ty1, z) ||
@@ -955,6 +965,7 @@ export function moveEntityY(
 ): number {
   if (dy === 0) return y;
 
+  const { cols } = getRoomDimensions(rooms[state.room]);
   const targetY = y + dy;
   const sign = Math.sign(dy);
   const checkY = targetY + sign * radius * 0.5;
@@ -963,8 +974,8 @@ export function moveEntityY(
   const rightX = x + radius;
 
   const ty = Math.floor(checkY / TILE_SIZE);
-  const tx1 = Math.max(0, Math.min(COLS - 1, Math.floor(leftX / TILE_SIZE)));
-  const tx2 = Math.max(0, Math.min(COLS - 1, Math.floor(rightX / TILE_SIZE)));
+  const tx1 = Math.max(0, Math.min(cols - 1, Math.floor(leftX / TILE_SIZE)));
+  const tx2 = Math.max(0, Math.min(cols - 1, Math.floor(rightX / TILE_SIZE)));
 
   if (
     isSolidAt(rooms, state, tx1, ty, z) ||

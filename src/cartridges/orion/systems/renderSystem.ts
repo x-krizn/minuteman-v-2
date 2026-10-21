@@ -4,14 +4,14 @@
  */
 
 import {
-  COLS,
   COLOR_ARMOR,
   COLOR_CRITICAL,
   COLOR_FRAME,
   COLOR_HEAT,
   COLOR_SHIELD,
   DIR_VECTORS,
-  ROWS,
+  getRoomDimensions,
+  getRoomDoorwayCenterPx,
   SCREEN_H,
   SCREEN_W,
   TILE_SIZE,
@@ -1165,8 +1165,9 @@ export function resolveRoomBaseTerrain(
   ty: number,
   biome: BiomeDefinition
 ): ClusterTerrainType {
-  const clampedX = Math.max(0, Math.min(COLS - 1, tx));
-  const clampedY = Math.max(0, Math.min(ROWS - 1, ty));
+  const { cols, rows } = getRoomDimensions(room);
+  const clampedX = Math.max(0, Math.min(cols - 1, tx));
+  const clampedY = Math.max(0, Math.min(rows - 1, ty));
   const rawChar = room[clampedY]?.[clampedX];
 
   const direct = charToExplicitTerrain(rawChar);
@@ -1186,7 +1187,7 @@ export function resolveRoomBaseTerrain(
   for (const [dx, dy] of offsets) {
     const nx = clampedX + dx;
     const ny = clampedY + dy;
-    if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS) {
+    if (nx >= 0 && nx < cols && ny >= 0 && ny < rows) {
       const neighborTerrain = charToExplicitTerrain(room[ny]?.[nx]);
       if (neighborTerrain) {
         return neighborTerrain;
@@ -1229,18 +1230,19 @@ export function resolveClusterLayer0Coord(
     };
   }
 
+  const { cols, rows } = getRoomDimensions(room);
   const nTerrain = ty > 0 ? resolveRoomBaseTerrain(room, tx, ty - 1, biome) : fromTerrain;
-  const sTerrain = ty < ROWS - 1 ? resolveRoomBaseTerrain(room, tx, ty + 1, biome) : fromTerrain;
+  const sTerrain = ty < rows - 1 ? resolveRoomBaseTerrain(room, tx, ty + 1, biome) : fromTerrain;
   const wTerrain = tx > 0 ? resolveRoomBaseTerrain(room, tx - 1, ty, biome) : fromTerrain;
-  const eTerrain = tx < COLS - 1 ? resolveRoomBaseTerrain(room, tx + 1, ty, biome) : fromTerrain;
+  const eTerrain = tx < cols - 1 ? resolveRoomBaseTerrain(room, tx + 1, ty, biome) : fromTerrain;
   const nwTerrain =
     tx > 0 && ty > 0 ? resolveRoomBaseTerrain(room, tx - 1, ty - 1, biome) : fromTerrain;
   const neTerrain =
-    tx < COLS - 1 && ty > 0 ? resolveRoomBaseTerrain(room, tx + 1, ty - 1, biome) : fromTerrain;
+    tx < cols - 1 && ty > 0 ? resolveRoomBaseTerrain(room, tx + 1, ty - 1, biome) : fromTerrain;
   const swTerrain =
-    tx > 0 && ty < ROWS - 1 ? resolveRoomBaseTerrain(room, tx - 1, ty + 1, biome) : fromTerrain;
+    tx > 0 && ty < rows - 1 ? resolveRoomBaseTerrain(room, tx - 1, ty + 1, biome) : fromTerrain;
   const seTerrain =
-    tx < COLS - 1 && ty < ROWS - 1
+    tx < cols - 1 && ty < rows - 1
       ? resolveRoomBaseTerrain(room, tx + 1, ty + 1, biome)
       : fromTerrain;
 
@@ -1351,8 +1353,9 @@ export function resolveClusterWallCoord(
     };
   }
 
+  const { cols } = getRoomDimensions(room);
   const leftChar = tx > 0 ? room[ty]?.[tx - 1] : '#';
-  const rightChar = tx < COLS - 1 ? room[ty]?.[tx + 1] : '#';
+  const rightChar = tx < cols - 1 ? room[ty]?.[tx + 1] : '#';
   const hasLeftWall = isClusterSolidWallChar(leftChar);
   const hasRightWall = isClusterSolidWallChar(rightChar);
 
@@ -1546,11 +1549,13 @@ export function drawPlanarWaterReflections(
   const pp = resolveBiomePostProcess(activeBiome);
   if (!pp.liquidReflection) return;
 
+  const { cols, rows } = getRoomDimensions(room);
+
   g.save();
   g.beginPath();
   let hasWater = false;
-  for (let ty = 0; ty < ROWS; ty++) {
-    for (let tx = 0; tx < COLS; tx++) {
+  for (let ty = 0; ty < rows; ty++) {
+    for (let tx = 0; tx < cols; tx++) {
       if (room[ty]?.[tx] === '~') {
         g.rect(tx * TILE_SIZE, ty * TILE_SIZE, TILE_SIZE, TILE_SIZE);
         hasWater = true;
@@ -1565,8 +1570,8 @@ export function drawPlanarWaterReflections(
 
   g.clip();
 
-  for (let ty = 1; ty < ROWS; ty++) {
-    for (let tx = 0; tx < COLS; tx++) {
+  for (let ty = 1; ty < rows; ty++) {
+    for (let tx = 0; tx < cols; tx++) {
       if (room[ty]?.[tx] !== '~') continue;
       const northChar = room[ty - 1]?.[tx];
       const sx = tx * TILE_SIZE;
@@ -1615,8 +1620,8 @@ export function drawPlanarWaterReflections(
   }
 
   g.globalAlpha = 0.28;
-  for (let ty = 0; ty < ROWS; ty++) {
-    for (let tx = 0; tx < COLS; tx++) {
+  for (let ty = 0; ty < rows; ty++) {
+    for (let tx = 0; tx < cols; tx++) {
       if (room[ty]?.[tx] !== '~') continue;
       const sx = tx * TILE_SIZE;
       const sy = ty * TILE_SIZE;
@@ -2091,7 +2096,9 @@ export function drawDynamicLightingAndBloomPass(
   g: CanvasRenderingContext2D,
   room: string[] | undefined,
   activeBiome: BiomeDefinition,
-  state: OrionState
+  state: OrionState,
+  camX: number = 0,
+  camY: number = 0
 ): void {
   const pp = resolveBiomePostProcess(activeBiome);
   const lights: SceneLightEmitter[] = [];
@@ -2118,11 +2125,10 @@ export function drawDynamicLightingAndBloomPass(
 
   if (activeFogNode?.trueExitDir) {
     const dir = activeFogNode.trueExitDir;
-    const doorX = dir === 'W' ? 10 : dir === 'E' ? SCREEN_W - 10 : 80;
-    const doorY = dir === 'N' ? 10 : dir === 'S' ? SCREEN_H - 10 : 96;
+    const doorPos = getRoomDoorwayCenterPx(room, dir);
     lights.push({
-      x: doorX,
-      y: doorY,
+      x: doorPos.x,
+      y: doorPos.y,
       radius: hasLanternGuidance ? 28 : 16,
       color: hasLanternGuidance ? '#38bdf8' : '#22d3ee',
       intensity: hasLanternGuidance ? 0.3 : 0.15,
@@ -2130,9 +2136,10 @@ export function drawDynamicLightingAndBloomPass(
   }
 
   if (room) {
+    const { cols, rows } = getRoomDimensions(room);
     const pulse = Math.sin(state.t * 4) * 2;
-    for (let ty = 0; ty < ROWS; ty++) {
-      for (let tx = 0; tx < COLS; tx++) {
+    for (let ty = 0; ty < rows; ty++) {
+      for (let tx = 0; tx < cols; tx++) {
         const ch = room[ty]?.[tx];
         if (!ch || ch === '.' || ch === ',' || ch === ':' || ch === '#') continue;
         const cx = tx * TILE_SIZE + 8;
@@ -2203,6 +2210,7 @@ export function drawDynamicLightingAndBloomPass(
 
   if (pp.bloomIntensity > 0 && lights.length > 0) {
     g.save();
+    g.translate(-camX, -camY);
     g.globalCompositeOperation = 'lighter';
     for (const light of lights) {
       const alpha = Math.min(0.45, light.intensity * pp.bloomIntensity);
@@ -2269,13 +2277,43 @@ export function drawOrionGame(
   g.fillRect(0, 0, SCREEN_W, SCREEN_H);
 
   const room = rooms[state.room];
+  const { cols, rows, widthPx, heightPx } = getRoomDimensions(room);
   const activeBiome = getBiomeDefinition(state.biomeId);
   const defaultFloorTile = getTileDefinition('.', state.biomeId);
 
+  // Compute smooth clamped camera (centered if room dimension is smaller than SCREEN_W / SCREEN_H)
+  const targetCamX =
+    widthPx <= SCREEN_W
+      ? -Math.floor((SCREEN_W - widthPx) / 2)
+      : Math.max(0, Math.min(widthPx - SCREEN_W, state.x - SCREEN_W / 2));
+  const targetCamY =
+    heightPx <= SCREEN_H
+      ? -Math.floor((SCREEN_H - heightPx) / 2)
+      : Math.max(0, Math.min(heightPx - SCREEN_H, state.y - SCREEN_H / 2));
+
+  if (
+    state.camRoomId !== state.room ||
+    state.camX === undefined ||
+    state.camY === undefined
+  ) {
+    state.camX = targetCamX;
+    state.camY = targetCamY;
+    state.camRoomId = state.room;
+  } else {
+    state.camX += (targetCamX - state.camX) * 0.22;
+    state.camY += (targetCamY - state.camY) * 0.22;
+  }
+
+  const camX = Math.round(state.camX);
+  const camY = Math.round(state.camY);
+
+  g.save();
+  g.translate(-camX, -camY);
+
   // 1. LAYER 0: Ground, Transitions, Corrosive Aether & Sinkholes
   if (room) {
-    for (let ty = 0; ty < ROWS; ty++) {
-      for (let tx = 0; tx < COLS; tx++) {
+    for (let ty = 0; ty < rows; ty++) {
+      for (let tx = 0; tx < cols; tx++) {
         const char = room[ty]?.[tx] || '.';
         const tile = getTileDefinition(char, state.biomeId);
         const sx = tx * TILE_SIZE;
@@ -2307,8 +2345,8 @@ export function drawOrionGame(
 
   // 2. LAYER 1: Baked 2.5D Walls, Desync Barriers & Gates
   if (room) {
-    for (let ty = 0; ty < ROWS; ty++) {
-      for (let tx = 0; tx < COLS; tx++) {
+    for (let ty = 0; ty < rows; ty++) {
+      for (let tx = 0; tx < cols; tx++) {
         const char = room[ty]?.[tx] || '.';
         const tile = getTileDefinition(char, state.biomeId);
         const sx = tx * TILE_SIZE;
@@ -2338,8 +2376,8 @@ export function drawOrionGame(
   const renderQueue: RenderItem[] = [];
 
   if (room) {
-    for (let ty = 0; ty < ROWS; ty++) {
-      for (let tx = 0; tx < COLS; tx++) {
+    for (let ty = 0; ty < rows; ty++) {
+      for (let tx = 0; tx < cols; tx++) {
         const char = room[ty]?.[tx] || '.';
         const tile = getTileDefinition(char, state.biomeId);
         if (tile.propSprite || tile.renderProp25D) {
@@ -2795,14 +2833,17 @@ export function drawOrionGame(
     }
   }
 
+  // End world-space camera translation before screen-space weather, vignette & HUD
+  g.restore();
+
   // 4B. LAYER 3.5: Aether Fog Threshold Environmental Tells & Poe Lantern Resonance
-  drawAetherFogWayfindingTells(g, state);
+  drawAetherFogWayfindingTells(g, state, room, camX, camY);
 
   // 5. LAYER 4: Biome Atmospheric Weather Pass
   drawBiomeWeatherLayer(g, activeBiome, state);
 
   // 6. LAYER 5: Dynamic Light Sources, Radial Bloom, Ambient Vignette & Desync Glitch Pass
-  drawDynamicLightingAndBloomPass(g, room, activeBiome, state);
+  drawDynamicLightingAndBloomPass(g, room, activeBiome, state, camX, camY);
 
   // 7. LAYER 6: CANONICAL THREE DEFENSE LAYERS HUD
   if (!state.useStandardResolutionHud) {
@@ -2812,7 +2853,10 @@ export function drawOrionGame(
 
 function drawAetherFogWayfindingTells(
   g: CanvasRenderingContext2D,
-  state: OrionState
+  state: OrionState,
+  room: string[] | undefined,
+  camX: number = 0,
+  camY: number = 0
 ): void {
   const activeNode = state.fogGraph?.nodes?.[state.room];
   if (!activeNode) return;
@@ -2841,11 +2885,15 @@ function drawAetherFogWayfindingTells(
     g.fillRect(0, 0, SCREEN_W, SCREEN_H);
   }
 
-  // Render subtle drifting Aether motes at the `trueExitDir` doorway threshold
+  // Render subtle drifting Aether motes at the `trueExitDir` doorway threshold in world space
   const trueDir = activeNode.trueExitDir;
   if (trueDir) {
-    const doorX = trueDir === 'W' ? 10 : trueDir === 'E' ? SCREEN_W - 10 : 80;
-    const doorY = trueDir === 'N' ? 10 : trueDir === 'S' ? SCREEN_H - 10 : 96;
+    g.save();
+    g.translate(-camX, -camY);
+
+    const doorPos = getRoomDoorwayCenterPx(room, trueDir);
+    const doorX = doorPos.x;
+    const doorY = doorPos.y;
     const flowDx = trueDir === 'E' ? 1 : trueDir === 'W' ? -1 : 0;
     const flowDy = trueDir === 'S' ? 1 : trueDir === 'N' ? -1 : 0;
     const perpDx = -flowDy;
@@ -2899,6 +2947,8 @@ function drawAetherFogWayfindingTells(
       g.fillStyle = '#e0f2fe';
       g.fillRect(Math.round(wispX), Math.round(wispY), 1, 1);
     }
+
+    g.restore();
   }
 
   g.restore();

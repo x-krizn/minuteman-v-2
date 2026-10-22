@@ -55,7 +55,7 @@ export const room00DropPodCrater: RoomDefinition = {
     '##########',
     '#,,....,,#',
     '#,P....P,#',
-    '#...D....#',
+    '#.A.D..L.#',
     '#..~~~~..#',
     '#.......,,',
     '#.......,,',
@@ -82,7 +82,7 @@ export const room10SunkenPylonTrail: RoomDefinition = {
   grid: [
     '####,,####',
     '#,,~~~~,,#',
-    '#..P..P..#',
+    '#.LP..P..#',
     '#...S..s.#',
     '#........#',
     ',,......,,',

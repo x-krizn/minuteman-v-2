@@ -177,15 +177,6 @@ export interface BladeTrailEffect {
   isEnemy?: boolean;
 }
 
-export interface BiomeTilesetCell {
-  col: number;
-  row: number;
-  cellWidth?: number;
-  cellHeight?: number;
-  frameCount?: number;
-  fps?: number;
-}
-
 export interface BiomeTileRules {
   corrosiveWater: boolean;
   corrosiveDamagePerSec: number;
@@ -225,23 +216,8 @@ export interface BiomeDefinition {
   clusterTileSheetBase64?: string;
   /** Default base terrain ('dirt' | 'grass' | 'aether' | 'ruins') when auto-tiling non-terrain cells */
   defaultClusterTerrain?: ClusterTerrainType;
-  /** Optional shared Base64 PNG tilemap / atlas for this biome */
-  tileSheetBase64?: string;
-  /** Default grid cell size in pixels for tileSheetBase64 (default: 16) */
-  tileSheetCellSize?: number;
-  /** Optional mapping of tile char ('.', '~', '#') or tile ID to [col, row] cell in tileSheetBase64 */
-  tileSheetCoords?: Record<string, BiomeTilesetCell>;
   /** Optional post-processing, lighting, reflection, and weather layer configuration */
   postProcess?: BiomePostProcessConfig;
-  /** Legacy palette alias for backward compatibility */
-  palette: {
-    ground: string;
-    mud: string;
-    water: string;
-    pylonTop: string;
-    pylonFront: string;
-    shadow: string;
-  };
   lightColor: string;
 }
 
@@ -750,6 +726,7 @@ export interface EnemyEntity {
   lingerTimer?: number;
   attackAngle?: number;
   hasStruckThisAttack?: boolean;
+  spawnKey?: string;
 }
 
 // Enemy Wiki Definition (Self-Contained Entity Module Contract)

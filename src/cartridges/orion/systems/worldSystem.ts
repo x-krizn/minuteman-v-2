@@ -25,6 +25,11 @@ import {
   WAYSTATION_REGISTRY,
 } from '../database/world';
 import {
+  getCanonicalRoomPersistenceKey,
+  isRoomCacheLooted,
+  markRoomCacheLooted,
+} from '../database/world/tiles/doodads_atlas';
+import {
   AetherCardinalDir,
   AetherEndFeature,
   AetherFogGraphState,
@@ -371,7 +376,10 @@ function assembleNestedWorld(): void {
             template.biomeId ||
             'global_toxic_wetlands';
 
-          const stitchedGrid = carveRoomCardinalDoors(template.grid, ALL_CARDINAL_DIRS);
+          const isSlotEndRoom = slot.coord === '1,-1';
+          const stitchedGrid = isSlotEndRoom
+            ? decorateDynamicRoomGrid(template.grid, 'end', ['S'], 'S', 'loot_cache', 1)
+            : carveRoomCardinalDoors(template.grid, ALL_CARDINAL_DIRS);
           const title = slot.title || `${mapDef.name} — ${template.title}`;
           const bannerTitle =
             slot.bannerTitle || `${areaDef.name.toUpperCase()} · ${title.toUpperCase()}`;
@@ -380,7 +388,7 @@ function assembleNestedWorld(): void {
             ...template,
             id: `${mapDef.id}:${slot.coord}`,
             scope: 'global',
-            nodeType: 'general',
+            nodeType: isSlotEndRoom ? 'end' : 'general',
             coord: slot.coord,
             regionId: regionDef.id,
             areaId: areaDef.id,
@@ -401,11 +409,15 @@ function assembleNestedWorld(): void {
             mapId: mapDef.id,
             biomeId: stitchedRoom.biomeId!,
             scope: 'global',
-            nodeType: 'general',
-            trueExitDir: 'E',
+            nodeType: isSlotEndRoom ? 'end' : 'general',
+            trueExitDir: isSlotEndRoom ? 'S' : 'E',
             routeStep: 1,
             routeTotal: 1,
+            endFeature: isSlotEndRoom ? 'loot_cache' : undefined,
           };
+          if (isSlotEndRoom) {
+            ORION_CACHE_DEFINITIONS[slot.coord] = buildEndNodeCacheDefinition('loot_cache');
+          }
         }
       }
     }
@@ -503,8 +515,11 @@ export function rehydrateAetherFogRooms(
   state: OrionState
 ): void {
   const graph = ensureAetherFogGraph(state);
+  for (const [id, grid] of Object.entries(ORION_TUTORIAL_ROOMS)) {
+    rooms[id] = grid;
+  }
   for (const [id, node] of Object.entries(graph.nodes)) {
-    if (node.grid && node.grid.length > 0) {
+    if (id.startsWith('fog:') && node.grid && node.grid.length > 0) {
       rooms[id] = node.grid;
       ORION_ROOM_METADATA[id] = {
         title: node.title,
@@ -549,19 +564,28 @@ function buildEndNodeCacheDefinition(feature: AetherEndFeature): OrionCacheDefin
       toast: 'SHRINE CACHE LOOTED: +35 SCRAP, POE LANTERN CHARM & GRAIL WATER',
     };
   }
+  if (feature === 'dead_end') {
+    return {
+      scrap: 20,
+      items: [{ itemId: 'repair_kit', count: 1 }],
+      toast: 'CUL-DE-SAC CACHE LOOTED: +20 SCRAP & FIELD REPAIR KIT',
+    };
+  }
   return {
     scrap: 30,
     items: [
       { itemId: 'repair_kit', count: 1 },
       { itemId: 'grail_water', count: 1 },
     ],
-    toast: 'FOG END-CACHE LOOTED: +30 SCRAP, REPAIR KIT & GRAIL WATER',
+    toast: 'FOG END-CHEST OPENED: +30 SCRAP, REPAIR KIT & GRAIL WATER',
   };
 }
 
+export { getCanonicalRoomPersistenceKey, isRoomCacheLooted, markRoomCacheLooted };
+
 /**
  * Resets all dynamically generated `general`, `side`, `loop`, and `end` chunks when resting at a Waystation.
- * Preserves authored `key` nodes and increments the fog seed so future expeditions generate fresh paths.
+ * Preserves authored `key` nodes, `nextCounter`, and cleared/looted persistence so dynamic rooms cannot be farmed infinitely.
  */
 export function resetAetherFogGraph(
   rooms: Record<string, string[]>,
@@ -569,19 +593,20 @@ export function resetAetherFogGraph(
   ctx?: OrionCombatContext
 ): void {
   const prevSeed = state.fogGraph?.seed || 104729;
+  const prevCounter = state.fogGraph?.nextCounter || 1;
 
   for (const roomKey of Object.keys(rooms)) {
     if (roomKey.startsWith('fog:')) {
       delete rooms[roomKey];
       delete ORION_ROOM_METADATA[roomKey];
       delete ORION_CACHE_DEFINITIONS[roomKey];
-      delete state.clearedRooms[roomKey];
     }
   }
 
   state.fogGraph = undefined;
   const freshGraph = ensureAetherFogGraph(state);
   freshGraph.seed = (prevSeed + 7919) % 9999991;
+  freshGraph.nextCounter = prevCounter;
   freshGraph.loopDepth = 0;
 
   if (ctx) {
@@ -621,7 +646,7 @@ function decorateDynamicRoomGrid(
   baseGrid: string[],
   nodeType: AetherNodeType,
   openDirs: AetherCardinalDir[],
-  trueExitDir: AetherCardinalDir | undefined,
+  _trueExitDir: AetherCardinalDir | undefined,
   endFeature: AetherEndFeature | undefined,
   hashVal: number
 ): string[] {
@@ -633,38 +658,8 @@ function decorateDynamicRoomGrid(
   const { cols, rows } = getRoomDimensions(carved);
   const matrix = carved.map((r) => r.split(''));
 
-  const nx1 = Math.max(1, Math.floor(cols / 2) - 1);
-  const nx2 = Math.min(cols - 2, nx1 + 1);
-  const wy1 = rows === 9 ? 5 : Math.max(1, Math.floor(rows / 2));
-  const wy2 = Math.min(rows - 2, wy1 + 1);
   const midX = Math.floor(cols / 2);
   const midY = Math.floor(rows / 2);
-
-  // Subtle Environmental Tell: Place weathered ruin flagstones (':') flanking the trueExitDir threshold
-  if (trueExitDir && (nodeType === 'general' || nodeType === 'side' || nodeType === 'loop')) {
-    const flLeft = Math.max(1, nx1 - 1);
-    const flRight = Math.min(cols - 2, nx2 + 1);
-    const flTop = Math.max(1, wy1 - 1);
-    const flBot = Math.min(rows - 2, wy2 + 1);
-
-    if (trueExitDir === 'N' && matrix[1]) {
-      if (matrix[1][flLeft] === '.' || matrix[1][flLeft] === ',') matrix[1][flLeft] = ':';
-      if (matrix[1][flRight] === '.' || matrix[1][flRight] === ',') matrix[1][flRight] = ':';
-    } else if (trueExitDir === 'S' && matrix[rows - 2]) {
-      if (matrix[rows - 2][flLeft] === '.' || matrix[rows - 2][flLeft] === ',')
-        matrix[rows - 2][flLeft] = ':';
-      if (matrix[rows - 2][flRight] === '.' || matrix[rows - 2][flRight] === ',')
-        matrix[rows - 2][flRight] = ':';
-    } else if (trueExitDir === 'W' && matrix[flTop] && matrix[flBot]) {
-      if (matrix[flTop][1] === '.' || matrix[flTop][1] === ',') matrix[flTop][1] = ':';
-      if (matrix[flBot][1] === '.' || matrix[flBot][1] === ',') matrix[flBot][1] = ':';
-    } else if (trueExitDir === 'E' && matrix[flTop] && matrix[flBot]) {
-      if (matrix[flTop][cols - 2] === '.' || matrix[flTop][cols - 2] === ',')
-        matrix[flTop][cols - 2] = ':';
-      if (matrix[flBot][cols - 2] === '.' || matrix[flBot][cols - 2] === ',')
-        matrix[flBot][cols - 2] = ':';
-    }
-  }
 
   // Populate END node special features (Loot Cache, Mini-Boss, Secret Switch, or Dead-End Ruins)
   if (nodeType === 'end') {
@@ -678,13 +673,13 @@ function decorateDynamicRoomGrid(
 
     if (endFeature === 'loot_cache') {
       matrix[midY][midX - 1] = ':';
-      matrix[midY][midX] = 'C';
+      matrix[midY][midX] = 'V';
       if (matrix[midY - 1]) {
         matrix[midY - 1][midX - 1] = 'P';
         matrix[midY - 1][Math.min(cols - 2, midX + 1)] = 'P';
       }
     } else if (endFeature === 'mini_boss') {
-      matrix[2][midX - 1] = 'C';
+      matrix[2][midX - 1] = 'V';
       matrix[2][midX] = ':';
       matrix[midY][midX - 1] = '.';
       matrix[midY][midX] = '.';
@@ -697,7 +692,7 @@ function decorateDynamicRoomGrid(
       matrix[Math.max(2, midY - 1)][midX - 1] = 'P';
       matrix[Math.max(2, midY - 1)][midX] = 'P';
       matrix[midY][midX - 1] = ':';
-      matrix[midY][midX] = ':';
+      matrix[midY][midX] = 'C';
     }
   }
 
@@ -1012,7 +1007,15 @@ function spawnDynamicNodeFeatures(
   state: OrionState,
   node: AetherGraphNode
 ): void {
-  if (state.clearedRooms[node.id]) return;
+  const canonicalKey = getCanonicalRoomPersistenceKey(state, node.id);
+  const miniBossSpawnKey = `${canonicalKey}:mini_boss`;
+  if (
+    state.clearedRooms[node.id] ||
+    state.clearedRooms[canonicalKey] ||
+    state.clearedRooms[miniBossSpawnKey]
+  ) {
+    return;
+  }
   const { widthPx, heightPx } = getRoomDimensions(rooms[node.id]);
 
   if (node.nodeType === 'end' && node.endFeature === 'mini_boss') {
@@ -1026,22 +1029,8 @@ function spawnDynamicNodeFeatures(
       name: pick.title,
       emissiveColor: '#f43f5e',
       damage: 22,
+      spawnKey: miniBossSpawnKey,
     });
-  } else if (node.nodeType === 'end' && node.endFeature === 'dead_end') {
-    for (let i = 0; i < 3; i++) {
-      state.pickups.push({
-        id: 7000 + i + Math.floor(Math.random() * 1000),
-        x: Math.round(widthPx * 0.5 - 16 + i * 16),
-        y: Math.round(heightPx * 0.5 + (i % 2) * 10),
-        z: 4,
-        vz: 18,
-        kind: 'scrap',
-        itemId: 'salvage_scrap',
-        value: 5,
-        color: '#ffd27d',
-        t: i,
-      });
-    }
   }
 }
 
@@ -1150,6 +1139,9 @@ export function transitionViaAetherDoor(
 let corrosionParticleTimer = 0;
 
 export function isDesyncWallSolid(state: OrionState): boolean {
+  if (state.flags?.[`desync_lock:${state.room}`]) {
+    return false;
+  }
   const biome = getBiomeDefinition(state.biomeId);
   const period = Math.max(1.0, biome.tileRules?.desyncPeriodSec || 3.5);
   return Math.floor(state.t / period) % 2 === 0;
@@ -1703,20 +1695,38 @@ export function checkWorldInteractivePrompt(
           ? 'BEDIVERE (SIGNET RING TAKEN)'
           : 'BEDIVERE (SIGNET RING LEFT IN PEACE)';
     }
-  } else if (facingTile === 'C') {
-    const cacheKey = `${state.room}:${ax},${ay}`;
-    candidateKey = `${state.room}:${cacheKey}`;
-    if (!state.lootedCaches[cacheKey]) {
-      candidateText = '[A] LOOT SCAVENGER CACHE';
+  } else if (
+    facingTile === 'C' ||
+    facingTile === 'V' ||
+    currentTile === 'C' ||
+    currentTile === 'V'
+  ) {
+    const isFacingCache = facingTile === 'C' || facingTile === 'V';
+    const cx = isFacingCache ? ax : tx;
+    const cy = isFacingCache ? ay : ty;
+    const tileChar = isFacingCache ? facingTile : currentTile;
+    const isChest = tileChar === 'V';
+    const looted = isRoomCacheLooted(state, cx, cy);
+    candidateKey = `${state.room}:cache:${cx},${cy}:${looted ? 'empty' : 'full'}`;
+    if (!looted) {
+      candidateText = isChest ? '[A] OPEN TREASURE CHEST' : '[A] LOOT SCAVENGER CACHE';
     } else {
-      candidateText = 'SCAVENGER CACHE (EMPTY)';
+      candidateText = isChest ? 'TREASURE CHEST (OPENED)' : 'SCAVENGER CACHE (EMPTY)';
     }
   } else if (facingTile === '1' || facingTile === '2' || facingTile === '3') {
     const switchKey = `switch:${state.room}:${facingTile}`;
     candidateKey = switchKey;
     candidateText = state.lootedCaches[switchKey]
-      ? `HIDDEN GRAIL SWITCH #${facingTile} (ACTIVE)`
-      : `[A] ACTIVATE HIDDEN GRAIL SWITCH #${facingTile}`;
+      ? `HIDDEN GRAIL SWITCH #${facingTile} (LOCKED IN POSITION 3)`
+      : `[A] PULL HIDDEN GRAIL SWITCH #${facingTile}`;
+  } else if (facingTile === '!' || currentTile === '!') {
+    const lx = facingTile === '!' ? ax : tx;
+    const ly = facingTile === '!' ? ay : ty;
+    const toggleKey = `switch:${state.room}:toggle:${lx},${ly}`;
+    candidateKey = `${toggleKey}:${state.lootedCaches[toggleKey] ? 'on' : 'off'}`;
+    candidateText = state.lootedCaches[toggleKey]
+      ? '[A] TOGGLE ÆTHER LEVER (3 -> 2 -> 1 · RESTORE DESYNC PHASE)'
+      : '[A] TOGGLE ÆTHER LEVER (1 -> 2 -> 3 · STABILIZE DESYNC BARRIERS)';
   } else if (facingTile === 'G' || currentTile === 'G') {
     if (state.flags.orc_raid_active) {
       candidateKey = `${state.room}:gate:raid`;
@@ -1978,11 +1988,17 @@ export function executeWorldInteraction(
     }
   }
 
-  if (facingTile === 'C') {
-    const cacheKey = `${state.room}:${ax},${ay}`;
-    if (!state.lootedCaches[cacheKey]) {
-      state.lootedCaches[cacheKey] = true;
-      state.clearedRooms[state.room] = true;
+  if (
+    facingTile === 'C' ||
+    facingTile === 'V' ||
+    currentTile === 'C' ||
+    currentTile === 'V'
+  ) {
+    const isFacingCache = facingTile === 'C' || facingTile === 'V';
+    const cx = isFacingCache ? ax : tx;
+    const cy = isFacingCache ? ay : ty;
+    if (!isRoomCacheLooted(state, cx, cy)) {
+      markRoomCacheLooted(state, cx, cy);
       soundSystem.playPowerup();
 
       const cacheDef = ORION_CACHE_DEFINITIONS[state.room] || ORION_CACHE_DEFINITIONS.default;
@@ -2037,13 +2053,34 @@ export function executeWorldInteraction(
     const switchKey = `switch:${state.room}:${facingTile}`;
     if (!state.lootedCaches[switchKey]) {
       state.lootedCaches[switchKey] = true;
+      state.flags[`${switchKey}:anim_t`] = state.t;
+      state.flags[`${switchKey}:anim_dir`] = '123';
       const curSwitches = Math.min(3, Number(state.flags.dungeon_switches || 0) + 1);
       state.flags.dungeon_switches = curSwitches;
       soundSystem.playPowerup();
-      ctx.say(`HIDDEN GRAIL SWITCH ACTIVATED (${curSwitches}/3)`);
+      ctx.say(`HIDDEN GRAIL SWITCH PULLED (1 -> 2 -> 3) · (${curSwitches}/3 ACTIVE)`);
       notifyOrionStateChange();
       return true;
     }
+  }
+
+  if (facingTile === '!' || currentTile === '!') {
+    const lx = facingTile === '!' ? ax : tx;
+    const ly = facingTile === '!' ? ay : ty;
+    const toggleKey = `switch:${state.room}:toggle:${lx},${ly}`;
+    const nextActive = !state.lootedCaches[toggleKey];
+    state.lootedCaches[toggleKey] = nextActive;
+    state.flags[`${toggleKey}:anim_t`] = state.t;
+    state.flags[`${toggleKey}:anim_dir`] = nextActive ? '123' : '321';
+    state.flags[`desync_lock:${state.room}`] = nextActive;
+    soundSystem.playSelect();
+    ctx.say(
+      nextActive
+        ? 'ÆTHER LEVER TOGGLED (1 -> 2 -> 3) · DESYNC BARRIERS PHASE-LOCKED OPEN'
+        : 'ÆTHER LEVER TOGGLED (3 -> 2 -> 1) · DESYNC BARRIERS RESTORED'
+    );
+    notifyOrionStateChange();
+    return true;
   }
 
   if (facingTile === 'G' || currentTile === 'G') {

@@ -25,17 +25,10 @@ import { m00TheBogArea } from './belldor/region_belldor_outskirts/m00_the_bog/ar
 import { regionBelldorOutskirts } from './belldor/region_belldor_outskirts/region';
 import { U00_UNIVERSE_CATALOG, UNIVERSE_WORLD_BY_ID } from './universe';
 import { dirt01, groundTile } from './tiles/floor';
+import { DOODADS_01_ATLAS_ID, DOODADS_01_BASE64 } from './tiles/doodads_atlas';
 import { grass01 } from './tiles/grass';
 import { aether01 } from './tiles/mud';
 import { ruins01 } from './tiles/ruins_floor';
-
-/**
- * Single Polymorphic Auto-Discovery World Registry
- *
- * Scans the entire `database/world/` spatial hierarchy (`World -> Region -> Area -> Map + Rooms`,
- * `global/`, and `tiles/`) in a single pass and classifies exported definitions by their structural shape.
- */
-const modules = import.meta.glob<Record<string, unknown>>('./**/*.ts', { eager: true });
 
 export const GLOBAL_REGION_REGISTRY: Record<string, RegionDefinition> = {};
 export const LOCAL_REGION_REGISTRY: Record<string, RegionDefinition> = {};
@@ -61,6 +54,14 @@ export const BIOME_REGISTRY: Record<string, BiomeDefinition> = {};
 
 export const TILE_REGISTRY: Record<string, TileDefinition> = {};
 export const TILE_BY_ID_REGISTRY: Record<string, TileDefinition> = {};
+
+/**
+ * Single Polymorphic Auto-Discovery World Registry
+ *
+ * Scans the entire `database/world/` spatial hierarchy (`World -> Region -> Area -> Map + Rooms`,
+ * `global/`, and `tiles/`) in a single pass and classifies exported definitions by their structural shape.
+ */
+const modules = import.meta.glob<Record<string, unknown>>('./**/*.ts', { eager: true });
 
 function isRegionDefinition(val: unknown): val is RegionDefinition {
   return (
@@ -199,6 +200,7 @@ for (const [path, mod] of Object.entries(modules)) {
 
 // Bake all 20 3x3 biome clusters directly from the 4 embedded 16x16 base tiles
 bakeBiomeClusterTileset(embeddedBaseTiles, embeddedModes);
+registerBase64Atlas(DOODADS_01_ATLAS_ID, DOODADS_01_BASE64, 16, 16);
 
 export function getRegionDefinition(regionId?: string): RegionDefinition {
   if (regionId && REGION_REGISTRY[regionId]) {

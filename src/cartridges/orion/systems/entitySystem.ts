@@ -17,6 +17,7 @@ import { getWeaponDefinition } from '../database/weapons';
 import { EnemyEntity, OrionCombatContext, OrionExecutionContext, OrionState } from '../types';
 import { applyDamageToLayers } from './combatSystem';
 import { addOrionInventoryItem, isSolidAt, notifyOrionStateChange, syncStateGates } from './playerSystem';
+import { getCanonicalRoomPersistenceKey } from './worldSystem';
 
 // ─── 1. 2.5D PARTICLES ───────────────────────────────────────────────────────
 
@@ -136,7 +137,8 @@ export function spawnRoomEnemies(
   const room = rooms[state.room];
   if (!room) return;
 
-  if (state.clearedRooms[state.room]) return;
+  const canonicalRoomKey = getCanonicalRoomPersistenceKey(state, state.room);
+  if (state.clearedRooms[state.room] || state.clearedRooms[canonicalRoomKey]) return;
 
   const spawnCountsByType: Record<string, number> = {};
 
@@ -153,24 +155,34 @@ export function spawnRoomEnemies(
         continue;
       }
 
+      const enemySpawnKey = `${canonicalRoomKey}:enemy:${x},${y}`;
+      if (state.clearedRooms[enemySpawnKey]) {
+        continue;
+      }
+
       const px = x * TILE_SIZE + 8;
       const py = y * TILE_SIZE + 8;
       const countOfType = spawnCountsByType[type] || 0;
       spawnCountsByType[type] = countOfType + 1;
 
       const customOverrides = def.customSpawnSetup?.(state, px, py, countOfType);
-      spawnEnemyByType(state, type, px, py, customOverrides);
+      spawnEnemyByType(state, type, px, py, {
+        ...customOverrides,
+        spawnKey: enemySpawnKey,
+      });
 
       if (def.companionSpawnType) {
         const hasExplicitCompanion =
           def.companionSpawnChar && room.some((r) => r.includes(def.companionSpawnChar!));
-        if (!hasExplicitCompanion) {
+        const companionSpawnKey = `${enemySpawnKey}:companion`;
+        if (!hasExplicitCompanion && !state.clearedRooms[companionSpawnKey]) {
           const maxRoomX = (room[0]?.length || 10) * TILE_SIZE - 20;
           spawnEnemyByType(
             state,
             def.companionSpawnType,
             Math.min(maxRoomX, px + 18),
-            Math.max(20, py - 12)
+            Math.max(20, py - 12),
+            { spawnKey: companionSpawnKey }
           );
         }
       }
@@ -322,6 +334,9 @@ export function updateEnemies(
       }
 
       const defeatedFaction = e.faction;
+      if (e.spawnKey && defeatedFaction !== 'poe' && defeatedFaction !== 'npc') {
+        state.clearedRooms[e.spawnKey] = true;
+      }
       state.enemies.splice(i, 1);
       state.flags = state.flags || {};
 
@@ -359,6 +374,7 @@ export function updateEnemies(
       );
       if (remainingHostiles.length === 0 && defeatedFaction !== 'poe') {
         state.clearedRooms[state.room] = true;
+        state.clearedRooms[getCanonicalRoomPersistenceKey(state, state.room)] = true;
         if (!state.toastText || state.toastTimer <= 0) {
           ctx.say('SECTOR SECURED');
         }

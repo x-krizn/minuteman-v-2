@@ -16,12 +16,14 @@ const DEFAULT_TILE_TYPES: Record<string, string> = {
   D: 'drop_pod',
   S: 'fallen_scout',
   C: 'cache',
+  V: 'chest',
   G: 'rusted_gate',
   '%': 'desync_wall',
   L: 'poe_lantern',
-  '1': 'hidden_switch',
-  '2': 'hidden_switch',
-  '3': 'hidden_switch',
+  '1': 'hidden_switch_1',
+  '2': 'hidden_switch_2',
+  '3': 'hidden_switch_3',
+  '!': 'toggle_switch',
   M: 'cathedral_door',
   A: 'aether_waystation',
   Q: 'colossal_waygate',
@@ -56,14 +58,6 @@ export const belldorBogBiome: BiomeDefinition = {
     shadow: 'rgba(0, 0, 0, 0.4)',
     lightColor: '#77c7ff',
   },
-  palette: {
-    ground: '#253243',
-    mud: '#17202a',
-    water: '#0c4a6e',
-    pylonTop: '#475569',
-    pylonFront: '#1e293b',
-    shadow: 'rgba(0, 0, 0, 0.4)',
-  },
   lightColor: '#77c7ff',
 };
 
@@ -95,14 +89,6 @@ export const orcSiegeEncampmentBiome: BiomeDefinition = {
     pylonTrim: '#78716c',
     shadow: 'rgba(0, 0, 0, 0.45)',
     lightColor: '#f97316',
-  },
-  palette: {
-    ground: '#2f2926',
-    mud: '#1c1816',
-    water: '#291d18',
-    pylonTop: '#57534e',
-    pylonFront: '#292524',
-    shadow: 'rgba(0, 0, 0, 0.45)',
   },
   lightColor: '#f97316',
 };
@@ -136,14 +122,6 @@ export const camelotBorderTownBiome: BiomeDefinition = {
     shadow: 'rgba(0, 0, 0, 0.45)',
     lightColor: '#f59e0b',
   },
-  palette: {
-    ground: '#2c3340',
-    mud: '#1e242d',
-    water: '#1f2937',
-    pylonTop: '#64748b',
-    pylonFront: '#334155',
-    shadow: 'rgba(0, 0, 0, 0.45)',
-  },
   lightColor: '#f59e0b',
 };
 
@@ -175,14 +153,6 @@ export const camelotWaygateSanctumBiome: BiomeDefinition = {
     pylonTrim: '#7dd3fc',
     shadow: 'rgba(0, 0, 0, 0.5)',
     lightColor: '#38bdf8',
-  },
-  palette: {
-    ground: '#1b2436',
-    mud: '#0f172a',
-    water: '#0c4a6e',
-    pylonTop: '#38bdf8',
-    pylonFront: '#1e293b',
-    shadow: 'rgba(0, 0, 0, 0.5)',
   },
   lightColor: '#38bdf8',
 };

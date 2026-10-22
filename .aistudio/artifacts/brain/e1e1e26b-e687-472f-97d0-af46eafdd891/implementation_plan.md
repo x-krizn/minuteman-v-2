@@ -1,76 +1,89 @@
-# Orion: Dynamic Room Sizes, Smooth Camera & Expanded Story/Boss Arenas
+# Project Orion — Scoped Pre-GitHub Codebase Cleanup
 
-## 1. Executive Summary
-Rooms in **Orion: Belldor Expedition** will support variable grid dimensions (`cols × rows`) instead of being locked to the single-screen `10 × 9` (`160 × 144 px`) viewport. Standard rooms remain `10 × 9` for crisp single-screen pacing, while key boss trials, story hubs, Colossal Waygate sanctums, and Aether Fog corridors/mini-boss lairs expand into multi-screen or custom-aspect arenas with smooth camera tracking and intelligent doorway alignment.
+Streamline the Project Orion cartridge codebase prior to pushing to GitHub by removing superseded procedural tile and doodad fallback drawing routines, eliminating duplicate tile definitions, and pruning unused legacy properties and helpers strictly within the Project Orion module hierarchy while leaving the Minuteman shell and Knight cartridge untouched.
 
----
+## User Review & Critical Decisions
 
-## 2. Core Systems Architecture
+> [!IMPORTANT]
+> This revised plan scopes all code cleanup strictly to Project Orion and its subfolders, preserving the Minuteman handheld engine and Knight cartridge untouched by design:
 
-```
-+-------------------------------------------------------------------------+
-|                       ROOM DIMENSION RESOLVER                           |
-|   Room Grid (string[]) ---> { cols, rows, widthPx, heightPx }           |
-|   Default Fallback: 10 cols x 9 rows (160 x 144 px)                     |
-+------------------------------------+------------------------------------+
-                                     |
-         +---------------------------+---------------------------+
-         |                                                       |
-         v                                                       v
-+------------------------------------+  +---------------------------------+
-|   CAMERA & RENDER PIPELINE         |  |   DOORWAY & WORLD TRANSITIONS   |
-|                                    |  |                                 |
-| 1. Target: Pilot (x, y) centered   |  | 1. Scan arrival wall (N/S/E/W)  |
-|    in 160x144 viewport             |  |    for carved open doorway      |
-| 2. If room > viewport:             |  |    tiles ('.', ':', '~')        |
-|    Smooth lerp & clamp to          |  | 2. Align pilot to target door   |
-|    [0 .. roomPx - screenPx]        |  |    center (or proportional      |
-| 3. If room <= viewport:            |  |    coordinate fallback)         |
-|    Center room in viewport         |  | 3. Snap camera immediately to   |
-| 4. World layers (0..3.5, lights)   |  |    new room entry position      |
-|    translated by (-camX, -camY)    |  | 4. Scale collision, AI bounds,  |
-| 5. Screen layers (Vignette, HUD)   |  |    & projectiles to roomPx      |
-|    fixed to 160x144 screen space   |  |                                 |
-+------------------------------------+  +---------------------------------+
-```
-
-### A. Dynamic Room Dimension Resolver
-- Every room grid (`string[]`) dynamically resolves its own `rows` (`grid.length`), `cols` (`max row length`), `widthPx` (`cols × 16`), and `heightPx` (`rows × 16`).
-- Optional explicit `cols` and `rows` metadata on room definitions is supported for validation and procedural Aether Fog generation, while defaulting to `10 × 9` whenever unspecified.
-
-### B. Viewport Camera Tracking (`160 × 144` Screen Space vs. World Space)
-- **Smooth Clamped Follow**: When a room's width or height exceeds `160 × 144 px`, the camera smoothly tracks the pilot (`camX`, `camY`) and clamps strictly to `[0, widthPx - 160]` horizontally and `[0, heightPx - 144]` vertically so no out-of-bounds void appears around oversized rooms.
-- **Centered Compact Rooms**: If a narrow corridor or shrine axis is smaller than `10` columns or `9` rows, that axis centers cleanly inside the `160 × 144` viewport.
-- **Instant Snap on Room Entry**: Crossing an Aether Doorway or teleporting via Waystation/Waygate immediately snaps `camX` and `camY` to the pilot's entry position on the first frame so the camera never sweeps across the room on load.
-- **Layer Separation**:
-  - **World-Space Layers** (Floor, Elevation Walls, Water Reflections, Y-Sorted Entities/Props, Projectiles/Blade Trails/Particles, Doorway Motes, Wisp Tether, and Dynamic Point Lights) render with `(-camX, -camY)` translation and viewport frustum culling for visible tile ranges.
-  - **Screen-Space Layers** (Ambient Darkness/Vignette, Weather Overlay, Scanlines, and Top/Bottom HUD Bars) remain anchored to the `160 × 144` screen.
-
-### C. Doorway Carving & Cross-Size Room Transitions
-- **Dynamic Cardinal Door Carving**: Procedural and Aether Fog doorway carving automatically centers 2-tile cardinal doorways (`N`/`S` at `floor(cols / 2) - 1 .. floor(cols / 2)`, `W`/`E` at `floor(rows / 2) .. floor(rows / 2) + 1`) while respecting any pre-authored door openings in custom room grids.
-- **Auto-Locating Arrival Doorways**: When transitioning across `N`, `S`, `E`, or `W` edges between two rooms of different sizes (e.g., walking East from a `10 × 9` room into a `16 × 12` plaza), the transition system scans the arrival wall of the destination room for open doorway tiles and places the pilot directly inside the matching doorway opening. If a wall has a wide open edge, proportional coordinate mapping preserves the pilot's relative offset along that edge.
-- **Dynamic Physics & Combat Bounds**: Tile collision checks, enemy patrol/dash/reposition bounds, combat knockback clamping, and projectile despawn boundaries all query the active room's `widthPx` and `heightPx` rather than fixed `160 × 144` constants.
+- **Confirmed Decision 1 — Strict Orion Boundary**: Keep the Minuteman shell and Knight cartridge completely untouched; perform all code cleanup strictly inside Project Orion and its subfolders.
+- **Confirmed Decision 2 — Replaced Procedural Tile & Doodad Fallbacks**: Remove legacy procedural `fillRect` fallback drawing code from Orion's cluster-backed terrain tiles (`.`, `,`, `~`, `:`), wall/pillar tiles (`#`, `P`), and `doodads01`-backed interactive props (`V`, `A`, `Q`, `L`, `1`, `2`, `3`, `!`), relying cleanly on the 3×3 cluster auto-tiler and embedded `doodads01` sprite sheet.
+- **Confirmed Decision 3 — Prune Unused Exports, Dead Helpers & Duplicate Tiles in Orion**: Remove the duplicate base `hidden_switch` tile definition (superseded by `hidden_switch_1`), remove unused legacy biome sheet helpers (`drawBiomeSheetTile`, `BiomeTilesetCell`, `tileSheetBase64`, `tileSheetCoords`, and the legacy `palette` alias on `BiomeDefinition`), and prune unreferenced barrel exports inside Orion.
+- **Confirmed Decision 4 — Temporary Screenshot Attachments**: Remove the two temporary debugging screenshots while keeping the source sprite sheets intact.
 
 ---
 
-## 3. Expanded Story, Boss, Hub & Aether Fog Rooms
+## 1. Overview & Core Concept
 
-### 1. Boss & Trial Arenas
-- **Three Knights Cathedral Plaza (`[5,0]`) — `16 × 12` (`256 × 192 px`)**:
-  - Expanded grand ruined cathedral courtyard giving the Three Knights (Gawain, Lancelot, Percival) room for synchronized formation charges, flanking arcs, and pillar cover around the northern exit gate.
-- **Lady of the Lake Sanctum (`[2,1]`) — `14 × 11` (`224 × 176 px`)**:
-  - Expanded subterranean water sanctum featuring a wider central island dais surrounded by deep mystical channels, sunken ruin pillars, and the Excalibur pedestal.
-- **Poe & Bog Wurm Clearing (`[3,0]`) — `14 × 11` (`224 × 176 px`)**:
-  - Expanded misty bog arena with staggered mire pools, ancient root clusters, and lantern posts that give the burrowing Bog Wurm and Poe multi-angle ambush lanes.
+- **What It Does**: Cleans up leftover, replaced, and redundant code across Project Orion's world database, tile definitions, type contracts, and rendering pipeline so the Orion cartridge is lean and self-consistent for GitHub release.
+- **Target Audience / Persona**: Developers and contributors working within the Project Orion cartridge inside the Minuteman multi-cartridge architecture.
+- **Key Value**: Every tile definition, biome schema field, and rendering pass inside Project Orion reflects the active 3×3 sub-tile cluster composer and `doodads01` sprite pipeline without carrying obsolete procedural placeholder code.
 
-### 2. Hub & Story Landmarks
-- **Camelot Border Town Square (`[4,0]`) — `16 × 12` (`256 × 192 px`)**:
-  - Expanded fortified settlement hub with distinct districts: western gate approach, central town plaza and fountain/hearth, garrison quartermaster stalls, and the northern cathedral approach.
-- **Colossal Waygate Sanctums (`[6,0]` & Region Waygates) — `14 × 12` (`224 × 192 px`)**:
-  - Monumental ancient monolith chambers with a ceremonial flagstone causeway, flanking ruin colonnades, and a spacious northern sanctum housing the Colossal Waygate arch.
+---
 
-### 3. Aether Fog Dynamic Templates
-- **Aether Fog End Mini-Boss Lair**:
-  - When a procedural Aether Fog `end` node rolls a `mini_boss` encounter, its room grid upgrades to an expanded `14 × 11` arena with pillars and hazard pockets suited for elite combat.
-- **Aether Fog Bridge & Corridor Templates**:
-  - Adds elongated causeway/bridge templates (such as `14 × 9` horizontal causeways and `10 × 13` vertical spans) to the global template pool so Aether Fog traversal features varied spatial rhythm between standard rooms and boss arenas.
+## 2. User Experience & Visual Design
+
+- **Key User Flows**:
+  1. **Multi-Cartridge Preservation**: Both Project Orion and Knight remain registered and playable inside the Minuteman handheld shell.
+  2. **2.5D Cluster & Doodad Scene Rendering**: Layer 0 terrain and transitions render through the 20 baked 3×3 sub-tile clusters (`dirt01`, `grass01`, `aether01`, `ruins01`), while Layer 1 walls (`#`), single pillars (`P`), and Layer 2 doodads (`V` Chests, `A` Campfires, `Q` Waygates, `L` Poe Lanterns, `1`/`2`/`3`/`!` Levers) render directly from their baked/embedded sprite atlases with procedural lighting and flame overlays.
+  3. **Clean World Wiki & Asset Studio Inspection**: Inspecting Orion's tile and biome registries surfaces only canonical, active definitions without duplicate switch entries or legacy palette aliases.
+- **Visual Identity & Theme**:
+  - *Aesthetic Direction*: Crisp 16×16 pixel-art 2.5D dark-fantasy sci-fi RPG (Golden Sun / ALTTP / Metroid Fusion inspired).
+  - *Color Palette & Mood*: Deep obsidian slate (`#090d14`), toxic marsh greens, ancient ruins sandstone, and luminous Æther cyan/amber lighting accents.
+  - *Typography & Hierarchy*: High-contrast retro monospace HUD telemetry paired with clean sans-serif modal headers.
+  - *Component Styling & Layout*: Contained within the Minuteman LCD viewport frame with crisp `image-rendering: pixelated` canvas scaling.
+- **Interactive Feedback & Motion**: Smooth 60 FPS depth-sorted rendering, 3-state lever transitions (`1 → 2 → 3` and `3 → 2 → 1`), flickering campfire embers, bobbing Waygate orbs, and blinking Scavenger Cache glints.
+
+---
+
+## 3. Key Product Decisions & Trade-Offs
+
+- **Decision 1: Removing Superseded Procedural Fallbacks in Orion Tiles**
+  - *Chosen Approach*: Remove `renderLayer0` from the 4 cluster-backed terrain tiles (`.`, `,`, `~`, `:`), remove procedural box fallbacks from `#` (Pylon Wall) and `P` (Pylon Pillar), and remove `if (!drewSprite)` placeholder box branches from the `doodads01` prop tiles (`V`, `A`, `Q`, `L`, `1`, `2`, `3`, `!`).
+  - *Why*: The 20 3×3 biome clusters and `doodads01` atlas are synchronously registered at boot. Removing dead procedural fallback branches eliminates redundant code and ensures a single source of visual truth.
+  - *Alternatives Considered*: Leaving procedural `fillRect` fallbacks alongside sprite rendering, which obscures which tiles are sprite-backed vs. procedural (`D` Drop-Pod, `S` Fallen Scout, `G` Rusted Gate, `M` Cathedral Door, `%` Desync Wall, `_` Chasm).
+- **Decision 2: Deduplicating Orion's Tile Registry & Pruning Legacy Biome Fields**
+  - *Chosen Approach*: Remove the duplicate `hiddenSwitchTile` (`id: 'hidden_switch'`, `char: '1'`) that collided with `hiddenSwitch1Tile` (`id: 'hidden_switch_1'`, `char: '1'`) during polymorphic auto-discovery, and remove the unused `palette` alias and legacy `tileSheetBase64` / `tileSheetCoords` / `drawBiomeSheetTile` scaffolding from Orion's biome definitions and renderer.
+  - *Why*: Eliminates duplicate `char: '1'` overwrite behavior in `TILE_REGISTRY` and removes legacy compatibility fields that were replaced by `tileAssets` and the 3×3 cluster auto-tiler.
+
+---
+
+## 4. Technical Architecture & Data Strategy *(Technical Reference)*
+
+- **Architecture & Component Diagram**:
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                 Minuteman Handheld Shell (Untouched)                     │
+│          (Cartridge Registry · Knight Cartridge · Project Orion)         │
+└────────────────────────────────────┬─────────────────────────────────────┘
+                                     │
+                                     ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                Project Orion Cartridge Scope (Cleanup Target)            │
+│       (5-Tier World Auto-Discovery · Aether Fog Graph · State Store)     │
+└───────────────┬──────────────────────────────────────────┬───────────────┘
+                │                                          │
+                ▼                                          ▼
+┌───────────────────────────────────────┐  ┌───────────────────────────────┐
+│     3×3 Sub-Tile Cluster Composer     │  │   3×3 Doodad Sprite Pipeline  │
+│  (dirt01 · grass01 · aether01 ·       │  │  (Chest · Campfire · Waygate  │
+│   ruins01 -> 20 Baked 48×48 Clusters) │  │   Poe Lantern · 3-Pos Lever)  │
+└───────────────────┬───────────────────┘  └───────────────┬───────────────┘
+                    │                                      │
+                    └──────────────────┬───────────────────┘
+                                       ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                  2.5D Depth-Sorted Scene & Lighting Pass                 │
+│     (Layer 0 Cluster Terrain -> Water Reflections -> Layer 1 Walls ->    │
+│      Layer 2 Depth-Sorted Entities/Doodads -> Dynamic Bloom & Weather)   │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+- **Data Model & State**:
+  - **One-to-One Tile Registry**: Every ASCII room character maps to exactly one canonical `TileDefinition` in Orion's auto-discovery registry.
+  - **Streamlined Biome Schema**: Biomes define `tileTypes`, `tileRules`, `tileAssets`, `clusterTileSheetBase64`, `defaultClusterTerrain`, `postProcess`, and `lightColor` without dead `palette` or `tileSheetCoords` fields.
+- **Interactive Component & State Mapping**:
+  - **Cluster Auto-Tiler**: Handles Layer 0 terrain (`.`, `,`, `~`, `:`), Layer 1 walls (`#`), and Layer 2 pillars (`P`) directly from the baked 3×3 cluster atlases.
+  - **Doodad Prop Renderer**: Renders `V` (Chest), `A` (Waystation Campfire), `Q` (Colossal Waygate), `L` (Poe Lantern), and `1`/`2`/`3`/`!` (Levers) directly from `DOODADS_01_BASE64` with layered procedural flame/glow effects, while `C` (Scavenger Cache) renders only its subtle ground shadow and periodic glint.

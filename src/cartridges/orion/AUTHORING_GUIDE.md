@@ -85,7 +85,7 @@ No outer room in Orion has a literal solid map border. Instead, `systems/worldSy
 ## 2. Authoring the 5-Tier World Hierarchy
 
 ### Tier 1A: Biomes (`database/world/<world>/biomes.ts` or `database/world/global/templates.ts`)
-Biomes supply **tile character mappings (`tileTypes`)**, **environmental hazard rules (`tileRules`)**, **procedural color palettes (`tileAssets`)**, and optional **Base64 grid tilemaps (`tileSheetBase64` + `tileSheetCoords`)** to rooms.
+Biomes supply **tile character mappings (`tileTypes`)**, **environmental hazard rules (`tileRules`)**, **lighting & water reflection colors (`tileAssets`)**, and **3×3 cluster auto-tiling (`clusterTileSheetBase64` + `defaultClusterTerrain`)** to rooms.
 
 - **Inheritance Chain**: A Room uses its own `biomeId` first; if omitted, it inherits from `Map.biomeId → Area.biomeId → Region.defaultBiomeId`.
 - **Where to create**:
@@ -102,8 +102,12 @@ export const sunkenCatacombsBiome: BiomeDefinition = {
   scope: 'local',
   world: 'Belldor (Camelot)',
   description: 'Flooded crypts beneath Camelot with corrosive ichor pools and rapid desync.',
+  clusterTileSheetBase64: 'ruins_tileset',
+  defaultClusterTerrain: 'ruins',
   tileTypes: {
     '.': 'floor',
+    ',': 'grass',
+    ':': 'ruins_floor',
     '#': 'pylon_wall',
     P: 'pylon_pillar',
     '~': 'mud',
@@ -111,12 +115,14 @@ export const sunkenCatacombsBiome: BiomeDefinition = {
     D: 'drop_pod',
     S: 'fallen_scout',
     C: 'cache',
+    V: 'chest',
     G: 'rusted_gate',
     '%': 'desync_wall',
     L: 'poe_lantern',
-    '1': 'hidden_switch',
-    '2': 'hidden_switch',
-    '3': 'hidden_switch',
+    '1': 'hidden_switch_1',
+    '2': 'hidden_switch_2',
+    '3': 'hidden_switch_3',
+    '!': 'toggle_switch',
     M: 'cathedral_door',
     A: 'aether_waystation',
     Q: 'colossal_waygate',
@@ -139,14 +145,6 @@ export const sunkenCatacombsBiome: BiomeDefinition = {
     pylonTrim: '#7dd3fc',
     shadow: 'rgba(0, 0, 0, 0.45)',
     lightColor: '#38bdf8',
-  },
-  palette: {
-    ground: '#1e293b',
-    mud: '#0f172a',
-    water: '#132a38',
-    pylonTop: '#475569',
-    pylonFront: '#1e293b',
-    shadow: 'rgba(0, 0, 0, 0.45)',
   },
   lightColor: '#38bdf8',
 };
@@ -375,7 +373,7 @@ Create a file exporting an `ItemWikiDefinition` (`id`, `name`, `category`, `icon
 All visual assets in Project Orion are embedded directly inside their respective entry files (`database/world/tiles/`, `database/world/<world>/biomes.ts`, `database/enemies/`, `database/items/`, `database/weapons/`) — there is no separate `assets/` directory.
 - Images and sub-tile clusters are decoded and baked once into an in-memory `Map<string, HTMLImageElement | HTMLCanvasElement>` cache (`systems/renderSystem.ts`) and drawn with `imageSmoothingEnabled = false` so pixel art stays razor-sharp.
 - You can pass either a full `data:image/png;base64,...` URI or a raw Base64 payload directly inside the entry file.
-- If `sprite` / `layer0Sprite` / `baseTileBase64` / `tileSheetBase64` is omitted, the renderer automatically falls back to procedural Canvas 2D drawing.
+- Floor terrain tiles (`.`, `,`, `~`, `:`), walls (`#`), and pillars (`P`) are automatically baked into 20 3×3 sub-tile clusters (`ruins_tileset`) from the 4 embedded 16×16 base tiles (`dirt01`, `grass01`, `aether01`, `ruins01`), while interactive doodads (`V`, `A`, `Q`, `L`, `1`/`2`/`3`/`!`) slice directly from `DOODADS_01_BASE64`.
 
 ### Quick Command to Convert a Drafted PNG to Base64
 You can turn any `.png` into a single-line Base64 string in your terminal:
@@ -404,18 +402,13 @@ sprite: {
 
 ---
 
-### Recipe B: Biome Tilemap Sheet Embedded in a Biome Entry File (`database/world/<world>/biomes.ts`)
-To skin a biome with a custom grid sheet, embed the Base64 string directly in the `BiomeDefinition` entry file:
+### Recipe B: 3×3 Sub-Tile Cluster Auto-Tiling in a Biome (`database/world/<world>/biomes.ts`)
+Each `BiomeDefinition` specifies `clusterTileSheetBase64: 'ruins_tileset'` and a `defaultClusterTerrain` (`'dirt' | 'grass' | 'aether' | 'ruins'`) for automatic 8-neighbor transitions and wall/pillar shading:
 
 ```ts
 // Inside a BiomeDefinition (e.g., world/belldor/biomes.ts):
-tileSheetBase64: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHL...',
-tileSheetCellSize: 16,
-tileSheetCoords: {
-  '.': { col: 0, row: 0 },                        // Static floor tile at (col 0, row 0)
-  '~': { col: 0, row: 1, frameCount: 4, fps: 5 }, // 4-frame animated bog water strip on row 1!
-  'pylon_wall:layer1': { col: 2, row: 0 },        // Layer 1 wall tile at (col 2, row 0)
-},
+clusterTileSheetBase64: 'ruins_tileset',
+defaultClusterTerrain: 'ruins',
 ```
 
 ---

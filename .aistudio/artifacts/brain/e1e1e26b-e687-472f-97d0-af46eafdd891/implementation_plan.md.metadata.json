@@ -1,6 +1,6 @@
 {
-  "summary":  "Architectural and gameplay plan for dynamic room sizes in Orion: Belldor Expedition, including smooth viewport-clamped camera tracking, automatic doorway alignment across variable-dimension room transitions, and expanded story/boss/hub/Aether Fog arenas.",
-  "updatedAt":  "2026-10-21T21:17:14.879959495Z",
+  "summary":  "Revised pre-GitHub cleanup plan strictly scoped to the Project Orion cartridge directory and subfolders, preserving the Minuteman engine shell and Knight cartridge untouched.",
+  "updatedAt":  "2026-10-22T12:33:44.737882014Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

@@ -389,39 +389,6 @@ export function drawBase64Sprite(
   return true;
 }
 
-export function drawBiomeSheetTile(
-  g: CanvasRenderingContext2D,
-  biome: BiomeDefinition,
-  tileKey: string,
-  sx: number,
-  sy: number,
-  timeSec: number = 0
-): boolean {
-  if (!biome.tileSheetBase64 || !biome.tileSheetCoords) return false;
-  const cell = biome.tileSheetCoords[tileKey];
-  if (!cell) return false;
-
-  const defaultCellSize = biome.tileSheetCellSize || TILE_SIZE;
-  return drawBase64Sprite(
-    g,
-    {
-      base64: biome.tileSheetBase64,
-      cellWidth: cell.cellWidth || defaultCellSize,
-      cellHeight: cell.cellHeight || defaultCellSize,
-      col: cell.col,
-      row: cell.row,
-      frameCount: cell.frameCount,
-      fps: cell.fps,
-      renderWidth: TILE_SIZE,
-      renderHeight: TILE_SIZE,
-      anchor: 'top-left',
-    },
-    sx,
-    sy,
-    timeSec
-  );
-}
-
 // ─── 2. SUB-TILE MICRO-COMPOSER (`4×4` of `4px` & `2×2` of `8px` Quadrants) ──
 
 export type RGB = [number, number, number];
@@ -698,21 +665,29 @@ function sampleTransitionSubTilePixel(
   let isBorder = false;
 
   if (hasN && hasW) {
-    useTo = (ly < threshold || lx < threshold) && lx + ly < 14 + jitter;
-    isBorder = !useTo && (ly < threshold + 1 || lx < threshold + 1) && lx + ly < 16 + jitter;
+    useTo = distN < threshold || distW < threshold || lx + ly + jitter < threshold + 3;
+    isBorder =
+      !useTo &&
+      (distN === threshold || distW === threshold || lx + ly + jitter === threshold + 3);
   } else if (hasN && hasE) {
     const rx = 15 - lx;
-    useTo = (ly < threshold || rx < threshold) && rx + ly < 14 + jitter;
-    isBorder = !useTo && (ly < threshold + 1 || rx < threshold + 1) && rx + ly < 16 + jitter;
+    useTo = distN < threshold || distE < threshold || rx + ly + jitter < threshold + 3;
+    isBorder =
+      !useTo &&
+      (distN === threshold || distE === threshold || rx + ly + jitter === threshold + 3);
   } else if (hasS && hasW) {
     const ry = 15 - ly;
-    useTo = (ry < threshold || lx < threshold) && lx + ry < 14 + jitter;
-    isBorder = !useTo && (ry < threshold + 1 || lx < threshold + 1) && lx + ry < 16 + jitter;
+    useTo = distS < threshold || distW < threshold || lx + ry + jitter < threshold + 3;
+    isBorder =
+      !useTo &&
+      (distS === threshold || distW === threshold || lx + ry + jitter === threshold + 3);
   } else if (hasS && hasE) {
     const rx = 15 - lx;
     const ry = 15 - ly;
-    useTo = (ry < threshold || rx < threshold) && rx + ry < 14 + jitter;
-    isBorder = !useTo && (ry < threshold + 1 || rx < threshold + 1) && rx + ry < 16 + jitter;
+    useTo = distS < threshold || distE < threshold || rx + ry + jitter < threshold + 3;
+    isBorder =
+      !useTo &&
+      (distS === threshold || distE === threshold || rx + ry + jitter === threshold + 3);
   } else if (hasN) {
     useTo = distN < threshold;
     isBorder = distN === threshold;
@@ -1132,7 +1107,7 @@ const TRANSITION_CLUSTER_MAP: Record<
   },
 };
 
-const TERRAIN_PRIORITY: ClusterTerrainType[] = ['aether', 'ruins', 'grass', 'dirt'];
+const TERRAIN_PRIORITY: ClusterTerrainType[] = ['ruins', 'grass', 'dirt', 'aether'];
 
 export interface ResolvedClusterTileSlice {
   clusterAtlasId: string;
@@ -1173,6 +1148,7 @@ export function resolveRoomBaseTerrain(
   const direct = charToExplicitTerrain(rawChar);
   if (direct) return direct;
 
+  const defaultTerrain = biome.defaultClusterTerrain || 'dirt';
   const offsets: Array<[number, number]> = [
     [0, 1],
     [0, -1],
@@ -1184,18 +1160,54 @@ export function resolveRoomBaseTerrain(
     [1, -1],
   ];
 
+  const counts: Record<ClusterTerrainType, number> = {
+    dirt: 0,
+    grass: 0,
+    aether: 0,
+    ruins: 0,
+  };
+
   for (const [dx, dy] of offsets) {
     const nx = clampedX + dx;
     const ny = clampedY + dy;
     if (nx >= 0 && nx < cols && ny >= 0 && ny < rows) {
       const neighborTerrain = charToExplicitTerrain(room[ny]?.[nx]);
       if (neighborTerrain) {
-        return neighborTerrain;
+        counts[neighborTerrain]++;
       }
     }
   }
 
-  return biome.defaultClusterTerrain || 'dirt';
+  const dryOrder: ClusterTerrainType[] = ['ruins', 'grass', 'dirt'];
+
+  // Solid outer/inner walls ('#'): require at least 2 adjacent floor tiles of a non-default terrain
+  // so single isolated doorway tell tiles don't turn adjacent wall blocks into mismatched terrain walls.
+  if (rawChar === '#') {
+    let bestDry: ClusterTerrainType = defaultTerrain;
+    let bestCount = counts[defaultTerrain] || 0;
+    for (const candidate of dryOrder) {
+      if (counts[candidate] >= 2 && counts[candidate] > bestCount) {
+        bestDry = candidate;
+        bestCount = counts[candidate];
+      }
+    }
+    return bestDry;
+  }
+
+  // Pillars ('P') and interactive props ('C', 'L', 'A', 'Q', '1', '2', '3', etc.):
+  // Prefer adjacent dry floor terrain over 'aether' liquid ('~') so props bordering water sit on dry ground.
+  let bestPropTerrain: ClusterTerrainType | null = null;
+  let bestPropCount = 0;
+  for (const candidate of dryOrder) {
+    if (counts[candidate] > bestPropCount) {
+      bestPropTerrain = candidate;
+      bestPropCount = counts[candidate];
+    }
+  }
+  if (bestPropTerrain) return bestPropTerrain;
+  if (counts.aether > 0) return 'aether';
+
+  return defaultTerrain;
 }
 
 function hashGeneralTileOffset(tx: number, ty: number): { localCol: number; localRow: number } {
@@ -1235,29 +1247,17 @@ export function resolveClusterLayer0Coord(
   const sTerrain = ty < rows - 1 ? resolveRoomBaseTerrain(room, tx, ty + 1, biome) : fromTerrain;
   const wTerrain = tx > 0 ? resolveRoomBaseTerrain(room, tx - 1, ty, biome) : fromTerrain;
   const eTerrain = tx < cols - 1 ? resolveRoomBaseTerrain(room, tx + 1, ty, biome) : fromTerrain;
-  const nwTerrain =
-    tx > 0 && ty > 0 ? resolveRoomBaseTerrain(room, tx - 1, ty - 1, biome) : fromTerrain;
-  const neTerrain =
-    tx < cols - 1 && ty > 0 ? resolveRoomBaseTerrain(room, tx + 1, ty - 1, biome) : fromTerrain;
-  const swTerrain =
-    tx > 0 && ty < rows - 1 ? resolveRoomBaseTerrain(room, tx - 1, ty + 1, biome) : fromTerrain;
-  const seTerrain =
-    tx < cols - 1 && ty < rows - 1
-      ? resolveRoomBaseTerrain(room, tx + 1, ty + 1, biome)
-      : fromTerrain;
 
+  // Strict one-way transition priority: only transition toward a cardinal neighbor with higher priority
+  // than `fromTerrain` so two terrains never draw opposing border strips across the same seam.
   let targetToTerrain: ClusterTerrainType | null = null;
   for (const candidate of TERRAIN_PRIORITY) {
-    if (candidate === fromTerrain) continue;
+    if (candidate === fromTerrain) break;
     if (
       nTerrain === candidate ||
       sTerrain === candidate ||
       wTerrain === candidate ||
-      eTerrain === candidate ||
-      nwTerrain === candidate ||
-      neTerrain === candidate ||
-      swTerrain === candidate ||
-      seTerrain === candidate
+      eTerrain === candidate
     ) {
       targetToTerrain = candidate;
       break;
@@ -1271,24 +1271,20 @@ export function resolveClusterLayer0Coord(
       const s = sTerrain === targetToTerrain;
       const w = wTerrain === targetToTerrain;
       const e = eTerrain === targetToTerrain;
-      const nw = nwTerrain === targetToTerrain;
-      const ne = neTerrain === targetToTerrain;
-      const sw = swTerrain === targetToTerrain;
-      const se = seTerrain === targetToTerrain;
 
       let localCol = 1;
       let localRow = 1;
 
-      if ((n && w) || (!n && !s && !w && !e && nw)) {
+      if (n && w) {
         localCol = 0;
         localRow = 0;
-      } else if ((n && e) || (!n && !s && !w && !e && ne)) {
+      } else if (n && e) {
         localCol = 2;
         localRow = 0;
-      } else if ((s && w) || (!n && !s && !w && !e && sw)) {
+      } else if (s && w) {
         localCol = 0;
         localRow = 2;
-      } else if ((s && e) || (!n && !s && !w && !e && se)) {
+      } else if (s && e) {
         localCol = 2;
         localRow = 2;
       } else if (n) {
@@ -1402,7 +1398,7 @@ export function drawClusterBiomeLayer0(
   const slice = resolveClusterLayer0Coord(room, tx, ty, biome);
   if (!slice) return false;
 
-  const cellSize = biome.tileSheetCellSize || TILE_SIZE;
+  const cellSize = TILE_SIZE;
 
   if (BASE64_ATLAS_REGISTRY[slice.clusterAtlasId]) {
     const drewSeparated = drawBase64Sprite(
@@ -1456,7 +1452,7 @@ export function drawClusterBiomeWall(
   const slice = resolveClusterWallCoord(room, tx, ty, biome);
   if (!slice) return false;
 
-  const cellSize = biome.tileSheetCellSize || TILE_SIZE;
+  const cellSize = TILE_SIZE;
 
   if (BASE64_ATLAS_REGISTRY[slice.clusterAtlasId]) {
     const drewSeparated = drawBase64Sprite(
@@ -2154,13 +2150,21 @@ export function drawDynamicLightingAndBloomPass(
             color: isHelped ? '#38bdf8' : '#fbbf24',
             intensity: isHelped ? 0.36 : 0.26,
           });
-        } else if (ch === 'D' || ch === 'A') {
+        } else if (ch === 'D') {
           lights.push({
             x: cx,
             y: cy - 4,
             radius: 28 + pulse,
             color: '#38bdf8',
             intensity: 0.28,
+          });
+        } else if (ch === 'A') {
+          lights.push({
+            x: cx,
+            y: cy - 3,
+            radius: 30 + pulse,
+            color: '#f97316',
+            intensity: 0.32,
           });
         } else if (ch === 'Q') {
           lights.push({
@@ -2325,8 +2329,6 @@ export function drawOrionGame(
             defaultWidth: TILE_SIZE,
             defaultHeight: TILE_SIZE,
           }) ||
-          drawBiomeSheetTile(g, activeBiome, char, sx, sy, state.t) ||
-          drawBiomeSheetTile(g, activeBiome, tile.id, sx, sy, state.t) ||
           drawClusterBiomeLayer0(g, room, activeBiome, tx, ty, sx, sy, state.t);
 
         if (!drewTileSprite) {
@@ -2358,7 +2360,6 @@ export function drawOrionGame(
             defaultWidth: TILE_SIZE,
             defaultHeight: TILE_SIZE,
           }) ||
-          drawBiomeSheetTile(g, activeBiome, `${tile.id}:layer1`, sx, sy, state.t) ||
           (char === '#' && drawClusterBiomeWall(g, room, activeBiome, tx, ty, sx, sy, state.t));
 
         if (!drewLayer1Sprite) {
@@ -2380,7 +2381,7 @@ export function drawOrionGame(
       for (let tx = 0; tx < cols; tx++) {
         const char = room[ty]?.[tx] || '.';
         const tile = getTileDefinition(char, state.biomeId);
-        if (tile.propSprite || tile.renderProp25D) {
+        if (tile.propSprite || tile.renderProp25D || isClusterSingleWallChar(char)) {
           const sx = tx * TILE_SIZE + 8;
           const sy = ty * TILE_SIZE + 12;
           renderQueue.push({

@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { TILE_SIZE } from '../../../constants';
 import { TileDefinition } from '../../../types';
 
 export const grass01 =
@@ -19,13 +18,4 @@ export const grassTile: TileDefinition = {
   clusterTerrain: 'grass',
   subTileMode: '4x4',
   baseTileBase64: grass01,
-  renderLayer0(g, tx, ty, sx, sy) {
-    const isAlt = (tx + ty) % 2 === 0;
-    g.fillStyle = isAlt ? '#1e3528' : '#182b20';
-    g.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
-
-    g.fillStyle = '#2d4f3b';
-    g.fillRect(sx + 3, sy + 4, 2, 3);
-    g.fillRect(sx + 10, sy + 9, 2, 3);
-  },
 };

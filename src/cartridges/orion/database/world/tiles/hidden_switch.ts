@@ -3,52 +3,90 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { TileDefinition } from '../../../types';
+import { TILE_SIZE } from '../../../constants';
+import { drawBase64Sprite } from '../../../systems/renderSystem';
+import { OrionState, TileDefinition } from '../../../types';
+import { DOODADS_01_BASE64, resolveLeverDoodadCell } from './doodads_atlas';
 
 function renderSwitchProp(
   char: string,
   g: CanvasRenderingContext2D,
+  _tx: number,
+  ty: number,
   sx: number,
   sy: number,
-  state: import('../../../types').OrionState
+  state: OrionState
 ): void {
-  const isActive = Boolean(state.lootedCaches[`switch:${state.room}:${char}`]);
-  g.fillStyle = '#1e293b';
-  g.fillRect(sx - 4, sy - 7, 8, 7);
-  g.fillStyle = isActive ? '#4ade80' : '#f59e0b';
-  g.fillRect(sx - 2, sy - 9, 4, 3);
+  const switchKey = `switch:${state.room}:${char}`;
+  const lever = resolveLeverDoodadCell(state, switchKey);
+
+  g.fillStyle = 'rgba(0, 0, 0, 0.35)';
+  g.beginPath();
+  g.ellipse(sx, sy + 1, 6, 2.5, 0, 0, Math.PI * 2);
+  g.fill();
+
+  drawBase64Sprite(
+    g,
+    {
+      base64: DOODADS_01_BASE64,
+      cellWidth: 16,
+      cellHeight: 16,
+      col: lever.col,
+      row: lever.row,
+      renderWidth: 16,
+      renderHeight: 16,
+      anchor: 'bottom-center',
+    },
+    sx,
+    ty * TILE_SIZE + 15,
+    state.t
+  );
 }
 
-export const hiddenSwitch1Tile: TileDefinition = {
-  id: 'hidden_switch_1',
-  char: '1',
-  name: 'Hidden Grail Switch',
-  type: 'switch',
+const baseSwitchProps = {
+  type: 'switch' as const,
   solid: true,
   blocksHeight: 1,
   bakedTopColor: '#4ade80',
   bakedFrontColor: '#166534',
-  renderProp25D(g, _tx, _ty, sx, sy, state) {
-    renderSwitchProp('1', g, sx, sy, state);
+};
+
+export const hiddenSwitch1Tile: TileDefinition = {
+  ...baseSwitchProps,
+  id: 'hidden_switch_1',
+  char: '1',
+  name: 'Hidden Grail Switch',
+  renderProp25D(g, tx, ty, sx, sy, state) {
+    renderSwitchProp('1', g, tx, ty, sx, sy, state);
   },
 };
 
 export const hiddenSwitch2Tile: TileDefinition = {
-  ...hiddenSwitch1Tile,
+  ...baseSwitchProps,
   id: 'hidden_switch_2',
   char: '2',
   name: 'Cathedral Altar Switch',
-  renderProp25D(g, _tx, _ty, sx, sy, state) {
-    renderSwitchProp('2', g, sx, sy, state);
+  renderProp25D(g, tx, ty, sx, sy, state) {
+    renderSwitchProp('2', g, tx, ty, sx, sy, state);
   },
 };
 
 export const hiddenSwitch3Tile: TileDefinition = {
-  ...hiddenSwitch1Tile,
+  ...baseSwitchProps,
   id: 'hidden_switch_3',
   char: '3',
   name: 'Barracks Armory Switch',
-  renderProp25D(g, _tx, _ty, sx, sy, state) {
-    renderSwitchProp('3', g, sx, sy, state);
+  renderProp25D(g, tx, ty, sx, sy, state) {
+    renderSwitchProp('3', g, tx, ty, sx, sy, state);
+  },
+};
+
+export const toggleLeverTile: TileDefinition = {
+  ...baseSwitchProps,
+  id: 'toggle_switch',
+  char: '!',
+  name: 'Æther Phase Toggle Lever',
+  renderProp25D(g, tx, ty, sx, sy, state) {
+    renderSwitchProp(`toggle:${tx},${ty}`, g, tx, ty, sx, sy, state);
   },
 };

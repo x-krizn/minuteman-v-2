@@ -57,7 +57,7 @@ export const room50BorderTownCathedral: RoomDefinition = {
   rows: 12,
   grid: [
     '#######..#######',
-    '#..3::::::::C..#',
+    '#..3::::::::V..#',
     '#..P..::::..P..#',
     '#....K.::.T....#',
     '#......B.......#',

@@ -44,7 +44,7 @@ export const room4Neg1BorderTownBarracks: RoomDefinition = {
   bannerTitle: 'CAMELOT BORDER TOWN · BARRACKS QUARTER (PERCIVAL & TRISTAN)',
   grid: [
     '##########',
-    '#..2..C..#',
+    '#..2..V..#',
     '#..K..T..#',
     '#........#',
     '#...o....#',

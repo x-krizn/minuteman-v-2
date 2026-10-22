@@ -17,6 +17,7 @@ export const bucklerShieldWeapon: WeaponDefinition = {
   name: 'Duelist Buckler',
   class: 'Buckler Shield (Main / Offhand)',
   equipmentRole: 'shield',
+  handing: 'off-hand-only',
   weightClass: 'light',
   passiveShieldBonus: 15,
   bladeTrailColor: '#f8fafc',

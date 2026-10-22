@@ -57,13 +57,88 @@ export function getResolvedActionDescriptor(
   state: OrionState,
   actionId: string
 ): OrionActionDescriptor {
+  if (actionId === 'weapon_slot2_skill4') {
+    const slot2WeaponId = state.equipmentSlots?.slot2 || 'buckler_shield';
+    const weapon = getWeaponDefinition(slot2WeaponId);
+    const move = weapon?.moveset[3] || weapon?.moveset[1] || weapon?.moveset[0];
+    return {
+      id: 'weapon_slot2_skill4',
+      name: move?.name || 'Off-Hand Skill',
+      shortLabel: (move?.name || 'OFF-HAND').slice(0, 14).toUpperCase(),
+      sourceCategory: 'weapon',
+      sourceLabel: `${weapon?.name || 'Off-Hand'} [Skill 4]`,
+      weaponSkillSlot: 4,
+      weaponId: slot2WeaponId,
+      description: move?.description || 'Off-hand weapon defensive/tactical action.',
+      tellDurationSec: move?.tellDurationSec ?? 0.2,
+      actionDurationSec: move?.actionDurationSec ?? 0.35,
+      cooldownSec: move?.cooldownSec ?? 4.0,
+      heatCost: move?.heatCost ?? 12,
+      damage: move?.damage ?? 16,
+      damageType: move?.damageType ?? 'Impact',
+      damageFamily: move?.damageFamily ?? 'Kinetic',
+      range: move?.range ?? 30,
+    };
+  }
+
+  if (actionId === 'weapon_slot2_skill5') {
+    const slot2WeaponId =
+      state.equipmentSlots?.slot2 || state.equipmentSlots?.slot3 || 'buckler_shield';
+    const weapon = getWeaponDefinition(slot2WeaponId);
+    const move = weapon?.moveset[4] || weapon?.moveset[2] || weapon?.moveset[0];
+    return {
+      id: 'weapon_slot2_skill5',
+      name: move?.name || 'Off-Hand Finisher',
+      shortLabel: (move?.name || 'FINISHER').slice(0, 14).toUpperCase(),
+      sourceCategory: 'weapon',
+      sourceLabel: `${weapon?.name || 'Off-Hand'} [Skill 5]`,
+      weaponSkillSlot: 4,
+      weaponId: slot2WeaponId,
+      description: move?.description || 'Off-hand weapon heavy finisher action.',
+      tellDurationSec: move?.tellDurationSec ?? 0.3,
+      actionDurationSec: move?.actionDurationSec ?? 0.45,
+      cooldownSec: move?.cooldownSec ?? 6.5,
+      heatCost: move?.heatCost ?? 20,
+      damage: move?.damage ?? 24,
+      damageType: move?.damageType ?? 'Wave',
+      damageFamily: move?.damageFamily ?? 'Energy',
+      range: move?.range ?? 35,
+    };
+  }
+
+  if (actionId.startsWith('item_')) {
+    const itemId = actionId.slice(5);
+    const itemDef = getItemDefinition(itemId);
+    const invSlot = state.inventorySlots.find((s) => s.itemId === itemId);
+    const count = invSlot ? invSlot.count : 0;
+    return {
+      id: actionId,
+      name: `${itemDef?.name || itemId} (×${count})`,
+      shortLabel: `${(itemDef?.name || itemId).slice(0, 12).toUpperCase()} ×${count}`,
+      sourceCategory: 'belt',
+      sourceLabel: `Belt Item [${itemDef?.name || itemId}]`,
+      itemId,
+      description: itemDef?.description || 'Tactical belt consumable item.',
+      tellDurationSec: 0.1,
+      actionDurationSec: 0.25,
+      cooldownSec: 2.5,
+      heatCost: 0,
+      damage: 0,
+      damageType: 'Impact',
+      damageFamily: 'Kinetic',
+      range: 0,
+    };
+  }
+
   const base =
     ASSIGNABLE_ACTION_CATALOG.find((a) => a.id === actionId) ||
     ASSIGNABLE_ACTION_CATALOG[0];
 
   if (base && base.sourceCategory === 'weapon' && base.weaponSkillSlot) {
     const currentWeaponId =
-      state.equippedWeapons[state.activeWeaponIndex] || 'gladius_boltcaster';
+      state.equipmentSlots?.slot1 ||
+      state.equippedWeapons[state.activeWeaponIndex] ||
+      'gladius_boltcaster';
     const weapon = getWeaponDefinition(currentWeaponId);
     const move = weapon?.moveset[base.weaponSkillSlot];
     if (move && weapon) {
@@ -72,6 +147,7 @@ export function getResolvedActionDescriptor(
         name: move.name,
         shortLabel: move.name.toUpperCase(),
         sourceLabel: `${weapon.name} [Skill ${base.weaponSkillSlot}]`,
+        weaponId: currentWeaponId,
         description: move.description,
         tellDurationSec: move.tellDurationSec,
         actionDurationSec: move.actionDurationSec,

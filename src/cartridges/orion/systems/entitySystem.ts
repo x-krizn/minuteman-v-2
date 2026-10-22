@@ -126,19 +126,19 @@ export function spawnRoomEnemies(
   rooms: Record<string, string[]>,
   state: OrionState
 ): void {
-  const hadPoe = state.enemies.some((e) => e.faction === 'poe' && e.frame.integrity > 0);
-  if (hadPoe && (!state.flags?.poe_state || state.flags.poe_state === 'unmet')) {
-    state.flags = state.flags || {};
-    state.flags.poe_state = 'ignored';
-    state.flags.bog_exit_revealed = true;
-  }
-
   state.enemies = [];
   const room = rooms[state.room];
   if (!room) return;
 
+  const repeatableBogRooms = new Set(['0,-1', '0,-2', '1,0', '2,0', '3,0', '3,-1']);
+  const isRepeatableBog = repeatableBogRooms.has(state.room);
   const canonicalRoomKey = getCanonicalRoomPersistenceKey(state, state.room);
-  if (state.clearedRooms[state.room] || state.clearedRooms[canonicalRoomKey]) return;
+  if (
+    !isRepeatableBog &&
+    (state.clearedRooms[state.room] || state.clearedRooms[canonicalRoomKey])
+  ) {
+    return;
+  }
 
   const spawnCountsByType: Record<string, number> = {};
 
@@ -156,7 +156,7 @@ export function spawnRoomEnemies(
       }
 
       const enemySpawnKey = `${canonicalRoomKey}:enemy:${x},${y}`;
-      if (state.clearedRooms[enemySpawnKey]) {
+      if (!isRepeatableBog && state.clearedRooms[enemySpawnKey]) {
         continue;
       }
 

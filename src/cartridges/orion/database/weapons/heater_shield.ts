@@ -17,6 +17,7 @@ export const heaterShieldWeapon: WeaponDefinition = {
   name: 'Camelot Heater Shield',
   class: 'Heater Shield (Main / Offhand)',
   equipmentRole: 'shield',
+  handing: 'off-hand-only',
   weightClass: 'medium',
   passiveShieldBonus: 25,
   bladeTrailColor: '#f8fafc',

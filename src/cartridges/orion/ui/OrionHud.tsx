@@ -14,20 +14,20 @@ import {
   TRAIT_FUNDING_GEMS,
 } from '../database/progression';
 import { getWeaponDefinition } from '../database/weapons';
+import { getItemDefinition } from '../database/items';
 import {
   applyTraitLineProfile,
   createNewPilotGame,
   cycleTargetLock,
   deletePilotFromRoster,
-  getActionCooldown,
   getLockedTarget,
   getOrionStateRef,
+  getResolvedCombatSkills,
   getRoomWorldInfo,
   loadPilotFromRoster,
   loadPilotRoster,
   notifyOrionStateChange,
-  performWeaponSwap,
-  resolveTriggerAction,
+  performAuxiliarySwap,
   TUTORIAL_STEP_DESCRIPTORS,
   TutorialStepId,
 } from '../systems';
@@ -163,7 +163,7 @@ export const OrionHud: React.FC = () => {
             {/* Step 1: Trait Line Selection */}
             <div>
               <div className="text-[9px] font-bold text-[#94a3b8] mb-1">
-                STEP 1 — SELECT TRAIT LINE & MECH FRAME (§2.4 LOCKED)
+                STEP 1 — SELECT TRAIT LINE & MECH FRAME
               </div>
               <div className="grid grid-cols-3 gap-1.5">
                 {TRAIT_LIST.map((t) => {
@@ -258,7 +258,7 @@ export const OrionHud: React.FC = () => {
             <div className="p-2 bg-[#0b111e] border border-[#facc15]/50 rounded-xs space-y-1.5">
               <div className="flex items-center justify-between">
                 <label className="text-[9px] font-bold text-[#ffd27d]">
-                  STEP 2 — ENTER PILOT CALLSIGN & DEPLOY AT LEVEL 1 (M00: THE BOG)
+                  STEP 2 — ENTER PILOT CALLSIGN & DEPLOY
                 </label>
                 <button
                   type="button"
@@ -307,7 +307,7 @@ export const OrionHud: React.FC = () => {
           <div className="flex-1 flex flex-col justify-between space-y-2 text-[10px]">
             <div className="space-y-1.5">
               <div className="text-[9px] font-bold text-[#94a3b8]">
-                SAVED PILOT CHARACTER ROSTER (§2.4 — SELECT A PILOT TO LOAD)
+                SAVED PILOT CHARACTER ROSTER
               </div>
               {roster.length === 0 ? (
                 <div className="p-6 bg-[#0b111e] border border-[#1e293b] rounded-xs text-center space-y-2">
@@ -417,30 +417,30 @@ export const OrionHud: React.FC = () => {
 
   // Generic World & Sector Metadata via worldSystem
   const worldInfo = getRoomWorldInfo(state);
-  const tutorialStepDesc = state.tutorialActive
-    ? TUTORIAL_STEP_DESCRIPTORS[state.tutorialStep as TutorialStepId]
-    : null;
+  const isCheatMode = state.room === '-4,0' || Boolean(state.bypassProgressionGates);
+  const tutorialStepDesc =
+    isCheatMode && state.tutorialActive
+      ? TUTORIAL_STEP_DESCRIPTORS[state.tutorialStep as TutorialStepId]
+      : null;
 
-  // Active Weapon & Magazine
-  const currentWeaponId = state.equippedWeapons[state.activeWeaponIndex] || 'gladius_boltcaster';
-  const activeWeapon = getWeaponDefinition(currentWeaponId);
+  // Active Weapon & Equipment Slots
+  const slot1Id = state.equipmentSlots?.slot1 || state.equippedWeapons[0] || 'gladius_boltcaster';
+  const slot2Id = state.equipmentSlots?.slot2 || state.equippedWeapons[1] || null;
+  const slot3Id = state.equipmentSlots?.slot3 || null;
+
+  const activeWeapon = getWeaponDefinition(slot1Id);
   const activeWeaponName = activeWeapon?.name || 'Gladius Boltcaster';
-  const isKhopesh = currentWeaponId === 'khopesh';
+  const isKhopesh = slot1Id === 'khopesh';
   const ammo = state.ammo;
   const maxAmmo = state.maxAmmo || activeWeapon?.shotsPerChain || 9;
   const isReloading = state.isReloading;
   const reloadTimer = state.reloadTimer;
   const swapCooldown = state.weaponSwapCooldown || 0;
-  const totalWeapons = state.equippedWeapons.length;
 
-  // X Basic Attack + Assignable L & R Multi-Source Actions
-  const move0Name = isKhopesh ? 'SICKLE COMBO' : 'AUTO-SALVO';
-  const actionL = resolveTriggerAction(state, 'L');
-  const actionR = resolveTriggerAction(state, 'R');
-  const cdL = getActionCooldown(state, actionL.id);
-  const cdR = getActionCooldown(state, actionR.id);
+  // Resolved 5-Skill Moveset & Target Lock
+  const combatSkills = getResolvedCombatSkills(state);
   const lockedEnemy = getLockedTarget(state);
-  const yHoldPct = Math.min(100, ((state.yHoldTimer || 0) / 0.32) * 100);
+  const lHoldPct = Math.min(100, (((state.combatHoldTimers?.l || 0) / 0.28) * 100));
 
   return (
     <aside
@@ -458,7 +458,6 @@ export const OrionHud: React.FC = () => {
               soundSystem.playSelect();
               setShowPilotModal(true);
             }}
-            title="Click to Create New Pilot or Switch Pilot Roster (§2.4)"
             className="pointer-events-auto flex items-center gap-1.5 text-[9px] sm:text-[10px] tracking-wider text-[#94a3b8] font-bold drop-shadow hover:text-white cursor-pointer text-left"
           >
             <span className="text-[#38bdf8] uppercase truncate max-w-[95px]">
@@ -565,41 +564,46 @@ export const OrionHud: React.FC = () => {
           </div>
         </section>
 
-        {/* CENTER CLUSTER: 5-Tier Nested World Location, Aether Fog Node Type & Target Lock-On */}
+        {/* CENTER CLUSTER: Location Banner & Target Lock-On (Node/Step spoilers gated behind Cheat Mode) */}
         <section aria-label="Sector Info" className="hidden xs:flex flex-col items-center">
           <div className="px-2.5 py-0.5 bg-[#090d14]/90 border border-[#38bdf8]/40 rounded text-[9px] text-[#7dd3fc] tracking-wider uppercase font-bold flex items-center gap-1.5 shadow-md backdrop-blur-xs">
             <span className="text-[#38bdf8]">⬢</span>
             <span>{worldInfo.roomTitle}</span>
-            <span className="text-[#475569]">·</span>
-            <span
-              className={
-                worldInfo.nodeType === 'key'
-                  ? 'text-[#fbbf24]'
-                  : worldInfo.nodeType === 'general'
-                    ? 'text-[#38bdf8]'
-                    : worldInfo.nodeType === 'side'
-                      ? 'text-[#a78bfa]'
-                      : worldInfo.nodeType === 'end'
-                        ? 'text-[#4ade80]'
-                        : 'text-[#f43f5e]'
-              }
-            >
-              {worldInfo.nodeType.toUpperCase()} NODE
-              {worldInfo.nodeType === 'general' && worldInfo.routeStep && worldInfo.routeTotal
-                ? ` (${worldInfo.routeStep}/${worldInfo.routeTotal})`
-                : worldInfo.nodeType === 'loop' && worldInfo.loopDepth > 0
-                  ? ` (DEPTH ${worldInfo.loopDepth})`
-                  : ''}
-            </span>
+            {isCheatMode && (
+              <>
+                <span className="text-[#475569]">·</span>
+                <span
+                  className={
+                    worldInfo.nodeType === 'key'
+                      ? 'text-[#fbbf24]'
+                      : worldInfo.nodeType === 'general'
+                        ? 'text-[#38bdf8]'
+                        : worldInfo.nodeType === 'side'
+                          ? 'text-[#a78bfa]'
+                          : worldInfo.nodeType === 'end'
+                            ? 'text-[#4ade80]'
+                            : 'text-[#f43f5e]'
+                  }
+                >
+                  {worldInfo.nodeType.toUpperCase()} NODE
+                  {worldInfo.nodeType === 'general' && worldInfo.routeStep && worldInfo.routeTotal
+                    ? ` (${worldInfo.routeStep}/${worldInfo.routeTotal})`
+                    : worldInfo.nodeType === 'loop' && worldInfo.loopDepth > 0
+                      ? ` (DEPTH ${worldInfo.loopDepth})`
+                      : ''}
+                </span>
+              </>
+            )}
           </div>
           <span className="text-[8px] text-[#94a3b8] tracking-widest mt-0.5 font-semibold uppercase">
-            {worldInfo.mapName} · {worldInfo.areaName} · {worldInfo.worldName}
+            {isCheatMode
+              ? `${worldInfo.mapName} · ${worldInfo.areaName} · ${worldInfo.worldName}`
+              : worldInfo.areaName}
           </span>
           {lockedEnemy ? (
             <button
               onClick={() => cycleTargetLock(state)}
               className="pointer-events-auto mt-0.5 px-2 py-0.2 bg-[#0c4a6e]/90 border border-[#38bdf8] rounded text-[8px] text-[#e0f2fe] font-bold tracking-wider uppercase flex items-center gap-1 cursor-pointer"
-              title="Tap [Y] to cycle target lock"
             >
               <span className="text-[#fbbf24]">◎</span>
               <span>
@@ -635,7 +639,7 @@ export const OrionHud: React.FC = () => {
             <div className="w-full flex items-center justify-between gap-1.5">
               <button
                 onClick={() => {
-                  performWeaponSwap(state, {
+                  performAuxiliarySwap(state, {
                     say: (txt) => {
                       state.toastText = txt;
                       state.toastTimer = 2.5;
@@ -647,11 +651,9 @@ export const OrionHud: React.FC = () => {
                     ? 'bg-[#1e293b] text-[#94a3b8] border-[#475569]'
                     : 'bg-[#422006]/80 hover:bg-[#713f12] text-[#fbbf24] border-[#f59e0b]/60'
                 }`}
-                title="Hold [Y] to Swap Weapon"
+                title="Hold [L] to Swap Auxiliary Weapon (Slot 3)"
               >
-                {swapCooldown > 0
-                  ? `CD ${swapCooldown.toFixed(1)}s`
-                  : `HOLD [Y] ${state.activeWeaponIndex + 1}/${totalWeapons}`}
+                {swapCooldown > 0 ? `CD ${swapCooldown.toFixed(1)}s` : `HOLD [L] AUX SWAP`}
               </button>
               <span
                 className={`text-[7.5px] px-1 rounded font-bold border ${
@@ -664,11 +666,11 @@ export const OrionHud: React.FC = () => {
               </span>
             </div>
 
-            {yHoldPct > 5 && !state.yHoldTriggeredSwap && (
+            {lHoldPct > 5 && !state.combatHoldTriggered?.l && (
               <div className="w-full h-1 bg-[#1e293b] rounded-full overflow-hidden mt-0.5">
                 <div
                   className="h-full bg-[#fbbf24] transition-all"
-                  style={{ width: `${yHoldPct}%` }}
+                  style={{ width: `${lHoldPct}%` }}
                 />
               </div>
             )}
@@ -676,17 +678,32 @@ export const OrionHud: React.FC = () => {
             <div className="text-[9px] font-bold text-[#f1f5f9] tracking-wider mt-0.5 truncate max-w-full">
               {activeWeaponName}
             </div>
+            {slot2Id && (
+              <div className="text-[7.5px] text-[#94a3b8] truncate max-w-full">
+                S2: {getWeaponDefinition(slot2Id)?.name || getItemDefinition(slot2Id)?.name || slot2Id}
+              </div>
+            )}
+            {slot3Id && (
+              <div className="text-[7.5px] text-[#38bdf8] truncate max-w-full">
+                S3 (AUX):{' '}
+                {getWeaponDefinition(slot3Id)?.name ||
+                  getItemDefinition(slot3Id)?.name ||
+                  slot3Id}
+              </div>
+            )}
 
             {/* Reloading Alert or Ammo Pips */}
             {isReloading ? (
               <div className="text-[9.5px] text-[#f59e0b] font-black tracking-wider animate-pulse mt-1 flex items-center gap-1">
                 <span>🔄</span>
-                <span>{isKhopesh ? 'STANCE' : 'RELOAD'} [{reloadTimer.toFixed(1)}s]</span>
+                <span>
+                  {isKhopesh ? 'STANCE' : 'RELOAD'} [{reloadTimer.toFixed(1)}s]
+                </span>
               </div>
             ) : (
               <div className="flex flex-col items-end mt-1 w-full">
                 <div className="flex justify-between items-center w-full text-[8.5px] font-bold text-[#93c5fd]">
-                  <span className="text-[8px] text-[#64748b]">{isKhopesh ? 'COMBO' : 'MAG'}</span>
+                  <span className="text-[8px] text-[#64748b]">MAG · 2xTAP RELOAD</span>
                   <span className={isKhopesh ? 'text-[#f0abfc]' : 'text-[#93c5fd]'}>
                     {ammo} / {maxAmmo}
                   </span>
@@ -719,7 +736,6 @@ export const OrionHud: React.FC = () => {
         aria-label="Tactical Notifications"
         className="w-full flex flex-col items-center justify-end gap-1.5 mt-auto mb-1.5 px-3 z-30"
       >
-        {/* Non-Interactive Pop-up Notification (Persists until superseded or clicked; never overrides Jump [A]) */}
         {state.toastText ? (
           <button
             onClick={() => {
@@ -737,7 +753,6 @@ export const OrionHud: React.FC = () => {
           </button>
         ) : null}
         {state.promptText ? (
-          /* Contextual Interaction Prompt (Docked cleanly in lower section) */
           <button
             onClick={() => {
               state.promptText = null;
@@ -756,60 +771,96 @@ export const OrionHud: React.FC = () => {
         ) : null}
       </section>
 
-      {/* 3. BOTTOM CONTROL BAR (High-contrast controller guide at standard resolution) */}
-      <footer className="w-full bg-[#090d14]/90 backdrop-blur-xs border-t border-[#334155]/70 rounded px-2 py-1 flex items-center justify-between text-[8.5px] sm:text-[9.5px] text-[#cbd5e1] tracking-wider shadow-lg">
-        <div className="flex items-center gap-1.5 sm:gap-2.5 flex-wrap">
+      {/* 3. BOTTOM CONTROL BAR */}
+      <footer className="w-full bg-[#090d14]/90 backdrop-blur-xs border-t border-[#334155]/70 rounded px-2 py-1 flex items-center justify-between text-[8px] sm:text-[9px] text-[#cbd5e1] tracking-wider shadow-lg">
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+          {/* [X] Skill 1 */}
           <span className="flex items-center gap-0.8">
             <kbd className="bg-[#1e293b] text-[#38bdf8] border border-[#38bdf8]/40 px-1 py-0.2 rounded font-bold text-[8px]">
               X
             </kbd>
-            <span className={isKhopesh ? 'text-[#f0abfc]' : 'text-[#cbd5e1]'}>{move0Name}</span>
-          </span>
-          <span className="flex items-center gap-0.8">
-            <kbd className="bg-[#1e293b] text-[#38bdf8] border border-[#38bdf8]/40 px-1 py-0.2 rounded font-bold text-[8px]">
-              L
-            </kbd>
-            <span className={cdL > 0 ? 'text-[#64748b]' : 'text-[#cbd5e1]'}>
-              {actionL.shortLabel} {cdL > 0 ? `(${cdL.toFixed(1)}s)` : ''}
+            <span className={state.combatActiveChain ? 'text-[#38bdf8] font-bold' : ''}>
+              {combatSkills.skill1?.shortLabel || 'SALVO'}
             </span>
           </span>
+
+          {/* [Y] Skill 2 & Skill 4 */}
           <span className="flex items-center gap-0.8">
-            <kbd className="bg-[#1e293b] text-[#38bdf8] border border-[#38bdf8]/40 px-1 py-0.2 rounded font-bold text-[8px]">
-              R
-            </kbd>
-            <span className={cdR > 0 ? 'text-[#64748b]' : 'text-[#cbd5e1]'}>
-              {actionR.shortLabel} {cdR > 0 ? `(${cdR.toFixed(1)}s)` : ''}
-            </span>
-          </span>
-          <button
-            onClick={() => cycleTargetLock(state)}
-            className="pointer-events-auto flex items-center gap-0.8 hover:text-[#fef08a] cursor-pointer"
-            title="Tap [Y] to Lock-On Target · Hold [Y] to Swap Weapon"
-          >
             <kbd className="bg-[#1e293b] text-[#fbbf24] border border-[#fbbf24]/40 px-1 py-0.2 rounded font-bold text-[8px]">
               Y
             </kbd>
-            <span className={lockedEnemy ? 'text-[#38bdf8] font-bold' : 'text-[#fde68a] font-bold'}>
-              {lockedEnemy ? 'LOCKED' : 'LOCK'} · HOLD SWAP
+            <span
+              className={
+                combatSkills.skill2?.currentCooldown ? 'text-[#64748b]' : 'text-[#fde68a]'
+              }
+            >
+              {combatSkills.skill2?.shortLabel || 'SKILL 2'}
+              {combatSkills.skill2?.currentCooldown
+                ? ` (${combatSkills.skill2.currentCooldown.toFixed(1)}s)`
+                : ''}
+            </span>
+            {combatSkills.skill4 && combatSkills.skill4.available && (
+              <span className="text-[7.5px] text-[#94a3b8]">
+                [H: {combatSkills.skill4.shortLabel}]
+              </span>
+            )}
+          </span>
+
+          {/* [R] Skill 3 & Skill 5 */}
+          <span className="flex items-center gap-0.8">
+            <kbd className="bg-[#1e293b] text-[#c084fc] border border-[#c084fc]/40 px-1 py-0.2 rounded font-bold text-[8px]">
+              R
+            </kbd>
+            <span
+              className={
+                combatSkills.skill3?.currentCooldown ? 'text-[#64748b]' : 'text-[#e9d5ff]'
+              }
+            >
+              {combatSkills.skill3?.shortLabel || 'SKILL 3'}
+              {combatSkills.skill3?.currentCooldown
+                ? ` (${combatSkills.skill3.currentCooldown.toFixed(1)}s)`
+                : ''}
+            </span>
+            {combatSkills.skill5 && combatSkills.skill5.available && (
+              <span className="text-[7.5px] text-[#94a3b8]">
+                [H: {combatSkills.skill5.shortLabel}]
+              </span>
+            )}
+          </span>
+
+          {/* [L] Lock-on */}
+          <button
+            onClick={() => cycleTargetLock(state)}
+            className="pointer-events-auto flex items-center gap-0.8 hover:text-[#fef08a] cursor-pointer"
+          >
+            <kbd className="bg-[#1e293b] text-[#38bdf8] border border-[#38bdf8]/40 px-1 py-0.2 rounded font-bold text-[8px]">
+              L
+            </kbd>
+            <span className={lockedEnemy ? 'text-[#38bdf8] font-bold' : 'text-[#94a3b8]'}>
+              {lockedEnemy ? `LOCKED: ${lockedEnemy.name.slice(0, 8)}` : 'LOCK'}
             </span>
           </button>
+
+          {/* [B] Boost */}
           <span className="flex items-center gap-0.8">
             <kbd className="bg-[#1e293b] text-[#f97316] border border-[#f97316]/40 px-1 py-0.2 rounded font-bold text-[8px]">
               B
             </kbd>
             <span className={state.isContinuousBoosting ? 'text-[#38bdf8] font-bold' : ''}>
-              {state.isContinuousBoosting ? 'BOOSTING' : 'HOLD BOOST'}
+              {state.isContinuousBoosting ? 'BOOSTING' : 'BOOST'}
             </span>
           </span>
+
+          {/* [A] Jump / Examine */}
           <span className="flex items-center gap-0.8">
             <kbd className="bg-[#1e293b] text-[#4ade80] border border-[#4ade80]/40 px-1 py-0.2 rounded font-bold text-[8px]">
               A
             </kbd>
-            <span>JUMP / EXAMINE</span>
+            <span>JUMP/EXAMINE</span>
           </span>
         </div>
 
-        <div className="hidden md:flex items-center gap-1.5 text-[8.5px] text-[#94a3b8] font-bold">
+        <div className="hidden lg:flex items-center gap-1.5 text-[8px] text-[#94a3b8] font-bold">
           <span>[START] MENU</span>
           <span>·</span>
           <span>[SELECT] SATCHEL</span>

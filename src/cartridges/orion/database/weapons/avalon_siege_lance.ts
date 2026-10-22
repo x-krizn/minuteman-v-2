@@ -11,6 +11,7 @@ export const avalonSiegeLanceWeapon: WeaponDefinition = {
   name: 'Avalon Heavy Lance',
   class: 'Heavy Artillery Lance',
   equipmentRole: 'melee',
+  handing: '2-hand',
   weightClass: 'heavy',
   bladeTrailColor: '#f8fafc',
   description: 'Heavy two-stage kinetic siege lance requiring Heavy load capacity or System Feats to mount without penalty.',

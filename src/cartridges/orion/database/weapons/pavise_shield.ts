@@ -17,6 +17,7 @@ export const paviseShieldWeapon: WeaponDefinition = {
   name: 'Siege Pavise Bulwark',
   class: 'Tower Pavise Shield (Main / Offhand)',
   equipmentRole: 'shield',
+  handing: 'off-hand-only',
   weightClass: 'heavy',
   passiveShieldBonus: 45,
   bladeTrailColor: '#f8fafc',

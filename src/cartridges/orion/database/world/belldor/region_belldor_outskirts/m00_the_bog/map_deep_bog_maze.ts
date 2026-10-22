@@ -7,8 +7,8 @@ import { MapDefinition, RoomDefinition } from '../../../../../types';
 
 export const mapDeepBogMaze: MapDefinition = {
   id: 'map_deep_bog_maze',
-  name: 'Deep Bog, The Poe & Lady of the Lake Arena',
-  title: 'Temple Ruins, Poe Clearing & Secret Lake Arena (bog-v2.md)',
+  name: 'Main Bog Expanse & Lady of the Lake Arena',
+  title: 'Corrosive Marsh Trail, Main Bog Expanse & Secret Lake Arena (bog-v2.md)',
   scope: 'local',
   areaId: 'm00_the_bog',
   biomeId: 'belldor_bog',
@@ -16,8 +16,8 @@ export const mapDeepBogMaze: MapDefinition = {
   docRef: 'bog-v2.md',
   openDesignId: 'OD-BOG-01',
   description:
-    'Deep marsh maze housing the Temple/Monastery ruins, corrosive bog water zones, The Poe (rescuable NPC that triggers L2 and unlocks exit), and the secret Lady of the Lake arena. Trap systems remain UNDEFINED (OD-BOG-01).',
-  localRoomCoords: ['2,0', '3,0', '2,1'],
+    'Main Bog expanse starting 6 rooms from the Drop Pod (3 rooms past the First Campfire), featuring corrosive bog water zones, repeatable exploration loops back to the Poe Lantern branch, and the secret Lady of the Lake arena.',
+  localRoomCoords: ['2,0', '3,0', '3,-1', '2,1'],
   globalRoomSlots: [
     {
       coord: '2,-1',
@@ -36,13 +36,7 @@ export const mapDeepBogMaze: MapDefinition = {
   zoneFeatures: [
     { name: 'Corrosive bog water zones', status: 'LOCKED', coord: '2,0' },
     {
-      name: 'Trap systems',
-      detail: 'UNDEFINED (OD-BOG-01)',
-      status: 'UNDEFINED',
-      openDesignId: 'OD-BOG-01',
-    },
-    {
-      name: 'The Poe (rescuable NPC; triggers L2, unlocks exit)',
+      name: 'Main Bog Entrance & Perimeter Gate',
       status: 'LOCKED',
       coord: '3,0',
     },
@@ -62,13 +56,13 @@ export const room20DeepBogMaze: RoomDefinition = {
   areaId: 'm00_the_bog',
   regionId: 'region_belldor_outskirts',
   biomeId: 'belldor_bog',
-  title: 'Deep Bog Ruins & Corrosive Water',
-  bannerTitle: 'M00 THE BOG · MONASTERY RUINS & CORROSIVE WATER',
+  title: 'Corrosive Marsh Trail',
+  bannerTitle: 'M00 THE BOG · CORROSIVE MARSH TRAIL',
   grid: [
     '####..####',
     '#..~~~~..#',
     '#.,P..P,.#',
-    '#.W.L..W.#',
+    '#.W.:..W.#',
     '#..~~~~..#',
     ',,......,,',
     ',,......,,',
@@ -86,7 +80,7 @@ export const room21LadyOfTheLakeArena: RoomDefinition = {
   regionId: 'region_belldor_outskirts',
   biomeId: 'belldor_bog',
   title: 'Lady of the Lake Arena',
-  bannerTitle: 'M00 SECRET ARENA · LADY OF THE LAKE (RETURN TRIGGER)',
+  bannerTitle: 'M00 SECRET ARENA · LADY OF THE LAKE',
   cols: 14,
   rows: 11,
   grid: [
@@ -94,7 +88,7 @@ export const room21LadyOfTheLakeArena: RoomDefinition = {
     '#,,,~~~~~~,,,#',
     '#,~~~~~~~~~~,#',
     '#,~~..P..P~~,#',
-    '#,~~..L...~~,#',
+    '#,~~..:...~~,#',
     ',,....V.....,,',
     ',,..........,,',
     '#,~~..P..P~~,#',
@@ -112,6 +106,34 @@ export const room21LadyOfTheLakeArena: RoomDefinition = {
   },
 };
 
+export const room3Neg1BogLoopHollow: RoomDefinition = {
+  id: 'room_3_neg1_bog_loop_hollow',
+  scope: 'local',
+  coord: '3,-1',
+  mapId: 'map_deep_bog_maze',
+  areaId: 'm00_the_bog',
+  regionId: 'region_belldor_outskirts',
+  biomeId: 'belldor_bog',
+  title: 'Northern Bog Hollow',
+  bannerTitle: 'M00 THE BOG · NORTHERN BOG HOLLOW',
+  grid: [
+    '####..####',
+    '#,,~~~~,,#',
+    '#,P....P,#',
+    '#..s..W..#',
+    '#..~~~~..#',
+    ',,......,,',
+    ',,......,,',
+    '#,P..C.P,#',
+    '####..####',
+  ],
+  cache: {
+    scrap: 20,
+    items: [{ itemId: 'repair_kit', count: 1 }],
+    toast: 'LOOTED: +20 SCRAP & FIELD REPAIR KIT',
+  },
+};
+
 export const room30BogExitPerimeter: RoomDefinition = {
   id: 'room_3_0_bog_exit_perimeter',
   scope: 'local',
@@ -120,15 +142,15 @@ export const room30BogExitPerimeter: RoomDefinition = {
   areaId: 'm00_the_bog',
   regionId: 'region_belldor_outskirts',
   biomeId: 'belldor_bog',
-  title: 'The Poe & Bog Exit Perimeter',
-  bannerTitle: 'M00 THE BOG · THE POE & BORDER TOWN EXIT GATE',
+  title: 'Main Bog Expanse & Exit Gate',
+  bannerTitle: 'M00 THE BOG · MAIN BOG EXPANSE & EXIT GATE',
   cols: 14,
   rows: 11,
   grid: [
-    '##############',
+    '######..######',
     '#...~~~~~~.V.#',
     '#..P..~~~~..P#',
-    '#..L.E....o..#',
+    '#..:.E....s..#',
     '#............#',
     ',,...........G',
     ',,...........G',
@@ -138,8 +160,8 @@ export const room30BogExitPerimeter: RoomDefinition = {
     '######..######',
   ],
   cache: {
-    scrap: 20,
-    items: [{ itemId: 'poe_lantern_charm', count: 1 }],
-    toast: 'LOOTED: +20 SCRAP & POE LANTERN CHARM',
+    scrap: 25,
+    items: [{ itemId: 'rusted_gate_key', count: 1 }],
+    toast: 'LOOTED: +25 SCRAP & RUSTED GATE KEY',
   },
 };

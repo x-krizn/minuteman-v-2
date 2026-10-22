@@ -575,32 +575,36 @@ export interface ActionModificationDefinition {
   };
 }
 
+export type WeaponHanding = '1-hand' | '2-hand' | 'off-hand-only' | 'buff-accessory';
+
 export interface OrionEquipmentSlots {
-  /** Weapon Set 1 (2 slots, or 1 if two-handed) -> Actions 1-5 */
-  weaponSet1: [string, string | null];
-  /** Weapon Set 2 (2 slots, or 1 if two-handed) -> Actions 1-5 */
-  weaponSet2: [string, string | null];
-  /** Utility Slot (1 slot, sustain heal/repair) -> Action 6 */
+  /** Slot 1: Main-Hand Weapon (1-Hand or 2-Hand) -> Skills 1-3 (and 4-5 if 2-Hand) */
+  slot1: string | null;
+  /** Slot 2: Off-Hand Weapon / Shield OR Belt Consumable -> Skill 4 (and Skill 5 if Off-Hand) */
+  slot2: string | null;
+  /** Slot 3: Auxiliary Weapon, Belt Consumable, or Buff Equipment -> Swapped via L Hold or Skill 5 / Buff */
+  slot3: string | null;
+  /** Simplified Mech Hardware Quartet */
+  head: string | null;
+  arms: string | null;
+  plating: string | null;
   utility: string | null;
-  /** Aux Slots (4 slots: specialized offensive/defensive/passive) -> Shared Actions 7-10 */
-  aux: [string | null, string | null, string | null, string | null];
-  /** Belt Slots (4 slots: stackable consumables) -> Shared Actions 7-10 */
-  belt: [string | null, string | null, string | null, string | null];
-  /** Armor & Generator Chassis Pieces */
-  armor: {
+
+  /** Backward-compatible aliases for saves and legacy systems */
+  weaponSet1?: [string, string | null];
+  weaponSet2?: [string, string | null];
+  aux?: [string | null, string | null, string | null, string | null];
+  belt?: [string | null, string | null, string | null, string | null];
+  armor?: {
     head: string;
     torso: string;
     arms: string;
     legs: string;
     generator: string;
   };
-  /** Action Modifications installed per action slot key */
   installedMods: Record<string, string>;
-  /** Action Modifications permanently generated via Gem synthesis and retained by the pilot */
   unlockedMods?: string[];
-  /** Weapons, shields, and quivers discovered, salvaged, or unlocked by this pilot */
   unlockedEquipment?: string[];
-  /** Per-weapon/shield/quiver Gem modification (null/undefined = unmodified Col 0; GemId = Col 0..8 & VFX color) */
   weaponGemMods?: Record<string, GemId | null>;
 }
 
@@ -659,6 +663,8 @@ export interface WeaponDefinition {
   class: string;
   /** Archetype role ('melee' | 'ranged' | 'shield' | 'quiver') */
   equipmentRole?: 'melee' | 'ranged' | 'shield' | 'quiver';
+  /** Weapon handing classification ('1-hand' | '2-hand' | 'off-hand-only' | 'buff-accessory') */
+  handing?: WeaponHanding;
   /** Canonical weapon weight class ('light' | 'medium' | 'heavy') for the §3.4 Load Model */
   weightClass?: WeaponWeightClass;
   /** Passive Shield Capacity bonus when equipped (e.g. Heater / Buckler / Pavise shields) */
@@ -879,6 +885,8 @@ export interface OrionActionDescriptor {
   sourceLabel: string;
   hardwareSlot?: 'Head' | 'Torso' | 'Arms' | 'Legs' | 'Reactor' | 'Utility' | 'Belt';
   weaponSkillSlot?: 1 | 2 | 3 | 4;
+  weaponId?: string;
+  itemId?: string;
   beltSlotIndex?: 0 | 1 | 2 | 3;
   traitLineId?: TraitLine;
   sortOrder?: number;
@@ -986,8 +994,12 @@ export interface OrionState {
   overdriveTimer?: number;
   opticMarkTimer?: number;
 
-  // Target Lock-On & Y Hold Weapon Swap
+  // Target Lock-On & Multi-Function Input State
   lockedTargetId: number | null;
+  combatInputTimers?: Record<'x' | 'y' | 'r' | 'l', number>;
+  combatHoldTimers?: Record<'x' | 'y' | 'r' | 'l', number>;
+  combatHoldTriggered?: Record<'x' | 'y' | 'r' | 'l', boolean>;
+  combatActiveChain?: boolean;
   yHoldTimer?: number;
   yHoldTriggeredSwap?: boolean;
   wasYHeld?: boolean;

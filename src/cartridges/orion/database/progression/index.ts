@@ -543,10 +543,18 @@ export function createStarterGemPouch(
 export function createInitialEquipmentSlots(traitLine: TraitLine = 'Warrior'): OrionEquipmentSlots {
   const trait = TRAIT_REGISTRY[traitLine] || TRAIT_REGISTRY.Warrior;
   const w1 = trait.startingWeapons?.[0] || 'long_sword';
+  const w2 = trait.startingWeapons?.[1] || null;
   return {
-    weaponSet1: [w1, null],
-    weaponSet2: ['', null],
+    slot1: w1,
+    slot2: w2,
+    slot3: null,
+    head: `${trait.frameModel || 'Mark-IV'} Sensor Visor`,
+    arms: `${trait.frameModel || 'Mark-IV'} Actuator Vambraces`,
+    plating: `${trait.frameModel || 'Mark-IV'} ${trait.baseArmor.type} Plating`,
     utility: DEFAULT_UTILITY_BY_TRAIT[traitLine] || 'utility_ichor_surge',
+
+    weaponSet1: [w1, null],
+    weaponSet2: [w2 || '', null],
     aux: [
       'mod_head_optic_scan',
       'mod_torso_reactive_burst',
@@ -556,14 +564,14 @@ export function createInitialEquipmentSlots(traitLine: TraitLine = 'Warrior'): O
     belt: ['repair_kit', 'grail_water', 'spinel_flask', 'kyanite_flask'],
     armor: {
       head: `${trait.frameModel || 'Mark-IV'} Sensor Visor`,
-      torso: `${trait.frameModel || 'Mark-IV'} ${trait.baseArmor.type} Cuirass`,
+      torso: `${trait.frameModel || 'Mark-IV'} ${trait.baseArmor.type} Plating`,
       arms: `${trait.frameModel || 'Mark-IV'} Actuator Vambraces`,
       legs: `${trait.frameModel || 'Mark-IV'} Thruster Greaves`,
       generator: `${trait.reactor} Core Generator`,
     },
     installedMods: {},
     unlockedMods: [],
-    unlockedEquipment: [w1],
+    unlockedEquipment: [w1, ...(w2 ? [w2] : [])],
     weaponGemMods: {},
   };
 }
@@ -576,13 +584,14 @@ export function isEquipmentUnlocked(state: OrionState, weaponId: string): boolea
   if (!weaponId) return false;
   if (state.bypassProgressionGates || !state.tutorialActive) return true;
   if (state.equippedWeapons?.includes(weaponId)) return true;
+  if (state.equipmentSlots?.slot1 === weaponId || state.equipmentSlots?.slot2 === weaponId || state.equipmentSlots?.slot3 === weaponId) return true;
   const unlocked = state.equipmentSlots?.unlockedEquipment || [];
   return unlocked.includes(weaponId);
 }
 
 /**
  * Unlocks a weapon, shield, or quiver into `state.equipmentSlots.unlockedEquipment`.
- * If the pilot is at Level 2+ and only has 1 weapon equipped, automatically equips the new item into Set 2.
+ * If the pilot is at Level 2+ and only has 1 weapon equipped, automatically equips the new item into Set 2 / Slot 2.
  */
 export function unlockEquipmentItem(
   state: OrionState,
@@ -609,6 +618,9 @@ export function unlockEquipmentItem(
   ) {
     state.equippedWeapons.push(weaponId);
     state.equipmentSlots.weaponSet2 = [weaponId, null];
+    if (!state.equipmentSlots.slot2) {
+      state.equipmentSlots.slot2 = weaponId;
+    }
   }
 
   if (wasNew && ctx) {
@@ -640,6 +652,8 @@ export function unlockLevel2SecondaryWeapon(state: OrionState): string {
     state.equippedWeapons.push(secondary);
   }
   if (state.equipmentSlots) {
+    state.equipmentSlots.slot1 = state.equippedWeapons[0];
+    state.equipmentSlots.slot2 = state.equippedWeapons[1] || secondary;
     state.equipmentSlots.weaponSet1 = [state.equippedWeapons[0], null];
     state.equipmentSlots.weaponSet2 = [state.equippedWeapons[1] || secondary, null];
   }

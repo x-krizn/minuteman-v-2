@@ -176,6 +176,8 @@ export function createOrionCartridge(): Cartridge {
             x: h.x,
             y: h.y,
             b: h.b,
+            r: h.r,
+            l: h.l,
           },
         },
         state,

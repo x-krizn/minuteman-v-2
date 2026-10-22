@@ -17,6 +17,7 @@ export const khopeshWeapon: WeaponDefinition = {
   name: 'Scout Shotel (Khopesh)',
   class: 'Shotel / Curved Blade',
   equipmentRole: 'melee',
+  handing: '1-hand',
   weightClass: 'light',
   bladeTrailColor: '#f8fafc',
   description: 'A curved shield-reaching shotel sickle-blade salvaged from the fallen scout in M00.',

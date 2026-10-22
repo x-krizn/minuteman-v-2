@@ -17,6 +17,7 @@ export const gladiusBoltcasterWeapon: WeaponDefinition = {
   name: 'Gladius Bolt Caster',
   class: 'Bolt Caster / Rifle',
   equipmentRole: 'ranged',
+  handing: '1-hand',
   weightClass: 'medium',
   bladeTrailColor: '#f8fafc',
   description: 'The standard-issue reference ballistic bolt caster of the expeditionary pilots.',

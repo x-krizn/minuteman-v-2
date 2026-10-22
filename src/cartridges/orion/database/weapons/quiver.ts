@@ -17,6 +17,7 @@ export const quiverWeapon: WeaponDefinition = {
   name: 'Fletcher Munitions Quiver',
   class: 'Ranged Quiver (Offhand / Set)',
   equipmentRole: 'quiver',
+  handing: 'buff-accessory',
   weightClass: 'light',
   bladeTrailColor: '#f8fafc',
   description: 'Belt-fed fletcher quiver that grants +3 Magazine Capacity & -25% Reload Time when paired with ranged weapons, or fires rapid flechettes.',

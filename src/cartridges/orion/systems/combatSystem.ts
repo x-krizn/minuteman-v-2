@@ -476,7 +476,10 @@ export function executeActionPayload(
   const aim = getCombatAimVector(state);
   const aimAngle = Math.atan2(aim.dy, aim.dx);
   const currentWeaponId =
-    state.equippedWeapons[state.activeWeaponIndex] || 'gladius_boltcaster';
+    desc.weaponId ||
+    state.equipmentSlots?.slot1 ||
+    state.equippedWeapons[state.activeWeaponIndex] ||
+    'gladius_boltcaster';
   const weapon = getWeaponDefinition(currentWeaponId);
   const isMeleeOrShield =
     weapon?.equipmentRole === 'melee' ||
@@ -2099,22 +2102,14 @@ export function updateActionTimers(state: OrionState, dt: number): void {
 
 // ─── 3. THREE DEFENSE LAYERS, WEAPON SWAPS & COMBAT LOOP ─────────────────────
 
-export function performWeaponSwap(
+export function performAuxiliarySwap(
   state: OrionState,
   ctx?: { say: (text: string) => void },
-  targetIndex?: number,
   bypassCooldown: boolean = false
 ): boolean {
   if (!bypassCooldown && state.gates && !state.gates.canWeaponSwap) {
     soundSystem.playMenuBeep();
     ctx?.say('WEAPON SWAP LOCKED — INTERACT WITH THE POE [3,0] OR BEDIVERE [S] (LVL 2)');
-    notifyOrionStateChange();
-    return false;
-  }
-
-  if (state.equippedWeapons.length <= 1) {
-    soundSystem.playMenuBeep();
-    ctx?.say('NO SECONDARY WEAPON EQUIPPED');
     notifyOrionStateChange();
     return false;
   }
@@ -2126,15 +2121,66 @@ export function performWeaponSwap(
     return false;
   }
 
-  const nextIdx =
-    targetIndex !== undefined
-      ? targetIndex % state.equippedWeapons.length
-      : (state.activeWeaponIndex + 1) % state.equippedWeapons.length;
+  const slots = state.equipmentSlots;
+  const slot1 = slots?.slot1 || state.equippedWeapons[0] || 'gladius_boltcaster';
+  const slot2 = slots?.slot2 || state.equippedWeapons[1] || null;
+  const slot3 = slots?.slot3 || null;
 
-  state.activeWeaponIndex = nextIdx;
+  if (!slot3) {
+    soundSystem.playMenuBeep();
+    ctx?.say('AUXILIARY SLOT 3 EMPTY — NO SWAP TARGET');
+    notifyOrionStateChange();
+    return false;
+  }
 
-  const newWeaponId = state.equippedWeapons[state.activeWeaponIndex] || 'gladius_boltcaster';
-  const newWeapon = getWeaponDefinition(newWeaponId);
+  const w3 = getWeaponDefinition(slot3);
+  const item3 = !w3 ? getItemDefinition(slot3) : undefined;
+
+  let swapDone = false;
+  let swapMessage = '';
+
+  // Swapping rules:
+  // If w3 is an off-hand only weapon (e.g. buckler, heater, pavise shield): swap with Slot 2
+  // If w3 is a main-hand weapon (1-hand or 2-hand): swap with Slot 1
+  // If slot3 is a consumable belt item: swap with Slot 2
+  if (w3 && w3.handing === 'off-hand-only') {
+    if (slots) {
+      slots.slot2 = slot3;
+      slots.slot3 = slot2;
+    }
+    swapMessage = `SWAPPED OFF-HAND: ${w3.name.toUpperCase()}`;
+    swapDone = true;
+  } else if (w3) {
+    if (slots) {
+      slots.slot1 = slot3;
+      slots.slot3 = slot1;
+    }
+    swapMessage = `SWAPPED MAIN-HAND: ${w3.name.toUpperCase()}`;
+    swapDone = true;
+  } else if (item3) {
+    if (slots) {
+      slots.slot2 = slot3;
+      slots.slot3 = slot2;
+    }
+    swapMessage = `BELT SWAPPED: ${item3.name.toUpperCase()} TO SLOT 2`;
+    swapDone = true;
+  }
+
+  if (!swapDone) {
+    soundSystem.playMenuBeep();
+    ctx?.say('SWAP INCOMPATIBLE');
+    return false;
+  }
+
+  state.equippedWeapons = [
+    state.equipmentSlots?.slot1,
+    state.equipmentSlots?.slot2,
+    state.equipmentSlots?.slot3,
+  ].filter(Boolean) as string[];
+  state.activeWeaponIndex = 0;
+
+  const activeWeaponId = state.equipmentSlots?.slot1 || 'gladius_boltcaster';
+  const activeWeapon = getWeaponDefinition(activeWeaponId);
   const featMods = computeInterfaceFeatModifiers(state.equippedFeats || []);
   const swapPenaltyMult = state.gates?.loadPenalty?.swapTimeMult ?? 1.0;
 
@@ -2143,22 +2189,32 @@ export function performWeaponSwap(
       WEAPON_SWAP_COOLDOWN * swapPenaltyMult * featMods.swapTimeMult;
   }
 
-  if (newWeapon) {
-    state.maxAmmo = newWeapon.shotsPerChain;
-    state.ammo = newWeapon.shotsPerChain;
-    state.reloadDuration = newWeapon.reloadDurationSec;
+  if (activeWeapon) {
+    state.maxAmmo = activeWeapon.shotsPerChain;
+    state.ammo = activeWeapon.shotsPerChain;
+    state.reloadDuration = activeWeapon.reloadDurationSec;
   }
 
   state.isReloading = false;
   state.reloadTimer = 0;
   state.activeSkillSlot = null;
+  state.activeActionId = null;
   state.skillTellTimer = 0;
   state.skillActionTimer = 0;
 
   soundSystem.playPowerup();
-  ctx?.say(`SWAPPED TO: ${newWeapon?.name.toUpperCase() || 'WEAPON'}`);
+  ctx?.say(swapMessage);
   notifyOrionStateChange();
   return true;
+}
+
+export function performWeaponSwap(
+  state: OrionState,
+  ctx?: { say: (text: string) => void },
+  _targetIndex?: number,
+  bypassCooldown: boolean = false
+): boolean {
+  return performAuxiliarySwap(state, ctx, bypassCooldown);
 }
 
 export function applyDamageToLayers(
@@ -2232,23 +2288,511 @@ export function applyDamageToLayers(
   return { absorbedByShield, stoppedByArmor, frameDamage };
 }
 
-export function handleCombatInput(
-  input: {
-    pressed: { a: boolean; b: boolean; x: boolean; y: boolean; l: boolean; r: boolean; select: boolean };
-    held: { x: boolean; y: boolean; b: boolean };
-  },
+export interface ResolvedCombatSkill {
+  id: string;
+  slotIndex: 1 | 2 | 3 | 4 | 5;
+  name: string;
+  shortLabel: string;
+  sourceCategory: 'weapon' | 'belt' | 'utility';
+  sourceSlotName: string;
+  weaponId?: string;
+  weaponMovesetSlot?: number;
+  itemId?: string;
+  itemCount?: number;
+  damage?: number;
+  damageType?: DamageType;
+  heatCost?: number;
+  cooldownSec?: number;
+  currentCooldown: number;
+  description?: string;
+  available: boolean;
+  unavailableReason?: string;
+}
+
+export interface ResolvedCombatSkills {
+  skill1: ResolvedCombatSkill | null;
+  skill2: ResolvedCombatSkill | null;
+  skill3: ResolvedCombatSkill | null;
+  skill4: ResolvedCombatSkill | null;
+  skill5: ResolvedCombatSkill | null;
+}
+
+export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills {
+  const slot1Id =
+    state.equipmentSlots?.slot1 || state.equippedWeapons[0] || 'gladius_boltcaster';
+  const slot2Id = state.equipmentSlots?.slot2 || state.equippedWeapons[1] || null;
+  const slot3Id = state.equipmentSlots?.slot3 || null;
+
+  const w1 = getWeaponDefinition(slot1Id);
+  const w2 = slot2Id ? getWeaponDefinition(slot2Id) : undefined;
+  const item2 = slot2Id && !w2 ? getItemDefinition(slot2Id) : undefined;
+  const w3 = slot3Id ? getWeaponDefinition(slot3Id) : undefined;
+  const item3 = slot3Id && !w3 ? getItemDefinition(slot3Id) : undefined;
+
+  const is2Hand = w1?.handing === '2-hand';
+
+  const getItemCount = (itemId: string) => {
+    const inv = state.inventorySlots.find((s) => s.itemId === itemId);
+    return inv ? inv.count : 0;
+  };
+
+  // Skill 1: Slot 1 Primary Attack (Always)
+  const m0 = w1?.moveset[0];
+  const skill1: ResolvedCombatSkill = {
+    id: 'weapon_skill_0',
+    slotIndex: 1,
+    name: m0?.name || 'Primary Salvo',
+    shortLabel: (m0?.name || 'ATTACK').slice(0, 12).toUpperCase(),
+    sourceCategory: 'weapon',
+    sourceSlotName: 'Slot 1: Main-Hand',
+    weaponId: slot1Id,
+    weaponMovesetSlot: 0,
+    damage: m0?.damage,
+    damageType: m0?.damageType,
+    heatCost: m0?.heatCost,
+    cooldownSec: 0,
+    currentCooldown: 0,
+    description: m0?.description,
+    available: true,
+  };
+
+  // Skill 2: Slot 1 Special 1 (Y Tap)
+  const m1 = w1?.moveset[1];
+  const s2Cd = Math.max(
+    0,
+    state.skillCooldowns?.[1] || 0,
+    state.actionCooldowns?.['weapon_skill_1'] || 0
+  );
+  const skill2: ResolvedCombatSkill = {
+    id: 'weapon_skill_1',
+    slotIndex: 2,
+    name: m1?.name || 'Special Skill 1',
+    shortLabel: (m1?.name || 'SKILL 2').slice(0, 12).toUpperCase(),
+    sourceCategory: 'weapon',
+    sourceSlotName: 'Slot 1: Main-Hand',
+    weaponId: slot1Id,
+    weaponMovesetSlot: 1,
+    damage: m1?.damage,
+    damageType: m1?.damageType,
+    heatCost: m1?.heatCost,
+    cooldownSec: m1?.cooldownSec ?? 4.0,
+    currentCooldown: s2Cd,
+    description: m1?.description,
+    available: true,
+  };
+
+  // Skill 3: Slot 1 Tactical Secondary (R Tap)
+  const m2 = w1?.moveset[2];
+  const s3Cd = Math.max(
+    0,
+    state.skillCooldowns?.[2] || 0,
+    state.actionCooldowns?.['weapon_skill_2'] || 0
+  );
+  const skill3: ResolvedCombatSkill = {
+    id: 'weapon_skill_2',
+    slotIndex: 3,
+    name: m2?.name || 'Special Skill 2',
+    shortLabel: (m2?.name || 'SKILL 3').slice(0, 12).toUpperCase(),
+    sourceCategory: 'weapon',
+    sourceSlotName: 'Slot 1: Main-Hand',
+    weaponId: slot1Id,
+    weaponMovesetSlot: 2,
+    damage: m2?.damage,
+    damageType: m2?.damageType,
+    heatCost: m2?.heatCost,
+    cooldownSec: m2?.cooldownSec ?? 5.5,
+    currentCooldown: s3Cd,
+    description: m2?.description,
+    available: true,
+  };
+
+  // Skill 4: Y Hold (Belt Consumable, 2-Hand Moveset[3], or Off-Hand Weapon Moveset[3])
+  let skill4: ResolvedCombatSkill | null = null;
+  if (item2 && slot2Id) {
+    const count = getItemCount(slot2Id);
+    const cd = Math.max(0, state.actionCooldowns?.[slot2Id] || 0);
+    skill4 = {
+      id: `item_${slot2Id}`,
+      slotIndex: 4,
+      name: `${item2.name} (×${count})`,
+      shortLabel: `${item2.name.slice(0, 10).toUpperCase()} ×${count}`,
+      sourceCategory: 'belt',
+      sourceSlotName: 'Slot 2: Belt Consumable',
+      itemId: slot2Id,
+      itemCount: count,
+      cooldownSec: 2.5,
+      currentCooldown: cd,
+      description: item2.description,
+      available: count > 0,
+      unavailableReason: count <= 0 ? 'ITEM DEPLETED' : undefined,
+    };
+  } else if (is2Hand) {
+    const m3 = w1?.moveset[3];
+    const s4Cd = Math.max(
+      0,
+      state.skillCooldowns?.[3] || 0,
+      state.actionCooldowns?.['weapon_skill_3'] || 0
+    );
+    skill4 = {
+      id: 'weapon_skill_3',
+      slotIndex: 4,
+      name: m3?.name || 'Suppression Skill',
+      shortLabel: (m3?.name || 'SKILL 4').slice(0, 12).toUpperCase(),
+      sourceCategory: 'weapon',
+      sourceSlotName: 'Slot 1: Two-Handed',
+      weaponId: slot1Id,
+      weaponMovesetSlot: 3,
+      damage: m3?.damage,
+      damageType: m3?.damageType,
+      heatCost: m3?.heatCost,
+      cooldownSec: m3?.cooldownSec ?? 5.0,
+      currentCooldown: s4Cd,
+      description: m3?.description,
+      available: true,
+    };
+  } else if (w2) {
+    const m3 = w2.moveset[3] || w2.moveset[1];
+    const s4Cd = Math.max(0, state.actionCooldowns?.['weapon_slot2_skill4'] || 0);
+    skill4 = {
+      id: 'weapon_slot2_skill4',
+      slotIndex: 4,
+      name: m3?.name || 'Off-Hand Skill',
+      shortLabel: (m3?.name || 'OFF-HAND').slice(0, 12).toUpperCase(),
+      sourceCategory: 'weapon',
+      sourceSlotName: 'Slot 2: Off-Hand',
+      weaponId: slot2Id!,
+      weaponMovesetSlot: 3,
+      damage: m3?.damage,
+      damageType: m3?.damageType,
+      heatCost: m3?.heatCost,
+      cooldownSec: m3?.cooldownSec ?? 4.0,
+      currentCooldown: s4Cd,
+      description: m3?.description,
+      available: true,
+    };
+  } else {
+    skill4 = {
+      id: 'none',
+      slotIndex: 4,
+      name: 'Skill 4 (Empty)',
+      shortLabel: 'EMPTY',
+      sourceCategory: 'weapon',
+      sourceSlotName: 'Requires Off-Hand or 2H Weapon',
+      currentCooldown: 0,
+      available: false,
+      unavailableReason: 'EQUIP OFF-HAND WEAPON OR 2H MAIN',
+    };
+  }
+
+  // Skill 5: R Hold (Belt Consumable, 2-Hand Finisher, Off-Hand Finisher, or Quiver Buff)
+  let skill5: ResolvedCombatSkill | null = null;
+  if (item3 && slot3Id) {
+    const count = getItemCount(slot3Id);
+    const cd = Math.max(0, state.actionCooldowns?.[slot3Id] || 0);
+    skill5 = {
+      id: `item_${slot3Id}`,
+      slotIndex: 5,
+      name: `${item3.name} (×${count})`,
+      shortLabel: `${item3.name.slice(0, 10).toUpperCase()} ×${count}`,
+      sourceCategory: 'belt',
+      sourceSlotName: 'Slot 3: Belt Consumable',
+      itemId: slot3Id,
+      itemCount: count,
+      cooldownSec: 2.5,
+      currentCooldown: cd,
+      description: item3.description,
+      available: count > 0,
+      unavailableReason: count <= 0 ? 'ITEM DEPLETED' : undefined,
+    };
+  } else if (is2Hand) {
+    const m4 = w1?.moveset[4];
+    const s5Cd = Math.max(
+      0,
+      state.skillCooldowns?.[4] || 0,
+      state.actionCooldowns?.['weapon_skill_4'] || 0
+    );
+    skill5 = {
+      id: 'weapon_skill_4',
+      slotIndex: 5,
+      name: m4?.name || 'Heavy Finisher',
+      shortLabel: (m4?.name || 'SKILL 5').slice(0, 12).toUpperCase(),
+      sourceCategory: 'weapon',
+      sourceSlotName: 'Slot 1: Two-Handed',
+      weaponId: slot1Id,
+      weaponMovesetSlot: 4,
+      damage: m4?.damage,
+      damageType: m4?.damageType,
+      heatCost: m4?.heatCost,
+      cooldownSec: m4?.cooldownSec ?? 8.5,
+      currentCooldown: s5Cd,
+      description: m4?.description,
+      available: true,
+    };
+  } else if (w2) {
+    const m4 = w2.moveset[4] || w2.moveset[2];
+    const s5Cd = Math.max(0, state.actionCooldowns?.['weapon_slot2_skill5'] || 0);
+    skill5 = {
+      id: 'weapon_slot2_skill5',
+      slotIndex: 5,
+      name: m4?.name || 'Off-Hand Finisher',
+      shortLabel: (m4?.name || 'FINISHER').slice(0, 12).toUpperCase(),
+      sourceCategory: 'weapon',
+      sourceSlotName: 'Slot 2: Off-Hand Finisher',
+      weaponId: slot2Id!,
+      weaponMovesetSlot: 4,
+      damage: m4?.damage,
+      damageType: m4?.damageType,
+      heatCost: m4?.heatCost,
+      cooldownSec: m4?.cooldownSec ?? 7.0,
+      currentCooldown: s5Cd,
+      description: m4?.description,
+      available: true,
+    };
+  } else if (w3 && w3.id === 'quiver') {
+    const m4 = w3.moveset[4];
+    skill5 = {
+      id: 'weapon_skill_4',
+      slotIndex: 5,
+      name: m4?.name || 'Hurricane Quiver Dump',
+      shortLabel: 'QUIVER DUMP',
+      sourceCategory: 'weapon',
+      sourceSlotName: 'Slot 3: Quiver Buff',
+      weaponId: 'quiver',
+      weaponMovesetSlot: 4,
+      damage: m4?.damage,
+      damageType: m4?.damageType,
+      heatCost: m4?.heatCost,
+      cooldownSec: 7.0,
+      currentCooldown: Math.max(0, state.actionCooldowns?.['weapon_skill_4'] || 0),
+      description: m4?.description,
+      available: true,
+    };
+  } else {
+    skill5 = {
+      id: 'none',
+      slotIndex: 5,
+      name: 'Skill 5 (Empty)',
+      shortLabel: 'EMPTY',
+      sourceCategory: 'weapon',
+      sourceSlotName: 'Requires Off-Hand or 2H Weapon',
+      currentCooldown: 0,
+      available: false,
+      unavailableReason: 'EQUIP OFF-HAND WEAPON OR 2H MAIN',
+    };
+  }
+
+  return { skill1, skill2, skill3, skill4, skill5 };
+}
+
+export function triggerTacticalReload(
   state: OrionState,
-  ctx: OrionCombatContext,
-  dt: number
-): void {
-  const currentWeaponId = state.equippedWeapons[state.activeWeaponIndex] || 'gladius_boltcaster';
+  ctx: OrionCombatContext
+): boolean {
+  const currentWeaponId =
+    state.equipmentSlots?.slot1 ||
+    state.equippedWeapons[state.activeWeaponIndex] ||
+    'gladius_boltcaster';
   const weapon = getWeaponDefinition(currentWeaponId);
-  if (!weapon) return;
+  if (!weapon) return false;
+
   const isMeleeOrShield =
     weapon.equipmentRole === 'melee' ||
     weapon.equipmentRole === 'shield' ||
     currentWeaponId === 'khopesh';
 
+  if (state.ammo >= state.maxAmmo && !state.isReloading) {
+    ctx.say(isMeleeOrShield ? 'STANCE READY (FULL)' : 'MAGAZINE FULL');
+    return false;
+  }
+
+  state.activeSkillSlot = null;
+  state.activeActionId = null;
+  state.skillTellTimer = 0;
+  state.skillActionTimer = 0;
+  state.isReloading = true;
+  state.reloadTimer = state.reloadDuration || weapon.reloadDurationSec;
+
+  soundSystem.playPowerup();
+  ctx.say(isMeleeOrShield ? 'RECOVERING STANCE (CANCEL)' : 'TACTICAL RELOAD (CANCEL)');
+  notifyOrionStateChange();
+  return true;
+}
+
+export function activateResolvedCombatSkill(
+  state: OrionState,
+  ctx: OrionCombatContext,
+  skillIndex: 1 | 2 | 3 | 4 | 5
+): boolean {
+  if (state.activeSkillSlot !== null || state.activeActionId) {
+    return false;
+  }
+
+  const skills = getResolvedCombatSkills(state);
+  const skillKey = `skill${skillIndex}` as keyof ResolvedCombatSkills;
+  const skill = skills[skillKey];
+
+  if (!skill || !skill.available) {
+    soundSystem.playMenuBeep();
+    ctx.say(skill?.unavailableReason || `SKILL ${skillIndex} UNAVAILABLE`);
+    notifyOrionStateChange();
+    return false;
+  }
+
+  if (skill.currentCooldown > 0) {
+    soundSystem.playMenuBeep();
+    ctx.say(`${skill.shortLabel} ON COOLDOWN (${skill.currentCooldown.toFixed(1)}s)`);
+    notifyOrionStateChange();
+    return false;
+  }
+
+  // Belt item activation
+  if (skill.sourceCategory === 'belt' && skill.itemId) {
+    const itemId = skill.itemId;
+    const invIdx = state.inventorySlots.findIndex((s) => s.itemId === itemId);
+    const itemDef = getItemDefinition(itemId);
+    if (invIdx < 0 || !itemDef) {
+      soundSystem.playMenuBeep();
+      ctx.say(`${skill.name} DEPLETED`);
+      notifyOrionStateChange();
+      return false;
+    }
+
+    const used = itemDef.onUse
+      ? itemDef.onUse(state, { say: ctx.say, sound: ctx.sound })
+      : false;
+    if (used) {
+      state.inventorySlots[invIdx].count -= 1;
+      if (state.inventorySlots[invIdx].count <= 0) {
+        state.inventorySlots.splice(invIdx, 1);
+      }
+      state.actionCooldowns = state.actionCooldowns || {};
+      state.actionCooldowns[itemId] = skill.cooldownSec || 2.5;
+      ctx.spawnParticles(
+        state.x,
+        state.y,
+        state.z + 8,
+        10,
+        itemDef.iconColor || '#fbbf24',
+        itemDef.name.toUpperCase()
+      );
+      awardPilotSkillXp(state, state.traitLine, 10, ctx);
+      notifyOrionStateChange();
+      return true;
+    }
+    return false;
+  }
+
+  // Weapon Skill Activation
+  const desc = getResolvedActionDescriptor(state, skill.id);
+  const featMods = computeInterfaceFeatModifiers(state.equippedFeats || []);
+  const gemCombatMods = getWeaponGemCombatModifiers(state, skill.weaponId);
+  const heatPenaltyMult = state.gates?.loadPenalty?.heatMult ?? 1.0;
+
+  const rawHeat = skill.heatCost ?? desc.heatCost ?? 0;
+  if (rawHeat > 0) {
+    const scaledHeat =
+      rawHeat * heatPenaltyMult * featMods.heatGenMult * gemCombatMods.skillHeatCostMult;
+    state.heat = Math.min(state.maxHeat, state.heat + scaledHeat);
+  } else if (rawHeat < 0) {
+    state.heat = Math.max(0, state.heat + rawHeat);
+  }
+
+  const finalCd =
+    (skill.cooldownSec ?? desc.cooldownSec ?? 4.0) *
+    featMods.cooldownMult *
+    gemCombatMods.skillCooldownMult;
+  state.actionCooldowns = state.actionCooldowns || {};
+  state.actionCooldowns[skill.id] = finalCd;
+  if (skill.weaponMovesetSlot !== undefined) {
+    state.skillCooldowns[skill.weaponMovesetSlot] = finalCd;
+    state.activeSkillSlot = skill.weaponMovesetSlot;
+  } else {
+    state.activeSkillSlot = skillIndex;
+  }
+
+  state.activeActionId = skill.id;
+  state.skillTellTimer = Math.max(0.05, desc.tellDurationSec);
+  state.skillActionTimer = Math.max(0.15, desc.actionDurationSec);
+
+  awardPilotSkillXp(state, state.traitLine, 12, ctx);
+  soundSystem.playCharge();
+  ctx.say(`[SKILL ${skillIndex}] ${skill.name.toUpperCase()}`);
+  notifyOrionStateChange();
+  return true;
+}
+
+export function firePrimarySalvoShot(
+  state: OrionState,
+  ctx: OrionCombatContext,
+  _isAuto: boolean
+): boolean {
+  const currentWeaponId =
+    state.equipmentSlots?.slot1 ||
+    state.equippedWeapons[state.activeWeaponIndex] ||
+    'gladius_boltcaster';
+  const weapon = getWeaponDefinition(currentWeaponId);
+  if (!weapon) return false;
+
+  const isMeleeOrShield =
+    weapon.equipmentRole === 'melee' ||
+    weapon.equipmentRole === 'shield' ||
+    currentWeaponId === 'khopesh';
+
+  if (state.ammo <= 0) {
+    state.isReloading = true;
+    state.reloadTimer = state.reloadDuration || weapon.reloadDurationSec;
+    soundSystem.playMenuBeep();
+    ctx.say(isMeleeOrShield ? 'RECOVERING STANCE...' : 'RELOADING...');
+    notifyOrionStateChange();
+    return false;
+  }
+
+  const installedRangedModId = state.equipmentSlots?.installedMods?.ranged;
+  const rangedMod = ACTION_MODIFICATION_CATALOG.find((m) => m.id === installedRangedModId);
+  const tellMult = !isMeleeOrShield ? (rangedMod?.modifiers.tellDurationMult ?? 1.0) : 1.0;
+
+  const skill0 = weapon.moveset[0];
+  state.activeSkillSlot = 0;
+  state.activeActionId = null;
+  state.skillTellTimer = Math.max(0.04, skill0.tellDurationSec * tellMult);
+  const perShotAction = isMeleeOrShield
+    ? Math.max(
+        0.18,
+        weapon.chainDurationSec / Math.max(1, weapon.shotsPerChain) - skill0.tellDurationSec
+      )
+    : Math.max(
+        0.08,
+        weapon.chainDurationSec / Math.max(1, weapon.shotsPerChain) - skill0.tellDurationSec
+      );
+  state.skillActionTimer = perShotAction;
+  return true;
+}
+
+const DOUBLE_TAP_WINDOW_SEC = 0.26;
+const HOLD_TRIGGER_THRESHOLD_SEC = 0.28;
+
+export function handleCombatInput(
+  input: {
+    pressed: { a: boolean; b: boolean; x: boolean; y: boolean; l: boolean; r: boolean; select: boolean };
+    held: { x: boolean; y: boolean; b: boolean; r?: boolean; l?: boolean };
+  },
+  state: OrionState,
+  ctx: OrionCombatContext,
+  dt: number
+): void {
+  const currentWeaponId =
+    state.equipmentSlots?.slot1 ||
+    state.equippedWeapons[state.activeWeaponIndex] ||
+    'gladius_boltcaster';
+  const weapon = getWeaponDefinition(currentWeaponId);
+  if (!weapon) return;
+
+  const isMeleeOrShield =
+    weapon.equipmentRole === 'melee' ||
+    weapon.equipmentRole === 'shield' ||
+    currentWeaponId === 'khopesh';
+
+  // 1. Tick reloading
   if (state.isReloading) {
     const reloadMult = (state.overdriveTimer || 0) > 0 ? 1.6 : 1.0;
     state.reloadTimer -= dt * reloadMult;
@@ -2259,39 +2803,141 @@ export function handleCombatInput(
       ctx.say(isMeleeOrShield ? 'BLADE STANCE READY' : 'MAGAZINE RELOADED');
       notifyOrionStateChange();
     }
-    return;
   }
 
-  if ((input.pressed.x || input.held.x) && state.activeSkillSlot === null && !state.activeActionId) {
-    if (state.ammo <= 0) {
-      state.isReloading = true;
-      state.reloadTimer = state.reloadDuration || weapon.reloadDurationSec;
-      soundSystem.playMenuBeep();
-      ctx.say(isMeleeOrShield ? 'RECOVERING STANCE...' : 'RELOADING...');
-      notifyOrionStateChange();
-      return;
+  // 2. Initialize timer objects on state
+  state.combatInputTimers = state.combatInputTimers || { x: 0, y: 0, r: 0, l: 0 };
+  state.combatHoldTimers = state.combatHoldTimers || { x: 0, y: 0, r: 0, l: 0 };
+  state.combatHoldTriggered = state.combatHoldTriggered || {
+    x: false,
+    y: false,
+    r: false,
+    l: false,
+  };
+
+  // Tick down double-tap windows
+  for (const k of ['x', 'y', 'r', 'l'] as const) {
+    if (state.combatInputTimers[k] > 0) {
+      state.combatInputTimers[k] = Math.max(0, state.combatInputTimers[k] - dt);
     }
-
-    const installedRangedModId = state.equipmentSlots?.installedMods?.ranged;
-    const rangedMod = ACTION_MODIFICATION_CATALOG.find((m) => m.id === installedRangedModId);
-    const tellMult = !isMeleeOrShield ? (rangedMod?.modifiers.tellDurationMult ?? 1.0) : 1.0;
-
-    const skill0 = weapon.moveset[0];
-    state.activeSkillSlot = 0;
-    state.activeActionId = null;
-    state.skillTellTimer = Math.max(0.04, skill0.tellDurationSec * tellMult);
-    const perShotAction = isMeleeOrShield
-      ? Math.max(0.18, weapon.chainDurationSec / Math.max(1, weapon.shotsPerChain) - skill0.tellDurationSec)
-      : Math.max(0.08, weapon.chainDurationSec / Math.max(1, weapon.shotsPerChain) - skill0.tellDurationSec);
-    state.skillActionTimer = perShotAction;
   }
 
-  if (input.pressed.l && state.activeSkillSlot === null && !state.activeActionId) {
-    initiateTriggerAction(state, ctx, 'L');
+  const p = input.pressed;
+  const h = {
+    x: !!input.held.x,
+    y: !!input.held.y,
+    r: !!input.held.r,
+    l: !!input.held.l,
+  };
+
+  // ─── [X] BUTTON: Single Tap = [chain manual] · Double Tap = [reload] · Hold = [chain auto] ───
+  if (p.x) {
+    if (state.combatInputTimers.x > 0) {
+      state.combatInputTimers.x = 0;
+      triggerTacticalReload(state, ctx);
+    } else {
+      state.combatInputTimers.x = DOUBLE_TAP_WINDOW_SEC;
+      state.combatHoldTimers.x = 0;
+      state.combatHoldTriggered.x = false;
+      if (!state.isReloading && state.activeSkillSlot === null && !state.activeActionId) {
+        firePrimarySalvoShot(state, ctx, false);
+      }
+    }
   }
 
-  if (input.pressed.r && state.activeSkillSlot === null && !state.activeActionId) {
-    initiateTriggerAction(state, ctx, 'R');
+  if (h.x) {
+    state.combatHoldTimers.x += dt;
+    if (state.combatHoldTimers.x >= HOLD_TRIGGER_THRESHOLD_SEC && !state.combatHoldTriggered.x) {
+      state.combatHoldTriggered.x = true;
+      state.combatActiveChain = true;
+    }
+    if (
+      state.combatActiveChain &&
+      !state.isReloading &&
+      state.activeSkillSlot === null &&
+      !state.activeActionId
+    ) {
+      firePrimarySalvoShot(state, ctx, true);
+    }
+  } else {
+    state.combatHoldTimers.x = 0;
+    state.combatHoldTriggered.x = false;
+    state.combatActiveChain = false;
+  }
+
+  // ─── [Y] BUTTON: Single Tap = [Skill 2] · Double Tap = [reload] · Hold = [Skill 4] ───
+  if (p.y) {
+    if (state.combatInputTimers.y > 0) {
+      state.combatInputTimers.y = 0;
+      triggerTacticalReload(state, ctx);
+    } else {
+      state.combatInputTimers.y = DOUBLE_TAP_WINDOW_SEC;
+      state.combatHoldTimers.y = 0;
+      state.combatHoldTriggered.y = false;
+      activateResolvedCombatSkill(state, ctx, 2);
+    }
+  }
+
+  if (h.y) {
+    state.combatHoldTimers.y += dt;
+    if (state.combatHoldTimers.y >= HOLD_TRIGGER_THRESHOLD_SEC && !state.combatHoldTriggered.y) {
+      state.combatHoldTriggered.y = true;
+      activateResolvedCombatSkill(state, ctx, 4);
+    }
+  } else {
+    state.combatHoldTimers.y = 0;
+    state.combatHoldTriggered.y = false;
+  }
+
+  // ─── [R] BUTTON: Single Tap = [Skill 3] · Double Tap = [reload] · Hold = [Skill 5] ───
+  if (p.r) {
+    if (state.combatInputTimers.r > 0) {
+      state.combatInputTimers.r = 0;
+      triggerTacticalReload(state, ctx);
+    } else {
+      state.combatInputTimers.r = DOUBLE_TAP_WINDOW_SEC;
+      state.combatHoldTimers.r = 0;
+      state.combatHoldTriggered.r = false;
+      activateResolvedCombatSkill(state, ctx, 3);
+    }
+  }
+
+  if (h.r) {
+    state.combatHoldTimers.r += dt;
+    if (state.combatHoldTimers.r >= HOLD_TRIGGER_THRESHOLD_SEC && !state.combatHoldTriggered.r) {
+      state.combatHoldTriggered.r = true;
+      activateResolvedCombatSkill(state, ctx, 5);
+    }
+  } else {
+    state.combatHoldTimers.r = 0;
+    state.combatHoldTriggered.r = false;
+  }
+
+  // ─── [L] BUTTON: Single Tap = [lock/cycle] · Double Tap = [unlock] · Hold = [swap] ───
+  if (p.l) {
+    if (state.combatInputTimers.l > 0) {
+      state.combatInputTimers.l = 0;
+      state.lockedTargetId = null;
+      soundSystem.playMenuBeep();
+      ctx.say('TARGET UNLOCKED');
+      notifyOrionStateChange();
+    } else {
+      state.combatInputTimers.l = DOUBLE_TAP_WINDOW_SEC;
+      state.combatHoldTimers.l = 0;
+      state.combatHoldTriggered.l = false;
+      cycleTargetLock(state, ctx);
+    }
+  }
+
+  if (h.l) {
+    state.combatHoldTimers.l += dt;
+    if (state.combatHoldTimers.l >= HOLD_TRIGGER_THRESHOLD_SEC && !state.combatHoldTriggered.l) {
+      state.combatHoldTriggered.l = true;
+      performAuxiliarySwap(state, ctx);
+    }
+  } else {
+    state.combatHoldTimers.l = 0;
+    state.combatHoldTriggered.l = false;
   }
 }
 
@@ -2341,7 +2987,10 @@ export function updateCombat(
   }
 
   if (state.activeSkillSlot !== null || state.activeActionId) {
-    const currentWeaponId = state.equippedWeapons[state.activeWeaponIndex] || 'gladius_boltcaster';
+    const currentWeaponId =
+      state.equipmentSlots?.slot1 ||
+      state.equippedWeapons[state.activeWeaponIndex] ||
+      'gladius_boltcaster';
     const weapon = getWeaponDefinition(currentWeaponId);
     const isMeleeOrShield =
       weapon?.equipmentRole === 'melee' ||

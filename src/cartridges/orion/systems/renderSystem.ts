@@ -2886,7 +2886,9 @@ function drawAetherFogWayfindingTells(
     g.fillRect(0, 0, SCREEN_W, SCREEN_H);
   }
 
-  // Render subtle drifting Aether motes at the `trueExitDir` doorway threshold in world space
+  // Doorway wayfinding:
+  // - Lit Poe Lantern: reduced to the former "without" mode (5 subtle drifting motes, no wisp tether).
+  // - Unlit ("without" mode): bare minimum 1-2 pixel faint shimmer right at the doorway threshold.
   const trueDir = activeNode.trueExitDir;
   if (trueDir) {
     g.save();
@@ -2900,53 +2902,32 @@ function drawAetherFogWayfindingTells(
     const perpDx = -flowDy;
     const perpDy = flowDx;
 
-    const moteCount = hasLantern ? 9 : 5;
-    for (let i = 0; i < moteCount; i++) {
-      const phase = (state.t * 0.85 + i * 0.23) % 1;
-      const spread = ((i % 5) - 2) * 4.5 + Math.sin(state.t * 3 + i) * 2;
-      const distFromDoor = (1 - phase) * 18;
-      const mx = doorX - flowDx * distFromDoor + perpDx * spread;
-      const my = doorY - flowDy * distFromDoor + perpDy * spread;
-      const alpha = Math.sin(phase * Math.PI) * (hasLantern ? 0.85 : 0.48);
+    if (hasLantern) {
+      const moteCount = 5;
+      for (let i = 0; i < moteCount; i++) {
+        const phase = (state.t * 0.85 + i * 0.23) % 1;
+        const spread = ((i % 5) - 2) * 4.5 + Math.sin(state.t * 3 + i) * 2;
+        const distFromDoor = (1 - phase) * 18;
+        const mx = doorX - flowDx * distFromDoor + perpDx * spread;
+        const my = doorY - flowDy * distFromDoor + perpDy * spread;
+        const alpha = Math.sin(phase * Math.PI) * 0.48;
 
-      g.fillStyle =
-        hasLantern && i % 2 === 0
-          ? `rgba(251, 191, 36, ${alpha.toFixed(2)})`
-          : `rgba(56, 189, 248, ${alpha.toFixed(2)})`;
-      const size = hasLantern && i % 3 === 0 ? 2 : 1.5;
-      g.fillRect(Math.round(mx), Math.round(my), size, size);
-    }
+        g.fillStyle = `rgba(56, 189, 248, ${alpha.toFixed(2)})`;
+        g.fillRect(Math.round(mx), Math.round(my), 1.5, 1.5);
+      }
+    } else {
+      // Bare-minimum unlit tell: faint 1-2px shimmer at doorway threshold
+      for (let i = 0; i < 2; i++) {
+        const phase = (state.t * 0.55 + i * 0.5) % 1;
+        const spread = (i === 0 ? -1.5 : 1.5) + Math.sin(state.t * 2 + i) * 0.5;
+        const distFromDoor = (1 - phase) * 5;
+        const mx = doorX - flowDx * distFromDoor + perpDx * spread;
+        const my = doorY - flowDy * distFromDoor + perpDy * spread;
+        const alpha = Math.sin(phase * Math.PI) * 0.18;
 
-    // Poe Lantern Wisp Tether: gently orbits the pilot and points toward the true doorway
-    if (
-      hasLantern &&
-      !state.isFallingIntoPit &&
-      (activeNode.nodeType === 'general' ||
-        activeNode.nodeType === 'loop' ||
-        activeNode.nodeType === 'side')
-    ) {
-      const py = state.y - state.z * Z_SCALE - 10;
-      const toDoorX = doorX - state.x;
-      const toDoorY = doorY - py;
-      const dist = Math.hypot(toDoorX, toDoorY) || 1;
-      const nx = toDoorX / dist;
-      const ny = toDoorY / dist;
-
-      const bob = Math.sin(state.t * 5) * 1.5;
-      const wispX = state.x + nx * 13;
-      const wispY = py + ny * 13 + bob;
-
-      g.strokeStyle = 'rgba(56, 189, 248, 0.38)';
-      g.lineWidth = 1;
-      g.beginPath();
-      g.moveTo(wispX - nx * 4, wispY - ny * 4);
-      g.lineTo(wispX + nx * 3, wispY + ny * 3);
-      g.stroke();
-
-      g.fillStyle = '#fbbf24';
-      g.fillRect(Math.round(wispX - 1), Math.round(wispY - 1), 2, 2);
-      g.fillStyle = '#e0f2fe';
-      g.fillRect(Math.round(wispX), Math.round(wispY), 1, 1);
+        g.fillStyle = `rgba(56, 189, 248, ${alpha.toFixed(2)})`;
+        g.fillRect(Math.round(mx), Math.round(my), 1, 1);
+      }
     }
 
     g.restore();

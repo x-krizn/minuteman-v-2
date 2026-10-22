@@ -17,6 +17,7 @@ export const greatBowWeapon: WeaponDefinition = {
   name: 'Arclight Great Bow',
   class: 'Heavy Great Bow',
   equipmentRole: 'ranged',
+  handing: '2-hand',
   weightClass: 'heavy',
   bladeTrailColor: '#f8fafc',
   description: 'High-draw torsion great bow firing heavy armor-piercing sabot arrows across long sightlines.',

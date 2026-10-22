@@ -17,6 +17,7 @@ export const shortSpearWeapon: WeaponDefinition = {
   name: 'Vanguard Short Spear',
   class: 'Short Spear / Polearm',
   equipmentRole: 'melee',
+  handing: '1-hand',
   weightClass: 'light',
   bladeTrailColor: '#f8fafc',
   description: 'Agile leaf-bladed short spear built for long-reach precision thrusts and shield-wall skirmishing.',

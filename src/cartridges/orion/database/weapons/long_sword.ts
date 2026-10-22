@@ -17,6 +17,7 @@ export const longSwordWeapon: WeaponDefinition = {
   name: 'Camelot Long Sword',
   class: 'Long Sword / Blade',
   equipmentRole: 'melee',
+  handing: '1-hand',
   weightClass: 'medium',
   bladeTrailColor: '#f8fafc',
   description: 'Balanced double-edged knightly broadsword with wide sweeping arcs and disciplined reach.',

@@ -17,6 +17,7 @@ export const maceWeapon: WeaponDefinition = {
   name: 'Sanctum Flange Mace',
   class: 'Heavy Mace / Blunt',
   equipmentRole: 'melee',
+  handing: '1-hand',
   weightClass: 'medium',
   bladeTrailColor: '#f8fafc',
   description: 'Weighted flanged morningstar mace engineered todent heavy Ablative and Reactive armor.',

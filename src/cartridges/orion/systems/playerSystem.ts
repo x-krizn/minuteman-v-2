@@ -49,7 +49,7 @@ import {
   OrionState,
   TraitLine,
 } from '../types';
-import { cycleTargetLock, performWeaponSwap, updateTargetLock } from './combatSystem';
+import { updateTargetLock } from './combatSystem';
 import { spawnRoomEnemies, updateParticles } from './entitySystem';
 import {
   executeWorldInteraction,
@@ -248,7 +248,9 @@ function applySerializedSaveDataToState(
   state.mapId = data.mapId ?? state.mapId;
   state.biomeId = data.biomeId ?? state.biomeId;
   if (Array.isArray(data.discoveredWaystations)) {
-    state.discoveredWaystations = data.discoveredWaystations;
+    state.discoveredWaystations = data.discoveredWaystations.filter(
+      (id: string) => id !== 'ws_bog_drop_pod'
+    );
   }
   if (Array.isArray(data.discoveredWaygates)) {
     state.discoveredWaygates = data.discoveredWaygates;
@@ -429,13 +431,13 @@ export function createInitialOrionState(
     areaId: 'm00_the_bog',
     mapId: 'map_bog_drop_zone',
     biomeId: 'belldor_bog',
-    room: '0,0',
-    rx: 0,
+    room: '-3,0',
+    rx: -3,
     ry: 0,
-    discoveredWaystations: ['ws_bog_drop_pod'],
+    discoveredWaystations: [],
     discoveredWaygates: [],
 
-    x: 48,
+    x: 72,
     y: 72,
     z: 0,
     vx: 0,
@@ -555,8 +557,8 @@ export function createInitialOrionState(
     },
     spawnAnchor: {
       areaId: 'm00_the_bog',
-      room: '0,0',
-      x: 48,
+      room: '-3,0',
+      x: 72,
       y: 72,
     },
 
@@ -691,19 +693,33 @@ export function syncStateGates(state: OrionState): OrionCapabilityGates {
     unlockLevel2SecondaryWeapon(state);
   }
 
+  const profile = TRAIT_REGISTRY[state.traitLine] || TRAIT_REGISTRY.Warrior;
+
+  state.equipmentSlots.slot1 = state.equipmentSlots.slot1 || state.equippedWeapons[0] || 'long_sword';
+  state.equipmentSlots.slot2 = state.equipmentSlots.slot2 ?? (state.equippedWeapons[1] || null);
+  state.equipmentSlots.slot3 = state.equipmentSlots.slot3 ?? null;
+  state.equipmentSlots.head = state.equipmentSlots.head || `${profile.frameModel || 'Mark-IV'} Sensor Visor`;
+  state.equipmentSlots.arms = state.equipmentSlots.arms || `${profile.frameModel || 'Mark-IV'} Actuator Vambraces`;
+  state.equipmentSlots.plating = state.equipmentSlots.plating || `${profile.frameModel || 'Mark-IV'} ${profile.baseArmor.type} Plating`;
+  state.equipmentSlots.utility = state.equipmentSlots.utility || 'utility_ichor_surge';
+
   state.equipmentSlots.weaponSet1 = [
-    state.equippedWeapons[0] || 'gladius_boltcaster',
+    state.equipmentSlots.slot1 || 'gladius_boltcaster',
     state.equipmentSlots.weaponSet1?.[1] || null,
   ];
   state.equipmentSlots.weaponSet2 = [
-    state.equippedWeapons[1] || '',
+    state.equipmentSlots.slot2 || '',
     state.equipmentSlots.weaponSet2?.[1] || null,
   ];
 
   // Apply Static Budget Interface Feat Modifiers + Equipped Shield Passive Bonuses + Titanite Gem Bonus to Max Shield
-  const profile = TRAIT_REGISTRY[state.traitLine] || TRAIT_REGISTRY.Warrior;
   const featMods = computeInterfaceFeatModifiers(state.equippedFeats || []);
-  const shieldBonusFromGear = (state.equippedWeapons || []).reduce((sum, wId) => {
+  const allGear = [
+    state.equipmentSlots.slot1,
+    state.equipmentSlots.slot2,
+    state.equipmentSlots.slot3,
+  ].filter((id): id is string => Boolean(id));
+  const shieldBonusFromGear = allGear.reduce((sum, wId) => {
     const def = getWeaponDefinition(wId);
     const gemMod = getWeaponGemCombatModifiers(state, wId);
     return sum + (def?.passiveShieldBonus || 0) + gemMod.maxShieldBonus;
@@ -739,12 +755,14 @@ export function syncStateGates(state: OrionState): OrionCapabilityGates {
   }
 
   const activeWId =
-    state.equippedWeapons[state.activeWeaponIndex] || 'gladius_boltcaster';
+    state.equipmentSlots.slot1 ||
+    state.equippedWeapons[state.activeWeaponIndex] ||
+    'gladius_boltcaster';
   const activeWDef = getWeaponDefinition(activeWId);
   if (activeWDef) {
     const hasQuiverSynergy =
       activeWDef.equipmentRole === 'ranged' &&
-      state.equippedWeapons.includes('quiver');
+      (state.equippedWeapons.includes('quiver') || state.equipmentSlots.slot3 === 'quiver');
     const activeGemMod = getWeaponGemCombatModifiers(state, activeWId);
     const targetMaxAmmo =
       activeWDef.shotsPerChain +
@@ -1120,7 +1138,7 @@ export function getTutorialPromptOverride(
   if (tileChar === 'S') {
     const scoutKey = `scout:${state.room}`;
     if (!state.lootedCaches[scoutKey]) {
-      return '[A] SALVAGE FALLEN SCOUT (LEGS SLOT, KHOPESH SWAP [Y] & BELT 3–4 · LVL 2)';
+      return '[A] EXAMINE FALLEN KNIGHT';
     }
   }
 
@@ -1252,7 +1270,6 @@ export function updateTutorialSystem(
 
 // ─── 5. PLAYER MOVEMENT, DUAL-MODE BOOSTER & INPUT CONTROLLER ────────────────
 
-const Y_HOLD_SWAP_THRESHOLD_SEC = 0.32;
 const B_HOLD_CONTINUOUS_THRESHOLD_SEC = 0.14;
 const CONTINUOUS_BOOST_HEAT_PER_SEC = 28;
 
@@ -1358,22 +1375,6 @@ export function updatePlayerSystem(
     state.dir = getDirFromVector(moveDx, moveDy);
   }
 
-  // 1B. [Y] Button Multi-Function: Tap Y = Lock-On Target, Hold Y (>= 0.32s) = Weapon Swap
-  if (h.y) {
-    state.yHoldTimer = (state.yHoldTimer || 0) + dt;
-    if (state.yHoldTimer >= Y_HOLD_SWAP_THRESHOLD_SEC && !state.yHoldTriggeredSwap) {
-      state.yHoldTriggeredSwap = true;
-      performWeaponSwap(state, combatCtx);
-    }
-    state.wasYHeld = true;
-  } else if (state.wasYHeld) {
-    if (!state.yHoldTriggeredSwap) {
-      cycleTargetLock(state, combatCtx);
-    }
-    state.yHoldTimer = 0;
-    state.yHoldTriggeredSwap = false;
-    state.wasYHeld = false;
-  }
 
   updateTargetLock(state);
 

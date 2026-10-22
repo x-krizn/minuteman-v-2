@@ -1,6 +1,6 @@
 {
-  "summary":  "Revised pre-GitHub cleanup plan strictly scoped to the Project Orion cartridge directory and subfolders, preserving the Minuteman engine shell and Knight cartridge untouched.",
-  "updatedAt":  "2026-10-22T12:33:44.737882014Z",
+  "summary":  "Implementation plan for gating testing/dev UI inside a dedicated Drop-Pod Cheat Room, moving player spawn to Campfires, restructuring the M00 Bog layout (Drop Pod 3 rooms from First Campfire, 5 from Poe Lantern on a side branch, 6 from Main Bog entrance), and reducing Poe Lantern path revealing and UI spoilers to bare minimum.",
+  "updatedAt":  "2026-10-22T18:52:50.626183895Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

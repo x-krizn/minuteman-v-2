@@ -17,6 +17,7 @@ export const handAxeWeapon: WeaponDefinition = {
   name: 'Marauder Hand Axe',
   class: 'Hand Axe / Cleaver',
   equipmentRole: 'melee',
+  handing: '1-hand',
   weightClass: 'light',
   bladeTrailColor: '#f8fafc',
   description: 'Heavy-bearded boarding and siege hand axe built for aggressive close-quarters hacking.',

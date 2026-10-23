@@ -13,7 +13,7 @@ export const grailWaterItem: ItemWikiDefinition = {
   id: 'grail_water',
   name: 'Moonstone Grail Flask',
   category: 'consumable',
-  description: 'Restores +45 Shield Capacity, clears Shield Overload, and mends +60 Frame Integrity.',
+  description: 'Restores +45 Shield Capacity and clears Shield Overload (Frame HP is only repairable at a Campfire or Waygate).',
   lore: 'Luminescent Moonstone-distilled Grail water from Camelot desynchronization rifts.',
   buyPrice: 35,
   sellPrice: 15,
@@ -28,10 +28,8 @@ export const grailWaterItem: ItemWikiDefinition = {
     state.shields.overloaded = false;
     state.shields.overloadTimer = 0;
     state.shields.capacity = Math.min(state.shields.maxCapacity, state.shields.capacity + 45);
-    state.frame.integrity = Math.min(state.frame.maxIntegrity, state.frame.integrity + 60);
-    if (state.frame.integrity > 40) state.frame.state = 'Operational';
     ctx.sound.playHeal();
-    ctx.say('MOONSTONE FLASK: +45 SHIELD & +60 FRAME HP');
+    ctx.say('MOONSTONE FLASK: +45 SHIELD CAPACITY');
     return true;
   },
 };

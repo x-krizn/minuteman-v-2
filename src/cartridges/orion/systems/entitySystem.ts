@@ -538,18 +538,3 @@ export function updatePickups(
     }
   }
 }
-
-/**
- * Step all non-player dynamic entities (Enemies, Projectiles, Pickups, Particles).
- */
-export function updateEntitySystem(
-  rooms: Record<string, string[]>,
-  state: OrionState,
-  ctx: OrionCombatContext,
-  dt: number
-): void {
-  updateEnemies(rooms, state, ctx, dt);
-  updateProjectiles(rooms, state, ctx, dt);
-  updatePickups(state, ctx, dt);
-  updateParticles(state, dt);
-}

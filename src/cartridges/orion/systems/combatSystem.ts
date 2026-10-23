@@ -13,12 +13,10 @@ import {
   ASSIGNABLE_ACTION_CATALOG,
   getClassUtilityDefinition,
   getResolvedActionDescriptor,
-  OrionActionDescriptor,
 } from '../database/equipment';
 import { getItemDefinition } from '../database/items';
 import {
   ACTION_MODIFICATION_CATALOG,
-  awardPilotSkillXp,
   computeInterfaceFeatModifiers,
   getWeaponGemCombatModifiers,
   getWeaponGemVisuals,
@@ -257,17 +255,6 @@ export function isActionUnlocked(
   return { unlocked: true, reason: 'READY' };
 }
 
-export function resolveTriggerAction(
-  state: OrionState,
-  trigger: 'L' | 'R'
-): OrionActionDescriptor {
-  const assignedId =
-    trigger === 'L'
-      ? state.assignedActions?.L || 'weapon_skill_1'
-      : state.assignedActions?.R || 'weapon_skill_2';
-  return getResolvedActionDescriptor(state, assignedId);
-}
-
 export function assignTriggerAction(
   state: OrionState,
   trigger: 'L' | 'R',
@@ -299,99 +286,6 @@ export function getActionCooldown(state: OrionState, actionId: string): number {
     );
   }
   return Math.max(0, state.actionCooldowns?.[actionId] || 0);
-}
-
-export function initiateTriggerAction(
-  state: OrionState,
-  ctx: OrionCombatContext,
-  trigger: 'L' | 'R'
-): boolean {
-  if (state.activeSkillSlot !== null || state.activeActionId) {
-    return false;
-  }
-
-  const assignedId =
-    trigger === 'L'
-      ? state.assignedActions?.L || 'weapon_skill_1'
-      : state.assignedActions?.R || 'weapon_skill_2';
-
-  const status = isActionUnlocked(state, assignedId);
-  if (!status.unlocked) {
-    soundSystem.playMenuBeep();
-    ctx.say(`[${trigger}] GATED — ${status.reason}`);
-    notifyOrionStateChange();
-    return false;
-  }
-
-  const desc = getResolvedActionDescriptor(state, assignedId);
-  if (desc.sourceCategory === 'belt' && typeof desc.beltSlotIndex === 'number') {
-    const itemId = state.equipmentSlots?.belt?.[desc.beltSlotIndex];
-    const invSlot = itemId
-      ? state.inventorySlots.find((s) => s.itemId === itemId)
-      : undefined;
-    if (!itemId || !invSlot || invSlot.count <= 0) {
-      soundSystem.playMenuBeep();
-      ctx.say(`[${trigger}] BELT SLOT ${desc.beltSlotIndex + 1} EMPTY`);
-      return false;
-    }
-  }
-
-  const cd = getActionCooldown(state, assignedId);
-  if (cd > 0) {
-    soundSystem.playMenuBeep();
-    ctx.say(`${desc.shortLabel} COOLDOWN (${cd.toFixed(1)}S)`);
-    return false;
-  }
-
-  const featMods = computeInterfaceFeatModifiers(state.equippedFeats || []);
-  const gemCombatMods = getWeaponGemCombatModifiers(state);
-  const heatPenaltyMult = state.gates?.loadPenalty?.heatMult ?? 1.0;
-  const installedMeleeModId = state.equipmentSlots?.installedMods?.melee;
-  const installedRangedModId = state.equipmentSlots?.installedMods?.ranged;
-  const activeMod = ACTION_MODIFICATION_CATALOG.find(
-    (m) => m.id === installedMeleeModId || m.id === installedRangedModId
-  );
-  const modCdMult = activeMod?.modifiers.cooldownMult ?? 1.0;
-  const modTellMult = activeMod?.modifiers.tellDurationMult ?? 1.0;
-  const modHeatDelta = activeMod?.modifiers.heatCostDelta ?? 0;
-
-  const finalCooldown =
-    desc.cooldownSec *
-    featMods.cooldownMult *
-    modCdMult *
-    gemCombatMods.skillCooldownMult;
-
-  state.actionCooldowns = state.actionCooldowns || {};
-  state.actionCooldowns[assignedId] = finalCooldown;
-  if (desc.sourceCategory === 'weapon' && desc.weaponSkillSlot) {
-    state.skillCooldowns[desc.weaponSkillSlot] = finalCooldown;
-    state.activeSkillSlot = desc.weaponSkillSlot;
-  } else {
-    state.activeSkillSlot = -1;
-  }
-
-  state.activeActionId = assignedId;
-  state.skillTellTimer = Math.max(0.05, desc.tellDurationSec * modTellMult);
-  state.skillActionTimer = Math.max(0.15, desc.actionDurationSec);
-
-  const rawHeat = desc.heatCost + (desc.heatCost >= 0 ? modHeatDelta : 0);
-  if (rawHeat > 0) {
-    const scaledHeat =
-      rawHeat *
-      heatPenaltyMult *
-      featMods.heatGenMult *
-      gemCombatMods.skillHeatCostMult;
-    state.heat = Math.min(state.maxHeat, state.heat + scaledHeat);
-  } else if (rawHeat < 0) {
-    state.heat = Math.max(0, state.heat + rawHeat);
-  }
-
-  awardPilotSkillXp(state, state.traitLine, 12, ctx);
-
-  soundSystem.playCharge();
-  ctx.say(`[${trigger}] ${desc.name.toUpperCase()}`);
-  notifyOrionStateChange();
-  return true;
 }
 
 function normalizeAngleDiff(a: number, b: number): number {
@@ -545,15 +439,6 @@ export function executeActionPayload(
           state.shields.maxCapacity,
           state.shields.capacity + gemCombatMods.shieldRestoreOnSkillHit
         );
-      }
-      if (gemCombatMods.frameRepairOnSkillHit > 0) {
-        state.frame.integrity = Math.min(
-          state.frame.maxIntegrity,
-          state.frame.integrity + gemCombatMods.frameRepairOnSkillHit
-        );
-        if (state.frame.integrity > 40) {
-          state.frame.state = 'Operational';
-        }
       }
       if (gemCombatMods.presenceGainOnHit > 0) {
         state.presence = Math.min(100, (state.presence || 0) + gemCombatMods.presenceGainOnHit);
@@ -1937,15 +1822,6 @@ export function executeActionPayload(
         state.armor.durability + utilDef.armorRestore
       );
     }
-    if (utilDef.frameRestore > 0) {
-      state.frame.integrity = Math.min(
-        state.frame.maxIntegrity,
-        state.frame.integrity + utilDef.frameRestore
-      );
-      if (state.frame.integrity > 40) {
-        state.frame.state = 'Operational';
-      }
-    }
     if (utilDef.energyRestore > 0) {
       state.energy = Math.min(state.maxEnergy, state.energy + utilDef.energyRestore);
     }
@@ -1970,7 +1846,6 @@ export function executeActionPayload(
       '#4ade80',
       `${utilDef.shortLabel} ONLINE`
     );
-    awardPilotSkillXp(state, state.traitLine, 16, ctx);
     return;
   }
 
@@ -2002,7 +1877,6 @@ export function executeActionPayload(
         itemDef.iconColor || '#fbbf24',
         itemDef.name.toUpperCase()
       );
-      awardPilotSkillXp(state, state.traitLine, 10, ctx);
       notifyOrionStateChange();
     }
   }
@@ -2206,15 +2080,6 @@ export function performAuxiliarySwap(
   ctx?.say(swapMessage);
   notifyOrionStateChange();
   return true;
-}
-
-export function performWeaponSwap(
-  state: OrionState,
-  ctx?: { say: (text: string) => void },
-  _targetIndex?: number,
-  bypassCooldown: boolean = false
-): boolean {
-  return performAuxiliarySwap(state, ctx, bypassCooldown);
 }
 
 export function applyDamageToLayers(
@@ -2675,7 +2540,6 @@ export function activateResolvedCombatSkill(
         itemDef.iconColor || '#fbbf24',
         itemDef.name.toUpperCase()
       );
-      awardPilotSkillXp(state, state.traitLine, 10, ctx);
       notifyOrionStateChange();
       return true;
     }
@@ -2714,9 +2578,7 @@ export function activateResolvedCombatSkill(
   state.skillTellTimer = Math.max(0.05, desc.tellDurationSec);
   state.skillActionTimer = Math.max(0.15, desc.actionDurationSec);
 
-  awardPilotSkillXp(state, state.traitLine, 12, ctx);
   soundSystem.playCharge();
-  ctx.say(`[SKILL ${skillIndex}] ${skill.name.toUpperCase()}`);
   notifyOrionStateChange();
   return true;
 }
@@ -3036,8 +2898,6 @@ export function updateCombat(
               action.heatCost * (loadPenalty?.heatMult ?? 1.0) * featMods.heatGenMult;
             state.heat = Math.min(state.maxHeat, state.heat + shotHeat);
             const shotDmg = Math.round(action.damage * overdriveMult);
-
-            awardPilotSkillXp(state, state.traitLine, 6, ctx);
 
             // §3.5 Critical Frame State (LOCKED): 15% misfire chance per shot when Frame Integrity <= 40 HP
             const isCriticalMisfire =
@@ -3525,7 +3385,6 @@ export function updateCombat(
           e.damageType,
           (count, color, label) => ctx.spawnParticles(state.x, state.y, state.z + 8, count, color, label)
         );
-        awardPilotSkillXp(state, state.traitLine, 10, ctx);
       }
     }
   }

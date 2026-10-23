@@ -13,8 +13,8 @@ export const repairKitItem: ItemWikiDefinition = {
   id: 'repair_kit',
   name: 'Demantoid Repair Flask',
   category: 'consumable',
-  description: 'Restores +60 Frame Integrity and +35 Armor Durability (clears Critical Frame State).',
-  lore: 'Cleric-grade nanite suspension infused with Demantoid dust for rapid field repairs.',
+  description: 'Restores +50 Layer 2 Armor Durability (Layer 3 Frame HP cannot be field-repaired; requires a Campfire or Waygate).',
+  lore: 'Cleric-grade Demantoid suspension that seals outer armor plating. Out-of-place mech frames cannot be structurally repaired without specialized equipment, rare materials, and unknown ætheric magics.',
   buyPrice: 20,
   sellPrice: 8,
   iconColor: '#22c55e',
@@ -25,18 +25,13 @@ export const repairKitItem: ItemWikiDefinition = {
     anchor: 'bottom-center',
   },
   onUse(state: OrionState, ctx: OrionExecutionContext) {
-    if (
-      state.frame.integrity >= state.frame.maxIntegrity &&
-      state.armor.durability >= state.armor.maxDurability
-    ) {
-      ctx.say('FRAME & ARMOR OPTIMAL');
+    if (state.armor.durability >= state.armor.maxDurability) {
+      ctx.say('ARMOR DURABILITY OPTIMAL');
       return false;
     }
-    state.frame.integrity = Math.min(state.frame.maxIntegrity, state.frame.integrity + 60);
-    if (state.frame.integrity > 40) state.frame.state = 'Operational';
-    state.armor.durability = Math.min(state.armor.maxDurability, state.armor.durability + 35);
+    state.armor.durability = Math.min(state.armor.maxDurability, state.armor.durability + 50);
     ctx.sound.playHeal();
-    ctx.say('DEMANTOID FLASK: +60 FRAME HP & +35 ARMOR');
+    ctx.say('DEMANTOID FLASK: +50 ARMOR DURABILITY');
     return true;
   },
 };

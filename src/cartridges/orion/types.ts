@@ -1000,9 +1000,6 @@ export interface OrionState {
   combatHoldTimers?: Record<'x' | 'y' | 'r' | 'l', number>;
   combatHoldTriggered?: Record<'x' | 'y' | 'r' | 'l', boolean>;
   combatActiveChain?: boolean;
-  yHoldTimer?: number;
-  yHoldTriggeredSwap?: boolean;
-  wasYHeld?: boolean;
 
   // Booster Kit / Evasion (Tap Dodge Burst + Hold Continuous Boost)
   hasBoosterKit: boolean;

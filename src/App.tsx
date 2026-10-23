@@ -7,7 +7,6 @@ import { useEffect, useRef, useState } from 'react';
 import { initializeCartridges } from './cartridges';
 import { VirtualGamepad } from './components/gamepad/VirtualGamepad';
 import { ScreenViewport } from './components/screen/ScreenViewport';
-import { DebugOverlay } from './components/shell/DebugOverlay';
 import { cartridgeRunner } from './engine/core/cartridgeRunner';
 import { frameLoop } from './engine/core/frameLoop';
 import { registry } from './engine/core/registry';
@@ -34,8 +33,6 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [scanlinesEnabled, setScanlinesEnabled] = useState(false);
-  const [showDebug, setShowDebug] = useState(false);
-  const [fps, setFps] = useState(60);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [connectedGamepads, setConnectedGamepads] = useState<string[]>(() =>
     hardwareGamepad.getConnectedNames()
@@ -191,8 +188,6 @@ export default function App() {
           shellStateMachine.step(input, dtSeconds);
           setScreenContent(shellStateMachine.getScreenContent(input));
         }
-
-        setFps(frameLoop.getFps());
       } catch (err) {
         registry.logError(`LOOP: ${err instanceof Error ? err.message : String(err)}`);
       }
@@ -280,11 +275,6 @@ export default function App() {
         {/* Bottom: Virtual Gamepad (D-Pad, Action Buttons, START & SHIFT Pills) - Dynamically Scaled */}
         <VirtualGamepad />
       </main>
-
-      {/* Optional Debug Inspector Modal */}
-      {showDebug && (
-        <DebugOverlay fps={fps} onClose={() => setShowDebug(false)} />
-      )}
     </div>
   );
 }

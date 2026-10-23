@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { soundSystem } from '../../../engine/core/soundSystem';
-import { TRAIT_LIST, TRAIT_REGISTRY } from '../database/characters';
+import { DEFAULT_CALLSIGNS, TRAIT_LIST, TRAIT_REGISTRY } from '../database/characters';
 import { getClassUtilityDefinition } from '../database/equipment';
 import {
   createNewPilotGame,
@@ -32,15 +32,6 @@ export interface OrionGameMenuProps {
 }
 
 type MenuSubView = 'main' | 'new_pilot' | 'load_roster' | 'controls';
-
-const SAMPLE_CALLSIGNS: Record<TraitLine, string> = {
-  Warrior: 'Pilot Vane',
-  Marauder: 'Pilot Kael',
-  Guardian: 'Pilot Seraph',
-  Rogue: 'Pilot Nyx',
-  Wizard: 'Pilot Soren',
-  Cleric: 'Pilot Lyra',
-};
 
 export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
   soundEnabled,
@@ -120,7 +111,7 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
   const handleCreateNewPilot = () => {
     const state = getOrionStateRef();
     if (!state) return;
-    const finalName = newPilotName.trim() || SAMPLE_CALLSIGNS[selectedTrait];
+    const finalName = newPilotName.trim() || DEFAULT_CALLSIGNS[selectedTrait];
     createNewPilotGame(state, selectedTrait, finalName);
     setRoster(loadPilotRoster());
     soundSystem.playPowerup();
@@ -209,10 +200,10 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
                       soundSystem.playSelect();
                       setSelectedTrait(t.id);
                       if (
-                        Object.values(SAMPLE_CALLSIGNS).includes(newPilotName) ||
+                        Object.values(DEFAULT_CALLSIGNS).includes(newPilotName) ||
                         !newPilotName.trim()
                       ) {
-                        setNewPilotName(SAMPLE_CALLSIGNS[t.id]);
+                        setNewPilotName(DEFAULT_CALLSIGNS[t.id]);
                       }
                     }}
                     className={`p-1.5 rounded-xs border text-left transition-colors ${
@@ -277,11 +268,11 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
                 type="button"
                 onClick={() => {
                   soundSystem.playMenuBeep();
-                  setNewPilotName(SAMPLE_CALLSIGNS[selectedTrait]);
+                  setNewPilotName(DEFAULT_CALLSIGNS[selectedTrait]);
                 }}
                 className="text-[8.5px] text-[#38bdf8] hover:underline"
               >
-                Use Default ({SAMPLE_CALLSIGNS[selectedTrait]})
+                Use Default ({DEFAULT_CALLSIGNS[selectedTrait]})
               </button>
             </div>
             <div className="flex items-center gap-1.5">
@@ -492,34 +483,36 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
 
           {/* Quick Options Strip */}
           <div className="space-y-1 mb-2 bg-[#020617]/40 p-1.5 rounded-xs border border-[#1e293b]">
-            <div className="flex items-center justify-between text-[10px]">
-              <span>TUTORIAL STATE MODE</span>
-              <button
-                onClick={() => {
-                  const state = getOrionStateRef();
-                  if (state) {
-                    setTutorialStateActive(state, !state.tutorialActive);
-                    showToast(
-                      state.tutorialActive
-                        ? 'TUTORIAL STATE: ACTIVE (STANDARD PROGRESSION LOCKED)'
-                        : 'TUTORIAL CLEARED: STANDARD PROGRESSION UNLOCKED',
-                      1500
-                    );
-                    soundSystem.playSelect();
-                    setTick((t) => t + 1);
-                  }
-                }}
-                className={`px-1.5 py-0.5 rounded-xs font-bold text-[9px] ${
-                  (getOrionStateRef()?.tutorialActive ?? true)
-                    ? 'bg-[#4f46e5]/40 text-[#c7d2fe] border border-[#818cf8]/60'
-                    : 'bg-[#22c55e]/20 text-[#4ade80] border border-[#22c55e]/40'
-                }`}
-              >
-                {(getOrionStateRef()?.tutorialActive ?? true)
-                  ? 'TUTORIAL LOCKOUT'
-                  : 'STANDARD UNLOCKED'}
-              </button>
-            </div>
+            {(activeState?.room === '-4,0' || Boolean(activeState?.bypassProgressionGates)) && (
+              <div className="flex items-center justify-between text-[10px]">
+                <span>TUTORIAL STATE MODE</span>
+                <button
+                  onClick={() => {
+                    const state = getOrionStateRef();
+                    if (state) {
+                      setTutorialStateActive(state, !state.tutorialActive);
+                      showToast(
+                        state.tutorialActive
+                          ? 'TUTORIAL STATE: ACTIVE (STANDARD PROGRESSION LOCKED)'
+                          : 'TUTORIAL CLEARED: STANDARD PROGRESSION UNLOCKED',
+                        1500
+                      );
+                      soundSystem.playSelect();
+                      setTick((t) => t + 1);
+                    }
+                  }}
+                  className={`px-1.5 py-0.5 rounded-xs font-bold text-[9px] ${
+                    (getOrionStateRef()?.tutorialActive ?? true)
+                      ? 'bg-[#4f46e5]/40 text-[#c7d2fe] border border-[#818cf8]/60'
+                      : 'bg-[#22c55e]/20 text-[#4ade80] border border-[#22c55e]/40'
+                  }`}
+                >
+                  {(getOrionStateRef()?.tutorialActive ?? true)
+                    ? 'TUTORIAL LOCKOUT'
+                    : 'STANDARD UNLOCKED'}
+                </button>
+              </div>
+            )}
 
             <div className="flex items-center justify-between text-[10px]">
               <span>CHIPTUNE AUDIO</span>

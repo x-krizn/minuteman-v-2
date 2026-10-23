@@ -5,7 +5,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { gamepadStore } from '../../engine/input/gamepadStore';
-import { GamepadButtons, StickVector } from '../../types/input';
+import { GamepadButtons } from '../../types/input';
 import { PadBoard } from './PadBoard';
 
 interface VirtualGamepadProps {
@@ -16,14 +16,12 @@ export const VirtualGamepad: React.FC<VirtualGamepadProps> = ({ customScale }) =
   const [padState, setPadState] = useState<GamepadButtons>(() =>
     gamepadStore.getState()
   );
-  const [, setStick] = useState<StickVector>(() => gamepadStore.getStick());
   const [autoScale, setAutoScale] = useState(2);
 
   // Subscribe to gamepad store state changes
   useEffect(() => {
-    return gamepadStore.subscribe((newState, newStick) => {
+    return gamepadStore.subscribe((newState) => {
       setPadState(newState);
-      setStick(newStick);
     });
   }, []);
 

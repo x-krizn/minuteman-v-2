@@ -33,6 +33,15 @@ for (const [path, mod] of Object.entries(modules)) {
 
 export const TRAIT_LIST: TraitLineWikiDefinition[] = Object.values(TRAIT_REGISTRY);
 
+export const DEFAULT_CALLSIGNS: Record<TraitLine, string> = {
+  Warrior: 'Pilot Vane',
+  Marauder: 'Pilot Kael',
+  Guardian: 'Pilot Seraph',
+  Rogue: 'Pilot Nyx',
+  Wizard: 'Pilot Soren',
+  Cleric: 'Pilot Lyra',
+};
+
 export function getTraitDefinition(id: TraitLine): TraitLineWikiDefinition {
   return TRAIT_REGISTRY[id] || warriorTrait;
 }

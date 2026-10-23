@@ -24,7 +24,7 @@ export const mapBorderTownCathedral: MapDefinition = {
       globalRoomId: 'global_ruined_arcade',
       biomeId: 'camelot_border_town',
       title: 'Shattered Bellfry Nave',
-      bannerTitle: 'CATHEDRAL DISTRICT · SHATTERED BELLFRY NAVE',
+      bannerTitle: 'SHATTERED BELLFRY NAVE',
     },
   ],
   connectedMapIds: [
@@ -52,7 +52,7 @@ export const room50BorderTownCathedral: RoomDefinition = {
   regionId: 'region_belldor_camelot_heartland',
   biomeId: 'camelot_border_town',
   title: 'Cathedral District & Dungeon Entrance',
-  bannerTitle: 'CATHEDRAL DISTRICT · THREE KNIGHTS PLAZA & DUNGEON GATE (OD-BT-01)',
+  bannerTitle: 'THREE KNIGHTS PLAZA & DUNGEON GATE',
   cols: 16,
   rows: 12,
   grid: [

@@ -103,7 +103,7 @@ export const GEMSTONE_CATALOG: GemDefinition[] = [
     colIndex: 4,
     iconBase64: GEM_DEMANTOID_BASE64,
     assignment: 'Cleric (mage)',
-    identity: 'Support specialist. Heals, repairs and manages ally Presence priority.',
+    identity: 'Support specialist. Harmonizes Mana fields to reinforce shields and plating, vent reactor heat, and manage ally Presence priority.',
     primaryResource: 'Energy',
     reactor: 'Mana',
     fundsSkills: ['Cleric'],

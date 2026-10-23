@@ -23,7 +23,7 @@ export const mapBorderTownMarket: MapDefinition = {
       globalRoomId: 'global_ruined_arcade',
       biomeId: 'camelot_border_town',
       title: 'Outer Perimeter Arcade',
-      bannerTitle: 'CAMELOT BORDER TOWN · OUTER PERIMETER ARCADE',
+      bannerTitle: 'OUTER PERIMETER ARCADE',
     },
   ],
   connectedMapIds: [
@@ -47,7 +47,7 @@ export const room40BorderTownMarket: RoomDefinition = {
   regionId: 'region_belldor_camelot_heartland',
   biomeId: 'camelot_border_town',
   title: 'Outer Perimeter & Market District',
-  bannerTitle: 'CAMELOT BORDER TOWN · OUTER PERIMETER & MARKET HUB',
+  bannerTitle: 'OUTER PERIMETER & MARKET HUB',
   cols: 16,
   rows: 12,
   grid: [

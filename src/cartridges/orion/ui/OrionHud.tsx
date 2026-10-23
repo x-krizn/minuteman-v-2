@@ -5,7 +5,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { soundSystem } from '../../../engine/core/soundSystem';
-import { TRAIT_LIST, TRAIT_REGISTRY } from '../database/characters';
+import { DEFAULT_CALLSIGNS, TRAIT_LIST, TRAIT_REGISTRY } from '../database/characters';
 import { getClassUtilityDefinition } from '../database/equipment';
 import {
   GEMSTONE_CATALOG,
@@ -16,10 +16,12 @@ import {
 import { getWeaponDefinition } from '../database/weapons';
 import { getItemDefinition } from '../database/items';
 import {
+  activateResolvedCombatSkill,
   applyTraitLineProfile,
   createNewPilotGame,
   cycleTargetLock,
   deletePilotFromRoster,
+  firePrimarySalvoShot,
   getLockedTarget,
   getOrionStateRef,
   getResolvedCombatSkills,
@@ -28,19 +30,313 @@ import {
   loadPilotRoster,
   notifyOrionStateChange,
   performAuxiliarySwap,
+  ResolvedCombatSkill,
+  spawnParticles,
   TUTORIAL_STEP_DESCRIPTORS,
   TutorialStepId,
 } from '../systems';
-import { TraitLine } from '../types';
+import { OrionState } from '../types';
 
-const DEFAULT_CALLSIGNS: Record<TraitLine, string> = {
-  Warrior: 'Pilot Vane',
-  Marauder: 'Pilot Kael',
-  Guardian: 'Pilot Seraph',
-  Rogue: 'Pilot Nyx',
-  Wizard: 'Pilot Soren',
-  Cleric: 'Pilot Lyra',
-};
+const OUTLINED_TEXT =
+  '[text-shadow:_-1px_-1px_0_#020617,_1px_-1px_0_#020617,_-1px_1px_0_#020617,_1px_1px_0_#020617,_0_1px_3px_#020617]';
+
+const WORLD_X_CLASSES = [
+  'left-[18%]',
+  'left-[26%]',
+  'left-[34%]',
+  'left-[42%]',
+  'left-[50%]',
+  'left-[58%]',
+  'left-[66%]',
+  'left-[74%]',
+  'left-[82%]',
+] as const;
+
+const WORLD_Y_CLASSES = [
+  'top-[16%]',
+  'top-[24%]',
+  'top-[32%]',
+  'top-[40%]',
+  'top-[48%]',
+  'top-[56%]',
+  'top-[64%]',
+  'top-[72%]',
+] as const;
+
+function getWorldRelativeClasses(
+  state: OrionState,
+  wx: number,
+  wy: number,
+  wz: number = 0
+): string {
+  const camX = Math.round(state.camX || 0);
+  const camY = Math.round(state.camY || 0);
+  const normX = Math.max(0, Math.min(1, (wx - camX) / 160));
+  const normY = Math.max(0, Math.min(1, (wy - wz * 0.75 - 16 - camY) / 144));
+  const xIdx = Math.min(
+    WORLD_X_CLASSES.length - 1,
+    Math.max(0, Math.round(normX * (WORLD_X_CLASSES.length - 1)))
+  );
+  const yIdx = Math.min(
+    WORLD_Y_CLASSES.length - 1,
+    Math.max(0, Math.round(normY * (WORLD_Y_CLASSES.length - 1)))
+  );
+  return `${WORLD_X_CLASSES[xIdx]} ${WORLD_Y_CLASSES[yIdx]} -translate-x-1/2 -translate-y-1/2`;
+}
+
+function resolveToastPlacement(
+  state: OrionState,
+  text: string
+): { positionClass: string; colorClass: string } {
+  const upper = text.toUpperCase();
+
+  // 1. Target Lock-On -> relative to locked enemy (or player if unlocked)
+  if (upper.includes('TARGET LOCK') || upper.includes('TARGET UNLOCK') || upper.includes('HOSTILE TARGET')) {
+    const locked = getLockedTarget(state);
+    const pos = locked
+      ? getWorldRelativeClasses(state, locked.x, locked.y, locked.z)
+      : getWorldRelativeClasses(state, state.x, state.y, state.z);
+    return {
+      positionClass: pos,
+      colorClass: 'text-[#38bdf8] border-[#38bdf8]/80',
+    };
+  }
+
+  // 2. Munitions, Reload & Weapon Swap -> relative to top-right weapon/ammo readout
+  if (
+    upper.includes('RELOAD') ||
+    upper.includes('MAGAZINE') ||
+    upper.includes('STANCE') ||
+    upper.includes('SWAPPED') ||
+    upper.includes('SWAP') ||
+    upper.includes('AUXILIARY')
+  ) {
+    return {
+      positionClass: 'top-14 right-2 text-right',
+      colorClass: 'text-[#fbbf24] border-[#fbbf24]/80',
+    };
+  }
+
+  // 3. Defense Layers, Reactor Heat, Boost & Frame Status -> relative to top-left gauges
+  if (
+    upper.includes('OVERHEAT') ||
+    upper.includes('BOOSTER') ||
+    upper.includes('SHIELD') ||
+    upper.includes('ARMOR') ||
+    upper.includes('CRITICAL') ||
+    upper.includes('FRAME DESTROYED') ||
+    upper.includes('SINKHOLE') ||
+    upper.includes('REBOOTED')
+  ) {
+    return {
+      positionClass: 'top-16 left-2 text-left',
+      colorClass: upper.includes('OVERHEAT') || upper.includes('DESTROYED') || upper.includes('CRITICAL')
+        ? 'text-[#f87171] border-[#f87171]/80'
+        : 'text-[#7dd3fc] border-[#38bdf8]/80',
+    };
+  }
+
+  // 4. Skill Cooldown / Belt Depleted -> relative to bottom 5-skill icon bar
+  if (
+    upper.includes('COOLDOWN') ||
+    upper.includes('UNAVAILABLE') ||
+    upper.includes('DEPLETED') ||
+    upper.includes('BELT SLOT') ||
+    upper.includes('EQUIP OFF-HAND')
+  ) {
+    return {
+      positionClass: 'bottom-11 left-1/2 -translate-x-1/2 text-center',
+      colorClass: 'text-[#fde68a] border-[#fbbf24]/75',
+    };
+  }
+
+  // 5. World Interaction, Loot, Salvage, Campfire, NPC -> relative to player in world space
+  if (
+    upper.includes('LOOTED') ||
+    upper.includes('SALVAGED') ||
+    upper.includes('SCRAP') ||
+    upper.includes('RESTED') ||
+    upper.includes('CAMPFIRE') ||
+    upper.includes('LANTERN') ||
+    upper.includes('LOYALIST') ||
+    upper.includes('SCAVENGER') ||
+    upper.includes('TRADED') ||
+    upper.includes('SWITCH') ||
+    upper.includes('BARRIERS') ||
+    upper.includes('SIGNET RING') ||
+    upper.includes('GATE') ||
+    upper.includes('DUNGEON') ||
+    upper.includes('WAYGATE') ||
+    upper.includes('WAYSTATION')
+  ) {
+    return {
+      positionClass: getWorldRelativeClasses(state, state.x, state.y, state.z),
+      colorClass: 'text-[#fef08a] border-[#facc15]/80',
+    };
+  }
+
+  // 6. Default: Sector / Room Transition & Level Banners -> relative to top-center sector header
+  return {
+    positionClass: 'top-6 left-1/2 -translate-x-1/2 text-center',
+    colorClass: 'text-[#7dd3fc] border-[#38bdf8]/75',
+  };
+}
+
+function renderSkillGlyph(skill: ResolvedCombatSkill | null, index: number): React.ReactNode {
+  if (!skill || !skill.available || skill.id === 'none') {
+    return (
+      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 text-[#475569]" fill="none" stroke="currentColor" strokeWidth="2">
+        <circle cx="12" cy="12" r="5" strokeDasharray="2 2" />
+      </svg>
+    );
+  }
+
+  // Belt Consumables
+  if (skill.sourceCategory === 'belt') {
+    if (skill.itemId === 'repair_kit') {
+      return (
+        <svg viewBox="0 0 24 24" className="w-4 h-4 text-[#4ade80]" fill="none" stroke="currentColor" strokeWidth="2.2">
+          <path d="M12 5v14M5 12h14" strokeLinecap="round" />
+          <rect x="4" y="4" width="16" height="16" rx="3" strokeWidth="1.6" />
+        </svg>
+      );
+    }
+    if (skill.itemId === 'grail_water') {
+      return (
+        <svg viewBox="0 0 24 24" className="w-4 h-4 text-[#38bdf8]" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M12 3c-4 5-6 8-6 11a6 6 0 0012 0c0-3-2-6-6-11z" />
+        </svg>
+      );
+    }
+    if (skill.itemId === 'poe_lantern_charm') {
+      return (
+        <svg viewBox="0 0 24 24" className="w-4 h-4 text-[#22d3ee]" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M9 4h6M8 8h8l-1 11H9L8 8zM12 11v4" strokeLinecap="round" />
+        </svg>
+      );
+    }
+    return (
+      <svg viewBox="0 0 24 24" className="w-4 h-4 text-[#fbbf24]" fill="none" stroke="currentColor" strokeWidth="2">
+        <rect x="7" y="4" width="10" height="16" rx="4" />
+        <path d="M7 12h10" />
+      </svg>
+    );
+  }
+
+  const wId = skill.weaponId || '';
+  const isShield = wId.includes('shield');
+  const isBowOrQuiver = wId === 'great_bow' || wId === 'quiver';
+  const isSpearOrLance = wId === 'short_spear' || wId === 'avalon_siege_lance';
+  const isMace = wId === 'mace';
+  const isAxe = wId === 'hand_axe';
+  const isSwordOrKhopesh = wId === 'long_sword' || wId === 'khopesh';
+
+  // Slot 1: Primary Attack
+  if (index === 0) {
+    if (isShield) {
+      return (
+        <svg viewBox="0 0 24 24" className="w-4 h-4 text-[#38bdf8]" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6l7-3z" />
+        </svg>
+      );
+    }
+    if (isBowOrQuiver) {
+      return (
+        <svg viewBox="0 0 24 24" className="w-4 h-4 text-[#4ade80]" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M5 19L19 5M19 5h-6M19 5v6" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M4 8c5 0 8 3 8 8" strokeLinecap="round" />
+        </svg>
+      );
+    }
+    if (isSpearOrLance) {
+      return (
+        <svg viewBox="0 0 24 24" className="w-4 h-4 text-[#7dd3fc]" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M4 20L20 4M14 4h6v6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    }
+    if (isMace) {
+      return (
+        <svg viewBox="0 0 24 24" className="w-4 h-4 text-[#fbbf24]" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M5 19l9-9" strokeLinecap="round" />
+          <polygon points="14,4 20,4 20,10 14,10" />
+        </svg>
+      );
+    }
+    if (isAxe) {
+      return (
+        <svg viewBox="0 0 24 24" className="w-4 h-4 text-[#fb923c]" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M5 19L17 7" strokeLinecap="round" />
+          <path d="M13 4c4 0 7 3 7 7-3 1-5 0-7-2" strokeLinejoin="round" />
+        </svg>
+      );
+    }
+    if (isSwordOrKhopesh) {
+      return (
+        <svg viewBox="0 0 24 24" className="w-4 h-4 text-[#e879f9]" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M4 20L19 5M14 5h5v5M7 13l4 4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    }
+    // Default Ranged Boltcaster Crosshair
+    return (
+      <svg viewBox="0 0 24 24" className="w-4 h-4 text-[#38bdf8]" fill="none" stroke="currentColor" strokeWidth="2">
+        <circle cx="12" cy="12" r="6" />
+        <path d="M12 3v4M12 17v4M3 12h4M17 12h4" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  // Slot 2: Tactical / Blast / Guard / Volley
+  if (index === 1) {
+    if (isShield || isSwordOrKhopesh) {
+      return (
+        <svg viewBox="0 0 24 24" className="w-4 h-4 text-[#fbbf24]" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6l7-3z" />
+          <path d="M9 12h6M12 9v6" strokeLinecap="round" />
+        </svg>
+      );
+    }
+    if (isBowOrQuiver) {
+      return (
+        <svg viewBox="0 0 24 24" className="w-4 h-4 text-[#fde047]" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M12 19V5M6 17L4 7M18 17l2-10" strokeLinecap="round" />
+        </svg>
+      );
+    }
+    return (
+      <svg viewBox="0 0 24 24" className="w-4 h-4 text-[#fbbf24]" fill="none" stroke="currentColor" strokeWidth="2">
+        <polygon points="12,3 14.8,8.8 21,9.5 16.5,14 17.8,20.2 12,17 6.2,20.2 7.5,14 3,9.5 9.2,8.8" />
+      </svg>
+    );
+  }
+
+  // Slot 3: Flurry / Sunder / Suppression
+  if (index === 2) {
+    return (
+      <svg viewBox="0 0 24 24" className="w-4 h-4 text-[#c084fc]" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M13 3L5 14h6l-1 7 9-11h-6l1-7z" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  // Slot 4: Off-Hand / Heavy Suppression
+  if (index === 3) {
+    return (
+      <svg viewBox="0 0 24 24" className="w-4 h-4 text-[#38bdf8]" fill="none" stroke="currentColor" strokeWidth="2">
+        <polygon points="12,3 21,12 12,21 3,12" />
+        <circle cx="12" cy="12" r="3" />
+      </svg>
+    );
+  }
+
+  // Slot 5: Heavy Finisher / Quiver Dump
+  return (
+    <svg viewBox="0 0 24 24" className="w-4 h-4 text-[#f472b6]" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 2l2.4 7.2H22l-6 4.8 2.4 7.2L12 16.4 5.6 21.2 8 14 2 9.2h7.6L12 2z" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 export const OrionHud: React.FC = () => {
   const [, setTick] = useState(0);
@@ -51,7 +347,6 @@ export const OrionHud: React.FC = () => {
     let animId: number;
     let lastTime = 0;
     const loop = (t: number) => {
-      // 30 FPS throttle keeps battery and rendering performance optimal
       if (t - lastTime >= 32) {
         lastTime = t;
         setTick((prev) => (prev + 1) % 10000);
@@ -88,7 +383,7 @@ export const OrionHud: React.FC = () => {
               </span>
             </div>
             <div className="text-[8.5px] text-[#94a3b8] tracking-wide mt-0.5">
-              D-PAD / CLICK: SELECT TRAIT LINE · [A] DEPLOY NEW PILOT · [Y] CONTINUE
+              D-PAD / CLICK: SELECT TRAIT LINE · DEPLOY NEW PILOT OR CONTINUE
             </div>
           </div>
 
@@ -152,7 +447,7 @@ export const OrionHud: React.FC = () => {
               }}
               className="px-2.5 py-1 bg-[#0284c7] hover:bg-[#0369a1] text-white border border-[#38bdf8] rounded-xs text-[9.5px] font-bold cursor-pointer"
             >
-              ▶ [Y] CONTINUE: {roster[0].pilotName.toUpperCase()} ({roster[0].traitLine} LV.{roster[0].level})
+              ▶ CONTINUE: {roster[0].pilotName.toUpperCase()} ({roster[0].traitLine} LV.{roster[0].level})
             </button>
           )}
         </div>
@@ -245,8 +540,7 @@ export const OrionHud: React.FC = () => {
                     const rGem = GEMSTONE_REGISTRY[rGemId];
                     return (
                       <div className="font-bold text-[#f8fafc] truncate">
-                        <span style={{ color: tGem.hexColor }}>◆</span> {tGem.name} +{' '}
-                        <span style={{ color: rGem.hexColor }}>◆</span> {rGem.name}
+                        ◆ {tGem.name} + ◆ {rGem.name}
                       </div>
                     );
                   })()}
@@ -297,7 +591,7 @@ export const OrionHud: React.FC = () => {
                   }}
                   className="px-3.5 py-1.5 bg-[#facc15] hover:bg-[#fde047] text-[#05070a] font-black text-[10.5px] rounded-xs shadow-md cursor-pointer shrink-0"
                 >
-                  🚀 [A] DEPLOY LV.1 (M00 BOG)
+                  🚀 DEPLOY LV.1 (THE BOG)
                 </button>
               </div>
             </div>
@@ -329,8 +623,8 @@ export const OrionHud: React.FC = () => {
                       entry.areaId === 'camelot_border_town'
                         ? 'Camelot Border Town'
                         : entry.areaId === 'm01_orc_encampment'
-                          ? 'M01 Orc Encampment'
-                          : 'M00 The Bog';
+                          ? 'Orc Encampment'
+                          : 'The Bog';
                     return (
                       <div
                         key={entry.pilotId}
@@ -435,437 +729,363 @@ export const OrionHud: React.FC = () => {
   const maxAmmo = state.maxAmmo || activeWeapon?.shotsPerChain || 9;
   const isReloading = state.isReloading;
   const reloadTimer = state.reloadTimer;
-  const swapCooldown = state.weaponSwapCooldown || 0;
 
   // Resolved 5-Skill Moveset & Target Lock
   const combatSkills = getResolvedCombatSkills(state);
+  const skillSlots: Array<ResolvedCombatSkill | null> = [
+    combatSkills.skill1,
+    combatSkills.skill2,
+    combatSkills.skill3,
+    combatSkills.skill4,
+    combatSkills.skill5,
+  ];
   const lockedEnemy = getLockedTarget(state);
-  const lHoldPct = Math.min(100, (((state.combatHoldTimers?.l || 0) / 0.28) * 100));
+
+  const hudCombatCtx = {
+    state,
+    sound: soundSystem,
+    spawnParticles: (x: number, y: number, z: number, count: number, color: string, label?: string) => {
+      spawnParticles(state, x, y, z, count, color, label);
+    },
+    say: (txt: string) => {
+      state.toastText = txt;
+      state.toastTimer = 2.2;
+    },
+  };
+
+  const toastPlacement =
+    state.toastText && state.toastTimer > 0
+      ? resolveToastPlacement(state, state.toastText)
+      : null;
+
+  const promptPositionClass = state.promptText
+    ? getWorldRelativeClasses(state, state.x, state.y, state.z)
+    : '';
 
   return (
     <aside
       aria-label="Pilot Mech Cockpit Telemetry"
-      className="absolute inset-0 pointer-events-none flex flex-col justify-between p-1.5 sm:p-2 z-20 select-none font-mono text-[#e2e8f0]"
+      className="absolute inset-0 pointer-events-none flex flex-col justify-between p-1.5 sm:p-2 z-20 select-none font-mono text-[#e2e8f0] bg-transparent"
     >
-      {/* 1. TOP BAR HUD CLUSTER (Standard Resolution, High-Contrast Cockpit Readouts) */}
-      <header className="w-full flex items-start justify-between gap-2 pt-6 sm:pt-1">
+      {/* 1. TOP BAR HUD CLUSTER (Transparent, Outlined Readouts) */}
+      <header className="w-full flex items-start justify-between gap-2 pt-5 sm:pt-1 bg-transparent">
         {/* LEFT CLUSTER: Pilot Profile & The Three Defense Layers */}
-        <section aria-label="Defense Gauges" className="flex flex-col gap-1 max-w-[200px] sm:max-w-[230px]">
-          {/* Pilot Identity Header (Clickable to open §2.4 Pilot Creation / Load Roster) */}
+        <section
+          aria-label="Defense Gauges"
+          className={`flex flex-col gap-0.5 w-[132px] sm:w-[152px] bg-transparent ${OUTLINED_TEXT}`}
+        >
           <button
             type="button"
             onClick={() => {
               soundSystem.playSelect();
               setShowPilotModal(true);
             }}
-            className="pointer-events-auto flex items-center gap-1.5 text-[9px] sm:text-[10px] tracking-wider text-[#94a3b8] font-bold drop-shadow hover:text-white cursor-pointer text-left"
+            className="pointer-events-auto flex items-center gap-1 text-[8.5px] sm:text-[9px] tracking-wider text-[#cbd5e1] font-bold hover:text-white cursor-pointer text-left bg-transparent"
           >
-            <span className="text-[#38bdf8] uppercase truncate max-w-[95px]">
+            <span className="text-[#38bdf8] uppercase truncate max-w-[78px]">
               {state.pilotName}
             </span>
-            <span className="text-[#475569]">·</span>
-            <span className="text-[#cbd5e1]">
-              {(TRAIT_REGISTRY[state.traitLine]?.frameModel || state.traitLine).toUpperCase()}
-            </span>
-            <span className="bg-[#1e293b]/90 text-[#38bdf8] border border-[#38bdf8]/40 px-1 py-0.2 rounded text-[8px] font-bold">
-              LVL {state.level}
+            <span className="text-[#64748b]">·</span>
+            <span className="text-[#fde047] text-[8px] font-extrabold">
+              LV.{state.level}
             </span>
           </button>
 
-          {/* Defense Gauges Stack */}
-          <div className="flex flex-col gap-0.8 bg-[#0b1322]/85 backdrop-blur-[2px] p-1.5 rounded border border-[#334155]/60 shadow-lg">
-            {/* Layer 1: Shield Gauge */}
+          {/* Transparent Defense Gauges Stack */}
+          <div className="flex flex-col gap-0.5 bg-transparent">
+            {/* Layer 1: Shield */}
             <div className="flex flex-col">
-              <div className="flex justify-between items-center text-[8.5px] font-bold">
-                <span className="text-[#38bdf8] flex items-center gap-1">
-                  <span>🛡</span>
-                  <span>SHIELD</span>
-                </span>
-                <span className={isShieldOverloaded ? 'text-[#ef4444] animate-pulse font-extrabold' : 'text-[#7dd3fc]'}>
+              <div className="flex justify-between items-center text-[7.5px] font-bold leading-none">
+                <span className="text-[#38bdf8]">SHLD</span>
+                <span className={isShieldOverloaded ? 'text-[#ef4444] animate-pulse font-black' : 'text-[#7dd3fc]'}>
                   {isShieldOverloaded
-                    ? `OVERLOADED (${state.shields.overloadTimer.toFixed(1)}s)`
-                    : `${Math.round(shieldCap)} / ${shieldMax}`}
+                    ? `OVLD ${state.shields.overloadTimer.toFixed(1)}s`
+                    : `${Math.round(shieldCap)}/${shieldMax}`}
                 </span>
               </div>
-              <div className="w-full h-1.5 bg-[#0f172a] rounded-full overflow-hidden border border-[#1e293b] mt-0.5">
-                <div
-                  className={`h-full transition-all duration-150 ${
-                    isShieldOverloaded
-                      ? 'bg-gradient-to-r from-[#dc2626] to-[#ef4444] animate-pulse'
-                      : 'bg-gradient-to-r from-[#0284c7] via-[#0ea5e9] to-[#38bdf8] shadow-[0_0_6px_rgba(56,189,248,0.7)]'
-                  }`}
-                  style={{ width: `${isShieldOverloaded ? 100 : shieldPct}%` }}
+              <svg viewBox="0 0 100 4" preserveAspectRatio="none" className="w-full h-1 mt-0.5 overflow-visible">
+                <rect x="0" y="0" width="100" height="4" rx="1" fill="none" stroke="#020617" strokeWidth="1.5" />
+                <rect
+                  x="0"
+                  y="0"
+                  width={isShieldOverloaded ? 100 : shieldPct}
+                  height="4"
+                  rx="1"
+                  fill={isShieldOverloaded ? '#ef4444' : '#38bdf8'}
                 />
-              </div>
+              </svg>
             </div>
 
-            {/* Layer 2: Armor Gauge */}
-            <div className="flex flex-col mt-0.5">
-              <div className="flex justify-between items-center text-[8.5px] font-bold">
-                <span className="text-[#fbbf24] flex items-center gap-1">
-                  <span>⬡</span>
-                  <span>ARMOR ({state.armor.type[0]})</span>
-                </span>
+            {/* Layer 2: Armor */}
+            <div className="flex flex-col">
+              <div className="flex justify-between items-center text-[7.5px] font-bold leading-none">
+                <span className="text-[#fbbf24]">ARM ({state.armor.type[0]})</span>
                 <span className="text-[#fde68a]">
-                  {Math.round(armorDur)} / {armorMax}
+                  {Math.round(armorDur)}/{armorMax}
                 </span>
               </div>
-              <div className="w-full h-1.5 bg-[#0f172a] rounded-full overflow-hidden border border-[#1e293b] mt-0.5">
-                <div
-                  className="h-full bg-gradient-to-r from-[#d97706] to-[#fbbf24] shadow-[0_0_6px_rgba(251,191,36,0.6)] transition-all duration-150"
-                  style={{ width: `${armorPct}%` }}
-                />
-              </div>
+              <svg viewBox="0 0 100 4" preserveAspectRatio="none" className="w-full h-1 mt-0.5 overflow-visible">
+                <rect x="0" y="0" width="100" height="4" rx="1" fill="none" stroke="#020617" strokeWidth="1.5" />
+                <rect x="0" y="0" width={armorPct} height="4" rx="1" fill="#fbbf24" />
+              </svg>
             </div>
 
-            {/* Layer 3: Frame Integrity Gauge */}
-            <div className="flex flex-col mt-0.5">
-              <div className="flex justify-between items-center text-[8.5px] font-bold">
-                <span className={isFrameCritical ? 'text-[#ef4444] font-black animate-pulse' : 'text-[#4ade80]'}>
-                  FRAME HP {isFrameCritical ? '⚠️ CRITICAL' : ''}
+            {/* Layer 3: Frame Integrity */}
+            <div className="flex flex-col">
+              <div className="flex justify-between items-center text-[7.5px] font-bold leading-none">
+                <span className={isFrameCritical ? 'text-[#ef4444] animate-pulse font-black' : 'text-[#4ade80]'}>
+                  FRAME {isFrameCritical ? 'CRIT' : ''}
                 </span>
                 <span className={isFrameCritical ? 'text-[#ef4444] font-black' : 'text-[#86efac]'}>
-                  {frameHP} / {frameMax}
+                  {frameHP}/{frameMax}
                 </span>
               </div>
-              <div className="w-full h-1.5 bg-[#0f172a] rounded-full overflow-hidden border border-[#1e293b] mt-0.5">
-                <div
-                  className={`h-full transition-all duration-150 ${
-                    isFrameCritical
-                      ? 'bg-gradient-to-r from-[#b91c1c] to-[#ef4444] animate-pulse'
-                      : 'bg-gradient-to-r from-[#16a34a] to-[#4ade80] shadow-[0_0_6px_rgba(74,222,128,0.5)]'
-                  }`}
-                  style={{ width: `${framePct}%` }}
+              <svg viewBox="0 0 100 4" preserveAspectRatio="none" className="w-full h-1 mt-0.5 overflow-visible">
+                <rect x="0" y="0" width="100" height="4" rx="1" fill="none" stroke="#020617" strokeWidth="1.5" />
+                <rect
+                  x="0"
+                  y="0"
+                  width={framePct}
+                  height="4"
+                  rx="1"
+                  fill={isFrameCritical ? '#ef4444' : '#4ade80'}
                 />
-              </div>
+              </svg>
             </div>
 
-            {/* Reactor Heat */}
-            <div className="flex flex-col mt-0.5">
-              <div className="flex justify-between items-center text-[8px] font-bold">
-                <span className={isOverheating ? 'text-[#ef4444] font-black animate-pulse' : 'text-[#f97316]'}>
-                  HEAT {state.isContinuousBoosting ? '⚡ BOOSTING' : isOverheating ? '🔥 OVERHEAT' : ''}
-                </span>
-                <span className={isOverheating ? 'text-[#ef4444] font-bold' : 'text-[#fdba74]'}>
-                  {Math.round(heat)}%
-                </span>
+            {/* Reactor Heat (only prominent when > 0 or boosting) */}
+            {(heat > 0.5 || state.isContinuousBoosting) && (
+              <div className="flex flex-col">
+                <div className="flex justify-between items-center text-[7px] font-bold leading-none">
+                  <span className={isOverheating ? 'text-[#ef4444] animate-pulse font-black' : 'text-[#f97316]'}>
+                    HEAT
+                  </span>
+                  <span className={isOverheating ? 'text-[#ef4444]' : 'text-[#fdba74]'}>
+                    {Math.round(heat)}%
+                  </span>
+                </div>
+                <svg viewBox="0 0 100 3" preserveAspectRatio="none" className="w-full h-0.5 mt-0.5 overflow-visible">
+                  <rect x="0" y="0" width="100" height="3" rx="1" fill="none" stroke="#020617" strokeWidth="1.5" />
+                  <rect
+                    x="0"
+                    y="0"
+                    width={heatPct}
+                    height="3"
+                    rx="1"
+                    fill={isOverheating ? '#ef4444' : '#f97316'}
+                  />
+                </svg>
               </div>
-              <div className="w-full h-1 bg-[#0f172a] rounded-full overflow-hidden border border-[#1e293b] mt-0.5">
-                <div
-                  className={`h-full transition-all duration-150 ${
-                    isOverheating
-                      ? 'bg-gradient-to-r from-[#ea580c] via-[#ef4444] to-[#f87171] animate-pulse'
-                      : 'bg-gradient-to-r from-[#ea580c] to-[#f97316]'
-                  }`}
-                  style={{ width: `${heatPct}%` }}
-                />
-              </div>
-            </div>
+            )}
           </div>
         </section>
 
-        {/* CENTER CLUSTER: Location Banner & Target Lock-On (Node/Step spoilers gated behind Cheat Mode) */}
-        <section aria-label="Sector Info" className="hidden xs:flex flex-col items-center">
-          <div className="px-2.5 py-0.5 bg-[#090d14]/90 border border-[#38bdf8]/40 rounded text-[9px] text-[#7dd3fc] tracking-wider uppercase font-bold flex items-center gap-1.5 shadow-md backdrop-blur-xs">
-            <span className="text-[#38bdf8]">⬢</span>
+        {/* CENTER CLUSTER: Clean Room Title (No parent 'M00 The Bog' designator) */}
+        <section
+          aria-label="Sector Info"
+          className={`hidden xs:flex flex-col items-center bg-transparent ${OUTLINED_TEXT}`}
+        >
+          <div className="text-[8.5px] sm:text-[9px] text-[#cbd5e1] tracking-wider uppercase font-bold flex items-center gap-1 bg-transparent">
             <span>{worldInfo.roomTitle}</span>
             {isCheatMode && (
               <>
-                <span className="text-[#475569]">·</span>
-                <span
-                  className={
-                    worldInfo.nodeType === 'key'
-                      ? 'text-[#fbbf24]'
-                      : worldInfo.nodeType === 'general'
-                        ? 'text-[#38bdf8]'
-                        : worldInfo.nodeType === 'side'
-                          ? 'text-[#a78bfa]'
-                          : worldInfo.nodeType === 'end'
-                            ? 'text-[#4ade80]'
-                            : 'text-[#f43f5e]'
-                  }
-                >
-                  {worldInfo.nodeType.toUpperCase()} NODE
-                  {worldInfo.nodeType === 'general' && worldInfo.routeStep && worldInfo.routeTotal
-                    ? ` (${worldInfo.routeStep}/${worldInfo.routeTotal})`
-                    : worldInfo.nodeType === 'loop' && worldInfo.loopDepth > 0
-                      ? ` (DEPTH ${worldInfo.loopDepth})`
-                      : ''}
+                <span className="text-[#64748b]">·</span>
+                <span className="text-[#fbbf24]">
+                  {worldInfo.nodeType.toUpperCase()}
                 </span>
               </>
             )}
           </div>
-          <span className="text-[8px] text-[#94a3b8] tracking-widest mt-0.5 font-semibold uppercase">
-            {isCheatMode
-              ? `${worldInfo.mapName} · ${worldInfo.areaName} · ${worldInfo.worldName}`
-              : worldInfo.areaName}
-          </span>
           {lockedEnemy ? (
             <button
+              type="button"
               onClick={() => cycleTargetLock(state)}
-              className="pointer-events-auto mt-0.5 px-2 py-0.2 bg-[#0c4a6e]/90 border border-[#38bdf8] rounded text-[8px] text-[#e0f2fe] font-bold tracking-wider uppercase flex items-center gap-1 cursor-pointer"
+              className="pointer-events-auto mt-0.5 px-1.5 py-0.2 bg-transparent border border-[#38bdf8]/80 rounded-xs text-[7.5px] text-[#7dd3fc] font-bold tracking-wider uppercase flex items-center gap-1 cursor-pointer"
             >
               <span className="text-[#fbbf24]">◎</span>
               <span>
-                LOCKED: {lockedEnemy.name} ({lockedEnemy.frame.integrity} HP)
+                {lockedEnemy.name} ({lockedEnemy.frame.integrity} HP)
               </span>
             </button>
           ) : tutorialStepDesc ? (
-            <div className="mt-0.5 px-2 py-0.2 bg-[#1e1b4b]/85 border border-[#818cf8]/40 rounded text-[7.5px] text-[#c7d2fe] font-bold tracking-wider uppercase">
+            <div className="mt-0.5 px-1.5 py-0.2 bg-transparent border border-[#818cf8]/60 rounded-xs text-[7px] text-[#c7d2fe] font-bold tracking-wider uppercase">
               {tutorialStepDesc.title}
             </div>
           ) : null}
         </section>
 
-        {/* RIGHT CLUSTER: Munitions, Scrap & Hardpoint */}
-        <section aria-label="Munitions & Salvage" className="flex flex-col items-end gap-1 max-w-[175px]">
+        {/* RIGHT CLUSTER: Munitions & Salvage (Transparent, Outlined) */}
+        <section
+          aria-label="Munitions & Salvage"
+          className={`flex flex-col items-end gap-0.5 max-w-[145px] bg-transparent ${OUTLINED_TEXT}`}
+        >
           {/* Salvage Scrap & Gemstone Counter */}
-          <div className="flex items-center gap-1.5 bg-[#090d14]/85 border border-[#ca8a04]/50 px-2 py-0.8 rounded shadow-md backdrop-blur-xs">
-            <span className="text-[#eab308]">⚙️</span>
-            <span className="text-[10.5px] font-black text-[#fef08a] tracking-wider">
-              {state.salvageScrap}
+          <div className="flex items-center gap-1.5 text-[8.5px] font-bold bg-transparent">
+            <span className="text-[#fef08a]">⚙ {state.salvageScrap}</span>
+            <span className="text-[#475569]">·</span>
+            <span className="text-[#7dd3fc]">
+              ◆ {GEMSTONE_CATALOG.reduce((sum, g) => sum + getInventoryGemCount(state, g.id), 0)}
             </span>
-            <span className="text-[8px] text-[#ca8a04] font-bold uppercase tracking-widest">SCRAP</span>
-            <span className="text-[#334155]">·</span>
-            <span className="text-[#38bdf8]">◆</span>
-            <span className="text-[10.5px] font-black text-[#7dd3fc] tracking-wider">
-              {GEMSTONE_CATALOG.reduce((sum, g) => sum + getInventoryGemCount(state, g.id), 0)}
-            </span>
-            <span className="text-[8px] text-[#38bdf8] font-bold uppercase tracking-widest">GEMS</span>
           </div>
 
-          {/* Weapon Status & Ammo Magazine Box */}
-          <div className="flex flex-col items-end bg-[#0b1322]/85 backdrop-blur-[2px] p-1.5 rounded border border-[#334155]/60 shadow-lg w-full">
-            <div className="w-full flex items-center justify-between gap-1.5">
-              <button
-                onClick={() => {
-                  performAuxiliarySwap(state, {
-                    say: (txt) => {
-                      state.toastText = txt;
-                      state.toastTimer = 2.5;
-                    },
-                  });
-                }}
-                className={`pointer-events-auto px-1 py-0.2 rounded text-[7.5px] font-bold border transition-colors cursor-pointer ${
-                  swapCooldown > 0
-                    ? 'bg-[#1e293b] text-[#94a3b8] border-[#475569]'
-                    : 'bg-[#422006]/80 hover:bg-[#713f12] text-[#fbbf24] border-[#f59e0b]/60'
-                }`}
-                title="Hold [L] to Swap Auxiliary Weapon (Slot 3)"
-              >
-                {swapCooldown > 0 ? `CD ${swapCooldown.toFixed(1)}s` : `HOLD [L] AUX SWAP`}
-              </button>
-              <span
-                className={`text-[7.5px] px-1 rounded font-bold border ${
-                  isKhopesh
-                    ? 'bg-[#701a75]/60 border-[#c084fc]/50 text-[#f0abfc]'
-                    : 'bg-[#0369a1]/50 border-[#0284c7]/50 text-[#38bdf8]'
-                }`}
-              >
-                {activeWeapon?.primaryDamageType.toUpperCase() || 'PIERCE'}
-              </span>
-            </div>
-
-            {lHoldPct > 5 && !state.combatHoldTriggered?.l && (
-              <div className="w-full h-1 bg-[#1e293b] rounded-full overflow-hidden mt-0.5">
-                <div
-                  className="h-full bg-[#fbbf24] transition-all"
-                  style={{ width: `${lHoldPct}%` }}
-                />
-              </div>
-            )}
-
-            <div className="text-[9px] font-bold text-[#f1f5f9] tracking-wider mt-0.5 truncate max-w-full">
+          {/* Active Weapon & Segmented Ammo Pips */}
+          <div className="flex flex-col items-end bg-transparent w-full">
+            <button
+              type="button"
+              onClick={() => {
+                performAuxiliarySwap(state, {
+                  say: (txt) => {
+                    state.toastText = txt;
+                    state.toastTimer = 2.2;
+                  },
+                });
+              }}
+              className="pointer-events-auto text-[8.5px] font-bold text-[#f1f5f9] hover:text-[#fbbf24] tracking-wider truncate max-w-full cursor-pointer bg-transparent"
+              title={
+                slot3Id
+                  ? `Active: ${activeWeaponName} · Click to swap with ${getWeaponDefinition(slot3Id)?.name || getItemDefinition(slot3Id)?.name || slot3Id}`
+                  : activeWeaponName
+              }
+            >
               {activeWeaponName}
-            </div>
+            </button>
             {slot2Id && (
-              <div className="text-[7.5px] text-[#94a3b8] truncate max-w-full">
-                S2: {getWeaponDefinition(slot2Id)?.name || getItemDefinition(slot2Id)?.name || slot2Id}
-              </div>
-            )}
-            {slot3Id && (
-              <div className="text-[7.5px] text-[#38bdf8] truncate max-w-full">
-                S3 (AUX):{' '}
-                {getWeaponDefinition(slot3Id)?.name ||
-                  getItemDefinition(slot3Id)?.name ||
-                  slot3Id}
+              <div className="text-[7px] text-[#94a3b8] truncate max-w-full">
+                {getWeaponDefinition(slot2Id)?.name || getItemDefinition(slot2Id)?.name || slot2Id}
               </div>
             )}
 
-            {/* Reloading Alert or Ammo Pips */}
             {isReloading ? (
-              <div className="text-[9.5px] text-[#f59e0b] font-black tracking-wider animate-pulse mt-1 flex items-center gap-1">
-                <span>🔄</span>
-                <span>
-                  {isKhopesh ? 'STANCE' : 'RELOAD'} [{reloadTimer.toFixed(1)}s]
-                </span>
+              <div className="text-[8.5px] text-[#f59e0b] font-black tracking-wider animate-pulse mt-0.5">
+                {isKhopesh ? 'STANCE' : 'RELOAD'} {reloadTimer.toFixed(1)}s
               </div>
             ) : (
-              <div className="flex flex-col items-end mt-1 w-full">
-                <div className="flex justify-between items-center w-full text-[8.5px] font-bold text-[#93c5fd]">
-                  <span className="text-[8px] text-[#64748b]">MAG · 2xTAP RELOAD</span>
-                  <span className={isKhopesh ? 'text-[#f0abfc]' : 'text-[#93c5fd]'}>
-                    {ammo} / {maxAmmo}
-                  </span>
-                </div>
-                {/* Segmented Ammo / Combo Rounds */}
-                <div className="flex items-center gap-0.8 mt-0.5">
-                  {Array.from({ length: maxAmmo }).map((_, i) => (
-                    <div
-                      key={i}
-                      className={`h-2 rounded-xs border transition-colors ${
-                        isKhopesh ? 'w-3' : 'w-1.5'
-                      } ${
-                        i < ammo
-                          ? isKhopesh
-                            ? 'bg-[#e879f9] border-[#f5d0fe] shadow-[0_0_4px_rgba(232,121,249,0.85)]'
-                            : 'bg-[#38bdf8] border-[#7dd3fc] shadow-[0_0_3px_rgba(56,189,248,0.8)]'
-                          : 'bg-[#1e293b] border-[#334155]'
-                      }`}
-                    />
-                  ))}
-                </div>
+              <div className="flex items-center gap-0.5 mt-0.5">
+                {Array.from({ length: maxAmmo }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={`h-1.5 rounded-xs border transition-colors ${
+                      isKhopesh ? 'w-2.5' : 'w-1.5'
+                    } ${
+                      i < ammo
+                        ? isKhopesh
+                          ? 'bg-[#e879f9] border-[#020617]'
+                          : 'bg-[#38bdf8] border-[#020617]'
+                        : 'bg-transparent border-[#475569]/80'
+                    }`}
+                  />
+                ))}
               </div>
             )}
           </div>
         </section>
       </header>
 
-      {/* 2. LOWER SECTION ALERTS & PROMPTS (Unobtrusive, docked directly above bottom controls) */}
-      <section
-        aria-label="Tactical Notifications"
-        className="w-full flex flex-col items-center justify-end gap-1.5 mt-auto mb-1.5 px-3 z-30"
-      >
-        {state.toastText ? (
-          <button
-            onClick={() => {
-              state.toastText = null;
-              state.toastTimer = 0;
-              notifyOrionStateChange();
-            }}
-            className="pointer-events-auto flex items-center gap-2.5 px-3 py-1 bg-[#090d14]/95 hover:bg-[#111827] border border-[#38bdf8]/80 text-[#7dd3fc] rounded-md shadow-xl text-[10px] sm:text-[11px] font-bold tracking-wider backdrop-blur-xs transition-colors cursor-pointer active:scale-95"
-            title="Click to dismiss notification"
-          >
-            <span>⚡ {state.toastText}</span>
-            <span className="bg-[#1e293b] border border-[#38bdf8]/50 text-[#38bdf8] px-1.5 py-0.2 rounded text-[8px] font-mono font-bold tracking-normal">
-              ✕
-            </span>
-          </button>
-        ) : null}
-        {state.promptText ? (
-          <button
-            onClick={() => {
-              state.promptText = null;
-              notifyOrionStateChange();
-            }}
-            className="pointer-events-auto flex items-center gap-2 px-3 py-1 bg-[#0b1329]/95 hover:bg-[#111c38] border border-[#f59e0b]/80 text-[#fef08a] rounded-md shadow-lg text-[10px] sm:text-[11px] font-bold tracking-wider backdrop-blur-xs transition-colors cursor-pointer active:scale-95"
-            title="Click to dismiss prompt"
-          >
-            {/^\[A\]/i.test(state.promptText) ? (
-              <span className="bg-[#f59e0b] text-[#0f172a] px-1.5 py-0.2 rounded font-black text-[9px] shadow-sm">
-                A
-              </span>
-            ) : null}
-            <span>{state.promptText.replace(/^\[A\]\s*/i, '')}</span>
-          </button>
-        ) : null}
-      </section>
-
-      {/* 3. BOTTOM CONTROL BAR */}
-      <footer className="w-full bg-[#090d14]/90 backdrop-blur-xs border-t border-[#334155]/70 rounded px-2 py-1 flex items-center justify-between text-[8px] sm:text-[9px] text-[#cbd5e1] tracking-wider shadow-lg">
-        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-          {/* [X] Skill 1 */}
-          <span className="flex items-center gap-0.8">
-            <kbd className="bg-[#1e293b] text-[#38bdf8] border border-[#38bdf8]/40 px-1 py-0.2 rounded font-bold text-[8px]">
-              X
-            </kbd>
-            <span className={state.combatActiveChain ? 'text-[#38bdf8] font-bold' : ''}>
-              {combatSkills.skill1?.shortLabel || 'SALVO'}
-            </span>
-          </span>
-
-          {/* [Y] Skill 2 & Skill 4 */}
-          <span className="flex items-center gap-0.8">
-            <kbd className="bg-[#1e293b] text-[#fbbf24] border border-[#fbbf24]/40 px-1 py-0.2 rounded font-bold text-[8px]">
-              Y
-            </kbd>
-            <span
-              className={
-                combatSkills.skill2?.currentCooldown ? 'text-[#64748b]' : 'text-[#fde68a]'
-              }
-            >
-              {combatSkills.skill2?.shortLabel || 'SKILL 2'}
-              {combatSkills.skill2?.currentCooldown
-                ? ` (${combatSkills.skill2.currentCooldown.toFixed(1)}s)`
-                : ''}
-            </span>
-            {combatSkills.skill4 && combatSkills.skill4.available && (
-              <span className="text-[7.5px] text-[#94a3b8]">
-                [H: {combatSkills.skill4.shortLabel}]
-              </span>
-            )}
-          </span>
-
-          {/* [R] Skill 3 & Skill 5 */}
-          <span className="flex items-center gap-0.8">
-            <kbd className="bg-[#1e293b] text-[#c084fc] border border-[#c084fc]/40 px-1 py-0.2 rounded font-bold text-[8px]">
-              R
-            </kbd>
-            <span
-              className={
-                combatSkills.skill3?.currentCooldown ? 'text-[#64748b]' : 'text-[#e9d5ff]'
-              }
-            >
-              {combatSkills.skill3?.shortLabel || 'SKILL 3'}
-              {combatSkills.skill3?.currentCooldown
-                ? ` (${combatSkills.skill3.currentCooldown.toFixed(1)}s)`
-                : ''}
-            </span>
-            {combatSkills.skill5 && combatSkills.skill5.available && (
-              <span className="text-[7.5px] text-[#94a3b8]">
-                [H: {combatSkills.skill5.shortLabel}]
-              </span>
-            )}
-          </span>
-
-          {/* [L] Lock-on */}
-          <button
-            onClick={() => cycleTargetLock(state)}
-            className="pointer-events-auto flex items-center gap-0.8 hover:text-[#fef08a] cursor-pointer"
-          >
-            <kbd className="bg-[#1e293b] text-[#38bdf8] border border-[#38bdf8]/40 px-1 py-0.2 rounded font-bold text-[8px]">
-              L
-            </kbd>
-            <span className={lockedEnemy ? 'text-[#38bdf8] font-bold' : 'text-[#94a3b8]'}>
-              {lockedEnemy ? `LOCKED: ${lockedEnemy.name.slice(0, 8)}` : 'LOCK'}
-            </span>
-          </button>
-
-          {/* [B] Boost */}
-          <span className="flex items-center gap-0.8">
-            <kbd className="bg-[#1e293b] text-[#f97316] border border-[#f97316]/40 px-1 py-0.2 rounded font-bold text-[8px]">
-              B
-            </kbd>
-            <span className={state.isContinuousBoosting ? 'text-[#38bdf8] font-bold' : ''}>
-              {state.isContinuousBoosting ? 'BOOSTING' : 'BOOST'}
-            </span>
-          </span>
-
-          {/* [A] Jump / Examine */}
-          <span className="flex items-center gap-0.8">
-            <kbd className="bg-[#1e293b] text-[#4ade80] border border-[#4ade80]/40 px-1 py-0.2 rounded font-bold text-[8px]">
-              A
-            </kbd>
-            <span>JUMP/EXAMINE</span>
-          </span>
+      {/* 2. CONTEXTUAL OUTLINED POP-UP MESSAGES (Auto-expiring, no background container, relative to info) */}
+      {state.promptText && (
+        <div
+          aria-live="polite"
+          className={`pointer-events-none absolute z-30 px-1.5 py-0.5 bg-transparent border border-[#facc15]/85 text-[#fef08a] rounded-xs text-[8.5px] sm:text-[9.5px] font-extrabold tracking-wider uppercase whitespace-nowrap ${OUTLINED_TEXT} ${promptPositionClass}`}
+        >
+          {state.promptText}
         </div>
+      )}
 
-        <div className="hidden lg:flex items-center gap-1.5 text-[8px] text-[#94a3b8] font-bold">
-          <span>[START] MENU</span>
-          <span>·</span>
-          <span>[SELECT] SATCHEL</span>
+      {state.toastText && state.toastTimer > 0 && toastPlacement && (
+        <div
+          aria-live="polite"
+          className={`pointer-events-none absolute z-30 px-2 py-0.5 bg-transparent border rounded-xs text-[8.5px] sm:text-[9.5px] font-extrabold tracking-wider uppercase max-w-[82%] truncate ${OUTLINED_TEXT} ${toastPlacement.positionClass} ${toastPlacement.colorClass} ${
+            state.toastTimer < 0.4 ? 'opacity-50' : 'opacity-100'
+          } transition-opacity duration-150`}
+        >
+          {state.toastText}
+        </div>
+      )}
+
+      {/* 3. BOTTOM 5-SKILL ICON BAR (Transparent, 5 Skill Icons with Cooldown Timer Overlay, No A/B/L/X/Y/R) */}
+      <footer className="w-full flex items-center justify-center pb-0.5 bg-transparent">
+        <div
+          aria-label="Combat Skill Icons"
+          className="flex items-center gap-1.5 sm:gap-2 bg-transparent"
+        >
+          {skillSlots.map((skill, idx) => {
+            const slotNum = (idx + 1) as 1 | 2 | 3 | 4 | 5;
+            const rawCd =
+              idx === 0 && isReloading
+                ? reloadTimer
+                : skill?.currentCooldown || 0;
+            const onCooldown = rawCd > 0.05;
+            const isAvailable = Boolean(skill && skill.available && skill.id !== 'none');
+            const isActiveSlot =
+              (idx === 0 && state.combatActiveChain) ||
+              (skill?.weaponMovesetSlot !== undefined &&
+                state.activeSkillSlot === skill.weaponMovesetSlot &&
+                state.skillActionTimer > 0);
+
+            const borderColorClass = !isAvailable
+              ? 'border-[#334155]/45 opacity-40'
+              : isActiveSlot
+                ? 'border-white scale-105'
+                : onCooldown
+                  ? 'border-[#64748b]/80'
+                  : idx === 0
+                    ? 'border-[#38bdf8]/85 hover:border-[#7dd3fc]'
+                    : idx === 1
+                      ? 'border-[#fbbf24]/85 hover:border-[#fde047]'
+                      : idx === 2
+                        ? 'border-[#c084fc]/85 hover:border-[#e9d5ff]'
+                        : idx === 3
+                          ? 'border-[#38bdf8]/75 hover:border-[#7dd3fc]'
+                          : 'border-[#f472b6]/80 hover:border-[#fbcfe8]';
+
+            return (
+              <button
+                key={slotNum}
+                type="button"
+                onClick={() => {
+                  if (idx === 0) {
+                    firePrimarySalvoShot(state, hudCombatCtx, false);
+                  } else {
+                    activateResolvedCombatSkill(state, hudCombatCtx, slotNum);
+                  }
+                }}
+                title={
+                  skill
+                    ? `${skill.name}${onCooldown ? ` (${rawCd.toFixed(1)}s)` : ''}`
+                    : `Skill ${slotNum}`
+                }
+                className={`pointer-events-auto relative w-7 h-7 sm:w-8 sm:h-8 rounded-xs border bg-transparent flex items-center justify-center transition-transform cursor-pointer drop-shadow-[0_1px_2px_rgba(2,6,23,0.95)] ${borderColorClass}`}
+              >
+                {/* Skill Icon SVG */}
+                <span className={onCooldown ? 'opacity-35' : 'opacity-95'}>
+                  {renderSkillGlyph(skill, idx)}
+                </span>
+
+                {/* Consumable Stack Count */}
+                {skill?.sourceCategory === 'belt' &&
+                  typeof skill.itemCount === 'number' &&
+                  !onCooldown && (
+                    <span
+                      className={`absolute bottom-0 right-0.5 text-[7px] font-black text-[#fef08a] leading-none ${OUTLINED_TEXT}`}
+                    >
+                      {skill.itemCount}
+                    </span>
+                  )}
+
+                {/* Overlaid Cooldown Timer */}
+                {onCooldown && (
+                  <span
+                    className={`absolute inset-0 flex items-center justify-center text-[8.5px] sm:text-[9px] font-black text-white tracking-tighter ${OUTLINED_TEXT}`}
+                  >
+                    {rawCd.toFixed(1)}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </footer>
     </aside>
   );
 };
+

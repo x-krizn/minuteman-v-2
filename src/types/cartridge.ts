@@ -44,7 +44,7 @@ export interface CartridgeSurface {
   assets: AssetLibrary;
 }
 
-export type CartridgeMenuMode = 'none' | 'game-menu' | 'cart-menu' | 'inventory';
+export type CartridgeMenuMode = 'none' | 'game-menu' | 'inventory';
 
 export interface CartridgeOverlayProps {
   menuMode: CartridgeMenuMode;

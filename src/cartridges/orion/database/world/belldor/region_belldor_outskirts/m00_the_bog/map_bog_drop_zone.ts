@@ -23,14 +23,14 @@ export const mapBogDropZone: MapDefinition = {
       globalRoomId: 'global_bog_sunken_causeway',
       biomeId: 'belldor_bog',
       title: 'Southern Mud Causeway',
-      bannerTitle: 'M00 THE BOG · SOUTHERN MUD CAUSEWAY',
+      bannerTitle: 'SOUTHERN MUD CAUSEWAY',
     },
     {
       coord: '1,-1',
       globalRoomId: 'global_bog_hollow_grove',
       biomeId: 'belldor_bog',
       title: 'Overgrown Pylon Grove',
-      bannerTitle: 'M00 THE BOG · OVERGROWN PYLON GROVE',
+      bannerTitle: 'OVERGROWN PYLON GROVE',
     },
   ],
   connectedMapIds: ['map_deep_bog_maze', 'global_wetland_expanse_map'],
@@ -84,7 +84,7 @@ export const roomDropPodCrater: RoomDefinition = {
   regionId: 'region_belldor_outskirts',
   biomeId: 'belldor_bog',
   title: 'Drop-Pod Impact Crater',
-  bannerTitle: 'M00 THE BOG · DROP-POD IMPACT CRATER',
+  bannerTitle: 'DROP-POD IMPACT CRATER',
   grid: [
     '##########',
     '#,,....,,#',
@@ -107,7 +107,7 @@ export const roomDownedTreesWest: RoomDefinition = {
   regionId: 'region_belldor_outskirts',
   biomeId: 'belldor_bog',
   title: 'Downed Trees West',
-  bannerTitle: 'M00 THE BOG · MAZE OF DOWNED TREES (WEST)',
+  bannerTitle: 'MAZE OF DOWNED TREES (WEST)',
   grid: [
     '##########',
     '#,,P..P,,#',
@@ -135,7 +135,7 @@ export const roomDownedTreesEast: RoomDefinition = {
   regionId: 'region_belldor_outskirts',
   biomeId: 'belldor_bog',
   title: 'Downed Trees East',
-  bannerTitle: 'M00 THE BOG · MAZE OF DOWNED TREES (EAST)',
+  bannerTitle: 'MAZE OF DOWNED TREES (EAST)',
   grid: [
     '##########',
     '#,,~~~~,,#',
@@ -158,7 +158,7 @@ export const room00DropPodCrater: RoomDefinition = {
   regionId: 'region_belldor_outskirts',
   biomeId: 'belldor_bog',
   title: 'Bog Outskirts Campfire',
-  bannerTitle: 'M00 THE BOG · FIRST CAMPFIRE CLEARING',
+  bannerTitle: 'FIRST CAMPFIRE CLEARING',
   grid: [
     '####,,####',
     '#,,....,,#',
@@ -186,7 +186,7 @@ export const room0Neg1RuinBranch: RoomDefinition = {
   regionId: 'region_belldor_outskirts',
   biomeId: 'belldor_bog',
   title: 'Overgrown Ruin Approach',
-  bannerTitle: 'M00 THE BOG · OVERGROWN RUIN APPROACH',
+  bannerTitle: 'OVERGROWN RUIN APPROACH',
   grid: [
     '####..####',
     '#..:..:..#',
@@ -209,7 +209,7 @@ export const room0Neg2PoeLanternSanctuary: RoomDefinition = {
   regionId: 'region_belldor_outskirts',
   biomeId: 'belldor_bog',
   title: 'Poe Lantern Clearing',
-  bannerTitle: 'M00 THE BOG · POE LANTERN CLEARING',
+  bannerTitle: 'POE LANTERN CLEARING',
   grid: [
     '##########',
     '#,,~~~~,,#',
@@ -237,7 +237,7 @@ export const room10SunkenPylonTrail: RoomDefinition = {
   regionId: 'region_belldor_outskirts',
   biomeId: 'belldor_bog',
   title: "Temple Ruins & Bedivere's Corpse",
-  bannerTitle: "M00 THE BOG · TEMPLE RUINS & SIR BEDIVERE'S CORPSE",
+  bannerTitle: "TEMPLE RUINS & SIR BEDIVERE'S CORPSE",
   grid: [
     '####,,####',
     '#,,~~~~,,#',

@@ -23,7 +23,6 @@ import {
 import { TRAIT_REGISTRY } from '../database/characters';
 import {
   ACTION_MODIFICATION_CATALOG,
-  awardPilotSkillXp,
   computeEffectiveLoadCapacity,
   computeInterfaceFeatModifiers,
   computeLoadPenalty,
@@ -37,7 +36,6 @@ import {
   isStandardProgressionUnlocked,
   normalizePilotSkills,
   syncPostTutorialFrameLevel,
-  unlockEquipmentItem,
   unlockLevel2SecondaryWeapon,
 } from '../database/progression';
 import { getWeaponDefinition } from '../database/weapons';
@@ -505,9 +503,6 @@ export function createInitialOrionState(
     opticMarkTimer: 0,
 
     lockedTargetId: null,
-    yHoldTimer: 0,
-    yHoldTriggeredSwap: false,
-    wasYHeld: false,
 
     hasBoosterKit: true,
     isBoosterDashing: false,
@@ -1145,40 +1140,6 @@ export function getTutorialPromptOverride(
   return null;
 }
 
-export function handleTutorialAnchorInteraction(
-  state: OrionState,
-  ctx: OrionCombatContext,
-  tileChar: string
-): boolean {
-  if (!state.tutorialActive) return false;
-
-  if (tileChar === 'S') {
-    const scoutKey = `scout:${state.room}`;
-    if (!state.lootedCaches[scoutKey]) {
-      state.lootedCaches[scoutKey] = true;
-      state.hasBoosterKit = true;
-      if (state.level < 2) {
-        state.level = 2;
-      }
-      unlockLevel2SecondaryWeapon(state);
-      unlockEquipmentItem(state, 'khopesh');
-      addOrionInventoryItem(state, 'bedivere_ring', 1);
-      addOrionInventoryItem(state, 'repair_kit', 1);
-
-      setOrionFlag(state, 'scout_salvaged', true);
-      state.tutorialStep = 'traverse_sinkhole';
-      syncStateGates(state);
-
-      soundSystem.playPowerup();
-      ctx.say('LEVEL 2 UNLOCKED: WEAPON SET 2 SWAP [Y], KHOPESH, LEGS SLOT & BELT 3–4');
-      notifyOrionStateChange();
-      return true;
-    }
-  }
-
-  return false;
-}
-
 export function updateTutorialSystem(
   state: OrionState,
   ctx: OrionCombatContext,
@@ -1399,8 +1360,6 @@ export function updatePlayerSystem(
         featMods.heatGenMult;
       state.heat = Math.min(state.maxHeat, state.heat + dashHeat);
 
-      awardPilotSkillXp(state, state.traitLine, 8, combatCtx);
-
       const dirInfo = DIR_VECTORS[state.dir] || DIR_VECTORS.S;
       state.boosterDirX = hasMoveInput ? normMoveX : state.faceX || dirInfo.dx;
       state.boosterDirY = hasMoveInput ? normMoveY : state.faceY || dirInfo.dy;
@@ -1439,7 +1398,6 @@ export function updatePlayerSystem(
         featMods.heatGenMult *
         dt;
       state.heat = Math.min(state.maxHeat, state.heat + contHeat);
-      awardPilotSkillXp(state, state.traitLine, 6 * dt, combatCtx);
 
       if (Math.random() < 0.75) {
         state.particles.push({

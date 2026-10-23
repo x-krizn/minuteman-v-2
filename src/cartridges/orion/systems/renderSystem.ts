@@ -2936,93 +2936,127 @@ function drawAetherFogWayfindingTells(
   g.restore();
 }
 
+function drawOutlinedCanvasText(
+  g: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  fillColor: string,
+  outlineColor: string = '#020617'
+): void {
+  g.fillStyle = outlineColor;
+  g.fillText(text, x - 1, y);
+  g.fillText(text, x + 1, y);
+  g.fillText(text, x, y - 1);
+  g.fillText(text, x, y + 1);
+  g.fillStyle = fillColor;
+  g.fillText(text, x, y);
+}
+
 function drawCanonicalHud(g: CanvasRenderingContext2D, state: OrionState): void {
-  const barW = 44;
-  const barH = 3;
+  const barW = 40;
+  const barH = 2;
 
   const shieldPct =
     state.shields.maxCapacity > 0
       ? Math.max(0, state.shields.capacity / state.shields.maxCapacity)
       : 0;
-  g.fillStyle = '#000000';
-  g.fillRect(4, 4, barW + 2, barH + 2);
+  g.strokeStyle = '#020617';
+  g.lineWidth = 1;
+  g.strokeRect(3.5, 3.5, barW + 1, barH + 1);
   g.fillStyle = state.shields.overloaded ? '#ef4444' : COLOR_SHIELD;
-  g.fillRect(5, 5, barW * (state.shields.overloaded ? 1 : shieldPct), barH);
+  g.fillRect(4, 4, barW * (state.shields.overloaded ? 1 : shieldPct), barH);
 
   const armorPct = Math.max(0, state.armor.durability / state.armor.maxDurability);
-  g.fillStyle = '#000000';
-  g.fillRect(4, 9, barW + 2, barH + 2);
+  g.strokeRect(3.5, 7.5, barW + 1, barH + 1);
   g.fillStyle = COLOR_ARMOR;
-  g.fillRect(5, 10, barW * armorPct, barH);
+  g.fillRect(4, 8, barW * armorPct, barH);
 
   const framePct = Math.max(0, state.frame.integrity / state.frame.maxIntegrity);
   const isCritical = state.frame.state === 'Critical';
-  g.fillStyle = '#000000';
-  g.fillRect(4, 14, barW + 2, barH + 2);
+  g.strokeRect(3.5, 11.5, barW + 1, barH + 1);
   g.fillStyle = isCritical ? COLOR_CRITICAL : COLOR_FRAME;
-  g.fillRect(5, 15, barW * framePct, barH);
+  g.fillRect(4, 12, barW * framePct, barH);
 
   const heatPct = Math.max(0, state.heat / state.maxHeat);
-  g.fillStyle = '#000000';
-  g.fillRect(4, 19, barW + 2, 2);
-  g.fillStyle = COLOR_HEAT;
-  g.fillRect(5, 20, barW * heatPct, 1);
+  if (heatPct > 0) {
+    g.fillStyle = COLOR_HEAT;
+    g.fillRect(4, 16, barW * heatPct, 1);
+  }
 
   g.font = '6px "orion-font", monospace';
-  g.fillStyle = '#ffffff';
-  g.textAlign = 'left';
-  g.fillText(
-    `SHLD:${Math.round(state.shields.capacity)} ARM:${Math.round(state.armor.durability)} FRM:${state.frame.integrity}`,
-    4,
-    27
-  );
-
   const activeWeaponId = state.equippedWeapons[state.activeWeaponIndex] || 'gladius_boltcaster';
-  const weaponDef = getWeaponDefinition(activeWeaponId);
   const isKhopesh = activeWeaponId === 'khopesh';
 
   g.textAlign = 'right';
-  g.fillStyle = '#ffd27d';
-  g.fillText(`SCRAP:${state.salvageScrap}`, SCREEN_W - 4, 9);
-
+  drawOutlinedCanvasText(g, `${state.salvageScrap}`, SCREEN_W - 4, 9, '#ffd27d');
   if (state.isReloading) {
-    g.fillStyle = '#f59e0b';
-    g.fillText(isKhopesh ? 'STANCE...' : 'RELOADING...', SCREEN_W - 4, 17);
-  } else {
-    g.fillStyle = isKhopesh ? '#e879f9' : '#77c7ff';
-    g.fillText(
-      `${(weaponDef?.name || activeWeaponId).toUpperCase().slice(0, 8)} ${state.ammo}/${state.maxAmmo}`,
+    drawOutlinedCanvasText(
+      g,
+      `${state.reloadTimer.toFixed(1)}s`,
       SCREEN_W - 4,
-      17
+      16,
+      '#f59e0b'
+    );
+  } else {
+    drawOutlinedCanvasText(
+      g,
+      `${state.ammo}/${state.maxAmmo}`,
+      SCREEN_W - 4,
+      16,
+      isKhopesh ? '#e879f9' : '#77c7ff'
     );
   }
 
-  g.textAlign = 'left';
-  g.fillStyle = 'rgba(0, 0, 0, 0.7)';
-  g.fillRect(4, SCREEN_H - 12, SCREEN_W - 8, 9);
-  g.fillStyle = '#e2e8f0';
-  g.fillText(
-    isKhopesh
-      ? '[X] SICKLE · [L] LUNGE · [R] DEFLECT · [Y] SWAP'
-      : '[X] AUTO · [L] AP SLUG · [R] GRENADE · [Y] SWAP',
-    6,
-    SCREEN_H - 5
-  );
+  // 5 Skill Icon slots along bottom center (transparent with cooldown overlay)
+  const slotSize = 9;
+  const gap = 3;
+  const totalW = 5 * slotSize + 4 * gap;
+  const startX = Math.floor((SCREEN_W - totalW) / 2);
+  const slotY = SCREEN_H - slotSize - 3;
+  const cds = [
+    state.isReloading ? state.reloadTimer : 0,
+    Math.max(0, state.skillCooldowns?.[1] || 0, state.actionCooldowns?.['weapon_skill_1'] || 0),
+    Math.max(0, state.skillCooldowns?.[2] || 0, state.actionCooldowns?.['weapon_skill_2'] || 0),
+    Math.max(0, state.skillCooldowns?.[3] || 0, state.actionCooldowns?.['weapon_skill_3'] || 0),
+    Math.max(0, state.skillCooldowns?.[4] || 0, state.actionCooldowns?.['weapon_skill_4'] || 0),
+  ];
+  const slotColors = ['#38bdf8', '#fbbf24', '#c084fc', '#4ade80', '#f472b6'];
+
+  g.textAlign = 'center';
+  for (let i = 0; i < 5; i++) {
+    const sx = startX + i * (slotSize + gap);
+    const cd = cds[i];
+    g.strokeStyle = cd > 0 ? '#475569' : slotColors[i];
+    g.strokeRect(sx + 0.5, slotY + 0.5, slotSize - 1, slotSize - 1);
+    if (cd > 0) {
+      drawOutlinedCanvasText(
+        g,
+        cd.toFixed(1),
+        sx + slotSize / 2,
+        slotY + slotSize - 2,
+        '#f8fafc'
+      );
+    } else {
+      g.fillStyle = slotColors[i];
+      g.fillRect(sx + 3, slotY + 3, 3, 3);
+    }
+  }
+
+  // Contextual Outlined Pop-ups (no background container)
+  const camX = Math.round(state.camX || 0);
+  const camY = Math.round(state.camY || 0);
+  const px = Math.max(24, Math.min(SCREEN_W - 24, state.x - camX));
+  const py = Math.max(18, Math.min(SCREEN_H - 22, state.y - state.z * Z_SCALE - camY - 16));
+
+  if (state.promptText) {
+    g.textAlign = 'center';
+    drawOutlinedCanvasText(g, state.promptText, px, py, '#fef08a');
+  }
 
   if (state.toastText && state.toastTimer > 0) {
     g.textAlign = 'center';
-    g.fillStyle = 'rgba(0, 0, 0, 0.9)';
-    g.fillRect(SCREEN_W / 2 - 62, SCREEN_H - 25, 124, 11);
-    g.strokeStyle = '#38bdf8';
-    g.lineWidth = 1;
-    g.strokeRect(SCREEN_W / 2 - 61.5, SCREEN_H - 24.5, 123, 10);
-    g.fillStyle = '#77c7ff';
-    g.fillText(`${state.toastText} [A]`, SCREEN_W / 2, SCREEN_H - 17);
-  } else if (state.promptText) {
-    g.textAlign = 'center';
-    g.fillStyle = 'rgba(0, 0, 0, 0.85)';
-    g.fillRect(SCREEN_W / 2 - 58, SCREEN_H - 25, 116, 11);
-    g.fillStyle = '#ffd27d';
-    g.fillText(state.promptText, SCREEN_W / 2, SCREEN_H - 17);
+    drawOutlinedCanvasText(g, state.toastText, SCREEN_W / 2, 18, '#7dd3fc');
   }
 }
+

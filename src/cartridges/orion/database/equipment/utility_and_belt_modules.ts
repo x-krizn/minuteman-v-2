@@ -22,7 +22,6 @@ export interface ClassUtilityItemDefinition {
   heatCost: number;
   shieldRestore: number;
   armorRestore: number;
-  frameRestore: number;
   energyRestore: number;
   grantsOverdriveSec?: number;
   grantsOpticMarkSec?: number;
@@ -36,14 +35,13 @@ export const CLASS_UTILITY_CATALOG: ClassUtilityItemDefinition[] = [
     traitLine: 'Warrior',
     frameModel: 'PNSY W416',
     description:
-      'PNSY W416 Class Utility (Action 6): Injects pressurized ichor to restore +35 Layer 2 Armor Durability, +20 Layer 3 Frame Integrity, and surge Overdrive for 3.5s.',
+      'PNSY W416 Class Utility (Action 6): Injects pressurized ichor to restore +35 Layer 2 Armor Durability, +15 Shield Capacity, and surge Overdrive for 3.5s.',
     tellDurationSec: 0.14,
     actionDurationSec: 0.25,
     cooldownSec: 9.0,
     heatCost: 12,
     shieldRestore: 15,
     armorRestore: 35,
-    frameRestore: 20,
     energyRestore: 15,
     grantsOverdriveSec: 3.5,
   },
@@ -54,14 +52,13 @@ export const CLASS_UTILITY_CATALOG: ClassUtilityItemDefinition[] = [
     traitLine: 'Marauder',
     frameModel: 'RAD HAU',
     description:
-      'RAD HAU Class Utility (Action 6): Seals superheavy hull breaches (+55 Armor Durability, +25 Frame Integrity) while venting -20 Reactor Heat.',
+      'RAD HAU Class Utility (Action 6): Seals superheavy plating breaches (+55 Armor Durability, +10 Shield Capacity) while venting -20 Reactor Heat.',
     tellDurationSec: 0.18,
     actionDurationSec: 0.3,
     cooldownSec: 10.0,
     heatCost: -20,
     shieldRestore: 10,
     armorRestore: 55,
-    frameRestore: 25,
     energyRestore: 10,
   },
   {
@@ -78,7 +75,6 @@ export const CLASS_UTILITY_CATALOG: ClassUtilityItemDefinition[] = [
     heatCost: 10,
     shieldRestore: 50,
     armorRestore: 30,
-    frameRestore: 15,
     energyRestore: 20,
   },
   {
@@ -95,7 +91,6 @@ export const CLASS_UTILITY_CATALOG: ClassUtilityItemDefinition[] = [
     heatCost: -25,
     shieldRestore: 30,
     armorRestore: 20,
-    frameRestore: 15,
     energyRestore: 30,
     grantsOpticMarkSec: 5.0,
   },
@@ -113,7 +108,6 @@ export const CLASS_UTILITY_CATALOG: ClassUtilityItemDefinition[] = [
     heatCost: -35,
     shieldRestore: 45,
     armorRestore: 15,
-    frameRestore: 15,
     energyRestore: 35,
     grantsOverdriveSec: 4.0,
   },
@@ -124,14 +118,13 @@ export const CLASS_UTILITY_CATALOG: ClassUtilityItemDefinition[] = [
     traitLine: 'Cleric',
     frameModel: 'SANC Sanctum',
     description:
-      'SANC Sanctum Class Utility (Action 6): Channels mana-lattice renewal to restore +40 Shield Capacity, +40 Armor Durability, and +35 Frame Integrity.',
+      'SANC Sanctum Class Utility (Action 6): Channels mana-lattice renewal to restore +40 Shield Capacity, +40 Armor Durability, and +25 Energy.',
     tellDurationSec: 0.16,
     actionDurationSec: 0.28,
     cooldownSec: 9.5,
     heatCost: 8,
     shieldRestore: 40,
     armorRestore: 40,
-    frameRestore: 35,
     energyRestore: 25,
   },
 ];

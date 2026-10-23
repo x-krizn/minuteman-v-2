@@ -52,9 +52,9 @@ import { getWeaponDefinition, WEAPON_REGISTRY } from '../database/weapons';
 import {
   addOrionInventoryItem,
   getTutorialPromptOverride,
-  handleTutorialAnchorInteraction,
   notifyOrionStateChange,
   saveOrionGame,
+  setOrionFlag,
   syncStateGates,
 } from './playerSystem';
 
@@ -413,9 +413,8 @@ function assembleNestedWorld(): void {
           const stitchedGrid = isSlotEndRoom
             ? decorateDynamicRoomGrid(template.grid, 'end', ['S'], 'S', 'loot_cache', 1)
             : carveRoomCardinalDoors(template.grid, ALL_CARDINAL_DIRS);
-          const title = slot.title || `${mapDef.name} — ${template.title}`;
-          const bannerTitle =
-            slot.bannerTitle || `${areaDef.name.toUpperCase()} · ${title.toUpperCase()}`;
+          const title = slot.title || template.title;
+          const bannerTitle = slot.bannerTitle || title.toUpperCase();
 
           const stitchedRoom: RoomDefinition = {
             ...template,
@@ -458,8 +457,6 @@ function assembleNestedWorld(): void {
 }
 
 assembleNestedWorld();
-
-export const ORION_INITIAL_ROOMS = ORION_TUTORIAL_ROOMS;
 
 // ─── 2. AETHER FOG 5-NODE GRAPH ENGINE (KEY, GENERAL, SIDE, LOOP, END) ───────
 
@@ -774,35 +771,30 @@ function createDynamicAetherNode(
   let bannerTitle = '';
 
   if (nodeType === 'general') {
-    const step = options?.routeStep ?? 1;
-    const total = options?.routeTotal ?? 2;
     trueExitDir = pickTrueExitDir(moveDir, moveDir, hashVal);
-    const targetMeta =
-      (options?.targetKeyCoord && ORION_ROOM_METADATA[options.targetKeyCoord]) || undefined;
-    const destLabel = targetMeta ? targetMeta.title.toUpperCase() : 'KEY POINT OF INTEREST';
-    title = `Æther Path (${step}/${total}) — ${chosenTemplate?.title || 'Corridor'}`;
-    bannerTitle = `GENERAL NODE (${step}/${total}) · PATH TO ${destLabel}`;
+    title = chosenTemplate?.title || 'Æther Corridor';
+    bannerTitle = title.toUpperCase();
   } else if (nodeType === 'side') {
     trueExitDir = pickTrueExitDir(moveDir, moveDir, hashVal + 1);
-    title = `Off-Path Branch — ${chosenTemplate?.title || 'Wilds'}`;
-    bannerTitle = `SIDE NODE · OFF-PATH BRANCH (NO ROUTE PROGRESS)`;
+    title = chosenTemplate?.title || 'Drifting Wilds';
+    bannerTitle = title.toUpperCase();
   } else if (nodeType === 'end') {
     openDirs = [returnDir];
     trueExitDir = returnDir;
     const features: AetherEndFeature[] = ['loot_cache', 'mini_boss', 'secret_switch', 'dead_end'];
     endFeature = features[hashVal % features.length];
     const featureLabels: Record<AetherEndFeature, string> = {
-      loot_cache: 'SCAVENGER SUPPLY VAULT',
-      mini_boss: 'FOG MINI-BOSS LAIR',
-      secret_switch: 'ANCIENT GRAIL SHRINE',
-      dead_end: 'CALCIFIED MIST DEAD-END',
+      loot_cache: 'Scavenger Supply Vault',
+      mini_boss: 'Fog Mini-Boss Lair',
+      secret_switch: 'Ancient Grail Shrine',
+      dead_end: 'Calcified Mist Cul-de-Sac',
     };
-    title = `Fog Cul-de-Sac — ${featureLabels[endFeature]}`;
-    bannerTitle = `END NODE · ${featureLabels[endFeature]}`;
+    title = featureLabels[endFeature];
+    bannerTitle = title.toUpperCase();
   } else if (nodeType === 'loop') {
     trueExitDir = pickTrueExitDir(moveDir, returnDir, hashVal + 3);
-    title = `Shifting Æther Mist`;
-    bannerTitle = `LOOP NODE · LOST IN THE ÆTHER FOG`;
+    title = 'Shifting Æther Mist';
+    bannerTitle = 'LOST IN THE ÆTHER FOG';
   }
 
   const grid = decorateDynamicRoomGrid(
@@ -1133,8 +1125,6 @@ export function transitionViaAetherDoor(
   state.projectiles = [];
   state.pickups = [];
 
-  const prevRegionId = state.regionId;
-  const prevAreaId = state.areaId;
   syncRoomHierarchyState(state);
 
   spawnRoomEnemies(rooms, state);
@@ -1147,13 +1137,9 @@ export function transitionViaAetherDoor(
   if (isLoopCycle) {
     toastMsg = targetNode.bannerTitle.startsWith('SEALED BY ÆTHER FOG')
       ? `${targetNode.bannerTitle} · REDIRECTED TO FOG LOOP`
-      : `LOST IN ÆTHER FOG (LOOP DEPTH ${graph.loopDepth}) · FOLLOW THE TELL`;
+      : `LOST IN ÆTHER FOG`;
   } else if (escapedLoop) {
-    toastMsg = `ÆTHER FOG CLEARED · RETURNED TO ${info.roomTitle.toUpperCase()}`;
-  } else if (state.regionId !== prevRegionId) {
-    toastMsg = `REGION ENTERED: ${info.regionName.toUpperCase()} · ${info.bannerTitle}`;
-  } else if (state.areaId !== prevAreaId) {
-    toastMsg = `AREA ENTERED: ${info.areaName.toUpperCase()} · ${info.bannerTitle}`;
+    toastMsg = `ÆTHER FOG CLEARED · ${info.roomTitle.toUpperCase()}`;
   }
 
   if (ctx) {
@@ -1368,6 +1354,19 @@ export function syncRoomHierarchyState(state: OrionState): void {
   }
 }
 
+function stripParentAreaDesignator(raw: string): string {
+  return raw
+    .replace(
+      /^(?:M0\d\s+THE\s+BOG|M0\d\s+SECRET\s+ARENA|M0\d\s+ORC\s+ENCAMPMENT|CAMELOT\s+BORDER\s+TOWN|CATHEDRAL\s+DISTRICT|DROP-POD\s+BAY|(?:GENERAL|SIDE|END|LOOP)\s+NODE(?:\s*\(\d+\/\d+\))?)\s*[·—-]\s*/i,
+      ''
+    )
+    .replace(
+      /^(?:Æther\s+Path\s*\(\d+\/\d+\)|Off-Path\s+Branch|Fog\s+Cul-de-Sac)\s*[·—-]\s*/i,
+      ''
+    )
+    .trim();
+}
+
 export function getRoomWorldInfo(state: OrionState): {
   roomTitle: string;
   roomScope: 'global' | 'local';
@@ -1399,8 +1398,16 @@ export function getRoomWorldInfo(state: OrionState): {
     meta?.biomeId || state.biomeId || mapDef?.biomeId || areaDef.biomeId
   );
 
+  const rawRoomTitle =
+    activeNode?.title || meta?.title || `Sector [${state.rx}, ${state.ry}]`;
+  const cleanRoomTitle = stripParentAreaDesignator(rawRoomTitle) || rawRoomTitle;
+  const rawBannerTitle =
+    activeNode?.bannerTitle || meta?.bannerTitle || cleanRoomTitle.toUpperCase();
+  const cleanBannerTitle =
+    stripParentAreaDesignator(rawBannerTitle) || cleanRoomTitle.toUpperCase();
+
   return {
-    roomTitle: activeNode?.title || meta?.title || `Sector [${state.rx}, ${state.ry}]`,
+    roomTitle: cleanRoomTitle,
     roomScope: meta?.scope || 'local',
     nodeType: activeNode?.nodeType || meta?.nodeType || 'key',
     trueExitDir: activeNode?.trueExitDir || meta?.trueExitDir,
@@ -1408,13 +1415,10 @@ export function getRoomWorldInfo(state: OrionState): {
     routeTotal: activeNode?.routeTotal ?? meta?.routeTotal,
     loopDepth: graph.loopDepth || 0,
     endFeature: activeNode?.endFeature || meta?.endFeature,
-    bannerTitle:
-      activeNode?.bannerTitle ||
-      meta?.bannerTitle ||
-      `${areaDef.name.toUpperCase()} [${state.rx},${state.ry}]`,
+    bannerTitle: cleanBannerTitle,
     mapName: mapDef?.name || 'Bog Sector',
     mapScope: mapDef?.scope || 'local',
-    areaName: areaDef.name,
+    areaName: areaDef.name.replace(/^M0\d\s+/i, ''),
     areaScope: areaDef.scope,
     regionName: regionDef.name,
     regionScope: regionDef.scope,
@@ -1477,10 +1481,16 @@ export function fastTravelToWaystation(
     x: ws.x,
     y: ws.y,
   };
+  state.frame.integrity = state.frame.maxIntegrity || 200;
+  state.frame.state = 'Operational';
+  state.armor.durability = state.armor.maxDurability;
+  state.shields.capacity = state.shields.maxCapacity;
+  state.shields.overloaded = false;
+  state.heat = 0;
 
   spawnRoomEnemies(rooms, state);
   soundSystem.playPowerup();
-  const msg = `ÆTHER WAYSTATION TRANSIT -> ${ws.name.toUpperCase()} · FOG GRAPH RESET`;
+  const msg = `ÆTHER WAYSTATION TRANSIT -> ${ws.name.toUpperCase()} · FRAME REPAIRED`;
   if (ctx) ctx.say(msg);
   else {
     state.toastText = msg;
@@ -1499,16 +1509,25 @@ export function fastTravelViaWaygate(
   const wg = WAYGATE_REGISTRY[waygateId];
   if (!wg || !rooms[wg.room]) return false;
 
+  // Interacting with a Waygate repairs Frame HP even if the destination is sealed
+  state.frame.integrity = state.frame.maxIntegrity || 200;
+  state.frame.state = 'Operational';
+  state.armor.durability = state.armor.maxDurability;
+  state.shields.capacity = state.shields.maxCapacity;
+  state.shields.overloaded = false;
+  state.heat = 0;
+
   const targetArea = AREA_REGISTRY[wg.areaId];
   if (targetArea?.specStatus === 'UNDEFINED') {
     const tag = targetArea.openDesignId || targetArea.docRef || 'worlds.md §1';
-    const msg = `WAYGATE SEALED · ${targetArea.name} / ${wg.world.toUpperCase()} [UNDEFINED: ${tag}]`;
+    const msg = `WAYGATE SEALED · FRAME REPAIRED · ${targetArea.name} / ${wg.world.toUpperCase()} [UNDEFINED: ${tag}]`;
     if (ctx) ctx.say(msg);
     else {
       state.toastText = msg;
       state.toastTimer = 3.2;
     }
-    soundSystem.playMenuBeep();
+    soundSystem.playHeal();
+    notifyOrionStateChange();
     return false;
   }
 
@@ -1531,7 +1550,7 @@ export function fastTravelViaWaygate(
 
   spawnRoomEnemies(rooms, state);
   soundSystem.playPowerup();
-  const msg = `WAYGATE READS ÆTHERIC SIGNATURE -> ${wg.world.toUpperCase()} (${wg.name.toUpperCase()})`;
+  const msg = `WAYGATE READS ÆTHERIC SIGNATURE -> ${wg.world.toUpperCase()} (${wg.name.toUpperCase()}) · FRAME REPAIRED`;
   if (ctx) ctx.say(msg);
   else {
     state.toastText = msg;
@@ -1773,15 +1792,29 @@ export function checkWorldInteractivePrompt(
     candidateText = '[A] DISTURB THE BOG WATERS';
   }
 
-  if (candidateKey) {
+  if (candidateKey && candidateText) {
+    const cleanPrompt = candidateText.replace(/^\[A\]\s*/i, '');
     if (state.dismissedPromptKey === candidateKey) {
       state.promptText = null;
       return;
     }
-    state.promptText = candidateText;
+    const prevKey = state.flags.__active_prompt_key;
+    if (prevKey !== candidateKey) {
+      state.flags.__active_prompt_key = candidateKey;
+      state.flags.__active_prompt_t = state.t;
+    }
+    const elapsed = state.t - Number(state.flags.__active_prompt_t || state.t);
+    if (elapsed > 2.6) {
+      state.promptText = null;
+    } else {
+      state.promptText = cleanPrompt;
+    }
   } else {
     state.promptText = null;
     state.dismissedPromptKey = null;
+    if (state.flags.__active_prompt_key) {
+      state.flags.__active_prompt_key = '';
+    }
   }
 }
 
@@ -1985,7 +2018,6 @@ export function executeWorldInteraction(
   if (facingTile === 'S' || currentTile === 'S') {
     const scoutKey = `scout:${state.room}`;
     if (!state.lootedCaches[scoutKey]) {
-      handleTutorialAnchorInteraction(state, ctx, 'S');
       state.lootedCaches[scoutKey] = true;
       state.hasBoosterKit = true;
       if (state.level < 2) {
@@ -1995,8 +2027,12 @@ export function executeWorldInteraction(
       unlockEquipmentItem(state, 'khopesh');
       addOrionInventoryItem(state, 'bedivere_list', 1);
       addOrionInventoryItem(state, 'repair_kit', 1);
+      setOrionFlag(state, 'scout_salvaged', true);
       state.flags.bedivere_list_collected = true;
       state.flags.bedivere_ring_choice = 'pending';
+      if (state.tutorialActive) {
+        state.tutorialStep = 'traverse_sinkhole';
+      }
       syncStateGates(state);
       soundSystem.playPowerup();
       ctx.say('SALVAGED KHOPESH & BEDIVERE’S LIST');
@@ -2270,19 +2306,4 @@ export function handleWorldRoomTransition(
   } else if (state.y >= roomH) {
     transitionViaAetherDoor(rooms, state, 'S', ctx);
   }
-}
-
-/**
- * Step environmental hazards, seamless borderless Aether Fog room transitions, and contextual prompts.
- */
-export function updateWorldSystem(
-  rooms: Record<string, string[]>,
-  state: OrionState,
-  ctx: OrionCombatContext,
-  dt: number
-): void {
-  ensureAetherFogGraph(state);
-  updateEnvironmentalHazards(rooms, state, ctx, dt);
-  handleWorldRoomTransition(rooms, state, ctx);
-  checkWorldInteractivePrompt(rooms, state);
 }

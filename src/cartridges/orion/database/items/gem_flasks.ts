@@ -146,7 +146,7 @@ export const hematiteFlaskItem: ItemWikiDefinition = {
   id: 'hematite_flask',
   name: 'Hematite Thermal Quench',
   category: 'consumable',
-  description: 'Purges -80 Reactor Heat immediately and repairs +25 Frame Integrity.',
+  description: 'Purges -80 Reactor Heat immediately and reinforces +25 Armor Durability.',
   lore: 'Dense Hematite coolant oil from the Sin and Chyme foundries.',
   buyPrice: 26,
   sellPrice: 12,
@@ -154,9 +154,9 @@ export const hematiteFlaskItem: ItemWikiDefinition = {
   iconSprite: { base64: FLASK_HEMATITE_BASE64, cellWidth: 16, cellHeight: 16, anchor: 'bottom-center' },
   onUse(state: OrionState, ctx: OrionExecutionContext) {
     state.heat = Math.max(0, state.heat - 80);
-    state.frame.integrity = Math.min(state.frame.maxIntegrity, state.frame.integrity + 25);
+    state.armor.durability = Math.min(state.armor.maxDurability, state.armor.durability + 25);
     ctx.sound.playHeal();
-    ctx.say('HEMATITE FLASK: -80 REACTOR HEAT & +25 FRAME HP');
+    ctx.say('HEMATITE FLASK: -80 REACTOR HEAT & +25 ARMOR');
     return true;
   },
 };

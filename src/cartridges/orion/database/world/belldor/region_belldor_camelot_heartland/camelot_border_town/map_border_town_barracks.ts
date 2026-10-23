@@ -23,7 +23,7 @@ export const mapBorderTownBarracks: MapDefinition = {
       globalRoomId: 'global_pillar_sanctuary',
       biomeId: 'camelot_border_town',
       title: 'Garrison Cloister Walk',
-      bannerTitle: 'CAMELOT BORDER TOWN · GARRISON CLOISTER WALK',
+      bannerTitle: 'GARRISON CLOISTER WALK',
     },
   ],
   connectedMapIds: ['map_border_town_market', 'map_border_town_cathedral'],
@@ -41,7 +41,7 @@ export const room4Neg1BorderTownBarracks: RoomDefinition = {
   regionId: 'region_belldor_camelot_heartland',
   biomeId: 'camelot_border_town',
   title: 'Barracks Quarter',
-  bannerTitle: 'CAMELOT BORDER TOWN · BARRACKS QUARTER (PERCIVAL & TRISTAN)',
+  bannerTitle: 'BARRACKS QUARTER',
   grid: [
     '##########',
     '#..2..V..#',

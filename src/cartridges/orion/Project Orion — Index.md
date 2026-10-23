@@ -80,7 +80,7 @@ Your mech is a frame with a combat identity. Six are available, and none of them
 | **Guardian** | `Trinity DE-14` | Mana | Heavy | Trinity Bastion Condenser | Defensive anchor. Draws focus, protects allies, sustains shields. |
 | **Rogue** | `VX Phantom` | Ether | Light | VX Phase Shroud Cell | Stealth striker. Ambush and burst, lightest frame. |
 | **Wizard** | `ARC Arclight` | Ether | Light | ARC Resonance Siphon | Energy artillery. Sustained beams, long range. |
-| **Cleric** | `SANC Sanctum` | Mana | Medium | Sanctum Reliquary Font | Support anchor. Repairs and buffs allies, manages who gets targeted. |
+| **Cleric** | `SANC Sanctum` | Mana | Medium | Sanctum Reliquary Font | Support anchor. Reinforces shields/armor, vents heat, and manages who gets targeted. |
 
 #### The Three Layers of a Build (`Pilot → Frame → Equipment`)
 - **Pilot (`Skills`)**: Created at New Game (`Trait Line → Pilot Name → Level 1 in M00 The Bog`) and listed on the Load Game roster. Skills progress through equipment use (locked out during the `Levels 1–5` tutorial until `Level 6: Border Town Complete`) and unlock **Feat Tiers (`I–V`)**.

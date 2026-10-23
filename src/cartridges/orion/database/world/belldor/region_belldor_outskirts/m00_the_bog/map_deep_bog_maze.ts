@@ -24,7 +24,7 @@ export const mapDeepBogMaze: MapDefinition = {
       globalRoomId: 'global_bog_hollow_grove',
       biomeId: 'belldor_bog',
       title: 'Northern Reed Hollow',
-      bannerTitle: 'M00 THE BOG · NORTHERN REED HOLLOW',
+      bannerTitle: 'NORTHERN REED HOLLOW',
     },
   ],
   connectedMapIds: [
@@ -57,7 +57,7 @@ export const room20DeepBogMaze: RoomDefinition = {
   regionId: 'region_belldor_outskirts',
   biomeId: 'belldor_bog',
   title: 'Corrosive Marsh Trail',
-  bannerTitle: 'M00 THE BOG · CORROSIVE MARSH TRAIL',
+  bannerTitle: 'CORROSIVE MARSH TRAIL',
   grid: [
     '####..####',
     '#..~~~~..#',
@@ -80,7 +80,7 @@ export const room21LadyOfTheLakeArena: RoomDefinition = {
   regionId: 'region_belldor_outskirts',
   biomeId: 'belldor_bog',
   title: 'Lady of the Lake Arena',
-  bannerTitle: 'M00 SECRET ARENA · LADY OF THE LAKE',
+  bannerTitle: 'LADY OF THE LAKE ARENA',
   cols: 14,
   rows: 11,
   grid: [
@@ -115,7 +115,7 @@ export const room3Neg1BogLoopHollow: RoomDefinition = {
   regionId: 'region_belldor_outskirts',
   biomeId: 'belldor_bog',
   title: 'Northern Bog Hollow',
-  bannerTitle: 'M00 THE BOG · NORTHERN BOG HOLLOW',
+  bannerTitle: 'NORTHERN BOG HOLLOW',
   grid: [
     '####..####',
     '#,,~~~~,,#',
@@ -143,7 +143,7 @@ export const room30BogExitPerimeter: RoomDefinition = {
   regionId: 'region_belldor_outskirts',
   biomeId: 'belldor_bog',
   title: 'Main Bog Expanse & Exit Gate',
-  bannerTitle: 'M00 THE BOG · MAIN BOG EXPANSE & EXIT GATE',
+  bannerTitle: 'MAIN BOG EXPANSE & EXIT GATE',
   cols: 14,
   rows: 11,
   grid: [

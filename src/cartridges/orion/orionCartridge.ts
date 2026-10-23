@@ -12,7 +12,7 @@ import {
   CartridgeSurface,
 } from '../../types/cartridge';
 import { GameInput } from '../../types/input';
-import { TRAIT_LIST } from './database/characters';
+import { DEFAULT_CALLSIGNS, TRAIT_LIST } from './database/characters';
 import {
   applyTraitLineProfile,
   checkWorldInteractivePrompt,
@@ -38,17 +38,8 @@ import {
   updatePlayerSystem,
   updateProjectiles,
 } from './systems';
-import { OrionCombatContext, OrionState, TraitLine } from './types';
+import { OrionCombatContext, OrionState } from './types';
 import { OrionGameMenu, OrionHud, OrionSatchel } from './ui';
-
-const DEFAULT_CALLSIGNS: Record<TraitLine, string> = {
-  Warrior: 'Pilot Vane',
-  Marauder: 'Pilot Kael',
-  Guardian: 'Pilot Seraph',
-  Rogue: 'Pilot Nyx',
-  Wizard: 'Pilot Soren',
-  Cleric: 'Pilot Lyra',
-};
 
 export function createOrionCartridge(): Cartridge {
   const rooms: Record<string, string[]> = { ...ORION_TUTORIAL_ROOMS };
@@ -196,6 +187,17 @@ export function createOrionCartridge(): Cartridge {
       // 4. Seamless World Room Transitions & Contextual Prompts
       handleWorldRoomTransition(rooms, state, combatCtx);
       checkWorldInteractivePrompt(rooms, state);
+
+      // 5. Auto-expire transient pop-up notifications
+      if (state.toastText) {
+        if (!state.toastTimer || state.toastTimer <= 0) {
+          state.toastTimer = 2.2;
+        }
+        state.toastTimer = Math.max(0, state.toastTimer - dt);
+        if (state.toastTimer <= 0) {
+          state.toastText = null;
+        }
+      }
     },
 
     draw(surface: CartridgeSurface) {

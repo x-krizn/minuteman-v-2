@@ -203,7 +203,7 @@ export const PILOT_SKILL_DEFINITIONS: Array<{
     id: 'Cleric',
     name: 'Cleric (Mage Support)',
     fundingGems: ['demantoid', 'moonstone'],
-    relatedEquipment: 'Funded by Demantoid (Trait) or Moonstone (Mana Reactor). Unlocks repair, thermal venting & aura Feat Nodes.',
+    relatedEquipment: 'Funded by Demantoid (Trait) or Moonstone (Mana Reactor). Unlocks barrier/plating harmonization, thermal venting & aura Feat Nodes.',
   },
   {
     id: 'Wizard',
@@ -673,7 +673,6 @@ export interface WeaponGemCombatModifiers {
   extraArmorDentOnHit: number;
   presenceGainOnHit: number;
   shieldRestoreOnSkillHit: number;
-  frameRepairOnSkillHit: number;
   heatVentOnBasicHit: number;
   armorRestoreOnKill: number;
   summaryLabel: string;
@@ -684,7 +683,7 @@ export const WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS: Record<GemId, string> = {
   spinel: '+15% Weapon DMG (+22% at ≥50 Heat)',
   carnelian: '+4 Armor Shred on Hit & +15 Presence',
   titanite: '+15 Max Shield & +4 Shield on Skill Hit',
-  demantoid: '+3 Frame HP on Skill Hit & -15% Skill Heat Cost',
+  demantoid: '-15% Skill Heat Cost & -10% Skill Cooldowns',
   kyanite: '+15% Projectile Speed/Range & -12% Skill Cooldowns',
   charoite: '+20% Locked/Staggered DMG & +8% Move Speed',
   rubellite: '+12% All Weapon DMG & +1 Max Chain Ammo',
@@ -748,7 +747,6 @@ export function getWeaponGemCombatModifiers(
     extraArmorDentOnHit: 0,
     presenceGainOnHit: 0,
     shieldRestoreOnSkillHit: 0,
-    frameRepairOnSkillHit: 0,
     heatVentOnBasicHit: 0,
     armorRestoreOnKill: 0,
     summaryLabel: 'Unmodified Base Equipment (Col 0)',
@@ -774,8 +772,8 @@ export function getWeaponGemCombatModifiers(
       base.shieldRestoreOnSkillHit = 4;
       break;
     case 'demantoid':
-      base.frameRepairOnSkillHit = 3;
       base.skillHeatCostMult = 0.85;
+      base.skillCooldownMult = 0.9;
       break;
     case 'kyanite':
       base.projectileSpeedMult = 1.15;
@@ -1426,17 +1424,4 @@ export function computeInterfaceFeatModifiers(equippedFeats: string[]): {
     cooldownMult,
     accuracyMult,
   };
-}
-
-/**
- * Gemstones are the sole currency for Pilot Skills, Feat Sockets, and Equipment Mods.
- * Preserved as a no-op hook for backward compatibility with combat callers.
- */
-export function awardPilotSkillXp(
-  _state: OrionState,
-  _skillId: PilotSkillId,
-  _amount: number,
-  _ctx?: { say: (text: string) => void }
-): boolean {
-  return false;
 }

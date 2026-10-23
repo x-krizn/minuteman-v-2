@@ -58,6 +58,8 @@ export const greatBowWeapon: WeaponDefinition = {
       tellDurationSec: 0.12,
       actionDurationSec: 0.35,
       cooldownSec: 0,
+      isChain: true,
+      reloadDurationSec: 2.4,
       heatCost: 4,
       range: 120,
       description: 'Five-arrow heavy draw chain dealing 11 Pierce damage per arrow (55 BCU total).',

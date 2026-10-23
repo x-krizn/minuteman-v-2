@@ -5,7 +5,12 @@
 
 import { OrionActionDescriptor, OrionState } from '../../types';
 import { getItemDefinition } from '../items';
-import { getWeaponDefinition, WEAPON_SKILL_ACTIONS } from '../weapons';
+import {
+  getWeaponDefinition,
+  isAuxiliaryEquipment,
+  isTrueWeaponEquipment,
+  WEAPON_SKILL_ACTIONS,
+} from '../weapons';
 import {
   CLASS_UTILITY_CATALOG,
   ClassUtilityItemDefinition,
@@ -51,28 +56,47 @@ export const ASSIGNABLE_ACTION_CATALOG: OrionActionDescriptor[] = discoveredActi
 
 /**
  * Resolve any assignable action ID into its concrete action descriptor for the pilot's current state
- * (dynamically binding weapon_skill_1..4, class_utility_slot, and belt_slot_1..4).
+ * (dynamically binding weapon_skill_1..4, weapon_slot2_skill4..5, class_utility_slot, and belt_slot_1..4).
  */
 export function getResolvedActionDescriptor(
   state: OrionState,
   actionId: string
 ): OrionActionDescriptor {
   if (actionId === 'weapon_slot2_skill4') {
-    const slot2WeaponId = state.equipmentSlots?.slot2 || 'buckler_shield';
-    const weapon = getWeaponDefinition(slot2WeaponId);
-    const move = weapon?.moveset[3] || weapon?.moveset[1] || weapon?.moveset[0];
+    const slot1Id = state.equipmentSlots?.slot1 || state.equippedWeapons?.[0] || 'long_sword';
+    const slot2Id = state.equipmentSlots?.slot2 || null;
+    const slot3Id = state.equipmentSlots?.slot3 || null;
+    const w2 = slot2Id ? getWeaponDefinition(slot2Id) : undefined;
+    const item2 = slot2Id && !w2 ? getItemDefinition(slot2Id) : undefined;
+    const w3 = slot3Id ? getWeaponDefinition(slot3Id) : undefined;
+
+    // When Side Hand holds a consumable (which only occupies Skill 5), Auxl auxiliary provides Skill 4
+    const targetWeaponId =
+      item2 && w3 && isAuxiliaryEquipment(w3)
+        ? slot3Id!
+        : slot2Id || slot3Id || 'buckler_shield';
+    const weapon = getWeaponDefinition(targetWeaponId);
+    const isUnpairedWeapon =
+      weapon && isTrueWeaponEquipment(weapon) && targetWeaponId !== slot1Id;
+    const movesetSlot: 1 | 2 | 3 | 4 = isUnpairedWeapon ? 1 : 3;
+    const move = weapon?.moveset[movesetSlot] || weapon?.moveset[3] || weapon?.moveset[1];
+
     return {
       id: 'weapon_slot2_skill4',
-      name: move?.name || 'Off-Hand Skill',
-      shortLabel: (move?.name || 'OFF-HAND').slice(0, 14).toUpperCase(),
+      name: move?.name || 'Side Skill 4',
+      shortLabel: (move?.name || 'SKILL 4').slice(0, 14).toUpperCase(),
       sourceCategory: 'weapon',
-      sourceLabel: `${weapon?.name || 'Off-Hand'} [Skill 4]`,
-      weaponSkillSlot: 4,
-      weaponId: slot2WeaponId,
-      description: move?.description || 'Off-hand weapon defensive/tactical action.',
+      sourceLabel: `${weapon?.name || 'Side Hand'} [Skill ${isUnpairedWeapon ? 2 : 4}]`,
+      weaponSkillSlot: movesetSlot,
+      weaponId: targetWeaponId,
+      description: move?.description || 'Side-hand weapon or auxiliary action.',
       tellDurationSec: move?.tellDurationSec ?? 0.2,
       actionDurationSec: move?.actionDurationSec ?? 0.35,
       cooldownSec: move?.cooldownSec ?? 4.0,
+      isChain: move?.isChain,
+      activeDurationSec: move?.activeDurationSec,
+      reloadDurationSec: move?.reloadDurationSec,
+      isBlock: move?.isBlock,
       heatCost: move?.heatCost ?? 12,
       damage: move?.damage ?? 16,
       damageType: move?.damageType ?? 'Impact',
@@ -82,22 +106,31 @@ export function getResolvedActionDescriptor(
   }
 
   if (actionId === 'weapon_slot2_skill5') {
+    const slot1Id = state.equipmentSlots?.slot1 || state.equippedWeapons?.[0] || 'long_sword';
     const slot2WeaponId =
       state.equipmentSlots?.slot2 || state.equipmentSlots?.slot3 || 'buckler_shield';
     const weapon = getWeaponDefinition(slot2WeaponId);
-    const move = weapon?.moveset[4] || weapon?.moveset[2] || weapon?.moveset[0];
+    const isUnpairedWeapon =
+      weapon && isTrueWeaponEquipment(weapon) && slot2WeaponId !== slot1Id;
+    const movesetSlot: 1 | 2 | 3 | 4 = isUnpairedWeapon ? 2 : 4;
+    const move = weapon?.moveset[movesetSlot] || weapon?.moveset[4] || weapon?.moveset[2];
+
     return {
       id: 'weapon_slot2_skill5',
-      name: move?.name || 'Off-Hand Finisher',
-      shortLabel: (move?.name || 'FINISHER').slice(0, 14).toUpperCase(),
+      name: move?.name || 'Side Skill 5',
+      shortLabel: (move?.name || 'SKILL 5').slice(0, 14).toUpperCase(),
       sourceCategory: 'weapon',
-      sourceLabel: `${weapon?.name || 'Off-Hand'} [Skill 5]`,
-      weaponSkillSlot: 4,
+      sourceLabel: `${weapon?.name || 'Side Hand'} [Skill ${isUnpairedWeapon ? 3 : 5}]`,
+      weaponSkillSlot: movesetSlot,
       weaponId: slot2WeaponId,
-      description: move?.description || 'Off-hand weapon heavy finisher action.',
+      description: move?.description || 'Side-hand weapon or auxiliary finisher action.',
       tellDurationSec: move?.tellDurationSec ?? 0.3,
       actionDurationSec: move?.actionDurationSec ?? 0.45,
       cooldownSec: move?.cooldownSec ?? 6.5,
+      isChain: move?.isChain,
+      activeDurationSec: move?.activeDurationSec,
+      reloadDurationSec: move?.reloadDurationSec,
+      isBlock: move?.isBlock,
       heatCost: move?.heatCost ?? 20,
       damage: move?.damage ?? 24,
       damageType: move?.damageType ?? 'Wave',
@@ -152,6 +185,10 @@ export function getResolvedActionDescriptor(
         tellDurationSec: move.tellDurationSec,
         actionDurationSec: move.actionDurationSec,
         cooldownSec: move.cooldownSec,
+        isChain: move.isChain,
+        activeDurationSec: move.activeDurationSec,
+        reloadDurationSec: move.reloadDurationSec,
+        isBlock: move.isBlock,
         heatCost: move.heatCost,
         damage: move.damage,
         damageType: move.damageType,

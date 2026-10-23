@@ -34,6 +34,57 @@ export function getWeaponDefinition(id: string): WeaponDefinition | undefined {
 }
 
 /**
+ * Shields, Quivers, and Catalysts are all designated Auxiliaries.
+ * Auxiliaries have only Skill 4 and Skill 5, and always replace Skill 4 and Skill 5.
+ */
+export function isAuxiliaryEquipment(weaponOrId?: WeaponDefinition | string | null): boolean {
+  if (!weaponOrId) return false;
+  const def = typeof weaponOrId === 'string' ? getWeaponDefinition(weaponOrId) : weaponOrId;
+  if (!def) return false;
+  return (
+    def.equipmentRole === 'shield' ||
+    def.equipmentRole === 'quiver' ||
+    def.equipmentRole === 'catalyst'
+  );
+}
+
+/**
+ * True WEAPONs (occupy Main Hand or Side Hand weapon slots; distinct from Auxiliaries).
+ */
+export function isTrueWeaponEquipment(weaponOrId?: WeaponDefinition | string | null): boolean {
+  if (!weaponOrId) return false;
+  const def = typeof weaponOrId === 'string' ? getWeaponDefinition(weaponOrId) : weaponOrId;
+  if (!def) return false;
+  return !isAuxiliaryEquipment(def);
+}
+
+/**
+ * Bows are designated 2-handed only.
+ */
+export function isTwoHandOnlyWeapon(weaponOrId?: WeaponDefinition | string | null): boolean {
+  if (!weaponOrId) return false;
+  const def = typeof weaponOrId === 'string' ? getWeaponDefinition(weaponOrId) : weaponOrId;
+  if (!def) return false;
+  return def.id === 'great_bow';
+}
+
+/**
+ * Equippable blocking weapons (all Shields and Melee weapons).
+ * Skill 4 (moveset[3]) is always Block for all equippable blocking weapons.
+ */
+export function isBlockingWeapon(weaponOrId?: WeaponDefinition | string | null): boolean {
+  if (!weaponOrId) return false;
+  const def = typeof weaponOrId === 'string' ? getWeaponDefinition(weaponOrId) : weaponOrId;
+  if (!def) return false;
+  return Boolean(
+    def.canBlock ||
+      def.equipmentRole === 'shield' ||
+      def.equipmentRole === 'melee' ||
+      Boolean(def.moveset[3]?.isBlock)
+  );
+}
+
+/**
  * Canonical Assignable Weapon Skill Slot Proxies (Slots 1..4)
  * Dynamically resolve to the currently active weapon's moveset slot at runtime.
  */

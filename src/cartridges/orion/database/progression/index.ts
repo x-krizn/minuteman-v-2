@@ -540,14 +540,150 @@ export function createStarterGemPouch(
   return Array.from(map.entries()).map(([itemId, count]) => ({ itemId, count }));
 }
 
+export interface ChassisHardwareItemDefinition {
+  id: string;
+  name: string;
+  slot: 'head' | 'arms' | 'plating';
+  subtype: string;
+  armorType?: 'Ablative' | 'Reactive' | 'Hardened' | 'Layered';
+  linkedActionId: string;
+  description: string;
+}
+
+export const CHASSIS_HARDWARE_CATALOG: ChassisHardwareItemDefinition[] = [
+  {
+    id: 'hw_head_visor',
+    name: 'Mark-IV Sensor Visor',
+    slot: 'head',
+    subtype: 'Target Optics',
+    linkedActionId: 'mod_head_optic_scan',
+    description: 'Standard cockpit target-painting visor. Enables Optic Target Painter (+25% target damage taken).',
+  },
+  {
+    id: 'hw_head_rangefinder',
+    name: 'Ballistic Rangefinder Array',
+    slot: 'head',
+    subtype: 'Artillery Optics',
+    linkedActionId: 'mod_head_optic_scan',
+    description: 'Long-baseline telemetry array calibrated for ranged lock retention and submerged threat detection.',
+  },
+  {
+    id: 'hw_head_aether_crown',
+    name: 'Æther Resonance Diadem',
+    slot: 'head',
+    subtype: 'Resonance Optics',
+    linkedActionId: 'mod_head_optic_scan',
+    description: 'Sanctum phase-diadem that highlights bio-electric signatures and bog wurm burrows.',
+  },
+  {
+    id: 'hw_arms_vambraces',
+    name: 'Actuator Vambraces',
+    slot: 'arms',
+    subtype: 'Balanced Actuators',
+    linkedActionId: 'mod_arms_shock_grapple',
+    description: 'Standard hydraulic arm actuators with integrated Arc Tether Shot launcher.',
+  },
+  {
+    id: 'hw_arms_grappler',
+    name: 'Mag-Lock Shock Grappler',
+    slot: 'arms',
+    subtype: 'Tether Actuators',
+    linkedActionId: 'mod_arms_shock_grapple',
+    description: 'High-capacitance electromagnetic grapple gauntlets built to overload Energy Shields.',
+  },
+  {
+    id: 'hw_arms_servo',
+    name: 'Heavy Siege Servo-Gauntlets',
+    slot: 'arms',
+    subtype: 'Siege Actuators',
+    linkedActionId: 'mod_arms_shock_grapple',
+    description: 'Reinforced torsion-brace gauntlets engineered for heavy two-handed and paired stances.',
+  },
+  {
+    id: 'hw_plating_ablative',
+    name: 'Ablative Cuirass Plating',
+    slot: 'plating',
+    subtype: 'Ablative Armor',
+    armorType: 'Ablative',
+    linkedActionId: 'mod_torso_reactive_burst',
+    description: 'High-durability sacrificial ceramic plates with balanced threshold and rating.',
+  },
+  {
+    id: 'hw_plating_reactive',
+    name: 'Reactive Blast-Plate Cuirass',
+    slot: 'plating',
+    subtype: 'Reactive Armor',
+    armorType: 'Reactive',
+    linkedActionId: 'mod_torso_reactive_burst',
+    description: 'Explosive counter-charge torso armor that repels close-quarters attackers on burst.',
+  },
+  {
+    id: 'hw_plating_hardened',
+    name: 'Hardened Sanctum Carapace',
+    slot: 'plating',
+    subtype: 'Hardened Armor',
+    armorType: 'Hardened',
+    linkedActionId: 'mod_torso_reactive_burst',
+    description: 'Dense cathedral-forged alloy cuirass with high damage threshold against light fire.',
+  },
+  {
+    id: 'hw_plating_layered',
+    name: 'Layered Weave Laminate',
+    slot: 'plating',
+    subtype: 'Layered Armor',
+    armorType: 'Layered',
+    linkedActionId: 'mod_torso_reactive_burst',
+    description: 'Flexible composite weave plating favored by agile frames for rapid heat dissipation.',
+  },
+];
+
+export function getWeaponSubtypeInfo(weaponId: string): {
+  equipmentType: 'Weapon' | 'Auxiliary';
+  subtype: string;
+} {
+  switch (weaponId) {
+    case 'long_sword':
+    case 'khopesh':
+      return { equipmentType: 'Weapon', subtype: 'Melee · Blade' };
+    case 'mace':
+    case 'hand_axe':
+      return { equipmentType: 'Weapon', subtype: 'Melee · Blunt / Cleave' };
+    case 'short_spear':
+    case 'avalon_siege_lance':
+      return { equipmentType: 'Weapon', subtype: 'Melee · Polearm / Lance' };
+    case 'great_bow':
+      return { equipmentType: 'Weapon', subtype: 'Ranged · 2H Bow' };
+    case 'gladius_boltcaster':
+      return { equipmentType: 'Weapon', subtype: 'Ranged · Boltcaster' };
+    case 'buckler_shield':
+    case 'heater_shield':
+    case 'pavise_shield':
+      return { equipmentType: 'Auxiliary', subtype: 'Auxiliary · Shield' };
+    case 'quiver':
+      return { equipmentType: 'Auxiliary', subtype: 'Auxiliary · Quiver' };
+    case 'aether_catalyst':
+      return { equipmentType: 'Auxiliary', subtype: 'Auxiliary · Catalyst' };
+    default:
+      return { equipmentType: 'Weapon', subtype: 'Weapon' };
+  }
+}
+
 export function createInitialEquipmentSlots(traitLine: TraitLine = 'Warrior'): OrionEquipmentSlots {
   const trait = TRAIT_REGISTRY[traitLine] || TRAIT_REGISTRY.Warrior;
   const w1 = trait.startingWeapons?.[0] || 'long_sword';
   const w2 = trait.startingWeapons?.[1] || null;
+  const isBowMain = w1 === 'great_bow';
+  const initialCounts: Record<string, number> = { [w1]: 1 };
+  if (w2) {
+    initialCounts[w2] = (initialCounts[w2] || 0) + 1;
+  }
+  const hasSide = Boolean(!isBowMain && w2);
   return {
     slot1: w1,
-    slot2: w2,
-    slot3: null,
+    slot2: isBowMain ? null : w2,
+    slot3: isBowMain ? w2 : 'repair_kit',
+    mainGrip: hasSide ? '1h' : '2h',
+    ownedWeaponCounts: initialCounts,
     head: `${trait.frameModel || 'Mark-IV'} Sensor Visor`,
     arms: `${trait.frameModel || 'Mark-IV'} Actuator Vambraces`,
     plating: `${trait.frameModel || 'Mark-IV'} ${trait.baseArmor.type} Plating`,
@@ -571,27 +707,145 @@ export function createInitialEquipmentSlots(traitLine: TraitLine = 'Warrior'): O
     },
     installedMods: {},
     unlockedMods: [],
-    unlockedEquipment: [w1, ...(w2 ? [w2] : [])],
+    unlockedEquipment: [w1, ...(w2 ? [w2] : []), 'aether_catalyst'],
     weaponGemMods: {},
   };
 }
 
 /**
- * Checks whether a weapon, shield, or quiver is unlocked/owned by the pilot.
- * When `bypassProgressionGates` is enabled (or tutorial is toggled off in sandbox), all 12 items are available.
+ * Checks whether a weapon, shield, quiver, or catalyst is unlocked/owned by the pilot.
+ * When `bypassProgressionGates` is enabled (or tutorial is toggled off in sandbox), all items are available.
  */
 export function isEquipmentUnlocked(state: OrionState, weaponId: string): boolean {
   if (!weaponId) return false;
-  if (state.bypassProgressionGates || !state.tutorialActive) return true;
+  if (state.bypassProgressionGates || !state.tutorialActive || state.room === '-4,0') return true;
   if (state.equippedWeapons?.includes(weaponId)) return true;
-  if (state.equipmentSlots?.slot1 === weaponId || state.equipmentSlots?.slot2 === weaponId || state.equipmentSlots?.slot3 === weaponId) return true;
+  if (
+    state.equipmentSlots?.slot1 === weaponId ||
+    state.equipmentSlots?.slot2 === weaponId ||
+    state.equipmentSlots?.slot3 === weaponId
+  )
+    return true;
   const unlocked = state.equipmentSlots?.unlockedEquipment || [];
   return unlocked.includes(weaponId);
 }
 
 /**
- * Unlocks a weapon, shield, or quiver into `state.equipmentSlots.unlockedEquipment`.
- * If the pilot is at Level 2+ and only has 1 weapon equipped, automatically equips the new item into Set 2 / Slot 2.
+ * Returns how many separate instances of `weaponId` the pilot owns.
+ * Paired Stance (`main: sword1`, `side: sword1` in `1h` grip) requires 2 separate items.
+ */
+export function getOwnedWeaponCount(state: OrionState, weaponId: string): number {
+  if (!weaponId) return 0;
+  if (state.bypassProgressionGates || state.room === '-4,0') return 2;
+  const counts = state.equipmentSlots?.ownedWeaponCounts || {};
+  if (typeof counts[weaponId] === 'number' && counts[weaponId] > 0) {
+    return counts[weaponId];
+  }
+  return isEquipmentUnlocked(state, weaponId) ? 1 : 0;
+}
+
+/**
+ * Grants or requisitions a second separate instance of a weapon so the pilot can enter Dual-Wield Paired Stance.
+ */
+export function acquireAdditionalWeaponCopy(
+  state: OrionState,
+  weaponId: string,
+  ctx?: { say: (text: string) => void }
+): boolean {
+  if (!weaponId) return false;
+  if (!state.equipmentSlots) {
+    state.equipmentSlots = createInitialEquipmentSlots(state.traitLine);
+  }
+  state.equipmentSlots.ownedWeaponCounts = state.equipmentSlots.ownedWeaponCounts || {};
+  const current = getOwnedWeaponCount(state, weaponId);
+  if (current >= 2) {
+    ctx?.say(`ALREADY OWN 2 SEPARATE COPIES OF ${weaponId.replace(/_/g, ' ').toUpperCase()}`);
+    return false;
+  }
+  state.equipmentSlots.ownedWeaponCounts[weaponId] = 2;
+  if (!state.equipmentSlots.unlockedEquipment?.includes(weaponId)) {
+    state.equipmentSlots.unlockedEquipment = [
+      ...(state.equipmentSlots.unlockedEquipment || []),
+      weaponId,
+    ];
+  }
+  ctx?.say(`ACQUIRED 2ND COPY: ${weaponId.replace(/_/g, ' ').toUpperCase()} (PAIRED STANCE READY)`);
+  return true;
+}
+
+/**
+ * Resolves the active Main Hand weapon grip ('1h' or '2h').
+ * - Bows (`great_bow`) are designated 2-handed only.
+ * - If no Side Hand is equipped (`!slot2`), the Main Hand is automatically 2H.
+ */
+export function getEffectiveMainGrip(state: OrionState): '1h' | '2h' {
+  const slot1 = state.equipmentSlots?.slot1 || state.equippedWeapons?.[0] || 'long_sword';
+  if (slot1 === 'great_bow') return '2h';
+  const slot2 = state.equipmentSlots?.slot2 || null;
+  if (!slot2) return '2h';
+  if (slot2 === slot1 && getOwnedWeaponCount(state, slot1) < 2) return '2h';
+  return state.equipmentSlots?.mainGrip === '2h' ? '2h' : '1h';
+}
+
+/**
+ * Switches Main Hand weapon grip ('1h' <-> '2h') in the Equipment Screen.
+ * - Bows (`great_bow`) are designated 2-handed only and cannot switch to 1H.
+ * - If no Side Hand is equipped, Main Hand is automatically 2H.
+ * - Switching to 2H un-slots Side Hand (moving any distinct Side Hand item into Aux if Aux is empty) so Main Hand is 2H.
+ */
+export function setMainWeaponGrip(
+  state: OrionState,
+  grip: '1h' | '2h',
+  ctx?: { say: (text: string) => void }
+): boolean {
+  if (!state.equipmentSlots) {
+    state.equipmentSlots = createInitialEquipmentSlots(state.traitLine);
+  }
+  const slot1 = state.equipmentSlots.slot1 || state.equippedWeapons?.[0] || 'long_sword';
+  if (slot1 === 'great_bow' && grip === '1h') {
+    ctx?.say('BOWS ARE DESIGNATED 2-HANDED ONLY');
+    return false;
+  }
+
+  if (grip === '2h') {
+    if (
+      state.equipmentSlots.slot2 &&
+      state.equipmentSlots.slot2 !== slot1 &&
+      !state.equipmentSlots.slot3
+    ) {
+      state.equipmentSlots.slot3 = state.equipmentSlots.slot2;
+    }
+    state.equipmentSlots.mainGrip = '2h';
+    state.equipmentSlots.slot2 = null;
+    ctx?.say(
+      `TWO-HANDING POWER STANCE: ${slot1.replace(/_/g, ' ').toUpperCase()} (2H)`
+    );
+    return true;
+  }
+
+  // Switching to 1H requires a Side Hand item; if Side Hand is empty but Aux has an item, swap Aux into Side Hand
+  if (!state.equipmentSlots.slot2) {
+    if (state.equipmentSlots.slot3) {
+      state.equipmentSlots.slot2 = state.equipmentSlots.slot3;
+      state.equipmentSlots.slot3 = null;
+      state.equipmentSlots.mainGrip = '1h';
+      ctx?.say(
+        `ONE-HANDED GRIP: EQUIPPED ${state.equipmentSlots.slot2.replace(/_/g, ' ').toUpperCase()} IN SIDE HAND`
+      );
+      return true;
+    }
+    ctx?.say('NO SIDE HAND EQUIPPED — MAIN HAND IS AUTOMATICALLY 2H');
+    return false;
+  }
+
+  state.equipmentSlots.mainGrip = '1h';
+  ctx?.say(`ONE-HANDED GRIP: ${slot1.replace(/_/g, ' ').toUpperCase()} (1H)`);
+  return true;
+}
+
+/**
+ * Unlocks a weapon, shield, quiver, or catalyst into `state.equipmentSlots.unlockedEquipment`.
+ * If already unlocked, increments `ownedWeaponCounts` up to 2 so Paired Stance can be used.
  */
 export function unlockEquipmentItem(
   state: OrionState,
@@ -605,10 +859,20 @@ export function unlockEquipmentItem(
   state.equipmentSlots.unlockedEquipment = state.equipmentSlots.unlockedEquipment || [
     state.equippedWeapons[0] || 'long_sword',
   ];
+  state.equipmentSlots.ownedWeaponCounts = state.equipmentSlots.ownedWeaponCounts || {};
 
   const wasNew = !state.equipmentSlots.unlockedEquipment.includes(weaponId);
   if (wasNew) {
     state.equipmentSlots.unlockedEquipment.push(weaponId);
+    state.equipmentSlots.ownedWeaponCounts[weaponId] = Math.max(
+      1,
+      state.equipmentSlots.ownedWeaponCounts[weaponId] || 1
+    );
+  } else {
+    state.equipmentSlots.ownedWeaponCounts[weaponId] = Math.min(
+      2,
+      (state.equipmentSlots.ownedWeaponCounts[weaponId] || 1) + 1
+    );
   }
 
   if (
@@ -618,8 +882,10 @@ export function unlockEquipmentItem(
   ) {
     state.equippedWeapons.push(weaponId);
     state.equipmentSlots.weaponSet2 = [weaponId, null];
-    if (!state.equipmentSlots.slot2) {
+    if (!state.equipmentSlots.slot2 && getEffectiveMainGrip(state) !== '2h') {
       state.equipmentSlots.slot2 = weaponId;
+    } else if (!state.equipmentSlots.slot3) {
+      state.equipmentSlots.slot3 = weaponId;
     }
   }
 
@@ -652,8 +918,14 @@ export function unlockLevel2SecondaryWeapon(state: OrionState): string {
     state.equippedWeapons.push(secondary);
   }
   if (state.equipmentSlots) {
+    const is2H = getEffectiveMainGrip(state) === '2h';
     state.equipmentSlots.slot1 = state.equippedWeapons[0];
-    state.equipmentSlots.slot2 = state.equippedWeapons[1] || secondary;
+    if (is2H) {
+      state.equipmentSlots.slot2 = state.equippedWeapons[0];
+      state.equipmentSlots.slot3 = state.equipmentSlots.slot3 || secondary;
+    } else {
+      state.equipmentSlots.slot2 = state.equippedWeapons[1] || secondary;
+    }
     state.equipmentSlots.weaponSet1 = [state.equippedWeapons[0], null];
     state.equipmentSlots.weaponSet2 = [state.equippedWeapons[1] || secondary, null];
   }

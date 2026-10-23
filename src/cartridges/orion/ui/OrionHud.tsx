@@ -10,6 +10,7 @@ import { getClassUtilityDefinition } from '../database/equipment';
 import {
   GEMSTONE_CATALOG,
   GEMSTONE_REGISTRY,
+  getEffectiveMainGrip,
   getInventoryGemCount,
   TRAIT_FUNDING_GEMS,
 } from '../database/progression';
@@ -225,11 +226,21 @@ function renderSkillGlyph(skill: ResolvedCombatSkill | null, index: number): Rea
 
   const wId = skill.weaponId || '';
   const isShield = wId.includes('shield');
+  const isCatalyst = wId.includes('catalyst');
   const isBowOrQuiver = wId === 'great_bow' || wId === 'quiver';
   const isSpearOrLance = wId === 'short_spear' || wId === 'avalon_siege_lance';
   const isMace = wId === 'mace';
   const isAxe = wId === 'hand_axe';
   const isSwordOrKhopesh = wId === 'long_sword' || wId === 'khopesh';
+
+  if (isCatalyst) {
+    return (
+      <svg viewBox="0 0 24 24" className="w-4 h-4 text-[#e879f9]" fill="none" stroke="currentColor" strokeWidth="2">
+        <polygon points="12,2 19,9 12,22 5,9" strokeLinejoin="round" />
+        <circle cx="12" cy="10" r="2.5" />
+      </svg>
+    );
+  }
 
   // Slot 1: Primary Attack
   if (index === 0) {
@@ -320,8 +331,16 @@ function renderSkillGlyph(skill: ResolvedCombatSkill | null, index: number): Rea
     );
   }
 
-  // Slot 4: Off-Hand / Heavy Suppression
-  if (index === 3) {
+  // Slot 4: Block (for all equippable blocking weapons) or Ranged Suppression
+  if (index === 3 || skill.isBlock) {
+    if (skill.isBlock) {
+      return (
+        <svg viewBox="0 0 24 24" className="w-4 h-4 text-[#38bdf8]" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6l7-3z" />
+          <path d="M12 7v9M8.5 11h7" strokeLinecap="round" />
+        </svg>
+      );
+    }
     return (
       <svg viewBox="0 0 24 24" className="w-4 h-4 text-[#38bdf8]" fill="none" stroke="currentColor" strokeWidth="2">
         <polygon points="12,3 21,12 12,21 3,12" />
@@ -719,11 +738,15 @@ export const OrionHud: React.FC = () => {
 
   // Active Weapon & Equipment Slots
   const slot1Id = state.equipmentSlots?.slot1 || state.equippedWeapons[0] || 'gladius_boltcaster';
-  const slot2Id = state.equipmentSlots?.slot2 || state.equippedWeapons[1] || null;
+  const slot2Id =
+    state.equipmentSlots !== undefined
+      ? state.equipmentSlots.slot2
+      : state.equippedWeapons[1] || null;
   const slot3Id = state.equipmentSlots?.slot3 || null;
+  const mainGrip = getEffectiveMainGrip(state);
 
   const activeWeapon = getWeaponDefinition(slot1Id);
-  const activeWeaponName = activeWeapon?.name || 'Gladius Boltcaster';
+  const activeWeaponName = `${activeWeapon?.name || 'Gladius Boltcaster'}${mainGrip === '2h' ? ' (2h)' : ''}`;
   const isKhopesh = slot1Id === 'khopesh';
   const ammo = state.ammo;
   const maxAmmo = state.maxAmmo || activeWeapon?.shotsPerChain || 9;
@@ -942,8 +965,8 @@ export const OrionHud: React.FC = () => {
               }}
               className="pointer-events-auto text-[8.5px] font-bold text-[#f1f5f9] hover:text-[#fbbf24] tracking-wider truncate max-w-full cursor-pointer bg-transparent"
               title={
-                slot3Id
-                  ? `Active: ${activeWeaponName} · Click to swap with ${getWeaponDefinition(slot3Id)?.name || getItemDefinition(slot3Id)?.name || slot3Id}`
+                slot3Id || slot2Id
+                  ? `Main: ${activeWeaponName} · Click [L] to swap Side (${slot2Id ? getWeaponDefinition(slot2Id)?.name || getItemDefinition(slot2Id)?.name || slot2Id : 'Empty'}) ⇄ Aux (${slot3Id ? getWeaponDefinition(slot3Id)?.name || getItemDefinition(slot3Id)?.name || slot3Id : 'Empty'})`
                   : activeWeaponName
               }
             >
@@ -952,6 +975,7 @@ export const OrionHud: React.FC = () => {
             {slot2Id && (
               <div className="text-[7px] text-[#94a3b8] truncate max-w-full">
                 {getWeaponDefinition(slot2Id)?.name || getItemDefinition(slot2Id)?.name || slot2Id}
+                {mainGrip === '2h' && slot2Id === slot1Id ? ' (2h)' : ''}
               </div>
             )}
 
@@ -1014,29 +1038,41 @@ export const OrionHud: React.FC = () => {
               idx === 0 && isReloading
                 ? reloadTimer
                 : skill?.currentCooldown || 0;
+            const activeRem = skill?.activeRemaining || 0;
+            const isDurationActive = activeRem > 0.05;
             const onCooldown = rawCd > 0.05;
+            const isSkillReloading = Boolean(
+              (idx === 0 && isReloading) || (skill?.isReloading && onCooldown)
+            );
             const isAvailable = Boolean(skill && skill.available && skill.id !== 'none');
             const isActiveSlot =
               (idx === 0 && state.combatActiveChain) ||
-              (skill?.weaponMovesetSlot !== undefined &&
-                state.activeSkillSlot === skill.weaponMovesetSlot &&
-                state.skillActionTimer > 0);
+              isDurationActive ||
+              Boolean(
+                skill?.cooldownKey &&
+                  state.activeSkillCooldownKey === skill.cooldownKey &&
+                  state.skillActionTimer > 0
+              );
 
             const borderColorClass = !isAvailable
               ? 'border-[#334155]/45 opacity-40'
-              : isActiveSlot
-                ? 'border-white scale-105'
-                : onCooldown
-                  ? 'border-[#64748b]/80'
-                  : idx === 0
-                    ? 'border-[#38bdf8]/85 hover:border-[#7dd3fc]'
-                    : idx === 1
-                      ? 'border-[#fbbf24]/85 hover:border-[#fde047]'
-                      : idx === 2
-                        ? 'border-[#c084fc]/85 hover:border-[#e9d5ff]'
-                        : idx === 3
-                          ? 'border-[#38bdf8]/75 hover:border-[#7dd3fc]'
-                          : 'border-[#f472b6]/80 hover:border-[#fbcfe8]';
+              : isDurationActive
+                ? 'border-[#4ade80] scale-105'
+                : isActiveSlot
+                  ? 'border-white scale-105'
+                  : isSkillReloading
+                    ? 'border-[#f59e0b]/90'
+                    : onCooldown
+                      ? 'border-[#64748b]/80'
+                      : idx === 0
+                        ? 'border-[#38bdf8]/85 hover:border-[#7dd3fc]'
+                        : idx === 1
+                          ? 'border-[#fbbf24]/85 hover:border-[#fde047]'
+                          : idx === 2
+                            ? 'border-[#c084fc]/85 hover:border-[#e9d5ff]'
+                            : idx === 3
+                              ? 'border-[#38bdf8]/75 hover:border-[#7dd3fc]'
+                              : 'border-[#f472b6]/80 hover:border-[#fbcfe8]';
 
             return (
               <button
@@ -1051,7 +1087,15 @@ export const OrionHud: React.FC = () => {
                 }}
                 title={
                   skill
-                    ? `${skill.name}${onCooldown ? ` (${rawCd.toFixed(1)}s)` : ''}`
+                    ? `${skill.name}${
+                        isDurationActive
+                          ? ` [ACTIVE ${activeRem.toFixed(1)}s]`
+                          : isSkillReloading
+                            ? ` [RELOAD ${rawCd.toFixed(1)}s]`
+                            : onCooldown
+                              ? ` (${rawCd.toFixed(1)}s)`
+                              : ''
+                      }`
                     : `Skill ${slotNum}`
                 }
                 className={`pointer-events-auto relative w-7 h-7 sm:w-8 sm:h-8 rounded-xs border bg-transparent flex items-center justify-center transition-transform cursor-pointer drop-shadow-[0_1px_2px_rgba(2,6,23,0.95)] ${borderColorClass}`}
@@ -1072,14 +1116,22 @@ export const OrionHud: React.FC = () => {
                     </span>
                   )}
 
-                {/* Overlaid Cooldown Timer */}
-                {onCooldown && (
+                {/* Overlaid Active Duration or Cooldown/Reload Timer */}
+                {isDurationActive ? (
                   <span
-                    className={`absolute inset-0 flex items-center justify-center text-[8.5px] sm:text-[9px] font-black text-white tracking-tighter ${OUTLINED_TEXT}`}
+                    className={`absolute inset-0 flex items-center justify-center text-[8.5px] sm:text-[9px] font-black text-[#4ade80] tracking-tighter ${OUTLINED_TEXT}`}
+                  >
+                    {activeRem.toFixed(1)}
+                  </span>
+                ) : onCooldown ? (
+                  <span
+                    className={`absolute inset-0 flex items-center justify-center text-[8.5px] sm:text-[9px] font-black ${
+                      isSkillReloading ? 'text-[#fbbf24]' : 'text-white'
+                    } tracking-tighter ${OUTLINED_TEXT}`}
                   >
                     {rawCd.toFixed(1)}
                   </span>
-                )}
+                ) : null}
               </button>
             );
           })}

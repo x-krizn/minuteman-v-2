@@ -576,14 +576,26 @@ export interface ActionModificationDefinition {
 }
 
 export type WeaponHanding = '1-hand' | '2-hand' | 'off-hand-only' | 'buff-accessory';
+export type WeaponGripMode = '1h' | '2h';
+export type WeaponStanceType =
+  | 'paired'
+  | 'unpaired'
+  | 'power_2h'
+  | 'main_aux'
+  | 'main_consumable'
+  | 'single_1h';
 
 export interface OrionEquipmentSlots {
-  /** Slot 1: Main-Hand Weapon (1-Hand or 2-Hand) -> Skills 1-3 (and 4-5 if 2-Hand) */
+  /** Main Hand (Weapon Slot 1): 1H or 2H Weapon -> ac1, ac2, ac3 (and ac4, ac5 in Paired or 2H Power Stance) */
   slot1: string | null;
-  /** Slot 2: Off-Hand Weapon / Shield OR Belt Consumable -> Skill 4 (and Skill 5 if Off-Hand) */
+  /** Side Hand (Weapon/Aux/Consumable Slot 2): Off-hand Weapon, Auxiliary, or Swapped Consumable */
   slot2: string | null;
-  /** Slot 3: Auxiliary Weapon, Belt Consumable, or Buff Equipment -> Swapped via L Hold or Skill 5 / Buff */
+  /** Auxiliary Slot (Slot 3): Auxiliary (Shield/Quiver/Catalyst), Consumable, or Weapon -> swaps with Side Hand via [L] */
   slot3: string | null;
+  /** Active grip for Main Hand weapon ('1h' or '2h'). Bows are strictly '2h'. Switched in Equipment Screen. */
+  mainGrip?: WeaponGripMode;
+  /** Tracks how many separate instances of each weapon ID the pilot owns (Paired stance requires 2 separate items). */
+  ownedWeaponCounts?: Record<string, number>;
   /** Simplified Mech Hardware Quartet */
   head: string | null;
   arms: string | null;
@@ -653,20 +665,30 @@ export interface ActionDefinition {
   heatCost: number;
   range: number;
   description: string;
+  /** True if this skill fires/strikes as a multi-shot chain and activates a reload state */
+  isChain?: boolean;
+  /** Active duration in seconds for sustained/guard skills (activates reload state when finished) */
+  activeDurationSec?: number;
+  /** Reload state duration in seconds for chain or active-duration skills */
+  reloadDurationSec?: number;
+  /** True if this skill is a Block action (always Skill 4 on blocking weapons) */
+  isBlock?: boolean;
   execute?: (state: OrionState, ctx: OrionCombatContext) => void;
 }
 
-// Weapon / Shield / Quiver Definition
+// Weapon / Shield / Quiver / Catalyst Definition
 export interface WeaponDefinition {
   id: string;
   name: string;
   class: string;
-  /** Archetype role ('melee' | 'ranged' | 'shield' | 'quiver') */
-  equipmentRole?: 'melee' | 'ranged' | 'shield' | 'quiver';
+  /** Archetype role ('melee' | 'ranged' | 'shield' | 'quiver' | 'catalyst') */
+  equipmentRole?: 'melee' | 'ranged' | 'shield' | 'quiver' | 'catalyst';
   /** Weapon handing classification ('1-hand' | '2-hand' | 'off-hand-only' | 'buff-accessory') */
   handing?: WeaponHanding;
   /** Canonical weapon weight class ('light' | 'medium' | 'heavy') for the §3.4 Load Model */
   weightClass?: WeaponWeightClass;
+  /** True if this weapon is an equippable blocking weapon (Skill 4 is always Block) */
+  canBlock?: boolean;
   /** Passive Shield Capacity bonus when equipped (e.g. Heater / Buckler / Pavise shields) */
   passiveShieldBonus?: number;
   /** Default blade trail or projectile color when unmodified */
@@ -894,6 +916,10 @@ export interface OrionActionDescriptor {
   tellDurationSec: number;
   actionDurationSec: number;
   cooldownSec: number;
+  isChain?: boolean;
+  activeDurationSec?: number;
+  reloadDurationSec?: number;
+  isBlock?: boolean;
   heatCost: number; // Negative values vent heat
   damage: number;
   damageType: DamageType;
@@ -985,12 +1011,18 @@ export interface OrionState {
   // Active Skill / Action Windup & Tell
   activeSkillSlot: number | null;
   activeActionId?: string | null;
+  activeSkillCooldownKey?: string | null;
   skillTellTimer: number;
   skillActionTimer: number;
 
-  // Assignable L & R Multi-Source Actions
+  // Assignable L & R Multi-Source Actions & Separate Per-Skill Cooldown/Active/Reload Tracking
   assignedActions: OrionAssignedActions;
   actionCooldowns: Record<string, number>;
+  skillActiveTimers?: Record<string, number>;
+  skillReloadTimers?: Record<string, number>;
+  skillPendingReloadDurations?: Record<string, number>;
+  blockTimer?: number;
+  blockingWeaponId?: string | null;
   overdriveTimer?: number;
   opticMarkTimer?: number;
 

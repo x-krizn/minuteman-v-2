@@ -610,7 +610,12 @@ export function computeCapabilityGates(state: OrionState): OrionCapabilityGates 
   // Basic Dash is online at Level 1 (Enter Bog); Legs slot unlocks at Level 2
   const canBoosterDash = true;
   const canWeaponSwap =
-    (lvl >= 2 || !state.tutorialActive || bypass) && state.equippedWeapons.length > 1;
+    (lvl >= 2 || !state.tutorialActive || bypass) &&
+    Boolean(
+      state.equipmentSlots?.slot2 ||
+        state.equipmentSlots?.slot3 ||
+        state.equippedWeapons.length > 1
+    );
   const heatSystemActive = generatorSlotActive;
   const energySystemActive = generatorSlotActive;
   const opticsActive = headSlotActive;
@@ -628,7 +633,9 @@ export function computeCapabilityGates(state: OrionState): OrionCapabilityGates 
     state.equippedFeats || []
   );
   const currentWeaponId =
-    state.equippedWeapons[state.activeWeaponIndex] || 'gladius_boltcaster';
+    state.equipmentSlots?.slot1 ||
+    state.equippedWeapons[state.activeWeaponIndex] ||
+    'gladius_boltcaster';
   const activeWeapon = getWeaponDefinition(currentWeaponId);
   const activeWeaponWeight = activeWeapon?.weightClass || 'medium';
   const loadPenalty = computeLoadPenalty(effectiveLoadCapacity, activeWeaponWeight);
@@ -677,6 +684,9 @@ export function syncStateGates(state: OrionState): OrionCapabilityGates {
       state.equipmentSlots.unlockedEquipment.push(eqId);
     }
   }
+  if (!state.equipmentSlots.unlockedEquipment.includes('aether_catalyst')) {
+    state.equipmentSlots.unlockedEquipment.push('aether_catalyst');
+  }
 
   // Advance Frame Level 6..20 naturally from Gemstone investments, Feats, Mods & Bosses
   syncPostTutorialFrameLevel(state);
@@ -690,12 +700,26 @@ export function syncStateGates(state: OrionState): OrionCapabilityGates {
 
   const profile = TRAIT_REGISTRY[state.traitLine] || TRAIT_REGISTRY.Warrior;
 
-  state.equipmentSlots.slot1 = state.equipmentSlots.slot1 || state.equippedWeapons[0] || 'long_sword';
-  state.equipmentSlots.slot2 = state.equipmentSlots.slot2 ?? (state.equippedWeapons[1] || null);
-  state.equipmentSlots.slot3 = state.equipmentSlots.slot3 ?? null;
-  state.equipmentSlots.head = state.equipmentSlots.head || `${profile.frameModel || 'Mark-IV'} Sensor Visor`;
-  state.equipmentSlots.arms = state.equipmentSlots.arms || `${profile.frameModel || 'Mark-IV'} Actuator Vambraces`;
-  state.equipmentSlots.plating = state.equipmentSlots.plating || `${profile.frameModel || 'Mark-IV'} ${profile.baseArmor.type} Plating`;
+  state.equipmentSlots.slot1 =
+    state.equipmentSlots.slot1 || state.equippedWeapons[0] || 'long_sword';
+  if (state.equipmentSlots.slot2 === undefined) {
+    state.equipmentSlots.slot2 = state.equippedWeapons[1] || null;
+  }
+  if (state.equipmentSlots.slot3 === undefined) {
+    state.equipmentSlots.slot3 = 'repair_kit';
+  }
+  if (state.equipmentSlots.slot1 === 'great_bow') {
+    state.equipmentSlots.mainGrip = '2h';
+  } else if (!state.equipmentSlots.mainGrip) {
+    state.equipmentSlots.mainGrip = '1h';
+  }
+  state.equipmentSlots.head =
+    state.equipmentSlots.head || `${profile.frameModel || 'Mark-IV'} Sensor Visor`;
+  state.equipmentSlots.arms =
+    state.equipmentSlots.arms || `${profile.frameModel || 'Mark-IV'} Actuator Vambraces`;
+  state.equipmentSlots.plating =
+    state.equipmentSlots.plating ||
+    `${profile.frameModel || 'Mark-IV'} ${profile.baseArmor.type} Plating`;
   state.equipmentSlots.utility = state.equipmentSlots.utility || 'utility_ichor_surge';
 
   state.equipmentSlots.weaponSet1 = [

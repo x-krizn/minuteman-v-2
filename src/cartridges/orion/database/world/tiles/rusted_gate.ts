@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { TILE_SIZE } from '../../../constants';
+import { getRoomDimensions, TILE_SIZE } from '../../../constants';
 import { drawBase64Sprite } from '../../../systems/renderSystem';
 import { TileDefinition } from '../../../types';
 import { bogTiles_14_11, bogTiles_15_10, bogTiles_15_11, bogTiles_15_12 } from './bog_tileset_atlas';
@@ -34,11 +34,20 @@ export const rustedGateTile: TileDefinition = {
           state.flags?.bog_exit_revealed
       );
 
-    // Draw the stone gate arch base (14_11)
-    const drewArch = drawBase64Sprite(
+    const { rows } = getRoomDimensions();
+    let stairBase64 = bogTiles_15_12; // Default East transition stairs
+    if (ty === 0) {
+      stairBase64 = bogTiles_14_11; // North stairs
+    } else if (ty >= rows - 1) {
+      stairBase64 = bogTiles_15_11; // South stairs
+    } else if (tx === 0) {
+      stairBase64 = bogTiles_15_10; // West stairs
+    }
+
+    const drewStairs = drawBase64Sprite(
       g,
       {
-        base64: bogTiles_14_11,
+        base64: stairBase64,
         cellWidth: TILE_SIZE,
         cellHeight: TILE_SIZE,
         col: 0,
@@ -53,47 +62,20 @@ export const rustedGateTile: TileDefinition = {
     );
 
     if (!isOpen) {
-      // Overlay the iron portcullis grate (15_11 center gate or 15_10 / 15_12 side bars)
-      const gateBarTile =
-        (tx + ty) % 3 === 0 ? bogTiles_15_10 : (tx + ty) % 3 === 2 ? bogTiles_15_12 : bogTiles_15_11;
-      const drewBars = drawBase64Sprite(
-        g,
-        {
-          base64: gateBarTile,
-          cellWidth: TILE_SIZE,
-          cellHeight: TILE_SIZE,
-          col: 0,
-          row: 0,
-          renderWidth: TILE_SIZE,
-          renderHeight: TILE_SIZE,
-          anchor: 'top-left',
-        },
-        sx,
-        sy,
-        state.t
-      );
-      if (drewArch || drewBars) {
-        if (state.flags?.orc_raid_active) {
-          g.fillStyle = 'rgba(239, 68, 68, 0.28)';
-          g.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
-        }
-        return;
+      g.fillStyle = state.flags?.orc_raid_active
+        ? 'rgba(127, 29, 29, 0.55)'
+        : 'rgba(15, 23, 42, 0.55)';
+      g.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+      g.fillStyle = state.flags?.orc_raid_active ? '#f87171' : '#38bdf8';
+      for (let bx = 2; bx < TILE_SIZE; bx += 4) {
+        g.fillRect(sx + bx, sy + 2, 1, TILE_SIZE - 4);
       }
-    } else if (drewArch) {
       return;
     }
 
-    g.fillStyle = state.flags?.orc_raid_active ? '#7f1d1d' : '#0369a1';
-    g.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+    if (drewStairs) return;
 
-    if (!isOpen) {
-      g.fillStyle = state.flags?.orc_raid_active ? '#f87171' : '#38bdf8';
-      for (let bx = 2; bx < TILE_SIZE; bx += 3) {
-        g.fillRect(sx + bx, sy + 2, 2, TILE_SIZE - 2);
-      }
-    } else {
-      g.fillStyle = '#7dd3fc';
-      g.fillRect(sx + 3, sy + 4, 10, 12);
-    }
+    g.fillStyle = '#7dd3fc';
+    g.fillRect(sx + 3, sy + 4, 10, 12);
   },
 };

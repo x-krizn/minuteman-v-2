@@ -1194,7 +1194,7 @@ const BOG_TRANSITION_CLUSTER_MAP: Record<
     grass: { clusterRow: 3, clusterCol: 1 }, // Rows 10..12, Cols 04..06
     dirt: { clusterRow: 3, clusterCol: 2 }, // Rows 10..12, Cols 07..09
     mire: { clusterRow: 3, clusterCol: 3 }, // Rows 10..12, Cols 10..12
-    aether: { clusterRow: 3, clusterCol: 4 }, // Rows 10..12, Cols 13..15
+    // Note: ruins only transitions to water ('aether') as a raised platform / bridge via Cluster (5,3) (Rows 13..15, Cols 07..09)
   },
   aether: {
     mire: { clusterRow: 4, clusterCol: 1 }, // Rows 13..15, Cols 04..06
@@ -1296,9 +1296,20 @@ export function resolveRoomBaseTerrain(
 
   const dryOrder: ClusterTerrainType[] = ['ruins', 'grass', 'dirt', 'mire'];
 
-  // Solid outer/inner walls ('#'): require at least 2 adjacent floor tiles of a non-default terrain
-  // so single isolated doorway tell tiles don't turn adjacent wall blocks into mismatched terrain walls.
+  // Solid outer/inner walls ('#'):
+  // In the Swamp Biome ('bog_tileset'), tree walls connect with grass before dirt whenever possible,
+  // so any wall touching grass prefers 'grass' over 'dirt'.
   if (rawChar === '#') {
+    if (biome.clusterTileSheetBase64 === 'bog_tileset') {
+      if (counts.ruins >= 2 && counts.ruins >= counts.grass) return 'ruins';
+      if (counts.mire >= 2 && counts.mire >= counts.grass) return 'mire';
+      if (counts.grass >= 1) return 'grass';
+      if (counts.dirt >= 1) return 'dirt';
+      if (counts.ruins >= 1) return 'ruins';
+      if (counts.mire >= 1) return 'mire';
+      return defaultTerrain;
+    }
+
     let bestDry: ClusterTerrainType = defaultTerrain;
     let bestCount = counts[defaultTerrain] || 0;
     for (const candidate of dryOrder) {
@@ -1311,7 +1322,13 @@ export function resolveRoomBaseTerrain(
   }
 
   // Pillars ('P') and interactive props ('C', 'L', 'A', 'Q', '1', '2', '3', etc.):
-  // Prefer adjacent dry floor terrain over 'aether' liquid ('~') so props bordering water sit on dry ground.
+  // Prefer grass before dirt for 'P' tree pillars in bog_tileset so trees connect with grass first.
+  if (rawChar === 'P' && biome.clusterTileSheetBase64 === 'bog_tileset') {
+    if (counts.ruins >= 2 && counts.ruins > counts.grass) return 'ruins';
+    if (counts.mire >= 2 && counts.mire > counts.grass) return 'mire';
+    if (counts.grass >= 1) return 'grass';
+  }
+
   let bestPropTerrain: ClusterTerrainType | null = null;
   let bestPropCount = 0;
   for (const candidate of dryOrder) {
@@ -1341,31 +1358,113 @@ function resolveBogClusterLayer0Coord(
   biome: BiomeDefinition
 ): ResolvedClusterTileSlice | null {
   const char = room[ty]?.[tx] || '.';
-  if (char === '_') return null;
+  const { cols, rows } = getRoomDimensions(room);
+
+  // 1. PITFALLS / CHASMS ('_'): Use the 4 tiles that fade to black (02_05, 05_05, 08_05, 11_05)
+  if (char === '_') {
+    const northChar = ty > 0 ? room[ty - 1]?.[tx] : undefined;
+    const pitTerrain =
+      northChar && northChar !== '_'
+        ? resolveRoomBaseTerrain(room, tx, ty - 1, biome)
+        : resolveRoomBaseTerrain(room, tx, ty, biome);
+    if (pitTerrain === 'mire') return makeBogTileSlice(2, 5); // 02_05: Dark stone fading to black
+    if (pitTerrain === 'grass') return makeBogTileSlice(5, 5); // 05_05: Grass fading to black
+    if (pitTerrain === 'ruins') return makeBogTileSlice(11, 5); // 11_05: Ruins brick fading to black
+    return makeBogTileSlice(8, 5); // 08_05: Dirt fading to black
+  }
 
   const fromTerrain = resolveRoomBaseTerrain(room, tx, ty, biome);
   const baseClusterRow = BOG_BASE_CLUSTER_ROW[fromTerrain];
 
-  // Under solid walls ('#'), pillars/trees ('P'), or gates ('G'), draw the matching base terrain floor
-  if (isClusterSolidWallChar(char) || isClusterSingleWallChar(char) || char === 'G') {
+  // 2. DUNGEON ENTRANCES ('M') & PERIMETER ROOM TRANSITIONS (Stair Tiles):
+  // Stone stairs: 14_11 (N), 15_10 (W), 15_11 (S), 15_12 (E)
+  // Dirt/Wood stairs: 14_14 (N), 15_13 (W), 15_14 (S), 15_15 (E)
+  if (char === 'M') {
+    if (ty === rows - 1) return makeBogTileSlice(15, 11);
+    if (tx === 0) return makeBogTileSlice(15, 10);
+    if (tx === cols - 1) return makeBogTileSlice(15, 12);
+    return makeBogTileSlice(14, 11);
+  }
+
+  const isWalkableDoorway =
+    char !== '#' && char !== 'P' && char !== '~' && (ty === 0 || ty === rows - 1 || tx === 0 || tx === cols - 1);
+  if (isWalkableDoorway) {
+    const useStoneStairs = fromTerrain === 'ruins' || fromTerrain === 'mire' || char === 'G';
+    if (ty === 0) {
+      return useStoneStairs ? makeBogTileSlice(14, 11) : makeBogTileSlice(14, 14);
+    }
+    if (ty === rows - 1) {
+      return useStoneStairs ? makeBogTileSlice(15, 11) : makeBogTileSlice(15, 14);
+    }
+    if (tx === 0) {
+      return useStoneStairs ? makeBogTileSlice(15, 10) : makeBogTileSlice(15, 13);
+    }
+    if (tx === cols - 1) {
+      return useStoneStairs ? makeBogTileSlice(15, 12) : makeBogTileSlice(15, 15);
+    }
+  }
+
+  // 3. Under solid walls ('#') or pillars/trees ('P'), draw the matching base terrain floor
+  if (isClusterSolidWallChar(char) || isClusterSingleWallChar(char)) {
     const { localCol, localRow } = hashGeneralTileOffset(tx, ty);
     return makeBogTileSlice(baseClusterRow * 3 + localRow + 1, localCol + 1);
   }
 
-  const { cols, rows } = getRoomDimensions(room);
   const nTerrain = ty > 0 ? resolveRoomBaseTerrain(room, tx, ty - 1, biome) : fromTerrain;
   const sTerrain = ty < rows - 1 ? resolveRoomBaseTerrain(room, tx, ty + 1, biome) : fromTerrain;
   const wTerrain = tx > 0 ? resolveRoomBaseTerrain(room, tx - 1, ty, biome) : fromTerrain;
   const eTerrain = tx < cols - 1 ? resolveRoomBaseTerrain(room, tx + 1, ty, biome) : fromTerrain;
+  const nwTerrain =
+    ty > 0 && tx > 0 ? resolveRoomBaseTerrain(room, tx - 1, ty - 1, biome) : fromTerrain;
+  const neTerrain =
+    ty > 0 && tx < cols - 1 ? resolveRoomBaseTerrain(room, tx + 1, ty - 1, biome) : fromTerrain;
+  const swTerrain =
+    ty < rows - 1 && tx > 0 ? resolveRoomBaseTerrain(room, tx - 1, ty + 1, biome) : fromTerrain;
+  const seTerrain =
+    ty < rows - 1 && tx < cols - 1
+      ? resolveRoomBaseTerrain(room, tx + 1, ty + 1, biome)
+      : fromTerrain;
 
+  // 4. RAISED RUINS PLATFORM / BRIDGE OVER WATER (Cluster 5,3: Rows 13..15, Cols 07..09):
+  // Ruins (':') only transitions to water ('~') when used as a bridge or raised platform:
+  // - Row 13 (13_07..13_09): Raised platform south edge (ruins continues North, water to South)
+  // - Row 15 (15_07..15_09): Narrow bridge deck over water (water to North and South)
+  // - Row 14 (14_07..14_09, 2nd from last row, middle cluster col): Retaining walls in the water tile directly South of the raised ruins platform/bridge
+  if (fromTerrain === 'ruins' && sTerrain === 'aether') {
+    const wIsRuins = wTerrain === 'ruins';
+    const eIsRuins = eTerrain === 'ruins';
+    const bridgeCol = !wIsRuins && eIsRuins ? 7 : wIsRuins && !eIsRuins ? 9 : 8;
+    const bridgeRow = nTerrain === 'aether' ? 15 : 13;
+    return makeBogTileSlice(bridgeRow, bridgeCol);
+  }
+
+  if (fromTerrain === 'aether' && nTerrain === 'ruins') {
+    const nwIsRuins = nwTerrain === 'ruins';
+    const neIsRuins = neTerrain === 'ruins';
+    const wallCol = !nwIsRuins && neIsRuins ? 7 : nwIsRuins && !neIsRuins ? 9 : 8;
+    return makeBogTileSlice(14, wallCol);
+  }
+
+  // 5. 8-NEIGHBOR TERRAIN TRANSITIONS:
+  // In each 3x3 transition cluster, `targetToTerrain` is in the CENTER (1,1) and `fromTerrain` is on the OUTSIDE.
+  // Therefore:
+  // - Neighbor to South (s) -> Top row of cluster (localRow = 0)
+  // - Neighbor to North (n) -> Bottom row of cluster (localRow = 2)
+  // - Neighbor to East  (e) -> Left col of cluster (localCol = 0)
+  // - Neighbor to West  (w) -> Right col of cluster (localCol = 2)
   let targetToTerrain: ClusterTerrainType | null = null;
   for (const candidate of BOG_TERRAIN_PRIORITY) {
     if (candidate === fromTerrain) break;
+    if (!BOG_TRANSITION_CLUSTER_MAP[fromTerrain]?.[candidate]) continue;
     if (
       nTerrain === candidate ||
       sTerrain === candidate ||
       wTerrain === candidate ||
-      eTerrain === candidate
+      eTerrain === candidate ||
+      nwTerrain === candidate ||
+      neTerrain === candidate ||
+      swTerrain === candidate ||
+      seTerrain === candidate
     ) {
       targetToTerrain = candidate;
       break;
@@ -1379,34 +1478,50 @@ function resolveBogClusterLayer0Coord(
       const s = sTerrain === targetToTerrain;
       const w = wTerrain === targetToTerrain;
       const e = eTerrain === targetToTerrain;
+      const nw = nwTerrain === targetToTerrain;
+      const ne = neTerrain === targetToTerrain;
+      const sw = swTerrain === targetToTerrain;
+      const se = seTerrain === targetToTerrain;
 
       let localCol = 1;
       let localRow = 1;
 
-      if (n && w) {
+      if (s && e) {
         localCol = 0;
-        localRow = 0;
-      } else if (n && e) {
-        localCol = 2;
         localRow = 0;
       } else if (s && w) {
+        localCol = 2;
+        localRow = 0;
+      } else if (n && e) {
         localCol = 0;
         localRow = 2;
-      } else if (s && e) {
+      } else if (n && w) {
         localCol = 2;
         localRow = 2;
-      } else if (n) {
-        localCol = 1;
-        localRow = 0;
       } else if (s) {
         localCol = 1;
+        localRow = 0;
+      } else if (n) {
+        localCol = 1;
         localRow = 2;
-      } else if (w) {
+      } else if (e) {
         localCol = 0;
         localRow = 1;
-      } else if (e) {
+      } else if (w) {
         localCol = 2;
         localRow = 1;
+      } else if (se) {
+        localCol = 0;
+        localRow = 0;
+      } else if (sw) {
+        localCol = 2;
+        localRow = 0;
+      } else if (ne) {
+        localCol = 0;
+        localRow = 2;
+      } else if (nw) {
+        localCol = 2;
+        localRow = 2;
       }
 
       if (localCol !== 1 || localRow !== 1) {
@@ -1441,7 +1556,7 @@ function resolveBogClusterWallCoord(
 
   const hasLeftWall = isClusterSolidWallChar(leftChar);
   const hasRightWall = isClusterSolidWallChar(rightChar);
-  const southIsFloor = !isClusterSolidWallChar(southChar);
+  const southIsDirt = southChar === '.';
 
   let spanCol = 1; // 0 = left end, 1 = middle, 2 = right end
   if (!hasLeftWall && hasRightWall) {
@@ -1452,34 +1567,24 @@ function resolveBogClusterWallCoord(
     spanCol = (tx + ty) % 3;
   }
 
-  // 1. TEMPLE / MONASTERY RUINS FLOOR (':') -> Pale Stone & Canal Ledge Walls (Cluster 5,3: Rows 13..15, Cols 07..09 + 11_05)
+  // 1. TEMPLE / MONASTERY RUINS FLOOR (':') -> Ruined Stone Walls (Cluster 5,4: 13_10..13_12 & 14_10, 14_12)
   if (terrain === 'ruins') {
     if (isSinglePillar || (!hasLeftWall && !hasRightWall)) {
-      return (tx + ty) % 2 === 0
-        ? makeBogTileSlice(11, 5) // Pale brick-topped stone wall face
-        : makeBogTileSlice(15, 7 + ((tx + ty) % 3)); // Pale stone ruin base/pillar
+      return (tx + ty) % 2 === 0 ? makeBogTileSlice(14, 10) : makeBogTileSlice(14, 12);
     }
-    if (southIsFloor) {
-      return makeBogTileSlice(14, 7 + spanCol); // Stone wall front over water canal (14_07..14_09)
-    }
-    return makeBogTileSlice(13, 7 + spanCol); // Pale stone upper parapet cap (13_07..13_09)
+    return makeBogTileSlice(13, 10 + spanCol);
   }
 
-  // 2. DUNGEON / DARK MIRE FLOOR (';') -> Dark Stone Walls (Cluster 5,4: Rows 13..15, Cols 10..12 + 02_05, 02_08, 02_11, 02_14)
+  // 2. DUNGEON / DARK STONE FLOOR (';') -> Dark Stone Walls (Row 1 centers: 02_08, 02_11, 02_14)
   if (terrain === 'mire') {
+    const stoneCols = [8, 11, 14];
     if (isSinglePillar || (!hasLeftWall && !hasRightWall)) {
-      const pick = (tx + ty) % 3;
-      if (pick === 0) return makeBogTileSlice(2, 5); // Dark recessed pit block
-      return makeBogTileSlice(15, pick === 1 ? 10 : 12); // Dark stone / iron-grate pillar
+      return makeBogTileSlice(2, stoneCols[(tx + ty) % 3] || 11);
     }
-    if (southIsFloor) {
-      const stoneCols = [8, 11, 14]; // 02_08, 02_11, 02_14 dark grey stone wall faces
-      return makeBogTileSlice(2, stoneCols[spanCol] || 11);
-    }
-    return makeBogTileSlice(13, 10 + spanCol); // Dark stone upper parapet (13_10..13_12)
+    return makeBogTileSlice(2, stoneCols[spanCol] || 11);
   }
 
-  // 3. WATER / CORROSIVE AETHER ('~') -> Canal Ledge & Water Pit Wall (14_07..14_09, 11_14)
+  // 3. WATER / CORROSIVE AETHER ('~') -> Water-Base Walls (14_07..14_09 & 11_14)
   if (terrain === 'aether') {
     if (isSinglePillar || (!hasLeftWall && !hasRightWall)) {
       return makeBogTileSlice(11, 14);
@@ -1487,47 +1592,25 @@ function resolveBogClusterWallCoord(
     return makeBogTileSlice(14, 7 + spanCol);
   }
 
-  // 4. FOREST / MARSH GRASS (',') -> Combination of Swamp Trees (13_13..13_15, 14_13, 14_15) & Grass-Topped Dirt Walls (05_05, 05_08, 05_11, 05_14)
+  // 4. FOREST / MARSH GRASS (',') -> Swamp Tree Walls (13_13..13_15 & 14_13, 14_15)
+  //    or Grass-Topped Dirt Walls (05_08, 05_11, 05_14) when directly overlooking dirt
   if (terrain === 'grass') {
     if (isSinglePillar || (!hasLeftWall && !hasRightWall)) {
-      const treePick = (tx * 3 + ty) % 3;
-      if (treePick === 0) return makeBogTileSlice(14, 13);
-      if (treePick === 1) return makeBogTileSlice(14, 15);
-      return makeBogTileSlice(13, 14);
+      return (tx + ty) % 2 === 0 ? makeBogTileSlice(14, 13) : makeBogTileSlice(14, 15);
     }
-    const useDirtWallOnGrass = southIsFloor && (tx + ty) % 2 === 0;
-    if (useDirtWallOnGrass) {
-      const grassDirtCols = [8, 11, 14]; // 05_08, 05_11, 05_14 grass-topped dirt wall faces
-      return (tx * 5 + ty) % 5 === 0
-        ? makeBogTileSlice(5, 5)
-        : makeBogTileSlice(5, grassDirtCols[spanCol] || 11);
+    if (southIsDirt && (tx + ty) % 2 === 0) {
+      const grassDirtCols = [8, 11, 14]; // 05_08, 05_11, 05_14 grass-topped dirt walls
+      return makeBogTileSlice(5, grassDirtCols[spanCol] || 11);
     }
-    return makeBogTileSlice(13, 13 + spanCol); // Swamp tree canopy wall row (13_13..13_15)
+    return makeBogTileSlice(13, 13 + spanCol); // Swamp tree canopy walls (13_13..13_15)
   }
 
-  // 5. BOG MUD / PEAT DIRT ('.') -> Combination of Swamp Trees (13_13..13_15, 14_13, 14_15) & Dirt/Timber Embankment Walls (08_05, 08_08, 08_11, 08_14, 14_14, 15_13..15_15)
+  // 5. BOG MUD / PEAT DIRT ('.') -> Brown Dirt Walls (Row 3 centers: 08_08, 08_11, 08_14)
+  const dirtWallCols = [8, 11, 14];
   if (isSinglePillar || (!hasLeftWall && !hasRightWall)) {
-    const pillarPick = (tx + ty * 2) % 4;
-    if (pillarPick === 0) return makeBogTileSlice(14, 13); // Left swamp tree
-    if (pillarPick === 1) return makeBogTileSlice(14, 15); // Right swamp tree
-    if (pillarPick === 2) return makeBogTileSlice(14, 14); // Timber/bark pillar
-    return makeBogTileSlice(8, 5); // Peat-topped dark dirt wall
+    return makeBogTileSlice(8, dirtWallCols[(tx + ty) % 3] || 11);
   }
-
-  if (southIsFloor) {
-    // Alternate between brown dirt wall faces (08_08, 08_11, 08_14) and swamp tree trunks (13_13..13_15)
-    if ((tx + ty) % 3 === 0) {
-      return makeBogTileSlice(13, 13 + spanCol);
-    }
-    const dirtWallCols = [8, 11, 14]; // 08_08, 08_11, 08_14
-    return makeBogTileSlice(8, dirtWallCols[spanCol] || 11);
-  }
-
-  // Bottom / side walls: alternate between swamp trees (13_13..13_15) and root/timber embankment (15_13..15_15)
-  if ((tx + ty) % 2 === 0) {
-    return makeBogTileSlice(13, 13 + spanCol);
-  }
-  return makeBogTileSlice(15, 13 + spanCol);
+  return makeBogTileSlice(8, dirtWallCols[spanCol] || 11);
 }
 
 export function resolveClusterLayer0Coord(

@@ -72,20 +72,20 @@ src/cartridges/orion/
 4. **Area (`world/<world>/<regionId>/<areaId>/area.ts`)**: Group your maps and attach an **Æther Waystation (`A`)** for intra-region fast travel.
 5. **Map + Co-Located Rooms (`world/<world>/<regionId>/<areaId>/map_<name>.ts`)**: Paint `10 × 9` ASCII room grids (`COLS = 10`, `ROWS = 9`) and export the `MapDefinition` alongside its `RoomDefinition` entries in the same file.
 
-### Aether Fog 5-Node Topology (`key`, `general`, `side`, `loop`, `end`)
-No outer room in Orion has a literal solid map border. Instead, `systems/worldSystem.ts` routes cardinal doorways through a dynamic 5-node Aether Fog graph that persists until the player rests at a Waystation (`D` / `A`):
+### Aether Fog 5-Node Topology & Pyramid Depth Progression (`key`, `general`, `side`, `loop`, `end`)
+No outer room in Orion has a literal solid map border. Instead, `systems/worldSystem.ts` routes cardinal doorways through a dynamic 5-node Aether Fog graph and renders a relative **HUD Mini-Map**:
 - **`key` Nodes**: Authored Points of Interest (Drop-Pod, Towns, Boss Sanctums, Waystations, Waygates).
-- **`general` Nodes**: Dynamically generated corridor chunks that advance route progress (`1/N .. N/N`) between connected `key` nodes. The true doorway (`trueExitDir`) emits subtle drifting Aether motes and Poe Lantern resonance.
+- **`general` Nodes**: Dynamically generated corridor chunks that advance route progress (`1/N .. N/N`) between connected `key` nodes. Room-to-room banners are suppressed unless entering a new Point of Interest or triggering a hazard warning.
 - **`side` Nodes**: Off-path branches extending from `general` or `key` nodes; they do **not** advance route progress and lead either to an `end` node or a `loop` node.
 - **`end` Nodes**: Terminal single-exit pockets featuring rolled rewards (`loot_cache`, `mini_boss`, `secret_switch`, or `dead_end`).
-- **`loop` Nodes**: Borderless mist rooms where false exits silently cycle between `loop` chunks until the player follows the subtle threshold tell or Poe Lantern wisp through `trueExitDir`.
+- **`loop` Nodes (Pyramid Depth `Safe → 1 → 2 → 3 → 2 → 1 → Safe`)**: Relative to the map, Aether Loop depths always follow a 6-step pyramid (`Depth 1 → 2 → 3 → 2 → 1 → Safe`). Deeper depths scale enemy aggression, Aether mist density, and corrosive/chasm hazards (`less traversable at deeper depths`). Path mote tells appear strictly on Aether Loop doorways as a warning of increased Aether density in the next depth, while the **Poe Lantern** reveals submerged Bog Wurms and Aether Loop entrances without directing the player toward narrative goals.
 
 ---
 
 ## 2. Authoring the 5-Tier World Hierarchy
 
 ### Tier 1A: Biomes (`database/world/<world>/biomes.ts` or `database/world/global/templates.ts`)
-Biomes supply **tile character mappings (`tileTypes`)**, **environmental hazard rules (`tileRules`)**, **lighting & water reflection colors (`tileAssets`)**, and **3×3 cluster auto-tiling (`clusterTileSheetBase64` + `defaultClusterTerrain`)** to rooms.
+Biomes supply **tile character mappings (`tileTypes`)**, **environmental hazard rules (`tileRules`)**, **lighting & water reflection colors (`tileAssets`)**, and **cluster auto-tiling (`clusterTileSheetBase64`: `'bog_tileset'` or `'ruins_tileset'` + `defaultClusterTerrain`)** to rooms.
 
 - **Inheritance Chain**: A Room uses its own `biomeId` first; if omitted, it inherits from `Map.biomeId → Area.biomeId → Region.defaultBiomeId`.
 - **Where to create**:
@@ -102,12 +102,13 @@ export const sunkenCatacombsBiome: BiomeDefinition = {
   scope: 'local',
   world: 'Belldor (Camelot)',
   description: 'Flooded crypts beneath Camelot with corrosive ichor pools and rapid desync.',
-  clusterTileSheetBase64: 'ruins_tileset',
-  defaultClusterTerrain: 'ruins',
+  clusterTileSheetBase64: 'bog_tileset', // 'bog_tileset' (5x5 clusters of 3x3) or 'ruins_tileset' (4x5 clusters of 3x3)
+  defaultClusterTerrain: 'mire',         // 'dirt' | 'grass' | 'aether' | 'ruins' | 'mire'
   tileTypes: {
     '.': 'floor',
     ',': 'grass',
     ':': 'ruins_floor',
+    ';': 'mire_floor',
     '#': 'pylon_wall',
     P: 'pylon_pillar',
     '~': 'mud',
@@ -153,25 +154,26 @@ export const sunkenCatacombsBiome: BiomeDefinition = {
 ---
 
 ### Tier 1B: Tiles & 2.5D Props (`database/world/tiles/`)
-Every character in a Room's `10 × 9` ASCII grid resolves to a `TileDefinition` (or an Enemy spawn character).
+Every character in a Room's ASCII grid resolves to a `TileDefinition` (or an Enemy spawn character).
 
-#### Canonical ASCII Grid Legend (4×5 Cluster Terrains, Walls & Doodads)
+#### Canonical ASCII Grid Legend (`5×5` Swamp `bog_tileset` & `4×5` `ruins_tileset`)
 | Char | Tile / Entity | Behavior |
 | :--- | :--- | :--- |
-| `.` | `floor` (**Dirt** — Col 1) | Walkable dirt ground; auto-tiles Row 1 general variants & Rows 2–4 transitions |
-| `,` | `grass` (**Grass** — Col 2) | Walkable grass ground; auto-tiles Row 1 general variants & Rows 2–4 transitions |
-| `~` | `mud` (**Aether Corrosive** — Col 3) | Corrosive liquid/mud hazard (`mudSlowMultiplier` + Armor corrosion); auto-tiles Row 1 & Rows 2–4 |
-| `:` | `ruins_floor` (**Ruins** — Col 4) | Walkable ancient flagstones; auto-tiles Row 1 general variants & Rows 2–4 transitions |
-| `#` | `pylon_wall` (Row 5 Solid/Single Wall) | Connected `#` slices Row 5 top row (`[left, center, right]`); isolated `#` slices Row 5 bottom left/right single wall |
-| `P` | `pylon_pillar` (Row 5 Single Wall) | 2.5D depth-sorted interior single wall (`solid: true`); slices Row 5 bottom left/right single wall |
-| `_` | `chasm` | Open pit/sinkhole (must Jump `[A]` or Booster Dash `[B]` across) |
+| `.` | `floor` (**Brown Peat / Dirt**) | Walkable dirt/peat ground (`07_01..09_03` in `bog_tileset`); pairs with dirt walls (`08_08`, `08_11`, `08_14`) and tree canopy walls |
+| `,` | `grass` (**Moss Grass**) | Walkable forest/bog grass (`04_01..06_03` in `bog_tileset`); tree canopy walls (`13_13..14_15`) connect with grass before dirt whenever possible |
+| `~` | `mud` (**Corrosive Bog Water / Aether**) | Corrosive liquid/water hazard (`13_01..15_03` in `bog_tileset`); renders retaining walls (`14_07..14_09`) when directly south of a raised `:` ruins bridge/platform |
+| `:` | `ruins_floor` (**Pale Ruins Brick**) | Walkable temple/monastery masonry (`10_01..12_03` in `bog_tileset`); transitions to water (`~`) exclusively as a raised platform (`13_07..13_09`) or bridge (`15_07..15_09`) |
+| `;` | `mire_floor` (**Dark Dungeon Stone / Mire**) | Walkable dark dungeon stone (`01_01..03_03` in `bog_tileset`); pairs with dark stone walls (`02_08`, `02_11`, `02_14`) |
+| `#` | `pylon_wall` (Biome Wall) | Terrain-matched wall: Tree Canopy (`13_13..13_15`) on grass/dirt, Ruins Stone (`13_10..13_12`) on ruins, Dark Stone (`02_08..02_14`) on mire |
+| `P` | `pylon_pillar` (Single Wall / Tree) | 2.5D depth-sorted interior single wall (`solid: true`); connects with grass before dirt for tree pillars (`14_13`, `14_15`) |
+| `_` | `chasm` (**Pitfall**) | Open pitfall/sinkhole (`02_05`, `05_05`, `08_05`, `11_05` fade-to-black tiles in `bog_tileset`); must Jump `[A]` or Booster Dash `[B]` across |
 | `%` | `desync_wall` | Temporal wall that phases between solid and passable every `desyncPeriodSec` |
 | `D` | `drop_pod` | Drop-Pod Spawn Anchor & initial Bog Waystation |
 | `A` | `aether_waystation` | **Æther Waystation** (attunes Area fast-travel & repairs armor on `[A]`) |
 | `Q` | `colossal_waygate` | **Colossal Waygate** (attunes Region/World signature fast-travel on `[A]`) |
 | `C` | `cache` | Lootable Supply Cache (rewards defined in `room.cache`) |
-| `G` | `rusted_gate` | Locked perimeter gate |
-| `M` | `cathedral_door` | Three-Way Cathedral Dungeon Door |
+| `G` | `rusted_gate` | Locked perimeter gate (renders directional stone stair tiles `14_11`, `15_10..15_12`) |
+| `M` | `cathedral_door` | Three-Way Cathedral Dungeon Entrance (renders directional stone stair tiles `14_11`, `15_10..15_12`) |
 | `L` | `poe_lantern` | Decoupled Layer 2 Poe Lantern doodad (inherits neighbor terrain on Layer 0) |
 | `1`,`2`,`3` | `hidden_switch` | Secret switches for unlocking the Cathedral Door via Exploration |
 
@@ -591,7 +593,8 @@ Frame Level (1–20 Tutorial, No Gems) ──▶ Pilot Skill Level (6 Trait Line
      - **Interface Feats**: Zero-sum stat trade-offs within the static budget (e.g., `+20% Damage / +18% Heat Generation`).
    - **Critical Frame State (`§3.5`) & Restricted Frame Restoration**: At `≤ 40 HP`, movement speed drops by `-30%` and weapon attacks suffer a `15%` misfire chance per shot. Mech frames are out-of-place relics in Orion; Layer 3 `Frame HP` (`200 HP`) cannot be restored by weapon gems, standard flasks, or default utilities—requiring Æther Waystation Campfires, Colossal Waygates, or specialized feats/skills/equipment and unknown magics.
 4. **Layer 3: Equipment (`§4`)**:
-   - **13-Slot Equipment & 5-Piece Armor Taxonomy**: Weapon Set 1 (`2`), Weapon Set 2 (`2`), Class Utility (`1`, `Action 6` unlocked at `Lv 6`), Aux (`4`, `Actions 7–10`), Belt (`4`, `Actions 7–10`), plus `Head`, `Torso`, `Arms`, `Legs`, and `Generator`.
+   - **13-Slot Equipment, 5-Piece Armor Taxonomy & Equipment Inventory**: Weapon Set 1 (`2`), Weapon Set 2 (`2`), Class Utility (`1`, `Action 6` unlocked at `Lv 6`), Aux (`4`, `Actions 7–10`), Belt (`4`, `Actions 7–10`), plus `Head`, `Torso`, `Arms`, `Legs`, and `Generator`. Owned gear is stored in the pilot's **Equipment Inventory** (`ownedWeapons`, `ownedArmor`, `ownedSkills`), and slot replacement options only expand when actively editing a loadout slot.
+   - **Automatic Two-Handed (`2H`) Stance & Held Block (`0.25s` Perfect Window)**: If no Side-Hand (`R`) weapon is equipped in the active Weapon Set, the Main-Hand (`L`) weapon automatically operates in Two-Handed (`2H`) stance (`1.25×` damage multiplier and access to skills `4`/`5` on long-press without triggering tap skills `2`/`3` on release). Holding Block (`[Y]`) maintains active guard continuously without a cooldown, granting a `0.25s` **Perfect Block** window on initial raise.
    - **Gem-Generated Equipment Mods (`§4.2` · `Gem Use 3`)**: Spending `1–2` Gems permanently generates an Action Modification (`state.equipment.unlockedMods`). The generated mod is permanently retained by the pilot and can be freely installed or swapped across `ranged`, `melee`, and `mobility` slots; the spent gems are not retained.
 
 ### 6.2 `u00 Universe` Canonical `LOCKED` vs. `UNDEFINED` Zone Seal Conventions (`database/world/universe.ts`)

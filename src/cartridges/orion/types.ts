@@ -198,7 +198,7 @@ export interface BiomeTileAssets {
   lightColor: string;
 }
 
-export type ClusterTerrainType = 'dirt' | 'grass' | 'aether' | 'ruins';
+export type ClusterTerrainType = 'dirt' | 'grass' | 'aether' | 'ruins' | 'mire';
 
 export interface BiomeDefinition {
   id: string;

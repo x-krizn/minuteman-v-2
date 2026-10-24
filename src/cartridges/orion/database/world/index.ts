@@ -25,8 +25,10 @@ import { m00TheBogArea } from './belldor/region_belldor_outskirts/m00_the_bog/ar
 import { regionBelldorOutskirts } from './belldor/region_belldor_outskirts/region';
 import { U00_UNIVERSE_CATALOG, UNIVERSE_WORLD_BY_ID } from './universe';
 import { dirt01, groundTile } from './tiles/floor';
+import { registerBogTilesetAtlases } from './tiles/bog_tileset_atlas';
 import { DOODADS_01_ATLAS_ID, DOODADS_01_BASE64 } from './tiles/doodads_atlas';
 import { grass01 } from './tiles/grass';
+import { mire01 } from './tiles/mire_floor';
 import { aether01 } from './tiles/mud';
 import { ruins01 } from './tiles/ruins_floor';
 
@@ -200,6 +202,7 @@ for (const [path, mod] of Object.entries(modules)) {
 
 // Bake all 20 3x3 biome clusters directly from the 4 embedded 16x16 base tiles
 bakeBiomeClusterTileset(embeddedBaseTiles, embeddedModes);
+registerBogTilesetAtlases();
 registerBase64Atlas(DOODADS_01_ATLAS_ID, DOODADS_01_BASE64, 16, 16);
 
 export function getRegionDefinition(regionId?: string): RegionDefinition {
@@ -248,6 +251,7 @@ export {
   dirt01,
   grass01,
   m00TheBogArea,
+  mire01,
   regionBelldorOutskirts,
   ruins01,
   U00_UNIVERSE_CATALOG,

@@ -9,6 +9,7 @@ const DEFAULT_TILE_TYPES: Record<string, string> = {
   '.': 'floor',
   ',': 'grass',
   ':': 'ruins_floor',
+  ';': 'mire_floor',
   '#': 'pylon_wall',
   P: 'pylon_pillar',
   '~': 'mud',
@@ -36,7 +37,7 @@ export const belldorBogBiome: BiomeDefinition = {
   world: 'Belldor (Camelot)',
   description:
     'Deep toxic marshlands littered with orbital impact debris, ruined monastery pylons, and armor-eating bog water.',
-  clusterTileSheetBase64: 'ruins_tileset',
+  clusterTileSheetBase64: 'bog_tileset',
   defaultClusterTerrain: 'dirt',
   tileTypes: { ...DEFAULT_TILE_TYPES },
   tileRules: {

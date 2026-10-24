@@ -10,8 +10,11 @@ import {
   COLOR_HEAT,
   COLOR_SHIELD,
   DIR_VECTORS,
+  getDoorwayAetherTransitionInfo,
   getRoomDimensions,
   getRoomDoorwayCenterPx,
+  hasPoeLanternGuidance,
+  PERFECT_BLOCK_WINDOW_SEC,
   SCREEN_H,
   SCREEN_W,
   TILE_SIZE,
@@ -24,6 +27,7 @@ import { getWeaponGemVisuals } from '../database/progression';
 import { getWeaponDefinition } from '../database/weapons';
 import { getBiomeDefinition, getTileDefinition } from '../database/world';
 import {
+  AetherCardinalDir,
   Base64SpriteConfig,
   BiomeDefinition,
   BiomeWeatherType,
@@ -2114,21 +2118,34 @@ export function drawDynamicLightingAndBloomPass(
   }
 
   const activeFogNode = state.fogGraph?.nodes?.[state.room];
-  const hasLanternGuidance =
-    state.flags?.poe_state === 'helped' ||
-    Boolean(state.flags?.poe_lantern_gift) ||
-    state.inventorySlots.some((s) => s.itemId === 'poe_lantern_charm');
+  const hasLanternGuidance = hasPoeLanternGuidance(state);
+  const cardinalDirs: AetherCardinalDir[] = ['N', 'S', 'E', 'W'];
 
-  if (activeFogNode?.trueExitDir) {
-    const dir = activeFogNode.trueExitDir;
-    const doorPos = getRoomDoorwayCenterPx(room, dir);
-    lights.push({
-      x: doorPos.x,
-      y: doorPos.y,
-      radius: hasLanternGuidance ? 28 : 16,
-      color: hasLanternGuidance ? '#38bdf8' : '#22d3ee',
-      intensity: hasLanternGuidance ? 0.3 : 0.15,
-    });
+  if (activeFogNode && room) {
+    for (const dir of cardinalDirs) {
+      const transInfo = getDoorwayAetherTransitionInfo(state, dir);
+      const isLoopDensityWarning =
+        activeFogNode.nodeType === 'loop' && transInfo.increasesDensity;
+      const isPoeLoopEntranceReveal =
+        activeFogNode.nodeType !== 'loop' &&
+        transInfo.isLoopEntrance &&
+        hasLanternGuidance;
+
+      if (isLoopDensityWarning || isPoeLoopEntranceReveal) {
+        const doorPos = getRoomDoorwayCenterPx(room, dir);
+        lights.push({
+          x: doorPos.x,
+          y: doorPos.y,
+          radius: isLoopDensityWarning ? 18 + transInfo.nextDepth * 4 : 24,
+          color: isLoopDensityWarning
+            ? transInfo.nextDepth >= 3
+              ? '#f43f5e'
+              : '#c084fc'
+            : '#22d3ee',
+          intensity: isLoopDensityWarning ? 0.18 + transInfo.nextDepth * 0.05 : 0.26,
+        });
+      }
+    }
   }
 
   if (room) {
@@ -2808,6 +2825,26 @@ export function drawOrionGame(
         drawMainWeaponHardpoint();
       }
 
+      if (state.isHoldingBlock) {
+        const isPerfectWindow =
+          (state.blockHoldTimer || 0) <= PERFECT_BLOCK_WINDOW_SEC;
+        const blockAng = Math.atan2(dirInfo.dy, dirInfo.dx);
+        g.save();
+        g.strokeStyle = isPerfectWindow ? '#38bdf8' : '#93c5fd';
+        g.lineWidth = isPerfectWindow ? 2.2 : 1.4;
+        g.globalAlpha = isPerfectWindow ? 0.95 : 0.65;
+        g.beginPath();
+        g.arc(
+          state.x,
+          py - 8,
+          isPerfectWindow ? 12 : 10,
+          blockAng - Math.PI * 0.42,
+          blockAng + Math.PI * 0.42
+        );
+        g.stroke();
+        g.restore();
+      }
+
       g.restore();
     },
   });
@@ -2862,71 +2899,99 @@ function drawAetherFogWayfindingTells(
   const activeNode = state.fogGraph?.nodes?.[state.room];
   if (!activeNode) return;
 
-  const hasLantern =
-    state.flags?.poe_state === 'helped' ||
-    Boolean(state.flags?.poe_lantern_gift) ||
-    state.inventorySlots.some((s) => s.itemId === 'poe_lantern_charm');
+  const hasLantern = hasPoeLanternGuidance(state);
 
   g.save();
 
-  // If lost in a LOOP node, render a shifting peripheral Aether mist veil around the borders
+  // If inside an Æther Loop node, render a peripheral Æther mist veil scaled by pyramid depth (1..3)
   if (activeNode.nodeType === 'loop') {
-    const mistPulse = 0.16 + 0.06 * Math.sin(state.t * 2.4);
+    const loopDepth = Math.max(1, Math.min(3, state.fogGraph?.loopDepth || activeNode.loopDepth || 1));
+    const baseMist = 0.11 + loopDepth * 0.08;
+    const mistPulse = baseMist + 0.05 * Math.sin(state.t * (2.0 + loopDepth * 0.6));
+    const innerR = SCREEN_W * Math.max(0.14, 0.28 - loopDepth * 0.04);
     const mistGrad = g.createRadialGradient(
       SCREEN_W * 0.5,
       SCREEN_H * 0.5,
-      SCREEN_W * 0.24,
+      innerR,
       SCREEN_W * 0.5,
       SCREEN_H * 0.5,
       SCREEN_W * 0.68
     );
     mistGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
-    mistGrad.addColorStop(1, `rgba(34, 211, 238, ${mistPulse.toFixed(2)})`);
+    const veilRgb =
+      loopDepth >= 3
+        ? '244, 63, 94'
+        : loopDepth === 2
+          ? '192, 132, 252'
+          : '34, 211, 238';
+    mistGrad.addColorStop(1, `rgba(${veilRgb}, ${mistPulse.toFixed(2)})`);
     g.fillStyle = mistGrad;
     g.fillRect(0, 0, SCREEN_W, SCREEN_H);
   }
 
-  // Doorway wayfinding:
-  // - Lit Poe Lantern: reduced to the former "without" mode (5 subtle drifting motes, no wisp tether).
-  // - Unlit ("without" mode): bare minimum 1-2 pixel faint shimmer right at the doorway threshold.
-  const trueDir = activeNode.trueExitDir;
-  if (trueDir) {
+  // Doorway Path Effect Rules:
+  // 1. Inside an Æther Loop: path effect is applied ONLY to doorways where `increasesDensity` is true
+  //    (`nextDepth > currentDepth`) as a warning of increased Æther density in the next depth.
+  // 2. Outside an Æther Loop (Safe room): the Poe Lamp reveals Æther Loop entrances (`isLoopEntrance`),
+  //    but NEVER directs the player to any goals (`trueExitDir` is never highlighted).
+  if (room) {
+    const cardinalDirs: AetherCardinalDir[] = ['N', 'S', 'E', 'W'];
     g.save();
     g.translate(-camX, -camY);
 
-    const doorPos = getRoomDoorwayCenterPx(room, trueDir);
-    const doorX = doorPos.x;
-    const doorY = doorPos.y;
-    const flowDx = trueDir === 'E' ? 1 : trueDir === 'W' ? -1 : 0;
-    const flowDy = trueDir === 'S' ? 1 : trueDir === 'N' ? -1 : 0;
-    const perpDx = -flowDy;
-    const perpDy = flowDx;
+    for (const dir of cardinalDirs) {
+      const transInfo = getDoorwayAetherTransitionInfo(state, dir);
+      const isLoopDensityWarning =
+        activeNode.nodeType === 'loop' && transInfo.increasesDensity;
+      const isPoeLoopEntranceReveal =
+        activeNode.nodeType !== 'loop' && transInfo.isLoopEntrance && hasLantern;
 
-    if (hasLantern) {
-      const moteCount = 5;
-      for (let i = 0; i < moteCount; i++) {
-        const phase = (state.t * 0.85 + i * 0.23) % 1;
-        const spread = ((i % 5) - 2) * 4.5 + Math.sin(state.t * 3 + i) * 2;
-        const distFromDoor = (1 - phase) * 18;
-        const mx = doorX - flowDx * distFromDoor + perpDx * spread;
-        const my = doorY - flowDy * distFromDoor + perpDy * spread;
-        const alpha = Math.sin(phase * Math.PI) * 0.48;
-
-        g.fillStyle = `rgba(56, 189, 248, ${alpha.toFixed(2)})`;
-        g.fillRect(Math.round(mx), Math.round(my), 1.5, 1.5);
+      if (!isLoopDensityWarning && !isPoeLoopEntranceReveal) {
+        continue;
       }
-    } else {
-      // Bare-minimum unlit tell: faint 1-2px shimmer at doorway threshold
-      for (let i = 0; i < 2; i++) {
-        const phase = (state.t * 0.55 + i * 0.5) % 1;
-        const spread = (i === 0 ? -1.5 : 1.5) + Math.sin(state.t * 2 + i) * 0.5;
-        const distFromDoor = (1 - phase) * 5;
-        const mx = doorX - flowDx * distFromDoor + perpDx * spread;
-        const my = doorY - flowDy * distFromDoor + perpDy * spread;
-        const alpha = Math.sin(phase * Math.PI) * 0.18;
 
-        g.fillStyle = `rgba(56, 189, 248, ${alpha.toFixed(2)})`;
-        g.fillRect(Math.round(mx), Math.round(my), 1, 1);
+      const doorPos = getRoomDoorwayCenterPx(room, dir);
+      const doorX = doorPos.x;
+      const doorY = doorPos.y;
+      const flowDx = dir === 'E' ? 1 : dir === 'W' ? -1 : 0;
+      const flowDy = dir === 'S' ? 1 : dir === 'N' ? -1 : 0;
+      const perpDx = -flowDy;
+      const perpDy = flowDx;
+
+      if (isLoopDensityWarning) {
+        // Increased Æther density warning in the next depth (Depth 2 = Violet, Depth 3 = Critical Crimson-Magenta)
+        const nextDepth = transInfo.nextDepth;
+        const moteCount = 3 + nextDepth * 2;
+        const rgb = nextDepth >= 3 ? '244, 63, 94' : '192, 132, 252';
+        for (let i = 0; i < moteCount; i++) {
+          const phase = (state.t * (0.75 + nextDepth * 0.2) + i * 0.19) % 1;
+          const spread =
+            ((i % 5) - 2) * 4.2 + Math.sin(state.t * (2.6 + nextDepth * 0.5) + i) * 2.2;
+          const distFromDoor = (1 - phase) * (12 + nextDepth * 4);
+          const mx = doorX - flowDx * distFromDoor + perpDx * spread;
+          const my = doorY - flowDy * distFromDoor + perpDy * spread;
+          const alpha = Math.sin(phase * Math.PI) * (0.38 + nextDepth * 0.12);
+
+          g.fillStyle = `rgba(${rgb}, ${alpha.toFixed(2)})`;
+          g.fillRect(Math.round(mx), Math.round(my), nextDepth >= 3 ? 2 : 1.5, nextDepth >= 3 ? 2 : 1.5);
+        }
+      } else if (isPoeLoopEntranceReveal) {
+        // Poe Lamp reveals Æther Loop entrance in a Safe room (cyan-violet lantern resonance)
+        const moteCount = 5;
+        for (let i = 0; i < moteCount; i++) {
+          const phase = (state.t * 0.85 + i * 0.21) % 1;
+          const spread = ((i % 5) - 2) * 4.0 + Math.sin(state.t * 3 + i) * 1.8;
+          const distFromDoor = (1 - phase) * 15;
+          const mx = doorX - flowDx * distFromDoor + perpDx * spread;
+          const my = doorY - flowDy * distFromDoor + perpDy * spread;
+          const alpha = Math.sin(phase * Math.PI) * 0.52;
+
+          g.fillStyle =
+            i % 2 === 0
+              ? `rgba(34, 211, 238, ${alpha.toFixed(2)})`
+              : `rgba(192, 132, 252, ${alpha.toFixed(2)})`;
+          g.fillRect(Math.round(mx), Math.round(my), 1.5, 1.5);
+        }
       }
     }
 

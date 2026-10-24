@@ -23,20 +23,25 @@ import {
   cycleTargetLock,
   deletePilotFromRoster,
   firePrimarySalvoShot,
+  getDoorwayAetherTransitionInfo,
   getLockedTarget,
   getOrionStateRef,
   getResolvedCombatSkills,
   getRoomWorldInfo,
+  hasPoeLanternGuidance,
   loadPilotFromRoster,
   loadPilotRoster,
   notifyOrionStateChange,
+  PERFECT_BLOCK_WINDOW_SEC,
   performAuxiliarySwap,
+  releaseHeldBlock,
   ResolvedCombatSkill,
   spawnParticles,
+  startHoldingBlock,
   TUTORIAL_STEP_DESCRIPTORS,
   TutorialStepId,
 } from '../systems';
-import { OrionState } from '../types';
+import { AetherCardinalDir, OrionState } from '../types';
 
 const OUTLINED_TEXT =
   '[text-shadow:_-1px_-1px_0_#020617,_1px_-1px_0_#020617,_-1px_1px_0_#020617,_1px_1px_0_#020617,_0_1px_3px_#020617]';
@@ -903,13 +908,17 @@ export const OrionHud: React.FC = () => {
           </div>
         </section>
 
-        {/* CENTER CLUSTER: Clean Room Title (No parent 'M00 The Bog' designator) */}
+        {/* CENTER CLUSTER: Room Title, Map-Relative Mini-Map & Æther Pyramid Gauge (SAFE · 1 · 2 · 3 · 2 · 1 · SAFE) */}
         <section
-          aria-label="Sector Info"
-          className={`hidden xs:flex flex-col items-center bg-transparent ${OUTLINED_TEXT}`}
+          aria-label="Sector Info & Mini-Map"
+          className={`hidden xs:flex flex-col items-center gap-0.5 bg-transparent ${OUTLINED_TEXT}`}
         >
           <div className="text-[8.5px] sm:text-[9px] text-[#cbd5e1] tracking-wider uppercase font-bold flex items-center gap-1 bg-transparent">
             <span>{worldInfo.roomTitle}</span>
+            <span className="text-[#64748b]">·</span>
+            <span className="text-[#94a3b8] text-[7.5px]">
+              [{state.rx},{state.ry}]
+            </span>
             {isCheatMode && (
               <>
                 <span className="text-[#64748b]">·</span>
@@ -919,6 +928,158 @@ export const OrionHud: React.FC = () => {
               </>
             )}
           </div>
+
+          {/* Map-Relative Mini-Map (5x3 local window around [state.rx, state.ry]) + Pyramid Depth Gauge */}
+          {(() => {
+            const hasLantern = hasPoeLanternGuidance(state);
+            const curStage = worldInfo.loopStage || 0;
+            const curDepth = worldInfo.loopDepth || 0;
+            const inLoop = worldInfo.nodeType === 'loop' || curDepth > 0;
+            const nodesMap = state.fogGraph?.nodes || {};
+
+            const dirByDelta = (dx: number, dy: number): AetherCardinalDir | null => {
+              if (dx === 0 && dy === -1) return 'N';
+              if (dx === 0 && dy === 1) return 'S';
+              if (dx === 1 && dy === 0) return 'E';
+              if (dx === -1 && dy === 0) return 'W';
+              return null;
+            };
+
+            const pyramidSteps: Array<{ label: string; stage: number; depth: number }> = [
+              { label: 'SAFE', stage: 0, depth: 0 },
+              { label: '1', stage: 1, depth: 1 },
+              { label: '2', stage: 2, depth: 2 },
+              { label: '3', stage: 3, depth: 3 },
+              { label: '2', stage: 4, depth: 2 },
+              { label: '1', stage: 5, depth: 1 },
+              { label: 'SAFE', stage: 6, depth: 0 },
+            ];
+
+            return (
+              <div className="flex flex-col items-center gap-0.5 bg-transparent">
+                {/* 5x3 Map-Relative Grid */}
+                <div
+                  aria-label="Map-Relative Mini-Map"
+                  className="grid grid-cols-5 gap-0.5 p-0.5 bg-transparent"
+                >
+                  {[-1, 0, 1].map((dy) =>
+                    [-2, -1, 0, 1, 2].map((dx) => {
+                      const cellRx = state.rx + dx;
+                      const cellRy = state.ry + dy;
+                      const isCenter = dx === 0 && dy === 0;
+                      const adjDir = dirByDelta(dx, dy);
+                      const transInfo = adjDir
+                        ? getDoorwayAetherTransitionInfo(state, adjDir)
+                        : null;
+
+                      const authoredNode = nodesMap[`${cellRx},${cellRy}`];
+                      const dynamicNodeAtCell = Object.values(nodesMap).find(
+                        (n) =>
+                          n.id.startsWith('fog:') &&
+                          n.mapRx === cellRx &&
+                          n.mapRy === cellRy
+                      );
+                      const cellNode = dynamicNodeAtCell || authoredNode;
+
+                      const isDensityWarning = Boolean(
+                        inLoop && transInfo?.increasesDensity
+                      );
+                      const isPoeLoopReveal = Boolean(
+                        !inLoop && transInfo?.isLoopEntrance && hasLantern
+                      );
+
+                      let cellClass = 'border-[#334155]/45 text-[#475569]';
+                      let symbol = '·';
+
+                      if (isCenter) {
+                        cellClass = inLoop
+                          ? curDepth >= 3
+                            ? 'border-[#f43f5e] text-[#fda4af] font-black'
+                            : 'border-[#c084fc] text-[#e9d5ff] font-black'
+                          : 'border-[#38bdf8] text-[#7dd3fc] font-black';
+                        symbol = inLoop ? String(curDepth) : '◈';
+                      } else if (isDensityWarning) {
+                        cellClass =
+                          (transInfo?.nextDepth || 0) >= 3
+                            ? 'border-[#f43f5e]/90 text-[#f43f5e] font-black'
+                            : 'border-[#c084fc]/90 text-[#e879f9] font-black';
+                        symbol = '!';
+                      } else if (isPoeLoopReveal) {
+                        cellClass = 'border-[#22d3ee]/90 text-[#22d3ee] font-black';
+                        symbol = '◎';
+                      } else if (cellNode) {
+                        if (cellNode.nodeType === 'loop') {
+                          cellClass = 'border-[#a855f7]/70 text-[#d8b4fe]';
+                          symbol = String(cellNode.loopDepth || 1);
+                        } else if (cellNode.nodeType === 'end') {
+                          cellClass = 'border-[#fbbf24]/75 text-[#fde047]';
+                          symbol = '★';
+                        } else {
+                          cellClass = 'border-[#64748b]/75 text-[#cbd5e1]';
+                          symbol = '□';
+                        }
+                      }
+
+                      return (
+                        <div
+                          key={`${dx},${dy}`}
+                          className={`w-3.5 h-2.5 rounded-[1px] border bg-transparent flex items-center justify-center text-[6.5px] leading-none ${cellClass}`}
+                          title={
+                            isCenter
+                              ? `Current [${cellRx},${cellRy}] ${inLoop ? `· Æther Depth ${curDepth}` : '· Safe'}`
+                              : isDensityWarning
+                                ? `Warning: Increased Æther Density (Depth ${transInfo?.nextDepth})`
+                                : isPoeLoopReveal
+                                  ? 'Poe Lamp Reveal: Æther Loop Entrance (Depth 1)'
+                                  : cellNode
+                                    ? `${cellNode.title} [${cellRx},${cellRy}]`
+                                    : `Uncharted [${cellRx},${cellRy}]`
+                          }
+                        >
+                          {symbol}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Pyramid Depth Indicator: SAFE · 1 · 2 · 3 · 2 · 1 · SAFE */}
+                <div className="flex items-center gap-0.5 text-[6.5px] tracking-tighter font-bold bg-transparent">
+                  {pyramidSteps.map((step, i) => {
+                    const isActiveStep = inLoop
+                      ? curStage === step.stage
+                      : step.stage === 0;
+                    const activeColor =
+                      step.depth === 3
+                        ? 'text-[#f43f5e] border-[#f43f5e]/85'
+                        : step.depth === 2
+                          ? 'text-[#c084fc] border-[#c084fc]/85'
+                          : step.depth === 1
+                            ? 'text-[#22d3ee] border-[#22d3ee]/85'
+                            : 'text-[#4ade80] border-[#4ade80]/80';
+
+                    return (
+                      <React.Fragment key={step.stage}>
+                        <span
+                          className={`px-1 rounded-[1px] border ${
+                            isActiveStep
+                              ? `${activeColor} font-black`
+                              : 'border-transparent text-[#64748b]'
+                          }`}
+                        >
+                          {step.label}
+                        </span>
+                        {i < pyramidSteps.length - 1 && (
+                          <span className="text-[#475569]">·</span>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
           {lockedEnemy ? (
             <button
               type="button"
@@ -1054,31 +1215,61 @@ export const OrionHud: React.FC = () => {
                   state.skillActionTimer > 0
               );
 
+            const isHeldBlockSlot = Boolean(skill?.isBlock && state.isHoldingBlock);
+            const isPerfectBlockActive = Boolean(
+              isHeldBlockSlot && (state.blockHoldTimer || 0) <= PERFECT_BLOCK_WINDOW_SEC
+            );
+
             const borderColorClass = !isAvailable
               ? 'border-[#334155]/45 opacity-40'
-              : isDurationActive
-                ? 'border-[#4ade80] scale-105'
-                : isActiveSlot
-                  ? 'border-white scale-105'
-                  : isSkillReloading
-                    ? 'border-[#f59e0b]/90'
-                    : onCooldown
-                      ? 'border-[#64748b]/80'
-                      : idx === 0
-                        ? 'border-[#38bdf8]/85 hover:border-[#7dd3fc]'
-                        : idx === 1
-                          ? 'border-[#fbbf24]/85 hover:border-[#fde047]'
-                          : idx === 2
-                            ? 'border-[#c084fc]/85 hover:border-[#e9d5ff]'
-                            : idx === 3
-                              ? 'border-[#38bdf8]/75 hover:border-[#7dd3fc]'
-                              : 'border-[#f472b6]/80 hover:border-[#fbcfe8]';
+              : isPerfectBlockActive
+                ? 'border-[#38bdf8] scale-110'
+                : isHeldBlockSlot
+                  ? 'border-[#93c5fd] scale-105'
+                  : isDurationActive
+                    ? 'border-[#4ade80] scale-105'
+                    : isActiveSlot
+                      ? 'border-white scale-105'
+                      : isSkillReloading
+                        ? 'border-[#f59e0b]/90'
+                        : onCooldown
+                          ? 'border-[#64748b]/80'
+                          : idx === 0
+                            ? 'border-[#38bdf8]/85 hover:border-[#7dd3fc]'
+                            : idx === 1
+                              ? 'border-[#fbbf24]/85 hover:border-[#fde047]'
+                              : idx === 2
+                                ? 'border-[#c084fc]/85 hover:border-[#e9d5ff]'
+                                : idx === 3
+                                  ? 'border-[#38bdf8]/75 hover:border-[#7dd3fc]'
+                                  : 'border-[#f472b6]/80 hover:border-[#fbcfe8]';
 
             return (
               <button
                 key={slotNum}
                 type="button"
+                onPointerDown={() => {
+                  if (skill?.isBlock) {
+                    startHoldingBlock(state, hudCombatCtx);
+                  }
+                }}
+                onPointerUp={() => {
+                  if (skill?.isBlock) {
+                    releaseHeldBlock(state);
+                  }
+                }}
+                onPointerLeave={() => {
+                  if (skill?.isBlock && state.isHoldingBlock) {
+                    releaseHeldBlock(state);
+                  }
+                }}
+                onPointerCancel={() => {
+                  if (skill?.isBlock && state.isHoldingBlock) {
+                    releaseHeldBlock(state);
+                  }
+                }}
                 onClick={() => {
+                  if (skill?.isBlock) return;
                   if (idx === 0) {
                     firePrimarySalvoShot(state, hudCombatCtx, false);
                   } else {
@@ -1088,13 +1279,15 @@ export const OrionHud: React.FC = () => {
                 title={
                   skill
                     ? `${skill.name}${
-                        isDurationActive
-                          ? ` [ACTIVE ${activeRem.toFixed(1)}s]`
-                          : isSkillReloading
-                            ? ` [RELOAD ${rawCd.toFixed(1)}s]`
-                            : onCooldown
-                              ? ` (${rawCd.toFixed(1)}s)`
-                              : ''
+                        skill.isBlock
+                          ? ' [Hold: 0.25s Perfect Block Window · No Cooldown]'
+                          : isDurationActive
+                            ? ` [ACTIVE ${activeRem.toFixed(1)}s]`
+                            : isSkillReloading
+                              ? ` [RELOAD ${rawCd.toFixed(1)}s]`
+                              : onCooldown
+                                ? ` (${rawCd.toFixed(1)}s)`
+                                : ''
                       }`
                     : `Skill ${slotNum}`
                 }
@@ -1116,8 +1309,16 @@ export const OrionHud: React.FC = () => {
                     </span>
                   )}
 
-                {/* Overlaid Active Duration or Cooldown/Reload Timer */}
-                {isDurationActive ? (
+                {/* Overlaid Held Block / Perfect Window, Active Duration, or Cooldown/Reload Timer */}
+                {isHeldBlockSlot ? (
+                  <span
+                    className={`absolute inset-0 flex items-center justify-center text-[7px] font-black ${
+                      isPerfectBlockActive ? 'text-[#38bdf8]' : 'text-[#bae6fd]'
+                    } tracking-tighter ${OUTLINED_TEXT}`}
+                  >
+                    {isPerfectBlockActive ? 'PERF' : 'HOLD'}
+                  </span>
+                ) : isDurationActive ? (
                   <span
                     className={`absolute inset-0 flex items-center justify-center text-[8.5px] sm:text-[9px] font-black text-[#4ade80] tracking-tighter ${OUTLINED_TEXT}`}
                   >

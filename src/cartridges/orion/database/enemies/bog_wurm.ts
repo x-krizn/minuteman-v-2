@@ -56,7 +56,11 @@ export const bogWurmEnemy: EnemyWikiDefinition = {
     const tx = Math.floor(e.x / TILE_SIZE);
     const ty = Math.floor(e.y / TILE_SIZE);
     const onWater = rooms[state.room]?.[ty]?.[tx] === '~';
-    const lanternReveals = Boolean(state.flags?.poe_lantern_gift);
+    const lanternReveals = Boolean(
+      state.flags?.poe_lantern_gift ||
+        state.flags?.poe_state === 'helped' ||
+        state.inventorySlots?.some((s) => s.itemId === 'poe_lantern_charm')
+    );
 
     const dx = state.x - e.x;
     const dy = state.y - e.y;

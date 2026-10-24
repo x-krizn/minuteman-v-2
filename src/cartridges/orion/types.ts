@@ -305,6 +305,15 @@ export interface AetherGraphNode {
   returnDir?: AetherCardinalDir;
   /** Parent node ID for side, loop, and end nodes */
   parentNodeId?: string;
+  /** Map-relative X/Y coordinates for mini-map and relative Aether loop positioning */
+  mapRx?: number;
+  mapRy?: number;
+  /** Pyramid Aether loop depth (0 = safe, 1 = depth 1, 2 = depth 2, 3 = depth 3 apex) */
+  loopDepth?: number;
+  /** Pyramid Aether loop stage (0 = safe, 1 = d1 asc, 2 = d2 asc, 3 = d3 apex, 4 = d2 desc, 5 = d1 desc) */
+  loopStage?: number;
+  /** In descending loop rooms (stage 4 or 5), doorway direction that pulls back into deeper Aether density */
+  relapseDir?: AetherCardinalDir;
   /** Resolved cardinal doorway transitions persisted until Waystation rest */
   edges: Partial<Record<AetherCardinalDir, string>>;
   /** Rolled reward/encounter feature when nodeType === 'end' */
@@ -318,6 +327,7 @@ export interface AetherFogGraphState {
   nextCounter: number;
   activeNodeId: string;
   loopDepth: number;
+  loopStage?: number;
   nodes: Record<string, AetherGraphNode>;
 }
 
@@ -1022,6 +1032,8 @@ export interface OrionState {
   skillReloadTimers?: Record<string, number>;
   skillPendingReloadDurations?: Record<string, number>;
   blockTimer?: number;
+  isHoldingBlock?: boolean;
+  blockHoldTimer?: number;
   blockingWeaponId?: string | null;
   overdriveTimer?: number;
   opticMarkTimer?: number;
@@ -1031,6 +1043,7 @@ export interface OrionState {
   combatInputTimers?: Record<'x' | 'y' | 'r' | 'l', number>;
   combatHoldTimers?: Record<'x' | 'y' | 'r' | 'l', number>;
   combatHoldTriggered?: Record<'x' | 'y' | 'r' | 'l', boolean>;
+  combatTapPending?: Record<'x' | 'y' | 'r' | 'l', boolean>;
   combatActiveChain?: boolean;
 
   // Booster Kit / Evasion (Tap Dodge Burst + Hold Continuous Boost)

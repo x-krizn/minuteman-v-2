@@ -15,7 +15,7 @@ import {
 } from '../database/progression';
 import { getWeaponDefinition } from '../database/weapons';
 import { EnemyEntity, OrionCombatContext, OrionExecutionContext, OrionState } from '../types';
-import { applyDamageToLayers } from './combatSystem';
+import { applyDamageToLayers, PERFECT_BLOCK_WINDOW_SEC } from './combatSystem';
 import { addOrionInventoryItem, isSolidAt, notifyOrionStateChange, syncStateGates } from './playerSystem';
 import { getCanonicalRoomPersistenceKey } from './worldSystem';
 
@@ -375,9 +375,6 @@ export function updateEnemies(
       if (remainingHostiles.length === 0 && defeatedFaction !== 'poe') {
         state.clearedRooms[state.room] = true;
         state.clearedRooms[getCanonicalRoomPersistenceKey(state, state.room)] = true;
-        if (!state.toastText || state.toastTimer <= 0) {
-          ctx.say('SECTOR SECURED');
-        }
       }
     }
   }
@@ -466,15 +463,37 @@ export function updateProjectiles(
     } else {
       const dist = Math.hypot(state.x - p.x, state.y - p.y);
       if (dist < 12 && Math.abs(state.z - p.z) < 12 && !state.isBoosterDashing) {
-        soundSystem.playHit();
-        applyDamageToLayers(
-          state.shields,
-          state.armor,
-          state.frame,
-          p.damage,
-          p.damageType,
-          (count, color, label) => ctx.spawnParticles(state.x, state.y, state.z + 8, count, color, label)
+        const isPerfectBlock = Boolean(
+          state.isHoldingBlock && (state.blockHoldTimer || 0) <= PERFECT_BLOCK_WINDOW_SEC
         );
+        const isGuarding = Boolean(state.isHoldingBlock || (state.blockTimer || 0) > 0);
+
+        if (isPerfectBlock) {
+          soundSystem.playPowerup();
+          state.shields.capacity = Math.min(
+            state.shields.maxCapacity,
+            state.shields.capacity + 10
+          );
+          state.heat = Math.max(0, state.heat - 8);
+          ctx.spawnParticles(state.x, state.y, state.z + 10, 8, '#38bdf8', 'PERFECT BLOCK!');
+        } else {
+          soundSystem.playHit();
+          const finalProjDamage = isGuarding
+            ? Math.max(1, Math.round(p.damage * 0.35))
+            : p.damage;
+          if (isGuarding) {
+            ctx.spawnParticles(state.x, state.y, state.z + 8, 4, '#38bdf8', 'BLOCKED');
+          }
+          applyDamageToLayers(
+            state.shields,
+            state.armor,
+            state.frame,
+            finalProjDamage,
+            p.damageType,
+            (count, color, label) =>
+              ctx.spawnParticles(state.x, state.y, state.z + 8, count, color, label)
+          );
+        }
 
         if (p.onImpact) {
           p.onImpact(p.x, p.y, p.z, state);

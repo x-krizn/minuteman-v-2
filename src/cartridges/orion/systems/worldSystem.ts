@@ -473,6 +473,46 @@ export function hasPoeLanternGuidance(state: OrionState): boolean {
   return state.inventorySlots.some((s) => s.itemId === 'poe_lantern_charm');
 }
 
+export const AETHER_PYRAMID_DEPTHS = [0, 1, 2, 3, 2, 1, 0] as const;
+
+function parseCoordPair(coord: string | undefined): { rx: number; ry: number } {
+  if (!coord) return { rx: 0, ry: 0 };
+  const [rxStr, ryStr] = coord.split(',');
+  return {
+    rx: Number.isFinite(Number(rxStr)) ? Number(rxStr) : 0,
+    ry: Number.isFinite(Number(ryStr)) ? Number(ryStr) : 0,
+  };
+}
+
+function stepMapCoords(
+  rx: number,
+  ry: number,
+  dir: AetherCardinalDir
+): { rx: number; ry: number } {
+  switch (dir) {
+    case 'E':
+      return { rx: rx + 1, ry };
+    case 'W':
+      return { rx: rx - 1, ry };
+    case 'S':
+      return { rx, ry: ry + 1 };
+    case 'N':
+      return { rx, ry: ry - 1 };
+  }
+}
+
+function getKeyBorderBranchType(
+  seed: number,
+  coord: string,
+  dir: AetherCardinalDir
+): AetherNodeType {
+  const coordSalt = coord
+    .split('')
+    .reduce((acc, ch, idx) => acc + ch.charCodeAt(0) * (idx + 17), 0);
+  const borderHash = deterministicHash(seed, coordSalt, dir.charCodeAt(0));
+  return borderHash % 3 === 0 ? 'loop' : 'side';
+}
+
 export function ensureAetherFogGraph(state: OrionState): AetherFogGraphState {
   if (!state.fogGraph || !state.fogGraph.nodes) {
     const nodes: Record<string, AetherGraphNode> = {};
@@ -486,11 +526,16 @@ export function ensureAetherFogGraph(state: OrionState): AetherFogGraphState {
       } else if (coord === '1,-1') {
         edges.S = '1,0';
       }
+      const parsed = parseCoordPair(coord);
 
       nodes[coord] = {
         id: coord,
         nodeType: isEnd ? 'end' : meta.nodeType === 'general' ? 'general' : 'key',
         coord,
+        mapRx: parsed.rx,
+        mapRy: parsed.ry,
+        loopDepth: 0,
+        loopStage: 0,
         title: meta.title,
         bannerTitle: meta.bannerTitle,
         regionId: meta.regionId,
@@ -510,16 +555,22 @@ export function ensureAetherFogGraph(state: OrionState): AetherFogGraphState {
       nextCounter: 1,
       activeNodeId: state.room || '-3,0',
       loopDepth: 0,
+      loopStage: 0,
       nodes,
     };
   }
 
   if (!state.fogGraph.nodes[state.room]) {
     const fallbackMeta = ORION_ROOM_METADATA[state.room] || ORION_ROOM_METADATA['-3,0'];
+    const parsed = parseCoordPair(state.room);
     state.fogGraph.nodes[state.room] = {
       id: state.room,
       nodeType: fallbackMeta?.nodeType || 'key',
       coord: state.room,
+      mapRx: parsed.rx,
+      mapRy: parsed.ry,
+      loopDepth: 0,
+      loopStage: 0,
       title: fallbackMeta?.title || `Sector [${state.room}]`,
       bannerTitle: fallbackMeta?.bannerTitle || `SECTOR [${state.room}]`,
       regionId: fallbackMeta?.regionId || state.regionId || 'region_belldor_outskirts',
@@ -638,6 +689,7 @@ export function resetAetherFogGraph(
   freshGraph.seed = (prevSeed + 7919) % 9999991;
   freshGraph.nextCounter = prevCounter;
   freshGraph.loopDepth = 0;
+  freshGraph.loopStage = 0;
 
   if (ctx) {
     ctx.say('ÆTHER FOG GRAPH RE-SYNCHRONIZED · DYNAMIC PATHS SHIFTED');
@@ -678,7 +730,8 @@ function decorateDynamicRoomGrid(
   openDirs: AetherCardinalDir[],
   _trueExitDir: AetherCardinalDir | undefined,
   endFeature: AetherEndFeature | undefined,
-  hashVal: number
+  hashVal: number,
+  loopDepth: number = 0
 ): string[] {
   const sourceGrid =
     nodeType === 'end' && endFeature === 'mini_boss'
@@ -726,10 +779,73 @@ function decorateDynamicRoomGrid(
     }
   }
 
-  // Loop nodes have eerie shifting Aether pools and Poe lantern echoes
-  if (nodeType === 'loop' && matrix[midY]) {
-    matrix[midY][midX - 1] = '~';
-    matrix[midY][midX] = '~';
+  // Loop nodes become progressively less traversable and more hazardous at deeper depths (1 -> 2 -> 3)
+  if (nodeType === 'loop') {
+    const effDepth = Math.max(1, Math.min(3, loopDepth || 1));
+
+    // Depth 1+: Central corrosive Aether pool & surrounding bog mud
+    if (matrix[midY]) {
+      matrix[midY][midX - 1] = '~';
+      matrix[midY][midX] = '~';
+    }
+    if (matrix[midY - 1]) {
+      matrix[midY - 1][midX - 1] = ',';
+      matrix[midY - 1][midX] = ',';
+    }
+    if (matrix[midY + 1]) {
+      matrix[midY + 1][midX - 1] = ',';
+      matrix[midY + 1][midX] = ',';
+    }
+
+    // Depth 2+: Corrosive trenches, calcified pillars, and phase-desync barriers constrict movement
+    if (effDepth >= 2) {
+      const topRow = Math.max(2, midY - 2);
+      const botRow = Math.min(rows - 3, midY + 2);
+      const leftCol = Math.max(2, midX - 3);
+      const rightCol = Math.min(cols - 3, midX + 2);
+
+      if (matrix[topRow]) {
+        matrix[topRow][leftCol] = 'P';
+        matrix[topRow][rightCol] = 'P';
+        if (leftCol + 1 < midX - 1) matrix[topRow][leftCol + 1] = '~';
+        if (rightCol - 1 > midX) matrix[topRow][rightCol - 1] = '~';
+      }
+      if (matrix[botRow]) {
+        matrix[botRow][leftCol] = 'P';
+        matrix[botRow][rightCol] = 'P';
+        if (leftCol + 1 < midX - 1) matrix[botRow][leftCol + 1] = '~';
+        if (rightCol - 1 > midX) matrix[botRow][rightCol - 1] = '~';
+      }
+      if (matrix[midY]) {
+        if (leftCol >= 2) matrix[midY][leftCol] = 'X';
+        if (rightCol <= cols - 3) matrix[midY][rightCol] = 'X';
+      }
+    }
+
+    // Depth 3 (Apex): Abyssal sinkhole fissures ('_'), wider corrosive Aether channels ('~'), and desync gates ('X')
+    if (effDepth >= 3) {
+      const yUpper = Math.max(2, midY - 2);
+      const yLower = Math.min(rows - 3, midY + 2);
+      const xOuterL = Math.max(2, midX - 4);
+      const xOuterR = Math.min(cols - 3, midX + 3);
+
+      if (matrix[yUpper]) {
+        matrix[yUpper][xOuterL] = '_';
+        matrix[yUpper][xOuterR] = '_';
+      }
+      if (matrix[yLower]) {
+        matrix[yLower][xOuterL] = '_';
+        matrix[yLower][xOuterR] = '_';
+      }
+      if (matrix[midY - 1]) {
+        matrix[midY - 1][Math.max(2, midX - 2)] = '~';
+        matrix[midY - 1][Math.min(cols - 3, midX + 1)] = '~';
+      }
+      if (matrix[midY + 1]) {
+        matrix[midY + 1][Math.max(2, midX - 2)] = '~';
+        matrix[midY + 1][Math.min(cols - 3, midX + 1)] = '~';
+      }
+    }
   }
 
   return matrix.map((r) => r.join(''));
@@ -746,6 +862,11 @@ function createDynamicAetherNode(
     targetKeyCoord?: string;
     routeStep?: number;
     routeTotal?: number;
+    loopStage?: number;
+    loopDepth?: number;
+    mapRx?: number;
+    mapRy?: number;
+    anchorSafeNodeId?: string;
   }
 ): AetherGraphNode {
   const graph = ensureAetherFogGraph(state);
@@ -754,6 +875,20 @@ function createDynamicAetherNode(
 
   const id = `fog:${nodeType}:${counter}`;
   const returnDir = getOppositeCardinalDir(moveDir);
+
+  const parentParsed = parseCoordPair(parentNode.coord);
+  const baseRx = parentNode.mapRx ?? parentParsed.rx;
+  const baseRy = parentNode.mapRy ?? parentParsed.ry;
+  const steppedCoords = stepMapCoords(baseRx, baseRy, moveDir);
+  const mapRx = options?.mapRx ?? steppedCoords.rx;
+  const mapRy = options?.mapRy ?? steppedCoords.ry;
+
+  const loopStage =
+    nodeType === 'loop' ? Math.max(1, Math.min(5, options?.loopStage ?? 1)) : 0;
+  const loopDepth =
+    nodeType === 'loop'
+      ? (options?.loopDepth ?? AETHER_PYRAMID_DEPTHS[loopStage] ?? 1)
+      : 0;
 
   const templates = Object.values(GLOBAL_ROOM_REGISTRY);
   const chosenTemplate =
@@ -765,6 +900,7 @@ function createDynamicAetherNode(
       : parentNode.biomeId || state.biomeId || chosenTemplate?.biomeId || 'belldor_bog';
 
   let trueExitDir: AetherCardinalDir | undefined;
+  let relapseDir: AetherCardinalDir | undefined;
   let endFeature: AetherEndFeature | undefined;
   let openDirs: AetherCardinalDir[] = ALL_CARDINAL_DIRS;
   let title = chosenTemplate?.title || 'Drifting Sector';
@@ -793,8 +929,10 @@ function createDynamicAetherNode(
     bannerTitle = title.toUpperCase();
   } else if (nodeType === 'loop') {
     trueExitDir = pickTrueExitDir(moveDir, returnDir, hashVal + 3);
-    title = 'Shifting Æther Mist';
-    bannerTitle = 'LOST IN THE ÆTHER FOG';
+    const nonExitCandidates = ALL_CARDINAL_DIRS.filter((d) => d !== trueExitDir);
+    relapseDir = nonExitCandidates[(hashVal + 1) % nonExitCandidates.length] || returnDir;
+    title = `Æther Loop [Depth ${loopDepth}]`;
+    bannerTitle = `ÆTHER LOOP · DEPTH ${loopDepth}`;
   }
 
   const grid = decorateDynamicRoomGrid(
@@ -803,13 +941,23 @@ function createDynamicAetherNode(
     openDirs,
     trueExitDir,
     endFeature,
-    hashVal
+    hashVal,
+    loopDepth
   );
+
+  const anchorSafeNodeId =
+    options?.anchorSafeNodeId ||
+    (parentNode.nodeType === 'loop' ? parentNode.parentNodeId : parentNode.id);
 
   const newNode: AetherGraphNode = {
     id,
     nodeType,
-    coord: parentNode.coord,
+    coord: `${mapRx},${mapRy}`,
+    mapRx,
+    mapRy,
+    loopDepth,
+    loopStage,
+    relapseDir,
     title,
     bannerTitle,
     regionId: parentNode.regionId || state.regionId || 'region_belldor_outskirts',
@@ -822,20 +970,16 @@ function createDynamicAetherNode(
     routeTotal: options?.routeTotal ?? parentNode.routeTotal,
     trueExitDir,
     returnDir,
-    parentNodeId: parentNode.id,
-    edges: {
-      [returnDir]: parentNode.id,
-    },
+    parentNodeId: anchorSafeNodeId,
+    edges:
+      nodeType === 'loop'
+        ? {}
+        : {
+            [returnDir]: parentNode.id,
+          },
     endFeature,
     grid,
   };
-
-  if (nodeType === 'loop' && trueExitDir) {
-    // In a loop node, only `trueExitDir` escapes back to the parent node; other exits cycle in the fog.
-    newNode.edges = {
-      [trueExitDir]: parentNode.id,
-    };
-  }
 
   graph.nodes[id] = newNode;
   rooms[id] = grid;
@@ -861,6 +1005,134 @@ function createDynamicAetherNode(
   return newNode;
 }
 
+export interface DoorwayAetherTransitionInfo {
+  dir: AetherCardinalDir;
+  currentDepth: number;
+  currentStage: number;
+  nextDepth: number;
+  nextStage: number;
+  isLoopEntrance: boolean;
+  increasesDensity: boolean;
+}
+
+/**
+ * Pure, non-mutating inspection of any cardinal doorway (`N`, `S`, `E`, `W`) in the active room.
+ * - Pyramid progression always follows: `SAFE (0) -> 1 -> 2 -> 3 -> 2 -> 1 -> SAFE (0)`.
+ * - `increasesDensity` is true whenever stepping through `dir` moves to a strictly deeper Æther depth (`nextDepth > currentDepth`).
+ * - `isLoopEntrance` is true when currently in a Safe room (`currentDepth === 0`) and `dir` enters an Æther Loop (`nextDepth === 1`).
+ */
+export function getDoorwayAetherTransitionInfo(
+  state: OrionState,
+  dir: AetherCardinalDir
+): DoorwayAetherTransitionInfo {
+  const graph = ensureAetherFogGraph(state);
+  const currentNode = getActiveAetherNode(state);
+
+  if (currentNode.nodeType === 'loop') {
+    const currentStage = Math.max(
+      1,
+      Math.min(5, currentNode.loopStage ?? graph.loopStage ?? 1)
+    );
+    const currentDepth =
+      currentNode.loopDepth ?? AETHER_PYRAMID_DEPTHS[currentStage] ?? 1;
+
+    let nextStage = currentStage + 1;
+    if (currentStage === 1) {
+      nextStage = 2; // 1 -> 2
+    } else if (currentStage === 2) {
+      nextStage = 3; // 2 -> 3 (Apex)
+    } else if (currentStage === 3) {
+      nextStage = 4; // 3 -> 2 (Descending)
+    } else if (currentStage === 4) {
+      // At Stage 4 (Depth 2 descending), relapseDir surges back to Stage 3 (Depth 3); other doorways descend to Stage 5 (Depth 1)
+      nextStage = dir === currentNode.relapseDir ? 3 : 5;
+    } else {
+      // At Stage 5 (Depth 1 descending), relapseDir surges back to Stage 2 (Depth 2); other doorways emerge to Safe (Stage 0, Depth 0)
+      nextStage = dir === currentNode.relapseDir ? 2 : 0;
+    }
+
+    const nextDepth = AETHER_PYRAMID_DEPTHS[nextStage] ?? 0;
+    return {
+      dir,
+      currentDepth,
+      currentStage,
+      nextDepth,
+      nextStage,
+      isLoopEntrance: false,
+      increasesDensity: nextDepth > currentDepth,
+    };
+  }
+
+  // Currently in a SAFE room (`currentDepth === 0`): check if `dir` is an Æther Loop entrance
+  let isLoopEntrance = false;
+  const existingTargetId = currentNode.edges[dir];
+  if (existingTargetId && graph.nodes[existingTargetId]) {
+    isLoopEntrance = graph.nodes[existingTargetId].nodeType === 'loop';
+  } else if (currentNode.nodeType === 'end') {
+    isLoopEntrance = false;
+  } else if (currentNode.nodeType === 'key') {
+    const keyCoord = currentNode.id.includes(',') ? currentNode.id : currentNode.coord;
+    const route = KEY_NODE_ROUTES[keyCoord]?.[dir];
+    if (route) {
+      isLoopEntrance = Boolean(getUndefinedZoneSealReason(route.targetKeyCoord));
+    } else {
+      isLoopEntrance = getKeyBorderBranchType(graph.seed, keyCoord, dir) === 'loop';
+    }
+  } else if (currentNode.nodeType === 'general') {
+    if (dir === currentNode.trueExitDir) {
+      const step = currentNode.routeStep || 1;
+      const total = currentNode.routeTotal || 1;
+      if (step >= total && currentNode.targetKeyCoord) {
+        isLoopEntrance = Boolean(getUndefinedZoneSealReason(currentNode.targetKeyCoord));
+      }
+    } else {
+      isLoopEntrance = false;
+    }
+  } else if (currentNode.nodeType === 'side') {
+    isLoopEntrance = dir !== currentNode.trueExitDir;
+  }
+
+  const nextStage = isLoopEntrance ? 1 : 0;
+  const nextDepth = isLoopEntrance ? 1 : 0;
+
+  return {
+    dir,
+    currentDepth: 0,
+    currentStage: 0,
+    nextDepth,
+    nextStage,
+    isLoopEntrance,
+    increasesDensity: nextDepth > 0,
+  };
+}
+
+function resolveSafeEmergenceNode(
+  graph: AetherFogGraphState,
+  currentNode: AetherGraphNode,
+  dir: AetherCardinalDir
+): AetherGraphNode {
+  const baseRx = currentNode.mapRx ?? 0;
+  const baseRy = currentNode.mapRy ?? 0;
+  const stepped = stepMapCoords(baseRx, baseRy, dir);
+  const candidateCoord = `${stepped.rx},${stepped.ry}`;
+
+  // If the map-relative emergence coordinate matches an authored unsealed safe node in the same area, emerge there
+  const candidateNode = graph.nodes[candidateCoord];
+  if (
+    candidateNode &&
+    candidateNode.nodeType === 'key' &&
+    candidateNode.id !== '-4,0' &&
+    !getUndefinedZoneSealReason(candidateCoord)
+  ) {
+    return candidateNode;
+  }
+
+  if (currentNode.parentNodeId && graph.nodes[currentNode.parentNodeId]) {
+    return graph.nodes[currentNode.parentNodeId];
+  }
+  return graph.nodes['0,0'] || Object.values(graph.nodes)[0];
+}
+
 function resolveNextAetherNode(
   rooms: Record<string, string[]>,
   state: OrionState,
@@ -869,39 +1141,53 @@ function resolveNextAetherNode(
 ): { targetNode: AetherGraphNode; isLoopCycle: boolean; escapedLoop: boolean } {
   const graph = ensureAetherFogGraph(state);
 
-  // 1. If edge is already resolved in the current session, follow it
-  const existingTargetId = currentNode.edges[dir];
-  if (existingTargetId && graph.nodes[existingTargetId] && rooms[existingTargetId]) {
-    const targetNode = graph.nodes[existingTargetId];
-    const escapedLoop = currentNode.nodeType === 'loop' && targetNode.nodeType !== 'loop';
-    const isLoopCycle = currentNode.nodeType === 'loop' && targetNode.nodeType === 'loop';
-    return { targetNode, isLoopCycle, escapedLoop };
-  }
-
-  // 2. Inside a LOOP node: `trueExitDir` escapes to parent; all other exits silently cycle between loop nodes
+  // 1. Inside a LOOP node: follow the Pyramid progression `safe (0) -> 1 -> 2 -> 3 -> 2 -> 1 -> safe (0)`
   if (currentNode.nodeType === 'loop') {
-    if (dir === currentNode.trueExitDir && currentNode.parentNodeId) {
-      const escapeTarget = graph.nodes[currentNode.parentNodeId] || graph.nodes['0,0'];
+    const transInfo = getDoorwayAetherTransitionInfo(state, dir);
+
+    // Emerging back to SAFE (`nextStage === 0`) after descending through `3 -> 2 -> 1 -> safe`
+    if (transInfo.nextStage === 0) {
+      const escapeTarget = resolveSafeEmergenceNode(graph, currentNode, dir);
       currentNode.edges[dir] = escapeTarget.id;
       return { targetNode: escapeTarget, isLoopCycle: false, escapedLoop: true };
     }
 
-    // Create or cycle into a paired sibling loop node that shares the same escape anchor
-    const escapeAnchorNode =
-      (currentNode.parentNodeId && graph.nodes[currentNode.parentNodeId]) || currentNode;
-    const siblingLoop = createDynamicAetherNode(rooms, state, escapeAnchorNode, dir, 'loop', {
+    const existingLoopTargetId = currentNode.edges[dir];
+    if (
+      existingLoopTargetId &&
+      graph.nodes[existingLoopTargetId] &&
+      rooms[existingLoopTargetId] &&
+      graph.nodes[existingLoopTargetId].loopStage === transInfo.nextStage
+    ) {
+      return {
+        targetNode: graph.nodes[existingLoopTargetId],
+        isLoopCycle: true,
+        escapedLoop: false,
+      };
+    }
+
+    const nextLoopNode = createDynamicAetherNode(rooms, state, currentNode, dir, 'loop', {
       sourceKeyCoord: currentNode.sourceKeyCoord,
       targetKeyCoord: currentNode.targetKeyCoord,
       routeStep: currentNode.routeStep,
       routeTotal: currentNode.routeTotal,
+      loopStage: transInfo.nextStage,
+      loopDepth: transInfo.nextDepth,
+      anchorSafeNodeId: currentNode.parentNodeId,
     });
-    // Wire silent cycle between the two loop chunks
-    currentNode.edges[dir] = siblingLoop.id;
-    const oppDir = getOppositeCardinalDir(dir);
-    if (siblingLoop.trueExitDir !== oppDir) {
-      siblingLoop.edges[oppDir] = currentNode.id;
-    }
-    return { targetNode: siblingLoop, isLoopCycle: true, escapedLoop: false };
+    currentNode.edges[dir] = nextLoopNode.id;
+    return { targetNode: nextLoopNode, isLoopCycle: true, escapedLoop: false };
+  }
+
+  // 2. If edge from a non-loop node is already resolved in the current session, follow it
+  const existingTargetId = currentNode.edges[dir];
+  if (existingTargetId && graph.nodes[existingTargetId] && rooms[existingTargetId]) {
+    const targetNode = graph.nodes[existingTargetId];
+    return {
+      targetNode,
+      isLoopCycle: targetNode.nodeType === 'loop',
+      escapedLoop: false,
+    };
   }
 
   // 3. Inside an END node: only returnDir is open and returns to parent
@@ -914,13 +1200,17 @@ function resolveNextAetherNode(
 
   // 4. Inside a KEY node:
   if (currentNode.nodeType === 'key') {
-    const route = KEY_NODE_ROUTES[currentNode.coord]?.[dir];
+    const keyCoord = currentNode.id.includes(',') ? currentNode.id : currentNode.coord;
+    const route = KEY_NODE_ROUTES[keyCoord]?.[dir];
     if (route) {
       const sealReason = getUndefinedZoneSealReason(route.targetKeyCoord);
       if (sealReason) {
         const sealedLoop = createDynamicAetherNode(rooms, state, currentNode, dir, 'loop', {
-          sourceKeyCoord: currentNode.coord,
+          sourceKeyCoord: keyCoord,
           targetKeyCoord: route.targetKeyCoord,
+          loopStage: 1,
+          loopDepth: 1,
+          anchorSafeNodeId: currentNode.id,
         });
         sealedLoop.bannerTitle = `SEALED BY ÆTHER FOG · ${sealReason.toUpperCase()}`;
         ORION_ROOM_METADATA[sealedLoop.id].bannerTitle = sealedLoop.bannerTitle;
@@ -938,7 +1228,7 @@ function resolveNextAetherNode(
       }
 
       const genNode = createDynamicAetherNode(rooms, state, currentNode, dir, 'general', {
-        sourceKeyCoord: currentNode.coord,
+        sourceKeyCoord: keyCoord,
         targetKeyCoord: route.targetKeyCoord,
         routeStep: 1,
         routeTotal: route.routeTotal,
@@ -947,15 +1237,13 @@ function resolveNextAetherNode(
       return { targetNode: genNode, isLoopCycle: false, escapedLoop: false };
     }
 
-    // Unmapped open border on a KEY node -> dynamically spawns a SIDE node or LOOP node
-    const borderHash = deterministicHash(
-      graph.seed,
-      graph.nextCounter,
-      currentNode.coord.charCodeAt(0) + dir.charCodeAt(0)
-    );
-    const branchType: AetherNodeType = borderHash % 3 === 0 ? 'loop' : 'side';
+    // Unmapped open border on a KEY node -> deterministically spawns a SIDE node or LOOP node (Stage 1, Depth 1)
+    const branchType = getKeyBorderBranchType(graph.seed, keyCoord, dir);
     const branchNode = createDynamicAetherNode(rooms, state, currentNode, dir, branchType, {
-      sourceKeyCoord: currentNode.coord,
+      sourceKeyCoord: keyCoord,
+      loopStage: branchType === 'loop' ? 1 : 0,
+      loopDepth: branchType === 'loop' ? 1 : 0,
+      anchorSafeNodeId: currentNode.id,
     });
     currentNode.edges[dir] = branchNode.id;
     return {
@@ -976,6 +1264,9 @@ function resolveNextAetherNode(
           const sealedLoop = createDynamicAetherNode(rooms, state, currentNode, dir, 'loop', {
             sourceKeyCoord: currentNode.sourceKeyCoord,
             targetKeyCoord: currentNode.targetKeyCoord,
+            loopStage: 1,
+            loopDepth: 1,
+            anchorSafeNodeId: currentNode.id,
           });
           sealedLoop.bannerTitle = `SEALED BY ÆTHER FOG · ${sealReason.toUpperCase()}`;
           ORION_ROOM_METADATA[sealedLoop.id].bannerTitle = sealedLoop.bannerTitle;
@@ -1011,13 +1302,16 @@ function resolveNextAetherNode(
   }
 
   // 6. Inside a SIDE node:
-  // `trueExitDir` leads to a rewarding END node; off-path exits lead into a LOOP node!
+  // `trueExitDir` leads to a rewarding END node; off-path exits lead into a LOOP node at Stage 1 (Depth 1)
   const targetType: AetherNodeType = dir === currentNode.trueExitDir ? 'end' : 'loop';
   const childNode = createDynamicAetherNode(rooms, state, currentNode, dir, targetType, {
     sourceKeyCoord: currentNode.sourceKeyCoord,
     targetKeyCoord: currentNode.targetKeyCoord,
     routeStep: currentNode.routeStep,
     routeTotal: currentNode.routeTotal,
+    loopStage: targetType === 'loop' ? 1 : 0,
+    loopDepth: targetType === 'loop' ? 1 : 0,
+    anchorSafeNodeId: currentNode.id,
   });
   currentNode.edges[dir] = childNode.id;
   return {
@@ -1056,6 +1350,49 @@ function spawnDynamicNodeFeatures(
       damage: 22,
       spawnKey: miniBossSpawnKey,
     });
+    return;
+  }
+
+  // Scale Æther Loop difficulty by pyramid depth (1 -> 2 -> 3)
+  if (node.nodeType === 'loop') {
+    const depth = Math.max(1, Math.min(3, node.loopDepth || 1));
+    const statMult = depth === 1 ? 1.15 : depth === 2 ? 1.4 : 1.75;
+    const speedMult = depth === 1 ? 1.05 : depth === 2 ? 1.14 : 1.24;
+
+    const spawnScaledLoopEnemy = (
+      type: string,
+      px: number,
+      py: number,
+      idx: number
+    ) => {
+      const e = spawnEnemyByType(state, type, px, py, {
+        spawnKey: `${canonicalKey}:loop_depth_${depth}:${idx}`,
+      });
+      if (!e) return;
+      e.shields.maxCapacity = Math.round(e.shields.maxCapacity * statMult);
+      e.shields.capacity = e.shields.maxCapacity;
+      e.armor.maxDurability = Math.round(e.armor.maxDurability * statMult);
+      e.armor.durability = e.armor.maxDurability;
+      e.frame.maxIntegrity = Math.round(e.frame.maxIntegrity * statMult);
+      e.frame.integrity = e.frame.maxIntegrity;
+      e.damage = Math.round(e.damage * statMult);
+      e.speed = Math.round(e.speed * speedMult);
+      e.emissiveColor = depth === 3 ? '#f43f5e' : depth === 2 ? '#c084fc' : '#38bdf8';
+      if (type === 'bog_wurm') {
+        e.isSubmerged = !hasPoeLanternGuidance(state);
+      }
+    };
+
+    if (depth === 1) {
+      spawnScaledLoopEnemy('bog_crawler', Math.round(widthPx * 0.34), Math.round(heightPx * 0.42), 0);
+    } else if (depth === 2) {
+      spawnScaledLoopEnemy('orc_warrior', Math.round(widthPx * 0.32), Math.round(heightPx * 0.38), 0);
+      spawnScaledLoopEnemy('bog_wurm', Math.round(widthPx * 0.68), Math.round(heightPx * 0.62), 1);
+    } else {
+      spawnScaledLoopEnemy('orc_warrior', Math.round(widthPx * 0.28), Math.round(heightPx * 0.36), 0);
+      spawnScaledLoopEnemy('bog_wurm', Math.round(widthPx * 0.72), Math.round(heightPx * 0.36), 1);
+      spawnScaledLoopEnemy('percival_knight', Math.round(widthPx * 0.5), Math.round(heightPx * 0.64), 2);
+    }
   }
 }
 
@@ -1067,10 +1404,11 @@ export function transitionViaAetherDoor(
 ): boolean {
   const graph = ensureAetherFogGraph(state);
   const currentNode = getActiveAetherNode(state);
+  const prevAreaId = state.areaId;
   const prevRoomGrid = rooms[state.room];
   const departureDoor = getRoomDoorwayCenterPx(prevRoomGrid, dir);
 
-  const { targetNode, isLoopCycle, escapedLoop } = resolveNextAetherNode(
+  const { targetNode, escapedLoop } = resolveNextAetherNode(
     rooms,
     state,
     currentNode,
@@ -1100,25 +1438,20 @@ export function transitionViaAetherDoor(
     state.x = Math.max(arrivalDoor.minPx, Math.min(arrivalDoor.maxPx, alignedX));
   }
 
-  const [rxStr, ryStr] = targetNode.coord.split(',');
-  if (!isLoopCycle) {
-    if (dir === 'E') state.rx = (Number(rxStr) || state.rx) + (targetNode.nodeType === 'key' ? 0 : 1);
-    else if (dir === 'W') state.rx = (Number(rxStr) || state.rx) - (targetNode.nodeType === 'key' ? 0 : 1);
-    else if (dir === 'S') state.ry = (Number(ryStr) || state.ry) + (targetNode.nodeType === 'key' ? 0 : 1);
-    else if (dir === 'N') state.ry = (Number(ryStr) || state.ry) - (targetNode.nodeType === 'key' ? 0 : 1);
-  }
-  if (targetNode.nodeType === 'key') {
-    state.rx = Number(rxStr) || 0;
-    state.ry = Number(ryStr) || 0;
-  }
+  // Map-relative coordinates (`rx`, `ry`) track both safe nodes and Æther Loop rooms relative to the map
+  const parsedCoord = parseCoordPair(targetNode.coord);
+  state.rx = targetNode.mapRx ?? parsedCoord.rx;
+  state.ry = targetNode.mapRy ?? parsedCoord.ry;
 
   state.room = targetNode.id;
   graph.activeNodeId = targetNode.id;
 
   if (targetNode.nodeType === 'loop') {
-    graph.loopDepth = (graph.loopDepth || 0) + 1;
-    state.flickerTimer = 0.35;
+    graph.loopStage = targetNode.loopStage ?? 1;
+    graph.loopDepth = targetNode.loopDepth ?? AETHER_PYRAMID_DEPTHS[graph.loopStage] ?? 1;
+    state.flickerTimer = 0.25 + graph.loopDepth * 0.1;
   } else {
+    graph.loopStage = 0;
     graph.loopDepth = 0;
   }
 
@@ -1133,20 +1466,31 @@ export function transitionViaAetherDoor(
   soundSystem.playSelect();
   const info = getRoomWorldInfo(state);
 
-  let toastMsg = info.bannerTitle;
-  if (isLoopCycle) {
-    toastMsg = targetNode.bannerTitle.startsWith('SEALED BY ÆTHER FOG')
-      ? `${targetNode.bannerTitle} · REDIRECTED TO FOG LOOP`
-      : `LOST IN ÆTHER FOG`;
+  // Room-to-room pop-ups are suppressed unless needed (sealed zone, entering/peaking/escaping an Æther Loop, or major area change)
+  let toastMsg: string | null = null;
+  if (targetNode.bannerTitle.startsWith('SEALED BY ÆTHER FOG')) {
+    toastMsg = `${targetNode.bannerTitle} · ÆTHER LOOP DEPTH ${graph.loopDepth}`;
+  } else if (currentNode.nodeType !== 'loop' && targetNode.nodeType === 'loop') {
+    toastMsg = `ENTERING ÆTHER LOOP · DEPTH ${graph.loopDepth}`;
+  } else if (
+    targetNode.nodeType === 'loop' &&
+    graph.loopDepth === 3 &&
+    (currentNode.loopDepth || 0) < 3
+  ) {
+    toastMsg = 'ÆTHER DENSITY CRITICAL · DEPTH 3 APEX';
   } else if (escapedLoop) {
-    toastMsg = `ÆTHER FOG CLEARED · ${info.roomTitle.toUpperCase()}`;
+    toastMsg = `ÆTHER LOOP CLEARED · ${info.roomTitle.toUpperCase()}`;
+  } else if (prevAreaId && state.areaId !== prevAreaId) {
+    toastMsg = info.areaName.toUpperCase();
   }
 
-  if (ctx) {
-    ctx.say(toastMsg);
-  } else {
-    state.toastText = toastMsg;
-    state.toastTimer = 2.6;
+  if (toastMsg) {
+    if (ctx) {
+      ctx.say(toastMsg);
+    } else {
+      state.toastText = toastMsg;
+      state.toastTimer = 2.2;
+    }
   }
 
   notifyOrionStateChange();
@@ -1162,7 +1506,10 @@ export function isDesyncWallSolid(state: OrionState): boolean {
     return false;
   }
   const biome = getBiomeDefinition(state.biomeId);
-  const period = Math.max(1.0, biome.tileRules?.desyncPeriodSec || 3.5);
+  const loopDepth = state.fogGraph?.loopDepth || 0;
+  // Deeper Æther loops cycle phase-desync barriers faster
+  const depthPeriodMult = loopDepth >= 3 ? 0.55 : loopDepth === 2 ? 0.75 : 1.0;
+  const period = Math.max(0.85, (biome.tileRules?.desyncPeriodSec || 3.5) * depthPeriodMult);
   return Math.floor(state.t / period) % 2 === 0;
 }
 
@@ -1176,8 +1523,10 @@ export function updateEnvironmentalHazards(
   if (!roomData) return;
 
   const biome = getBiomeDefinition(state.biomeId);
-  const isBiomeCorrosive = biome.tileRules?.corrosiveWater ?? true;
-  const corrosionRate = biome.tileRules?.corrosiveDamagePerSec ?? 5.0;
+  const loopDepth = state.fogGraph?.loopDepth || 0;
+  const isBiomeCorrosive = (biome.tileRules?.corrosiveWater ?? true) || loopDepth > 0;
+  const baseCorrosionRate = biome.tileRules?.corrosiveDamagePerSec ?? 5.0;
+  const corrosionRate = baseCorrosionRate * (1 + loopDepth * 0.45);
 
   corrosionParticleTimer -= dt;
   let spawnedCorrosionParticle = false;
@@ -1375,6 +1724,7 @@ export function getRoomWorldInfo(state: OrionState): {
   routeStep?: number;
   routeTotal?: number;
   loopDepth: number;
+  loopStage: number;
   endFeature?: AetherEndFeature;
   bannerTitle: string;
   mapName: string;
@@ -1414,6 +1764,7 @@ export function getRoomWorldInfo(state: OrionState): {
     routeStep: activeNode?.routeStep ?? meta?.routeStep,
     routeTotal: activeNode?.routeTotal ?? meta?.routeTotal,
     loopDepth: graph.loopDepth || 0,
+    loopStage: graph.loopStage || 0,
     endFeature: activeNode?.endFeature || meta?.endFeature,
     bannerTitle: cleanBannerTitle,
     mapName: mapDef?.name || 'Bog Sector',

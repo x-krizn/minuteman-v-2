@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { AetherCardinalDir, OrionDir } from './types';
+import { AetherCardinalDir, AetherNodeType, OrionDir, OrionState } from './types';
 
 // Native retro console viewport dimensions (Integer-scaled LCD screen)
 export const SCREEN_W = 160;
@@ -135,6 +135,7 @@ export const SHADOW_SCALE = 0.85;
 export const FRAME_INTEGRITY_BASE = 200; // Static Level 1 to 20
 export const CRITICAL_FRAME_THRESHOLD = 40; // <= 20% integrity triggers Critical state
 export const BASE_COMBAT_UNIT_BCU = 54; // 1 full auto-attack chain of reference weapon
+export const PERFECT_BLOCK_WINDOW_SEC = 0.25; // 0.25s perfect block window on held block
 
 // Reference Weapon: Gladius Boltcaster
 export const GLADIUS_SHOTS_PER_CHAIN = 9;
@@ -182,4 +183,228 @@ export function getDirFromVector(dx: number, dy: number): OrionDir {
   const octant = Math.round((8 * angle) / (2 * Math.PI) + 8) % 8;
   const dirs: OrionDir[] = ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE'];
   return dirs[octant] || 'S';
+}
+
+// ─── AETHER PYRAMID & DOORWAY TRANSITION HELPERS ─────────────────────────────
+
+export const AETHER_PYRAMID_DEPTHS = [0, 1, 2, 3, 2, 1, 0] as const;
+
+export interface KeyNodeRouteDescriptor {
+  targetKeyCoord: string;
+  routeTotal: number;
+  isDirectEndNode?: boolean;
+}
+
+export const KEY_NODE_ROUTES: Record<
+  string,
+  Partial<Record<AetherCardinalDir, KeyNodeRouteDescriptor>>
+> = {
+  '-3,0': {
+    E: { targetKeyCoord: '-2,0', routeTotal: 0 },
+  },
+  '-2,0': {
+    W: { targetKeyCoord: '-3,0', routeTotal: 0 },
+    E: { targetKeyCoord: '-1,0', routeTotal: 0 },
+  },
+  '-1,0': {
+    W: { targetKeyCoord: '-2,0', routeTotal: 0 },
+    E: { targetKeyCoord: '0,0', routeTotal: 0 },
+  },
+  '0,0': {
+    W: { targetKeyCoord: '-1,0', routeTotal: 0 },
+    N: { targetKeyCoord: '0,-1', routeTotal: 0 },
+    E: { targetKeyCoord: '1,0', routeTotal: 0 },
+  },
+  '0,-1': {
+    S: { targetKeyCoord: '0,0', routeTotal: 0 },
+    N: { targetKeyCoord: '0,-2', routeTotal: 0 },
+    E: { targetKeyCoord: '3,-1', routeTotal: 0 },
+  },
+  '0,-2': {
+    S: { targetKeyCoord: '0,-1', routeTotal: 0 },
+    E: { targetKeyCoord: '3,-1', routeTotal: 0 },
+  },
+  '1,0': {
+    W: { targetKeyCoord: '0,0', routeTotal: 0 },
+    N: { targetKeyCoord: '1,-1', routeTotal: 0, isDirectEndNode: true },
+    E: { targetKeyCoord: '2,0', routeTotal: 0 },
+  },
+  '2,0': {
+    W: { targetKeyCoord: '1,0', routeTotal: 0 },
+    E: { targetKeyCoord: '3,0', routeTotal: 0 },
+    S: { targetKeyCoord: '2,1', routeTotal: 0 },
+  },
+  '2,1': {
+    N: { targetKeyCoord: '2,0', routeTotal: 0 },
+  },
+  '3,-1': {
+    W: { targetKeyCoord: '0,-2', routeTotal: 0 },
+    S: { targetKeyCoord: '3,0', routeTotal: 0 },
+    N: { targetKeyCoord: '0,-1', routeTotal: 0 },
+  },
+  '3,0': {
+    W: { targetKeyCoord: '2,0', routeTotal: 0 },
+    N: { targetKeyCoord: '3,-1', routeTotal: 0 },
+    E: { targetKeyCoord: '4,0', routeTotal: 2 },
+  },
+  '4,0': {
+    W: { targetKeyCoord: '3,0', routeTotal: 2 },
+    N: { targetKeyCoord: '4,-1', routeTotal: 1 },
+    E: { targetKeyCoord: '5,0', routeTotal: 2 },
+  },
+  '4,-1': {
+    S: { targetKeyCoord: '4,0', routeTotal: 1 },
+  },
+  '5,0': {
+    W: { targetKeyCoord: '4,0', routeTotal: 2 },
+    E: { targetKeyCoord: '6,0', routeTotal: 1 },
+  },
+  '6,0': {
+    W: { targetKeyCoord: '5,0', routeTotal: 1 },
+    E: { targetKeyCoord: '7,0', routeTotal: 2 },
+  },
+};
+
+export function deterministicAetherHash(
+  seed: number,
+  counter: number,
+  salt: number = 0
+): number {
+  let h = (seed ^ (counter * 374761393) ^ (salt * 668265263)) >>> 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0;
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
+export function getKeyBorderBranchType(
+  seed: number,
+  coord: string,
+  dir: AetherCardinalDir
+): AetherNodeType {
+  const coordSalt = coord
+    .split('')
+    .reduce((acc, ch, idx) => acc + ch.charCodeAt(0) * (idx + 17), 0);
+  const borderHash = deterministicAetherHash(seed, coordSalt, dir.charCodeAt(0));
+  return borderHash % 3 === 0 ? 'loop' : 'side';
+}
+
+export function hasPoeLanternGuidance(state: OrionState): boolean {
+  if (state.flags?.poe_state === 'helped' || state.flags?.poe_lantern_gift) {
+    return true;
+  }
+  return state.inventorySlots.some((s) => s.itemId === 'poe_lantern_charm');
+}
+
+export interface DoorwayAetherTransitionInfo {
+  dir: AetherCardinalDir;
+  currentDepth: number;
+  currentStage: number;
+  nextDepth: number;
+  nextStage: number;
+  isLoopEntrance: boolean;
+  increasesDensity: boolean;
+}
+
+/**
+ * Pure, non-mutating inspection of any cardinal doorway (`N`, `S`, `E`, `W`) in the active room.
+ * - Pyramid progression always follows: `SAFE (0) -> 1 -> 2 -> 3 -> 2 -> 1 -> SAFE (0)`.
+ * - `increasesDensity` is true whenever stepping through `dir` moves to a strictly deeper Æther depth (`nextDepth > currentDepth`).
+ * - `isLoopEntrance` is true when currently in a Safe room (`currentDepth === 0`) and `dir` enters an Æther Loop (`nextDepth === 1`).
+ */
+export function getDoorwayAetherTransitionInfo(
+  state: OrionState,
+  dir: AetherCardinalDir
+): DoorwayAetherTransitionInfo {
+  const graph = state.fogGraph;
+  const currentNode =
+    graph?.nodes?.[state.room] ||
+    graph?.nodes?.['-3,0'] ||
+    graph?.nodes?.['0,0'];
+
+  if (!currentNode) {
+    return {
+      dir,
+      currentDepth: 0,
+      currentStage: 0,
+      nextDepth: 0,
+      nextStage: 0,
+      isLoopEntrance: false,
+      increasesDensity: false,
+    };
+  }
+
+  if (currentNode.nodeType === 'loop') {
+    const currentStage = Math.max(
+      1,
+      Math.min(5, currentNode.loopStage ?? graph?.loopStage ?? 1)
+    );
+    const currentDepth =
+      currentNode.loopDepth ?? AETHER_PYRAMID_DEPTHS[currentStage] ?? 1;
+
+    let nextStage = currentStage + 1;
+    if (currentStage === 1) {
+      nextStage = 2; // 1 -> 2
+    } else if (currentStage === 2) {
+      nextStage = 3; // 2 -> 3 (Apex)
+    } else if (currentStage === 3) {
+      nextStage = 4; // 3 -> 2 (Descending)
+    } else if (currentStage === 4) {
+      nextStage = dir === currentNode.relapseDir ? 3 : 5;
+    } else {
+      nextStage = dir === currentNode.relapseDir ? 2 : 0;
+    }
+
+    const nextDepth = AETHER_PYRAMID_DEPTHS[nextStage] ?? 0;
+    return {
+      dir,
+      currentDepth,
+      currentStage,
+      nextDepth,
+      nextStage,
+      isLoopEntrance: false,
+      increasesDensity: nextDepth > currentDepth,
+    };
+  }
+
+  // Currently in a SAFE room (`currentDepth === 0`): check if `dir` is an Æther Loop entrance
+  let isLoopEntrance = false;
+  const existingTargetId = currentNode.edges?.[dir];
+  if (existingTargetId && graph?.nodes?.[existingTargetId]) {
+    isLoopEntrance = graph.nodes[existingTargetId].nodeType === 'loop';
+  } else if (currentNode.nodeType === 'end') {
+    isLoopEntrance = false;
+  } else if (currentNode.nodeType === 'key') {
+    const keyCoord = currentNode.id.includes(',') ? currentNode.id : currentNode.coord;
+    const route = KEY_NODE_ROUTES[keyCoord]?.[dir];
+    if (route) {
+      isLoopEntrance = route.targetKeyCoord === '7,0';
+    } else {
+      isLoopEntrance =
+        getKeyBorderBranchType(graph?.seed || 104729, keyCoord, dir) === 'loop';
+    }
+  } else if (currentNode.nodeType === 'general') {
+    if (dir === currentNode.trueExitDir) {
+      const step = currentNode.routeStep || 1;
+      const total = currentNode.routeTotal || 1;
+      if (step >= total && currentNode.targetKeyCoord) {
+        isLoopEntrance = currentNode.targetKeyCoord === '7,0';
+      }
+    } else {
+      isLoopEntrance = false;
+    }
+  } else if (currentNode.nodeType === 'side') {
+    isLoopEntrance = dir !== currentNode.trueExitDir;
+  }
+
+  const nextStage = isLoopEntrance ? 1 : 0;
+  const nextDepth = isLoopEntrance ? 1 : 0;
+
+  return {
+    dir,
+    currentDepth: 0,
+    currentStage: 0,
+    nextDepth,
+    nextStage,
+    isLoopEntrance,
+    increasesDensity: nextDepth > 0,
+  };
 }

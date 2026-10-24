@@ -1,6 +1,6 @@
 {
-  "summary":  "Implementation plan for gating testing/dev UI inside a dedicated Drop-Pod Cheat Room, moving player spawn to Campfires, restructuring the M00 Bog layout (Drop Pod 3 rooms from First Campfire, 5 from Poe Lantern on a side branch, 6 from Main Bog entrance), and reducing Poe Lantern path revealing and UI spoilers to bare minimum.",
-  "updatedAt":  "2026-10-22T18:52:50.626183895Z",
+  "summary":  "Implementation plan for revising the Swamp Biome (M00 The Bog) tileset using bogtiles01__2__e9b9511b.png (240x240px, 5x5 clusters of 3x3 16x16px tiles) and 1000248459.base64_889a7ed7.txt, mapping all 5 base terrains, 17 transition rings, center wall faces, and the 3 bottom-right structural wall/tree/gate clusters to canonical Bog rooms.",
+  "updatedAt":  "2026-10-24T20:16:30.663132975Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

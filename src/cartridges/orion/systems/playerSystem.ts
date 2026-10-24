@@ -1473,10 +1473,14 @@ export function updatePlayerSystem(
     const tx = Math.floor(state.x / TILE_SIZE);
     const ty = Math.floor(state.y / TILE_SIZE);
     const curChar = rooms[state.room]?.[ty]?.[tx] || '.';
-    const inMud = curChar === '~' && state.z <= 0;
+    const inMud = (curChar === '~' || curChar === ',') && state.z <= 0;
     const biomeMudMult =
       getBiomeDefinition(state.biomeId).tileRules?.mudSlowMultiplier ?? MUD_SPEED_PENALTY;
-    const speed = WALK_SPEED * (inMud ? biomeMudMult : 1.0) * totalMobilityMult;
+    const loopDepth = state.fogGraph?.loopDepth || 0;
+    const aetherDepthDrag =
+      loopDepth >= 3 ? 0.76 : loopDepth === 2 ? 0.85 : loopDepth === 1 ? 0.92 : 1.0;
+    const speed =
+      WALK_SPEED * (inMud ? biomeMudMult : 1.0) * aetherDepthDrag * totalMobilityMult;
 
     const stepX = normMoveX * speed * dt;
     const stepY = normMoveY * speed * dt;

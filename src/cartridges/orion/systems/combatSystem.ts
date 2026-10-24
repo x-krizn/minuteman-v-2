@@ -1062,23 +1062,12 @@ export function executeActionPayload(
     // ─── SLOT 3 (SKILL 4): BLOCK FOR ALL BLOCKING WEAPONS / SUPPRESSION FOR RANGED ───
     if (slot === 3) {
       if (action.isBlock || isBlockingWeapon(currentWeaponId)) {
-        // Skill 4 is ALWAYS Block for all equippable blocking weapons (shields & melee weapons)
+        // Skill 4 is ALWAYS Block for all equippable blocking weapons (held with 0.25s perfect window, no cooldown)
         const isShieldEquip = weapon?.equipmentRole === 'shield';
-        const blockDur = action.activeDurationSec || (isShieldEquip ? 2.2 : 1.6);
-        state.blockTimer = Math.max(state.blockTimer || 0, blockDur);
+        state.isHoldingBlock = true;
+        state.blockHoldTimer = 0;
+        state.blockTimer = 0.25;
         state.blockingWeaponId = currentWeaponId;
-
-        const shieldGain =
-          currentWeaponId === 'pavise_shield'
-            ? 32
-            : isShieldEquip
-              ? 22
-              : 14;
-        state.shields.overloaded = false;
-        state.shields.capacity = Math.min(
-          state.shields.maxCapacity,
-          state.shields.capacity + shieldGain
-        );
 
         soundSystem.playSword();
         state.bladeTrails.push({
@@ -1087,44 +1076,22 @@ export function executeActionPayload(
           z: state.z,
           angle: aimAngle,
           arcSpan: isShieldEquip ? Math.PI * 0.95 : Math.PI * 0.75,
-          radius: isShieldEquip ? 26 : 22,
-          width: isShieldEquip ? 18 : 14,
+          radius: isShieldEquip ? 24 : 20,
+          width: isShieldEquip ? 16 : 13,
           style: 'bash',
-          color: trailColor,
-          coreColor,
-          life: 0.28,
-          maxLife: 0.28,
+          color: '#38bdf8',
+          coreColor: '#ffffff',
+          life: 0.25,
+          maxLife: 0.25,
         });
 
-        for (const e of state.enemies) {
-          if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
-          if (
-            isTargetInDirectionalArc(
-              state.x,
-              state.y,
-              aimAngle,
-              isShieldEquip ? 30 : 25,
-              isShieldEquip ? Math.PI * 1.05 : Math.PI * 0.85,
-              e.x,
-              e.y
-            )
-          ) {
-            applyHitToEnemy(
-              e,
-              action.damage,
-              action.damageType || 'Impact',
-              isShieldEquip ? 1.2 : 0.9,
-              isShieldEquip ? 12 : 8
-            );
-          }
-        }
         ctx.spawnParticles(
           state.x + aim.dx * 10,
           state.y + aim.dy * 10,
           state.z + 8,
-          10,
-          trailColor,
-          'BLOCK'
+          8,
+          '#38bdf8',
+          'BLOCK (0.25s PERFECT)'
         );
       } else if (
         currentWeaponId === 'great_bow' ||
@@ -1920,10 +1887,14 @@ export function updateActionTimers(state: OrionState, dt: number): void {
     }
   }
 
-  if (state.blockTimer && state.blockTimer > 0) {
+  if (state.isHoldingBlock) {
+    state.blockHoldTimer = (state.blockHoldTimer || 0) + dt;
+    state.blockTimer = Math.max(state.blockTimer || 0, 0.08);
+  } else if (state.blockTimer && state.blockTimer > 0) {
     state.blockTimer = Math.max(0, state.blockTimer - dt);
     if (state.blockTimer <= 0) {
       state.blockingWeaponId = null;
+      state.blockHoldTimer = 0;
     }
   }
 
@@ -2352,27 +2323,34 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
   ): ResolvedCombatSkill => {
     const m = weaponDef?.moveset[movesetSlot];
     const cooldownKey = getSkillCooldownKey(weaponId, movesetSlot, instancePrefix);
-    const isChain = Boolean(m?.isChain || movesetSlot === 0);
-    const activeDurationSec = m?.activeDurationSec ?? 0;
     const isBlock = Boolean(
       m?.isBlock || (movesetSlot === 3 && isBlockingWeapon(weaponDef || weaponId))
     );
-    const activatesReloadState = isChain || activeDurationSec > 0;
-    const reloadDurationSec =
-      m?.reloadDurationSec ??
-      (movesetSlot === 0
-        ? weaponDef?.reloadDurationSec ?? 1.2
-        : activatesReloadState
-          ? m?.cooldownSec ?? 3.5
-          : undefined);
+    const isChain = Boolean(!isBlock && (m?.isChain || movesetSlot === 0));
+    const activeDurationSec = isBlock ? 0 : m?.activeDurationSec ?? 0;
+    const activatesReloadState = !isBlock && (isChain || activeDurationSec > 0);
+    const reloadDurationSec = isBlock
+      ? undefined
+      : m?.reloadDurationSec ??
+        (movesetSlot === 0
+          ? weaponDef?.reloadDurationSec ?? 1.2
+          : activatesReloadState
+            ? m?.cooldownSec ?? 3.5
+            : undefined);
 
-    const activeRemaining = Math.max(0, state.skillActiveTimers?.[cooldownKey] || 0);
-    const reloadRemaining =
-      movesetSlot === 0 && state.isReloading
+    const activeRemaining = isBlock
+      ? state.isHoldingBlock
+        ? Math.max(0.06, 0.25 - (state.blockHoldTimer || 0))
+        : Math.max(0, state.blockTimer || 0)
+      : Math.max(0, state.skillActiveTimers?.[cooldownKey] || 0);
+    const reloadRemaining = isBlock
+      ? 0
+      : movesetSlot === 0 && state.isReloading
         ? Math.max(0, state.reloadTimer || 0)
         : Math.max(0, state.skillReloadTimers?.[cooldownKey] || 0);
-    const separateCd =
-      movesetSlot === 0
+    const separateCd = isBlock
+      ? 0
+      : movesetSlot === 0
         ? reloadRemaining
         : Math.max(0, state.actionCooldowns?.[cooldownKey] || 0, reloadRemaining);
 
@@ -2380,7 +2358,7 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
       id: actionId,
       cooldownKey,
       slotIndex,
-      name: isBlock ? 'Block' : m?.name || `Skill ${slotIndex}`,
+      name: isBlock ? 'Block (Hold · 0.25s Perfect)' : m?.name || `Skill ${slotIndex}`,
       shortLabel: (isBlock ? 'BLOCK' : m?.name || `SKILL ${slotIndex}`)
         .slice(0, 12)
         .toUpperCase(),
@@ -2391,7 +2369,7 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
       damage: m?.damage,
       damageType: m?.damageType,
       heatCost: m?.heatCost,
-      cooldownSec: movesetSlot === 0 ? 0 : m?.cooldownSec ?? 4.0,
+      cooldownSec: isBlock || movesetSlot === 0 ? 0 : m?.cooldownSec ?? 4.0,
       currentCooldown: separateCd,
       activatesReloadState,
       isChain,
@@ -2767,16 +2745,19 @@ export function activateResolvedCombatSkill(
   state.skillReloadTimers = state.skillReloadTimers || {};
   state.skillPendingReloadDurations = state.skillPendingReloadDurations || {};
 
+  // Block is held with a 0.25s Perfect Block window and NEVER goes on a cooldown or reload state!
+  if (skill.isBlock) {
+    startHoldingBlock(state, ctx, skill.weaponId);
+    return true;
+  }
+
   // Rule: "skills that chain or are active for a duration are the only skills that activate a reload state."
   if (skill.activeDurationSec && skill.activeDurationSec > 0) {
-    // Active-duration skill (e.g., Block on Skill 4, Overcharge Discharge, Tracer Tag Dart, Æther Refraction Ward)
-    // Enters active state first, then transitions to reload state when activeDurationSec expires.
     const reloadDur = (skill.reloadDurationSec ?? finalCd) * cdScale;
     state.skillActiveTimers[skill.cooldownKey] = skill.activeDurationSec;
     state.skillPendingReloadDurations[skill.cooldownKey] = reloadDur;
     state.actionCooldowns[skill.cooldownKey] = 0;
   } else if (skill.isChain) {
-    // Multi-shot chain skill on slots 2..5 (e.g., Hurricane Quiver Dump) enters reload state
     const reloadDur = (skill.reloadDurationSec ?? finalCd) * cdScale;
     state.skillReloadTimers[skill.cooldownKey] = reloadDur;
     state.actionCooldowns[skill.cooldownKey] = reloadDur;
@@ -2799,6 +2780,76 @@ export function activateResolvedCombatSkill(
   soundSystem.playCharge();
   notifyOrionStateChange();
   return true;
+}
+
+export const PERFECT_BLOCK_WINDOW_SEC = 0.25;
+
+export function startHoldingBlock(
+  state: OrionState,
+  ctx?: OrionCombatContext,
+  weaponIdOverride?: string
+): boolean {
+  const skills = getResolvedCombatSkills(state);
+  const blockSkill = skills.skill4;
+  if (!blockSkill || !blockSkill.available || !blockSkill.isBlock) {
+    return false;
+  }
+
+  const blockWpnId =
+    weaponIdOverride ||
+    blockSkill.weaponId ||
+    state.equipmentSlots?.slot1 ||
+    state.equippedWeapons[0] ||
+    'long_sword';
+  const weapon = getWeaponDefinition(blockWpnId);
+  const isShieldEquip = weapon?.equipmentRole === 'shield';
+  const aim = getCombatAimVector(state);
+  const aimAngle = Math.atan2(aim.dy, aim.dx);
+
+  if (!state.isHoldingBlock) {
+    state.isHoldingBlock = true;
+    state.blockHoldTimer = 0;
+    state.blockTimer = PERFECT_BLOCK_WINDOW_SEC;
+    state.blockingWeaponId = blockWpnId;
+
+    soundSystem.playSword();
+    state.bladeTrails = state.bladeTrails || [];
+    state.bladeTrails.push({
+      x: state.x,
+      y: state.y,
+      z: state.z,
+      angle: aimAngle,
+      arcSpan: isShieldEquip ? Math.PI * 0.95 : Math.PI * 0.75,
+      radius: isShieldEquip ? 24 : 20,
+      width: isShieldEquip ? 16 : 13,
+      style: 'bash',
+      color: '#38bdf8',
+      coreColor: '#ffffff',
+      life: PERFECT_BLOCK_WINDOW_SEC,
+      maxLife: PERFECT_BLOCK_WINDOW_SEC,
+    });
+
+    ctx?.spawnParticles(
+      state.x + aim.dx * 8,
+      state.y + aim.dy * 8,
+      state.z + 8,
+      6,
+      '#38bdf8',
+      'GUARD'
+    );
+    notifyOrionStateChange();
+  }
+  return true;
+}
+
+export function releaseHeldBlock(state: OrionState): void {
+  if (state.isHoldingBlock || (state.blockTimer || 0) > 0) {
+    state.isHoldingBlock = false;
+    state.blockTimer = 0;
+    state.blockHoldTimer = 0;
+    state.blockingWeaponId = null;
+    notifyOrionStateChange();
+  }
 }
 
 export function firePrimarySalvoShot(
@@ -2855,7 +2906,7 @@ export function firePrimarySalvoShot(
 }
 
 const DOUBLE_TAP_WINDOW_SEC = 0.26;
-const HOLD_TRIGGER_THRESHOLD_SEC = 0.28;
+const HOLD_TRIGGER_THRESHOLD_SEC = 0.22;
 
 export function handleCombatInput(
   input: {
@@ -2902,6 +2953,12 @@ export function handleCombatInput(
   state.combatInputTimers = state.combatInputTimers || { x: 0, y: 0, r: 0, l: 0 };
   state.combatHoldTimers = state.combatHoldTimers || { x: 0, y: 0, r: 0, l: 0 };
   state.combatHoldTriggered = state.combatHoldTriggered || {
+    x: false,
+    y: false,
+    r: false,
+    l: false,
+  };
+  state.combatTapPending = state.combatTapPending || {
     x: false,
     y: false,
     r: false,
@@ -2958,10 +3015,12 @@ export function handleCombatInput(
     state.combatActiveChain = false;
   }
 
-  // ─── [Y] BUTTON: Single Tap = [Skill 2] · Double Tap = [reload duration/chain on 2/4] · Hold = [Skill 4] ───
+  // ─── [Y] BUTTON: Tap Release = [Skill 2] · Double Tap = [reload 2/4] · Hold = [Skill 4 / Held Block] ───
+  // Skill 2 NEVER activates on button-down or during a long-press hold for Skill 4!
   if (p.y) {
     if (state.combatInputTimers.y > 0) {
       state.combatInputTimers.y = 0;
+      state.combatTapPending.y = false;
       if (!triggerTacticalReload(state, ctx, [2, 4])) {
         activateResolvedCombatSkill(state, ctx, 2);
       }
@@ -2969,25 +3028,46 @@ export function handleCombatInput(
       state.combatInputTimers.y = DOUBLE_TAP_WINDOW_SEC;
       state.combatHoldTimers.y = 0;
       state.combatHoldTriggered.y = false;
-      activateResolvedCombatSkill(state, ctx, 2);
+      state.combatTapPending.y = true;
     }
   }
 
   if (h.y) {
     state.combatHoldTimers.y += dt;
-    if (state.combatHoldTimers.y >= HOLD_TRIGGER_THRESHOLD_SEC && !state.combatHoldTriggered.y) {
-      state.combatHoldTriggered.y = true;
-      activateResolvedCombatSkill(state, ctx, 4);
+    const skills = getResolvedCombatSkills(state);
+    const isSkill4Block = Boolean(skills.skill4?.available && skills.skill4?.isBlock);
+    const yHoldThreshold = isSkill4Block ? 0.14 : HOLD_TRIGGER_THRESHOLD_SEC;
+
+    if (state.combatHoldTimers.y >= yHoldThreshold) {
+      state.combatTapPending.y = false;
+      if (!state.combatHoldTriggered.y) {
+        state.combatHoldTriggered.y = true;
+        if (isSkill4Block) {
+          startHoldingBlock(state, ctx, skills.skill4?.weaponId);
+        } else {
+          activateResolvedCombatSkill(state, ctx, 4);
+        }
+      }
     }
   } else {
+    if (state.isHoldingBlock) {
+      releaseHeldBlock(state);
+    }
+    if (state.combatTapPending.y && !state.combatHoldTriggered.y) {
+      state.combatTapPending.y = false;
+      activateResolvedCombatSkill(state, ctx, 2);
+    }
     state.combatHoldTimers.y = 0;
     state.combatHoldTriggered.y = false;
+    state.combatTapPending.y = false;
   }
 
-  // ─── [R] BUTTON: Single Tap = [Skill 3] · Double Tap = [reload duration/chain on 3/5] · Hold = [Skill 5] ───
+  // ─── [R] BUTTON: Tap Release = [Skill 3] · Double Tap = [reload 3/5] · Hold = [Skill 5] ───
+  // Skill 3 NEVER activates on button-down or during a long-press hold for Skill 5!
   if (p.r) {
     if (state.combatInputTimers.r > 0) {
       state.combatInputTimers.r = 0;
+      state.combatTapPending.r = false;
       if (!triggerTacticalReload(state, ctx, [3, 5])) {
         activateResolvedCombatSkill(state, ctx, 3);
       }
@@ -2995,25 +3075,34 @@ export function handleCombatInput(
       state.combatInputTimers.r = DOUBLE_TAP_WINDOW_SEC;
       state.combatHoldTimers.r = 0;
       state.combatHoldTriggered.r = false;
-      activateResolvedCombatSkill(state, ctx, 3);
+      state.combatTapPending.r = true;
     }
   }
 
   if (h.r) {
     state.combatHoldTimers.r += dt;
-    if (state.combatHoldTimers.r >= HOLD_TRIGGER_THRESHOLD_SEC && !state.combatHoldTriggered.r) {
-      state.combatHoldTriggered.r = true;
-      activateResolvedCombatSkill(state, ctx, 5);
+    if (state.combatHoldTimers.r >= HOLD_TRIGGER_THRESHOLD_SEC) {
+      state.combatTapPending.r = false;
+      if (!state.combatHoldTriggered.r) {
+        state.combatHoldTriggered.r = true;
+        activateResolvedCombatSkill(state, ctx, 5);
+      }
     }
   } else {
+    if (state.combatTapPending.r && !state.combatHoldTriggered.r) {
+      state.combatTapPending.r = false;
+      activateResolvedCombatSkill(state, ctx, 3);
+    }
     state.combatHoldTimers.r = 0;
     state.combatHoldTriggered.r = false;
+    state.combatTapPending.r = false;
   }
 
   // ─── [L] BUTTON: Single Tap = [lock/cycle] · Double Tap = [unlock] · Hold = [swap] ───
   if (p.l) {
     if (state.combatInputTimers.l > 0) {
       state.combatInputTimers.l = 0;
+      state.combatTapPending.l = false;
       state.lockedTargetId = null;
       soundSystem.playMenuBeep();
       ctx.say('TARGET UNLOCKED');
@@ -3022,19 +3111,27 @@ export function handleCombatInput(
       state.combatInputTimers.l = DOUBLE_TAP_WINDOW_SEC;
       state.combatHoldTimers.l = 0;
       state.combatHoldTriggered.l = false;
-      cycleTargetLock(state, ctx);
+      state.combatTapPending.l = true;
     }
   }
 
   if (h.l) {
     state.combatHoldTimers.l += dt;
-    if (state.combatHoldTimers.l >= HOLD_TRIGGER_THRESHOLD_SEC && !state.combatHoldTriggered.l) {
-      state.combatHoldTriggered.l = true;
-      performAuxiliarySwap(state, ctx);
+    if (state.combatHoldTimers.l >= HOLD_TRIGGER_THRESHOLD_SEC) {
+      state.combatTapPending.l = false;
+      if (!state.combatHoldTriggered.l) {
+        state.combatHoldTriggered.l = true;
+        performAuxiliarySwap(state, ctx);
+      }
     }
   } else {
+    if (state.combatTapPending.l && !state.combatHoldTriggered.l) {
+      state.combatTapPending.l = false;
+      cycleTargetLock(state, ctx);
+    }
     state.combatHoldTimers.l = 0;
     state.combatHoldTriggered.l = false;
+    state.combatTapPending.l = false;
   }
 }
 
@@ -3611,24 +3708,48 @@ export function updateCombat(
           hitDamage = Math.round(e.damage * (1 + 0.1 * (e.hitsLanded - 1)));
         }
 
-        // Active Skill 4 Block mitigation (when blocking with a shield or melee weapon)
-        if ((state.blockTimer || 0) > 0) {
+        // Active Skill 4 Held Block mitigation (0.25s Perfect Block window vs Standard Held Block)
+        if (state.isHoldingBlock || (state.blockTimer || 0) > 0) {
           const isShieldBlock = Boolean(
             state.blockingWeaponId && state.blockingWeaponId.includes('shield')
           );
+          const isPerfectBlock = (state.blockHoldTimer ?? 0) <= PERFECT_BLOCK_WINDOW_SEC;
+
+          if (isPerfectBlock) {
+            // 0.25s Perfect Block: 0 damage taken, heavy parry stagger, shield restore & heat vent!
+            e.stun = Math.max(e.stun, isShieldBlock ? 1.85 : 1.55);
+            state.shields.overloaded = false;
+            state.shields.capacity = Math.min(
+              state.shields.maxCapacity,
+              state.shields.capacity + (isShieldBlock ? 22 : 14)
+            );
+            state.heat = Math.max(0, state.heat - 14);
+            soundSystem.playPowerup();
+            soundSystem.playSword();
+            ctx.spawnParticles(
+              state.x,
+              state.y,
+              state.z + 10,
+              12,
+              '#facc15',
+              'PERFECT BLOCK!'
+            );
+            continue;
+          }
+
           const blockedDamage = Math.max(
             0,
-            Math.round(hitDamage * (isShieldBlock ? 0.15 : 0.25))
+            Math.round(hitDamage * (isShieldBlock ? 0.15 : 0.28))
           );
-          e.stun = Math.max(e.stun, isShieldBlock ? 1.15 : 0.85);
+          e.stun = Math.max(e.stun, isShieldBlock ? 0.95 : 0.7);
           soundSystem.playSword();
           ctx.spawnParticles(
             state.x,
             state.y,
             state.z + 8,
-            8,
+            7,
             '#38bdf8',
-            'BLOCKED!'
+            'BLOCKED'
           );
           if (blockedDamage > 0) {
             applyDamageToLayers(

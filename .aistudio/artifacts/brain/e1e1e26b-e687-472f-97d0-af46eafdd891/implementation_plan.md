@@ -1,113 +1,113 @@
-# Project Orion — Lore-Corrected Index & Æther Fog Depth Mechanics (`clvl + 1`)
+# Project Orion — Pre-World Expansion Housekeeping & Authoring Guide Plan
 
-This update replaces `Project Orion — Index.md` with the new lore-corrected field guide and updates the in-game Æther Fog engine, multi-room depth tiers, max-depth boss frequency, and enemy/loot depth scaling.
+Establish a clean, extensible foundation before expanding the **Project Orion** game world by embedding grep-friendly `[ORION-ANCHOR: ID]` comment markers across core engine and database modules, centralizing ASCII tile and enemy spawn character lookup/validation to prevent symbol collisions across new biomes and worlds, and updating the **Authoring Guide** to reflect the `v0.8` Classless Build System, World Expansion workflows, and exact code anchor references.
+
+---
 
 ## User Review & Critical Decisions
 
 > [!IMPORTANT]
-> Summary of confirmed rules from user feedback:
-> - **Replace `Index.md` & Align In-Game Fog Mechanics**: Replace `src/cartridges/orion/Project Orion — Index.md` with the updated lore guide and update the runtime Æther Fog system to match.
-> - **Max Depth (`maxDepth = clvl + 1`)**: Maximum fog depth equals `character level + 1` (e.g., at Level 4, `maxDepth = 5`). Enemy stats and loot/gemstone drops scale with depth up to `clvl + 1`.
-> - **Rooms Per Depth Tier (`d` rooms at Depth `d`)**: Each depth `d` (`1 <= d < maxDepth`) consists of `d` rooms that are traversed/cleared before advancing to depth `d + 1` (e.g., `1` room at Depth 1, `2` rooms at Depth 2, `3` rooms at Depth 3 before reaching Depth 4).
-> - **Retracing Before Max Depth**: If the player turns back (`returnDir`) and leaves the fog before reaching `maxDepth`, they can retrace their steps through previously visited rooms (which remain as safe as they were left) back to the main path.
-> - **Unlocked Boss Rooms & `1 / (clvl + 1)` Boss Spawn Frequency at Max Depth**:
->   - Once at `maxDepth = clvl + 1`, the player cannot simply walk back out; doorways at `maxDepth` cycle into random `maxDepth` rooms.
->   - **Boss room doors do not lock**: the player may freely flee from a boss room into another random `maxDepth` room.
->   - **Boss spawn frequency at `maxDepth` is `1 / (clvl + 1)`** (e.g., at `clvl = 4`, `maxDepth = 5`, frequency = `1/5 = 0.2`, or 1 in 5 rooms at `maxDepth`).
->   - **Defeating a Boss Clears the Fog**: Defeating a boss at `maxDepth` clears the fog, awards/collects the boss's scaled drops, and returns the player to the last place they stood on the main path (`anchorSafeNodeId`). If the player does not defeat a boss, they must find and defeat one to escape `maxDepth` without dying.
+> The following architectural and documentation decisions were confirmed during Phase 1 clarification:
+
+- **Confirmed Decision 1 — Grep-Friendly Code Anchors (`[ORION-ANCHOR: ID]`)**: Every critical extension point across the world composer, tile/entity registries, progression engine, combat engine, and 2.5D renderer will carry a standardized `// [ORION-ANCHOR: <DOMAIN>-<SECTION>]` comment header. The Authoring Guide will cross-reference these exact anchor IDs so developers and AI agents can locate edit targets instantaneously.
+- **Confirmed Decision 2 — Authoring Guide Modernization (`v0.8` Classless + World Expansion + ASCII Registry)**:
+  - Update Section 6 of the Authoring Guide to document the **Classless (`v0.8`) Build System** ("Guide, Never Enforce"), Starting Loadout Kits, the 29 Canonical Magitech Weapons, 6 Coreplates, 6 Reactors, 18 Aux/Utility systems, 18 Optics/Sensors, 12 Limb Actuators, and 97 Canonical Feats.
+  - Expand Sections 1 & 2 with end-to-end **World Expansion Workflows** (`Universe World -> Region -> Area -> Map -> 10x9 Room`, Aether Fog 5-Node Topology & Route Table registration, Waystations/Waygates, and `LOCKED` vs. `UNDEFINED` `u00` seals).
+  - Add a **Master ASCII Tile & Enemy Spawn Character Registry Table** documenting every reserved terrain/prop symbol, enemy/NPC spawn symbol, biome-scoped override capability, and free characters available for upcoming worlds.
+- **Confirmed Decision 3 — Codebase Housekeeping & Collision-Safe Character Resolution**:
+  - Clean up and annotate the 5-tier world composer, Aether Fog route table, tile/biome registry, and enemy spawn resolver.
+  - Centralize ASCII character resolution and add biome-scoped enemy/tile override support plus boot-time collision diagnostics so new worlds and biomes can reuse or introduce ASCII symbols safely without breaking existing rooms.
 
 ---
 
 ## 1. Overview & Core Concept
 
-- **What It Does**:
-  1. Updates `Project Orion — Index.md` with the canonical **Part III — The Æther Fog** section (*Density*, *The path*, *Going deeper*, *The Lantern*) and the **Stage 1: The Bog** distinction between corrosive bog water and the Æther fog.
-  2. Reworks `loop` (Deep Fog) traversal into a **tiered depth progression (`Depth 1 → 2 → … → clvl + 1`)**:
-     - **Depth Tier Room Counts (`d` rooms at Depth `d`)**:
-       - Depth 1 has `1` room (`1/1`) before Depth 2.
-       - Depth 2 has `2` rooms (`1/2 → 2/2`) before Depth 3.
-       - Depth 3 has `3` rooms (`1/3 → 2/3 → 3/3`) before Depth 4, and so on up to `maxDepth = clvl + 1`.
-     - **Retracing Steps (`Depth < clvl + 1`)**: Before reaching `maxDepth`, stepping through `returnDir` retraces your exact path backward room-by-room (`(d, step) → (d, step - 1)` or `(d - 1, d - 1)`) all the way back to `anchorSafeNodeId` on the main path. Cleared rooms along your return path stay safe.
-     - **Max Depth (`Depth === clvl + 1`) & `1 / (clvl + 1)` Boss Spawn Rate**:
-       - At `maxDepth`, doorways never lock—the player can run from any room (including a boss room) into another random `maxDepth` room, but cannot exit the fog until a Fog Boss is slain.
-       - Each `maxDepth` room has a `1 / (clvl + 1)` probability (1 in `clvl + 1` rooms) of spawning a Fog Boss.
-       - Defeating a Fog Boss at `maxDepth` immediately clears the fog, collects/awards the boss drops, and returns the pilot to `anchorSafeNodeId` on the main path.
-     - **Depth-Scaled Enemies & Loot Drops (`1 .. clvl + 1`)**: Enemy defenses, damage, speed, salvage scrap counts, item drop rates, and gemstone drop probabilities scale with current fog depth up to `clvl + 1`.
-     - **Bog Water vs. Æther Fog Separation**: Corrosive water (`~`) is governed strictly by the biome (`corrosiveWater: true` in Bog/Wetland biomes), while Æther Fog depth scales mist density, phase-desync frequency, terrain obstacles, and enemy aggression.
+- **What It Does**: Prepares Project Orion's world auto-discovery pipeline, ASCII room parser, and documentation for rapid multi-world and multi-region authoring without regressions or symbol conflicts.
+- **Target Audience / Persona**: Game designers, world builders, and AI engineering agents adding new regions, biomes, maps, rooms, enemies, and interactive setpieces to Project Orion.
+- **Key Value**:
+  - **Zero-Guesswork Navigation**: Standardized `[ORION-ANCHOR: ...]` comment blocks connect every section of the Authoring Guide directly to its live implementation block.
+  - **Collision-Free World Scaling**: As new worlds and biomes are added, a centralized ASCII Character Registry and biome-scoped spawn/tile resolution prevent single-character grid tokens from colliding across regions.
+  - **Single Source of Truth Documentation**: Aligns all authoring documentation with the live `v0.8` Classless Build, Hardware Synergy, and 5-Tier World architecture.
 
 ---
 
 ## 2. User Experience & Visual Design
 
-- **Key User Flows**:
-  - **Stepping Through Multi-Room Depth Tiers (`Depth d, Room k/d`)**:
-    - Forward doorways emit drifting Æther density motes (`increasesDensity: true`) whenever stepping through advances toward deeper fog.
-    - While `Depth < clvl + 1`, the player can retrace their steps via `returnDir` at any time to exit safely back to the main path.
-  - **Max Depth Survival & Boss Hunt (`Depth = clvl + 1`)**:
-    - Reaching `maxDepth = clvl + 1` traps the pilot in endless random `maxDepth` rooms where `1 in (clvl + 1)` rooms spawns a Fog Boss.
-    - All 4 cardinal doorways remain open even when a Boss is present, allowing the pilot to kite or flee into another `maxDepth` room if overwhelmed.
-    - Slaying any Fog Boss at `maxDepth` clears the Æther fog, awards the boss's scaled loot/gemstones, and returns the pilot to their anchor room on the main path.
-- **HUD Mini-Map & Visual Feedback**:
-  - Displays current depth and room progress within that depth tier (`DEPTH d/${clvl + 1} · RM ${step}/${d}` for `d < maxDepth`, or `MAX DEPTH ${clvl + 1} · BOSS ${Math.round(100 / (clvl + 1))}%` at `maxDepth`).
+- **Developer & Authoring Experience**:
+  - Searching any `[ORION-ANCHOR: ...]` tag jumps straight to the exact code block responsible for world routes, room transitions, cluster auto-tiling, enemy spawning, or progression gating.
+  - Authoring a new Area or World follows a clear, repeatable checklist with copy-pasteable TypeScript templates and an explicit table of reserved vs. available ASCII grid characters.
+- **In-Game Continuity & Non-Degradation**:
+  - All existing gameplay systems, 2.5D rendering passes, HUD/Satchel overlays, and campaign rooms (`M00 The Bog`, `Camelot Border Town`, `M01 Orc Encampment`, `Tyrranus Frontier`) remain 100% intact and visually unchanged.
+  - Optional non-intrusive console diagnostics warn authors during development if two global tiles or enemies accidentally claim the same default ASCII character without a biome-scoped override.
 
 ---
 
 ## 3. Key Product Decisions & Trade-Offs
 
-- **Decision 1: Unlocked Doors & `1 / (clvl + 1)` Boss Frequency at Max Depth**
-  - *Chosen Approach*: Keep all 4 cardinal doorways open at `maxDepth` so the player can run from a boss room into a fresh random `maxDepth` room, while rolling a `1 / (clvl + 1)` boss spawn chance (with a guarantee on the `(clvl + 1)`-th consecutive non-boss `maxDepth` room so streaks of bad luck never prevent finding a boss).
-  - *Why*: Respects player agency to retreat from an unfavorable boss room at `maxDepth` while enforcing that the only way out of `maxDepth` alive is to find and defeat a Fog Boss.
-- **Decision 2: `d` Rooms Per Depth `d` (`1 <= d < clvl + 1`)**
-  - *Chosen Approach*: Track `loopDepth` (`1 .. clvl + 1`) and `loopStage` (`1 .. loopDepth`, the room index within the current depth tier). Moving forward from `(d, k)` goes to `(d, k + 1)` when `k < d`, and advances to `(d + 1, 1)` when `k === d`.
-  - *Why*: Implements the exact progression rule where Depth 1 has 1 room, Depth 2 has 2 rooms, Depth 3 has 3 rooms before Depth 4, while preserving a linear chain of `returnDir` parent pointers so the player can retrace every room back to safety before `maxDepth`.
+- **Decision 1: Standardized `[ORION-ANCHOR: ID]` Comment Blocks**
+  - *Chosen Approach*: Place structured banner comments (`// [ORION-ANCHOR: <ID>]`) at every major registry, state gate, and world-composition boundary, and index them in a Quick-Jump Reference Table at the top of the Authoring Guide.
+  - *Why*: Line numbers shift whenever content is added; unique anchor IDs remain permanent and can be located in one search step.
+  - *Alternatives Considered*: Relying solely on function names or line numbers, which become stale as files grow.
+- **Decision 2: Biome-Scoped ASCII Spawn & Tile Resolution with Master Registry**
+  - *Chosen Approach*: Enhance the ASCII room grid resolver so both tiles (`biome.tileTypes[char]`) and enemy spawns (`biome.enemySpawnTypes?.[char]` fallback to global `CHAR_TO_ENEMY_TYPE[char]`) can be scoped per biome while maintaining a centralized Master ASCII Character Table in code and documentation.
+  - *Why*: A `10 × 9` ASCII grid uses single characters for readability. Allowing biomes to map characters locally (while keeping global defaults for common tiles/enemies) ensures unlimited enemy and prop variety across 20 worlds without running out of ASCII characters.
+  - *Alternatives Considered*: Switching room grids from ASCII strings to multi-character numeric arrays, which would sacrifice the visual legibility of `10 × 9` room grids.
+- **Decision 3: Declarative Route & Seal Registration for World Expansion**
+  - *Chosen Approach*: Consolidate and clearly bracket the Key Node Route table (`KEY_NODE_ROUTES`), Area transition anchors, and `u00` `LOCKED` / `UNDEFINED` seal checks so adding a new region or unlocking a sealed zone requires only declarative entries.
+  - *Why*: Keeps `worldSystem.ts` modular and maintainable as new regions and dungeons come online.
 
 ---
 
-## 4. Technical Architecture & Data Strategy
+## 4. Technical Architecture & Data Strategy *(Technical Reference)*
+
+### Architecture & Anchor Mapping Diagram
 
 ```
-┌──────────────────────────────────────────────────────────────────────────┐
-│                     Main Path Node (key / general / side)                │
-│                       anchorSafeNodeId (Depth 0 · Safe)                  │
-└───────────────────┬──────────────────────────────────────▲───────────────┘
-                    │ Enter Fog Pocket                     │ Retrace (returnDir)
-                    ▼                                      │
-┌───────────────────────────────────────┐                  │
-│   Depth 1: Room 1/1                   │──────────────────┘
-└───────────────────┬───────────────────┘
-                    │ Forward (dir !== returnDir)          ▲ Retrace (returnDir)
-                    ▼                                      │
-┌───────────────────────────────────────┐                  │
-│   Depth 2: Room 1/2 ──▶ Room 2/2      │──────────────────┘
-└───────────────────┬───────────────────┘
-                    │ Forward after Room d/d               ▲ Retrace (returnDir)
-                    ▼                                      │
-┌───────────────────────────────────────┐                  │
-│   Depth d: Room 1/d ──▶ … ──▶ Room d/d│──────────────────┘
-└───────────────────┬───────────────────┘
-                    │ Forward after Room (clvl)/clvl reaches maxDepth = clvl + 1
-                    ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│           Max Depth (d = clvl + 1): Endless Random Fog Rooms             │
-│   - Doors DO NOT lock: player can run between random maxDepth rooms      │
-│   - Boss Spawn Frequency = 1 / (clvl + 1) (e.g. 0.20 at clvl 4)          │
-│   - Cannot retrace to shallower depth; must defeat a Boss to escape      │
-│   - Defeating a Boss clears the fog & returns pilot to anchorSafeNodeId  │
-└──────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                     AUTHORING GUIDE (AUTHORING_GUIDE.md)                         │
+│  ┌────────────────────────┐  ┌────────────────────────┐  ┌────────────────────┐  │
+│  │ Quick-Jump Anchor Map  │  │ Master ASCII Registry  │  │ v0.8 Classless &   │  │
+│  │ [ORION-ANCHOR: ...]    │  │ (Tiles, Props, Spawns) │  │ World Workflows    │  │
+│  └───────────┬────────────┘  └───────────┬────────────┘  └─────────┬──────────┘  │
+└──────────────┼───────────────────────────┼─────────────────────────┼─────────────┘
+               │                           │                         │
+               ▼                           ▼                         ▼
+┌──────────────────────────┐ ┌──────────────────────────┐ ┌────────────────────────┐
+│   WORLD AUTO-DISCOVERY   │ │  WORLD & ENTITY SYSTEMS  │ │  BUILD & COMBAT ENGINE │
+│  [ORION-ANCHOR:          │ │  [ORION-ANCHOR:          │ │  [ORION-ANCHOR:        │
+│   WORLD-GLOB-REGISTRY]   │ │   WORLD-KEY-ROUTES]      │ │   PROG-SKILL-SCALING]  │
+│  [ORION-ANCHOR:          │ │  [ORION-ANCHOR:          │ │  [ORION-ANCHOR:        │
+│   ASCII-CHAR-REGISTRY]   │ │   AETHER-FOG-TOPOLOGY]   │ │   PROG-FEAT-SYNERGY]   │
+│  [ORION-ANCHOR:          │ │  [ORION-ANCHOR:          │ │  [ORION-ANCHOR:        │
+│   U00-UNIVERSE-CATALOG]  │ │   ROOM-TRANSITION-GATE]  │ │   COMBAT-DEFENSE-MATH] │
+│                          │ │  [ORION-ANCHOR:          │ │  [ORION-ANCHOR:        │
+│  • Polymorphic glob scan │ │   ENEMY-SPAWN-RESOLVER]  │ │   RENDER-CLUSTER-BAKE] │
+│  • Tile & Spawn char     │ │  • 5-Tier World Composer │ │  • Classless Kits      │
+│    collision audit       │ │  • Biome-scoped spawns   │ │  • 29 Weapons & 97     │
+│  • Biome overrides       │ │  • Waystations/Waygates  │ │    Hardware Feats      │
+└──────────────────────────┘ └──────────────────────────┘ └────────────────────────┘
 ```
 
-- **Data Model Updates (`AetherGraphNode` & `AetherFogGraphState`)**:
-  - `loopDepth`: Current depth (`1 .. clvl + 1`).
-  - `loopStage`: Room step within current depth (`1 .. loopDepth` when `loopDepth < maxDepth`, or room counter at `maxDepth`).
-  - `loopMaxDepth`: `clvl + 1` (`Math.max(2, (state.level || 1) + 1)`).
-  - `hasFogBoss`: Boolean on `maxDepth` nodes rolled with probability `1 / loopMaxDepth`.
-- **Interactive Component & State Mapping**:
-  - `getDoorwayAetherTransitionInfo(state, dir)`:
-    - When `loopDepth < loopMaxDepth`:
-      - `dir === currentNode.returnDir`: steps backward (`(d, k) -> (d, k - 1)` if `k > 1`, `(d - 1, d - 1)` if `k === 1` and `d > 1`, or `0` Safe if `d === 1, k === 1`), `increasesDensity = false`.
-      - `dir !== currentNode.returnDir`: steps forward (`(d, k + 1)` if `k < d`, or `(d + 1, 1)` if `k === d`), `increasesDensity = true`.
-    - When `loopDepth >= loopMaxDepth`:
-      - All 4 cardinal doorways remain unlocked and route to a new random `maxDepth` room (`nextDepth = loopMaxDepth`, `increasesDensity = true`).
-  - `updateEnemies(rooms, state, ctx, dt)`:
-    - Scales enemy loot/gemstone drops by `loopDepth` (up to `clvl + 1`).
-    - When a Fog Boss (`e.isFogBoss`) is defeated at `maxDepth`, auto-collects its dropped loot/gemstones, clears the fog graph state, and transitions the player back to `anchorSafeNodeId` on the main path.
+### Standardized `[ORION-ANCHOR: ID]` Catalog to Install
+1. **World Registry & Universe Catalog**:
+   - `[ORION-ANCHOR: WORLD-GLOB-REGISTRY]` — Polymorphic `import.meta.glob` auto-discovery loop for Regions, Areas, Maps, Rooms, Biomes, and Tiles.
+   - `[ORION-ANCHOR: ASCII-CHAR-REGISTRY]` — Centralized ASCII Tile & Enemy Spawn character map, biome-scoped lookup helpers, and dev collision audit.
+   - `[ORION-ANCHOR: U00-UNIVERSE-CATALOG]` — 20-World `u00` catalog and `LOCKED` vs. `UNDEFINED` zone seal definitions.
+2. **World Composer & Aether Fog System**:
+   - `[ORION-ANCHOR: WORLD-KEY-ROUTES]` — Declarative `KEY_NODE_ROUTES` graph connecting authored Points of Interest across coordinates.
+   - `[ORION-ANCHOR: AETHER-FOG-TOPOLOGY]` — 5-node Aether Fog generator (`key`, `general`, `side`, `loop`, `end`) and `clvl + 1` depth scaling.
+   - `[ORION-ANCHOR: WORLD-COMPOSER-INIT]` — 5-Tier hierarchy assembly (`Region -> Area -> Map -> Room`) and doorway auto-sealing.
+   - `[ORION-ANCHOR: ROOM-TRANSITION-GATE]` — Cardinal doorway transitions, `u00` seal enforcement, and Area/Region boundary handoffs.
+   - `[ORION-ANCHOR: WAYSTATION-WAYGATE-TRAVEL]` — Attunement, armor repair, and fast-travel teleportation logic.
+3. **Entity, Render, Progression & Combat Systems**:
+   - `[ORION-ANCHOR: ENEMY-GLOB-REGISTRY]` & `[ORION-ANCHOR: ENEMY-SPAWN-RESOLVER]` — Enemy auto-discovery and room grid spawn resolution (with optional biome-level spawn overrides).
+   - `[ORION-ANCHOR: RENDER-CLUSTER-BAKE]` & `[ORION-ANCHOR: RENDER-POST-PROCESS]` — Sub-tile 3×3 cluster baker, `bog_tileset` / `ruins_tileset` auto-tiler, and 5-pass 2.5D lighting/reflection pipeline.
+   - `[ORION-ANCHOR: PROG-LEVEL-SEQUENCE]`, `[ORION-ANCHOR: PROG-SKILL-SCALING]`, `[ORION-ANCHOR: PROG-FEAT-SYNERGY]` — Level 1–20 tutorial sequence, 6 Combat Discipline skills, and 97 hardware-gated Feats.
+   - `[ORION-ANCHOR: COMBAT-DEFENSE-MATH]` & `[ORION-ANCHOR: COMBAT-ACTION-PAYLOAD]` — Three Defense Layers math (`Shields -> Armor -> 200 Frame HP`), adaptive damage, and support pulses.
+
+### Interactive Component & State Mapping
+- **Biome-Scoped Spawn & Tile Resolution**:
+  - Extend `BiomeDefinition` with an optional `enemySpawnTypes?: Record<string, string>` map (paralleling `tileTypes?: Record<string, string>`).
+  - When `spawnRoomEnemies` parses a `10 × 9` room grid, it resolves `getEnemyBySpawnChar(char, roomBiomeId)` so a biome can map `'V'` or `'S'` to a local faction unit without colliding with another world's enemy definitions, while falling back seamlessly to the global `CHAR_TO_ENEMY_TYPE` registry.
+- **Boot-Time ASCII Registry Summary & Collision Check**:
+  - Provide a clean helper (`getAsciiRegistryReport()`) that catalogs all bound Tile characters, Doodad characters, and Enemy spawn characters, logging a clear warning if two global files accidentally bind the same character.

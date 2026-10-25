@@ -7,14 +7,14 @@ import { TraitLineWikiDefinition } from '../../types';
 
 export const guardianTrait: TraitLineWikiDefinition = {
   id: 'Guardian',
-  name: 'Guardian',
+  name: 'Dawnforge Vanguard Kit',
   frameModel: 'Trinity DE-14',
   weightClass: 'heavy',
-  defaultUtilityItem: 'Bastion Barrier Capacitor',
+  defaultUtilityItem: 'TI Lightwell Recovery System',
   reactor: 'Mana',
   defaultDamageStyle: 'Pierce',
-  identity: 'Defensive anchor frame (Trinity DE-14, Heavy) fielding physical shields and layered armor.',
-  lore: 'Equipped with heavy physical barriers that do not suffer energy overload and draw focus via Presence.',
+  identity: 'Dawnforge Guardian Coreplate & TI Manaheart Reactor Mk.IV (Heavy Load) — physical barrier & layered anchor kit.',
+  lore: 'Equipped with stabilizer anchors, shield emitters, and heavy physical barriers that draw focus via Presence.',
   baseShield: { type: 'physical', capacity: 100 },
   baseArmor: { type: 'Layered', threshold: 7, rating: 5, durability: 100 },
   startingWeapons: ['short_spear', 'heater_shield'],

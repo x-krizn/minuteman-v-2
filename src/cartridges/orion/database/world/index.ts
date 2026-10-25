@@ -32,6 +32,13 @@ import { mire01 } from './tiles/mire_floor';
 import { aether01 } from './tiles/mud';
 import { ruins01 } from './tiles/ruins_floor';
 
+import {
+  CHAR_TO_ENEMY_TYPE,
+  ENEMY_REGISTRY,
+  ENEMY_SPAWN_COLLISIONS,
+  resolveEnemyTypeForChar,
+} from '../enemies';
+
 export const GLOBAL_REGION_REGISTRY: Record<string, RegionDefinition> = {};
 export const LOCAL_REGION_REGISTRY: Record<string, RegionDefinition> = {};
 export const REGION_REGISTRY: Record<string, RegionDefinition> = {};
@@ -56,7 +63,9 @@ export const BIOME_REGISTRY: Record<string, BiomeDefinition> = {};
 
 export const TILE_REGISTRY: Record<string, TileDefinition> = {};
 export const TILE_BY_ID_REGISTRY: Record<string, TileDefinition> = {};
+export const TILE_CHAR_COLLISIONS: string[] = [];
 
+// [ORION-ANCHOR: WORLD-GLOB-REGISTRY]
 /**
  * Single Polymorphic Auto-Discovery World Registry
  *
@@ -181,6 +190,12 @@ for (const [path, mod] of Object.entries(modules)) {
         LOCAL_BIOME_REGISTRY[exportedValue.id] = exportedValue;
       }
     } else if (isTileDefinition(exportedValue)) {
+      const existingTile = TILE_REGISTRY[exportedValue.char];
+      if (existingTile && existingTile.id !== exportedValue.id) {
+        const msg = `[Orion ASCII Audit] Duplicate global tile char '${exportedValue.char}' claimed by '${existingTile.id}' and '${exportedValue.id}'. Use biome.tileTypes to scope per biome.`;
+        TILE_CHAR_COLLISIONS.push(msg);
+        console.warn(msg);
+      }
       TILE_REGISTRY[exportedValue.char] = exportedValue;
       TILE_BY_ID_REGISTRY[exportedValue.id] = exportedValue;
 
@@ -233,6 +248,7 @@ export function getBiomeDefinition(biomeId?: string): BiomeDefinition {
   return belldorBogBiome;
 }
 
+// [ORION-ANCHOR: ASCII-CHAR-REGISTRY]
 export function getTileDefinition(char: string, biomeId?: string): TileDefinition {
   if (biomeId) {
     const biome = getBiomeDefinition(biomeId);
@@ -242,6 +258,75 @@ export function getTileDefinition(char: string, biomeId?: string): TileDefinitio
     }
   }
   return TILE_REGISTRY[char] || TILE_REGISTRY['.'] || groundTile;
+}
+
+/**
+ * Resolves an ASCII room character to an Enemy type ID, honoring `biome.enemySpawnTypes` overrides
+ * before falling back to the global `CHAR_TO_ENEMY_TYPE` map.
+ */
+export function resolveRoomEnemyTypeAtChar(char: string, biomeId?: string): string | undefined {
+  if (biomeId) {
+    const biome = getBiomeDefinition(biomeId);
+    if (biome.enemySpawnTypes?.[char]) {
+      return biome.enemySpawnTypes[char];
+    }
+  }
+  return resolveEnemyTypeForChar(char);
+}
+
+export interface AsciiRegistryEntry {
+  char: string;
+  category: 'tile' | 'enemy';
+  id: string;
+  name: string;
+  solidOrFaction: string;
+}
+
+/**
+ * Returns the complete Master ASCII Character Registry across all registered Tiles, Doodads,
+ * and Enemy Spawn tokens, plus any detected global character collisions.
+ */
+export function getMasterAsciiCharacterRegistry(): {
+  entries: AsciiRegistryEntry[];
+  collisions: string[];
+} {
+  const entries: AsciiRegistryEntry[] = [];
+  const crossDomainCollisions: string[] = [];
+
+  for (const [char, tile] of Object.entries(TILE_REGISTRY)) {
+    entries.push({
+      char,
+      category: 'tile',
+      id: tile.id,
+      name: tile.name,
+      solidOrFaction: tile.solid ? 'solid' : 'walkable',
+    });
+  }
+
+  for (const [char, enemyType] of Object.entries(CHAR_TO_ENEMY_TYPE)) {
+    const enemy = ENEMY_REGISTRY[enemyType];
+    if (TILE_REGISTRY[char]) {
+      crossDomainCollisions.push(
+        `[Orion ASCII Audit] Character '${char}' is registered as both Tile '${TILE_REGISTRY[char].id}' and Enemy '${enemyType}'.`
+      );
+    }
+    entries.push({
+      char,
+      category: 'enemy',
+      id: enemyType,
+      name: enemy?.name || enemyType,
+      solidOrFaction: enemy?.faction || 'hostile',
+    });
+  }
+
+  return {
+    entries,
+    collisions: [
+      ...TILE_CHAR_COLLISIONS,
+      ...ENEMY_SPAWN_COLLISIONS,
+      ...crossDomainCollisions,
+    ],
+  };
 }
 
 export {

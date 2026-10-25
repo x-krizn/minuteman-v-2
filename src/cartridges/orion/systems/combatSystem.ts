@@ -365,6 +365,7 @@ export function isTargetInImpactZone(
   return Math.hypot(tx - ix, ty - iy) <= radius;
 }
 
+// [ORION-ANCHOR: COMBAT-ACTION-PAYLOAD]
 export function executeActionPayload(
   state: OrionState,
   ctx: OrionCombatContext,
@@ -455,13 +456,38 @@ export function executeActionPayload(
       if (gemCombatMods.presenceGainOnHit > 0) {
         state.presence = Math.min(100, (state.presence || 0) + gemCombatMods.presenceGainOnHit);
       }
+      if (weapon?.supportPulseOnHit) {
+        const sp = weapon.supportPulseOnHit;
+        if (sp.shieldRestore) {
+          state.shields.overloaded = false;
+          state.shields.capacity = Math.min(
+            state.shields.maxCapacity,
+            state.shields.capacity + sp.shieldRestore
+          );
+        }
+        if (sp.armorRestore) {
+          state.armor.durability = Math.min(
+            state.armor.maxDurability,
+            state.armor.durability + sp.armorRestore
+          );
+        }
+        if (sp.heatVent) {
+          state.heat = Math.max(0, state.heat - sp.heatVent);
+        }
+      }
     }
+    const resolvedDmgType = weapon?.adaptiveDamageTypes
+      ? e.shields.capacity > 0
+        ? weapon.adaptiveDamageTypes[0]
+        : weapon.adaptiveDamageTypes[1]
+      : dmgType;
+    const adaptiveBonusMult = weapon?.adaptiveDamageTypes ? 1.12 : 1.0;
     applyDamageFn(
       e.shields,
       e.armor,
       e.frame,
-      computeEnemyDamage(baseDmg, e.faction, e),
-      dmgType,
+      Math.round(computeEnemyDamage(baseDmg, e.faction, e) * adaptiveBonusMult),
+      resolvedDmgType,
       (count, color, label) => ctx.spawnParticles(e.x, e.y, e.z + 8, count, color, label)
     );
     soundSystem.playHit();
@@ -2158,6 +2184,7 @@ export function performAuxiliarySwap(
   return true;
 }
 
+// [ORION-ANCHOR: COMBAT-DEFENSE-MATH]
 export function applyDamageToLayers(
   shields: ShieldState,
   armor: ArmorState,
@@ -3338,6 +3365,25 @@ export function updateCombat(
                       (state.presence || 0) + gemCombatMods.presenceGainOnHit
                     );
                   }
+                  if (weapon?.supportPulseOnHit) {
+                    const sp = weapon.supportPulseOnHit;
+                    if (sp.shieldRestore) {
+                      state.shields.overloaded = false;
+                      state.shields.capacity = Math.min(
+                        state.shields.maxCapacity,
+                        state.shields.capacity + sp.shieldRestore
+                      );
+                    }
+                    if (sp.armorRestore) {
+                      state.armor.durability = Math.min(
+                        state.armor.maxDurability,
+                        state.armor.durability + sp.armorRestore
+                      );
+                    }
+                    if (sp.heatVent) {
+                      state.heat = Math.max(0, state.heat - sp.heatVent);
+                    }
+                  }
                 }
                 const oathMult = hasKnightsOath && e.faction === 'camelot' ? 1.25 : 1.0;
                 const isLockedOrStaggered =
@@ -3345,12 +3391,18 @@ export function updateCombat(
                 const charoiteMult = isLockedOrStaggered
                   ? gemCombatMods.lockedOrStaggeredDamageMult
                   : 1.0;
-                const effDamage = Math.round(shotDmg * oathMult * opticMult * charoiteMult);
+                const adaptiveMult = weapon?.adaptiveDamageTypes ? 1.12 : 1.0;
+                const effDamage = Math.round(shotDmg * oathMult * opticMult * charoiteMult * adaptiveMult);
+                const resolvedDmgType = weapon?.adaptiveDamageTypes
+                  ? e.shields.capacity > 0
+                    ? weapon.adaptiveDamageTypes[0]
+                    : weapon.adaptiveDamageTypes[1]
+                  : action.damageType;
                 if (shieldBypassRatio > 0 && e.shields.capacity > 0) {
                   const bypassed = Math.max(1, Math.round(effDamage * shieldBypassRatio));
                   const normalPortion = Math.max(0, effDamage - bypassed);
                   if (normalPortion > 0) {
-                    applyDamageToLayers(e.shields, e.armor, e.frame, normalPortion, action.damageType);
+                    applyDamageToLayers(e.shields, e.armor, e.frame, normalPortion, resolvedDmgType);
                   }
                   const savedShield = e.shields.capacity;
                   e.shields.capacity = 0;
@@ -3359,7 +3411,7 @@ export function updateCombat(
                     e.armor,
                     e.frame,
                     bypassed,
-                    action.damageType,
+                    resolvedDmgType,
                     (count, color, label) =>
                       ctx.spawnParticles(e.x, e.y, e.z + 8, count, color, label)
                   );
@@ -3370,7 +3422,7 @@ export function updateCombat(
                     e.armor,
                     e.frame,
                     effDamage,
-                    action.damageType,
+                    resolvedDmgType,
                     (count, color, label) =>
                       ctx.spawnParticles(e.x, e.y, e.z + 8, count, color, label)
                   );
@@ -3665,6 +3717,34 @@ export function updateCombat(
               if (gemCombatMods.heatVentOnBasicHit > 0) {
                 state.heat = Math.max(0, state.heat - gemCombatMods.heatVentOnBasicHit);
               }
+              if (weapon?.supportPulseOnHit) {
+                const sp = weapon.supportPulseOnHit;
+                if (sp.shieldRestore) {
+                  state.shields.overloaded = false;
+                  state.shields.capacity = Math.min(
+                    state.shields.maxCapacity,
+                    state.shields.capacity + Math.max(1, Math.round(sp.shieldRestore * 0.5))
+                  );
+                }
+                if (sp.armorRestore) {
+                  state.armor.durability = Math.min(
+                    state.armor.maxDurability,
+                    state.armor.durability + Math.max(1, Math.round(sp.armorRestore * 0.5))
+                  );
+                }
+                if (sp.heatVent) {
+                  state.heat = Math.max(0, state.heat - Math.max(1, Math.round(sp.heatVent * 0.5)));
+                }
+              }
+              const lockedTarget = getLockedTarget(state);
+              const adaptiveDmgType = weapon?.adaptiveDamageTypes
+                ? lockedTarget && lockedTarget.shields.capacity <= 0
+                  ? weapon.adaptiveDamageTypes[1]
+                  : weapon.adaptiveDamageTypes[0]
+                : action.damageType;
+              const adaptiveShotDmg = weapon?.adaptiveDamageTypes
+                ? Math.round(shotDmg * 1.12)
+                : shotDmg;
               const baseProjSpeed =
                 (currentWeaponId === 'great_bow' ? 210 : 185) *
                 gemCombatMods.projectileSpeedMult;
@@ -3677,8 +3757,8 @@ export function updateCombat(
                   vx: Math.cos(ang) * baseProjSpeed,
                   vy: Math.sin(ang) * baseProjSpeed,
                   vz: 0,
-                  damage: shotDmg,
-                  damageType: action.damageType,
+                  damage: adaptiveShotDmg,
+                  damageType: adaptiveDmgType,
                   isPlayer: true,
                   life: 0.75,
                   radius: currentWeaponId === 'great_bow' ? 4 : 3,

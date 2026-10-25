@@ -18,6 +18,7 @@ import {
   ACTION_MODIFICATION_CATALOG,
   CHASSIS_HARDWARE_CATALOG,
   CORE_COMBAT_LAWS,
+  doesPilotMeetFeatEquipmentRequirement,
   FRAME_FEAT_CATALOG,
   fundPilotSkillWithGem,
   GEMSTONE_CATALOG,
@@ -84,7 +85,7 @@ import {
   TUTORIAL_STEP_DESCRIPTORS,
   TutorialStepId,
 } from '../systems';
-import { AetherCardinalDir, TraitLine } from '../types';
+import { AetherCardinalDir, FeatSynergyCategory, FeatTier, TraitLine } from '../types';
 
 export interface OrionSatchelProps {
   onResume: () => void;
@@ -141,8 +142,14 @@ type EditableLoadoutSlot =
   | 'slot2'
   | 'slot3'
   | 'head'
+  | 'sensoryA'
+  | 'sensoryB'
   | 'arms'
+  | 'legs'
   | 'plating'
+  | 'reactor'
+  | 'aux3'
+  | 'aux4'
   | 'utility'
   | 'mod_ranged'
   | 'mod_melee'
@@ -166,6 +173,8 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
   const [loadoutSubtypeFilter, setLoadoutSubtypeFilter] = useState<string>('ALL');
   const [invCategory, setInvCategory] = useState<EquipmentInventoryCategory>('all');
   const [invSubtype, setInvSubtype] = useState<string>('ALL');
+  const [featTierFilter, setFeatTierFilter] = useState<'ALL' | FeatTier>('ALL');
+  const [featSynergyFilter, setFeatSynergyFilter] = useState<'ALL' | FeatSynergyCategory>('ALL');
   const [, setRefresh] = useState(0);
 
   const openSlotEditor = (slot: EditableLoadoutSlot) => {
@@ -314,10 +323,10 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
         return (
           <div className="flex flex-wrap items-center justify-between gap-2 px-2 py-1 bg-[#090d14] rounded-xs border border-[#1e293b] mb-1.5 text-[10px]">
             <span>
-              PILOT: <b className="text-[#38bdf8]">{state.pilotName}</b> ({state.traitLine})
+              PILOT: <b className="text-[#38bdf8]">{state.pilotName}</b> ({trait.frameModel || 'PNSY W416'})
             </span>
             <span>
-              REACTOR: <b className="text-[#c084fc]">{state.reactor}</b>
+              REACTOR: <b className="text-[#c084fc]">{state.equipmentSlots?.reactorCore || state.reactor}</b>
             </span>
             <span className="flex items-center gap-1">
               <SpriteCanvasIcon
@@ -435,11 +444,11 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
             </div>
           </div>
 
-          {/* Active Frame Identity (Full 6-Class Hot-Swap only in Cheat Room Mode) */}
+          {/* Active Frame Identity (Full 6-Kit Hot-Swap in Cheat Room Mode) */}
           <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">
             <div className="flex items-center justify-between">
               <span className="text-[#94a3b8] font-bold text-[10px]">
-                {isCheatMode ? 'CHEAT ROOM CLASS SWITCHER:' : 'PILOT MECH CHASSIS:'}
+                {isCheatMode ? 'CHEAT ROOM STARTING KIT SWITCHER:' : 'PILOT MECH CHASSIS:'}
               </span>
               <span className="text-[8.5px] text-[#38bdf8] font-bold">
                 FRAME: {trait.frameModel || 'PNSY W416'} · {trait.reactor.toUpperCase()} REACTOR
@@ -464,8 +473,8 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-[9px] text-[#ffd27d]">{tl.toUpperCase()}</span>
-                        <span className="text-[7px] uppercase px-1 rounded-xs bg-[#1e293b] text-[#cbd5e1]">
+                        <span className="font-bold text-[9px] text-[#ffd27d] truncate">{prof.name}</span>
+                        <span className="text-[7px] uppercase px-1 rounded-xs bg-[#1e293b] text-[#cbd5e1] shrink-0">
                           {prof.weightClass || 'medium'}
                         </span>
                       </div>
@@ -637,11 +646,23 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
 
           const currentHeadName =
             state.equipmentSlots?.head || `${trait.frameModel || 'Mark-IV'} Sensor Visor`;
+          const currentSensoryAName =
+            state.equipmentSlots?.sensoryA || 'Federated T7 Sensor Array';
+          const currentSensoryBName =
+            state.equipmentSlots?.sensoryB || 'Federated EchoPulse Scanner';
           const currentArmsName =
             state.equipmentSlots?.arms || `${trait.frameModel || 'Mark-IV'} Actuator Vambraces`;
+          const currentLegsName =
+            state.equipmentSlots?.legs || 'BWI Strider Leg Assembly';
           const currentPlatingName =
             state.equipmentSlots?.plating ||
             `${trait.frameModel || 'Mark-IV'} ${trait.baseArmor.type} Plating`;
+          const currentReactorName =
+            state.equipmentSlots?.reactorCore || 'PNSY Alchemic Turbine Core Mk.IV';
+          const currentAux3Name =
+            state.equipmentSlots?.aux3 || 'PNSY R-11 Rockweiler Buckler';
+          const currentAux4Name =
+            state.equipmentSlots?.aux4 || 'PNSY UF-9 Rough Rider Booster';
           const currentUtilDef = getClassUtilityDefinition(
             state.equipmentSlots?.utility,
             state.traitLine
@@ -1003,10 +1024,10 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                 </div>
               </div>
 
-              {/* 3. Chassis Hardware, Class Utility, Action Mods & Trigger Bindings (Compact Cards — Options Hidden Until Editing) */}
+              {/* 3. Chassis Hardware, Tactical Utility, Action Mods & Trigger Bindings (Compact Cards — Options Hidden Until Editing) */}
               <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">
                 <div className="text-[9px] font-bold text-[#94a3b8]">
-                  CHASSIS HARDWARE · CLASS UTILITY · ACTION MODS · TRIGGER BINDINGS
+                  CHASSIS HARDWARE · REACTOR · AUXILIARY SYSTEMS · TACTICAL UTILITY · ACTION MODS · TRIGGERS
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[8px]">
                   {(
@@ -1018,22 +1039,58 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                         sub: 'Hardware · Optics',
                       },
                       {
+                        slot: 'sensoryA' as EditableLoadoutSlot,
+                        label: 'SENSORY A',
+                        val: currentSensoryAName,
+                        sub: 'Hardware · Field Monitor',
+                      },
+                      {
+                        slot: 'sensoryB' as EditableLoadoutSlot,
+                        label: 'SENSORY B',
+                        val: currentSensoryBName,
+                        sub: 'Hardware · Threat Scanner',
+                      },
+                      {
                         slot: 'arms' as EditableLoadoutSlot,
                         label: 'ARMS ACTUATORS',
                         val: currentArmsName,
-                        sub: 'Hardware · Actuators',
+                        sub: 'Hardware · Arm Assembly',
+                      },
+                      {
+                        slot: 'legs' as EditableLoadoutSlot,
+                        label: 'LEGS ACTUATORS',
+                        val: currentLegsName,
+                        sub: 'Hardware · Leg Assembly',
                       },
                       {
                         slot: 'plating' as EditableLoadoutSlot,
-                        label: 'TORSO PLATING',
+                        label: 'COREPLATE',
                         val: currentPlatingName,
                         sub: `Hardware · ${state.armor.type}`,
+                      },
+                      {
+                        slot: 'reactor' as EditableLoadoutSlot,
+                        label: 'REACTOR CORE',
+                        val: currentReactorName,
+                        sub: 'Core System · Generator',
+                      },
+                      {
+                        slot: 'aux3' as EditableLoadoutSlot,
+                        label: 'AUX 3 SYSTEM',
+                        val: currentAux3Name,
+                        sub: 'Defensive / Tactical Aux',
+                      },
+                      {
+                        slot: 'aux4' as EditableLoadoutSlot,
+                        label: 'AUX 4 SYSTEM',
+                        val: currentAux4Name,
+                        sub: 'Mobility / Evasion Aux',
                       },
                       {
                         slot: 'utility' as EditableLoadoutSlot,
                         label: 'UTILITY [ACT 6]',
                         val: currentUtilDef.name,
-                        sub: `${currentUtilDef.traitLine} · ${currentUtilDef.shortLabel}`,
+                        sub: `${currentUtilDef.frameModel} · ${currentUtilDef.shortLabel}`,
                       },
                       {
                         slot: 'mod_ranged' as EditableLoadoutSlot,
@@ -1128,8 +1185,14 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                         { id: 'slot2', label: 'Side Hand' },
                         { id: 'slot3', label: 'Auxiliary' },
                         { id: 'head', label: 'Head Optics' },
+                        { id: 'sensoryA', label: 'Sensory A' },
+                        { id: 'sensoryB', label: 'Sensory B' },
                         { id: 'arms', label: 'Arms Actuators' },
-                        { id: 'plating', label: 'Torso Plating' },
+                        { id: 'legs', label: 'Legs Actuators' },
+                        { id: 'plating', label: 'Coreplate' },
+                        { id: 'reactor', label: 'Reactor Core' },
+                        { id: 'aux3', label: 'Aux 3 System' },
+                        { id: 'aux4', label: 'Aux 4 System' },
                         { id: 'utility', label: 'Utility [Act 6]' },
                         { id: 'mod_ranged', label: 'Ranged Mod' },
                         { id: 'mod_melee', label: 'Melee Mod' },
@@ -1164,18 +1227,26 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                         editingSlot === 'slot1'
                           ? [
                               'ALL',
+                              'Ranged · Bolter / Ballista',
+                              'Ranged · Gatling / Ordnance',
+                              'Ranged · Beam / Pulse',
+                              'Ranged · SMG / Marksman',
+                              'Ranged · Boltcaster',
+                              'Ranged · 2H Bow',
                               'Melee · Blade',
                               'Melee · Blunt / Cleave',
                               'Melee · Polearm / Lance',
-                              'Ranged · Boltcaster',
-                              'Ranged · 2H Bow',
                             ]
                           : [
                               'ALL',
+                              'Ranged · Bolter / Ballista',
+                              'Ranged · Gatling / Ordnance',
+                              'Ranged · Beam / Pulse',
+                              'Ranged · SMG / Marksman',
+                              'Ranged · Boltcaster',
                               'Melee · Blade',
                               'Melee · Blunt / Cleave',
                               'Melee · Polearm / Lance',
-                              'Ranged · Boltcaster',
                               'Auxiliary · Shield',
                               'Auxiliary · Quiver',
                               'Auxiliary · Catalyst',
@@ -1412,18 +1483,36 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                       );
                     })()}
 
-                  {/* B. Editing Chassis Hardware (Head Optics, Arms Actuators, Torso Plating) */}
+                  {/* B. Editing Chassis Hardware (Head Optics, Sensory A/B, Arms, Legs, Coreplate, Reactor, Aux 3/4) */}
                   {(editingSlot === 'head' ||
+                    editingSlot === 'sensoryA' ||
+                    editingSlot === 'sensoryB' ||
                     editingSlot === 'arms' ||
-                    editingSlot === 'plating') && (
+                    editingSlot === 'legs' ||
+                    editingSlot === 'plating' ||
+                    editingSlot === 'reactor' ||
+                    editingSlot === 'aux3' ||
+                    editingSlot === 'aux4') && (
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
                       {CHASSIS_HARDWARE_CATALOG.filter((h) => h.slot === editingSlot).map((hw) => {
                         const curVal =
                           editingSlot === 'head'
                             ? currentHeadName
-                            : editingSlot === 'arms'
-                              ? currentArmsName
-                              : currentPlatingName;
+                            : editingSlot === 'sensoryA'
+                              ? currentSensoryAName
+                              : editingSlot === 'sensoryB'
+                                ? currentSensoryBName
+                                : editingSlot === 'arms'
+                                  ? currentArmsName
+                                  : editingSlot === 'legs'
+                                    ? currentLegsName
+                                    : editingSlot === 'plating'
+                                      ? currentPlatingName
+                                      : editingSlot === 'reactor'
+                                        ? currentReactorName
+                                        : editingSlot === 'aux3'
+                                          ? currentAux3Name
+                                          : currentAux4Name;
                         const isEquipped = curVal === hw.name;
                         return (
                           <div
@@ -1447,7 +1536,11 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                               onClick={() => {
                                 if (!state.equipmentSlots) return;
                                 soundSystem.playSelect();
-                                state.equipmentSlots[editingSlot] = hw.name;
+                                if (editingSlot === 'reactor') {
+                                  state.equipmentSlots.reactorCore = hw.name;
+                                } else {
+                                  state.equipmentSlots[editingSlot] = hw.name;
+                                }
                                 if (editingSlot === 'plating' && hw.armorType) {
                                   state.armor.type = hw.armorType;
                                 }
@@ -1467,12 +1560,10 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                     </div>
                   )}
 
-                  {/* C. Editing Class Utility Slot (Action 6) */}
+                  {/* C. Editing Tactical Utility Slot (Action 6 — Classless, open to all pilots) */}
                   {editingSlot === 'utility' && (
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
-                      {CLASS_UTILITY_CATALOG.filter(
-                        (u) => isCheatMode || u.traitLine === state.traitLine
-                      ).map((u) => {
+                      {CLASS_UTILITY_CATALOG.map((u) => {
                         const isSelected = currentUtilDef.id === u.id;
                         return (
                           <div
@@ -1488,7 +1579,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                                 <span className="font-bold text-[8.5px] text-[#ffd27d]">
                                   {u.name}
                                 </span>
-                                <span className="text-[7px] text-[#38bdf8]">{u.traitLine}</span>
+                                <span className="text-[7px] text-[#38bdf8]">{u.frameModel}</span>
                               </div>
                               <div className="text-[7.5px] text-[#94a3b8] mt-0.5">
                                 {u.description}
@@ -1700,15 +1791,30 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
             all: ['ALL'],
             weapon: [
               'ALL',
+              'Ranged · Bolter / Ballista',
+              'Ranged · Gatling / Ordnance',
+              'Ranged · Beam / Pulse',
+              'Ranged · SMG / Marksman',
+              'Ranged · Boltcaster',
+              'Ranged · 2H Bow',
               'Melee · Blade',
               'Melee · Blunt / Cleave',
               'Melee · Polearm / Lance',
-              'Ranged · Boltcaster',
-              'Ranged · 2H Bow',
             ],
             auxiliary: ['ALL', 'Auxiliary · Shield', 'Auxiliary · Quiver', 'Auxiliary · Catalyst'],
-            hardware: ['ALL', 'head', 'arms', 'plating'],
-            utility: ['ALL', 'Warrior', 'Marauder', 'Guardian', 'Rogue', 'Wizard', 'Cleric'],
+            hardware: [
+              'ALL',
+              'head',
+              'sensoryA',
+              'sensoryB',
+              'arms',
+              'legs',
+              'plating',
+              'reactor',
+              'aux3',
+              'aux4',
+            ],
+            utility: ['ALL'],
             mod: ['ALL', 'ranged', 'melee', 'mobility'],
             consumable: ['ALL', 'consumable', 'gemstone', 'relic'],
           };
@@ -1720,7 +1826,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
               <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">
                 <div className="flex flex-wrap items-center justify-between gap-1">
                   <span className="text-[10px] font-bold text-[#8dd7ad]">
-                    EQUIPMENT INVENTORY (WEAPONS · AUXILIARIES · HARDWARE · UTILITIES · MODS · SATCHEL):
+                    EQUIPMENT INVENTORY (WEAPONS · AUXILIARIES · HARDWARE · TACTICAL UTILITIES · MODS · SATCHEL):
                   </span>
                   {isCheatMode && (
                     <div className="flex items-center gap-1">
@@ -1781,7 +1887,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                       { id: 'weapon', label: 'Weapons' },
                       { id: 'auxiliary', label: 'Auxiliaries' },
                       { id: 'hardware', label: 'Chassis Hardware' },
-                      { id: 'utility', label: 'Class Utilities' },
+                      { id: 'utility', label: 'Tactical Utilities' },
                       { id: 'mod', label: 'Action Mods' },
                       { id: 'consumable', label: 'Consumables & Satchel' },
                     ] as Array<{ id: EquipmentInventoryCategory; label: string }>
@@ -1892,14 +1998,14 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                 </div>
               )}
 
-              {/* 2. Chassis Hardware, Class Utilities & Retained Action Mods Inventory */}
+              {/* 2. Chassis Hardware, Tactical Utilities & Retained Action Mods Inventory */}
               {(invCategory === 'all' ||
                 invCategory === 'hardware' ||
                 invCategory === 'utility' ||
                 invCategory === 'mod') && (
                 <div className="space-y-1">
                   <div className="text-[8.5px] font-bold text-[#38bdf8]">
-                    CHASSIS HARDWARE, CLASS UTILITIES & ACTION MODS INVENTORY:
+                    CHASSIS HARDWARE, TACTICAL UTILITIES & ACTION MODS INVENTORY:
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                     {(invCategory === 'all' || invCategory === 'hardware') &&
@@ -1928,11 +2034,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                       ))}
 
                     {(invCategory === 'all' || invCategory === 'utility') &&
-                      CLASS_UTILITY_CATALOG.filter(
-                        (u) =>
-                          (isCheatMode || u.traitLine === state.traitLine) &&
-                          (invSubtype === 'ALL' || u.traitLine === invSubtype)
-                      ).map((u) => (
+                      CLASS_UTILITY_CATALOG.map((u) => (
                         <div
                           key={u.id}
                           className="p-1.5 bg-[#090d14] rounded-xs border border-[#1e293b] flex items-center justify-between gap-2"
@@ -1942,7 +2044,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                               {u.name}
                             </div>
                             <div className="text-[7px] text-[#94a3b8] truncate">
-                              Class Utility · {u.traitLine} ({u.frameModel})
+                              Tactical Utility · {u.frameModel}
                             </div>
                           </div>
                           <button
@@ -2429,11 +2531,11 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                   </div>
                 </div>
 
-                {/* Gem Use 1: 6 Trait Line Pilot Skills (Levels 1-20 -> Unlocks 5 Feat Tiers I-V) */}
+                {/* Gem Use 1: 6 Combat Discipline Skills (Levels 1-20 -> Unlocks 5 Feat Tiers I-V) */}
                 <div className="pt-1 border-t border-[#1e293b] space-y-1">
                   <div className="flex items-center justify-between text-[8.5px]">
                     <span className="font-bold text-[#ffd27d]">
-                      GEM USE 1 — 6 TRAIT LINE PILOT SKILLS (LV 1–20 · GEMS PERMANENTLY CONSUMED):
+                      GEM USE 1 — 6 COMBAT DISCIPLINE SKILLS (LV 1–20 · GEMS PERMANENTLY CONSUMED):
                     </span>
                     <span className="text-[#7dd3fc] font-bold">
                       UNLOCKED FEAT TIERS: {gates.unlockedFeatTiers.length > 0 ? gates.unlockedFeatTiers.join(', ') : 'NONE (REACH SKILL LV 2)'}
@@ -2529,20 +2631,77 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                   </div>
                 </div>
 
-                {/* Gem Use 2: Feat Nodes (Tiers I-V, Specific Trait + Reactor Gem Sockets, Refunded on Unsocket) */}
-                <div className="pt-1 border-t border-[#1e293b] space-y-1">
-                  <div className="flex items-center justify-between text-[8.5px]">
+                {/* Gem Use 2: 97 Canonical Feat Nodes (Tiers I-V, Classless Hardware Synergy, Refunded on Unsocket) */}
+                <div className="pt-1 border-t border-[#1e293b] space-y-1.5">
+                  <div className="flex flex-wrap items-center justify-between gap-1 text-[8.5px]">
                     <span className="font-bold text-[#ffd27d]">
-                      GEM USE 2 — FEAT NODES (SOCKET GEMS RETAINED IN BUILD · REFUNDED ON UNSOCKET):
+                      GEM USE 2 — 97 FEAT NODES (CLASSLESS HARDWARE SYNERGY · GEMS REFUNDED ON UNSOCKET):
                     </span>
                     <span className="text-[#86efac] font-bold">
-                      ACTIVE FEATS: {state.equippedFeats.length}
+                      ACTIVE FEATS: {state.equippedFeats.length} / {FRAME_FEAT_CATALOG.length}
                     </span>
                   </div>
+
+                  {/* Feat Tier & Synergy Category Filters */}
+                  <div className="flex flex-wrap items-center gap-1 text-[7.5px]">
+                    <span className="text-[#94a3b8] font-bold">TIER:</span>
+                    {(['ALL', 'I', 'II', 'III', 'IV', 'V'] as const).map((tOpt) => (
+                      <button
+                        key={tOpt}
+                        onClick={() => {
+                          soundSystem.playSelect();
+                          setFeatTierFilter(tOpt);
+                        }}
+                        className={`px-1.5 py-0.2 rounded-xs font-bold border cursor-pointer ${
+                          featTierFilter === tOpt
+                            ? 'bg-[#ffd27d] text-[#05070a] border-[#fbbf24]'
+                            : 'bg-[#090d14] text-[#94a3b8] border-[#1e293b] hover:border-[#475569]'
+                        }`}
+                      >
+                        {tOpt === 'ALL' ? 'ALL TIERS' : `TIER ${tOpt}`}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1 text-[7.5px]">
+                    <span className="text-[#94a3b8] font-bold">SYNERGY:</span>
+                    {(
+                      [
+                        'ALL',
+                        'Ballistics & Ordnance',
+                        'Melee & CQC',
+                        'Coreplate & Defense',
+                        'Reactor & Thermal',
+                        'Mobility & Stealth',
+                        'Optics & Support',
+                      ] as const
+                    ).map((catOpt) => (
+                      <button
+                        key={catOpt}
+                        onClick={() => {
+                          soundSystem.playSelect();
+                          setFeatSynergyFilter(catOpt);
+                        }}
+                        className={`px-1.5 py-0.2 rounded-xs font-bold border cursor-pointer ${
+                          featSynergyFilter === catOpt
+                            ? 'bg-[#38bdf8] text-[#05070a] border-[#7dd3fc]'
+                            : 'bg-[#090d14] text-[#94a3b8] border-[#1e293b] hover:border-[#475569]'
+                        }`}
+                      >
+                        {catOpt === 'ALL' ? 'ALL SYNERGIES' : catOpt}
+                      </button>
+                    ))}
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                    {FRAME_FEAT_CATALOG.map((feat) => {
+                    {FRAME_FEAT_CATALOG.filter((feat) => {
+                      if (featTierFilter !== 'ALL' && feat.tier !== featTierFilter) return false;
+                      const cat = feat.synergyCategory || 'Coreplate & Defense';
+                      if (featSynergyFilter !== 'ALL' && cat !== featSynergyFilter) return false;
+                      return true;
+                    }).map((feat) => {
                       const isTierOpen = isFeatNodeAvailable(state, feat);
                       const isEquipped = state.equippedFeats.includes(feat.id);
+                      const hwCheck = doesPilotMeetFeatEquipmentRequirement(state, feat);
                       const socketSummary = feat.gemSockets
                         .map((s) => {
                           const g = GEMSTONE_REGISTRY[s.gemId];
@@ -2576,7 +2735,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                         >
                           <div className="flex items-center justify-between gap-1">
                             <span className="font-bold text-[8.5px] text-[#e2e8f0] truncate">
-                              [{feat.tier} · {feat.requiredSkillId} Lv.{feat.requiredSkillLevel}] {feat.name}
+                              [Tier {feat.tier} · Lv.{feat.requiredSkillLevel}+] {feat.name}
                             </span>
                             <span
                               className={`px-1 py-0.2 rounded-xs text-[7px] font-bold shrink-0 ${
@@ -2590,6 +2749,20 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                               {isEquipped
                                 ? 'SOCKETED (CLICK TO REFUND)'
                                 : `SOCKET (${feat.kind.toUpperCase()})`}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-1 text-[7px] mt-0.5">
+                            <span className="text-[#7dd3fc] truncate">
+                              {feat.synergyCategory || 'Coreplate & Defense'}
+                            </span>
+                            <span
+                              className={`font-bold shrink-0 ${
+                                hwCheck.met ? 'text-[#4ade80]' : 'text-[#fbbf24]'
+                              }`}
+                            >
+                              {hwCheck.met
+                                ? `✓ ${hwCheck.reason}`
+                                : `⚙ Req: ${hwCheck.reason}`}
                             </span>
                           </div>
                           <div className="text-[7.5px] text-[#86efac] mt-0.5">

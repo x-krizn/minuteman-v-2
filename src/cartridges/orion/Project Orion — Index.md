@@ -69,23 +69,23 @@ Before the catastrophe, Camelot was a center of magic and governance with one of
 
 The campaign on Belldor is built as a lesson. You are never handed a tool before the world gives you a reason to need it, and the numbers on your mech do not grow. Two pilots at the same stage are equally strong, and what separates them is what they choose to do.
 
-### Choosing Your Frame (`v0.7` Canonical Spec)
+### Choosing Your Starting Loadout Kit (`v0.8` Classless Spec)
 
-Your mech is a frame with a combat identity. Six are available, and none of them locks you in. They are frameworks, and the equipment you carry is what makes the build.
+Your mech is a modular war machine, and **Project Orion has no player-facing classes**. Six pre-configured **Starting Loadout Kits** are available at Pilot Creation so you begin with a coherent frame, reactor, and weapon pairing—none of them locks you in. Any pilot can equip any weapon, coreplate, utility system, or feat as long as they meet the hardware and gemstone requirements. See `Project Orion — Equipment & Feats.md` for the full catalog of 29 magitech weapons, 6 coreplates, 6 reactors, 18 aux/utility systems, 18 optics/sensors, 12 limb actuators, and 97 feats.
 
-| Trait Line | Frame Model | Reactor | Base Load | Lv.6 Class Utility (`Action 6`) | Role |
+| Starting Kit | Frame Model | Reactor | Base Load | Lv.6 Tactical Utility (`Action 6`) | Starting Role & Design Direction |
 | --- | --- | --- | --- | --- | --- |
-| **Warrior** | `PNSY W416` | Ichor | Medium | Ichor Field Injector | Frontline striker. Aggressive, high-throughput, runs hot. |
-| **Marauder** | `RAD HAU` | Ichor | Super-Heavy | RAD Siege Plating Autoweld | Super-heavy artillery. Burst damage, natural presence, slow. |
-| **Guardian** | `Trinity DE-14` | Mana | Heavy | Trinity Bastion Condenser | Defensive anchor. Draws focus, protects allies, sustains shields. |
-| **Rogue** | `VX Phantom` | Ether | Light | VX Phase Shroud Cell | Stealth striker. Ambush and burst, lightest frame. |
-| **Wizard** | `ARC Arclight` | Ether | Light | ARC Resonance Siphon | Energy artillery. Sustained beams, long range. |
-| **Cleric** | `SANC Sanctum` | Mana | Medium | Sanctum Reliquary Font | Support anchor. Reinforces shields/armor, vents heat, and manages who gets targeted. |
+| **Bastion Striker** | `PNSY W416` | Ichor | Medium | PNSY D-0g Repair Drone | Frontline striker. Aggressive, high-throughput, runs hot. |
+| **Fortress Siege** | `RAD HAU` | Ichor | Super-Heavy | RAD R463 Fathomless System | Super-heavy artillery. Burst damage, natural presence, slow. |
+| **Dawnforge Vanguard** | `Trinity DE-14` | Mana | Heavy | TI Lightwell Recovery System | Defensive anchor. Draws focus, protects allies, sustains shields. |
+| **Phantom Recon** | `VX Phantom` | Ether | Light | VX Smoke Dispersal System | Stealth striker. Ambush and burst, lightest frame. |
+| **Arclight Artillery** | `ARC Arclight` | Ether | Light | ARC Rift Anchor | Energy artillery. Sustained beams, long range. |
+| **Sanctum Support** | `SANC Sanctum` | Mana | Medium | SANC Radiant Ward Projector | Support anchor. Reinforces shields/armor, vents heat, and manages target priority. |
 
 #### The Three Layers of a Build (`Pilot → Frame → Equipment`)
-- **Pilot (`Skills`)**: Created at New Game (`Trait Line → Pilot Name → Level 1 in M00 The Bog`) and listed on the Load Game roster. Skills progress through equipment use (locked out during the `Levels 1–5` tutorial until `Level 6: Border Town Complete`) and unlock **Feat Tiers (`I–V`)**.
-- **Frame (`Feats`)**: **System Feats** step up Load Capacity (`light → medium → heavy → superheavy`); **Interface Feats** trade stats sideways within a fixed static budget.Feats can be re-distributed at any time.
-- **Equipment (`13 Slots + Mods`)**: Weapon Set 1 (`2`), Weapon Set 2 (`2`), Utility (`1`, `Action 6`), Aux (`4`, `Actions 7–10`), Belt (`4`, `Actions 7–10`), plus `Head`, `Torso`, `Arms`, `Legs`, and `Generator`. Action Modifications alter behavior with a paired drawback.
+- **Pilot (`Skills`)**: Created at New Game (`Starting Kit → Pilot Callsign → Level 1 in M00 The Bog`) and listed on the Load Game roster. Six **Combat Disciplines** progress through gemstone investment (locked out during the `Levels 1–5` tutorial until `Level 6: Border Town Complete`) and unlock **Feat Tiers (`I–V`)**.
+- **Frame (`Feats`)**: **97 Canonical Feats** across Tiers I–V. **System Feats** step up Load Capacity (`light → medium → heavy → superheavy`); **Interface Feats** tune combat behavior and weapon/hardware synergies within a fixed static budget. Feats are gated by Skill Tier, Gemstone sockets, and equipped Hardware/Weapon families—never by class—and can be unsocketed and refunded at any time.
+- **Equipment (`13 Slots + Mods`)**: Weapon Set 1 (`Weapon 1–2`), Weapon Set 2 (`Weapon 3–4`), Tactical Utility (`1`, `Action 6`), Aux (`Aux 1–4`, `Actions 7–10`), Belt (`4`, `Actions 7–10`), plus `Coreplate`, `Reactor Core`, `Optics`, `Sensory A/B`, `Arms`, and `Legs`. Action Modifications alter behavior with a paired drawback.
 
 ### The Æther Fog
 

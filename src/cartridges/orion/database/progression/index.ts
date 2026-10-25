@@ -20,6 +20,11 @@ import {
 } from '../../types';
 import { TRAIT_REGISTRY } from '../characters';
 import { GEMSTONE_CATALOG, GEMSTONE_REGISTRY, TRAIT_FUNDING_GEMS } from '../items/gemstones';
+import {
+  CANONICAL_FRAME_FEAT_CATALOG,
+  CANONICAL_HARDWARE_CATALOG,
+  CanonicalHardwareItemDefinition,
+} from './canonical_feats_and_hardware';
 
 export { GEMSTONE_CATALOG, GEMSTONE_REGISTRY, TRAIT_FUNDING_GEMS };
 
@@ -31,8 +36,9 @@ export interface LevelUnlockInfo {
   learningFocus: string;
 }
 
+// [ORION-ANCHOR: PROG-LEVEL-SEQUENCE]
 /**
- * §5 LEVEL SEQUENCE (LOCKED — pilot-frame-equipment-v0.md v0.7)
+ * §5 LEVEL SEQUENCE (LOCKED — pilot-frame-equipment-v0.md v0.8 Classless Spec)
  * Frame Level (1–20): Tutorial & onboarding milestones. Gem handling: None.
  */
 export const LEVEL_UNLOCK_SEQUENCE: LevelUnlockInfo[] = [
@@ -75,14 +81,14 @@ export const LEVEL_UNLOCK_SEQUENCE: LevelUnlockInfo[] = [
     level: 6,
     band: 'Challenge',
     fixedEvent: 'Border Town Complete (Cathedral Door)',
-    unlock: 'Utility Slot active (Action 6) + Class Default Utility Item; Gem Skill Progression Unlocks',
+    unlock: 'Utility Slot active (Action 6) + Tactical Utility Item; Gem Skill Progression Unlocks',
     learningFocus: 'Self-sustain utility & Gemstone -> Pilot Skill -> Feat Node loop',
   },
   {
     level: 7,
     band: 'Challenge',
     unlock: 'Feat Tier I calibration (System & Interface Feat Nodes unlocked via Pilot Skills)',
-    learningFocus: 'Socketing Trait + Reactor Gems into Tier I Feat Nodes',
+    learningFocus: 'Socketing Combat Discipline + Reactor Gems into Tier I Feat Nodes',
   },
   {
     level: 8,
@@ -159,7 +165,7 @@ export const LEVEL_UNLOCK_SEQUENCE: LevelUnlockInfo[] = [
   {
     level: 20,
     band: 'Expression',
-    unlock: 'Level 20 Cap — All 6 Trait Line Skills, Feat Tiers I–V & 13 Equipment Slots mastered',
+    unlock: 'Level 20 Cap — All 6 Combat Discipline Skills, Feat Tiers I–V & 13 Equipment Slots mastered',
     learningFocus: 'Horizontal endgame expression (flat power, full versatility)',
   },
 ];
@@ -173,7 +179,8 @@ export const CORE_COMBAT_LAWS = [
   'Law 6: Stats are marginal; action is primary.',
 ];
 
-// ─── LAYER 1: 6 TRAIT LINE PILOT SKILLS (Funded by Matching Gems) ────────────
+// [ORION-ANCHOR: PROG-SKILL-SCALING]
+// ─── LAYER 1: 6 COMBAT DISCIPLINE PILOT SKILLS (Funded by Matching Gems) ────
 
 export const PILOT_SKILL_DEFINITIONS: Array<{
   id: PilotSkillId;
@@ -183,39 +190,39 @@ export const PILOT_SKILL_DEFINITIONS: Array<{
 }> = [
   {
     id: 'Warrior',
-    name: 'Warrior (Fighter Mastery)',
+    name: 'Assault Ballistics & Turbine',
     fundingGems: ['spinel', 'hematite'],
-    relatedEquipment: 'Funded by Spinel (Trait) or Hematite (Ichor Reactor). Unlocks frontline & heat-driven Feat Nodes.',
+    relatedEquipment: 'Funded by Spinel (Discipline) or Hematite (Ichor Reactor). Unlocks frontline ballistics, turbine heat & mobility Feat Nodes.',
   },
   {
     id: 'Marauder',
-    name: 'Marauder (Barbarian Siege)',
+    name: 'Heavy Ordnance & Siege',
     fundingGems: ['carnelian', 'hematite'],
-    relatedEquipment: 'Funded by Carnelian (Trait) or Hematite (Ichor Reactor). Unlocks super-heavy load & Presence Feat Nodes.',
+    relatedEquipment: 'Funded by Carnelian (Discipline) or Hematite (Ichor Reactor). Unlocks super-heavy load, rotary/missile ordnance & Presence Feat Nodes.',
   },
   {
     id: 'Guardian',
-    name: 'Guardian (Paladin Vanguard)',
+    name: 'Aegis Barrier & Vanguard',
     fundingGems: ['titanite', 'moonstone'],
-    relatedEquipment: 'Funded by Titanite (Trait) or Moonstone (Mana Reactor). Unlocks shield bastion & Presence priority Feat Nodes.',
+    relatedEquipment: 'Funded by Titanite (Discipline) or Moonstone (Mana Reactor). Unlocks shield bastion, radiant lance & Presence priority Feat Nodes.',
   },
   {
     id: 'Cleric',
-    name: 'Cleric (Mage Support)',
+    name: 'Harmonic Support & Triage',
     fundingGems: ['demantoid', 'moonstone'],
-    relatedEquipment: 'Funded by Demantoid (Trait) or Moonstone (Mana Reactor). Unlocks barrier/plating harmonization, thermal venting & aura Feat Nodes.',
+    relatedEquipment: 'Funded by Demantoid (Discipline) or Moonstone (Mana Reactor). Unlocks barrier/plating harmonization, thermal venting & aura Feat Nodes.',
   },
   {
     id: 'Wizard',
-    name: 'Wizard (Sorcerer Artillery)',
+    name: 'Beam & Wave Artillery',
     fundingGems: ['kyanite', 'rubellite'],
-    relatedEquipment: 'Funded by Kyanite (Trait) or Rubellite (Ether Reactor). Unlocks beam accuracy & Æther conduit Feat Nodes.',
+    relatedEquipment: 'Funded by Kyanite (Discipline) or Rubellite (Ether Reactor). Unlocks beam focus, prism refraction & Æther conduit Feat Nodes.',
   },
   {
     id: 'Rogue',
-    name: 'Rogue (Thief Assassin)',
+    name: 'Recon, Stealth & CQC',
     fundingGems: ['charoite', 'rubellite'],
-    relatedEquipment: 'Funded by Charoite (Trait) or Rubellite (Ether Reactor). Unlocks CQC gyros, evasion & stealth Feat Nodes.',
+    relatedEquipment: 'Funded by Charoite (Discipline) or Rubellite (Ether Reactor). Unlocks CQC gyros, precision marksman, evasion & stealth Feat Nodes.',
   },
 ];
 
@@ -249,6 +256,8 @@ export function normalizePilotSkills(
     if (existing && typeof existing === 'object') {
       base[def.id] = {
         ...base[def.id],
+        name: def.name,
+        relatedEquipment: def.relatedEquipment,
         level: Math.max(1, Math.min(20, Number(existing.level) || 1)),
         xp: Number(existing.xp) || 0,
         gemsInvested: Number(existing.gemsInvested) || 0,
@@ -258,7 +267,7 @@ export function normalizePilotSkills(
   return base;
 }
 
-// ─── LAYER 2: FRAME FEAT NODES (Specific Trait + Reactor Gem Sockets) ────────
+// ─── LAYER 2: 97 CANONICAL FRAME FEAT NODES (Tiers I–V + Knight's Oath) ──────
 
 export const FEAT_TIER_SKILL_THRESHOLDS: Record<FeatTier, number> = {
   I: 2,
@@ -268,187 +277,7 @@ export const FEAT_TIER_SKILL_THRESHOLDS: Record<FeatTier, number> = {
   V: 18,
 };
 
-export const FRAME_FEAT_CATALOG: FrameFeatDefinition[] = [
-  {
-    id: 'sys_servo_reinforcement_1',
-    name: 'System Feat I: Reinforced Hardpoint Servos',
-    tier: 'I',
-    kind: 'system',
-    requiredSkillId: 'Warrior',
-    requiredSkillLevel: 2,
-    gainDescription: '+1 Frame Load Capacity Step (Light → Medium, Medium → Heavy)',
-    costDescription: 'Sockets 1 Spinel + 1 Hematite (Retained in build, refunded on unsocket)',
-    gemSockets: [
-      { gemId: 'spinel', count: 1 },
-      { gemId: 'hematite', count: 1 },
-    ],
-    unlocksDescription: 'Unlocks Medium/Heavy weapon mounting without overload penalties',
-    loadStepUp: 1,
-  },
-  {
-    id: 'if_overclocked_actuator',
-    name: 'Interface Feat I: Overclocked Firing Actuator',
-    tier: 'I',
-    kind: 'interface',
-    requiredSkillId: 'Warrior',
-    requiredSkillLevel: 2,
-    gainDescription: '+15% Weapon Damage Output',
-    costDescription: '+15% Weapon Heat Generation (Static Budget Trade)',
-    gemSockets: [
-      { gemId: 'spinel', count: 1 },
-      { gemId: 'hematite', count: 1 },
-    ],
-    unlocksDescription: 'Unlocks high-heat frontline striker cadence',
-    modifiers: {
-      damageMult: 1.15,
-      heatGenMult: 1.15,
-    },
-  },
-  {
-    id: 'if_blade_gyros',
-    name: 'Interface Feat I: CQC Counter-Gyros',
-    tier: 'I',
-    kind: 'interface',
-    requiredSkillId: 'Rogue',
-    requiredSkillLevel: 2,
-    gainDescription: '+10% Walk & Boost Mobility Speed',
-    costDescription: '-10 Shield Max Capacity (Static Budget Trade)',
-    gemSockets: [
-      { gemId: 'charoite', count: 1 },
-      { gemId: 'rubellite', count: 1 },
-    ],
-    unlocksDescription: 'Unlocks rapid CQC ambush & thruster evasion profiling',
-    modifiers: {
-      moveSpeedMult: 1.1,
-      shieldCapDelta: -10,
-    },
-  },
-  {
-    id: 'sys_load_bearing_struts_2',
-    name: 'System Feat II: Load-Bearing Torsion Struts',
-    tier: 'II',
-    kind: 'system',
-    requiredSkillId: 'Marauder',
-    requiredSkillLevel: 5,
-    gainDescription: '+1 Frame Load Capacity Step (mounts Heavy/Superheavy gear without penalty)',
-    costDescription: 'Sockets 1 Carnelian + 1 Hematite (Retained in build)',
-    gemSockets: [
-      { gemId: 'carnelian', count: 1 },
-      { gemId: 'hematite', count: 1 },
-    ],
-    unlocksDescription: 'Unlocks Heavy/Superheavy artillery hardpoint clearance',
-    loadStepUp: 1,
-  },
-  {
-    id: 'if_capacitor_shunt',
-    name: 'Interface Feat II: Shield Capacitor Shunt',
-    tier: 'II',
-    kind: 'interface',
-    requiredSkillId: 'Guardian',
-    requiredSkillLevel: 5,
-    gainDescription: '+25 Shield Max Capacity',
-    costDescription: '-12% Walk & Boost Speed (Static Budget Trade)',
-    gemSockets: [
-      { gemId: 'titanite', count: 1 },
-      { gemId: 'moonstone', count: 1 },
-    ],
-    unlocksDescription: 'Unlocks vanguard aegis fortification & Presence soaking',
-    modifiers: {
-      shieldCapDelta: 25,
-      moveSpeedMult: 0.88,
-    },
-  },
-  {
-    id: 'if_gyro_counterweight',
-    name: 'Interface Feat II: Gyroscopic Counterweight',
-    tier: 'II',
-    kind: 'interface',
-    requiredSkillId: 'Wizard',
-    requiredSkillLevel: 5,
-    gainDescription: '+15% Projectile Accuracy & Stability',
-    costDescription: '+20% Weapon Swap Cooldown (5.0s → 6.0s)',
-    gemSockets: [
-      { gemId: 'kyanite', count: 1 },
-      { gemId: 'rubellite', count: 1 },
-    ],
-    unlocksDescription: 'Unlocks precision beam suppression & ranged mod stability',
-    modifiers: {
-      accuracyMult: 1.15,
-      swapTimeMult: 1.2,
-    },
-  },
-  {
-    id: 'if_thermal_bleed',
-    name: 'Interface Feat III: Thermal Bleed Louvers',
-    tier: 'III',
-    kind: 'interface',
-    requiredSkillId: 'Cleric',
-    requiredSkillLevel: 9,
-    gainDescription: '+35% Passive Heat Venting Rate',
-    costDescription: '-20 Armor Max Durability (Exposed Louvers)',
-    gemSockets: [
-      { gemId: 'demantoid', count: 1 },
-      { gemId: 'moonstone', count: 1 },
-    ],
-    unlocksDescription: 'Unlocks rapid reactor cooling for sustained support cycling',
-    modifiers: {
-      heatVentMult: 1.35,
-      armorDurabilityDelta: -20,
-    },
-  },
-  {
-    id: 'sys_superheavy_gantry_4',
-    name: 'System Feat IV: Superheavy Siege Gantry',
-    tier: 'IV',
-    kind: 'system',
-    requiredSkillId: 'Marauder',
-    requiredSkillLevel: 14,
-    gainDescription: '+1 Frame Load Capacity Step (unlocks Superheavy Ceiling on any Frame)',
-    costDescription: 'Sockets 2 Carnelian + 1 Hematite (Retained in build)',
-    gemSockets: [
-      { gemId: 'carnelian', count: 2 },
-      { gemId: 'hematite', count: 1 },
-    ],
-    unlocksDescription: 'Unlocks full Superheavy ordnance across any Trait Line frame',
-    loadStepUp: 1,
-  },
-  {
-    id: 'if_aether_synced_core',
-    name: 'Interface Feat V: Æther-Synced Core Conduit',
-    tier: 'V',
-    kind: 'interface',
-    requiredSkillId: 'Wizard',
-    requiredSkillLevel: 18,
-    gainDescription: '-25% Active Skill & Aux Cooldowns, -20% Weapon Swap Time',
-    costDescription: '+15% Weapon Heat Generation (Static Budget Trade)',
-    gemSockets: [
-      { gemId: 'kyanite', count: 2 },
-      { gemId: 'rubellite', count: 1 },
-    ],
-    unlocksDescription: 'Unlocks capstone Tier V rapid multi-weapon & Aux expression',
-    modifiers: {
-      cooldownMult: 0.75,
-      swapTimeMult: 0.8,
-      heatGenMult: 1.15,
-    },
-  },
-  {
-    id: 'knights_oath',
-    name: "Relic Feat: Knight's Oath (Three Knights Trial)",
-    tier: 'I',
-    kind: 'interface',
-    requiredSkillId: 'Guardian',
-    requiredSkillLevel: 1,
-    gainDescription: '+25% Permanent Bonus Damage vs. Camelot Enemies',
-    costDescription: 'Earned by defeating Percival, Tristan & Bors all at once (or sockets 1 Titanite + 1 Moonstone)',
-    gemSockets: [
-      { gemId: 'titanite', count: 1 },
-      { gemId: 'moonstone', count: 1 },
-    ],
-    unlocksDescription: 'Unlocks Belldor Sanctum knight-breaker resonance',
-    modifiers: {},
-  },
-];
+export const FRAME_FEAT_CATALOG: FrameFeatDefinition[] = CANONICAL_FRAME_FEAT_CATALOG;
 
 // ─── LAYER 3: EQUIPMENT SLOTS & GEM-GENERATED ACTION MODIFICATIONS ───────────
 
@@ -533,109 +362,16 @@ export function createStarterGemPouch(
   setCount('moonstone', 1);
   setCount('rubellite', 1);
   setCount('hematite', 1);
-  // 2 of the Pilot's Primary Trait Gem + 2 of the Pilot's Primary Reactor Gem
+  // 2 of the Pilot's Starting Kit Gem + 2 of the Pilot's Starting Reactor Gem
   setCount(traitGem, 2);
   setCount(reactorGem, 2);
 
   return Array.from(map.entries()).map(([itemId, count]) => ({ itemId, count }));
 }
 
-export interface ChassisHardwareItemDefinition {
-  id: string;
-  name: string;
-  slot: 'head' | 'arms' | 'plating';
-  subtype: string;
-  armorType?: 'Ablative' | 'Reactive' | 'Hardened' | 'Layered';
-  linkedActionId: string;
-  description: string;
-}
+export type ChassisHardwareItemDefinition = CanonicalHardwareItemDefinition;
 
-export const CHASSIS_HARDWARE_CATALOG: ChassisHardwareItemDefinition[] = [
-  {
-    id: 'hw_head_visor',
-    name: 'Mark-IV Sensor Visor',
-    slot: 'head',
-    subtype: 'Target Optics',
-    linkedActionId: 'mod_head_optic_scan',
-    description: 'Standard cockpit target-painting visor. Enables Optic Target Painter (+25% target damage taken).',
-  },
-  {
-    id: 'hw_head_rangefinder',
-    name: 'Ballistic Rangefinder Array',
-    slot: 'head',
-    subtype: 'Artillery Optics',
-    linkedActionId: 'mod_head_optic_scan',
-    description: 'Long-baseline telemetry array calibrated for ranged lock retention and submerged threat detection.',
-  },
-  {
-    id: 'hw_head_aether_crown',
-    name: 'Æther Resonance Diadem',
-    slot: 'head',
-    subtype: 'Resonance Optics',
-    linkedActionId: 'mod_head_optic_scan',
-    description: 'Sanctum phase-diadem that highlights bio-electric signatures and bog wurm burrows.',
-  },
-  {
-    id: 'hw_arms_vambraces',
-    name: 'Actuator Vambraces',
-    slot: 'arms',
-    subtype: 'Balanced Actuators',
-    linkedActionId: 'mod_arms_shock_grapple',
-    description: 'Standard hydraulic arm actuators with integrated Arc Tether Shot launcher.',
-  },
-  {
-    id: 'hw_arms_grappler',
-    name: 'Mag-Lock Shock Grappler',
-    slot: 'arms',
-    subtype: 'Tether Actuators',
-    linkedActionId: 'mod_arms_shock_grapple',
-    description: 'High-capacitance electromagnetic grapple gauntlets built to overload Energy Shields.',
-  },
-  {
-    id: 'hw_arms_servo',
-    name: 'Heavy Siege Servo-Gauntlets',
-    slot: 'arms',
-    subtype: 'Siege Actuators',
-    linkedActionId: 'mod_arms_shock_grapple',
-    description: 'Reinforced torsion-brace gauntlets engineered for heavy two-handed and paired stances.',
-  },
-  {
-    id: 'hw_plating_ablative',
-    name: 'Ablative Cuirass Plating',
-    slot: 'plating',
-    subtype: 'Ablative Armor',
-    armorType: 'Ablative',
-    linkedActionId: 'mod_torso_reactive_burst',
-    description: 'High-durability sacrificial ceramic plates with balanced threshold and rating.',
-  },
-  {
-    id: 'hw_plating_reactive',
-    name: 'Reactive Blast-Plate Cuirass',
-    slot: 'plating',
-    subtype: 'Reactive Armor',
-    armorType: 'Reactive',
-    linkedActionId: 'mod_torso_reactive_burst',
-    description: 'Explosive counter-charge torso armor that repels close-quarters attackers on burst.',
-  },
-  {
-    id: 'hw_plating_hardened',
-    name: 'Hardened Sanctum Carapace',
-    slot: 'plating',
-    subtype: 'Hardened Armor',
-    armorType: 'Hardened',
-    linkedActionId: 'mod_torso_reactive_burst',
-    description: 'Dense cathedral-forged alloy cuirass with high damage threshold against light fire.',
-  },
-  {
-    id: 'hw_plating_layered',
-    name: 'Layered Weave Laminate',
-    slot: 'plating',
-    subtype: 'Layered Armor',
-    armorType: 'Layered',
-    linkedActionId: 'mod_torso_reactive_burst',
-    description: 'Flexible composite weave plating favored by agile frames for rapid heat dissipation.',
-  },
-];
+export const CHASSIS_HARDWARE_CATALOG: ChassisHardwareItemDefinition[] = CANONICAL_HARDWARE_CATALOG;
 
 export function getWeaponSubtypeInfo(weaponId: string): {
   equipmentType: 'Weapon' | 'Auxiliary';
@@ -644,21 +380,63 @@ export function getWeaponSubtypeInfo(weaponId: string): {
   switch (weaponId) {
     case 'long_sword':
     case 'khopesh':
+    case 's2_turbine_khopesh':
       return { equipmentType: 'Weapon', subtype: 'Melee · Blade' };
+    case 'tig_edge':
+      return { equipmentType: 'Weapon', subtype: 'Melee · Energy Blade' };
+    case 's4_whisper_blade':
+    case 's6_phantom_edge':
+      return { equipmentType: 'Weapon', subtype: 'Melee · Stealth Dagger / Knife' };
+    case 'grace_edge':
+      return { equipmentType: 'Weapon', subtype: 'Melee · Consecrated Blade' };
     case 'mace':
     case 'hand_axe':
-      return { equipmentType: 'Weapon', subtype: 'Melee · Blunt / Cleave' };
+    case 'siegebreaker':
+      return { equipmentType: 'Weapon', subtype: 'Melee · Heavy Battle Axe / Blunt' };
     case 'short_spear':
     case 'avalon_siege_lance':
-      return { equipmentType: 'Weapon', subtype: 'Melee · Polearm / Lance' };
+    case 'ls900_swordspear':
+    case 'hl220_lightburst_lance':
+    case 'wz200_manacore_staff':
+    case 'hallowed_scepter':
+      return { equipmentType: 'Weapon', subtype: 'Melee / Hybrid · Polearm & Lance' };
     case 'great_bow':
       return { equipmentType: 'Weapon', subtype: 'Ranged · 2H Bow' };
     case 'gladius_boltcaster':
-      return { equipmentType: 'Weapon', subtype: 'Ranged · Boltcaster' };
+    case 'n55_gladius':
+      return { equipmentType: 'Weapon', subtype: 'Ranged · Bolter' };
+    case 'm300_hasta':
+      return { equipmentType: 'Weapon', subtype: 'Ranged · Polybolos' };
+    case 'm450_pilum':
+      return { equipmentType: 'Weapon', subtype: 'Ranged · Heavy Ballista' };
+    case 'b25_brushcutter':
+      return { equipmentType: 'Weapon', subtype: 'Ranged · Rotary Gatling' };
+    case 'm350_mauler':
+      return { equipmentType: 'Weapon', subtype: 'Ranged · Grenade Cannon' };
+    case 'ln1200_avalanche':
+    case 'lg950_tomahawk':
+      return { equipmentType: 'Weapon', subtype: 'Ranged · Rocket & Missile System' };
+    case 'rs450_radiant_projector':
+    case 'wz800_arclight_cannon':
+    case 'wz650_prism_lance':
+    case 'cl500_absolution':
+      return { equipmentType: 'Weapon', subtype: 'Ranged · Beam Projector / Rifle' };
+    case 'wz450_sparkstrike':
+    case 'arc_conductor':
+    case 'cl350_litany':
+      return { equipmentType: 'Weapon', subtype: 'Ranged · Pulse Carbine / Pistol' };
+    case 'cl700_sanctifier':
+      return { equipmentType: 'Weapon', subtype: 'Ranged · Adaptive Hybrid Rifle' };
+    case 'sv12_viper':
+    case 'sv18_serpent':
+      return { equipmentType: 'Weapon', subtype: 'Ranged · SMG / Suppressed Carbine' };
+    case 'sr440_shadowfang':
+      return { equipmentType: 'Weapon', subtype: 'Ranged · Marksman Rifle' };
     case 'buckler_shield':
     case 'heater_shield':
     case 'pavise_shield':
-      return { equipmentType: 'Auxiliary', subtype: 'Auxiliary · Shield' };
+    case 'aegis_charge_buckler':
+      return { equipmentType: 'Auxiliary', subtype: 'Auxiliary · Physical Shield' };
     case 'quiver':
       return { equipmentType: 'Auxiliary', subtype: 'Auxiliary · Quiver' };
     case 'aether_catalyst':
@@ -668,8 +446,91 @@ export function getWeaponSubtypeInfo(weaponId: string): {
   }
 }
 
+const DEFAULT_CANONICAL_HARDWARE_BY_KIT: Record<
+  TraitLine,
+  {
+    head: string;
+    sensoryA: string;
+    sensoryB: string;
+    arms: string;
+    legs: string;
+    plating: string;
+    reactorCore: string;
+    aux3: string;
+    aux4: string;
+  }
+> = {
+  Warrior: {
+    head: 'Crystal Dynamics EmberSight Suite',
+    sensoryA: 'Federated T7 Sensor Array',
+    sensoryB: 'Federated EchoPulse Scanner',
+    arms: 'Bastion Hydraulic Gauntlets',
+    legs: 'Bastion Turbine Striders',
+    plating: 'BWI Bastion Coreplate',
+    reactorCore: 'PNSY Alchemic Turbine Core Mk.IV',
+    aux3: 'PNSY R-11 Rockweiler Buckler',
+    aux4: 'PNSY UF-9 Rough Rider Booster',
+  },
+  Marauder: {
+    head: 'BE Foresight Targeting Array',
+    sensoryA: 'NDS ArcPulse Sensor Grid',
+    sensoryB: 'NDS EchoStorm Threat Analyzer',
+    arms: 'Fortress Recoil-Lock Bracers',
+    legs: 'Fortress Outrigger Treads',
+    plating: 'Fire & Ice Fortress Coreplate',
+    reactorCore: 'RAD Battleheart Ether Reactor Mk.V',
+    aux3: 'RAD R-22 Bastion Kinetic Recycling',
+    aux4: 'RAD UF-12 Ether Vapor Launcher',
+  },
+  Guardian: {
+    head: 'Aegis Radiant Targeting Array',
+    sensoryA: 'Solbright Flux Sensor Grid',
+    sensoryB: 'Aegis Lightveil Analyzer',
+    arms: 'Dawnforge Aegis Gauntlets',
+    legs: 'Dawnforge Stabilizer Greaves',
+    plating: 'Dawnforge Guardian Coreplate',
+    reactorCore: 'TI Manaheart Reactor Mk.IV',
+    aux3: 'TI Aegis Hard-Light Shield',
+    aux4: 'TI Radiant Sphere Generator',
+  },
+  Rogue: {
+    head: 'Veilsight Targeting Suite',
+    sensoryA: 'VX Phantom Network Sensor',
+    sensoryB: 'VX Echo-Null Scanner',
+    arms: 'Shadowcraft Micro-Servo Grips',
+    legs: 'Shadowcraft Silent-Tread Actuators',
+    plating: 'Shadowcraft Recon Coreplate',
+    reactorCore: 'VX Phantom Core Mk.III',
+    aux3: 'VX Eclipse Cloak Generator',
+    aux4: 'VX Phase-Shift Module',
+  },
+  Wizard: {
+    head: 'ARC Omniscient Array',
+    sensoryA: 'ARC Manaflow Analyzer',
+    sensoryB: 'ARC Convergence Predictor',
+    arms: 'Arcanum Crystal-Focus Vambraces',
+    legs: 'Arcanum Grounding Struts',
+    plating: 'Arcanum Heavy Projector Coreplate',
+    reactorCore: 'ARC Infinite Well Reactor Mk.VI',
+    aux3: 'ARC Prismatic Barrier',
+    aux4: 'ARC Feedback Loop Capacitor',
+  },
+  Cleric: {
+    head: 'SANC Providence Scanner',
+    sensoryA: 'SANC Lifeline Monitor',
+    sensoryB: 'SANC Harmonic Resonance Array',
+    arms: 'Sanctum Conduit Bracers',
+    legs: 'Sanctum Balanced Gyro-Greaves',
+    plating: 'Sanctum Support Coreplate',
+    reactorCore: 'SANC Heartwell Reactor Mk.IV',
+    aux3: 'SANC Aegis Restoration Field',
+    aux4: 'SANC Martyrdom Plating',
+  },
+};
+
 export function createInitialEquipmentSlots(traitLine: TraitLine = 'Warrior'): OrionEquipmentSlots {
   const trait = TRAIT_REGISTRY[traitLine] || TRAIT_REGISTRY.Warrior;
+  const hw = DEFAULT_CANONICAL_HARDWARE_BY_KIT[traitLine] || DEFAULT_CANONICAL_HARDWARE_BY_KIT.Warrior;
   const w1 = trait.startingWeapons?.[0] || 'long_sword';
   const w2 = trait.startingWeapons?.[1] || null;
   const isBowMain = w1 === 'great_bow';
@@ -684,9 +545,15 @@ export function createInitialEquipmentSlots(traitLine: TraitLine = 'Warrior'): O
     slot3: isBowMain ? w2 : 'repair_kit',
     mainGrip: hasSide ? '1h' : '2h',
     ownedWeaponCounts: initialCounts,
-    head: `${trait.frameModel || 'Mark-IV'} Sensor Visor`,
-    arms: `${trait.frameModel || 'Mark-IV'} Actuator Vambraces`,
-    plating: `${trait.frameModel || 'Mark-IV'} ${trait.baseArmor.type} Plating`,
+    head: hw.head,
+    arms: hw.arms,
+    legs: hw.legs,
+    plating: hw.plating,
+    reactorCore: hw.reactorCore,
+    sensoryA: hw.sensoryA,
+    sensoryB: hw.sensoryB,
+    aux3: hw.aux3,
+    aux4: hw.aux4,
     utility: DEFAULT_UTILITY_BY_TRAIT[traitLine] || 'utility_ichor_surge',
 
     weaponSet1: [w1, null],
@@ -699,11 +566,11 @@ export function createInitialEquipmentSlots(traitLine: TraitLine = 'Warrior'): O
     ],
     belt: ['repair_kit', 'grail_water', 'spinel_flask', 'kyanite_flask'],
     armor: {
-      head: `${trait.frameModel || 'Mark-IV'} Sensor Visor`,
-      torso: `${trait.frameModel || 'Mark-IV'} ${trait.baseArmor.type} Plating`,
-      arms: `${trait.frameModel || 'Mark-IV'} Actuator Vambraces`,
-      legs: `${trait.frameModel || 'Mark-IV'} Thruster Greaves`,
-      generator: `${trait.reactor} Core Generator`,
+      head: hw.head,
+      torso: hw.plating,
+      arms: hw.arms,
+      legs: hw.legs,
+      generator: hw.reactorCore,
     },
     installedMods: {},
     unlockedMods: [],
@@ -977,7 +844,9 @@ export function getWeaponActiveGemId(
     return explicit;
   }
 
+  const subtypeInfo = getWeaponSubtypeInfo(weaponId);
   const isRanged =
+    subtypeInfo.subtype.startsWith('Ranged') ||
     weaponId === 'gladius_boltcaster' ||
     weaponId === 'great_bow' ||
     weaponId === 'quiver' ||
@@ -1252,6 +1121,117 @@ export function computeUnlockedFeatTiers(
   return unlocked;
 }
 
+// [ORION-ANCHOR: PROG-FEAT-SYNERGY]
+/**
+ * Evaluates whether the pilot's currently equipped loadout satisfies a Feat's hardware requirement.
+ * In classless Project Orion, feats are gated ONLY by Pilot Skill Tier + Gemstones + Hardware/Weapon family,
+ * never by player class.
+ */
+export function doesPilotMeetFeatEquipmentRequirement(
+  state: OrionState,
+  feat: FrameFeatDefinition
+): { met: boolean; reason: string } {
+  const req = (feat.requiredEquipment || '').trim();
+  if (!req || state.bypassProgressionGates) {
+    return { met: true, reason: req || 'Any Loadout' };
+  }
+
+  const reqLower = req.toLowerCase();
+  if (
+    reqLower.includes('any coreplate') ||
+    reqLower.includes('any core frame') ||
+    reqLower.includes('any reactor') ||
+    reqLower.includes('any weapon') ||
+    reqLower.includes('any melee') ||
+    reqLower.includes('any ranged') ||
+    reqLower.includes('full loadout') ||
+    reqLower.includes('three knights trial')
+  ) {
+    return { met: true, reason: req };
+  }
+
+  const eq = state.equipmentSlots;
+  const equippedStrings = [
+    eq?.slot1 || '',
+    eq?.slot2 || '',
+    eq?.slot3 || '',
+    ...(state.equippedWeapons || []),
+    eq?.head || '',
+    eq?.arms || '',
+    eq?.legs || '',
+    eq?.plating || '',
+    eq?.reactorCore || '',
+    eq?.sensoryA || '',
+    eq?.sensoryB || '',
+    eq?.aux3 || '',
+    eq?.aux4 || '',
+    eq?.utility || '',
+  ]
+    .filter(Boolean)
+    .map((s) => s.toLowerCase().replace(/_/g, ' '));
+
+  if (reqLower.includes('shield')) {
+    const hasShield = equippedStrings.some(
+      (s) =>
+        s.includes('shield') ||
+        s.includes('buckler') ||
+        s.includes('pavise') ||
+        s.includes('heater') ||
+        s.includes('barrier') ||
+        s.includes('sphere')
+    );
+    return {
+      met: hasShield,
+      reason: hasShield ? req : `Equip ${req}`,
+    };
+  }
+
+  if (reqLower.includes('dual-wield')) {
+    const isDual = getEffectiveMainGrip(state) === '1h' && Boolean(eq?.slot2);
+    return {
+      met: isDual,
+      reason: isDual ? req : 'Requires 1H + Side Hand Dual-Wield Stance',
+    };
+  }
+
+  // Split by "/" or "+" and check if any token matches an equipped item or weapon family
+  const alternatives = reqLower.split(/\s*\/\s*/);
+  const matched = alternatives.some((alt) => {
+    const cleanAlt = alt
+      .replace(/\(.*?\)/g, '')
+      .replace(/any\s+/g, '')
+      .trim();
+    if (!cleanAlt) return true;
+    const tokens = cleanAlt
+      .split(/[\s-]+/)
+      .filter((t) => t.length >= 3 && !['the', 'and', 'with', 'system', 'module'].includes(t));
+    if (tokens.length === 0) return true;
+    return equippedStrings.some((eqStr) =>
+      tokens.some((tok) => eqStr.includes(tok))
+    );
+  });
+
+  // Also allow socketing if the pilot has unlocked the weapon in their satchel
+  const unlockedList = (eq?.unlockedEquipment || []).map((u) =>
+    u.toLowerCase().replace(/_/g, ' ')
+  );
+  const unlockedMatched = alternatives.some((alt) => {
+    const tokens = alt
+      .split(/[\s-]+/)
+      .filter((t) => t.length >= 4);
+    return unlockedList.some((uStr) => tokens.some((tok) => uStr.includes(tok)));
+  });
+
+  if (matched || unlockedMatched) {
+    return { met: true, reason: req };
+  }
+
+  return {
+    met: false,
+    reason: `Hardware Synergy: ${req}`,
+  };
+}
+
 export function isFeatNodeAvailable(
   state: OrionState,
   feat: FrameFeatDefinition
@@ -1336,7 +1316,7 @@ export function getRetainedBuildGemCounts(state: OrionState): Record<GemId, numb
 
 /**
  * GEM USE 1 — PILOT SKILL LEVEL (Gems Permanently Consumed):
- * Consumes 1 assigned Trait Gem or Reactor Gem from inventory to raise a Trait Line Pilot Skill level (1–20).
+ * Consumes 1 assigned Discipline Gem or Reactor Gem from inventory to raise a Combat Discipline Skill level (1–20).
  * Unlocking skill levels opens the 5 Feat Tiers (I–V) and Feat Node availability.
  */
 export function fundPilotSkillWithGem(
@@ -1364,7 +1344,7 @@ export function fundPilotSkillWithGem(
   const validGems = TRAIT_FUNDING_GEMS[skillId] || [];
   if (!validGems.includes(gemId)) {
     ctx?.say(
-      `${GEMSTONE_REGISTRY[gemId]?.name.toUpperCase() || gemId} DOES NOT FUND ${skillId.toUpperCase()}`
+      `${GEMSTONE_REGISTRY[gemId]?.name.toUpperCase() || gemId} DOES NOT FUND ${skill.name.toUpperCase()}`
     );
     return false;
   }
@@ -1386,11 +1366,11 @@ export function fundPilotSkillWithGem(
 
   if (newlyOpenedTier) {
     ctx?.say(
-      `CONSUMED 1 ${gemName.toUpperCase()} → ${skillId.toUpperCase()} SKILL LV ${skill.level} · FEAT TIER ${newlyOpenedTier} UNLOCKED!`
+      `CONSUMED 1 ${gemName.toUpperCase()} → ${skill.name.toUpperCase()} LV ${skill.level} · FEAT TIER ${newlyOpenedTier} UNLOCKED!`
     );
   } else {
     ctx?.say(
-      `CONSUMED 1 ${gemName.toUpperCase()} → ${skillId.toUpperCase()} PILOT SKILL LV ${skill.level}/20`
+      `CONSUMED 1 ${gemName.toUpperCase()} → ${skill.name.toUpperCase()} LV ${skill.level}/20`
     );
   }
   syncPostTutorialFrameLevel(state);
@@ -1399,7 +1379,7 @@ export function fundPilotSkillWithGem(
 
 /**
  * GEM USE 2 — FEAT NODE SOCKETING (Gems Removed from Inventory, Retained in Build, Refunded on Unsocket):
- * Installing the required Trait + Reactor Gems unlocks and activates the Feat Node.
+ * Installing the required Discipline + Reactor Gems unlocks and activates the Feat Node.
  * Unsocketing the Feat Node returns all retained gems back to the player's inventory.
  */
 export function toggleFeatNodeGemSocket(
@@ -1446,13 +1426,15 @@ export function toggleFeatNodeGemSocket(
 
   // Socket: check skill/tier availability first
   if (!isFeatNodeAvailable(state, feat)) {
+    const skillDef = PILOT_SKILL_DEFINITIONS.find((s) => s.id === feat.requiredSkillId);
+    const skillLabel = skillDef ? skillDef.name.toUpperCase() : 'PILOT SKILL';
     ctx?.say(
-      `FEAT NODE LOCKED: REQUIRES ${feat.requiredSkillId.toUpperCase()} SKILL LV ${feat.requiredSkillLevel} (TIER ${feat.tier})`
+      `FEAT NODE LOCKED: REQUIRES ${skillLabel} LV ${feat.requiredSkillLevel} (TIER ${feat.tier})`
     );
     return false;
   }
 
-  // Check if player has all required Trait + Reactor Gems in inventory
+  // Check if player has all required Gems in inventory
   const missing: string[] = [];
   for (const req of feat.gemSockets) {
     const have = getInventoryGemCount(state, req.gemId);
@@ -1478,8 +1460,9 @@ export function toggleFeatNodeGemSocket(
 
   state.socketedFeatGems[feat.id] = socketRecord;
   state.equippedFeats = [...state.equippedFeats, feat.id];
+  const hwStatus = doesPilotMeetFeatEquipmentRequirement(state, feat);
   ctx?.say(
-    `SOCKETED ${socketedLabels.join(' + ').toUpperCase()} (RETAINED IN BUILD) → ${feat.name.toUpperCase()} ACTIVE`
+    `SOCKETED ${socketedLabels.join(' + ').toUpperCase()} → ${feat.name.toUpperCase()} ACTIVE${hwStatus.met ? '' : ` (${hwStatus.reason.toUpperCase()})`}`
   );
   syncPostTutorialFrameLevel(state);
   return true;

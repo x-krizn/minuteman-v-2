@@ -407,7 +407,7 @@ export const OrionHud: React.FC = () => {
               </span>
             </div>
             <div className="text-[8.5px] text-[#94a3b8] tracking-wide mt-0.5">
-              D-PAD / CLICK: SELECT TRAIT LINE · DEPLOY NEW PILOT OR CONTINUE
+              D-PAD / CLICK: SELECT STARTING LOADOUT KIT · DEPLOY NEW PILOT OR CONTINUE
             </div>
           </div>
 
@@ -471,7 +471,7 @@ export const OrionHud: React.FC = () => {
               }}
               className="px-2.5 py-1 bg-[#0284c7] hover:bg-[#0369a1] text-white border border-[#38bdf8] rounded-xs text-[9.5px] font-bold cursor-pointer"
             >
-              ▶ CONTINUE: {roster[0].pilotName.toUpperCase()} ({roster[0].traitLine} LV.{roster[0].level})
+              ▶ CONTINUE: {roster[0].pilotName.toUpperCase()} ({roster[0].frameModel} LV.{roster[0].level})
             </button>
           )}
         </div>
@@ -479,10 +479,10 @@ export const OrionHud: React.FC = () => {
         {/* Main Content Area */}
         {titleTab === 'new' ? (
           <div className="flex-1 flex flex-col justify-between space-y-2 text-[10px]">
-            {/* Step 1: Trait Line Selection */}
+            {/* Step 1: Starting Loadout Kit Selection */}
             <div>
               <div className="text-[9px] font-bold text-[#94a3b8] mb-1">
-                STEP 1 — SELECT TRAIT LINE & MECH FRAME
+                STEP 1 — SELECT STARTING LOADOUT KIT & MECH FRAME (CLASSLESS — ALL GEAR & FEATS OPEN)
               </div>
               <div className="grid grid-cols-3 gap-1.5">
                 {TRAIT_LIST.map((t) => {
@@ -649,6 +649,7 @@ export const OrionHud: React.FC = () => {
                         : entry.areaId === 'm01_orc_encampment'
                           ? 'Orc Encampment'
                           : 'The Bog';
+                    const kitProfile = TRAIT_REGISTRY[entry.traitLine];
                     return (
                       <div
                         key={entry.pilotId}
@@ -660,7 +661,7 @@ export const OrionHud: React.FC = () => {
                               {entry.pilotName}
                             </span>
                             <span className="text-[8.5px] px-1.5 py-0.2 bg-[#090d16] text-[#38bdf8] border border-[#1e293b] rounded-xs font-bold">
-                              LV.{entry.level} {entry.traitLine.toUpperCase()}
+                              LV.{entry.level} {(kitProfile?.name || entry.frameModel).toUpperCase()}
                             </span>
                             <span className="text-[8px] text-[#94a3b8]">
                               [{entry.frameModel} · {entry.reactor}]

@@ -198,6 +198,7 @@ export interface BiomeTileAssets {
   lightColor: string;
 }
 
+// [ORION-ANCHOR: TYPES-WORLD-HIERARCHY]
 export type ClusterTerrainType = 'dirt' | 'grass' | 'aether' | 'ruins' | 'mire';
 
 export interface BiomeDefinition {
@@ -208,6 +209,8 @@ export interface BiomeDefinition {
   description: string;
   /** Maps tile characters (e.g. '.', ',', '~', ':', '#') to TileDefinition IDs for rooms in this biome */
   tileTypes: Record<string, string>;
+  /** Optional biome-scoped enemy spawn character overrides (maps ASCII char -> EnemyWikiDefinition.type) */
+  enemySpawnTypes?: Record<string, string>;
   /** Physics and environmental rules supplied by this biome to its rooms */
   tileRules: BiomeTileRules;
   /** Visual tile asset colors and lighting supplied by this biome to its rooms */
@@ -546,6 +549,14 @@ export interface PilotSkillProgress {
   fundingGems?: GemId[];
 }
 
+export type FeatSynergyCategory =
+  | 'Ballistics & Ordnance'
+  | 'Melee & CQC'
+  | 'Coreplate & Defense'
+  | 'Reactor & Thermal'
+  | 'Mobility & Stealth'
+  | 'Optics & Support';
+
 export interface FrameFeatDefinition {
   id: string;
   name: string;
@@ -553,9 +564,13 @@ export interface FrameFeatDefinition {
   kind: FeatKind;
   requiredSkillId: PilotSkillId;
   requiredSkillLevel: number;
+  /** Functional hardware/weapon synergy category for classless UI filtering */
+  synergyCategory?: FeatSynergyCategory;
+  /** Canonical Weapon Family or Hardware prerequisite (e.g. 'Bolter', 'Energy Shield', 'Heavy Coreplate') — never restricted by class */
+  requiredEquipment?: string;
   gainDescription: string;
   costDescription: string;
-  /** Specific Trait + Reactor Gem Socket requirements (retained in build, refunded on unsocket) */
+  /** Specific Gem Socket requirements (retained in build, refunded on unsocket) */
   gemSockets: Array<{ gemId: GemId; count: number }>;
   /** Equipment or mod capability unlocked by this feat */
   unlocksDescription?: string;
@@ -614,11 +629,17 @@ export interface OrionEquipmentSlots {
   mainGrip?: WeaponGripMode;
   /** Tracks how many separate instances of each weapon ID the pilot owns (Paired stance requires 2 separate items). */
   ownedWeaponCounts?: Record<string, number>;
-  /** Simplified Mech Hardware Quartet */
+  /** Mech Hardware & Tactical Systems */
   head: string | null;
   arms: string | null;
   plating: string | null;
   utility: string | null;
+  legs?: string | null;
+  reactorCore?: string | null;
+  sensoryA?: string | null;
+  sensoryB?: string | null;
+  aux3?: string | null;
+  aux4?: string | null;
 
   /** Backward-compatible aliases for saves and legacy systems */
   weaponSet1?: [string, string | null];
@@ -649,7 +670,7 @@ export interface LoadPenaltySummary {
   label: string;
 }
 
-// Trait Line Wiki Definition
+// Starting Loadout Kit Definition (Internal TraitLine id preserved for save compatibility)
 export interface TraitLineWikiDefinition {
   id: TraitLine;
   name: string;
@@ -657,7 +678,7 @@ export interface TraitLineWikiDefinition {
   frameModel?: string;
   /** Canonical base weight / load capacity class ('light' | 'medium' | 'heavy' | 'superheavy') */
   weightClass?: FrameLoadCapacity;
-  /** Class default utility sustain item unlocked at Level 6 */
+  /** Default tactical utility sustain item unlocked at Level 6 */
   defaultUtilityItem?: string;
   reactor: ReactorFamily;
   defaultDamageStyle: DamageType;
@@ -699,6 +720,20 @@ export interface WeaponDefinition {
   id: string;
   name: string;
   class: string;
+  /** Canonical weapon family classification (e.g. 'Bolter', 'Polybolos', 'Ballista', 'Beam Projector', 'Hybrid Rifle') */
+  weaponClass?: string;
+  /** Canonical active skill count (e.g. 3 or 4) */
+  skillCount?: number;
+  /** Canonical loadout slot affinity (e.g. ['Weapon 1', 'Weapon 2'] or ['Aux 1', 'Aux 2']) */
+  loadoutSlots?: string[];
+  /** Adaptive damage types for hybrid weapons (e.g. ['Beam', 'Pierce'] on CL-700 Sanctifier) */
+  adaptiveDamageTypes?: [DamageType, DamageType];
+  /** Support pulse effect on hit / sustained fire / crit (e.g. shield or armor restoration) */
+  supportPulseOnHit?: {
+    shieldRestore?: number;
+    armorRestore?: number;
+    heatVent?: number;
+  };
   /** Archetype role ('melee' | 'ranged' | 'shield' | 'quiver' | 'catalyst') */
   equipmentRole?: 'melee' | 'ranged' | 'shield' | 'quiver' | 'catalyst';
   /** Weapon handing classification ('1-hand' | '2-hand' | 'off-hand-only' | 'buff-accessory') */

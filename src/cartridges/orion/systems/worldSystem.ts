@@ -117,6 +117,7 @@ interface KeyNodeRouteDescriptor {
   isDirectEndNode?: boolean;
 }
 
+// [ORION-ANCHOR: WORLD-KEY-ROUTES]
 const KEY_NODE_ROUTES: Record<string, Partial<Record<AetherCardinalDir, KeyNodeRouteDescriptor>>> = {
   '-3,0': {
     E: { targetKeyCoord: '-2,0', routeTotal: 0 },
@@ -184,6 +185,7 @@ const KEY_NODE_ROUTES: Record<string, Partial<Record<AetherCardinalDir, KeyNodeR
   },
 };
 
+// [ORION-ANCHOR: U00-ZONE-SEALS]
 function getUndefinedZoneSealReason(coordOrNodeId: string): string | null {
   const meta = ORION_ROOM_METADATA[coordOrNodeId];
   if (!meta) return null;
@@ -327,6 +329,7 @@ export function carveRoomCardinalDoors(
   return matrix.map((r) => r.join(''));
 }
 
+// [ORION-ANCHOR: WORLD-COMPOSER-INIT]
 function assembleNestedWorld(): void {
   for (const [coord, localRoom] of Object.entries(LOCAL_ROOM_REGISTRY)) {
     const areaDef = getAreaDefinition(localRoom.areaId);
@@ -458,6 +461,7 @@ function assembleNestedWorld(): void {
 
 assembleNestedWorld();
 
+// [ORION-ANCHOR: AETHER-FOG-TOPOLOGY]
 // ─── 2. AETHER FOG 5-NODE GRAPH ENGINE (KEY, GENERAL, SIDE, LOOP, END) ───────
 
 function deterministicHash(seed: number, counter: number, salt: number = 0): number {
@@ -1662,6 +1666,7 @@ export function clearAetherFogOnBossDefeat(
   notifyOrionStateChange();
 }
 
+// [ORION-ANCHOR: ROOM-TRANSITION-GATE]
 export function transitionViaAetherDoor(
   rooms: Record<string, string[]>,
   state: OrionState,
@@ -2056,6 +2061,7 @@ export function getRoomWorldInfo(state: OrionState): {
   };
 }
 
+// [ORION-ANCHOR: WAYSTATION-WAYGATE-TRAVEL]
 export function fastTravelToWaystation(
   rooms: Record<string, string[]>,
   state: OrionState,

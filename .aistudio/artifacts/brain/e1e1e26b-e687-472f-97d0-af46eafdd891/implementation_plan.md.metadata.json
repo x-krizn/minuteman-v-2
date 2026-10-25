@@ -1,6 +1,6 @@
 {
-  "summary":  "Updated implementation plan incorporating multi-room depth tiers (d rooms at depth d), unlocked max-depth boss rooms, 1/(clvl+1) boss spawn frequency at max depth, and fog-clearing return on boss defeat.",
-  "updatedAt":  "2026-10-25T00:08:28.485430959Z",
+  "summary":  "Housekeeping, Extensibility & Authoring Guide Plan for Project Orion prior to the Game World expansion, introducing grep-friendly [ORION-ANCHOR: ID] comment blocks, a centralized ASCII Tile & Spawn Character Registry, world-composer cleanup, and an updated v0.8 Classless Authoring Guide.",
+  "updatedAt":  "2026-10-25T11:33:00.020548246Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

@@ -5,8 +5,9 @@
 
 import { soundSystem } from '../../../engine/core/soundSystem';
 import { GRAVITY, TILE_SIZE } from '../constants';
-import { CHAR_TO_ENEMY_TYPE, getEnemyDefinition } from '../database/enemies';
+import { getEnemyDefinition } from '../database/enemies';
 import { getItemDefinition } from '../database/items';
+import { resolveRoomEnemyTypeAtChar } from '../database/world';
 import {
   getWeaponGemCombatModifiers,
   syncPostTutorialFrameLevel,
@@ -126,6 +127,7 @@ export function spawnEnemyByType(
   return entity;
 }
 
+// [ORION-ANCHOR: ENTITY-SPAWN-ROOM]
 export function spawnRoomEnemies(
   rooms: Record<string, string[]>,
   state: OrionState
@@ -150,7 +152,7 @@ export function spawnRoomEnemies(
   for (let y = 0; y < room.length; y++) {
     for (let x = 0; x < room[y].length; x++) {
       const char = room[y][x];
-      const type = CHAR_TO_ENEMY_TYPE[char];
+      const type = resolveRoomEnemyTypeAtChar(char, state.biomeId);
       if (!type) continue;
 
       const def = getEnemyDefinition(type);

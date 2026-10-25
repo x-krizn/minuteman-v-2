@@ -860,6 +860,7 @@ export interface BakedBiomeClusterCatalog {
 
 let cachedCatalog: BakedBiomeClusterCatalog | null = null;
 
+// [ORION-ANCHOR: RENDER-CLUSTER-BAKE]
 export function bakeBiomeClusterTileset(
   baseTiles?: Partial<BasicFourTilesInput>,
   modes?: Partial<Record<ClusterTerrainType, '4x4' | '2x2'>>
@@ -2491,6 +2492,7 @@ export function drawBiomeWeatherLayer(
   g.restore();
 }
 
+// [ORION-ANCHOR: RENDER-POST-PROCESS]
 export function drawDynamicLightingAndBloomPass(
   g: CanvasRenderingContext2D,
   room: string[] | undefined,

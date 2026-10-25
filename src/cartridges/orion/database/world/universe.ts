@@ -5,6 +5,7 @@
 
 import { UniverseWorldDefinition } from '../../types';
 
+// [ORION-ANCHOR: U00-UNIVERSE-CATALOG]
 /**
  * u00 Universe Canonical 20-World Catalog (`worlds.md §1, LOCKED`)
  *

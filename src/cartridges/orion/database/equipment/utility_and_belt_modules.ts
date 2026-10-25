@@ -6,13 +6,15 @@
 import { OrionActionDescriptor, TraitLine } from '../../types';
 
 /**
- * Class Utility Catalog (§4.2 Utility Slot — Action 6, unlocked at Level 6: Border Town Complete).
- * Each Trait Line starts with its signature Class Utility item, and pilots can also re-slot utilities.
+ * Tactical Utility Catalog (§4.2 Utility Slot — Action 6, unlocked at Level 6: Border Town Complete).
+ * Any pilot can equip any Tactical Utility system regardless of starting kit.
  */
 export interface ClassUtilityItemDefinition {
   id: string;
+  canonicalId?: string;
   name: string;
   shortLabel: string;
+  utilityType: string;
   traitLine: TraitLine;
   frameModel: string;
   description: string;
@@ -30,12 +32,14 @@ export interface ClassUtilityItemDefinition {
 export const CLASS_UTILITY_CATALOG: ClassUtilityItemDefinition[] = [
   {
     id: 'utility_ichor_surge',
-    name: 'Ichor Field Injector',
-    shortLabel: 'ICHOR SURGE',
+    canonicalId: 'utility_d0g_repair_drone',
+    name: 'PNSY D-0g Repair Drone',
+    shortLabel: 'D-0G DRONE',
+    utilityType: 'Utility · Repair Drone',
     traitLine: 'Warrior',
     frameModel: 'PNSY W416',
     description:
-      'PNSY W416 Class Utility (Action 6): Injects pressurized ichor to restore +35 Layer 2 Armor Durability, +15 Shield Capacity, and surge Overdrive for 3.5s.',
+      'Bay-launched autonomous repair drone (Action 6): Restores +35 Layer 2 Armor Durability, +15 Shield Capacity, and engages Overdrive servos for 3.5s.',
     tellDurationSec: 0.14,
     actionDurationSec: 0.25,
     cooldownSec: 9.0,
@@ -47,12 +51,14 @@ export const CLASS_UTILITY_CATALOG: ClassUtilityItemDefinition[] = [
   },
   {
     id: 'utility_siege_brace',
-    name: 'RAD Siege Plating Autoweld',
-    shortLabel: 'SIEGE AUTOWELD',
+    canonicalId: 'utility_r463_fathomless',
+    name: 'RAD R463 Fathomless System',
+    shortLabel: 'FATHOMLESS SYS',
+    utilityType: 'Self-Repair · Subsystem',
     traitLine: 'Marauder',
     frameModel: 'RAD HAU',
     description:
-      'RAD HAU Class Utility (Action 6): Seals superheavy plating breaches (+55 Armor Durability, +10 Shield Capacity) while venting -20 Reactor Heat.',
+      'Excess energy repairs subsystems and armor (Action 6): Restores +55 Armor Durability and +10 Shield Capacity while venting -20 Reactor Heat.',
     tellDurationSec: 0.18,
     actionDurationSec: 0.3,
     cooldownSec: 10.0,
@@ -63,12 +69,14 @@ export const CLASS_UTILITY_CATALOG: ClassUtilityItemDefinition[] = [
   },
   {
     id: 'utility_aegis_pulse',
-    name: 'Trinity Bastion Condenser',
-    shortLabel: 'BASTION PULSE',
+    canonicalId: 'utility_lightwell_recovery',
+    name: 'TI Lightwell Recovery System',
+    shortLabel: 'LIGHTWELL SYS',
+    utilityType: 'Self-Repair · Shield & Core',
     traitLine: 'Guardian',
     frameModel: 'Trinity DE-14',
     description:
-      'Trinity DE-14 Class Utility (Action 6): Restores +50 Layer 1 Shield Capacity, clears Shield Overload, and reinforces +30 Armor Durability.',
+      'Converts excess reactor energy to subsystem and shield repair (Action 6): Restores +50 Layer 1 Shield Capacity, clears Shield Overload, and mends +30 Armor Durability.',
     tellDurationSec: 0.15,
     actionDurationSec: 0.26,
     cooldownSec: 8.5,
@@ -79,12 +87,14 @@ export const CLASS_UTILITY_CATALOG: ClassUtilityItemDefinition[] = [
   },
   {
     id: 'utility_phantom_shroud',
-    name: 'VX Phase Shroud Cell',
-    shortLabel: 'PHASE SHROUD',
+    canonicalId: 'utility_smoke_dispersal',
+    name: 'VX Smoke Dispersal System',
+    shortLabel: 'SMOKE DISPERSAL',
+    utilityType: 'Utility · Thermal Masking',
     traitLine: 'Rogue',
     frameModel: 'VX Phantom',
     description:
-      'VX Phantom Class Utility (Action 6): Purges -25 Heat, restores +30 Shield Capacity & +30 Energy, and paints targets with Optic Telemetry for 5.0s.',
+      'Obscurement canisters and thermal masking (Action 6): Purges -25 Heat, restores +30 Shield Capacity & +30 Energy, and marks hostiles with Optic Telemetry for 5.0s.',
     tellDurationSec: 0.12,
     actionDurationSec: 0.22,
     cooldownSec: 8.0,
@@ -96,12 +106,14 @@ export const CLASS_UTILITY_CATALOG: ClassUtilityItemDefinition[] = [
   },
   {
     id: 'utility_arclight_capacitor',
-    name: 'ARC Resonance Siphon',
-    shortLabel: 'ARC SIPHON',
+    canonicalId: 'utility_rift_anchor',
+    name: 'ARC Rift Anchor',
+    shortLabel: 'RIFT ANCHOR',
+    utilityType: 'Mobility · Phase Escape',
     traitLine: 'Wizard',
     frameModel: 'ARC Arclight',
     description:
-      'ARC Arclight Class Utility (Action 6): Vents -35 Reactor Heat into +45 Shield Capacity, +35 Energy, and 4.0s of Overdrive output.',
+      'Short-range phase anchor & capacitor siphon (Action 6): Vents -35 Reactor Heat into +45 Shield Capacity, +35 Energy, and 4.0s of Overdrive output.',
     tellDurationSec: 0.14,
     actionDurationSec: 0.25,
     cooldownSec: 9.0,
@@ -113,12 +125,14 @@ export const CLASS_UTILITY_CATALOG: ClassUtilityItemDefinition[] = [
   },
   {
     id: 'utility_sanctum_font',
-    name: 'Sanctum Reliquary Font',
-    shortLabel: 'SANCTUM FONT',
+    canonicalId: 'utility_radiant_ward',
+    name: 'SANC Radiant Ward Projector',
+    shortLabel: 'RADIANT WARD',
+    utilityType: 'Barrier · Status Ward',
     traitLine: 'Cleric',
     frameModel: 'SANC Sanctum',
     description:
-      'SANC Sanctum Class Utility (Action 6): Channels mana-lattice renewal to restore +40 Shield Capacity, +40 Armor Durability, and +25 Energy.',
+      'Deployable barrier absorbs status effects and damage (Action 6): Restores +40 Shield Capacity, +40 Armor Durability, and +25 Energy.',
     tellDurationSec: 0.16,
     actionDurationSec: 0.28,
     cooldownSec: 9.5,
@@ -134,8 +148,13 @@ export function getDefaultClassUtilityId(traitLine: TraitLine): string {
   return found ? found.id : 'utility_ichor_surge';
 }
 
-export function getClassUtilityDefinition(utilityId: string | null | undefined, fallbackTrait?: TraitLine): ClassUtilityItemDefinition {
-  const found = CLASS_UTILITY_CATALOG.find((u) => u.id === utilityId);
+export function getClassUtilityDefinition(
+  utilityId: string | null | undefined,
+  fallbackTrait?: TraitLine
+): ClassUtilityItemDefinition {
+  const found = CLASS_UTILITY_CATALOG.find(
+    (u) => u.id === utilityId || u.canonicalId === utilityId || u.name === utilityId
+  );
   if (found) return found;
   if (fallbackTrait) {
     const byTrait = CLASS_UTILITY_CATALOG.find((u) => u.traitLine === fallbackTrait);
@@ -145,18 +164,18 @@ export function getClassUtilityDefinition(utilityId: string | null | undefined, 
 }
 
 /**
- * Assignable [L]/[R] Action Descriptor for Action 6: Class Utility Slot (Unlocked at Level 6)
+ * Assignable [L]/[R] Action Descriptor for Action 6: Tactical Utility Slot (Unlocked at Level 6)
  */
 export const classUtilitySlotAction: OrionActionDescriptor = {
   id: 'class_utility_slot',
-  name: 'Class Utility [Action 6]',
-  shortLabel: 'CLASS UTILITY',
+  name: 'Tactical Utility [Action 6]',
+  shortLabel: 'TACTICAL UTILITY',
   sourceCategory: 'utility',
   sourceLabel: 'Utility Slot [Action 6 · Lv 6]',
   hardwareSlot: 'Utility',
   sortOrder: 30,
   description:
-    'Activates the equipped Class Utility sustain module in Slot 6 (unlocked at Level 6: Border Town Complete).',
+    'Activates the equipped Tactical Utility module in Slot 6 (unlocked at Level 6: Border Town Complete).',
   tellDurationSec: 0.15,
   actionDurationSec: 0.26,
   cooldownSec: 9.0,

@@ -112,11 +112,12 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
     const state = getOrionStateRef();
     if (!state) return;
     const finalName = newPilotName.trim() || DEFAULT_CALLSIGNS[selectedTrait];
+    const kit = TRAIT_REGISTRY[selectedTrait] || TRAIT_REGISTRY.Warrior;
     createNewPilotGame(state, selectedTrait, finalName);
     setRoster(loadPilotRoster());
     soundSystem.playPowerup();
     showToast(
-      `DEPLOYING ${finalName.toUpperCase()} (${selectedTrait.toUpperCase()}) · LVL 1 M00 BOG`,
+      `DEPLOYING ${finalName.toUpperCase()} (${(kit.frameModel || 'MARK-IV').toUpperCase()}) · LVL 1 M00 BOG`,
       900
     );
     setTimeout(() => {
@@ -146,7 +147,7 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
         <div className="flex items-center gap-2">
           {activeState && (
             <span className="text-[9px] text-[#38bdf8] bg-[#0f172a] border border-[#1e293b] px-1.5 py-0.5 rounded-xs">
-              {activeState.pilotName} · {activeState.traitLine} Lv.{activeState.level}
+              {activeState.pilotName} · {(TRAIT_REGISTRY[activeState.traitLine]?.frameModel || 'Mark-IV')} Lv.{activeState.level}
             </span>
           )}
           <button
@@ -168,7 +169,7 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
       )}
 
       {subView === 'new_pilot' ? (
-        /* Subview 1: §2.4 NEW GAME — PILOT CREATION (Trait Line -> Pilot Name -> Level 1 Start) */
+        /* Subview 1: §2.4 NEW GAME — PILOT CREATION (Starting Kit -> Pilot Name -> Level 1 Start) */
         <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-[10px] leading-snug">
           <div className="flex items-center justify-between pb-1 border-b border-[#334155]">
             <span className="font-bold text-[#facc15]">
@@ -185,10 +186,10 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
             </button>
           </div>
 
-          {/* Step 1: Trait Line Selection */}
+          {/* Step 1: Starting Loadout Kit Selection */}
           <div>
             <div className="text-[9px] text-[#94a3b8] font-bold mb-1">
-              1. SELECT TRAIT LINE & MECH CHASSIS
+              1. SELECT STARTING LOADOUT KIT & MECH CHASSIS (CLASSLESS)
             </div>
             <div className="grid grid-cols-3 gap-1">
               {TRAIT_LIST.map((t) => {
@@ -342,6 +343,7 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
                     : entry.areaId === 'm01_orc_encampment'
                       ? 'M01 Orc Encampment'
                       : 'M00 The Bog';
+                const kitProfile = TRAIT_REGISTRY[entry.traitLine];
                 return (
                   <div
                     key={entry.pilotId}
@@ -357,7 +359,7 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
                           {entry.pilotName}
                         </span>
                         <span className="text-[8.5px] px-1 py-0.2 bg-[#090d16] text-[#38bdf8] border border-[#1e293b] rounded-xs font-bold">
-                          LV.{entry.level} {entry.traitLine.toUpperCase()}
+                          LV.{entry.level} {(kitProfile?.name || entry.frameModel).toUpperCase()}
                         </span>
                         <span className="text-[8px] text-[#94a3b8]">
                           [{entry.frameModel} · {entry.reactor}]

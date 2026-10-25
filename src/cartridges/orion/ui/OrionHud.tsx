@@ -1102,7 +1102,7 @@ export const OrionHud: React.FC = () => {
             >
               <span className="text-[#fbbf24]">◎</span>
               <span>
-                {lockedEnemy.name} ({lockedEnemy.frame.integrity} HP)
+                {lockedEnemy.name || lockedEnemy.type} ({lockedEnemy.frame.integrity} HP)
               </span>
             </button>
           ) : tutorialStepDesc ? (

@@ -1474,7 +1474,7 @@ function spawnDynamicNodeFeatures(
     ) => {
       const bossMult = isBoss ? 1.35 : 1.0;
       const e = spawnEnemyByType(state, type, px, py, {
-        name: bossTitle,
+        ...(bossTitle ? { name: bossTitle } : {}),
         spawnKey: `${canonicalKey}:loop_depth_${depth}:${idx}`,
         isFogBoss: isBoss,
         fogDepth: depth,

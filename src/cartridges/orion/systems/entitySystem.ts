@@ -86,7 +86,6 @@ export function spawnEnemyByType(
   const entity: EnemyEntity = {
     id: nextEnemyId++,
     type,
-    name: def.name,
     x,
     y,
     z: def.defaultZ ?? 0,
@@ -120,6 +119,7 @@ export function spawnEnemyByType(
     faction: def.faction || 'hostile',
     hitsLanded: 0,
     ...overrides,
+    name: overrides?.name || def.name,
   };
 
   state.enemies.push(entity);
@@ -131,6 +131,7 @@ export function spawnRoomEnemies(
   state: OrionState
 ): void {
   state.enemies = [];
+  state.lockedTargetId = null;
   const room = rooms[state.room];
   if (!room) return;
 

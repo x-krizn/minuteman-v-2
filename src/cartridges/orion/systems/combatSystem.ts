@@ -97,7 +97,8 @@ export function cycleTargetLock(
     state.lockedTargetId = first.id;
     soundSystem.playSelect();
     if (ctx) {
-      ctx.say(`TARGET LOCKED: ${first.name.toUpperCase()}`);
+      const label = (first.name || first.type || 'HOSTILE').toUpperCase();
+      ctx.say(`TARGET LOCKED: ${label}`);
     }
     notifyOrionStateChange();
     return first;
@@ -109,7 +110,8 @@ export function cycleTargetLock(
     state.lockedTargetId = first.id;
     soundSystem.playSelect();
     if (ctx) {
-      ctx.say(`TARGET LOCKED: ${first.name.toUpperCase()}`);
+      const label = (first.name || first.type || 'HOSTILE').toUpperCase();
+      ctx.say(`TARGET LOCKED: ${label}`);
     }
     notifyOrionStateChange();
     return first;
@@ -120,7 +122,8 @@ export function cycleTargetLock(
     state.lockedTargetId = next.id;
     soundSystem.playSelect();
     if (ctx) {
-      ctx.say(`TARGET LOCKED: ${next.name.toUpperCase()}`);
+      const label = (next.name || next.type || 'HOSTILE').toUpperCase();
+      ctx.say(`TARGET LOCKED: ${label}`);
     }
     notifyOrionStateChange();
     return next;

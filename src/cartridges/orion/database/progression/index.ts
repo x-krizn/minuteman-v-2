@@ -461,66 +461,66 @@ const DEFAULT_CANONICAL_HARDWARE_BY_KIT: Record<
   }
 > = {
   Warrior: {
-    head: 'Crystal Dynamics EmberSight Suite',
+    head: 'Crystal Dynamics G341 Murmillio',
     sensoryA: 'Federated T7 Sensor Array',
     sensoryB: 'Federated EchoPulse Scanner',
-    arms: 'Bastion Hydraulic Gauntlets',
-    legs: 'Bastion Turbine Striders',
+    arms: 'BWI Twinstrike Gauntlets',
+    legs: 'BWI Gatecrasher Striders',
     plating: 'BWI Bastion Coreplate',
     reactorCore: 'PNSY Alchemic Turbine Core Mk.IV',
     aux3: 'PNSY R-11 Rockweiler Buckler',
     aux4: 'PNSY UF-9 Rough Rider Booster',
   },
   Marauder: {
-    head: 'BE Foresight Targeting Array',
+    head: 'BE Ironveil Command Dome',
     sensoryA: 'NDS ArcPulse Sensor Grid',
     sensoryB: 'NDS EchoStorm Threat Analyzer',
-    arms: 'Fortress Recoil-Lock Bracers',
-    legs: 'Fortress Outrigger Treads',
+    arms: 'Fire & Ice Line Holder',
+    legs: 'Fire & Ice Outrigger Striders',
     plating: 'Fire & Ice Fortress Coreplate',
     reactorCore: 'RAD Battleheart Ether Reactor Mk.V',
     aux3: 'RAD R-22 Bastion Kinetic Recycling',
     aux4: 'RAD UF-12 Ether Vapor Launcher',
   },
   Guardian: {
-    head: 'Aegis Radiant Targeting Array',
+    head: 'Aegis Halo Command Dome',
     sensoryA: 'Solbright Flux Sensor Grid',
     sensoryB: 'Aegis Lightveil Analyzer',
-    arms: 'Dawnforge Aegis Gauntlets',
-    legs: 'Dawnforge Stabilizer Greaves',
+    arms: 'Solbright Cleaver Assemblies',
+    legs: 'Dawnforge Stabilizer Striders',
     plating: 'Dawnforge Guardian Coreplate',
     reactorCore: 'TI Manaheart Reactor Mk.IV',
     aux3: 'TI Aegis Hard-Light Shield',
     aux4: 'TI Radiant Sphere Generator',
   },
   Rogue: {
-    head: 'Veilsight Targeting Suite',
+    head: 'VX Veilsight Command Helm',
     sensoryA: 'VX Phantom Network Sensor',
     sensoryB: 'VX Echo-Null Scanner',
-    arms: 'Shadowcraft Micro-Servo Grips',
-    legs: 'Shadowcraft Silent-Tread Actuators',
+    arms: 'Shadowcraft Silencer Gauntlets',
+    legs: 'Shadowcraft Ghost Striders',
     plating: 'Shadowcraft Recon Coreplate',
     reactorCore: 'VX Phantom Core Mk.III',
     aux3: 'VX Eclipse Cloak Generator',
     aux4: 'VX Phase-Shift Module',
   },
   Wizard: {
-    head: 'ARC Omniscient Array',
+    head: 'ARC Omniscient Command Dome',
     sensoryA: 'ARC Manaflow Analyzer',
     sensoryB: 'ARC Convergence Predictor',
-    arms: 'Arcanum Crystal-Focus Vambraces',
-    legs: 'Arcanum Grounding Struts',
+    arms: 'Arcanum Channeler Assemblies',
+    legs: 'Arcanum Anchor Striders',
     plating: 'Arcanum Heavy Projector Coreplate',
     reactorCore: 'ARC Infinite Well Reactor Mk.VI',
     aux3: 'ARC Prismatic Barrier',
     aux4: 'ARC Feedback Loop Capacitor',
   },
   Cleric: {
-    head: 'SANC Providence Scanner',
+    head: 'SANC Providence Command Helm',
     sensoryA: 'SANC Lifeline Monitor',
-    sensoryB: 'SANC Harmonic Resonance Array',
-    arms: 'Sanctum Conduit Bracers',
-    legs: 'Sanctum Balanced Gyro-Greaves',
+    sensoryB: 'SANC Blessing Resonance Grid',
+    arms: 'Sanctum Benediction Assemblies',
+    legs: 'Sanctum Steadfast Striders',
     plating: 'Sanctum Support Coreplate',
     reactorCore: 'SANC Heartwell Reactor Mk.IV',
     aux3: 'SANC Aegis Restoration Field',
@@ -776,8 +776,12 @@ export function unlockLevel2SecondaryWeapon(state: OrionState): string {
         ? 'khopesh'
         : 'gladius_boltcaster';
 
-  unlockEquipmentItem(state, primary);
-  unlockEquipmentItem(state, secondary);
+  if (!isEquipmentUnlocked(state, primary)) {
+    unlockEquipmentItem(state, primary);
+  }
+  if (!isEquipmentUnlocked(state, secondary)) {
+    unlockEquipmentItem(state, secondary);
+  }
 
   if (state.equippedWeapons.length === 0) {
     state.equippedWeapons = [primary, secondary];
@@ -1132,19 +1136,19 @@ export function doesPilotMeetFeatEquipmentRequirement(
   feat: FrameFeatDefinition
 ): { met: boolean; reason: string } {
   const req = (feat.requiredEquipment || '').trim();
-  if (!req || state.bypassProgressionGates) {
-    return { met: true, reason: req || 'Any Loadout' };
+  if (!req || req === '—' || state.bypassProgressionGates) {
+    return { met: true, reason: req && req !== '—' ? req : 'Any Loadout' };
   }
 
   const reqLower = req.toLowerCase();
   if (
+    reqLower === 'any loadout' ||
     reqLower.includes('any coreplate') ||
     reqLower.includes('any core frame') ||
     reqLower.includes('any reactor') ||
     reqLower.includes('any weapon') ||
-    reqLower.includes('any melee') ||
-    reqLower.includes('any ranged') ||
-    reqLower.includes('full loadout') ||
+    reqLower.includes('any frame') ||
+    reqLower.includes('combined boss fight') ||
     reqLower.includes('three knights trial')
   ) {
     return { met: true, reason: req };
@@ -1166,63 +1170,335 @@ export function doesPilotMeetFeatEquipmentRequirement(
     eq?.aux3 || '',
     eq?.aux4 || '',
     eq?.utility || '',
+    state.reactor || '',
   ]
     .filter(Boolean)
     .map((s) => s.toLowerCase().replace(/_/g, ' '));
 
-  if (reqLower.includes('shield')) {
-    const hasShield = equippedStrings.some(
-      (s) =>
-        s.includes('shield') ||
-        s.includes('buckler') ||
-        s.includes('pavise') ||
-        s.includes('heater') ||
-        s.includes('barrier') ||
-        s.includes('sphere')
-    );
-    return {
-      met: hasShield,
-      reason: hasShield ? req : `Equip ${req}`,
-    };
-  }
+  const hwStats = resolveEquippedHardwareStats(state);
+  const effLoad = computeEffectiveLoadCapacity(state.traitLine, state.equippedFeats || [], state);
 
-  if (reqLower.includes('dual-wield')) {
-    const isDual = getEffectiveMainGrip(state) === '1h' && Boolean(eq?.slot2);
-    return {
-      met: isDual,
-      reason: isDual ? req : 'Requires 1H + Side Hand Dual-Wield Stance',
-    };
-  }
+  const checkSingleClause = (clause: string): boolean => {
+    const c = clause.trim();
+    if (!c || c === '—' || c === 'any loadout') return true;
 
-  // Split by "/" or "+" and check if any token matches an equipped item or weapon family
-  const alternatives = reqLower.split(/\s*\/\s*/);
-  const matched = alternatives.some((alt) => {
-    const cleanAlt = alt
-      .replace(/\(.*?\)/g, '')
-      .replace(/any\s+/g, '')
-      .trim();
-    if (!cleanAlt) return true;
-    const tokens = cleanAlt
-      .split(/[\s-]+/)
-      .filter((t) => t.length >= 3 && !['the', 'and', 'with', 'system', 'module'].includes(t));
+    if (c.includes('booster')) {
+      return (
+        Boolean(state.hasBoosterKit) ||
+        equippedStrings.some(
+          (s) => s.includes('booster') || s.includes('rough rider') || s.includes('gatecrasher')
+        )
+      );
+    }
+    if (c.includes('mana core') || c.includes('mana reactor')) {
+      return (
+        hwStats.reactorFamily === 'Mana' ||
+        equippedStrings.some(
+          (s) => s.includes('manaheart') || s.includes('heartwell') || s.includes('mana')
+        )
+      );
+    }
+    if (c.includes('support reactor')) {
+      return (
+        hwStats.reactorFamily === 'Mana' ||
+        equippedStrings.some(
+          (s) =>
+            s.includes('heartwell') ||
+            s.includes('manaheart') ||
+            s.includes('infinite well') ||
+            s.includes('sanctum')
+        )
+      );
+    }
+    if (
+      c.includes('energy reactor') ||
+      c.includes('energy pool') ||
+      c.includes('energy overflow')
+    ) {
+      return (
+        hwStats.reactorFamily === 'Ether' ||
+        hwStats.reactorFamily === 'Mana' ||
+        equippedStrings.some(
+          (s) =>
+            s.includes('infinite well') ||
+            s.includes('phantom core') ||
+            s.includes('battleheart') ||
+            s.includes('lodestone') ||
+            s.includes('shadow capacitor') ||
+            s.includes('heartwell') ||
+            s.includes('manaheart')
+        )
+      );
+    }
+    if (c.includes('overclock core')) {
+      return (
+        hwStats.reactorFamily === 'Ichor' ||
+        equippedStrings.some(
+          (s) =>
+            s.includes('alchemic turbine') ||
+            s.includes('battleheart') ||
+            s.includes('lodestone')
+        )
+      );
+    }
+    if (
+      c.includes('heavy/super-heavy') ||
+      c.includes('heavy or super-heavy') ||
+      c.includes('heavy frame')
+    ) {
+      return (
+        effLoad === 'heavy' ||
+        effLoad === 'superheavy' ||
+        equippedStrings.some(
+          (s) =>
+            s.includes('fortress') ||
+            s.includes('dawnforge') ||
+            s.includes('bastion') ||
+            s.includes('hardened')
+        )
+      );
+    }
+    if (c.includes('stabilizer frame')) {
+      return equippedStrings.some(
+        (s) =>
+          s.includes('dawnforge') ||
+          s.includes('fortress') ||
+          s.includes('sanctum') ||
+          s.includes('stabilizer') ||
+          s.includes('outrigger') ||
+          s.includes('anchor') ||
+          s.includes('steadfast')
+      );
+    }
+    if (c.includes('defensive plating')) {
+      return (
+        hwStats.armorType === 'Reactive' ||
+        hwStats.armorType === 'Hardened' ||
+        hwStats.armorType === 'Layered' ||
+        equippedStrings.some(
+          (s) =>
+            s.includes('bastion') ||
+            s.includes('fortress') ||
+            s.includes('dawnforge') ||
+            s.includes('martyrdom') ||
+            s.includes('kinetic recycling')
+        )
+      );
+    }
+    if (c.includes('physical shield')) {
+      return equippedStrings.some(
+        (s) =>
+          s.includes('buckler') ||
+          s.includes('heater') ||
+          s.includes('pavise') ||
+          s.includes('rockweiler')
+      );
+    }
+    if (c.includes('energy shield') || c.includes('radiant sphere')) {
+      if (c.includes('radiant sphere')) {
+        return equippedStrings.some((s) => s.includes('radiant sphere') || s.includes('hard-light'));
+      }
+      return (
+        state.shields?.type === 'energy' ||
+        equippedStrings.some(
+          (s) =>
+            s.includes('hard-light') ||
+            s.includes('radiant sphere') ||
+            s.includes('prismatic barrier') ||
+            s.includes('feedback loop') ||
+            s.includes('radiant ward')
+        )
+      );
+    }
+    if (c.includes('shield')) {
+      return equippedStrings.some(
+        (s) =>
+          s.includes('shield') ||
+          s.includes('buckler') ||
+          s.includes('pavise') ||
+          s.includes('heater') ||
+          s.includes('barrier') ||
+          s.includes('sphere')
+      );
+    }
+    if (c.includes('cloak') || c.includes('stealth')) {
+      return equippedStrings.some(
+        (s) =>
+          s.includes('cloak') ||
+          s.includes('eclipse') ||
+          s.includes('smoke') ||
+          s.includes('phantom') ||
+          s.includes('shadowcraft') ||
+          s.includes('veilsight')
+      );
+    }
+    if (c.includes('phase-shift')) {
+      return equippedStrings.some(
+        (s) => s.includes('phase-shift') || s.includes('phase shift') || s.includes('rift anchor')
+      );
+    }
+    if (c.includes('mobility system')) {
+      return (
+        Boolean(state.hasBoosterKit) ||
+        equippedStrings.some(
+          (s) =>
+            s.includes('booster') ||
+            s.includes('phase-shift') ||
+            s.includes('rift anchor') ||
+            s.includes('ghost striders') ||
+            s.includes('gatecrasher')
+        )
+      );
+    }
+    if (c.includes('interference launcher')) {
+      return equippedStrings.some(
+        (s) =>
+          s.includes('ether vapor') ||
+          s.includes('avalanche') ||
+          s.includes('smoke') ||
+          s.includes('ironveil')
+      );
+    }
+    if (c.includes('martyrdom')) {
+      return equippedStrings.some(
+        (s) =>
+          s.includes('martyrdom') ||
+          s.includes('radiant ward') ||
+          s.includes('sanctum')
+      );
+    }
+    if (
+      c.includes('support system') ||
+      c.includes('support field') ||
+      c.includes('buff system') ||
+      c.includes('area healing')
+    ) {
+      return equippedStrings.some(
+        (s) =>
+          s.includes('restoration') ||
+          s.includes('lightwell') ||
+          s.includes('repair drone') ||
+          s.includes('fathomless') ||
+          s.includes('radiant ward') ||
+          s.includes('benediction') ||
+          s.includes('blessing') ||
+          s.includes('litany') ||
+          s.includes('absolution') ||
+          s.includes('hallowed scepter') ||
+          s.includes('sanctum')
+      );
+    }
+    if (c.includes('artillery optics')) {
+      return equippedStrings.some(
+        (s) =>
+          s.includes('foresight') ||
+          s.includes('omniscient') ||
+          s.includes('echostorm') ||
+          s.includes('lightveil') ||
+          s.includes('convergence') ||
+          s.includes('rangefinder')
+      );
+    }
+    if (c.includes('beam weapon') || c.includes('energy weapon')) {
+      return equippedStrings.some(
+        (s) =>
+          s.includes('radiant projector') ||
+          s.includes('lightburst lance') ||
+          s.includes('tig edge') ||
+          s.includes('arclight') ||
+          s.includes('prism lance') ||
+          s.includes('sparkstrike') ||
+          s.includes('manacore') ||
+          s.includes('conductor') ||
+          s.includes('sanctifier') ||
+          s.includes('absolution') ||
+          s.includes('litany') ||
+          s.includes('swordspear') ||
+          s.includes('hallowed scepter') ||
+          s.includes('catalyst')
+      );
+    }
+    if (
+      c.includes('suppression') ||
+      c.includes('intercept') ||
+      c.includes('rapid-fire')
+    ) {
+      return equippedStrings.some(
+        (s) =>
+          s.includes('brushcutter') ||
+          s.includes('mauler') ||
+          s.includes('gladius') ||
+          s.includes('hasta') ||
+          s.includes('viper') ||
+          s.includes('serpent') ||
+          s.includes('sparkstrike') ||
+          s.includes('avalanche') ||
+          s.includes('tomahawk')
+      );
+    }
+    if (c.includes('parry')) {
+      return equippedStrings.some(
+        (s) =>
+          s.includes('khopesh') ||
+          s.includes('tig edge') ||
+          s.includes('whisper blade') ||
+          s.includes('phantom edge') ||
+          s.includes('grace edge') ||
+          s.includes('sword') ||
+          s.includes('buckler') ||
+          s.includes('shield') ||
+          s.includes('swordspear') ||
+          s.includes('lance')
+      );
+    }
+    if (c.includes('melee')) {
+      return equippedStrings.some(
+        (s) =>
+          s.includes('sword') ||
+          s.includes('khopesh') ||
+          s.includes('spear') ||
+          s.includes('lance') ||
+          s.includes('mace') ||
+          s.includes('axe') ||
+          s.includes('siegebreaker') ||
+          s.includes('tig edge') ||
+          s.includes('whisper') ||
+          s.includes('phantom edge') ||
+          s.includes('staff') ||
+          s.includes('scepter') ||
+          s.includes('grace edge')
+      );
+    }
+    if (c.includes('heavy weapon')) {
+      return equippedStrings.some(
+        (s) =>
+          s.includes('pilum') ||
+          s.includes('brushcutter') ||
+          s.includes('avalanche') ||
+          s.includes('tomahawk') ||
+          s.includes('siegebreaker') ||
+          s.includes('lightburst lance') ||
+          s.includes('arclight') ||
+          s.includes('manacore') ||
+          s.includes('avalon')
+      );
+    }
+    if (c.includes('matching') || c.includes('sidearms')) {
+      return Boolean(eq?.slot1 && (eq?.slot2 || eq?.slot3));
+    }
+
+    const tokens = c
+      .split(/[\s/-]+/)
+      .filter((t) => t.length >= 3 && !['the', 'and', 'with', 'system', 'module', 'equipped'].includes(t));
     if (tokens.length === 0) return true;
-    return equippedStrings.some((eqStr) =>
-      tokens.some((tok) => eqStr.includes(tok))
-    );
-  });
+    return equippedStrings.some((eqStr) => tokens.some((tok) => eqStr.includes(tok)));
+  };
 
-  // Also allow socketing if the pilot has unlocked the weapon in their satchel
-  const unlockedList = (eq?.unlockedEquipment || []).map((u) =>
-    u.toLowerCase().replace(/_/g, ' ')
-  );
-  const unlockedMatched = alternatives.some((alt) => {
-    const tokens = alt
-      .split(/[\s-]+/)
-      .filter((t) => t.length >= 4);
-    return unlockedList.some((uStr) => tokens.some((tok) => uStr.includes(tok)));
-  });
+  // Requirement strings with "+" require all clauses to be satisfied
+  const plusClauses = reqLower.split(/\s*\+\s*/);
+  const allMet = plusClauses.every((clause) => checkSingleClause(clause));
 
-  if (matched || unlockedMatched) {
+  if (allMet) {
     return { met: true, reason: req };
   }
 
@@ -1525,18 +1801,92 @@ export function generateEquipmentModWithGems(
   return true;
 }
 
+export function findHardwareItemByNameOrId(
+  nameOrId: string | undefined | null
+): CanonicalHardwareItemDefinition | undefined {
+  if (!nameOrId) return undefined;
+  const norm = nameOrId.trim().toLowerCase();
+  return CANONICAL_HARDWARE_CATALOG.find(
+    (item) => item.id.toLowerCase() === norm || item.name.toLowerCase() === norm
+  );
+}
+
+/**
+ * Resolves the pilot's active Coreplate, Reactor, and Aux 3/4 stats dynamically from equipped hardware.
+ * In classless Project Orion, swapping a Coreplate or Reactor immediately updates Armor Type,
+ * Base Load Capacity, Shield/Armor baseline, and Reactor Family.
+ */
+export function resolveEquippedHardwareStats(state: OrionState): {
+  baseLoadCapacity: FrameLoadCapacity;
+  armorType: 'Ablative' | 'Reactive' | 'Hardened' | 'Layered';
+  armorThreshold: number;
+  armorRating: number;
+  baseArmorDurability: number;
+  baseShieldCapacity: number;
+  hardwareShieldBonus: number;
+  hardwareArmorBonus: number;
+  reactorFamily: 'Ichor' | 'Mana' | 'Ether';
+} {
+  const fallbackProfile = TRAIT_REGISTRY[state.traitLine] || TRAIT_REGISTRY.Warrior;
+  const eq = state.equipmentSlots;
+
+  const coreplate = findHardwareItemByNameOrId(eq?.plating);
+  const reactor = findHardwareItemByNameOrId(eq?.reactorCore);
+  const headItem = findHardwareItemByNameOrId(eq?.head);
+  const aux3Item = findHardwareItemByNameOrId(eq?.aux3);
+  const aux4Item = findHardwareItemByNameOrId(eq?.aux4);
+
+  const baseLoadCapacity: FrameLoadCapacity =
+    coreplate?.baseLoadCapacity || fallbackProfile.weightClass || 'medium';
+  const armorType =
+    coreplate?.armorType || fallbackProfile.baseArmor.type || 'Reactive';
+  const armorThreshold =
+    coreplate?.armorThreshold ?? fallbackProfile.baseArmor.threshold;
+  const armorRating =
+    coreplate?.armorRating ?? fallbackProfile.baseArmor.rating;
+  const baseArmorDurability =
+    coreplate?.armorDurability ?? fallbackProfile.baseArmor.durability;
+  const baseShieldCapacity =
+    coreplate?.shieldBonus ?? fallbackProfile.baseShield.capacity;
+
+  const hardwareShieldBonus =
+    (headItem?.shieldBonus || 0) +
+    (aux3Item?.shieldBonus || 0) +
+    (aux4Item?.shieldBonus || 0);
+  const hardwareArmorBonus =
+    (aux3Item?.armorDurability || 0) + (aux4Item?.armorDurability || 0);
+
+  const reactorFamily =
+    reactor?.reactorFamily || state.reactor || fallbackProfile.reactor || 'Ichor';
+
+  return {
+    baseLoadCapacity,
+    armorType,
+    armorThreshold,
+    armorRating,
+    baseArmorDurability,
+    baseShieldCapacity,
+    hardwareShieldBonus,
+    hardwareArmorBonus,
+    reactorFamily,
+  };
+}
+
 export function computeEffectiveLoadCapacity(
   traitLine: TraitLine,
-  equippedFeats: string[]
+  equippedFeats: string[],
+  state?: OrionState
 ): FrameLoadCapacity {
   const trait = TRAIT_REGISTRY[traitLine] || TRAIT_REGISTRY.Warrior;
-  const baseLoad: FrameLoadCapacity = trait.weightClass || 'medium';
+  const coreplate = state ? findHardwareItemByNameOrId(state.equipmentSlots?.plating) : undefined;
+  const baseLoad: FrameLoadCapacity =
+    coreplate?.baseLoadCapacity || trait.weightClass || 'medium';
   const baseIdx = Math.max(0, LOAD_ORDER.indexOf(baseLoad));
 
   let steps = 0;
   for (const featId of equippedFeats) {
     const feat = FRAME_FEAT_CATALOG.find((f) => f.id === featId);
-    if (feat && feat.kind === 'system' && feat.loadStepUp) {
+    if (feat && feat.loadStepUp) {
       steps += feat.loadStepUp;
     }
   }

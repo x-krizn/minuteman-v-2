@@ -41,17 +41,23 @@ import {
   WeaponStanceType,
 } from '../types';
 import { getActiveRoomBounds, notifyOrionStateChange } from './playerSystem';
-import { updateBladeTrails } from './renderSystem';
+import { getPointVisibilityFactor, updateBladeTrails } from './renderSystem';
 
 // ─── 1. TARGET LOCK-ON & AIMING ──────────────────────────────────────────────
 
 const MAX_LOCK_ON_RANGE = 165;
 
-export function isTargetableEnemy(e: EnemyEntity): boolean {
+export function isTargetableEnemy(e: EnemyEntity, state?: OrionState): boolean {
   if (e.frame.integrity <= 0) return false;
   if (e.isSubmerged) return false;
   if (e.type === 'bog_poe') return false;
   if (e.type === 'town_npc' && e.npcDisposition !== 'feral') return false;
+  if (state) {
+    const vis = getPointVisibilityFactor(e.x, e.y, state);
+    if (vis < 0.26 && e.hurt <= 0 && e.state !== 'windup') {
+      return false;
+    }
+  }
   return true;
 }
 
@@ -60,7 +66,7 @@ export function getLockedTarget(state: OrionState): EnemyEntity | null {
     return null;
   }
   const target = state.enemies.find(
-    (e) => e.id === state.lockedTargetId && isTargetableEnemy(e)
+    (e) => e.id === state.lockedTargetId && isTargetableEnemy(e, state)
   );
   if (!target) return null;
   const dist = Math.hypot(target.x - state.x, target.y - state.y);
@@ -73,7 +79,7 @@ export function cycleTargetLock(
   ctx?: OrionCombatContext
 ): EnemyEntity | null {
   const candidates = state.enemies
-    .filter((e) => isTargetableEnemy(e))
+    .filter((e) => isTargetableEnemy(e, state))
     .map((e) => ({
       entity: e,
       dist: Math.hypot(e.x - state.x, e.y - state.y),
@@ -86,7 +92,7 @@ export function cycleTargetLock(
     state.lockedTargetId = null;
     soundSystem.playMenuBeep();
     if (ctx) {
-      ctx.say('NO HOSTILE TARGETS IN RANGE');
+      ctx.say('NO HOSTILE TARGETS IN SENSOR RANGE');
     }
     notifyOrionStateChange();
     return null;
@@ -406,19 +412,47 @@ export function executeActionPayload(
     gemCombatMods.damageMult;
   const opticMult = (state.opticMarkTimer || 0) > 0 ? 1.25 : 1.0;
   const hasKnightsOath = state.equippedFeats.includes('knights_oath');
+  const equippedFeats = state.equippedFeats || [];
 
   const computeEnemyDamage = (
     baseDmg: number,
     faction?: string,
-    target?: (typeof state.enemies)[number]
+    target?: (typeof state.enemies)[number],
+    dmgType?: DamageType
   ) => {
-    const oathMult = hasKnightsOath && faction === 'camelot' ? 1.25 : 1.0;
+    const oathMult = hasKnightsOath && faction === 'camelot' ? 1.1 : 1.0;
     const isLockedOrStaggered =
       target && (target.id === state.lockedTargetId || target.stun > 0);
     const charoiteMult = isLockedOrStaggered
       ? gemCombatMods.lockedOrStaggeredDamageMult
       : 1.0;
-    return Math.round(baseDmg * overdriveMult * opticMult * oathMult * charoiteMult);
+    const hasBeamFocus =
+      dmgType === 'Beam' &&
+      equippedFeats.some((f) =>
+        ['beam_focus', 'sustained_channeling', 'solar_convergence'].includes(f)
+      );
+    const beamMult = hasBeamFocus ? 1.15 : 1.0;
+    const hasAssassinate =
+      target &&
+      equippedFeats.some((f) => ['assassinate', 'executioners_gambit'].includes(f)) &&
+      target.frame.integrity <= target.frame.maxIntegrity * 0.4;
+    const execMult = hasAssassinate ? 1.2 : 1.0;
+    let backstabMult = 1.0;
+    if (
+      target &&
+      equippedFeats.some((f) =>
+        ['backstab_mastery', 'ambush_predator', 'surgical_precision'].includes(f)
+      )
+    ) {
+      const enemyFaceAng = target.attackAngle ?? 0;
+      const toEnemyAng = Math.atan2(target.y - state.y, target.x - state.x);
+      if (Math.abs(normalizeAngleDiff(toEnemyAng, enemyFaceAng)) < Math.PI * 0.45 || target.stun > 0) {
+        backstabMult = 1.22;
+      }
+    }
+    return Math.round(
+      baseDmg * overdriveMult * opticMult * oathMult * charoiteMult * beamMult * execMult * backstabMult
+    );
   };
 
   let skillHitGrantedBonus = false;
@@ -486,12 +520,40 @@ export function executeActionPayload(
       e.shields,
       e.armor,
       e.frame,
-      Math.round(computeEnemyDamage(baseDmg, e.faction, e) * adaptiveBonusMult),
+      Math.round(computeEnemyDamage(baseDmg, e.faction, e, resolvedDmgType) * adaptiveBonusMult),
       resolvedDmgType,
       (count, color, label) => ctx.spawnParticles(e.x, e.y, e.z + 8, count, color, label)
     );
     soundSystem.playHit();
   };
+
+  const isSpearWeapon =
+    currentWeaponId === 'short_spear' || currentWeaponId === 'ls900_swordspear';
+  const isLanceWeapon =
+    currentWeaponId === 'avalon_siege_lance' || currentWeaponId === 'hl220_lightburst_lance';
+  const isStaffOrMaceWeapon =
+    currentWeaponId === 'mace' ||
+    currentWeaponId === 'wz200_manacore_staff' ||
+    currentWeaponId === 'hallowed_scepter';
+  const isAxeWeapon =
+    currentWeaponId === 'hand_axe' || currentWeaponId === 'siegebreaker';
+  const isDaggerWeapon =
+    currentWeaponId === 's4_whisper_blade' || currentWeaponId === 's6_phantom_edge';
+  const isBladeWeapon =
+    currentWeaponId === 'long_sword' ||
+    currentWeaponId === 'khopesh' ||
+    currentWeaponId === 's2_turbine_khopesh' ||
+    currentWeaponId === 'tig_edge' ||
+    currentWeaponId === 'grace_edge';
+  const isExplosiveOrdnanceWeapon =
+    currentWeaponId === 'm350_mauler' ||
+    currentWeaponId === 'ln1200_avalanche' ||
+    currentWeaponId === 'lg950_tomahawk';
+  const isRapidRotaryWeapon =
+    currentWeaponId === 'b25_brushcutter' ||
+    currentWeaponId === 'sv12_viper' ||
+    currentWeaponId === 'm300_hasta' ||
+    currentWeaponId === 'wz450_sparkstrike';
 
   // 1. WEAPON SKILLS (Slots 1..4)
   if (desc.sourceCategory === 'weapon' && desc.weaponSkillSlot) {
@@ -501,8 +563,8 @@ export function executeActionPayload(
 
     // ─── SLOT 1: PRIMARY SPECIAL SKILL ───────────────────────────────────────
     if (slot === 1) {
-      if (currentWeaponId === 'short_spear') {
-        // Impaling Skewer: Deep forward lunge + long narrow piercing corridor (48px reach, ±11px width)
+      if (isSpearWeapon) {
+        // Impaling Skewer / Mana-Channeling Spear Lunge: Deep forward lunge + long narrow piercing/wave corridor
         state.isBoosterDashing = true;
         state.boosterTimer = 0.14;
         state.boosterDirX = aim.dx;
@@ -512,10 +574,10 @@ export function executeActionPayload(
           y: state.y,
           z: state.z,
           angle: aimAngle,
-          arcSpan: Math.PI * 0.25,
+          arcSpan: Math.PI * 0.28,
           radius: 46,
           length: 48,
-          width: 11,
+          width: 12,
           style: 'thrust',
           color: trailColor,
           coreColor,
@@ -525,7 +587,7 @@ export function executeActionPayload(
         for (const e of state.enemies) {
           if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
           if (isTargetInThrustCorridor(state.x, state.y, aimAngle, 48, 12, e.x, e.y)) {
-            applyHitToEnemy(e, action.damage, 'Pierce', 0.55, 6);
+            applyHitToEnemy(e, action.damage, action.damageType || 'Pierce', 0.55, 6);
           }
         }
         ctx.spawnParticles(
@@ -537,16 +599,20 @@ export function executeActionPayload(
           action.name || 'IMPALING SKEWER!'
         );
         soundSystem.playSword();
-      } else if (currentWeaponId === 'avalon_siege_lance') {
-        // Breaching Bore: Heavy artillery lance thrust + high-velocity piercing sabot
+      } else if (isLanceWeapon) {
+        // Breaching Bore / Lightburst Lance Bore: Heavy artillery lance thrust + high-velocity piercing/beam sabot
+        state.isBoosterDashing = true;
+        state.boosterTimer = 0.12;
+        state.boosterDirX = aim.dx;
+        state.boosterDirY = aim.dy;
         state.bladeTrails.push({
           x: state.x,
           y: state.y,
           z: state.z,
           angle: aimAngle,
           arcSpan: Math.PI * 0.3,
-          radius: 44,
-          length: 46,
+          radius: 46,
+          length: 48,
           width: 14,
           style: 'thrust',
           color: trailColor,
@@ -554,6 +620,12 @@ export function executeActionPayload(
           life: 0.28,
           maxLife: 0.28,
         });
+        for (const e of state.enemies) {
+          if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
+          if (isTargetInThrustCorridor(state.x, state.y, aimAngle, 46, 14, e.x, e.y)) {
+            applyHitToEnemy(e, Math.round(action.damage * 0.65), action.damageType || 'Beam', 0.6, 8);
+          }
+        }
         state.projectiles.push({
           x: state.x + aim.dx * 12,
           y: state.y + aim.dy * 12,
@@ -562,7 +634,7 @@ export function executeActionPayload(
           vy: aim.dy * 245,
           vz: 0,
           damage: Math.round(action.damage * overdriveMult),
-          damageType: 'Pierce',
+          damageType: action.damageType || 'Pierce',
           isPlayer: true,
           life: 0.65,
           radius: 5,
@@ -579,17 +651,17 @@ export function executeActionPayload(
           action.name
         );
         soundSystem.playLaser();
-      } else if (currentWeaponId === 'mace') {
-        // Skullcracker Overhead: Concentrated frontal overhead slam + crater shockwave + heavy stun
+      } else if (isStaffOrMaceWeapon) {
+        // Skullcracker Overhead / Manacore Discharge / Hallowed Scepter Slam
         state.bladeTrails.push({
           x: state.x,
           y: state.y,
           z: state.z,
           angle: aimAngle,
-          arcSpan: Math.PI * 0.6,
-          radius: 24,
+          arcSpan: Math.PI * 0.65,
+          radius: 26,
           length: 18,
-          width: 22,
+          width: 24,
           style: 'slam',
           color: trailColor,
           coreColor,
@@ -598,9 +670,14 @@ export function executeActionPayload(
         });
         for (const e of state.enemies) {
           if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
-          if (isTargetInImpactZone(state.x, state.y, aimAngle, 18, 22, e.x, e.y)) {
-            applyHitToEnemy(e, action.damage, 'Impact', 1.1, 8, 8);
+          if (isTargetInImpactZone(state.x, state.y, aimAngle, 18, 24, e.x, e.y)) {
+            applyHitToEnemy(e, action.damage, action.damageType || 'Impact', 1.1, 8, 8);
           }
+        }
+        if (currentWeaponId === 'hallowed_scepter') {
+          state.shields.overloaded = false;
+          state.shields.capacity = Math.min(state.shields.maxCapacity, state.shields.capacity + 10);
+          state.armor.durability = Math.min(state.armor.maxDurability, state.armor.durability + 6);
         }
         ctx.spawnParticles(
           state.x + aim.dx * 18,
@@ -608,16 +685,16 @@ export function executeActionPayload(
           state.z + 4,
           12,
           trailColor,
-          action.name || 'SKULLCRACKER!'
+          action.name || 'OVERHEAD SLAM!'
         );
         soundSystem.playExplosion();
-      } else if (currentWeaponId === 'long_sword' || currentWeaponId === 'khopesh') {
-        // Vanguard Stinger Thrust / Execution Lunge: Forward dash + linear point thrust
+      } else if (isBladeWeapon || isDaggerWeapon) {
+        // Vanguard Stinger Thrust / Execution Lunge / Whisper Backstab / TIG Edge Lunge
         state.isBoosterDashing = true;
-        state.boosterTimer = 0.14;
+        state.boosterTimer = isDaggerWeapon ? 0.16 : 0.14;
         state.boosterDirX = aim.dx;
         state.boosterDirY = aim.dy;
-        const thrustLen = currentWeaponId === 'long_sword' ? 44 : 38;
+        const thrustLen = currentWeaponId === 'long_sword' ? 44 : isDaggerWeapon ? 36 : 40;
         state.bladeTrails.push({
           x: state.x,
           y: state.y,
@@ -636,7 +713,7 @@ export function executeActionPayload(
         for (const e of state.enemies) {
           if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
           if (isTargetInThrustCorridor(state.x, state.y, aimAngle, thrustLen, 12, e.x, e.y)) {
-            applyHitToEnemy(e, action.damage, 'Pierce', 0.5, 6);
+            applyHitToEnemy(e, action.damage, action.damageType || 'Pierce', 0.55, 6);
           }
         }
         ctx.spawnParticles(
@@ -648,57 +725,84 @@ export function executeActionPayload(
           action.name
         );
         soundSystem.playSword();
-      } else if (currentWeaponId === 'hand_axe') {
-        // Guillotine Split: Leaping downward chop + impact split
+      } else if (isAxeWeapon) {
+        // Guillotine Split / Siegebreaker Vent Cleave: Leaping downward chop + impact split
         state.isBoosterDashing = true;
-        state.boosterTimer = 0.12;
+        state.boosterTimer = 0.13;
         state.boosterDirX = aim.dx;
         state.boosterDirY = aim.dy;
+        if (currentWeaponId === 'siegebreaker') {
+          state.heat = Math.max(0, state.heat - 14);
+        }
         state.bladeTrails.push({
           x: state.x + aim.dx * 6,
           y: state.y + aim.dy * 6,
           z: state.z,
           angle: aimAngle,
-          arcSpan: Math.PI * 0.65,
-          radius: 26,
-          width: 16,
+          arcSpan: Math.PI * 0.7,
+          radius: currentWeaponId === 'siegebreaker' ? 32 : 26,
+          width: 18,
           style: 'chop',
           color: trailColor,
           coreColor,
-          life: 0.26,
-          maxLife: 0.26,
+          life: 0.28,
+          maxLife: 0.28,
         });
         for (const e of state.enemies) {
           if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
-          if (isTargetInDirectionalArc(state.x, state.y, aimAngle, 30, Math.PI * 0.75, e.x, e.y)) {
-            applyHitToEnemy(e, action.damage, 'Pierce', 0.6, 6, 5);
+          if (
+            isTargetInDirectionalArc(
+              state.x,
+              state.y,
+              aimAngle,
+              currentWeaponId === 'siegebreaker' ? 34 : 30,
+              Math.PI * 0.8,
+              e.x,
+              e.y
+            )
+          ) {
+            applyHitToEnemy(
+              e,
+              action.damage,
+              action.damageType || 'Impact',
+              0.7,
+              8,
+              currentWeaponId === 'siegebreaker' ? 8 : 5
+            );
           }
         }
         ctx.spawnParticles(
           state.x + aim.dx * 14,
           state.y + aim.dy * 14,
           state.z + 6,
-          9,
+          10,
           trailColor,
           action.name
         );
         soundSystem.playSword();
       } else if (weapon?.equipmentRole === 'shield') {
-        // Shield Slot 1: Buckler Parry / Heater Shield Charge / Pavise Fortress Plant
+        // Shield Slot 1: Buckler Parry / Aegis Charge Buckler / Heater Shield Charge / Pavise Fortress Plant
+        const hasShieldChargeFeat = equippedFeats.some((f) =>
+          ['shield_charge', 'shield_wall_advance', 'unstoppable_momentum'].includes(f)
+        );
         const shieldRestore =
           currentWeaponId === 'pavise_shield'
             ? 35
-            : currentWeaponId === 'buckler_shield'
-              ? 15
-              : 10;
+            : currentWeaponId === 'buckler_shield' || currentWeaponId === 'aegis_charge_buckler'
+              ? 18
+              : 12;
         state.shields.overloaded = false;
         state.shields.capacity = Math.min(
           state.shields.maxCapacity,
           state.shields.capacity + shieldRestore
         );
-        if (currentWeaponId === 'heater_shield') {
+        if (
+          currentWeaponId === 'heater_shield' ||
+          currentWeaponId === 'aegis_charge_buckler' ||
+          hasShieldChargeFeat
+        ) {
           state.isBoosterDashing = true;
-          state.boosterTimer = 0.16;
+          state.boosterTimer = hasShieldChargeFeat ? 0.2 : 0.16;
           state.boosterDirX = aim.dx;
           state.boosterDirY = aim.dy;
         }
@@ -708,8 +812,8 @@ export function executeActionPayload(
           y: state.y,
           z: state.z,
           angle: aimAngle,
-          arcSpan: isPavisePlant ? Math.PI * 2 : Math.PI * 0.75,
-          radius: isPavisePlant ? 30 : 26,
+          arcSpan: isPavisePlant ? Math.PI * 2 : Math.PI * 0.8,
+          radius: isPavisePlant ? 30 : 28,
           width: 18,
           style: isPavisePlant ? 'shockwave' : 'bash',
           color: trailColor,
@@ -717,19 +821,26 @@ export function executeActionPayload(
           life: 0.28,
           maxLife: 0.28,
         });
+        const chargeBonusMult = hasShieldChargeFeat ? 1.25 : 1.0;
         for (const e of state.enemies) {
           if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
           const hit = isPavisePlant
             ? Math.hypot(e.x - state.x, e.y - state.y) <= 32
-            : isTargetInDirectionalArc(state.x, state.y, aimAngle, 34, Math.PI * 0.85, e.x, e.y);
+            : isTargetInDirectionalArc(state.x, state.y, aimAngle, 36, Math.PI * 0.9, e.x, e.y);
           if (hit) {
-            applyHitToEnemy(e, action.damage, action.damageType, 1.1, 14);
+            applyHitToEnemy(
+              e,
+              Math.round(action.damage * chargeBonusMult),
+              action.damageType || 'Impact',
+              1.15,
+              15
+            );
           }
         }
         ctx.spawnParticles(state.x, state.y, state.z + 8, 10, trailColor, action.name);
         soundSystem.playSword();
       } else {
-        // Ranged Slot 1 (Boltcaster AP Slug / Great Bow Bodkin Rail-Shot / Quiver Snap-Load Salvo)
+        // Ranged Slot 1 (Boltcaster / Gatling / Grenade / Missile / Beam / Marksman / Quiver)
         state.bladeTrails.push({
           x: state.x,
           y: state.y,
@@ -743,44 +854,111 @@ export function executeActionPayload(
           life: 0.18,
           maxLife: 0.18,
         });
-        if (currentWeaponId === 'quiver') {
-          state.ammo = Math.min(state.maxAmmo, state.ammo + 4);
-          state.isReloading = false;
-          for (const off of [-0.1, 0, 0.1]) {
+        if (currentWeaponId === 'quiver' || isRapidRotaryWeapon) {
+          if (currentWeaponId === 'quiver') {
+            state.ammo = Math.min(state.maxAmmo, state.ammo + 4);
+            state.isReloading = false;
+          }
+          const volleyOffsets =
+            currentWeaponId === 'b25_brushcutter'
+              ? [-0.15, -0.05, 0.05, 0.15]
+              : [-0.1, 0, 0.1];
+          for (const off of volleyOffsets) {
             const ang = aimAngle + off;
             state.projectiles.push({
               x: state.x + Math.cos(ang) * 8,
               y: state.y + Math.sin(ang) * 8,
               z: state.z + 6,
-              vx: Math.cos(ang) * 215,
-              vy: Math.sin(ang) * 215,
+              vx: Math.cos(ang) * 220,
+              vy: Math.sin(ang) * 220,
               vz: 0,
               damage: Math.round(action.damage * 0.55 * overdriveMult),
-              damageType: 'Pierce',
+              damageType: action.damageType || 'Pierce',
               isPlayer: true,
               life: 0.75,
-              radius: 3,
+              radius: 3.5,
               color: trailColor,
               trailColor: coreColor,
               lightRadius: 20,
             });
           }
+        } else if (isExplosiveOrdnanceWeapon) {
+          // Grenade Cannon / Avalanche Rocket / Tomahawk Missile
+          const locked = getLockedTarget(state);
+          const aimVec = locked
+            ? {
+                dx: (locked.x - state.x) / (Math.hypot(locked.x - state.x, locked.y - state.y) || 1),
+                dy: (locked.y - state.y) / (Math.hypot(locked.x - state.x, locked.y - state.y) || 1),
+              }
+            : aim;
+          state.projectiles.push({
+            x: state.x + aimVec.dx * 10,
+            y: state.y + aimVec.dy * 10,
+            z: state.z + 7,
+            vx: aimVec.dx * (currentWeaponId === 'm350_mauler' ? 165 : 210),
+            vy: aimVec.dy * (currentWeaponId === 'm350_mauler' ? 165 : 210),
+            vz: currentWeaponId === 'm350_mauler' ? 14 : 0,
+            damage: Math.round(action.damage * overdriveMult),
+            damageType: 'Blast',
+            isPlayer: true,
+            life: 0.85,
+            radius: 5.5,
+            color: trailColor,
+            trailColor: coreColor,
+            lightRadius: 30,
+            onImpact(x, y, _z, st) {
+              soundSystem.playExplosion();
+              st.bladeTrails = st.bladeTrails || [];
+              st.bladeTrails.push({
+                x,
+                y,
+                z: 0,
+                angle: 0,
+                arcSpan: Math.PI * 2,
+                radius: 30,
+                style: 'shockwave',
+                color: trailColor,
+                coreColor,
+                life: 0.26,
+                maxLife: 0.26,
+              });
+              for (const e of st.enemies) {
+                if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
+                if (Math.hypot(e.x - x, e.y - y) < 32) {
+                  e.stun = Math.max(e.stun, 0.85);
+                  applyDamageFn(
+                    e.shields,
+                    e.armor,
+                    e.frame,
+                    computeEnemyDamage(Math.round(action.damage * 0.65), e.faction, e, 'Blast'),
+                    'Blast'
+                  );
+                }
+              }
+            },
+          });
         } else {
+          const isHeavyBeamOrRail =
+            currentWeaponId === 'great_bow' ||
+            currentWeaponId === 'm450_pilum' ||
+            currentWeaponId === 'sr440_shadowfang' ||
+            currentWeaponId === 'wz800_arclight_cannon' ||
+            currentWeaponId === 'wz650_prism_lance';
           state.projectiles.push({
             x: state.x + aim.dx * 10,
             y: state.y + aim.dy * 10,
             z: state.z + 6,
-            vx: aim.dx * (currentWeaponId === 'great_bow' ? 255 : 230),
-            vy: aim.dy * (currentWeaponId === 'great_bow' ? 255 : 230),
+            vx: aim.dx * (isHeavyBeamOrRail ? 260 : 230),
+            vy: aim.dy * (isHeavyBeamOrRail ? 260 : 230),
             vz: 0,
             damage: Math.round(action.damage * overdriveMult),
             damageType: action.damageType,
             isPlayer: true,
             life: 0.9,
-            radius: currentWeaponId === 'great_bow' ? 5 : 4.5,
+            radius: isHeavyBeamOrRail ? 5.5 : 4.5,
             color: trailColor,
             trailColor: coreColor,
-            lightRadius: 26,
+            lightRadius: 28,
           });
         }
         soundSystem.playLaser();
@@ -790,15 +968,15 @@ export function executeActionPayload(
 
     // ─── SLOT 2: TACTICAL SECONDARY / CONTROL SKILL ──────────────────────────
     if (slot === 2) {
-      if (currentWeaponId === 'mace') {
-        // Bell-Toll Shockwave: Radial ground shockwave ring centered on player
+      if (isStaffOrMaceWeapon) {
+        // Bell-Toll Shockwave / Manacore AoE Ring / Hallowed Scepter Sanctuary Pulse
         state.bladeTrails.push({
           x: state.x,
           y: state.y,
           z: state.z,
           angle: aimAngle,
           arcSpan: Math.PI * 2,
-          radius: 36,
+          radius: 38,
           style: 'shockwave',
           color: trailColor,
           coreColor,
@@ -807,33 +985,48 @@ export function executeActionPayload(
         });
         for (const e of state.enemies) {
           if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
-          if (Math.hypot(e.x - state.x, e.y - state.y) <= 36) {
-            applyHitToEnemy(e, action.damage, 'Blast', 1.25, 10, 6);
+          if (Math.hypot(e.x - state.x, e.y - state.y) <= 38) {
+            applyHitToEnemy(
+              e,
+              action.damage,
+              action.damageType || (currentWeaponId === 'mace' ? 'Blast' : 'Wave'),
+              1.25,
+              10,
+              6
+            );
           }
+        }
+        if (currentWeaponId === 'hallowed_scepter') {
+          state.shields.overloaded = false;
+          state.shields.capacity = Math.min(state.shields.maxCapacity, state.shields.capacity + 14);
+          state.armor.durability = Math.min(state.armor.maxDurability, state.armor.durability + 8);
         }
         ctx.spawnParticles(state.x, state.y, state.z + 6, 12, trailColor, action.name);
         soundSystem.playExplosion();
-      } else if (currentWeaponId === 'buckler_shield') {
-        // Ricochet Disc Toss: Throws magnetized buckler projectile + bash arc
+      } else if (
+        currentWeaponId === 'buckler_shield' ||
+        currentWeaponId === 'aegis_charge_buckler'
+      ) {
+        // Ricochet Disc Toss / Aegis Shield Bash Wave
         state.bladeTrails.push({
           x: state.x,
           y: state.y,
           z: state.z,
           angle: aimAngle,
-          arcSpan: Math.PI * 0.6,
-          radius: 18,
+          arcSpan: Math.PI * 0.65,
+          radius: 20,
           style: 'bash',
           color: trailColor,
           coreColor,
-          life: 0.2,
-          maxLife: 0.2,
+          life: 0.22,
+          maxLife: 0.22,
         });
         state.projectiles.push({
           x: state.x + aim.dx * 10,
           y: state.y + aim.dy * 10,
           z: state.z + 6,
-          vx: aim.dx * 175,
-          vy: aim.dy * 175,
+          vx: aim.dx * 180,
+          vy: aim.dy * 180,
           vz: 0,
           damage: Math.round(action.damage * overdriveMult),
           damageType: 'Impact',
@@ -877,26 +1070,43 @@ export function executeActionPayload(
           action.name
         );
         soundSystem.playExplosion();
-      } else if (currentWeaponId === 'hand_axe') {
-        // Bearded Hook Pull: Chop hook that pulls enemies toward the player and staggers them!
+      } else if (isAxeWeapon) {
+        // Bearded Hook Pull / Siegebreaker Seismic Cleave
         state.bladeTrails.push({
           x: state.x,
           y: state.y,
           z: state.z,
           angle: aimAngle,
-          arcSpan: Math.PI * 0.58,
-          radius: 28,
-          width: 14,
+          arcSpan: currentWeaponId === 'siegebreaker' ? Math.PI * 0.95 : Math.PI * 0.58,
+          radius: currentWeaponId === 'siegebreaker' ? 32 : 28,
+          width: 16,
           style: 'chop',
           color: trailColor,
           coreColor,
-          life: 0.25,
-          maxLife: 0.25,
+          life: 0.26,
+          maxLife: 0.26,
         });
         for (const e of state.enemies) {
           if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
-          if (isTargetInDirectionalArc(state.x, state.y, aimAngle, 32, Math.PI * 0.7, e.x, e.y)) {
-            applyHitToEnemy(e, action.damage, 'Impact', 0.95, -12);
+          if (
+            isTargetInDirectionalArc(
+              state.x,
+              state.y,
+              aimAngle,
+              currentWeaponId === 'siegebreaker' ? 36 : 32,
+              Math.PI * 0.9,
+              e.x,
+              e.y
+            )
+          ) {
+            applyHitToEnemy(
+              e,
+              action.damage,
+              action.damageType || 'Impact',
+              0.95,
+              currentWeaponId === 'hand_axe' ? -12 : 10,
+              6
+            );
           }
         }
         ctx.spawnParticles(
@@ -908,42 +1118,42 @@ export function executeActionPayload(
           action.name
         );
         soundSystem.playSword();
-      } else if (currentWeaponId === 'short_spear') {
-        // Shaft Sweep Vault: Wide low polearm sweep + vaults player slightly back to keep spear distance
+      } else if (isSpearWeapon) {
+        // Shaft Sweep Vault / Swordspear Mana Cleave
         state.bladeTrails.push({
           x: state.x,
           y: state.y,
           z: state.z,
           angle: aimAngle,
-          arcSpan: Math.PI * 1.05,
-          radius: 28,
+          arcSpan: Math.PI * 1.15,
+          radius: 30,
           style: 'slash',
           color: trailColor,
           coreColor,
-          life: 0.24,
-          maxLife: 0.24,
+          life: 0.25,
+          maxLife: 0.25,
         });
         const bounds = getActiveRoomBounds(state);
-        state.x = Math.max(12, Math.min(bounds.widthPx - 12, state.x - aim.dx * 7));
-        state.y = Math.max(12, Math.min(bounds.heightPx - 12, state.y - aim.dy * 7));
+        state.x = Math.max(12, Math.min(bounds.widthPx - 12, state.x - aim.dx * 6));
+        state.y = Math.max(12, Math.min(bounds.heightPx - 12, state.y - aim.dy * 6));
         for (const e of state.enemies) {
           if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
-          if (isTargetInDirectionalArc(state.x, state.y, aimAngle, 32, Math.PI * 1.15, e.x, e.y)) {
-            applyHitToEnemy(e, action.damage, 'Impact', 1.1, 8);
+          if (isTargetInDirectionalArc(state.x, state.y, aimAngle, 34, Math.PI * 1.2, e.x, e.y)) {
+            applyHitToEnemy(e, action.damage, action.damageType || 'Wave', 1.1, 8);
           }
         }
         ctx.spawnParticles(state.x, state.y, state.z + 6, 8, trailColor, action.name);
         soundSystem.playSword();
       } else if (
-        currentWeaponId === 'long_sword' ||
-        currentWeaponId === 'khopesh' ||
+        isBladeWeapon ||
+        isDaggerWeapon ||
         currentWeaponId === 'heater_shield' ||
-        currentWeaponId === 'avalon_siege_lance'
+        isLanceWeapon
       ) {
-        // Crescent Cleave / Hamstring Arc / Bell-Ringer Slam / Bastion Phalanx Sweep
+        // Crescent Cleave / Hamstring Arc / Bell-Ringer Slam / Phalanx Sweep / Whisper Fan Slash
         soundSystem.playSword();
         const isHeaterSlam = currentWeaponId === 'heater_shield';
-        const reach = currentWeaponId === 'avalon_siege_lance' ? 40 : isHeaterSlam ? 28 : 32;
+        const reach = isLanceWeapon ? 40 : isHeaterSlam ? 28 : isDaggerWeapon ? 26 : 32;
         const span =
           currentWeaponId === 'long_sword'
             ? Math.PI * 1.35
@@ -968,7 +1178,7 @@ export function executeActionPayload(
         for (const e of state.enemies) {
           if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
           if (isTargetInDirectionalArc(state.x, state.y, aimAngle, reach, span + 0.15, e.x, e.y)) {
-            if (currentWeaponId === 'khopesh') {
+            if (currentWeaponId === 'khopesh' || currentWeaponId === 's2_turbine_khopesh' || isDaggerWeapon) {
               e.speed = Math.max(12, e.speed * 0.65);
             }
             applyHitToEnemy(
@@ -976,12 +1186,16 @@ export function executeActionPayload(
               action.damage,
               action.damageType || 'Pierce',
               isHeaterSlam ? 1.25 : 0.85,
-              currentWeaponId === 'avalon_siege_lance' ? 16 : 8
+              isLanceWeapon ? 16 : 8
             );
           }
         }
-      } else if (currentWeaponId === 'great_bow' || currentWeaponId === 'quiver') {
-        // Broadhead Fan Volley / Caltrop Scatter
+      } else if (
+        currentWeaponId === 'great_bow' ||
+        currentWeaponId === 'quiver' ||
+        isRapidRotaryWeapon
+      ) {
+        // Broadhead Fan Volley / Caltrop Scatter / Rotary Suppression Sweep
         state.bladeTrails.push({
           x: state.x,
           y: state.y,
@@ -996,11 +1210,11 @@ export function executeActionPayload(
           maxLife: 0.2,
         });
         const offsets =
-          currentWeaponId === 'great_bow'
+          currentWeaponId === 'great_bow' || isRapidRotaryWeapon
             ? [-0.26, -0.13, 0, 0.13, 0.26]
             : [-0.36, -0.18, 0, 0.18, 0.36];
-        const speed = currentWeaponId === 'great_bow' ? 195 : 135;
-        const life = currentWeaponId === 'great_bow' ? 0.65 : 0.42;
+        const speed = currentWeaponId === 'quiver' ? 135 : 195;
+        const life = currentWeaponId === 'quiver' ? 0.42 : 0.65;
         for (const off of offsets) {
           const ang = aimAngle + off;
           state.projectiles.push({
@@ -1010,8 +1224,8 @@ export function executeActionPayload(
             vx: Math.cos(ang) * speed,
             vy: Math.sin(ang) * speed,
             vz: 0,
-            damage: Math.round(action.damage * overdriveMult),
-            damageType: 'Pierce',
+            damage: Math.round(action.damage * 0.6 * overdriveMult),
+            damageType: action.damageType || 'Pierce',
             isPlayer: true,
             life,
             radius: 3,
@@ -1022,7 +1236,7 @@ export function executeActionPayload(
         }
         soundSystem.playLaser();
       } else {
-        // Concussion Grenade / Concussion Mortar (Gladius Boltcaster & Avalon Siege Lance)
+        // Concussion Grenade / Concussion Mortar / Beam Refraction / Ordnance Salvo
         state.bladeTrails.push({
           x: state.x,
           y: state.y,
@@ -1036,20 +1250,21 @@ export function executeActionPayload(
           life: 0.18,
           maxLife: 0.18,
         });
+        const slot2DmgType = action.damageType || 'Blast';
         state.projectiles.push({
           x: state.x + aim.dx * 8,
           y: state.y + aim.dy * 8,
           z: state.z + 8,
-          vx: aim.dx * 120,
-          vy: aim.dy * 120,
-          vz: 20,
+          vx: aim.dx * (slot2DmgType === 'Beam' || slot2DmgType === 'Pulse' ? 195 : 125),
+          vy: aim.dy * (slot2DmgType === 'Beam' || slot2DmgType === 'Pulse' ? 195 : 125),
+          vz: slot2DmgType === 'Blast' ? 20 : 0,
           damage: Math.round(action.damage * overdriveMult),
-          damageType: 'Blast',
+          damageType: slot2DmgType,
           isPlayer: true,
-          life: 0.6,
+          life: 0.65,
           radius: 5,
-          color: gemVis.gemId ? trailColor : '#ea580c',
-          trailColor: gemVis.gemId ? coreColor : '#f97316',
+          color: gemVis.gemId ? trailColor : slot2DmgType === 'Blast' ? '#ea580c' : trailColor,
+          trailColor: gemVis.gemId ? coreColor : slot2DmgType === 'Blast' ? '#f97316' : coreColor,
           lightRadius: 30,
           onImpact(x, y, _z, st) {
             soundSystem.playExplosion();
@@ -1076,8 +1291,8 @@ export function executeActionPayload(
                   e.shields,
                   e.armor,
                   e.frame,
-                  computeEnemyDamage(action.damage, e.faction),
-                  'Blast'
+                  computeEnemyDamage(action.damage, e.faction, e, slot2DmgType),
+                  slot2DmgType
                 );
               }
             }
@@ -2185,46 +2400,138 @@ export function performAuxiliarySwap(
 }
 
 // [ORION-ANCHOR: COMBAT-DEFENSE-MATH]
+/**
+ * Canonical 6 Damage Types (`Impact`, `Pierce`, `Blast`, `Beam`, `Pulse`, `Wave`)
+ * × 3 Defense Layers (`Shields`, `Armor` [`Ablative`, `Reactive`, `Hardened`, `Layered`], `Frame Integrity`).
+ */
 export function applyDamageToLayers(
   shields: ShieldState,
   armor: ArmorState,
   frame: FrameState,
   rawDamage: number,
-  _damageType: DamageType,
+  damageType: DamageType,
   spawnParticles?: (count: number, color: string, label: string) => void
 ): { absorbedByShield: number; stoppedByArmor: boolean; frameDamage: number } {
-  let remaining = rawDamage;
+  let remaining = Math.max(1, rawDamage);
   let absorbedByShield = 0;
   let stoppedByArmor = false;
   let frameDamage = 0;
 
-  // 1. SHIELD LAYER
+  // 1. SHIELD LAYER (Pulse & Beam disrupt shields; Wave partially bleeds through shields; Pierce is resisted by full shields)
   if (shields.capacity > 0) {
-    if (remaining <= shields.capacity) {
-      shields.capacity -= remaining;
+    const shieldEfficiencyMult =
+      damageType === 'Pulse'
+        ? 1.3
+        : damageType === 'Beam'
+          ? 1.2
+          : damageType === 'Wave'
+            ? 1.15
+            : damageType === 'Impact'
+              ? 1.1
+              : damageType === 'Pierce'
+                ? 0.85
+                : 1.0;
+
+    // Wave (Mana) channels harmonic resonance that bleeds 20% directly past active shields
+    let waveBleed = 0;
+    if (damageType === 'Wave' && remaining >= 4) {
+      waveBleed = Math.max(1, Math.round(remaining * 0.2));
+      remaining = Math.max(1, remaining - waveBleed);
+    }
+
+    const effectiveShieldDrain = Math.max(1, Math.round(remaining * shieldEfficiencyMult));
+
+    if (effectiveShieldDrain <= shields.capacity) {
+      shields.capacity -= effectiveShieldDrain;
       absorbedByShield = remaining;
-      remaining = 0;
-      shields.rechargeDelay = 3.0;
-      spawnParticles?.(4, '#77c7ff', 'SHIELD ABSORB');
-      return { absorbedByShield, stoppedByArmor: false, frameDamage: 0 };
+      remaining = waveBleed;
+      shields.rechargeDelay = damageType === 'Pulse' ? 4.0 : 3.0;
+      if (remaining === 0) {
+        spawnParticles?.(
+          4,
+          damageType === 'Pulse' ? '#38bdf8' : '#77c7ff',
+          damageType === 'Pulse' ? 'PULSE DISRUPT' : 'SHIELD ABSORB'
+        );
+        return { absorbedByShield, stoppedByArmor: false, frameDamage: 0 };
+      }
     } else {
       absorbedByShield = shields.capacity;
-      remaining -= shields.capacity;
+      const unabsorbedRatio = Math.max(
+        0,
+        (effectiveShieldDrain - shields.capacity) / effectiveShieldDrain
+      );
+      remaining = Math.max(1, Math.round(remaining * unabsorbedRatio)) + waveBleed;
       shields.capacity = 0;
       shields.overloaded = true;
-      shields.overloadTimer = 4.0;
+      shields.overloadTimer = damageType === 'Pulse' ? 5.0 : 4.0;
       spawnParticles?.(8, '#77c7ff', 'SHIELD BROKEN!');
     }
   }
 
-  // 2. ARMOR LAYER
+  // 2. ARMOR LAYER (Ablative, Reactive, Hardened, Layered vs 6 Damage Types)
   if (armor.durability > 0 && remaining > 0) {
-    const durabilityLoss = Math.min(armor.durability, Math.max(3, Math.round(remaining * 0.3)));
+    const armorType = armor.type || 'Reactive';
+
+    // Durability Shred Multiplier: Blast & Impact dent physical plating heavily; Ablative sheds outer layers faster
+    let durShredMult =
+      damageType === 'Blast'
+        ? 0.48
+        : damageType === 'Impact'
+          ? 0.38
+          : damageType === 'Beam'
+            ? 0.34
+            : 0.26;
+    if (armorType === 'Ablative') {
+      durShredMult *= 1.25;
+    } else if (armorType === 'Hardened' && (damageType === 'Pierce' || damageType === 'Pulse')) {
+      durShredMult *= 0.8;
+    }
+
+    const durabilityLoss = Math.min(
+      armor.durability,
+      Math.max(2, Math.round(remaining * durShredMult))
+    );
     armor.durability -= durabilityLoss;
 
-    const durRatio = Math.max(0.1, armor.durability / armor.maxDurability);
-    const effThreshold = armor.threshold * durRatio;
-    const effRating = armor.rating * durRatio;
+    const durRatio = Math.max(0.15, armor.durability / Math.max(1, armor.maxDurability));
+
+    // Armor Threshold & Rating Modifiers by DamageType × ArmorType
+    let thresholdMult = 1.0;
+    let ratingMult = 1.0;
+
+    if (damageType === 'Pierce') {
+      // Pierce (AP bolts, blades, lances) bypasses 35% of Threshold and 30% of Rating
+      thresholdMult *= 0.65;
+      ratingMult *= 0.7;
+    } else if (damageType === 'Blast') {
+      // Blast concussive shockwaves ignore 25% of Rating
+      ratingMult *= 0.75;
+    } else if (damageType === 'Wave') {
+      // Wave (Mana) bypasses Hardened physical armor but is refracted by Layered lattice
+      if (armorType === 'Hardened') ratingMult *= 0.7;
+      if (armorType === 'Layered') {
+        thresholdMult *= 1.15;
+        ratingMult *= 1.2;
+      }
+    } else if (damageType === 'Beam' || damageType === 'Pulse') {
+      // Layered crystal lattice resists Beam & Pulse; Ablative sheds thermal beams
+      if (armorType === 'Layered') {
+        thresholdMult *= 1.15;
+        ratingMult *= 1.2;
+      }
+    }
+
+    if (armorType === 'Reactive' && (damageType === 'Impact' || damageType === 'Blast')) {
+      // Reactive counter-plating dampens kinetic Impact & Blast
+      ratingMult *= 1.2;
+    } else if (armorType === 'Hardened' && (damageType === 'Impact' || damageType === 'Pierce')) {
+      thresholdMult *= 1.15;
+    } else if (armorType === 'Ablative' && durRatio > 0.5) {
+      ratingMult *= 1.15;
+    }
+
+    const effThreshold = armor.threshold * durRatio * thresholdMult;
+    const effRating = armor.rating * durRatio * ratingMult;
 
     if (remaining < effThreshold) {
       stoppedByArmor = true;
@@ -2233,7 +2540,11 @@ export function applyDamageToLayers(
     }
 
     remaining = Math.max(1, remaining - effRating);
-    spawnParticles?.(5, '#ffd27d', 'ARMOR PIERCED');
+    spawnParticles?.(
+      5,
+      '#ffd27d',
+      damageType === 'Blast' ? 'ARMOR SHREDDED' : 'ARMOR PIERCED'
+    );
   }
 
   // 3. FRAME INTEGRITY LAYER
@@ -3385,14 +3696,36 @@ export function updateCombat(
                     }
                   }
                 }
-                const oathMult = hasKnightsOath && e.faction === 'camelot' ? 1.25 : 1.0;
+                const oathMult = hasKnightsOath && e.faction === 'camelot' ? 1.1 : 1.0;
                 const isLockedOrStaggered =
                   e.id === state.lockedTargetId || e.stun > 0;
                 const charoiteMult = isLockedOrStaggered
                   ? gemCombatMods.lockedOrStaggeredDamageMult
                   : 1.0;
                 const adaptiveMult = weapon?.adaptiveDamageTypes ? 1.12 : 1.0;
-                const effDamage = Math.round(shotDmg * oathMult * opticMult * charoiteMult * adaptiveMult);
+                const hasAssassinate =
+                  (state.equippedFeats || []).some((f) =>
+                    ['assassinate', 'executioners_gambit'].includes(f)
+                  ) && e.frame.integrity <= e.frame.maxIntegrity * 0.4;
+                const execMult = hasAssassinate ? 1.2 : 1.0;
+                let backstabMult = 1.0;
+                if (
+                  (state.equippedFeats || []).some((f) =>
+                    ['backstab_mastery', 'ambush_predator', 'surgical_precision'].includes(f)
+                  )
+                ) {
+                  const enemyFaceAng = e.attackAngle ?? 0;
+                  const toEnemyAng = Math.atan2(e.y - state.y, e.x - state.x);
+                  if (
+                    Math.abs(normalizeAngleDiff(toEnemyAng, enemyFaceAng)) < Math.PI * 0.45 ||
+                    e.stun > 0
+                  ) {
+                    backstabMult = 1.2;
+                  }
+                }
+                const effDamage = Math.round(
+                  shotDmg * oathMult * opticMult * charoiteMult * adaptiveMult * execMult * backstabMult
+                );
                 const resolvedDmgType = weapon?.adaptiveDamageTypes
                   ? e.shields.capacity > 0
                     ? weapon.adaptiveDamageTypes[0]
@@ -3432,18 +3765,18 @@ export function updateCombat(
 
               state.bladeTrails = state.bladeTrails || [];
 
-              if (currentWeaponId === 'short_spear') {
-                // Short Spear: Long linear piercing thrust corridor (38px reach, narrow ±10px corridor)
+              if (currentWeaponId === 'short_spear' || currentWeaponId === 'ls900_swordspear') {
+                // Short Spear / LS-900 Swordspear: Long linear piercing/wave thrust corridor
                 const jitter = ((state.ammo % 3) - 1) * 0.04;
                 state.bladeTrails.push({
                   x: state.x,
                   y: state.y,
                   z: state.z,
                   angle: aimAngle + jitter,
-                  arcSpan: Math.PI * 0.22,
-                  radius: 36,
-                  length: 38,
-                  width: 9,
+                  arcSpan: Math.PI * 0.24,
+                  radius: 38,
+                  length: 40,
+                  width: 10,
                   style: 'thrust',
                   color: trailColor,
                   coreColor,
@@ -3453,7 +3786,7 @@ export function updateCombat(
                 });
                 for (const e of state.enemies) {
                   if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
-                  if (isTargetInThrustCorridor(state.x, state.y, aimAngle, 38, 11, e.x, e.y)) {
+                  if (isTargetInThrustCorridor(state.x, state.y, aimAngle, 40, 12, e.x, e.y)) {
                     resolveMeleeHit(e, 0.22, 3);
                   }
                 }
@@ -3466,16 +3799,19 @@ export function updateCombat(
                   ''
                 );
                 soundSystem.playSword();
-              } else if (currentWeaponId === 'avalon_siege_lance') {
-                // Avalon Heavy Lance: Heavy lance bore thrust + kinetic siege slug
+              } else if (
+                currentWeaponId === 'avalon_siege_lance' ||
+                currentWeaponId === 'hl220_lightburst_lance'
+              ) {
+                // Avalon Heavy Lance / HL-220 Lightburst Lance: Heavy lance bore thrust + kinetic/beam slug
                 state.bladeTrails.push({
                   x: state.x,
                   y: state.y,
                   z: state.z,
                   angle: aimAngle,
                   arcSpan: Math.PI * 0.28,
-                  radius: 34,
-                  length: 36,
+                  radius: 36,
+                  length: 38,
                   width: 12,
                   style: 'thrust',
                   color: trailColor,
@@ -3485,7 +3821,7 @@ export function updateCombat(
                 });
                 for (const e of state.enemies) {
                   if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
-                  if (isTargetInThrustCorridor(state.x, state.y, aimAngle, 36, 13, e.x, e.y)) {
+                  if (isTargetInThrustCorridor(state.x, state.y, aimAngle, 38, 13, e.x, e.y)) {
                     resolveMeleeHit(e, 0.35, 8);
                   }
                 }
@@ -3493,8 +3829,8 @@ export function updateCombat(
                   x: state.x + aim.dx * 12,
                   y: state.y + aim.dy * 12,
                   z: state.z + 6,
-                  vx: aim.dx * 165,
-                  vy: aim.dy * 165,
+                  vx: aim.dx * 175,
+                  vy: aim.dy * 175,
                   vz: 0,
                   damage: shotDmg,
                   damageType: action.damageType,
@@ -3506,17 +3842,21 @@ export function updateCombat(
                   lightRadius: 24,
                 });
                 soundSystem.playSword();
-              } else if (currentWeaponId === 'mace') {
-                // Mace: Concentrated frontal blunt slam + ground impact ring & armor-denting crush
+              } else if (
+                currentWeaponId === 'mace' ||
+                currentWeaponId === 'wz200_manacore_staff' ||
+                currentWeaponId === 'hallowed_scepter'
+              ) {
+                // Mace / WZ-200 Manacore Staff / Hallowed Scepter: Frontal slam + wave/support pulse
                 state.bladeTrails.push({
                   x: state.x,
                   y: state.y,
                   z: state.z,
                   angle: aimAngle,
-                  arcSpan: Math.PI * 0.55,
-                  radius: 20,
-                  length: 15,
-                  width: 17,
+                  arcSpan: Math.PI * 0.58,
+                  radius: 22,
+                  length: 16,
+                  width: 18,
                   style: 'slam',
                   color: trailColor,
                   coreColor,
@@ -3526,9 +3866,30 @@ export function updateCombat(
                 });
                 for (const e of state.enemies) {
                   if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
-                  if (isTargetInImpactZone(state.x, state.y, aimAngle, 15, 18, e.x, e.y)) {
+                  if (isTargetInImpactZone(state.x, state.y, aimAngle, 16, 20, e.x, e.y)) {
                     resolveMeleeHit(e, 0.34, 5, 4);
                   }
+                }
+                if (
+                  currentWeaponId === 'wz200_manacore_staff' ||
+                  currentWeaponId === 'hallowed_scepter'
+                ) {
+                  state.projectiles.push({
+                    x: state.x + aim.dx * 10,
+                    y: state.y + aim.dy * 10,
+                    z: state.z + 6,
+                    vx: aim.dx * 165,
+                    vy: aim.dy * 165,
+                    vz: 0,
+                    damage: Math.round(shotDmg * 0.75),
+                    damageType: 'Wave',
+                    isPlayer: true,
+                    life: 0.5,
+                    radius: 4.5,
+                    color: trailColor,
+                    trailColor: coreColor,
+                    lightRadius: 22,
+                  });
                 }
                 ctx.spawnParticles(
                   state.x + aim.dx * 15,
@@ -3539,27 +3900,38 @@ export function updateCombat(
                   ''
                 );
                 soundSystem.playSword();
-              } else if (currentWeaponId === 'hand_axe') {
-                // Hand Axe: Tight, heavy wedge chop with high close-quarters bite
+              } else if (currentWeaponId === 'hand_axe' || currentWeaponId === 'siegebreaker') {
+                // Hand Axe / Siegebreaker Battle Axe: Heavy wedge chop with armor shred
+                const isSiegebreaker = currentWeaponId === 'siegebreaker';
                 state.bladeTrails.push({
                   x: state.x,
                   y: state.y,
                   z: state.z,
                   angle: aimAngle,
-                  arcSpan: Math.PI * 0.62,
-                  radius: 21,
-                  width: 13,
+                  arcSpan: isSiegebreaker ? Math.PI * 0.75 : Math.PI * 0.62,
+                  radius: isSiegebreaker ? 26 : 21,
+                  width: isSiegebreaker ? 16 : 13,
                   style: 'chop',
                   color: trailColor,
                   coreColor,
-                  life: 0.2,
-                  maxLife: 0.2,
+                  life: 0.22,
+                  maxLife: 0.22,
                   flipDir: state.ammo % 2 === 0,
                 });
                 for (const e of state.enemies) {
                   if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
-                  if (isTargetInDirectionalArc(state.x, state.y, aimAngle, 25, Math.PI * 0.7, e.x, e.y)) {
-                    resolveMeleeHit(e, 0.25, 4, 2);
+                  if (
+                    isTargetInDirectionalArc(
+                      state.x,
+                      state.y,
+                      aimAngle,
+                      isSiegebreaker ? 30 : 25,
+                      isSiegebreaker ? Math.PI * 0.8 : Math.PI * 0.7,
+                      e.x,
+                      e.y
+                    )
+                  ) {
+                    resolveMeleeHit(e, isSiegebreaker ? 0.35 : 0.25, isSiegebreaker ? 6 : 4, isSiegebreaker ? 5 : 2);
                   }
                 }
                 ctx.spawnParticles(
@@ -3572,7 +3944,7 @@ export function updateCombat(
                 );
                 soundSystem.playSword();
               } else if (weapon?.equipmentRole === 'shield') {
-                // Shield (Buckler / Heater / Pavise): Blunt kinetic barrier bash wave with knockback
+                // Shield (Buckler / Aegis Charge Buckler / Heater / Pavise): Blunt kinetic barrier bash wave
                 const bashRadius =
                   currentWeaponId === 'pavise_shield'
                     ? 24
@@ -3631,10 +4003,13 @@ export function updateCombat(
                 );
                 soundSystem.playSword();
               } else {
-                // Long Sword & Khopesh (Shotel): Sweeping crescent blade slash
-                const isLongSword = currentWeaponId === 'long_sword';
-                const slashRadius = isLongSword ? 26 : 22;
-                const slashArc = isLongSword ? Math.PI * 1.02 : Math.PI * 0.82;
+                // Long Sword, Khopesh, S-2 Turbine Khopesh, TIG Edge, S-4 Whisper Blade, S-6 Phantom Edge, Grace Edge
+                const isLongBlade =
+                  currentWeaponId === 'long_sword' ||
+                  currentWeaponId === 'tig_edge' ||
+                  currentWeaponId === 'grace_edge';
+                const slashRadius = isLongBlade ? 26 : 22;
+                const slashArc = isLongBlade ? Math.PI * 1.02 : Math.PI * 0.82;
                 state.bladeTrails.push({
                   x: state.x,
                   y: state.y,
@@ -3662,13 +4037,19 @@ export function updateCombat(
                       e.y
                     )
                   ) {
-                    // Shotel curved blade reaches around shields (bypasses 25% shield absorption)
+                    const bypassShieldRatio =
+                      currentWeaponId === 'khopesh' ||
+                      currentWeaponId === 's2_turbine_khopesh' ||
+                      currentWeaponId === 's4_whisper_blade' ||
+                      currentWeaponId === 's6_phantom_edge'
+                        ? 0.25
+                        : 0;
                     resolveMeleeHit(
                       e,
                       0.22,
-                      isLongSword ? 4 : 2,
+                      isLongBlade ? 4 : 2,
                       0,
-                      currentWeaponId === 'khopesh' ? 0.25 : 0
+                      bypassShieldRatio
                     );
                   }
                 }

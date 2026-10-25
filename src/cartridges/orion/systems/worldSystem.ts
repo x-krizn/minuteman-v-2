@@ -35,20 +35,28 @@ import {
   AetherFogGraphState,
   AetherGraphNode,
   AetherNodeType,
+  ContextualLootPool,
   OrionCombatContext,
   OrionState,
   RoomDefinition,
+  RoomLightingProfile,
 } from '../types';
 import { spawnEnemyByType, spawnRoomEnemies } from './entitySystem';
 import {
   ACTION_MODIFICATION_CATALOG,
   GEMSTONE_CATALOG,
+  getOwnedWeaponCount,
   isEquipmentUnlocked,
   refundInventoryGem,
   unlockEquipmentItem,
   unlockLevel2SecondaryWeapon,
 } from '../database/progression';
-import { getWeaponDefinition, WEAPON_REGISTRY } from '../database/weapons';
+import {
+  getWeaponDefinition,
+  isTrueWeaponEquipment,
+  isTwoHandOnlyWeapon,
+  WEAPON_REGISTRY,
+} from '../database/weapons';
 import {
   addOrionInventoryItem,
   getTutorialPromptOverride,
@@ -63,6 +71,9 @@ import {
 export interface OrionRoomMetadata {
   title: string;
   bannerTitle: string;
+  landmarkLabel?: string;
+  lighting?: RoomLightingProfile;
+  lootPool?: ContextualLootPool;
   regionId: string;
   areaId: string;
   mapId: string;
@@ -369,6 +380,9 @@ function assembleNestedWorld(): void {
     ORION_ROOM_METADATA[coord] = {
       title: resolvedRoom.title,
       bannerTitle: resolvedRoom.bannerTitle,
+      landmarkLabel: resolvedRoom.landmarkLabel,
+      lighting: resolvedRoom.lighting,
+      lootPool: resolvedRoom.lootPool,
       regionId: regionDef.id,
       areaId: areaDef.id,
       mapId,
@@ -439,6 +453,9 @@ function assembleNestedWorld(): void {
           ORION_ROOM_METADATA[slot.coord] = {
             title,
             bannerTitle,
+            landmarkLabel: stitchedRoom.landmarkLabel,
+            lighting: stitchedRoom.lighting,
+            lootPool: stitchedRoom.lootPool,
             regionId: regionDef.id,
             areaId: areaDef.id,
             mapId: mapDef.id,
@@ -676,6 +693,157 @@ function buildEndNodeCacheDefinition(feature: AetherEndFeature): OrionCacheDefin
 
 export { getCanonicalRoomPersistenceKey, isRoomCacheLooted, markRoomCacheLooted };
 
+// [ORION-ANCHOR: CONTEXTUAL-LOOT-TABLES]
+export const ENEMY_EQUIPMENT_DROP_POOLS: Record<
+  string,
+  { equipmentIds: string[]; baseChance: number }
+> = {
+  bog_crawler: {
+    equipmentIds: ['s2_turbine_khopesh', 's4_whisper_blade', 'tig_edge', 'arc_conductor'],
+    baseChance: 0.14,
+  },
+  bog_wurm: {
+    equipmentIds: ['ls900_swordspear', 'wz450_sparkstrike', 'cl350_litany', 'grace_edge'],
+    baseChance: 0.28,
+  },
+  orc_scout: {
+    equipmentIds: ['sv12_viper', 'sv18_serpent', 's6_phantom_edge', 'm300_hasta'],
+    baseChance: 0.2,
+  },
+  orc_warrior: {
+    equipmentIds: ['b25_brushcutter', 'm350_mauler', 'siegebreaker', 'm450_pilum'],
+    baseChance: 0.28,
+  },
+  percival_knight: {
+    equipmentIds: ['aegis_charge_buckler', 'hl220_lightburst_lance', 'rs450_radiant_projector', 'tig_edge'],
+    baseChance: 1.0,
+  },
+  tristan_knight: {
+    equipmentIds: ['sr440_shadowfang', 'sv18_serpent', 's4_whisper_blade', 's6_phantom_edge'],
+    baseChance: 1.0,
+  },
+  bors_knight: {
+    equipmentIds: ['m450_pilum', 'm300_hasta', 'n55_gladius', 's2_turbine_khopesh'],
+    baseChance: 1.0,
+  },
+  lady_of_the_lake: {
+    equipmentIds: [
+      'wz650_prism_lance',
+      'wz200_manacore_staff',
+      'hallowed_scepter',
+      'grace_edge',
+      'cl500_absolution',
+    ],
+    baseChance: 1.0,
+  },
+};
+
+export interface ContextualLootQuery {
+  enemyType?: string;
+  roomCoord?: string;
+  areaId?: string;
+  regionId?: string;
+  allowSecondCopy?: boolean;
+}
+
+/**
+ * Resolves a contextual weapon or equipment drop across the hierarchy:
+ * `Enemy Archetype -> Room Pool -> Area Pool -> Region Pool`.
+ * Prioritizes unlocking unowned 1st copies from the specific context first;
+ * once 1st copies are owned, can award a 2nd copy (`x2`) of a 1H weapon for Dual-Wield Paired Stance.
+ */
+export function resolveContextualEquipmentDrop(
+  state: OrionState,
+  query: ContextualLootQuery
+): string | undefined {
+  const roomKey = query.roomCoord || state.room;
+  const meta = ORION_ROOM_METADATA[roomKey];
+  const areaId = query.areaId || meta?.areaId || state.areaId || 'm00_the_bog';
+  const areaDef = AREA_REGISTRY[areaId];
+  const regionId =
+    query.regionId || meta?.regionId || state.regionId || areaDef?.regionId || 'region_belldor_outskirts';
+  const regionDef = REGION_REGISTRY[regionId];
+
+  const enemyPool = query.enemyType
+    ? ENEMY_EQUIPMENT_DROP_POOLS[query.enemyType]?.equipmentIds || []
+    : [];
+  const roomPool = meta?.lootPool?.equipmentIds || ROOM_REGISTRY[roomKey]?.lootPool?.equipmentIds || [];
+  const areaPool = areaDef?.lootPool?.equipmentIds || [];
+  const regionPool = regionDef?.lootPool?.equipmentIds || [];
+
+  const combinedOrderedPool = Array.from(
+    new Set([
+      ...enemyPool,
+      ...roomPool,
+      ...areaPool,
+      ...regionPool,
+    ])
+  ).filter((id) => Boolean(getWeaponDefinition(id)));
+
+  // 1. First copy from the most specific contextual pool
+  const firstCopyId = combinedOrderedPool.find((id) => !isEquipmentUnlocked(state, id));
+  if (firstCopyId) {
+    return firstCopyId;
+  }
+
+  // 2. Second copy (`x2` for Paired Stance) from contextual pool or player's unlocked 1H weapons
+  if (query.allowSecondCopy !== false) {
+    const secondCopyCandidates = Array.from(
+      new Set([
+        ...combinedOrderedPool,
+        ...(state.equippedWeapons || []),
+        ...(state.equipmentSlots?.unlockedEquipment || []),
+      ])
+    );
+    const secondCopyId = secondCopyCandidates.find((id) => {
+      const def = getWeaponDefinition(id);
+      return (
+        def &&
+        isTrueWeaponEquipment(def) &&
+        !isTwoHandOnlyWeapon(def) &&
+        getOwnedWeaponCount(state, id) < 2
+      );
+    });
+    if (secondCopyId) {
+      return secondCopyId;
+    }
+  }
+
+  return undefined;
+}
+
+export function resolveContextualGemPool(
+  state: OrionState,
+  enemyType?: string
+): string[] {
+  const gemPoolByEnemy: Record<string, string[]> = {
+    bog_crawler: ['hematite', 'spinel', 'charoite'],
+    bog_wurm: ['rubellite', 'kyanite', 'charoite'],
+    orc_scout: ['carnelian', 'hematite', 'spinel'],
+    orc_warrior: ['carnelian', 'hematite', 'spinel'],
+    percival_knight: ['titanite', 'moonstone', 'demantoid'],
+    tristan_knight: ['charoite', 'rubellite', 'moonstone'],
+    bors_knight: ['titanite', 'moonstone', 'spinel'],
+    lady_of_the_lake: ['moonstone', 'rubellite', 'demantoid', 'kyanite'],
+  };
+  if (enemyType && gemPoolByEnemy[enemyType]) {
+    return gemPoolByEnemy[enemyType];
+  }
+  const meta = ORION_ROOM_METADATA[state.room];
+  if (meta?.lootPool?.gemIds && meta.lootPool.gemIds.length > 0) {
+    return meta.lootPool.gemIds;
+  }
+  const areaDef = AREA_REGISTRY[meta?.areaId || state.areaId || 'm00_the_bog'];
+  if (areaDef?.lootPool?.gemIds && areaDef.lootPool.gemIds.length > 0) {
+    return areaDef.lootPool.gemIds;
+  }
+  const regionDef = REGION_REGISTRY[meta?.regionId || state.regionId || 'region_belldor_outskirts'];
+  if (regionDef?.lootPool?.gemIds && regionDef.lootPool.gemIds.length > 0) {
+    return regionDef.lootPool.gemIds;
+  }
+  return ['moonstone', 'rubellite', 'hematite', 'spinel'];
+}
+
 /**
  * Resets all dynamically generated `general`, `side`, `loop`, and `end` chunks when resting at a Waystation.
  * Preserves authored `key` nodes, `nextCounter`, and cleared/looted persistence so dynamic rooms cannot be farmed infinitely.
@@ -725,17 +893,18 @@ function pickTrueExitDir(
 }
 
 const MINI_BOSS_ARENA_TEMPLATE_GRID: string[] = [
-  '######..######',
-  '#..:..::..:..#',
-  '#.P........P.#',
-  '#...~~..~~...#',
-  '#............#',
-  '.....:..:.....',
-  '.....:..:.....',
-  '#............#',
-  '#.P.~~..~~.P.#',
-  '#..:......:..#',
-  '######..######',
+  '######,,,,######',
+  '#,,:..::::..:,,#',
+  '#,P,..::::..,P,#',
+  '#,..~~~::~~~..,#',
+  '#,..~~~~~~~~..,#',
+  ',,....::::....,,',
+  ',,....::::....,,',
+  '#,..~~~~~~~~..,#',
+  '#,..~~~::~~~..,#',
+  '#,P,..::::..,P,#',
+  '#,,:........:,,#',
+  '######,,,,######',
 ];
 
 function decorateDynamicRoomGrid(
@@ -2527,13 +2696,21 @@ export function executeWorldInteraction(
       if (state.salvageScrap >= 15) {
         state.salvageScrap -= 15;
         addOrionInventoryItem(state, 'repair_kit', 1);
-        const scavGearPool = ['buckler_shield', 'hand_axe', 'quiver', 'great_bow'];
-        const nextGear = scavGearPool.find((id) => !isEquipmentUnlocked(state, id));
+        const nextGear = resolveContextualEquipmentDrop(state, {
+          areaId: state.areaId,
+          regionId: state.regionId,
+          roomCoord: state.room,
+          allowSecondCopy: true,
+        });
         if (nextGear) {
-          unlockEquipmentItem(state, nextGear);
+          const wasFirstCopy = unlockEquipmentItem(state, nextGear);
           const gName = getWeaponDefinition(nextGear)?.name || nextGear.toUpperCase();
           soundSystem.playPowerup();
-          ctx.say(`TRADED 15 SCRAP: REPAIR KIT + SALVAGED ${gName.toUpperCase()} UNLOCKED!`);
+          ctx.say(
+            wasFirstCopy
+              ? `TRADED 15 SCRAP: REPAIR KIT + SALVAGED ${gName.toUpperCase()} UNLOCKED!`
+              : `TRADED 15 SCRAP: REPAIR KIT + 2ND COPY OF ${gName.toUpperCase()} (PAIRED STANCE)!`
+          );
         } else {
           soundSystem.playCoin();
           ctx.say('TRADED 15 SCRAP FOR FIELD REPAIR KIT');
@@ -2553,8 +2730,8 @@ export function executeWorldInteraction(
       state.room = '-3,0';
       state.rx = -3;
       state.ry = 0;
-      state.x = 72;
-      state.y = 72;
+      state.x = 120;
+      state.y = 88;
       state.z = 0;
       state.vz = 0;
       state.projectiles = [];
@@ -2569,8 +2746,8 @@ export function executeWorldInteraction(
       state.room = '-4,0';
       state.rx = -4;
       state.ry = 0;
-      state.x = 72;
-      state.y = 104;
+      state.x = 96;
+      state.y = 120;
       state.z = 0;
       state.vz = 0;
       state.projectiles = [];
@@ -2712,23 +2889,20 @@ export function executeWorldInteraction(
       addOrionInventoryItem(state, traitGem, 1);
       addOrionInventoryItem(state, reactorGem, 1);
 
-      // Unlock a salvageable world weapon/shield/quiver from the cache pool
-      const cacheWeaponOrder = [
-        'short_spear',
-        'buckler_shield',
-        'hand_axe',
-        'mace',
-        'heater_shield',
-        'great_bow',
-        'quiver',
-        'long_sword',
-      ];
-      const unlockedGearId = cacheWeaponOrder.find((wId) => !isEquipmentUnlocked(state, wId));
+      // Contextual Enemy -> Room -> Area -> Region Equipment & 2nd Copy Resolution
+      const unlockedGearId = resolveContextualEquipmentDrop(state, {
+        areaId: state.areaId,
+        regionId: state.regionId,
+        roomCoord: state.room,
+        allowSecondCopy: true,
+      });
       let gearSuffix = '';
       if (unlockedGearId) {
-        unlockEquipmentItem(state, unlockedGearId);
+        const wasFirstCopy = unlockEquipmentItem(state, unlockedGearId);
         const gearName = getWeaponDefinition(unlockedGearId)?.name || unlockedGearId;
-        gearSuffix = ` · ${gearName.toUpperCase()}`;
+        gearSuffix = wasFirstCopy
+          ? ` · ${gearName.toUpperCase()}`
+          : ` · 2ND ${gearName.toUpperCase()} (PAIRED)`;
       }
 
       if (Number(state.flags.bedivere_list_items || 0) < 3) {
@@ -2811,9 +2985,9 @@ export function executeWorldInteraction(
   if (facingTile === '!' || currentTile === '!') {
     if (state.room === '-4,0') {
       const warpTargets = [
-        { room: '0,0', x: 72, y: 80, label: 'FIRST CAMPFIRE (3 ROOMS FROM POD)' },
-        { room: '0,-2', x: 72, y: 80, label: 'POE LANTERN SANCTUARY (5 ROOMS FROM POD)' },
-        { room: '3,0', x: 72, y: 72, label: 'MAIN BOG ENTRANCE (6 ROOMS FROM POD)' },
+        { room: '0,0', x: 128, y: 88, label: 'FIRST CAMPFIRE (3 ROOMS FROM POD)' },
+        { room: '0,-2', x: 128, y: 88, label: 'POE LANTERN SANCTUARY (5 ROOMS FROM POD)' },
+        { room: '3,0', x: 120, y: 96, label: 'MAIN BOG ENTRANCE (6 ROOMS FROM POD)' },
         { room: '4,0', x: 72, y: 72, label: 'CAMELOT BORDER TOWN' },
       ];
       const nextIdx = (Number(state.flags.cheat_warp_idx || 0) % warpTargets.length);

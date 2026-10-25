@@ -14,19 +14,19 @@ export const desyncWallTile: TileDefinition = {
   solid: true,
   isDesync: true,
   blocksHeight: 2,
-  bakedTopColor: '#a855f7',
-  bakedFrontColor: '#4c1d95',
+  bakedTopColor: '#475569',
+  bakedFrontColor: '#1e293b',
   renderLayer1(g, _tx, _ty, sx, sy, state) {
     const isSolidPhase = Math.floor(state.t / 3.5) % 2 === 0;
     if (isSolidPhase) {
-      g.fillStyle = '#a855f7';
+      g.fillStyle = '#475569';
       g.fillRect(sx, sy, TILE_SIZE, 5);
-      g.fillStyle = '#581c87';
+      g.fillStyle = '#1e293b';
       g.fillRect(sx, sy + 5, TILE_SIZE, 11);
-      g.fillStyle = 'rgba(192, 132, 252, 0.45)';
+      g.fillStyle = '#64748b';
       g.fillRect(sx + 2, sy + 7, TILE_SIZE - 4, 2);
     } else {
-      g.strokeStyle = 'rgba(192, 132, 252, 0.45)';
+      g.strokeStyle = 'rgba(100, 116, 139, 0.35)';
       g.lineWidth = 1;
       g.strokeRect(sx + 1.5, sy + 1.5, TILE_SIZE - 3, TILE_SIZE - 3);
     }

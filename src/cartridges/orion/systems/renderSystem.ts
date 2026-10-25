@@ -25,7 +25,12 @@ import { getEnemyDefinition } from '../database/enemies';
 import { getCoinPickupSpriteBase64, getItemDefinition } from '../database/items';
 import { getWeaponGemVisuals } from '../database/progression';
 import { getWeaponDefinition } from '../database/weapons';
-import { getBiomeDefinition, getTileDefinition } from '../database/world';
+import {
+  getBiomeDefinition,
+  getTileDefinition,
+  GLOBAL_ROOM_REGISTRY,
+  LOCAL_ROOM_REGISTRY,
+} from '../database/world';
 import {
   AetherCardinalDir,
   Base64SpriteConfig,
@@ -34,6 +39,7 @@ import {
   ClusterTerrainType,
   OrionDir,
   OrionState,
+  RoomLightingProfile,
 } from '../types';
 
 // ─── 1. BASE64 ASSET LOADER & 1PX SILHOUETTE CACHE ───────────────────────────
@@ -1243,7 +1249,7 @@ export function charToExplicitTerrain(char: string | undefined): ClusterTerrainT
 }
 
 export function isClusterSolidWallChar(char: string | undefined): boolean {
-  return char === '#';
+  return char === '#' || char === '%';
 }
 
 export function isClusterSingleWallChar(char: string | undefined): boolean {
@@ -1300,7 +1306,7 @@ export function resolveRoomBaseTerrain(
   // Solid outer/inner walls ('#'):
   // In the Swamp Biome ('bog_tileset'), tree walls connect with grass before dirt whenever possible,
   // so any wall touching grass prefers 'grass' over 'dirt'.
-  if (rawChar === '#') {
+  if (isClusterSolidWallChar(rawChar)) {
     if (biome.clusterTileSheetBase64 === 'bog_tileset') {
       if (counts.ruins >= 2 && counts.ruins >= counts.grass) return 'ruins';
       if (counts.mire >= 2 && counts.mire >= counts.grass) return 'mire';
@@ -1388,7 +1394,10 @@ function resolveBogClusterLayer0Coord(
   }
 
   const isWalkableDoorway =
-    char !== '#' && char !== 'P' && char !== '~' && (ty === 0 || ty === rows - 1 || tx === 0 || tx === cols - 1);
+    !isClusterSolidWallChar(char) &&
+    char !== 'P' &&
+    char !== '~' &&
+    (ty === 0 || ty === rows - 1 || tx === 0 || tx === cols - 1);
   if (isWalkableDoorway) {
     const useStoneStairs = fromTerrain === 'ruins' || fromTerrain === 'mire' || char === 'G';
     if (ty === 0) {
@@ -2492,6 +2501,335 @@ export function drawBiomeWeatherLayer(
   g.restore();
 }
 
+// [ORION-ANCHOR: RENDER-VISION-LIGHTING]
+export interface ResolvedRoomLightingState {
+  safetyTier: 'sanctuary' | 'trail' | 'hazard' | 'abyss';
+  ambientDarkness: number;
+  cornerShadowIntensity: number;
+  effectiveVisionRadiusPx: number;
+  ambientTintColor?: string;
+  staticLightAnchors: Array<{ x: number; y: number; radius: number; color: string }>;
+}
+
+export function resolveRoomLightingProfile(
+  state: OrionState,
+  room?: string[]
+): ResolvedRoomLightingState {
+  const activeNode = state.fogGraph?.nodes?.[state.room];
+  const localDef = LOCAL_ROOM_REGISTRY[state.room];
+  const globalDef = activeNode?.id ? GLOBAL_ROOM_REGISTRY[activeNode.id] : undefined;
+  const authoredProfile: RoomLightingProfile | undefined =
+    localDef?.lighting || globalDef?.lighting;
+
+  const isLoop = activeNode?.nodeType === 'loop';
+  const loopDepth = Math.max(0, state.fogGraph?.loopDepth || activeNode?.loopDepth || 0);
+
+  let safetyTier: 'sanctuary' | 'trail' | 'hazard' | 'abyss' =
+    authoredProfile?.safetyTier ||
+    (isLoop
+      ? loopDepth >= 2
+        ? 'abyss'
+        : 'hazard'
+      : state.room === '0,0' || state.room === '0,-2' || state.room === '-3,0' || state.room === '-4,0'
+        ? 'sanctuary'
+        : 'trail');
+
+  const baseDarkness =
+    authoredProfile?.ambientDarkness ??
+    (safetyTier === 'sanctuary'
+      ? 0.2
+      : safetyTier === 'trail'
+        ? 0.45
+        : safetyTier === 'hazard'
+          ? 0.58
+          : 0.66);
+  const ambientDarkness = isLoop
+    ? Math.min(0.78, Math.max(baseDarkness, 0.54 + loopDepth * 0.06))
+    : baseDarkness;
+
+  const baseCornerShadow =
+    authoredProfile?.cornerShadowIntensity ??
+    (safetyTier === 'sanctuary'
+      ? 0.38
+      : safetyTier === 'trail'
+        ? 0.66
+        : safetyTier === 'hazard'
+          ? 0.78
+          : 0.86);
+  const cornerShadowIntensity = isLoop
+    ? Math.min(0.9, Math.max(baseCornerShadow, 0.72 + loopDepth * 0.05))
+    : baseCornerShadow;
+
+  const baseVisionPx =
+    authoredProfile?.playerVisionRadiusPx ??
+    (safetyTier === 'sanctuary'
+      ? 124
+      : safetyTier === 'trail'
+        ? 74
+        : safetyTier === 'hazard'
+          ? 58
+          : 50);
+  const loopAdjustedVision = isLoop
+    ? Math.max(42, baseVisionPx - loopDepth * 5)
+    : baseVisionPx;
+
+  // Hardware & Lantern bonuses to player vision & threat awareness
+  const hasOpticsHead = Boolean(state.equipmentSlots?.head || state.gates?.opticsActive);
+  const hasSensors = Boolean(state.equipmentSlots?.sensoryA || state.equipmentSlots?.sensoryB);
+  const isOpticPulseActive = (state.opticMarkTimer || 0) > 0;
+  const hasLantern = hasPoeLanternGuidance(state);
+
+  const effectiveVisionRadiusPx =
+    loopAdjustedVision +
+    (hasOpticsHead ? 14 : 0) +
+    (hasSensors ? 10 : 0) +
+    (isOpticPulseActive ? 24 : 0) +
+    (hasLantern ? 16 : 0);
+
+  const staticLightAnchors: Array<{ x: number; y: number; radius: number; color: string }> = [];
+  if (room) {
+    const { cols, rows } = getRoomDimensions(room);
+    for (let ty = 0; ty < rows; ty++) {
+      for (let tx = 0; tx < cols; tx++) {
+        const ch = room[ty]?.[tx];
+        if (!ch) continue;
+        const cx = tx * TILE_SIZE + 8;
+        const cy = ty * TILE_SIZE + 8;
+        if (ch === 'A') {
+          staticLightAnchors.push({ x: cx, y: cy, radius: 74, color: '#f59e0b' });
+        } else if (ch === 'L') {
+          const isLit = state.flags?.poe_state === 'helped' || hasLantern;
+          staticLightAnchors.push({
+            x: cx,
+            y: cy,
+            radius: isLit ? 68 : 42,
+            color: isLit ? '#22d3ee' : '#fbbf24',
+          });
+        } else if (ch === 'D') {
+          staticLightAnchors.push({ x: cx, y: cy, radius: 56, color: '#38bdf8' });
+        } else if (ch === 'Q') {
+          staticLightAnchors.push({ x: cx, y: cy, radius: 76, color: '#22d3ee' });
+        }
+      }
+    }
+  }
+
+  return {
+    safetyTier,
+    ambientDarkness,
+    cornerShadowIntensity,
+    effectiveVisionRadiusPx,
+    ambientTintColor: authoredProfile?.ambientTintColor,
+    staticLightAnchors,
+  };
+}
+
+/**
+ * Computes how visible a world coordinate `(x, y)` is to the pilot (`0.0` = shrouded in darkness, `1.0` = clear sight).
+ * Combines the pilot's active vision & sensor cone with static sanctuary lights (Campfire, Poe Lantern, Drop-Pod Beacon, Waygate)
+ * and active projectiles.
+ */
+export function getPointVisibilityFactor(
+  x: number,
+  y: number,
+  state: OrionState,
+  room?: string[]
+): number {
+  const lighting = resolveRoomLightingProfile(state, room);
+  if (lighting.safetyTier === 'sanctuary' && lighting.ambientDarkness <= 0.24) {
+    return 1.0;
+  }
+
+  const visionR = lighting.effectiveVisionRadiusPx;
+  const distToPlayer = Math.hypot(x - state.x, y - state.y);
+
+  // Directional forward awareness cone extends slightly further in the direction the pilot is facing
+  const dirInfo = DIR_VECTORS[state.dir] || DIR_VECTORS.S;
+  const dx = x - state.x;
+  const dy = y - state.y;
+  const dot = distToPlayer > 1 ? (dx * dirInfo.dx + dy * dirInfo.dy) / distToPlayer : 1;
+  const directionalBonus = dot > 0.25 ? 1 + (dot - 0.25) * 0.24 : 1.0;
+  const effPlayerR = visionR * directionalBonus;
+
+  let bestVis = 0;
+  if (distToPlayer <= effPlayerR * 0.78) {
+    bestVis = 1.0;
+  } else if (distToPlayer < effPlayerR * 1.38) {
+    const t = (distToPlayer - effPlayerR * 0.78) / (effPlayerR * 0.6);
+    bestVis = Math.max(0, 1 - t);
+  }
+
+  for (const anchor of lighting.staticLightAnchors) {
+    const d = Math.hypot(x - anchor.x, y - anchor.y);
+    if (d <= anchor.radius * 0.75) {
+      return 1.0;
+    }
+    if (d < anchor.radius * 1.25) {
+      const aVis = 1 - (d - anchor.radius * 0.75) / (anchor.radius * 0.5);
+      if (aVis > bestVis) bestVis = aVis;
+    }
+  }
+
+  for (const p of state.projectiles) {
+    if (p.lightRadius && p.lightRadius > 0) {
+      const d = Math.hypot(x - p.x, y - p.y);
+      const pr = p.lightRadius * 1.6;
+      if (d < pr) {
+        const pVis = Math.max(0, 1 - d / pr);
+        if (pVis > bestVis) bestVis = pVis;
+      }
+    }
+  }
+
+  return Math.max(0, Math.min(1, bestVis));
+}
+
+function drawDirectionalCastShadowsAndLandmarks(
+  g: CanvasRenderingContext2D,
+  room: string[],
+  state: OrionState
+): void {
+  const { cols, rows, widthPx, heightPx } = getRoomDimensions(room);
+  const lighting = resolveRoomLightingProfile(state, room);
+
+  g.save();
+
+  // 1. Sub-zone environmental storytelling ground landmarks
+  for (let ty = 0; ty < rows; ty++) {
+    for (let tx = 0; tx < cols; tx++) {
+      const ch = room[ty]?.[tx];
+      const cx = tx * TILE_SIZE + 8;
+      const cy = ty * TILE_SIZE + 8;
+
+      if (ch === 'D' && state.room === '-3,0') {
+        // Drop-Pod Orbital Impact Scorch Rings & Fissure Glow
+        g.strokeStyle = 'rgba(15, 23, 42, 0.55)';
+        g.lineWidth = 2;
+        g.beginPath();
+        g.ellipse(cx + 8, cy + 6, 34, 22, -0.15, 0, Math.PI * 2);
+        g.stroke();
+
+        g.strokeStyle = 'rgba(56, 189, 248, 0.22)';
+        g.lineWidth = 1;
+        g.beginPath();
+        g.ellipse(cx + 6, cy + 4, 22, 14, -0.15, 0, Math.PI * 2);
+        g.stroke();
+      } else if (ch === 'A') {
+        // Sanctuary Campfire Warm Hearth Flagstone Ring
+        const hearthPulse = 26 + Math.sin(state.t * 3.5) * 2;
+        const hearthGrad = g.createRadialGradient(cx, cy, 4, cx, cy, hearthPulse);
+        hearthGrad.addColorStop(0, 'rgba(251, 191, 36, 0.28)');
+        hearthGrad.addColorStop(0.6, 'rgba(249, 115, 22, 0.12)');
+        hearthGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        g.fillStyle = hearthGrad;
+        g.beginPath();
+        g.arc(cx, cy, hearthPulse, 0, Math.PI * 2);
+        g.fill();
+      } else if (ch === 'L') {
+        // Poe Lantern Sanctuary Resonance Ring
+        const isLit = state.flags?.poe_state === 'helped' || hasPoeLanternGuidance(state);
+        const lRadius = (isLit ? 28 : 18) + Math.sin(state.t * 3) * 2;
+        const lGrad = g.createRadialGradient(cx, cy, 3, cx, cy, lRadius);
+        lGrad.addColorStop(
+          0,
+          isLit ? 'rgba(34, 211, 238, 0.28)' : 'rgba(251, 191, 36, 0.2)'
+        );
+        lGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        g.fillStyle = lGrad;
+        g.beginPath();
+        g.arc(cx, cy, lRadius, 0, Math.PI * 2);
+        g.fill();
+      } else if (ch === 'S') {
+        // Sir Bedivere's Broken Temple Memorial Halo
+        g.strokeStyle = 'rgba(148, 163, 184, 0.26)';
+        g.lineWidth = 1;
+        g.beginPath();
+        g.ellipse(cx, cy + 2, 18, 11, 0, 0, Math.PI * 2);
+        g.stroke();
+      } else if (ch === '_') {
+        // Conceal distant sinkhole/pit traps in mire shadow until within vision/optics range
+        const trapVis = getPointVisibilityFactor(cx, cy, state);
+        if (trapVis < 0.65) {
+          const concealAlpha = Math.min(0.78, (0.65 - trapVis) * 1.15);
+          g.fillStyle = `rgba(18, 22, 28, ${concealAlpha.toFixed(2)})`;
+          g.fillRect(tx * TILE_SIZE, ty * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        }
+      }
+    }
+  }
+
+  // 2. Angled South-East 2.5D Cast Shadows from Walls ('#', '%'), Pillars ('P'), Gates ('G') & Wreckage ('D')
+  const isDesyncSolidNow = Math.floor(state.t / 3.5) % 2 === 0;
+  g.fillStyle = 'rgba(2, 6, 16, 0.36)';
+  for (let ty = 0; ty < rows; ty++) {
+    for (let tx = 0; tx < cols; tx++) {
+      const ch = room[ty]?.[tx];
+      const isSolidWallTile = ch === '#' || (ch === '%' && isDesyncSolidNow);
+      if (!isSolidWallTile && ch !== 'P' && ch !== 'G' && ch !== 'D') continue;
+      const sx = tx * TILE_SIZE;
+      const sy = ty * TILE_SIZE;
+
+      const eastChar = room[ty]?.[tx + 1];
+      const southChar = room[ty + 1]?.[tx];
+      const seChar = room[ty + 1]?.[tx + 1];
+      const southIsWall = southChar === '#' || (southChar === '%' && isDesyncSolidNow);
+      const eastIsWall = eastChar === '#' || (eastChar === '%' && isDesyncSolidNow);
+      const seIsWall = seChar === '#' || (seChar === '%' && isDesyncSolidNow);
+
+      if (ch === 'P' || ch === 'D') {
+        // Long angled pillar/pod shadow cast to the south-east
+        g.beginPath();
+        g.ellipse(sx + 13, sy + 14, 7, 4, 0.35, 0, Math.PI * 2);
+        g.fill();
+      } else {
+        // Wall / Felled-Tree cast shadow onto walkable south & east neighbors
+        if (southChar && !southIsWall && southChar !== '_') {
+          g.fillRect(sx + 2, sy + TILE_SIZE, TILE_SIZE - 1, 5);
+        }
+        if (eastChar && !eastIsWall && eastChar !== '_') {
+          g.fillRect(sx + TILE_SIZE, sy + 3, 5, TILE_SIZE - 2);
+        }
+        if (
+          seChar &&
+          !seIsWall &&
+          seChar !== '_' &&
+          !southIsWall &&
+          !eastIsWall
+        ) {
+          g.fillRect(sx + TILE_SIZE, sy + TILE_SIZE, 4, 4);
+        }
+      }
+    }
+  }
+
+  // 3. World-Space Room Corner Darkness Gradients (makes room corners & recesses darker)
+  const cornerAlpha = Math.min(0.86, lighting.cornerShadowIntensity * 0.72);
+  if (cornerAlpha > 0.05) {
+    const cornerRadius = Math.max(56, Math.min(widthPx, heightPx) * 0.52);
+    const corners = [
+      { x: 0, y: 0 },
+      { x: widthPx, y: 0 },
+      { x: 0, y: heightPx },
+      { x: widthPx, y: heightPx },
+    ];
+    for (const c of corners) {
+      const cGrad = g.createRadialGradient(c.x, c.y, 6, c.x, c.y, cornerRadius);
+      cGrad.addColorStop(0, `rgba(2, 5, 13, ${cornerAlpha.toFixed(2)})`);
+      cGrad.addColorStop(0.55, `rgba(4, 8, 18, ${(cornerAlpha * 0.48).toFixed(2)})`);
+      cGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      g.fillStyle = cGrad;
+      g.fillRect(
+        Math.max(0, c.x - cornerRadius),
+        Math.max(0, c.y - cornerRadius),
+        cornerRadius * 2,
+        cornerRadius * 2
+      );
+    }
+  }
+
+  g.restore();
+}
+
 // [ORION-ANCHOR: RENDER-POST-PROCESS]
 export function drawDynamicLightingAndBloomPass(
   g: CanvasRenderingContext2D,
@@ -2502,6 +2840,7 @@ export function drawDynamicLightingAndBloomPass(
   camY: number = 0
 ): void {
   const pp = resolveBiomePostProcess(activeBiome);
+  const roomLighting = resolveRoomLightingProfile(state, room);
   const lights: SceneLightEmitter[] = [];
 
   if (!state.isFallingIntoPit) {
@@ -2512,7 +2851,7 @@ export function drawDynamicLightingAndBloomPass(
     lights.push({
       x: state.x,
       y: py,
-      radius: 26 * boostMult,
+      radius: 28 * boostMult,
       color: reactorColor,
       intensity: 0.26 * boostMult,
     });
@@ -2564,33 +2903,33 @@ export function drawDynamicLightingAndBloomPass(
           lights.push({
             x: cx,
             y: cy - 6,
-            radius: (isHelped ? 34 : 22) + pulse,
+            radius: (isHelped ? 46 : 28) + pulse,
             color: isHelped ? '#38bdf8' : '#fbbf24',
-            intensity: isHelped ? 0.36 : 0.26,
+            intensity: isHelped ? 0.42 : 0.28,
           });
         } else if (ch === 'D') {
           lights.push({
             x: cx,
             y: cy - 4,
-            radius: 28 + pulse,
+            radius: 36 + pulse,
             color: '#38bdf8',
-            intensity: 0.28,
+            intensity: 0.32,
           });
         } else if (ch === 'A') {
           lights.push({
             x: cx,
             y: cy - 3,
-            radius: 30 + pulse,
+            radius: 52 + pulse * 1.2,
             color: '#f97316',
-            intensity: 0.32,
+            intensity: 0.42,
           });
         } else if (ch === 'Q') {
           lights.push({
             x: cx,
             y: cy - 8,
-            radius: 38 + pulse * 1.5,
+            radius: 48 + pulse * 1.5,
             color: '#22d3ee',
-            intensity: 0.38,
+            intensity: 0.4,
           });
         } else if (ch === '~' && (tx + ty) % 2 === 0) {
           lights.push({
@@ -2635,7 +2974,7 @@ export function drawDynamicLightingAndBloomPass(
     g.translate(-camX, -camY);
     g.globalCompositeOperation = 'lighter';
     for (const light of lights) {
-      const alpha = Math.min(0.45, light.intensity * pp.bloomIntensity);
+      const alpha = Math.min(0.48, light.intensity * pp.bloomIntensity);
       const grad = g.createRadialGradient(light.x, light.y, 1, light.x, light.y, light.radius);
       grad.addColorStop(0, light.color);
       grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
@@ -2648,18 +2987,57 @@ export function drawDynamicLightingAndBloomPass(
     g.restore();
   }
 
-  if (pp.ambientDarkness > 0) {
+  // Dynamic Vision & Threat Shroud (brighter in sanctuaries, constricting in dark/hazard rooms)
+  const effectiveDarkness = Math.max(pp.ambientDarkness * 0.5, roomLighting.ambientDarkness);
+  if (effectiveDarkness > 0.05) {
     g.save();
+    const playerScreenX = Math.max(0, Math.min(SCREEN_W, state.x - camX));
+    const playerScreenY = Math.max(
+      0,
+      Math.min(SCREEN_H, state.y - state.z * Z_SCALE - camY - 6)
+    );
+
+    // Expand clear radius when standing near a Sanctuary hearth/lantern
+    let nearSanctuaryBoost = 0;
+    for (const anchor of roomLighting.staticLightAnchors) {
+      const d = Math.hypot(state.x - anchor.x, state.y - anchor.y);
+      if (d < anchor.radius * 1.2) {
+        nearSanctuaryBoost = Math.max(
+          nearSanctuaryBoost,
+          (1 - d / (anchor.radius * 1.2)) * 42
+        );
+      }
+    }
+
+    const innerClearR = Math.max(
+      20,
+      Math.min(
+        SCREEN_W * 0.55,
+        roomLighting.effectiveVisionRadiusPx * 0.46 + nearSanctuaryBoost * 0.5
+      )
+    );
+    const outerShroudR = Math.max(
+      innerClearR + 28,
+      Math.min(
+        SCREEN_W * 0.95,
+        roomLighting.effectiveVisionRadiusPx * 1.08 + nearSanctuaryBoost
+      )
+    );
+
     const vig = g.createRadialGradient(
-      SCREEN_W * 0.5,
-      SCREEN_H * 0.5,
-      SCREEN_W * 0.36,
-      SCREEN_W * 0.5,
-      SCREEN_H * 0.5,
-      SCREEN_W * 0.72
+      playerScreenX,
+      playerScreenY,
+      innerClearR,
+      playerScreenX,
+      playerScreenY,
+      outerShroudR
     );
     vig.addColorStop(0, 'rgba(0, 0, 0, 0)');
-    vig.addColorStop(1, `rgba(6, 10, 18, ${pp.ambientDarkness.toFixed(2)})`);
+    vig.addColorStop(
+      0.62,
+      `rgba(4, 8, 16, ${(effectiveDarkness * 0.55).toFixed(2)})`
+    );
+    vig.addColorStop(1, `rgba(2, 5, 12, ${effectiveDarkness.toFixed(2)})`);
     g.fillStyle = vig;
     g.fillRect(0, 0, SCREEN_W, SCREEN_H);
     g.restore();
@@ -2761,6 +3139,9 @@ export function drawOrionGame(
 
     // 1B. POST-PROCESS PASS 1: Planar Water / Corrosive Aether ('~') Reflections
     drawPlanarWaterReflections(g, room, activeBiome, state);
+
+    // 1C. LAYER 0.5: Directional 2.5D Wall/Tree Shadows, Landmarks & Room Corner Darkness
+    drawDirectionalCastShadowsAndLandmarks(g, room, state);
   }
 
   // 2. LAYER 1: Baked 2.5D Walls, Desync Barriers & Gates
@@ -2772,13 +3153,42 @@ export function drawOrionGame(
         const sx = tx * TILE_SIZE;
         const sy = ty * TILE_SIZE;
 
+        if (tile.isDesync) {
+          const isSolidPhase = Math.floor(state.t / 3.5) % 2 === 0;
+          const phaseProgress = (state.t % 3.5) / 3.5;
+          const isTransitioning = phaseProgress > 0.82;
+          g.save();
+          if (isSolidPhase) {
+            g.globalAlpha = isTransitioning
+              ? 0.65 + 0.35 * Math.sin(state.t * 36)
+              : 1;
+          } else {
+            g.globalAlpha = isTransitioning
+              ? 0.25 + 0.2 * Math.sin(state.t * 36)
+              : 0.22;
+          }
+          const drewDesyncClusterWall =
+            drawBase64Sprite(g, tile.layer1Sprite, sx, sy, state.t, {
+              defaultAnchor: 'top-left',
+              defaultWidth: TILE_SIZE,
+              defaultHeight: TILE_SIZE,
+            }) ||
+            drawClusterBiomeWall(g, room, activeBiome, tx, ty, sx, sy, state.t);
+          if (!drewDesyncClusterWall) {
+            tile.renderLayer1?.(g, tx, ty, sx, sy, state);
+          }
+          g.restore();
+          continue;
+        }
+
         const drewLayer1Sprite =
           drawBase64Sprite(g, tile.layer1Sprite, sx, sy, state.t, {
             defaultAnchor: 'top-left',
             defaultWidth: TILE_SIZE,
             defaultHeight: TILE_SIZE,
           }) ||
-          (char === '#' && drawClusterBiomeWall(g, room, activeBiome, tx, ty, sx, sy, state.t));
+          (isClusterSolidWallChar(char) &&
+            drawClusterBiomeWall(g, room, activeBiome, tx, ty, sx, sy, state.t));
 
         if (!drewLayer1Sprite) {
           tile.renderLayer1?.(g, tx, ty, sx, sy, state);
@@ -2894,9 +3304,36 @@ export function drawOrionGame(
         const isWindup = e.state === 'windup';
         const def = getEnemyDefinition(e.type);
 
+        // Compute dynamic player awareness & visibility factor for this entity
+        const isFriendlyOrSanctuary =
+          e.type === 'bog_poe' || (e.type === 'town_npc' && e.npcDisposition !== 'feral');
+        const rawVis = getPointVisibilityFactor(e.x, e.y, state, room);
+        const visFactor =
+          isFriendlyOrSanctuary || isHurt || isWindup || (state.opticMarkTimer || 0) > 0
+            ? Math.max(rawVis, 0.85)
+            : rawVis;
+
+        // If a hostile enemy is outside the pilot's vision/sensor radius, shroud them in darkness
+        // and reveal only subtle emissive eye glints or mire ripples!
+        if (visFactor < 0.26 && !isFriendlyOrSanctuary) {
+          g.save();
+          const glintPulse = 0.25 + 0.2 * Math.sin(state.t * 5 + e.id);
+          g.fillStyle = e.emissiveColor || '#ef4444';
+          g.globalAlpha = glintPulse;
+          g.fillRect(Math.round(e.x - 2), Math.round(ey - 10), 1.5, 1.5);
+          g.fillRect(Math.round(e.x + 1), Math.round(ey - 10), 1.5, 1.5);
+          g.restore();
+          return;
+        }
+
         if (e.isSubmerged && def?.render25D) {
           const handledFullDraw = def.render25D(g, e, state, ey, isHurt, isWindup);
           if (handledFullDraw === true) return;
+        }
+
+        g.save();
+        if (visFactor < 0.95) {
+          g.globalAlpha = Math.max(0.28, Math.min(1, 0.2 + visFactor * 0.85));
         }
 
         const shadowR = Math.max(3, 8 * (1 - e.z / 60));
@@ -3022,12 +3459,14 @@ export function drawOrionGame(
           }
         }
 
-        const barW = 16;
-        g.fillStyle = '#000000';
-        g.fillRect(e.x - barW / 2, ey - 22, barW, 3);
-        const framePct = Math.max(0, e.frame.integrity / e.frame.maxIntegrity);
-        g.fillStyle = e.npcDisposition === 'calm' ? '#7dd3fc' : '#8dd7ad';
-        g.fillRect(e.x - barW / 2, ey - 22, barW * framePct, 3);
+        if (visFactor >= 0.45 || isHurt || state.lockedTargetId === e.id) {
+          const barW = 16;
+          g.fillStyle = '#000000';
+          g.fillRect(e.x - barW / 2, ey - 22, barW, 3);
+          const framePct = Math.max(0, e.frame.integrity / e.frame.maxIntegrity);
+          g.fillStyle = e.npcDisposition === 'calm' ? '#7dd3fc' : '#8dd7ad';
+          g.fillRect(e.x - barW / 2, ey - 22, barW * framePct, 3);
+        }
 
         if (state.lockedTargetId === e.id) {
           const pulse = 9 + Math.sin(state.t * 8) * 1.5;
@@ -3043,6 +3482,8 @@ export function drawOrionGame(
           g.fillRect(e.x - pulse - 1, ey - 9 + pulse, 3, 1);
           g.fillRect(e.x + pulse - 2, ey - 9 + pulse, 3, 1);
         }
+
+        g.restore();
       },
     });
   }

@@ -20,8 +20,11 @@ import { applyDamageToLayers, PERFECT_BLOCK_WINDOW_SEC } from './combatSystem';
 import { addOrionInventoryItem, isSolidAt, notifyOrionStateChange, syncStateGates } from './playerSystem';
 import {
   clearAetherFogOnBossDefeat,
+  ENEMY_EQUIPMENT_DROP_POOLS,
   getCanonicalRoomPersistenceKey,
   getMaxAetherFogDepth,
+  resolveContextualEquipmentDrop,
+  resolveContextualGemPool,
 } from './worldSystem';
 
 // ─── 1. 2.5D PARTICLES ───────────────────────────────────────────────────────
@@ -279,18 +282,8 @@ export function updateEnemies(
         }
       }
 
-      // Canonical Gemstone Drop Table by Enemy Faction / Archetype (Scaled by Æther Depth 1..clvl+1)
+      // Canonical Gemstone Drop Table by Enemy / Area / Region (Scaled by Æther Depth 1..clvl+1)
       if (e.faction !== 'poe' && e.faction !== 'npc') {
-        const gemPoolByEnemy: Record<string, string[]> = {
-          bog_crawler: ['hematite', 'spinel', 'charoite'],
-          bog_wurm: ['rubellite', 'kyanite', 'charoite'],
-          orc_scout: ['carnelian', 'hematite', 'spinel'],
-          orc_warrior: ['carnelian', 'hematite', 'spinel'],
-          percival_knight: ['titanite', 'moonstone', 'demantoid'],
-          tristan_knight: ['charoite', 'rubellite', 'moonstone'],
-          bors_knight: ['titanite', 'moonstone', 'spinel'],
-          lady_of_the_lake: ['moonstone', 'rubellite', 'demantoid', 'kyanite'],
-        };
         const dropChanceByEnemy: Record<string, number> = {
           bog_crawler: 0.22,
           orc_scout: 0.22,
@@ -303,7 +296,7 @@ export function updateEnemies(
         };
         const baseChance = e.isFogBoss ? 1.0 : dropChanceByEnemy[e.type] ?? 0.25;
         const dropChance = Math.min(1, baseChance * (1 + effDepth * 0.22));
-        const pool = gemPoolByEnemy[e.type] || ['moonstone', 'rubellite', 'hematite'];
+        const pool = resolveContextualGemPool(state, e.type);
         if (Math.random() <= dropChance) {
           const chosenGemId = pool[Math.floor(Math.random() * pool.length)];
           const gemDef = getItemDefinition(chosenGemId);
@@ -348,18 +341,36 @@ export function updateEnemies(
         );
       }
 
-      // Boss & Elite Equipment Discovery Unlocks
-      const bossWeaponUnlockMap: Record<string, string> = {
-        bog_wurm: 'short_spear',
-        percival_knight: 'pavise_shield',
-        tristan_knight: 'gladius_boltcaster',
-        bors_knight: 'long_sword',
-        lady_of_the_lake: 'avalon_siege_lance',
-      };
-      const bossWeaponId = bossWeaponUnlockMap[e.type];
-      if (bossWeaponId && unlockEquipmentItem(state, bossWeaponId)) {
-        const wName = getWeaponDefinition(bossWeaponId)?.name || bossWeaponId;
-        ctx.say(`SALVAGED BOSS ARMAMENT: ${wName.toUpperCase()} UNLOCKED IN SATCHEL!`);
+      // Contextual Enemy -> Room -> Area -> Region Equipment & 2nd Copy Drop Roll
+      if (e.faction !== 'poe' && e.faction !== 'npc') {
+        const enemyEquipConfig = ENEMY_EQUIPMENT_DROP_POOLS[e.type];
+        const baseEquipChance = e.isFogBoss
+          ? 1.0
+          : def?.equipmentDropChance ?? enemyEquipConfig?.baseChance ?? 0.12;
+        const scaledEquipChance = Math.min(1, baseEquipChance * (1 + effDepth * 0.25));
+        if (Math.random() <= scaledEquipChance) {
+          const droppedEquipId = resolveContextualEquipmentDrop(state, {
+            enemyType: e.type,
+            roomCoord: state.room,
+            areaId: state.areaId,
+            regionId: state.regionId,
+            allowSecondCopy: true,
+          });
+          if (droppedEquipId) {
+            state.pickups.push({
+              id: pId++,
+              x: e.x + (Math.random() - 0.5) * 8,
+              y: e.y + (Math.random() - 0.5) * 8,
+              z: 10,
+              vz: 42,
+              kind: 'item',
+              itemId: droppedEquipId,
+              value: 1,
+              color: '#38bdf8',
+              t: Math.random() * 5,
+            });
+          }
+        }
       }
 
       if (e.faction === 'poe') {
@@ -485,9 +496,19 @@ export function updateProjectiles(
           e.hurt = 0.2;
 
           const hasKnightsOath = state.equippedFeats.includes('knights_oath');
-          const oathMult = hasKnightsOath && e.faction === 'camelot' ? 1.25 : 1.0;
+          const oathMult = hasKnightsOath && e.faction === 'camelot' ? 1.1 : 1.0;
           const opticMult = (state.opticMarkTimer || 0) > 0 ? 1.25 : 1.0;
-          const effDamage = Math.round(p.damage * oathMult * opticMult);
+          const hasBeamFocus =
+            p.damageType === 'Beam' &&
+            state.equippedFeats.some((f) =>
+              ['beam_focus', 'sustained_channeling', 'solar_convergence'].includes(f)
+            );
+          const beamMult = hasBeamFocus ? 1.15 : 1.0;
+          const hasAssassinate =
+            state.equippedFeats.some((f) => ['assassinate', 'executioners_gambit'].includes(f)) &&
+            e.frame.integrity <= e.frame.maxIntegrity * 0.4;
+          const execMult = hasAssassinate ? 1.2 : 1.0;
+          const effDamage = Math.round(p.damage * oathMult * opticMult * beamMult * execMult);
 
           applyDamageToLayers(
             e.shields,
@@ -595,12 +616,24 @@ export function updatePickups(
         state.salvageScrap += p.value || 1;
         ctx.say(`+${p.value || 1} SALVAGE SCRAP`);
       } else if (p.itemId) {
-        const itemDef = getItemDefinition(p.itemId);
-        if (itemDef?.onCollect) {
-          itemDef.onCollect(state, ctx);
+        const weaponDef = getWeaponDefinition(p.itemId);
+        if (weaponDef) {
+          const wasFirstCopy = unlockEquipmentItem(state, weaponDef.id);
+          soundSystem.playPowerup();
+          ctx.say(
+            wasFirstCopy
+              ? `SALVAGED ARMAMENT: ${weaponDef.name.toUpperCase()} UNLOCKED!`
+              : `SALVAGED 2ND COPY: ${weaponDef.name.toUpperCase()} (PAIRED STANCE)!`
+          );
+          notifyOrionStateChange();
         } else {
-          addOrionInventoryItem(state, p.itemId, 1);
-          ctx.say(`SALVAGED: ${itemDef?.name || p.itemId}`);
+          const itemDef = getItemDefinition(p.itemId);
+          if (itemDef?.onCollect) {
+            itemDef.onCollect(state, ctx);
+          } else {
+            addOrionInventoryItem(state, p.itemId, 1);
+            ctx.say(`SALVAGED: ${itemDef?.name || p.itemId}`);
+          }
         }
       }
 

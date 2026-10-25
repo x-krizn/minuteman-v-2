@@ -516,23 +516,29 @@ Frame Level (1–20 Milestones, No Gems)
    - **Black — `hematite`**: Ichor Reactor Resonance (funds *Assault Ballistics & Turbine* and *Heavy Ordnance & Siege*)
 
 2. **Six Optional Starting Loadout Kits (`database/characters/`)**:
-   - **Bastion Striker Kit (`PNSY W416`)**: `BWI Bastion Coreplate`, `PNSY Alchemic Turbine Core Mk.IV`, `N-55 Gladius`, `PNSY D-0g Repair Drone`.
-   - **Fortress Siege Kit (`RAD HAU`)**: `Fire & Ice Fortress Coreplate`, `RAD Battleheart Ether Reactor Mk.V`, `B-25 Brushcutter`, `RAD R463 Fathomless System`.
-   - **Dawnforge Vanguard Kit (`Trinity DE-14`)**: `Dawnforge Guardian Coreplate`, `TI Manaheart Reactor Mk.IV`, `LS-900 Swordspear`, `TI Lightwell Recovery System`.
-   - **Phantom Recon Kit (`VX Phantom`)**: `Shadowcraft Recon Coreplate`, `VX Phantom Core Mk.III`, `SV-12 Viper`, `VX Smoke Dispersal System`.
-   - **Arclight Artillery Kit (`ARC Arclight`)**: `Arcanum Heavy Projector Coreplate`, `ARC Infinite Well Reactor Mk.VI`, `WZ-800 Arclight Cannon`, `ARC Rift Anchor`.
-   - **Sanctum Support Kit (`SANC Sanctum`)**: `Sanctum Support Coreplate`, `SANC Heartwell Reactor Mk.IV`, `CL-700 Sanctifier`, `SANC Radiant Ward Projector`.
+   - **Bastion Striker Kit (`PNSY W416`)**: `BWI Bastion Coreplate`, `PNSY Alchemic Turbine Core Mk.IV`, `Crystal Dynamics G341 Murmillio` (Head), `BWI Twinstrike Gauntlets` (Arms), `BWI Gatecrasher Striders` (Legs), `N-55 Gladius`, `PNSY D-0g Repair Drone`.
+   - **Fortress Siege Kit (`RAD HAU`)**: `Fire & Ice Fortress Coreplate`, `RAD Battleheart Ether Reactor Mk.V`, `BE Ironveil Command Dome` (Head), `Fire & Ice Line Holder` (Arms), `Fire & Ice Outrigger Striders` (Legs), `B-25 Brushcutter`, `RAD R463 Fathomless System`.
+   - **Dawnforge Vanguard Kit (`Trinity DE-14`)**: `Dawnforge Guardian Coreplate`, `TI Manaheart Reactor Mk.IV`, `Aegis Halo Command Dome` (Head), `Solbright Cleaver Assemblies` (Arms), `Dawnforge Stabilizer Striders` (Legs), `LS-900 Swordspear`, `TI Lightwell Recovery System`.
+   - **Phantom Recon Kit (`VX Phantom`)**: `Shadowcraft Recon Coreplate`, `VX Phantom Core Mk.III`, `VX Veilsight Command Helm` (Head), `Shadowcraft Silencer Gauntlets` (Arms), `Shadowcraft Ghost Striders` (Legs), `SV-12 Viper`, `VX Smoke Dispersal System`.
+   - **Arclight Artillery Kit (`ARC Arclight`)**: `Arcanum Heavy Projector Coreplate`, `ARC Infinite Well Reactor Mk.VI`, `ARC Omniscient Command Dome` (Head), `Arcanum Channeler Assemblies` (Arms), `Arcanum Anchor Striders` (Legs), `WZ-800 Arclight Cannon`, `ARC Rift Anchor`.
+   - **Sanctum Support Kit (`SANC Sanctum`)**: `Sanctum Support Coreplate`, `SANC Heartwell Reactor Mk.IV`, `SANC Providence Command Helm` (Head), `Sanctum Benediction Assemblies` (Arms), `Sanctum Steadfast Striders` (Legs), `CL-700 Sanctifier`, `SANC Radiant Ward Projector`.
 
 3. **Canonical Equipment Catalog (`Project Orion — Equipment & Feats.md`)**:
-   - **Weapons (`database/weapons/magitech_catalog.ts` + Heritage Set)**: 29 canonical Magitech weapons (Bolters, Polybolos, Ballistas, Gatling Guns, Grenade/Rocket/Missile Systems, Beam Projectors/Lances, Energy Carbines, Hybrid Rifles/Staves, Monomolecular/Thermal Blades, and Physical Shields) alongside the 12 heritage field weapons.
-   - **Chassis Hardware (`database/progression/canonical_feats_and_hardware.ts`)**: 6 Coreplates (`plating`), 6 Reactors (`reactor`), 6 Head Optics (`head`), 6 Sensory A (`sensoryA`), 6 Sensory B (`sensoryB`), 6 Arms Actuators (`arms`), 6 Legs Actuators (`legs`), 6 Aux 3 Systems (`aux3`), and 6 Aux 4 Systems (`aux4`).
+   - **Weapons (`database/weapons/magitech_catalog.ts` + Heritage Set)**: 29 canonical Magitech weapons (Bolters, Polybolos, Ballistas, Gatling Guns, Grenade/Rocket/Missile Systems, Beam Projectors/Lances, Energy Carbines, Hybrid Rifles/Staves, Monomolecular/Thermal Blades, and Physical Shields) alongside the 12 heritage field weapons, all executing weapon-class-authentic melee/ranged combat payloads across Skills 1–5 (`[ORION-ANCHOR: COMBAT-ACTION-PAYLOAD]`).
+   - **Chassis Hardware & Frame Components (`database/progression/canonical_feats_and_hardware.ts`)**: 6 Coreplates (`plating`), 6 Reactors (`reactorCore`), 6 Head Command Domes/Helms (`head`), 6 Sensory A (`sensoryA`), 6 Sensory B (`sensoryB`, including `SANC Blessing Resonance Grid`), 6 Arms Gauntlets/Assemblies (`arms`), 6 Legs Striders (`legs`), 6 Aux 3 Systems (`aux3`), 6 Aux 4 Systems (`aux4`), and Energy Storage (`Crystal Dynamics ERD Lodestone`, `VX Shadow Capacitor`). Equipping any Coreplate, Reactor, or Aux module dynamically drives live frame stats (`armor.type`, `armor.threshold`, `armor.rating`, `armor.maxDurability`, `shields.maxCapacity`, `reactor`, and `effectiveLoadCapacity`) via `resolveEquippedHardwareStats(state)`.
    - **Tactical Utilities (`database/equipment/utility_and_belt_modules.ts`)**: 6 classless `Action 6` utilities (`PNSY D-0g Repair Drone`, `RAD R463 Fathomless System`, `TI Lightwell Recovery System`, `VX Smoke Dispersal System`, `ARC Rift Anchor`, `SANC Radiant Ward Projector`).
 
-4. **97 Canonical Feats + `Knight's Oath` (`database/progression/canonical_feats_and_hardware.ts` → `[ORION-ANCHOR: PROG-FEAT-SYNERGY]`)**:
-   - Organized across **Tiers I–V** (`Lv 2 → Tier I`, `Lv 5 → Tier II`, `Lv 9 → Tier III`, `Lv 14 → Tier IV`, `Lv 18 → Tier V`) and **6 Functional Synergy Categories** (*Ballistics & Ordnance*, *Melee & CQC*, *Coreplate & Defense*, *Reactor & Thermal*, *Mobility & Stealth*, *Optics & Support*).
-   - Validated in real time via `doesPilotMeetFeatEquipmentRequirement(state, feat)` against the pilot's equipped weapons and hardware slots.
+4. **95 Verbatim Lore Feats (Tiers I–V) + `Knight's Oath` Reward Feat (`database/progression/canonical_feats_and_hardware.ts` → `[ORION-ANCHOR: PROG-FEAT-SYNERGY]`)**:
+   - Restored verbatim from `# PROJECT ORION — EQUIPMENT & FEATS` Sections 7–12 across **Tiers I–V** (`Lv 2 → Tier I` [24 feats], `Lv 5 → Tier II` [23 feats], `Lv 9 → Tier III` [22 feats], `Lv 14 → Tier IV` [15 feats], `Lv 18 → Tier V` [11 feats]) plus the permanent **`Knight's Oath`** reward feat (`+10% damage vs Camelot enemies (permanent)`).
+   - Validated in real time via `doesPilotMeetFeatEquipmentRequirement(state, feat)` against the pilot's equipped weapons and hardware slots, with live combat hooks for signature feats (`booster_evasion`, `shield_charge`, `beam_focus`, `backstab_mastery`, `sustained_channeling`, `assassinate`, `hardening_light`, and `knights_oath`).
+
+5. **Canonical 6 Damage Types × 3 Defense Layers Math (`systems/combatSystem.ts` → `[ORION-ANCHOR: COMBAT-DEFENSE-MATH]`)**:
+   - **Layer 1 — Shields**: `Pulse` deals `1.30x` shield drain and extends recharge delay (`4.0s` / `5.0s` overload); `Beam` deals `1.20x`; `Wave` (Mana) deals `1.15x` and bleeds `20%` directly past active shields; `Impact` deals `1.10x`; `Pierce` deals `0.85x`.
+   - **Layer 2 — Armor (`Ablative`, `Reactive`, `Hardened`, `Layered`)**: `Blast` shreds `1.6x` armor durability and ignores `25%` of armor rating; `Pierce` bypasses `35%` of armor threshold and `30%` of armor rating; `Wave` bypasses `30%` of `Hardened` armor rating; `Layered` crystal/mana lattice resists `Beam`, `Pulse`, and `Wave` (`+15%` threshold, `+20%` rating); `Reactive` plating dampens `Impact` and `Blast` (`+20%` rating).
+   - **Layer 3 — Frame Integrity**: Receives remaining damage after Shield and Armor mitigation; triggers Critical Frame State (`<= 40 HP`, `-30%` move speed & `15%` misfire risk) and Frame Defeat (`0 HP`).
 
 ---
 
 ### 6.2 `u00 Universe` Canonical `LOCKED` vs. `UNDEFINED` Zone Seal Conventions (`[ORION-ANCHOR: U00-ZONE-SEALS]`)
 Only **M00 The Bog (`bog-v2.md`)** and **Camelot Border Town (`border-town-v1.md`)** currently have `LOCKED` zone specifications (`specStatus: 'LOCKED'`). All other zones (`m01_orc_encampment`, `camelot_interior`, and the other 19 worlds in `U00_UNIVERSE_CATALOG`) carry `specStatus: 'UNDEFINED'` and are sealed by the Æther Fog in standard campaign mode until their canonical design specifications are authored and promoted to `'LOCKED'`.
+

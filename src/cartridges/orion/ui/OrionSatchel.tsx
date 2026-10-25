@@ -14,7 +14,6 @@ import {
 import { getItemDefinition } from '../database/items';
 import { getCoinPickupSpriteBase64 } from '../database/items/salvage_scrap';
 import {
-  acquireAdditionalWeaponCopy,
   ACTION_MODIFICATION_CATALOG,
   CHASSIS_HARDWARE_CATALOG,
   CORE_COMBAT_LAWS,
@@ -1338,25 +1337,6 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-1 shrink-0">
-                                      {isTrueWeaponEquipment(candidate) &&
-                                        !isTwoHandOnlyWeapon(candidate) &&
-                                        copies < 2 && (
-                                          <button
-                                            onClick={() => {
-                                              soundSystem.playPowerup();
-                                              acquireAdditionalWeaponCopy(state, candidate.id, {
-                                                say: (txt) => {
-                                                  state.toastText = txt;
-                                                  state.toastTimer = 2.5;
-                                                },
-                                              });
-                                              notifyOrionStateChange();
-                                            }}
-                                            className="px-1 py-0.5 rounded-xs text-[7px] font-bold bg-[#064e3b] hover:bg-[#047857] text-[#6ee7b7] border border-[#34d399]/60 cursor-pointer"
-                                          >
-                                            +2ND COPY
-                                          </button>
-                                        )}
                                       <button
                                         onClick={() => {
                                           if (!state.equipmentSlots) return;

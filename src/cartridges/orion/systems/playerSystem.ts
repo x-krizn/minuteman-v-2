@@ -35,6 +35,7 @@ import {
   getWeaponGemCombatModifiers,
   isStandardProgressionUnlocked,
   normalizePilotSkills,
+  resolveEquippedHardwareStats,
   syncPostTutorialFrameLevel,
   unlockLevel2SecondaryWeapon,
 } from '../database/progression';
@@ -435,8 +436,8 @@ export function createInitialOrionState(
     discoveredWaystations: [],
     discoveredWaygates: [],
 
-    x: 72,
-    y: 72,
+    x: 120,
+    y: 88,
     z: 0,
     vx: 0,
     vy: 0,
@@ -553,8 +554,8 @@ export function createInitialOrionState(
     spawnAnchor: {
       areaId: 'm00_the_bog',
       room: '-3,0',
-      x: 72,
-      y: 72,
+      x: 120,
+      y: 88,
     },
 
     enemies: [],
@@ -630,7 +631,8 @@ export function computeCapabilityGates(state: OrionState): OrionCapabilityGates 
 
   const effectiveLoadCapacity = computeEffectiveLoadCapacity(
     state.traitLine,
-    state.equippedFeats || []
+    state.equippedFeats || [],
+    state
   );
   const currentWeaponId =
     state.equipmentSlots?.slot1 ||
@@ -731,7 +733,14 @@ export function syncStateGates(state: OrionState): OrionCapabilityGates {
     state.equipmentSlots.weaponSet2?.[1] || null,
   ];
 
-  // Apply Static Budget Interface Feat Modifiers + Equipped Shield Passive Bonuses + Titanite Gem Bonus to Max Shield
+  // Resolve live stats from Equipped Coreplate, Reactor Core, Head & Aux 3/4 Hardware
+  const hwStats = resolveEquippedHardwareStats(state);
+  state.reactor = hwStats.reactorFamily;
+  state.armor.type = hwStats.armorType;
+  state.armor.threshold = hwStats.armorThreshold;
+  state.armor.rating = hwStats.armorRating;
+
+  // Apply Static Budget Interface Feat Modifiers + Equipped Shield/Hardware Passive Bonuses + Gem Bonus to Max Shield
   const featMods = computeInterfaceFeatModifiers(state.equippedFeats || []);
   const allGear = [
     state.equipmentSlots.slot1,
@@ -745,7 +754,10 @@ export function syncStateGates(state: OrionState): OrionCapabilityGates {
   }, 0);
   const targetMaxShield = Math.max(
     0,
-    profile.baseShield.capacity + featMods.shieldCapDelta + shieldBonusFromGear
+    hwStats.baseShieldCapacity +
+      hwStats.hardwareShieldBonus +
+      featMods.shieldCapDelta +
+      shieldBonusFromGear
   );
   if (state.shields.maxCapacity !== targetMaxShield) {
     const diff = targetMaxShield - state.shields.maxCapacity;
@@ -759,11 +771,21 @@ export function syncStateGates(state: OrionState): OrionCapabilityGates {
 
   const targetMaxArmor = Math.max(
     10,
-    profile.baseArmor.durability + featMods.armorDurabilityDelta
+    hwStats.baseArmorDurability +
+      hwStats.hardwareArmorBonus +
+      featMods.armorDurabilityDelta
   );
   if (state.armor.maxDurability !== targetMaxArmor) {
+    const armorDiff = targetMaxArmor - state.armor.maxDurability;
     state.armor.maxDurability = targetMaxArmor;
-    state.armor.durability = Math.min(state.armor.durability, state.armor.maxDurability);
+    if (armorDiff > 0) {
+      state.armor.durability = Math.min(
+        state.armor.maxDurability,
+        state.armor.durability + armorDiff
+      );
+    } else {
+      state.armor.durability = Math.min(state.armor.durability, state.armor.maxDurability);
+    }
   }
 
   const gates = computeCapabilityGates(state);
@@ -1375,11 +1397,16 @@ export function updatePlayerSystem(
       combatCtx.say('REACTOR OVERHEATED — VENT HEAT BEFORE BOOSTING');
       notifyOrionStateChange();
     } else if (state.boosterCooldown <= 0) {
+      const hasBoosterEvasion = (state.equippedFeats || []).some((f) =>
+        ['booster_evasion', 'radiant_step', 'shadow_step', 'aerodynamic_flow'].includes(f)
+      );
       state.isBoosterDashing = true;
-      state.boosterTimer = BOOSTER_DASH_DURATION + extraDashSec;
-      state.boosterCooldown = BOOSTER_DASH_COOLDOWN * 0.65;
+      state.boosterTimer =
+        BOOSTER_DASH_DURATION + extraDashSec + (hasBoosterEvasion ? 0.05 : 0);
+      state.boosterCooldown =
+        BOOSTER_DASH_COOLDOWN * (hasBoosterEvasion ? 0.52 : 0.65);
       const dashHeat =
-        (BOOSTER_HEAT_COST * 0.7 + extraDashHeat) *
+        (BOOSTER_HEAT_COST * (hasBoosterEvasion ? 0.55 : 0.7) + extraDashHeat) *
         gates.loadPenalty.heatMult *
         featMods.heatGenMult;
       state.heat = Math.min(state.maxHeat, state.heat + dashHeat);

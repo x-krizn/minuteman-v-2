@@ -74,4 +74,22 @@ export const camelotBorderTownArea: AreaWikiDefinition = {
       coord: '5,0',
     },
   ],
+  lootPool: {
+    equipmentIds: [
+      'rs450_radiant_projector',
+      'hl220_lightburst_lance',
+      'tig_edge',
+      'sv18_serpent',
+      'sr440_shadowfang',
+      's6_phantom_edge',
+      'wz650_prism_lance',
+      'wz800_arclight_cannon',
+      'cl700_sanctifier',
+      'cl500_absolution',
+      'hallowed_scepter',
+    ],
+    gemIds: ['titanite', 'moonstone', 'demantoid', 'kyanite', 'charoite'],
+    consumableIds: ['repair_kit', 'grail_water'],
+    equipmentDropChance: 0.55,
+  },
 };

@@ -69,7 +69,7 @@ export const orcSiegeEncampmentBiome: BiomeDefinition = {
   world: 'Belldor (Camelot)',
   description:
     'Scorched forward siege trenches and ash-choked mud plains fortified by Novarin Orc Warlords.',
-  clusterTileSheetBase64: 'ruins_tileset',
+  clusterTileSheetBase64: 'bog_tileset',
   defaultClusterTerrain: 'dirt',
   tileTypes: { ...DEFAULT_TILE_TYPES },
   tileRules: {
@@ -101,7 +101,7 @@ export const camelotBorderTownBiome: BiomeDefinition = {
   world: 'Belldor (Camelot)',
   description:
     'Half-ruined border settlement trapped in a temporal desynchronization loop between intact stone and shattered rubble.',
-  clusterTileSheetBase64: 'ruins_tileset',
+  clusterTileSheetBase64: 'bog_tileset',
   defaultClusterTerrain: 'ruins',
   tileTypes: { ...DEFAULT_TILE_TYPES },
   tileRules: {
@@ -133,7 +133,7 @@ export const camelotWaygateSanctumBiome: BiomeDefinition = {
   world: 'Belldor (Camelot)',
   description:
     'Ancient subterranean sanctum housing a Colossal Waygate that reads the pilot’s ætheric signature across the Sea of Æther.',
-  clusterTileSheetBase64: 'ruins_tileset',
+  clusterTileSheetBase64: 'bog_tileset',
   defaultClusterTerrain: 'ruins',
   tileTypes: { ...DEFAULT_TILE_TYPES },
   tileRules: {

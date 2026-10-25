@@ -1,6 +1,6 @@
 {
-  "summary":  "Housekeeping, Extensibility & Authoring Guide Plan for Project Orion prior to the Game World expansion, introducing grep-friendly [ORION-ANCHOR: ID] comment blocks, a centralized ASCII Tile & Spawn Character Registry, world-composer cleanup, and an updated v0.8 Classless Authoring Guide.",
-  "updatedAt":  "2026-10-25T11:33:00.020548246Z",
+  "summary":  "Implementation plan for the M00 Bog & World Mapping Overhaul, Dynamic Vision & Threat Lighting Pass, Environmental Sub-Zone Landmarks, and Contextual Enemy/Area/Region Loot Table Architecture.",
+  "updatedAt":  "2026-10-25T15:13:06.088963027Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

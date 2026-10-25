@@ -342,6 +342,31 @@ export interface AetherFogGraphState {
   nodes: Record<string, AetherGraphNode>;
 }
 
+export type RoomSafetyTier = 'sanctuary' | 'trail' | 'hazard' | 'abyss';
+
+export interface RoomLightingProfile {
+  safetyTier?: RoomSafetyTier;
+  /** Ambient darkness veil 0..0.85 (lower in safe sanctuaries, higher in hazard/abyss rooms) */
+  ambientDarkness?: number;
+  /** Corner ambient occlusion intensity 0..0.95 */
+  cornerShadowIntensity?: number;
+  /** Base player vision & threat awareness radius in pixels before Optics/Lantern bonuses */
+  playerVisionRadiusPx?: number;
+  /** Optional warm/cool ambient tint color for safe sanctuaries or deep hazards */
+  ambientTintColor?: string;
+}
+
+export interface ContextualLootPool {
+  /** Canonical weapon / shield / hardware IDs dropped or salvaged in this context */
+  equipmentIds?: string[];
+  /** Gemstone IDs favored in this context */
+  gemIds?: string[];
+  /** Consumable or key item IDs favored in this context */
+  consumableIds?: string[];
+  /** Base probability (0..1) of rolling an equipment drop on enemy kill or cache open */
+  equipmentDropChance?: number;
+}
+
 export interface RoomDefinition {
   id?: string;
   scope?: WorldScope;
@@ -353,6 +378,12 @@ export interface RoomDefinition {
   biomeId?: string;
   title: string;
   bannerTitle: string;
+  /** Optional environmental storytelling landmark subtitle */
+  landmarkLabel?: string;
+  /** Optional room-level lighting, corner shadow, and player vision profile */
+  lighting?: RoomLightingProfile;
+  /** Optional room-specific contextual loot pool override */
+  lootPool?: ContextualLootPool;
   /** Optional explicit grid column/row dimensions (derived automatically from grid if omitted) */
   cols?: number;
   rows?: number;
@@ -480,6 +511,8 @@ export interface AreaWikiDefinition {
   openDesignId?: string;
   /** Documented sub-features or sub-zones within this area */
   zoneFeatures?: ZoneFeatureSpec[];
+  /** Area-specific equipment, gemstone, and consumable loot table */
+  lootPool?: ContextualLootPool;
 }
 
 export interface RegionDefinition {
@@ -500,6 +533,8 @@ export interface RegionDefinition {
   /** Connected neighboring Region IDs for continuous on-foot traversal */
   connectedRegionIds: string[];
   waygate?: WaygateNode;
+  /** Region-wide fallback equipment, gemstone, and consumable loot table */
+  lootPool?: ContextualLootPool;
 }
 
 export type FrameLoadCapacity = 'light' | 'medium' | 'heavy' | 'superheavy';
@@ -837,6 +872,10 @@ export interface EnemyWikiDefinition {
   tellDurationSec: number;
   attackCooldownSec: number;
   lootTable: LootEntry[];
+  /** Optional enemy-specific equipment & weapon drop pool */
+  equipmentLootPool?: string[];
+  /** Base chance (0..1) for this enemy to drop a weapon/equipment piece from its pool */
+  equipmentDropChance?: number;
   /** Optional embedded Base64 PNG sprite or grid animation/directional spritesheet */
   sprite?: Base64SpriteConfig;
   shouldSkipSpawn?: (state: OrionState) => boolean;

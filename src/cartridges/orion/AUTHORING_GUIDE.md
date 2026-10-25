@@ -72,13 +72,13 @@ src/cartridges/orion/
 4. **Area (`world/<world>/<regionId>/<areaId>/area.ts`)**: Group your maps and attach an **Æther Waystation (`A`)** for intra-region fast travel.
 5. **Map + Co-Located Rooms (`world/<world>/<regionId>/<areaId>/map_<name>.ts`)**: Paint `10 × 9` ASCII room grids (`COLS = 10`, `ROWS = 9`) and export the `MapDefinition` alongside its `RoomDefinition` entries in the same file.
 
-### Aether Fog 5-Node Topology & Pyramid Depth Progression (`key`, `general`, `side`, `loop`, `end`)
+### Aether Fog 5-Node Topology & Depth Progression (`key`, `general`, `side`, `loop`, `end`)
 No outer room in Orion has a literal solid map border. Instead, `systems/worldSystem.ts` routes cardinal doorways through a dynamic 5-node Aether Fog graph and renders a relative **HUD Mini-Map**:
 - **`key` Nodes**: Authored Points of Interest (Drop-Pod, Towns, Boss Sanctums, Waystations, Waygates).
 - **`general` Nodes**: Dynamically generated corridor chunks that advance route progress (`1/N .. N/N`) between connected `key` nodes. Room-to-room banners are suppressed unless entering a new Point of Interest or triggering a hazard warning.
 - **`side` Nodes**: Off-path branches extending from `general` or `key` nodes; they do **not** advance route progress and lead either to an `end` node or a `loop` node.
 - **`end` Nodes**: Terminal single-exit pockets featuring rolled rewards (`loot_cache`, `mini_boss`, `secret_switch`, or `dead_end`).
-- **`loop` Nodes (Pyramid Depth `Safe → 1 → 2 → 3 → 2 → 1 → Safe`)**: Relative to the map, Aether Loop depths always follow a 6-step pyramid (`Depth 1 → 2 → 3 → 2 → 1 → Safe`). Deeper depths scale enemy aggression, Aether mist density, and corrosive/chasm hazards (`less traversable at deeper depths`). Path mote tells appear strictly on Aether Loop doorways as a warning of increased Aether density in the next depth, while the **Poe Lantern** reveals submerged Bog Wurms and Aether Loop entrances without directing the player toward narrative goals.
+- **`loop` Nodes (Depth `1 .. clvl + 1`)**: Going deeper into the Æther fog scales up to `maxDepth = clvl + 1`. Each depth tier `d` (`1 <= d < maxDepth`) spans `d` rooms (`1/d .. d/d`) before advancing to depth `d + 1`. Before reaching `maxDepth`, stepping through the return doorway retraces visited rooms backward toward the main path (`anchorSafeNodeId`), and cleared rooms remain safe. At `maxDepth` (`clvl + 1`), rooms are generated randomly across all exits (boss room doors do not lock, so the player may run from boss rooms into another random `maxDepth` room) with a `1 / (clvl + 1)` boss spawn frequency. Defeating a boss at `maxDepth` clears the fog and returns the player to their anchor node on the main path. Deeper depths scale enemy stats, loot/gemstone drops, and terrain hazards, while the **Poe Lantern** reveals submerged Bog Wurms and Æther Fog entrances without directing the player toward narrative goals.
 
 ---
 

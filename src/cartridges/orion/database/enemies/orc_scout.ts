@@ -36,9 +36,11 @@ export const orcScoutEnemy: EnemyWikiDefinition = {
   faction: 'orc',
   emissiveColor: '#fdba74',
   tellRadius: 26,
+  companionSpawnType: 'orc_warrior',
+  companionSpawnChar: 'o',
   description: 'Ranged skirmisher that stays back, shoots from range, and slips away to heal if hurt.',
   lore:
-    'Kill the Scout first, but do not let the Warrior reach you. If wounded and left unpressured, the Scout retreats to patch its frame.',
+    'Orcs always come as a Warrior and a Scout. Kill the Scout first, but do not let the Warrior reach you. If wounded and left unpressured, the Scout retreats to patch its frame.',
   shields: { type: 'energy', capacity: 15 },
   armor: { type: 'Ablative', threshold: 3, rating: 1, durability: 25 },
   frameIntegrity: 42,

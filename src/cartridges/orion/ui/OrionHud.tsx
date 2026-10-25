@@ -929,11 +929,12 @@ export const OrionHud: React.FC = () => {
             )}
           </div>
 
-          {/* Map-Relative Mini-Map (5x3 local window around [state.rx, state.ry]) + Pyramid Depth Gauge */}
+          {/* Map-Relative Mini-Map (5x3 local window around [state.rx, state.ry]) + Æther Fog Depth Gauge */}
           {(() => {
             const hasLantern = hasPoeLanternGuidance(state);
             const curStage = worldInfo.loopStage || 0;
             const curDepth = worldInfo.loopDepth || 0;
+            const maxDepth = Math.max(2, worldInfo.loopMaxDepth || (state.level || 1) + 1);
             const inLoop = worldInfo.nodeType === 'loop' || curDepth > 0;
             const nodesMap = state.fogGraph?.nodes || {};
 
@@ -945,14 +946,12 @@ export const OrionHud: React.FC = () => {
               return null;
             };
 
-            const pyramidSteps: Array<{ label: string; stage: number; depth: number }> = [
-              { label: 'SAFE', stage: 0, depth: 0 },
-              { label: '1', stage: 1, depth: 1 },
-              { label: '2', stage: 2, depth: 2 },
-              { label: '3', stage: 3, depth: 3 },
-              { label: '2', stage: 4, depth: 2 },
-              { label: '1', stage: 5, depth: 1 },
-              { label: 'SAFE', stage: 6, depth: 0 },
+            const depthSteps: Array<{ label: string; depth: number }> = [
+              { label: 'SAFE', depth: 0 },
+              ...Array.from({ length: maxDepth }, (_, idx) => ({
+                label: String(idx + 1),
+                depth: idx + 1,
+              })),
             ];
 
             return (
@@ -993,14 +992,14 @@ export const OrionHud: React.FC = () => {
 
                       if (isCenter) {
                         cellClass = inLoop
-                          ? curDepth >= 3
+                          ? curDepth >= maxDepth
                             ? 'border-[#f43f5e] text-[#fda4af] font-black'
                             : 'border-[#c084fc] text-[#e9d5ff] font-black'
                           : 'border-[#38bdf8] text-[#7dd3fc] font-black';
                         symbol = inLoop ? String(curDepth) : '◈';
                       } else if (isDensityWarning) {
                         cellClass =
-                          (transInfo?.nextDepth || 0) >= 3
+                          (transInfo?.nextDepth || 0) >= maxDepth
                             ? 'border-[#f43f5e]/90 text-[#f43f5e] font-black'
                             : 'border-[#c084fc]/90 text-[#e879f9] font-black';
                         symbol = '!';
@@ -1026,11 +1025,11 @@ export const OrionHud: React.FC = () => {
                           className={`w-3.5 h-2.5 rounded-[1px] border bg-transparent flex items-center justify-center text-[6.5px] leading-none ${cellClass}`}
                           title={
                             isCenter
-                              ? `Current [${cellRx},${cellRy}] ${inLoop ? `· Æther Depth ${curDepth}` : '· Safe'}`
+                              ? `Current [${cellRx},${cellRy}] ${inLoop ? `· Æther Depth ${curDepth}/${maxDepth}` : '· Safe'}`
                               : isDensityWarning
-                                ? `Warning: Increased Æther Density (Depth ${transInfo?.nextDepth})`
+                                ? `Warning: Increased Æther Density (Depth ${transInfo?.nextDepth}/${maxDepth})`
                                 : isPoeLoopReveal
-                                  ? 'Poe Lamp Reveal: Æther Loop Entrance (Depth 1)'
+                                  ? 'Poe Lamp Reveal: Æther Fog Entrance (Depth 1)'
                                   : cellNode
                                     ? `${cellNode.title} [${cellRx},${cellRy}]`
                                     : `Uncharted [${cellRx},${cellRy}]`
@@ -1043,23 +1042,23 @@ export const OrionHud: React.FC = () => {
                   )}
                 </div>
 
-                {/* Pyramid Depth Indicator: SAFE · 1 · 2 · 3 · 2 · 1 · SAFE */}
+                {/* Æther Fog Depth Gauge: SAFE · 1 .. (clvl + 1) + Room Progress */}
                 <div className="flex items-center gap-0.5 text-[6.5px] tracking-tighter font-bold bg-transparent">
-                  {pyramidSteps.map((step, i) => {
+                  {depthSteps.map((step, i) => {
                     const isActiveStep = inLoop
-                      ? curStage === step.stage
-                      : step.stage === 0;
+                      ? curDepth === step.depth
+                      : step.depth === 0;
                     const activeColor =
-                      step.depth === 3
+                      step.depth >= maxDepth
                         ? 'text-[#f43f5e] border-[#f43f5e]/85'
-                        : step.depth === 2
+                        : step.depth >= 2
                           ? 'text-[#c084fc] border-[#c084fc]/85'
                           : step.depth === 1
                             ? 'text-[#22d3ee] border-[#22d3ee]/85'
                             : 'text-[#4ade80] border-[#4ade80]/80';
 
                     return (
-                      <React.Fragment key={step.stage}>
+                      <React.Fragment key={step.depth}>
                         <span
                           className={`px-1 rounded-[1px] border ${
                             isActiveStep
@@ -1069,12 +1068,27 @@ export const OrionHud: React.FC = () => {
                         >
                           {step.label}
                         </span>
-                        {i < pyramidSteps.length - 1 && (
+                        {i < depthSteps.length - 1 && (
                           <span className="text-[#475569]">·</span>
                         )}
                       </React.Fragment>
                     );
                   })}
+                  {inLoop && (
+                    <span
+                      className={`ml-0.5 px-1 rounded-[1px] border ${
+                        curDepth >= maxDepth
+                          ? 'border-[#f43f5e]/80 text-[#fda4af]'
+                          : 'border-[#a855f7]/60 text-[#d8b4fe]'
+                      }`}
+                    >
+                      {curDepth >= maxDepth
+                        ? worldInfo.hasFogBoss
+                          ? 'MAX·BOSS'
+                          : `MAX·1/${maxDepth}`
+                        : `RM ${Math.max(1, curStage)}/${curDepth}`}
+                    </span>
+                  )}
                 </div>
               </div>
             );

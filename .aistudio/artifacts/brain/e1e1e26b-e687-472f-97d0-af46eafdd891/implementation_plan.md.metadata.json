@@ -1,6 +1,6 @@
 {
-  "summary":  "Implementation plan for revising the Swamp Biome (M00 The Bog) tileset using bogtiles01__2__e9b9511b.png (240x240px, 5x5 clusters of 3x3 16x16px tiles) and 1000248459.base64_889a7ed7.txt, mapping all 5 base terrains, 17 transition rings, center wall faces, and the 3 bottom-right structural wall/tree/gate clusters to canonical Bog rooms.",
-  "updatedAt":  "2026-10-24T20:16:30.663132975Z",
+  "summary":  "Updated implementation plan incorporating multi-room depth tiers (d rooms at depth d), unlocked max-depth boss rooms, 1/(clvl+1) boss spawn frequency at max depth, and fog-clearing return on boss defeat.",
+  "updatedAt":  "2026-10-25T00:08:28.485430959Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

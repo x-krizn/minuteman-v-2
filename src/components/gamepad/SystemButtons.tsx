@@ -47,6 +47,8 @@ export const SystemButtons: React.FC<SystemButtonsProps> = ({ scale, state }) =>
         onPointerDown={(e) => handlePointerDown('start', e)}
         onPointerUp={(e) => handlePointerUp('start', e)}
         onPointerCancel={(e) => handlePointerCancel('start', e)}
+        onLostPointerCapture={(e) => handlePointerCancel('start', e)}
+        onContextMenu={(e) => e.preventDefault()}
         className="absolute border-none bg-transparent p-0 m-0 cursor-pointer touch-none select-none pixelated"
         style={{
           left: `${5 * s}px`,
@@ -80,6 +82,8 @@ export const SystemButtons: React.FC<SystemButtonsProps> = ({ scale, state }) =>
         onPointerDown={(e) => handlePointerDown('select', e)}
         onPointerUp={(e) => handlePointerUp('select', e)}
         onPointerCancel={(e) => handlePointerCancel('select', e)}
+        onLostPointerCapture={(e) => handlePointerCancel('select', e)}
+        onContextMenu={(e) => e.preventDefault()}
         className="absolute border-none bg-transparent p-0 m-0 cursor-pointer touch-none select-none pixelated"
         style={{
           left: `${42 * s}px`,

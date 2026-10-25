@@ -84,6 +84,28 @@ export function createOrionCartridge(): Cartridge {
 
     onMenuToggle(menuMode: CartridgeMenuMode) {
       currentMenuMode = menuMode;
+      state.isContinuousBoosting = false;
+      state.bHoldTimer = 0;
+      if (state.isHoldingBlock) {
+        state.isHoldingBlock = false;
+        state.blockTimer = 0;
+        state.blockHoldTimer = 0;
+        state.blockingWeaponId = null;
+      }
+      state.combatActiveChain = false;
+      state.combatQueuedChainShot = false;
+      if (state.combatHoldTimers) {
+        state.combatHoldTimers = { x: 0, y: 0, r: 0, l: 0 };
+      }
+      if (state.combatHoldTriggered) {
+        state.combatHoldTriggered = { x: false, y: false, r: false, l: false };
+      }
+      if (state.combatTapPending) {
+        state.combatTapPending = { x: false, y: false, r: false, l: false };
+      }
+      if (state.combatDoubleTapPending) {
+        state.combatDoubleTapPending = { x: false, y: false, r: false, l: false };
+      }
     },
 
     update(input: GameInput, dtSeconds: number) {

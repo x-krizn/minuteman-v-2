@@ -2910,7 +2910,13 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                             : activeNode.nodeType === 'side'
                               ? 'OFF-PATH (NO PROGRESS)'
                               : activeNode.nodeType === 'loop'
-                                ? `FOG LOOP (DEPTH ${worldInfo.loopDepth})`
+                                ? `FOG DEPTH ${worldInfo.loopDepth}/${worldInfo.loopMaxDepth} (${
+                                    worldInfo.loopDepth >= worldInfo.loopMaxDepth
+                                      ? worldInfo.hasFogBoss
+                                        ? 'MAX · BOSS'
+                                        : `MAX · 1/${worldInfo.loopMaxDepth}`
+                                      : `RM ${worldInfo.loopStage}/${worldInfo.loopDepth}`
+                                  })`
                                 : activeNode.nodeType === 'end'
                                   ? `END (${(activeNode.endFeature || 'loot_cache').toUpperCase()})`
                                   : 'POINT OF INTEREST'}

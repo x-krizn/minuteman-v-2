@@ -2655,8 +2655,20 @@ export function activateResolvedCombatSkill(
   ctx: OrionCombatContext,
   skillIndex: 1 | 2 | 3 | 4 | 5
 ): boolean {
-  if (state.activeSkillSlot !== null || state.activeActionId) {
+  // Special skills (2..5) can cancel an in-progress basic attack swing (activeSkillSlot === 0),
+  // whereas an active special action (activeActionId !== null) cannot be interrupted.
+  if (state.activeActionId) {
     return false;
+  }
+  if (state.activeSkillSlot !== null && state.activeSkillSlot !== 0) {
+    return false;
+  }
+  if (state.activeSkillSlot === 0) {
+    state.activeSkillSlot = null;
+    state.activeSkillCooldownKey = null;
+    state.skillTellTimer = 0;
+    state.skillActionTimer = 0;
+    state.combatQueuedChainShot = false;
   }
 
   const skills = getResolvedCombatSkills(state);
@@ -2793,6 +2805,16 @@ export function startHoldingBlock(
   const blockSkill = skills.skill4;
   if (!blockSkill || !blockSkill.available || !blockSkill.isBlock) {
     return false;
+  }
+  if (state.activeActionId) {
+    return false;
+  }
+  if (state.activeSkillSlot === 0) {
+    state.activeSkillSlot = null;
+    state.activeSkillCooldownKey = null;
+    state.skillTellTimer = 0;
+    state.skillActionTimer = 0;
+    state.combatQueuedChainShot = false;
   }
 
   const blockWpnId =
@@ -2964,6 +2986,12 @@ export function handleCombatInput(
     r: false,
     l: false,
   };
+  state.combatDoubleTapPending = state.combatDoubleTapPending || {
+    x: false,
+    y: false,
+    r: false,
+    l: false,
+  };
 
   // Tick down double-tap windows
   for (const k of ['x', 'y', 'r', 'l'] as const) {
@@ -2982,15 +3010,24 @@ export function handleCombatInput(
 
   // ─── [X] BUTTON: Single Tap = [chain manual] · Double Tap = [reload chain] · Hold = [chain auto] ───
   if (p.x) {
-    if (state.combatInputTimers.x > 0) {
+    state.combatHoldTimers.x = 0;
+    state.combatHoldTriggered.x = false;
+
+    const isMidBasicSwing = state.activeSkillSlot === 0 && !state.activeActionId;
+    if (state.combatInputTimers.x > 0 && !isMidBasicSwing && state.ammo < state.maxAmmo && !state.isReloading) {
+      // Double-tap from idle with partial ammo -> Tactical Reload
       state.combatInputTimers.x = 0;
+      state.combatQueuedChainShot = false;
       triggerTacticalReload(state, ctx, [1]);
     } else {
       state.combatInputTimers.x = DOUBLE_TAP_WINDOW_SEC;
-      state.combatHoldTimers.x = 0;
-      state.combatHoldTriggered.x = false;
-      if (!state.isReloading && state.activeSkillSlot === null && !state.activeActionId) {
-        firePrimarySalvoShot(state, ctx, false);
+      if (!state.isReloading && !state.activeActionId) {
+        if (state.activeSkillSlot === null) {
+          firePrimarySalvoShot(state, ctx, false);
+        } else if (state.activeSkillSlot === 0) {
+          // Buffer the next manual shot in the chain so tapping [X] chains smoothly!
+          state.combatQueuedChainShot = true;
+        }
       }
     }
   }
@@ -3000,6 +3037,7 @@ export function handleCombatInput(
     if (state.combatHoldTimers.x >= HOLD_TRIGGER_THRESHOLD_SEC && !state.combatHoldTriggered.x) {
       state.combatHoldTriggered.x = true;
       state.combatActiveChain = true;
+      state.combatInputTimers.x = 0;
     }
     if (
       state.combatActiveChain &&
@@ -3015,21 +3053,15 @@ export function handleCombatInput(
     state.combatActiveChain = false;
   }
 
-  // ─── [Y] BUTTON: Tap Release = [Skill 2] · Double Tap = [reload 2/4] · Hold = [Skill 4 / Held Block] ───
+  // ─── [Y] BUTTON: Tap Release = [Skill 2] · Double Tap Release = [reload 2/4 or Skill 2] · Hold = [Skill 4 / Held Block] ───
   // Skill 2 NEVER activates on button-down or during a long-press hold for Skill 4!
   if (p.y) {
-    if (state.combatInputTimers.y > 0) {
-      state.combatInputTimers.y = 0;
-      state.combatTapPending.y = false;
-      if (!triggerTacticalReload(state, ctx, [2, 4])) {
-        activateResolvedCombatSkill(state, ctx, 2);
-      }
-    } else {
-      state.combatInputTimers.y = DOUBLE_TAP_WINDOW_SEC;
-      state.combatHoldTimers.y = 0;
-      state.combatHoldTriggered.y = false;
-      state.combatTapPending.y = true;
-    }
+    const isDoubleTap = state.combatInputTimers.y > 0;
+    state.combatInputTimers.y = isDoubleTap ? 0 : DOUBLE_TAP_WINDOW_SEC;
+    state.combatHoldTimers.y = 0;
+    state.combatHoldTriggered.y = false;
+    state.combatTapPending.y = true;
+    state.combatDoubleTapPending.y = isDoubleTap;
   }
 
   if (h.y) {
@@ -3040,7 +3072,9 @@ export function handleCombatInput(
 
     if (state.combatHoldTimers.y >= yHoldThreshold) {
       state.combatTapPending.y = false;
-      if (!state.combatHoldTriggered.y) {
+      state.combatDoubleTapPending.y = false;
+      state.combatInputTimers.y = 0;
+      if (!state.combatHoldTriggered.y && !state.activeActionId) {
         state.combatHoldTriggered.y = true;
         if (isSkill4Block) {
           startHoldingBlock(state, ctx, skills.skill4?.weaponId);
@@ -3054,71 +3088,80 @@ export function handleCombatInput(
       releaseHeldBlock(state);
     }
     if (state.combatTapPending.y && !state.combatHoldTriggered.y) {
+      const wasDoubleTap = state.combatDoubleTapPending.y;
       state.combatTapPending.y = false;
-      activateResolvedCombatSkill(state, ctx, 2);
+      state.combatDoubleTapPending.y = false;
+      if (wasDoubleTap) {
+        if (!triggerTacticalReload(state, ctx, [2, 4])) {
+          activateResolvedCombatSkill(state, ctx, 2);
+        }
+      } else {
+        activateResolvedCombatSkill(state, ctx, 2);
+      }
     }
     state.combatHoldTimers.y = 0;
     state.combatHoldTriggered.y = false;
     state.combatTapPending.y = false;
+    state.combatDoubleTapPending.y = false;
   }
 
-  // ─── [R] BUTTON: Tap Release = [Skill 3] · Double Tap = [reload 3/5] · Hold = [Skill 5] ───
+  // ─── [R] BUTTON: Tap Release = [Skill 3] · Double Tap Release = [reload 3/5 or Skill 3] · Hold = [Skill 5] ───
   // Skill 3 NEVER activates on button-down or during a long-press hold for Skill 5!
   if (p.r) {
-    if (state.combatInputTimers.r > 0) {
-      state.combatInputTimers.r = 0;
-      state.combatTapPending.r = false;
-      if (!triggerTacticalReload(state, ctx, [3, 5])) {
-        activateResolvedCombatSkill(state, ctx, 3);
-      }
-    } else {
-      state.combatInputTimers.r = DOUBLE_TAP_WINDOW_SEC;
-      state.combatHoldTimers.r = 0;
-      state.combatHoldTriggered.r = false;
-      state.combatTapPending.r = true;
-    }
+    const isDoubleTap = state.combatInputTimers.r > 0;
+    state.combatInputTimers.r = isDoubleTap ? 0 : DOUBLE_TAP_WINDOW_SEC;
+    state.combatHoldTimers.r = 0;
+    state.combatHoldTriggered.r = false;
+    state.combatTapPending.r = true;
+    state.combatDoubleTapPending.r = isDoubleTap;
   }
 
   if (h.r) {
     state.combatHoldTimers.r += dt;
     if (state.combatHoldTimers.r >= HOLD_TRIGGER_THRESHOLD_SEC) {
       state.combatTapPending.r = false;
-      if (!state.combatHoldTriggered.r) {
+      state.combatDoubleTapPending.r = false;
+      state.combatInputTimers.r = 0;
+      if (!state.combatHoldTriggered.r && !state.activeActionId) {
         state.combatHoldTriggered.r = true;
         activateResolvedCombatSkill(state, ctx, 5);
       }
     }
   } else {
     if (state.combatTapPending.r && !state.combatHoldTriggered.r) {
+      const wasDoubleTap = state.combatDoubleTapPending.r;
       state.combatTapPending.r = false;
-      activateResolvedCombatSkill(state, ctx, 3);
+      state.combatDoubleTapPending.r = false;
+      if (wasDoubleTap) {
+        if (!triggerTacticalReload(state, ctx, [3, 5])) {
+          activateResolvedCombatSkill(state, ctx, 3);
+        }
+      } else {
+        activateResolvedCombatSkill(state, ctx, 3);
+      }
     }
     state.combatHoldTimers.r = 0;
     state.combatHoldTriggered.r = false;
     state.combatTapPending.r = false;
+    state.combatDoubleTapPending.r = false;
   }
 
-  // ─── [L] BUTTON: Single Tap = [lock/cycle] · Double Tap = [unlock] · Hold = [swap] ───
+  // ─── [L] BUTTON: Single Tap Release = [lock/cycle] · Double Tap Release = [unlock] · Hold = [swap] ───
   if (p.l) {
-    if (state.combatInputTimers.l > 0) {
-      state.combatInputTimers.l = 0;
-      state.combatTapPending.l = false;
-      state.lockedTargetId = null;
-      soundSystem.playMenuBeep();
-      ctx.say('TARGET UNLOCKED');
-      notifyOrionStateChange();
-    } else {
-      state.combatInputTimers.l = DOUBLE_TAP_WINDOW_SEC;
-      state.combatHoldTimers.l = 0;
-      state.combatHoldTriggered.l = false;
-      state.combatTapPending.l = true;
-    }
+    const isDoubleTap = state.combatInputTimers.l > 0 && state.lockedTargetId !== null;
+    state.combatInputTimers.l = isDoubleTap ? 0 : DOUBLE_TAP_WINDOW_SEC;
+    state.combatHoldTimers.l = 0;
+    state.combatHoldTriggered.l = false;
+    state.combatTapPending.l = true;
+    state.combatDoubleTapPending.l = isDoubleTap;
   }
 
   if (h.l) {
     state.combatHoldTimers.l += dt;
     if (state.combatHoldTimers.l >= HOLD_TRIGGER_THRESHOLD_SEC) {
       state.combatTapPending.l = false;
+      state.combatDoubleTapPending.l = false;
+      state.combatInputTimers.l = 0;
       if (!state.combatHoldTriggered.l) {
         state.combatHoldTriggered.l = true;
         performAuxiliarySwap(state, ctx);
@@ -3126,12 +3169,22 @@ export function handleCombatInput(
     }
   } else {
     if (state.combatTapPending.l && !state.combatHoldTriggered.l) {
+      const wasDoubleTap = state.combatDoubleTapPending.l;
       state.combatTapPending.l = false;
-      cycleTargetLock(state, ctx);
+      state.combatDoubleTapPending.l = false;
+      if (wasDoubleTap && state.lockedTargetId !== null) {
+        state.lockedTargetId = null;
+        soundSystem.playMenuBeep();
+        ctx.say('TARGET UNLOCKED');
+        notifyOrionStateChange();
+      } else {
+        cycleTargetLock(state, ctx);
+      }
     }
     state.combatHoldTimers.l = 0;
     state.combatHoldTriggered.l = false;
     state.combatTapPending.l = false;
+    state.combatDoubleTapPending.l = false;
   }
 }
 
@@ -3650,9 +3703,14 @@ export function updateCombat(
     } else {
       state.skillActionTimer -= dt;
       if (state.skillActionTimer <= 0) {
+        const finishedBasicShot = state.activeSkillSlot === 0 && !state.activeActionId;
         state.activeSkillSlot = null;
         state.activeActionId = null;
         state.activeSkillCooldownKey = null;
+        if (finishedBasicShot && state.combatQueuedChainShot && !state.isReloading) {
+          state.combatQueuedChainShot = false;
+          firePrimarySalvoShot(state, ctx, false);
+        }
       }
     }
   }

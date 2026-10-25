@@ -16,6 +16,7 @@ function handleGrailKnightDefeat(state: OrionState, ctx: OrionCombatContext): vo
 
   const remainingKnights = state.enemies.filter((rem) => rem.faction === 'camelot');
   if (remainingKnights.length === 0 && state.flags.knights_pulled_together) {
+    state.flags.knights_oath_earned = true;
     if (!state.equippedFeats.includes('knights_oath')) {
       state.equippedFeats.push('knights_oath');
       addOrionInventoryItem(state, 'knights_oath', 1);

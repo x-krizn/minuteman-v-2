@@ -25,6 +25,7 @@ const KEY_MAPPINGS: Record<string, ButtonKey> = {
   KeyC: 'x', // Attack / Charge (X)
   KeyJ: 'x',
   KeyV: 'y', // Block / Parry (Y)
+  KeyL: 'y',
 
   // Bumpers / Skills
   KeyQ: 'l', // Skill 1 (L)
@@ -36,6 +37,7 @@ const KEY_MAPPINGS: Record<string, ButtonKey> = {
   // START -> Game Menu (Enter, P, Escape)
   Enter: 'start',
   KeyP: 'start',
+  Escape: 'start',
   // SHIFT -> Inventory / Character Screen (ShiftLeft, ShiftRight, Tab, M)
   ShiftLeft: 'select',
   ShiftRight: 'select',
@@ -45,15 +47,59 @@ const KEY_MAPPINGS: Record<string, ButtonKey> = {
   Backspace: 'select',
 };
 
+function isEditableElement(el: EventTarget | Element | null): boolean {
+  if (!el || !(el instanceof HTMLElement)) return false;
+  const tag = el.tagName;
+  return (
+    tag === 'INPUT' ||
+    tag === 'TEXTAREA' ||
+    tag === 'SELECT' ||
+    el.isContentEditable
+  );
+}
+
 export class KeyboardMapper {
   private activeKeys: Set<string> = new Set();
+  private keyboardStickActive = false;
   private attached = false;
 
   public init(): () => void {
     if (this.attached) return () => {};
     this.attached = true;
 
+    const releaseAllKeyboardInputs = () => {
+      this.activeKeys.clear();
+      this.keyboardStickActive = false;
+      (
+        [
+          'up',
+          'down',
+          'left',
+          'right',
+          'a',
+          'b',
+          'x',
+          'y',
+          'l',
+          'r',
+          'start',
+          'select',
+        ] as ButtonKey[]
+      ).forEach((btn) => {
+        gamepadStore.setButtonState(btn, false, false, 'keyboard');
+      });
+      gamepadStore.setStick(0, 0, 'keyboard');
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Do not hijack keystrokes when typing inside a text input (e.g., Pilot Callsign)
+      if (isEditableElement(e.target) || isEditableElement(document.activeElement)) {
+        if (e.code === 'Escape' && document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+        return;
+      }
+
       // Prevent default browser scrolling on game keys
       if (
         ['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(
@@ -87,36 +133,25 @@ export class KeyboardMapper {
     };
 
     const handleBlur = () => {
-      this.activeKeys.clear();
-      (
-        [
-          'up',
-          'down',
-          'left',
-          'right',
-          'a',
-          'b',
-          'x',
-          'y',
-          'l',
-          'r',
-          'start',
-          'select',
-        ] as ButtonKey[]
-      ).forEach((btn) => {
-        gamepadStore.setButtonState(btn, false, false, 'keyboard');
-      });
-      gamepadStore.setStick(0, 0, 'keyboard');
+      releaseAllKeyboardInputs();
+    };
+
+    const handleFocusIn = (e: FocusEvent) => {
+      if (isEditableElement(e.target)) {
+        releaseAllKeyboardInputs();
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
     window.addEventListener('blur', handleBlur);
+    window.addEventListener('focusin', handleFocusIn);
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('focusin', handleFocusIn);
       this.attached = false;
     };
   }
@@ -139,25 +174,13 @@ export class KeyboardMapper {
       sy *= invLen;
     }
 
-    // Only update stick if directional keys are driving it
-    if (isHeld('left') || isHeld('right') || isHeld('up') || isHeld('down')) {
-      gamepadStore.setStick(sx, sy);
-    } else if (
-      !isHeld('left') &&
-      !isHeld('right') &&
-      !isHeld('up') &&
-      !isHeld('down')
-    ) {
-      // If no keyboard directions, stick can revert to 0 if not controlled by touch
-      // Note: touch handlers explicitly write stick so this won't clobber active touches.
-      const current = gamepadStore.getStick();
-      if (
-        (current.x === -1 || current.x === 1 || current.y === -1 || current.y === 1) ||
-        Math.abs(current.x) >= 0.7 ||
-        Math.abs(current.y) >= 0.7
-      ) {
-        gamepadStore.setStick(0, 0);
-      }
+    const hasDir = sx !== 0 || sy !== 0;
+    if (hasDir) {
+      this.keyboardStickActive = true;
+      gamepadStore.setStick(sx, sy, 'keyboard');
+    } else if (this.keyboardStickActive) {
+      this.keyboardStickActive = false;
+      gamepadStore.setStick(0, 0, 'keyboard');
     }
   }
 }

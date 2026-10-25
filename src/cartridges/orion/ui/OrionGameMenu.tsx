@@ -421,20 +421,24 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
               for a quick dodge burst; hold `[B]` for continuous thruster boost until release or Reactor Overheat (`100` Heat).
             </div>
             <div className="p-1.5 bg-[#1e293b] rounded-xs border border-[#334155]">
-              <span className="text-[#facc15] font-bold">[Y] TAP LOCK-ON / HOLD WEAPON SWAP:</span> Tap
-              `[Y]` to lock onto and cycle hostile targets; hold `[Y]` to swap between equipped weapon hardpoints.
+              <span className="text-[#facc15] font-bold">[X] SKILL 1 (PRIMARY CHAIN):</span> Tap for
+              manual chain attacks; hold `[X]` for continuous auto-chain; double-tap from idle to reload.
             </div>
             <div className="p-1.5 bg-[#1e293b] rounded-xs border border-[#334155]">
-              <span className="text-[#facc15] font-bold">[X] BASIC ATTACK (ALWAYS):</span> Fires active
-              weapon's Basic Attack chain (Gladius 9-round salvo or Khopesh 3-hit combo).
+              <span className="text-[#facc15] font-bold">[Y] TAP SKILL 2 / HOLD SKILL 4 (BLOCK):</span> Tap
+              `[Y]` for Skill 2; hold `[Y]` for Skill 4 or Shield/Blade Block (`0.25s` Perfect Block window).
             </div>
             <div className="p-1.5 bg-[#1e293b] rounded-xs border border-[#334155]">
-              <span className="text-[#facc15] font-bold">[L / R] ASSIGNABLE ACTIONS:</span> Bindable in
-              `[SELECT]` Satchel to Weapon Skills, Hardware Modules, Reactor Abilities, Level 6 Class Utility (`Action 6`), or Belt Slots (`Actions 7–10`).
+              <span className="text-[#facc15] font-bold">[R] TAP SKILL 3 / HOLD SKILL 5:</span> Tap
+              `[R]` for Skill 3; hold `[R]` for Skill 5 (Heavy/Finisher or Off-Hand/Aux Action).
+            </div>
+            <div className="p-1.5 bg-[#1e293b] rounded-xs border border-[#334155]">
+              <span className="text-[#facc15] font-bold">[L] TAP LOCK-ON / HOLD SWAP SIDE⇄AUX:</span> Tap
+              `[L]` to lock onto or cycle hostile targets (double-tap to unlock); hold `[L]` to swap Side Hand and Auxiliary slots.
             </div>
             <div className="p-1.5 bg-[#1e293b] rounded-xs border border-[#334155]">
               <span className="text-[#facc15] font-bold">[SHIFT / SELECT]:</span> Open Pilot Satchel,
-              13-Slot Equipment Grid, 3-Layer Build & Feats, and Action Binder.
+              Equipment Stance & Loadout, 3-Layer Build & Feats, and Action Binder.
             </div>
           </div>
         </div>

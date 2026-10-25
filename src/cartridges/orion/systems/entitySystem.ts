@@ -17,7 +17,11 @@ import { getWeaponDefinition } from '../database/weapons';
 import { EnemyEntity, OrionCombatContext, OrionExecutionContext, OrionState } from '../types';
 import { applyDamageToLayers, PERFECT_BLOCK_WINDOW_SEC } from './combatSystem';
 import { addOrionInventoryItem, isSolidAt, notifyOrionStateChange, syncStateGates } from './playerSystem';
-import { getCanonicalRoomPersistenceKey } from './worldSystem';
+import {
+  clearAetherFogOnBossDefeat,
+  getCanonicalRoomPersistenceKey,
+  getMaxAetherFogDepth,
+} from './worldSystem';
 
 // ─── 1. 2.5D PARTICLES ───────────────────────────────────────────────────────
 
@@ -235,10 +239,21 @@ export function updateEnemies(
       }
 
       let pId = 1000 + Math.floor(Math.random() * 9000);
+      const maxFogDepth = getMaxAetherFogDepth(state);
+      const effDepth = Math.max(
+        0,
+        Math.min(maxFogDepth, e.fogDepth ?? state.fogGraph?.loopDepth ?? 0)
+      );
+
       if (def?.lootTable) {
         for (const drop of def.lootTable) {
-          if (Math.random() <= drop.chance) {
-            const count = drop.count || 1;
+          const scaledChance = Math.min(1, drop.chance * (1 + effDepth * 0.2));
+          if (Math.random() <= scaledChance) {
+            const baseCount = drop.count || 1;
+            const count =
+              drop.itemId === 'salvage_scrap'
+                ? baseCount + effDepth * 2 + (e.isFogBoss ? 6 : 0)
+                : baseCount + (effDepth >= 3 && Math.random() < 0.35 ? 1 : 0);
             const dropDef = getItemDefinition(drop.itemId);
             for (let c = 0; c < count; c++) {
               state.pickups.push({
@@ -261,7 +276,7 @@ export function updateEnemies(
         }
       }
 
-      // Canonical Gemstone Drop Table by Enemy Faction / Archetype (Tiered Drop Rates)
+      // Canonical Gemstone Drop Table by Enemy Faction / Archetype (Scaled by Æther Depth 1..clvl+1)
       if (e.faction !== 'poe' && e.faction !== 'npc') {
         const gemPoolByEnemy: Record<string, string[]> = {
           bog_crawler: ['hematite', 'spinel', 'charoite'],
@@ -283,9 +298,10 @@ export function updateEnemies(
           bors_knight: 1.0,
           lady_of_the_lake: 1.0,
         };
-        const dropChance = dropChanceByEnemy[e.type] ?? 0.25;
+        const baseChance = e.isFogBoss ? 1.0 : dropChanceByEnemy[e.type] ?? 0.25;
+        const dropChance = Math.min(1, baseChance * (1 + effDepth * 0.22));
+        const pool = gemPoolByEnemy[e.type] || ['moonstone', 'rubellite', 'hematite'];
         if (Math.random() <= dropChance) {
-          const pool = gemPoolByEnemy[e.type] || ['moonstone', 'rubellite', 'hematite'];
           const chosenGemId = pool[Math.floor(Math.random() * pool.length)];
           const gemDef = getItemDefinition(chosenGemId);
           state.pickups.push({
@@ -298,6 +314,23 @@ export function updateEnemies(
             itemId: chosenGemId,
             value: 1,
             color: gemDef?.iconColor || '#f8fafc',
+            t: Math.random() * 5,
+          });
+        }
+        // Bonus gemstone roll at deep fog tiers or on fog boss kill
+        if (e.isFogBoss || (effDepth >= 3 && Math.random() < 0.12 * effDepth)) {
+          const bonusGemId = pool[Math.floor(Math.random() * pool.length)];
+          const bonusGemDef = getItemDefinition(bonusGemId);
+          state.pickups.push({
+            id: pId++,
+            x: e.x + (Math.random() - 0.5) * 12,
+            y: e.y + (Math.random() - 0.5) * 12,
+            z: 9,
+            vz: 40,
+            kind: 'item',
+            itemId: bonusGemId,
+            value: 1,
+            color: bonusGemDef?.iconColor || '#f8fafc',
             t: Math.random() * 5,
           });
         }
@@ -334,6 +367,7 @@ export function updateEnemies(
       }
 
       const defeatedFaction = e.faction;
+      const defeatedFogBoss = Boolean(e.isFogBoss);
       if (e.spawnKey && defeatedFaction !== 'poe' && defeatedFaction !== 'npc') {
         state.clearedRooms[e.spawnKey] = true;
       }
@@ -375,6 +409,20 @@ export function updateEnemies(
       if (remainingHostiles.length === 0 && defeatedFaction !== 'poe') {
         state.clearedRooms[state.room] = true;
         state.clearedRooms[getCanonicalRoomPersistenceKey(state, state.room)] = true;
+      }
+
+      // Defeating a boss at max Æther fog depth clears the fog and returns the player to the main path
+      if (defeatedFogBoss) {
+        for (const p of state.pickups) {
+          if (p.kind === 'scrap') {
+            state.salvageScrap += p.value;
+          } else if (p.itemId) {
+            addOrionInventoryItem(state, p.itemId, p.value);
+          }
+        }
+        state.pickups = [];
+        clearAetherFogOnBossDefeat(rooms, state, ctx);
+        break;
       }
     }
   }

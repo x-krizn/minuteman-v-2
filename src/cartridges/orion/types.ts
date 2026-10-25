@@ -303,15 +303,21 @@ export interface AetherGraphNode {
   trueExitDir?: AetherCardinalDir;
   /** Entry doorway direction used to step back into the parent node */
   returnDir?: AetherCardinalDir;
-  /** Parent node ID for side, loop, and end nodes */
+  /** Parent node ID for side, loop, and end nodes (points to previous room when retracing steps) */
   parentNodeId?: string;
+  /** Safe main-path room ID where the pilot entered the Æther Fog pocket (returned to when a max-depth boss is defeated) */
+  anchorSafeNodeId?: string;
   /** Map-relative X/Y coordinates for mini-map and relative Aether loop positioning */
   mapRx?: number;
   mapRy?: number;
-  /** Pyramid Aether loop depth (0 = safe, 1 = depth 1, 2 = depth 2, 3 = depth 3 apex) */
+  /** Current Æther fog depth (0 = safe, 1 .. clvl + 1) */
   loopDepth?: number;
-  /** Pyramid Aether loop stage (0 = safe, 1 = d1 asc, 2 = d2 asc, 3 = d3 apex, 4 = d2 desc, 5 = d1 desc) */
+  /** Room step within current depth tier (1 .. loopDepth when loopDepth < loopMaxDepth, or room index at max depth) */
   loopStage?: number;
+  /** Maximum Æther fog depth for the pocket (clvl + 1) */
+  loopMaxDepth?: number;
+  /** True if this max-depth room rolled a Fog Boss spawn (frequency = 1 / (clvl + 1)) */
+  hasFogBoss?: boolean;
   /** In descending loop rooms (stage 4 or 5), doorway direction that pulls back into deeper Aether density */
   relapseDir?: AetherCardinalDir;
   /** Resolved cardinal doorway transitions persisted until Waystation rest */
@@ -328,6 +334,8 @@ export interface AetherFogGraphState {
   activeNodeId: string;
   loopDepth: number;
   loopStage?: number;
+  loopMaxDepth?: number;
+  maxDepthNonBossStreak?: number;
   nodes: Record<string, AetherGraphNode>;
 }
 
@@ -765,6 +773,10 @@ export interface EnemyEntity {
   attackAngle?: number;
   hasStruckThisAttack?: boolean;
   spawnKey?: string;
+  /** True if this enemy is a max-depth Æther Fog Boss whose defeat clears the fog and returns the pilot to the main path */
+  isFogBoss?: boolean;
+  /** Æther Fog depth (1 .. clvl + 1) where this enemy was spawned, used for loot/gem drop scaling */
+  fogDepth?: number;
 }
 
 // Enemy Wiki Definition (Self-Contained Entity Module Contract)
@@ -1044,6 +1056,8 @@ export interface OrionState {
   combatHoldTimers?: Record<'x' | 'y' | 'r' | 'l', number>;
   combatHoldTriggered?: Record<'x' | 'y' | 'r' | 'l', boolean>;
   combatTapPending?: Record<'x' | 'y' | 'r' | 'l', boolean>;
+  combatDoubleTapPending?: Record<'x' | 'y' | 'r' | 'l', boolean>;
+  combatQueuedChainShot?: boolean;
   combatActiveChain?: boolean;
 
   // Booster Kit / Evasion (Tap Dodge Burst + Hold Continuous Boost)

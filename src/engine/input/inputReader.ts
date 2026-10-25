@@ -19,18 +19,19 @@ export class InputReader {
 
     const held = gamepadStore.getState();
     const rawStick = gamepadStore.getStick();
+    const latched = gamepadStore.consumeLatchedPresses();
 
     // 2. Unify Analog Stick and Digital D-Pad into seamless dual representations
     let unifiedX = rawStick.x;
     let unifiedY = rawStick.y;
 
     if (unifiedX === 0) {
-      if (held.left) unifiedX = -1;
-      else if (held.right) unifiedX = 1;
+      if (held.left || latched.has('left')) unifiedX = -1;
+      else if (held.right || latched.has('right')) unifiedX = 1;
     }
     if (unifiedY === 0) {
-      if (held.up) unifiedY = -1;
-      else if (held.down) unifiedY = 1;
+      if (held.up || latched.has('up')) unifiedY = -1;
+      else if (held.down || latched.has('down')) unifiedY = 1;
     }
 
     // Ensure digital directional buttons reflect analog stick tilt beyond threshold
@@ -43,15 +44,22 @@ export class InputReader {
     const pressed = {} as GamepadButtons;
 
     (Object.keys(held) as ButtonKey[]).forEach((k) => {
-      pressed[k] = Boolean(held[k] && !this.prevHeld[k]);
+      const wasSubFrameTap = latched.has(k) && !this.prevHeld[k];
+      pressed[k] = Boolean((held[k] && !this.prevHeld[k]) || wasSubFrameTap);
+      if (wasSubFrameTap) {
+        held[k] = true;
+      }
     });
 
-    this.prevHeld = { ...held };
+    // Store actual post-frame held state (so a sub-frame tap that already released sets prevHeld[k] = false for next frame)
+    const currentStoreHeld = gamepadStore.getState();
+    this.prevHeld = { ...currentStoreHeld };
     return { held, pressed, stick };
   }
 
   public reset(): void {
     this.prevHeld = {};
+    gamepadStore.consumeLatchedPresses();
   }
 }
 

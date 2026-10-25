@@ -434,13 +434,13 @@ export const FRAME_FEAT_CATALOG: FrameFeatDefinition[] = [
   },
   {
     id: 'knights_oath',
-    name: "Relic Feat: Knight's Oath (Lady of the Lake)",
+    name: "Relic Feat: Knight's Oath (Three Knights Trial)",
     tier: 'I',
     kind: 'interface',
     requiredSkillId: 'Guardian',
     requiredSkillLevel: 1,
-    gainDescription: '+25% Damage vs. Camelot Knights & Sanctum Constructs',
-    costDescription: 'Sockets 1 Titanite + 1 Moonstone (or earned via Lady of the Lake)',
+    gainDescription: '+25% Permanent Bonus Damage vs. Camelot Enemies',
+    costDescription: 'Earned by defeating Percival, Tristan & Bors all at once (or sockets 1 Titanite + 1 Moonstone)',
     gemSockets: [
       { gemId: 'titanite', count: 1 },
       { gemId: 'moonstone', count: 1 },
@@ -1257,7 +1257,14 @@ export function isFeatNodeAvailable(
   feat: FrameFeatDefinition
 ): boolean {
   if (state.bypassProgressionGates) return true;
-  if (feat.id === 'knights_oath' && Boolean(state.flags?.lady_of_the_lake_defeated)) {
+  if (
+    feat.id === 'knights_oath' &&
+    Boolean(
+      state.flags?.knights_oath_earned ||
+        state.equippedFeats?.includes('knights_oath') ||
+        state.flags?.lady_of_the_lake_defeated
+    )
+  ) {
     return true;
   }
   const skills = normalizePilotSkills(state.pilotSkills);

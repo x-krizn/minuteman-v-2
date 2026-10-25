@@ -3302,12 +3302,20 @@ function drawAetherFogWayfindingTells(
 
   g.save();
 
-  // If inside an Æther Loop node, render a peripheral Æther mist veil scaled by pyramid depth (1..3)
+  // If inside an Æther Loop node, render a peripheral Æther mist veil scaled by depth (1 .. clvl+1)
   if (activeNode.nodeType === 'loop') {
-    const loopDepth = Math.max(1, Math.min(3, state.fogGraph?.loopDepth || activeNode.loopDepth || 1));
-    const baseMist = 0.11 + loopDepth * 0.08;
-    const mistPulse = baseMist + 0.05 * Math.sin(state.t * (2.0 + loopDepth * 0.6));
-    const innerR = SCREEN_W * Math.max(0.14, 0.28 - loopDepth * 0.04);
+    const maxDepth = Math.max(
+      2,
+      activeNode.loopMaxDepth || state.fogGraph?.loopMaxDepth || (state.level || 1) + 1
+    );
+    const loopDepth = Math.max(
+      1,
+      Math.min(maxDepth, state.fogGraph?.loopDepth || activeNode.loopDepth || 1)
+    );
+    const depthRatio = loopDepth / maxDepth;
+    const baseMist = 0.12 + depthRatio * 0.24;
+    const mistPulse = baseMist + 0.05 * Math.sin(state.t * (2.0 + depthRatio * 1.8));
+    const innerR = SCREEN_W * Math.max(0.12, 0.28 - depthRatio * 0.14);
     const mistGrad = g.createRadialGradient(
       SCREEN_W * 0.5,
       SCREEN_H * 0.5,
@@ -3318,9 +3326,9 @@ function drawAetherFogWayfindingTells(
     );
     mistGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
     const veilRgb =
-      loopDepth >= 3
+      loopDepth >= maxDepth
         ? '244, 63, 94'
-        : loopDepth === 2
+        : loopDepth >= 2
           ? '192, 132, 252'
           : '34, 211, 238';
     mistGrad.addColorStop(1, `rgba(${veilRgb}, ${mistPulse.toFixed(2)})`);
@@ -3330,11 +3338,15 @@ function drawAetherFogWayfindingTells(
 
   // Doorway Path Effect Rules:
   // 1. Inside an Æther Loop: path effect is applied ONLY to doorways where `increasesDensity` is true
-  //    (`nextDepth > currentDepth`) as a warning of increased Æther density in the next depth.
+  //    as a warning of increased Æther density in the next room/depth.
   // 2. Outside an Æther Loop (Safe room): the Poe Lamp reveals Æther Loop entrances (`isLoopEntrance`),
   //    but NEVER directs the player to any goals (`trueExitDir` is never highlighted).
   if (room) {
     const cardinalDirs: AetherCardinalDir[] = ['N', 'S', 'E', 'W'];
+    const maxDepth = Math.max(
+      2,
+      activeNode.loopMaxDepth || state.fogGraph?.loopMaxDepth || (state.level || 1) + 1
+    );
     g.save();
     g.translate(-camX, -camY);
 
@@ -3358,21 +3370,25 @@ function drawAetherFogWayfindingTells(
       const perpDy = flowDx;
 
       if (isLoopDensityWarning) {
-        // Increased Æther density warning in the next depth (Depth 2 = Violet, Depth 3 = Critical Crimson-Magenta)
         const nextDepth = transInfo.nextDepth;
-        const moteCount = 3 + nextDepth * 2;
-        const rgb = nextDepth >= 3 ? '244, 63, 94' : '192, 132, 252';
+        const moteCount = Math.min(11, 3 + nextDepth * 2);
+        const rgb = nextDepth >= maxDepth ? '244, 63, 94' : '192, 132, 252';
         for (let i = 0; i < moteCount; i++) {
-          const phase = (state.t * (0.75 + nextDepth * 0.2) + i * 0.19) % 1;
+          const phase = (state.t * (0.75 + nextDepth * 0.16) + i * 0.19) % 1;
           const spread =
-            ((i % 5) - 2) * 4.2 + Math.sin(state.t * (2.6 + nextDepth * 0.5) + i) * 2.2;
-          const distFromDoor = (1 - phase) * (12 + nextDepth * 4);
+            ((i % 5) - 2) * 4.2 + Math.sin(state.t * (2.6 + nextDepth * 0.4) + i) * 2.2;
+          const distFromDoor = (1 - phase) * Math.min(28, 12 + nextDepth * 3);
           const mx = doorX - flowDx * distFromDoor + perpDx * spread;
           const my = doorY - flowDy * distFromDoor + perpDy * spread;
-          const alpha = Math.sin(phase * Math.PI) * (0.38 + nextDepth * 0.12);
+          const alpha = Math.sin(phase * Math.PI) * Math.min(0.85, 0.38 + nextDepth * 0.1);
 
           g.fillStyle = `rgba(${rgb}, ${alpha.toFixed(2)})`;
-          g.fillRect(Math.round(mx), Math.round(my), nextDepth >= 3 ? 2 : 1.5, nextDepth >= 3 ? 2 : 1.5);
+          g.fillRect(
+            Math.round(mx),
+            Math.round(my),
+            nextDepth >= maxDepth ? 2 : 1.5,
+            nextDepth >= maxDepth ? 2 : 1.5
+          );
         }
       } else if (isPoeLoopEntranceReveal) {
         // Poe Lamp reveals Æther Loop entrance in a Safe room (cyan-violet lantern resonance)

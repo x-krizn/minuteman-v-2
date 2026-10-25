@@ -79,6 +79,8 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({ scale, state }) =>
             onPointerDown={(e) => handlePointerDown(btn.key, e)}
             onPointerUp={(e) => handlePointerUp(btn.key, e)}
             onPointerCancel={(e) => handlePointerCancel(btn.key, e)}
+            onLostPointerCapture={(e) => handlePointerCancel(btn.key, e)}
+            onContextMenu={(e) => e.preventDefault()}
             className="absolute border-none bg-transparent p-0 m-0 cursor-pointer touch-none select-none pixelated"
             style={{
               left: `${btn.x * s}px`,

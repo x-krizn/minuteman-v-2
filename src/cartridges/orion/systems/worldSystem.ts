@@ -475,6 +475,10 @@ export function hasPoeLanternGuidance(state: OrionState): boolean {
 
 export const AETHER_PYRAMID_DEPTHS = [0, 1, 2, 3, 2, 1, 0] as const;
 
+export function getMaxAetherFogDepth(state: OrionState): number {
+  return Math.max(2, (state.level || 1) + 1);
+}
+
 function parseCoordPair(coord: string | undefined): { rx: number; ry: number } {
   if (!coord) return { rx: 0, ry: 0 };
   const [rxStr, ryStr] = coord.split(',');
@@ -536,6 +540,7 @@ export function ensureAetherFogGraph(state: OrionState): AetherFogGraphState {
         mapRy: parsed.ry,
         loopDepth: 0,
         loopStage: 0,
+        loopMaxDepth: getMaxAetherFogDepth(state),
         title: meta.title,
         bannerTitle: meta.bannerTitle,
         regionId: meta.regionId,
@@ -556,6 +561,8 @@ export function ensureAetherFogGraph(state: OrionState): AetherFogGraphState {
       activeNodeId: state.room || '-3,0',
       loopDepth: 0,
       loopStage: 0,
+      loopMaxDepth: getMaxAetherFogDepth(state),
+      maxDepthNonBossStreak: 0,
       nodes,
     };
   }
@@ -571,6 +578,7 @@ export function ensureAetherFogGraph(state: OrionState): AetherFogGraphState {
       mapRy: parsed.ry,
       loopDepth: 0,
       loopStage: 0,
+      loopMaxDepth: getMaxAetherFogDepth(state),
       title: fallbackMeta?.title || `Sector [${state.room}]`,
       bannerTitle: fallbackMeta?.bannerTitle || `SECTOR [${state.room}]`,
       regionId: fallbackMeta?.regionId || state.regionId || 'region_belldor_outskirts',
@@ -690,6 +698,8 @@ export function resetAetherFogGraph(
   freshGraph.nextCounter = prevCounter;
   freshGraph.loopDepth = 0;
   freshGraph.loopStage = 0;
+  freshGraph.loopMaxDepth = getMaxAetherFogDepth(state);
+  freshGraph.maxDepthNonBossStreak = 0;
 
   if (ctx) {
     ctx.say('ÆTHER FOG GRAPH RE-SYNCHRONIZED · DYNAMIC PATHS SHIFTED');
@@ -731,7 +741,8 @@ function decorateDynamicRoomGrid(
   _trueExitDir: AetherCardinalDir | undefined,
   endFeature: AetherEndFeature | undefined,
   hashVal: number,
-  loopDepth: number = 0
+  loopDepth: number = 0,
+  biomeHasCorrosiveWater: boolean = true
 ): string[] {
   const sourceGrid =
     nodeType === 'end' && endFeature === 'mini_boss'
@@ -743,6 +754,17 @@ function decorateDynamicRoomGrid(
 
   const midX = Math.floor(cols / 2);
   const midY = Math.floor(rows / 2);
+
+  // If the biome does not feature bog water, replace template '~' cells with flagstones/dirt so non-bog fog stays dry
+  if (!biomeHasCorrosiveWater) {
+    for (let y = 1; y < rows - 1; y++) {
+      for (let x = 1; x < cols - 1; x++) {
+        if (matrix[y][x] === '~') {
+          matrix[y][x] = ':';
+        }
+      }
+    }
+  }
 
   // Populate END node special features (Loot Cache, Mini-Boss, Secret Switch, or Dead-End Ruins)
   if (nodeType === 'end') {
@@ -779,25 +801,28 @@ function decorateDynamicRoomGrid(
     }
   }
 
-  // Loop nodes become progressively less traversable and more hazardous at deeper depths (1 -> 2 -> 3)
+  // Loop nodes become progressively less traversable and more hazardous at deeper depths (1 .. clvl + 1)
   if (nodeType === 'loop') {
-    const effDepth = Math.max(1, Math.min(3, loopDepth || 1));
+    const effDepth = Math.max(1, loopDepth || 1);
+    const hazardChar = biomeHasCorrosiveWater ? '~' : '_';
 
-    // Depth 1+: Central corrosive Aether pool & surrounding bog mud
+    // Depth 1+: Central hazard obstacle
     if (matrix[midY]) {
-      matrix[midY][midX - 1] = '~';
-      matrix[midY][midX] = '~';
+      matrix[midY][midX - 1] = hazardChar;
+      matrix[midY][midX] = hazardChar;
     }
-    if (matrix[midY - 1]) {
-      matrix[midY - 1][midX - 1] = ',';
-      matrix[midY - 1][midX] = ',';
-    }
-    if (matrix[midY + 1]) {
-      matrix[midY + 1][midX - 1] = ',';
-      matrix[midY + 1][midX] = ',';
+    if (biomeHasCorrosiveWater) {
+      if (matrix[midY - 1]) {
+        matrix[midY - 1][midX - 1] = ',';
+        matrix[midY - 1][midX] = ',';
+      }
+      if (matrix[midY + 1]) {
+        matrix[midY + 1][midX - 1] = ',';
+        matrix[midY + 1][midX] = ',';
+      }
     }
 
-    // Depth 2+: Corrosive trenches, calcified pillars, and phase-desync barriers constrict movement
+    // Depth 2+: Pillars and phase-desync barriers constrict movement
     if (effDepth >= 2) {
       const topRow = Math.max(2, midY - 2);
       const botRow = Math.min(rows - 3, midY + 2);
@@ -807,22 +832,22 @@ function decorateDynamicRoomGrid(
       if (matrix[topRow]) {
         matrix[topRow][leftCol] = 'P';
         matrix[topRow][rightCol] = 'P';
-        if (leftCol + 1 < midX - 1) matrix[topRow][leftCol + 1] = '~';
-        if (rightCol - 1 > midX) matrix[topRow][rightCol - 1] = '~';
+        if (leftCol + 1 < midX - 1) matrix[topRow][leftCol + 1] = hazardChar;
+        if (rightCol - 1 > midX) matrix[topRow][rightCol - 1] = hazardChar;
       }
       if (matrix[botRow]) {
         matrix[botRow][leftCol] = 'P';
         matrix[botRow][rightCol] = 'P';
-        if (leftCol + 1 < midX - 1) matrix[botRow][leftCol + 1] = '~';
-        if (rightCol - 1 > midX) matrix[botRow][rightCol - 1] = '~';
+        if (leftCol + 1 < midX - 1) matrix[botRow][leftCol + 1] = hazardChar;
+        if (rightCol - 1 > midX) matrix[botRow][rightCol - 1] = hazardChar;
       }
       if (matrix[midY]) {
-        if (leftCol >= 2) matrix[midY][leftCol] = 'X';
-        if (rightCol <= cols - 3) matrix[midY][rightCol] = 'X';
+        if (leftCol >= 2) matrix[midY][leftCol] = '%';
+        if (rightCol <= cols - 3) matrix[midY][rightCol] = '%';
       }
     }
 
-    // Depth 3 (Apex): Abyssal sinkhole fissures ('_'), wider corrosive Aether channels ('~'), and desync gates ('X')
+    // Depth 3+: Sinkhole pitfalls ('_') and narrower channels
     if (effDepth >= 3) {
       const yUpper = Math.max(2, midY - 2);
       const yLower = Math.min(rows - 3, midY + 2);
@@ -838,12 +863,12 @@ function decorateDynamicRoomGrid(
         matrix[yLower][xOuterR] = '_';
       }
       if (matrix[midY - 1]) {
-        matrix[midY - 1][Math.max(2, midX - 2)] = '~';
-        matrix[midY - 1][Math.min(cols - 3, midX + 1)] = '~';
+        matrix[midY - 1][Math.max(2, midX - 2)] = hazardChar;
+        matrix[midY - 1][Math.min(cols - 3, midX + 1)] = hazardChar;
       }
       if (matrix[midY + 1]) {
-        matrix[midY + 1][Math.max(2, midX - 2)] = '~';
-        matrix[midY + 1][Math.min(cols - 3, midX + 1)] = '~';
+        matrix[midY + 1][Math.max(2, midX - 2)] = hazardChar;
+        matrix[midY + 1][Math.min(cols - 3, midX + 1)] = hazardChar;
       }
     }
   }
@@ -864,6 +889,7 @@ function createDynamicAetherNode(
     routeTotal?: number;
     loopStage?: number;
     loopDepth?: number;
+    loopMaxDepth?: number;
     mapRx?: number;
     mapRy?: number;
     anchorSafeNodeId?: string;
@@ -883,28 +909,40 @@ function createDynamicAetherNode(
   const mapRx = options?.mapRx ?? steppedCoords.rx;
   const mapRy = options?.mapRy ?? steppedCoords.ry;
 
-  const loopStage =
-    nodeType === 'loop' ? Math.max(1, Math.min(5, options?.loopStage ?? 1)) : 0;
+  const loopMaxDepth =
+    nodeType === 'loop'
+      ? Math.max(
+          2,
+          options?.loopMaxDepth ??
+            parentNode.loopMaxDepth ??
+            graph.loopMaxDepth ??
+            getMaxAetherFogDepth(state)
+        )
+      : getMaxAetherFogDepth(state);
+
   const loopDepth =
     nodeType === 'loop'
-      ? (options?.loopDepth ?? AETHER_PYRAMID_DEPTHS[loopStage] ?? 1)
+      ? Math.max(1, Math.min(loopMaxDepth, options?.loopDepth ?? 1))
       : 0;
+  const loopStage =
+    nodeType === 'loop' ? Math.max(1, options?.loopStage ?? 1) : 0;
 
   const templates = Object.values(GLOBAL_ROOM_REGISTRY);
   const chosenTemplate =
     templates[hashVal % Math.max(1, templates.length)] || ROOM_REGISTRY['0,1'] || ROOM_REGISTRY['0,0'];
 
+  // Preserve the area/region's biome so non-bog fog does not force corrosive bog water
   const inheritedBiomeId =
-    nodeType === 'loop'
-      ? 'global_aether_caverns'
-      : parentNode.biomeId || state.biomeId || chosenTemplate?.biomeId || 'belldor_bog';
+    parentNode.biomeId || state.biomeId || chosenTemplate?.biomeId || 'belldor_bog';
+  const resolvedBiome = getBiomeDefinition(inheritedBiomeId);
+  const biomeHasCorrosiveWater = Boolean(resolvedBiome.tileRules?.corrosiveWater);
 
   let trueExitDir: AetherCardinalDir | undefined;
-  let relapseDir: AetherCardinalDir | undefined;
   let endFeature: AetherEndFeature | undefined;
   let openDirs: AetherCardinalDir[] = ALL_CARDINAL_DIRS;
   let title = chosenTemplate?.title || 'Drifting Sector';
   let bannerTitle = '';
+  let hasFogBoss = false;
 
   if (nodeType === 'general') {
     trueExitDir = pickTrueExitDir(moveDir, moveDir, hashVal);
@@ -928,11 +966,29 @@ function createDynamicAetherNode(
     title = featureLabels[endFeature];
     bannerTitle = title.toUpperCase();
   } else if (nodeType === 'loop') {
-    trueExitDir = pickTrueExitDir(moveDir, returnDir, hashVal + 3);
-    const nonExitCandidates = ALL_CARDINAL_DIRS.filter((d) => d !== trueExitDir);
-    relapseDir = nonExitCandidates[(hashVal + 1) % nonExitCandidates.length] || returnDir;
-    title = `Æther Loop [Depth ${loopDepth}]`;
-    bannerTitle = `ÆTHER LOOP · DEPTH ${loopDepth}`;
+    // At max depth (clvl + 1), 1 in (clvl + 1) rooms spawns a Fog Boss (frequency = 1 / loopMaxDepth)
+    if (loopDepth >= loopMaxDepth) {
+      const nonBossStreak = graph.maxDepthNonBossStreak || 0;
+      const rolledBoss =
+        hashVal % loopMaxDepth === 0 || nonBossStreak + 1 >= loopMaxDepth;
+      if (rolledBoss) {
+        hasFogBoss = true;
+        graph.maxDepthNonBossStreak = 0;
+      } else {
+        hasFogBoss = false;
+        graph.maxDepthNonBossStreak = nonBossStreak + 1;
+      }
+      title = hasFogBoss
+        ? `Æther Fog [Max Depth ${loopDepth} · Boss]`
+        : `Æther Fog [Max Depth ${loopDepth}]`;
+      bannerTitle = hasFogBoss
+        ? `MAX DEPTH ${loopDepth} · FOG BOSS LAIR`
+        : `ÆTHER FOG · MAX DEPTH ${loopDepth}`;
+    } else {
+      trueExitDir = returnDir;
+      title = `Æther Fog [Depth ${loopDepth} · ${loopStage}/${loopDepth}]`;
+      bannerTitle = `ÆTHER FOG · DEPTH ${loopDepth} (${loopStage}/${loopDepth})`;
+    }
   }
 
   const grid = decorateDynamicRoomGrid(
@@ -942,12 +998,24 @@ function createDynamicAetherNode(
     trueExitDir,
     endFeature,
     hashVal,
-    loopDepth
+    loopDepth,
+    biomeHasCorrosiveWater
   );
 
   const anchorSafeNodeId =
     options?.anchorSafeNodeId ||
-    (parentNode.nodeType === 'loop' ? parentNode.parentNodeId : parentNode.id);
+    (parentNode.nodeType === 'loop'
+      ? parentNode.anchorSafeNodeId || parentNode.parentNodeId
+      : parentNode.id);
+
+  // Before reaching maxDepth, returnDir links back to parentNode so the player can retrace steps to safety.
+  // Once at maxDepth (loopDepth >= loopMaxDepth), all 4 doors remain unlocked and cycle into random maxDepth rooms until a Boss is defeated.
+  const edges: Partial<Record<AetherCardinalDir, string>> =
+    nodeType === 'loop' && loopDepth >= loopMaxDepth
+      ? {}
+      : {
+          [returnDir]: parentNode.id,
+        };
 
   const newNode: AetherGraphNode = {
     id,
@@ -957,26 +1025,23 @@ function createDynamicAetherNode(
     mapRy,
     loopDepth,
     loopStage,
-    relapseDir,
+    loopMaxDepth,
+    hasFogBoss,
     title,
     bannerTitle,
     regionId: parentNode.regionId || state.regionId || 'region_belldor_outskirts',
     areaId: parentNode.areaId || state.areaId || 'm00_the_bog',
     mapId: parentNode.mapId || state.mapId || 'map_bog_drop_zone',
-    biomeId: getBiomeDefinition(inheritedBiomeId).id,
+    biomeId: resolvedBiome.id,
     sourceKeyCoord: options?.sourceKeyCoord ?? parentNode.sourceKeyCoord,
     targetKeyCoord: options?.targetKeyCoord ?? parentNode.targetKeyCoord,
     routeStep: options?.routeStep ?? parentNode.routeStep,
     routeTotal: options?.routeTotal ?? parentNode.routeTotal,
     trueExitDir,
     returnDir,
-    parentNodeId: anchorSafeNodeId,
-    edges:
-      nodeType === 'loop'
-        ? {}
-        : {
-            [returnDir]: parentNode.id,
-          },
+    parentNodeId: parentNode.id,
+    anchorSafeNodeId,
+    edges,
     endFeature,
     grid,
   };
@@ -1011,15 +1076,18 @@ export interface DoorwayAetherTransitionInfo {
   currentStage: number;
   nextDepth: number;
   nextStage: number;
+  maxDepth: number;
   isLoopEntrance: boolean;
   increasesDensity: boolean;
+  isRetrace: boolean;
 }
 
 /**
- * Pure, non-mutating inspection of any cardinal doorway (`N`, `S`, `E`, `W`) in the active room.
- * - Pyramid progression always follows: `SAFE (0) -> 1 -> 2 -> 3 -> 2 -> 1 -> SAFE (0)`.
- * - `increasesDensity` is true whenever stepping through `dir` moves to a strictly deeper Æther depth (`nextDepth > currentDepth`).
- * - `isLoopEntrance` is true when currently in a Safe room (`currentDepth === 0`) and `dir` enters an Æther Loop (`nextDepth === 1`).
+ * Pure, non-mutating inspection of any cardinal doorway (`N`, `S`, `E`, `W`) in the active room:
+ * - Max depth is `clvl + 1` (`getMaxAetherFogDepth(state)`).
+ * - Each depth `d` (`1 <= d < maxDepth`) has `d` rooms (`stage 1 .. d`) before advancing to depth `d + 1`.
+ * - While `currentDepth < maxDepth`, stepping through `returnDir` retraces your steps (`(d, k) -> (d, k - 1)` or `(d - 1, d - 1)` or Safe `0`).
+ * - Once at `currentDepth >= maxDepth`, all 4 doorways remain unlocked (player can run from boss rooms) and lead into random `maxDepth` rooms until a Boss is defeated.
  */
 export function getDoorwayAetherTransitionInfo(
   state: OrionState,
@@ -1027,43 +1095,79 @@ export function getDoorwayAetherTransitionInfo(
 ): DoorwayAetherTransitionInfo {
   const graph = ensureAetherFogGraph(state);
   const currentNode = getActiveAetherNode(state);
+  const maxDepth =
+    currentNode.loopMaxDepth ?? graph.loopMaxDepth ?? getMaxAetherFogDepth(state);
 
   if (currentNode.nodeType === 'loop') {
-    const currentStage = Math.max(
+    const currentDepth = Math.max(
       1,
-      Math.min(5, currentNode.loopStage ?? graph.loopStage ?? 1)
+      Math.min(maxDepth, currentNode.loopDepth ?? graph.loopDepth ?? 1)
     );
-    const currentDepth =
-      currentNode.loopDepth ?? AETHER_PYRAMID_DEPTHS[currentStage] ?? 1;
+    const currentStage = Math.max(1, currentNode.loopStage ?? graph.loopStage ?? 1);
 
-    let nextStage = currentStage + 1;
-    if (currentStage === 1) {
-      nextStage = 2; // 1 -> 2
-    } else if (currentStage === 2) {
-      nextStage = 3; // 2 -> 3 (Apex)
-    } else if (currentStage === 3) {
-      nextStage = 4; // 3 -> 2 (Descending)
-    } else if (currentStage === 4) {
-      // At Stage 4 (Depth 2 descending), relapseDir surges back to Stage 3 (Depth 3); other doorways descend to Stage 5 (Depth 1)
-      nextStage = dir === currentNode.relapseDir ? 3 : 5;
-    } else {
-      // At Stage 5 (Depth 1 descending), relapseDir surges back to Stage 2 (Depth 2); other doorways emerge to Safe (Stage 0, Depth 0)
-      nextStage = dir === currentNode.relapseDir ? 2 : 0;
+    // 1. Before reaching maxDepth: player can retrace steps via returnDir or push deeper
+    if (currentDepth < maxDepth) {
+      if (dir === currentNode.returnDir) {
+        let nextDepth = currentDepth;
+        let nextStage = currentStage - 1;
+        if (currentStage > 1) {
+          nextDepth = currentDepth;
+          nextStage = currentStage - 1;
+        } else if (currentDepth > 1) {
+          nextDepth = currentDepth - 1;
+          nextStage = currentDepth - 1;
+        } else {
+          nextDepth = 0;
+          nextStage = 0;
+        }
+        return {
+          dir,
+          currentDepth,
+          currentStage,
+          nextDepth,
+          nextStage,
+          maxDepth,
+          isLoopEntrance: false,
+          increasesDensity: false,
+          isRetrace: true,
+        };
+      }
+
+      // Moving deeper: each depth `d` requires `d` rooms before advancing to `d + 1`
+      const advancesToNextTier = currentStage >= currentDepth;
+      const nextDepth = advancesToNextTier
+        ? Math.min(maxDepth, currentDepth + 1)
+        : currentDepth;
+      const nextStage = advancesToNextTier ? 1 : currentStage + 1;
+
+      return {
+        dir,
+        currentDepth,
+        currentStage,
+        nextDepth,
+        nextStage,
+        maxDepth,
+        isLoopEntrance: false,
+        increasesDensity: true,
+        isRetrace: false,
+      };
     }
 
-    const nextDepth = AETHER_PYRAMID_DEPTHS[nextStage] ?? 0;
+    // 2. At maxDepth (clvl + 1): doors do not lock; all 4 doorways cycle into random maxDepth rooms until a Boss is defeated
     return {
       dir,
-      currentDepth,
+      currentDepth: maxDepth,
       currentStage,
-      nextDepth,
-      nextStage,
+      nextDepth: maxDepth,
+      nextStage: currentStage + 1,
+      maxDepth,
       isLoopEntrance: false,
-      increasesDensity: nextDepth > currentDepth,
+      increasesDensity: true,
+      isRetrace: false,
     };
   }
 
-  // Currently in a SAFE room (`currentDepth === 0`): check if `dir` is an Æther Loop entrance
+  // Currently in a SAFE room (`currentDepth === 0`): check if `dir` is an Æther Fog pocket entrance
   let isLoopEntrance = false;
   const existingTargetId = currentNode.edges[dir];
   if (existingTargetId && graph.nodes[existingTargetId]) {
@@ -1101,34 +1205,20 @@ export function getDoorwayAetherTransitionInfo(
     currentStage: 0,
     nextDepth,
     nextStage,
+    maxDepth,
     isLoopEntrance,
     increasesDensity: nextDepth > 0,
+    isRetrace: false,
   };
 }
 
 function resolveSafeEmergenceNode(
   graph: AetherFogGraphState,
-  currentNode: AetherGraphNode,
-  dir: AetherCardinalDir
+  currentNode: AetherGraphNode
 ): AetherGraphNode {
-  const baseRx = currentNode.mapRx ?? 0;
-  const baseRy = currentNode.mapRy ?? 0;
-  const stepped = stepMapCoords(baseRx, baseRy, dir);
-  const candidateCoord = `${stepped.rx},${stepped.ry}`;
-
-  // If the map-relative emergence coordinate matches an authored unsealed safe node in the same area, emerge there
-  const candidateNode = graph.nodes[candidateCoord];
-  if (
-    candidateNode &&
-    candidateNode.nodeType === 'key' &&
-    candidateNode.id !== '-4,0' &&
-    !getUndefinedZoneSealReason(candidateCoord)
-  ) {
-    return candidateNode;
-  }
-
-  if (currentNode.parentNodeId && graph.nodes[currentNode.parentNodeId]) {
-    return graph.nodes[currentNode.parentNodeId];
+  const anchorId = currentNode.anchorSafeNodeId || currentNode.parentNodeId;
+  if (anchorId && graph.nodes[anchorId]) {
+    return graph.nodes[anchorId];
   }
   return graph.nodes['0,0'] || Object.values(graph.nodes)[0];
 }
@@ -1141,31 +1231,34 @@ function resolveNextAetherNode(
 ): { targetNode: AetherGraphNode; isLoopCycle: boolean; escapedLoop: boolean } {
   const graph = ensureAetherFogGraph(state);
 
-  // 1. Inside a LOOP node: follow the Pyramid progression `safe (0) -> 1 -> 2 -> 3 -> 2 -> 1 -> safe (0)`
+  // 1. Inside a LOOP node:
   if (currentNode.nodeType === 'loop') {
     const transInfo = getDoorwayAetherTransitionInfo(state, dir);
 
-    // Emerging back to SAFE (`nextStage === 0`) after descending through `3 -> 2 -> 1 -> safe`
-    if (transInfo.nextStage === 0) {
-      const escapeTarget = resolveSafeEmergenceNode(graph, currentNode, dir);
+    // Retracing from Depth 1 (Room 1/1) back to the main path (`nextDepth === 0`)
+    if (transInfo.nextDepth === 0) {
+      const escapeTarget = resolveSafeEmergenceNode(graph, currentNode);
       currentNode.edges[dir] = escapeTarget.id;
       return { targetNode: escapeTarget, isLoopCycle: false, escapedLoop: true };
     }
 
-    const existingLoopTargetId = currentNode.edges[dir];
-    if (
-      existingLoopTargetId &&
-      graph.nodes[existingLoopTargetId] &&
-      rooms[existingLoopTargetId] &&
-      graph.nodes[existingLoopTargetId].loopStage === transInfo.nextStage
-    ) {
-      return {
-        targetNode: graph.nodes[existingLoopTargetId],
-        isLoopCycle: true,
-        escapedLoop: false,
-      };
+    // While below maxDepth (`currentDepth < maxDepth`), retrace or reuse already-visited loop edges
+    if (transInfo.currentDepth < transInfo.maxDepth) {
+      const existingLoopTargetId = currentNode.edges[dir];
+      if (
+        existingLoopTargetId &&
+        graph.nodes[existingLoopTargetId] &&
+        rooms[existingLoopTargetId]
+      ) {
+        return {
+          targetNode: graph.nodes[existingLoopTargetId],
+          isLoopCycle: true,
+          escapedLoop: false,
+        };
+      }
     }
 
+    // Create the next deeper room (or a new random max-depth room when at maxDepth)
     const nextLoopNode = createDynamicAetherNode(rooms, state, currentNode, dir, 'loop', {
       sourceKeyCoord: currentNode.sourceKeyCoord,
       targetKeyCoord: currentNode.targetKeyCoord,
@@ -1173,9 +1266,12 @@ function resolveNextAetherNode(
       routeTotal: currentNode.routeTotal,
       loopStage: transInfo.nextStage,
       loopDepth: transInfo.nextDepth,
-      anchorSafeNodeId: currentNode.parentNodeId,
+      loopMaxDepth: transInfo.maxDepth,
+      anchorSafeNodeId: currentNode.anchorSafeNodeId || currentNode.parentNodeId,
     });
-    currentNode.edges[dir] = nextLoopNode.id;
+    if (transInfo.currentDepth < transInfo.maxDepth) {
+      currentNode.edges[dir] = nextLoopNode.id;
+    }
     return { targetNode: nextLoopNode, isLoopCycle: true, escapedLoop: false };
   }
 
@@ -1198,6 +1294,8 @@ function resolveNextAetherNode(
     return { targetNode: parentNode, isLoopCycle: false, escapedLoop: false };
   }
 
+  const maxDepth = getMaxAetherFogDepth(state);
+
   // 4. Inside a KEY node:
   if (currentNode.nodeType === 'key') {
     const keyCoord = currentNode.id.includes(',') ? currentNode.id : currentNode.coord;
@@ -1210,6 +1308,7 @@ function resolveNextAetherNode(
           targetKeyCoord: route.targetKeyCoord,
           loopStage: 1,
           loopDepth: 1,
+          loopMaxDepth: maxDepth,
           anchorSafeNodeId: currentNode.id,
         });
         sealedLoop.bannerTitle = `SEALED BY ÆTHER FOG · ${sealReason.toUpperCase()}`;
@@ -1237,12 +1336,13 @@ function resolveNextAetherNode(
       return { targetNode: genNode, isLoopCycle: false, escapedLoop: false };
     }
 
-    // Unmapped open border on a KEY node -> deterministically spawns a SIDE node or LOOP node (Stage 1, Depth 1)
+    // Unmapped open border on a KEY node -> deterministically spawns a SIDE node or LOOP node (Depth 1, Room 1/1)
     const branchType = getKeyBorderBranchType(graph.seed, keyCoord, dir);
     const branchNode = createDynamicAetherNode(rooms, state, currentNode, dir, branchType, {
       sourceKeyCoord: keyCoord,
       loopStage: branchType === 'loop' ? 1 : 0,
       loopDepth: branchType === 'loop' ? 1 : 0,
+      loopMaxDepth: maxDepth,
       anchorSafeNodeId: currentNode.id,
     });
     currentNode.edges[dir] = branchNode.id;
@@ -1266,6 +1366,7 @@ function resolveNextAetherNode(
             targetKeyCoord: currentNode.targetKeyCoord,
             loopStage: 1,
             loopDepth: 1,
+            loopMaxDepth: maxDepth,
             anchorSafeNodeId: currentNode.id,
           });
           sealedLoop.bannerTitle = `SEALED BY ÆTHER FOG · ${sealReason.toUpperCase()}`;
@@ -1302,7 +1403,7 @@ function resolveNextAetherNode(
   }
 
   // 6. Inside a SIDE node:
-  // `trueExitDir` leads to a rewarding END node; off-path exits lead into a LOOP node at Stage 1 (Depth 1)
+  // `trueExitDir` leads to a rewarding END node; off-path exits lead into a LOOP node at Depth 1 (Room 1/1)
   const targetType: AetherNodeType = dir === currentNode.trueExitDir ? 'end' : 'loop';
   const childNode = createDynamicAetherNode(rooms, state, currentNode, dir, targetType, {
     sourceKeyCoord: currentNode.sourceKeyCoord,
@@ -1311,6 +1412,7 @@ function resolveNextAetherNode(
     routeTotal: currentNode.routeTotal,
     loopStage: targetType === 'loop' ? 1 : 0,
     loopDepth: targetType === 'loop' ? 1 : 0,
+    loopMaxDepth: maxDepth,
     anchorSafeNodeId: currentNode.id,
   });
   currentNode.edges[dir] = childNode.id;
@@ -1353,47 +1455,211 @@ function spawnDynamicNodeFeatures(
     return;
   }
 
-  // Scale Æther Loop difficulty by pyramid depth (1 -> 2 -> 3)
+  // Scale Æther Fog enemy stats & spawns by depth (1 .. clvl + 1)
   if (node.nodeType === 'loop') {
-    const depth = Math.max(1, Math.min(3, node.loopDepth || 1));
-    const statMult = depth === 1 ? 1.15 : depth === 2 ? 1.4 : 1.75;
-    const speedMult = depth === 1 ? 1.05 : depth === 2 ? 1.14 : 1.24;
+    const maxDepth = node.loopMaxDepth ?? getMaxAetherFogDepth(state);
+    const depth = Math.max(1, Math.min(maxDepth, node.loopDepth || 1));
+    const statMult = 1 + depth * 0.22;
+    const speedMult = 1 + Math.min(0.45, depth * 0.06);
+    const isBogBiome =
+      node.biomeId === 'belldor_bog' || node.biomeId === 'global_toxic_wetlands';
 
     const spawnScaledLoopEnemy = (
       type: string,
       px: number,
       py: number,
-      idx: number
+      idx: number,
+      isBoss: boolean = false,
+      bossTitle?: string
     ) => {
+      const bossMult = isBoss ? 1.35 : 1.0;
       const e = spawnEnemyByType(state, type, px, py, {
+        name: bossTitle,
         spawnKey: `${canonicalKey}:loop_depth_${depth}:${idx}`,
+        isFogBoss: isBoss,
+        fogDepth: depth,
       });
       if (!e) return;
-      e.shields.maxCapacity = Math.round(e.shields.maxCapacity * statMult);
+      e.shields.maxCapacity = Math.round(e.shields.maxCapacity * statMult * bossMult);
       e.shields.capacity = e.shields.maxCapacity;
-      e.armor.maxDurability = Math.round(e.armor.maxDurability * statMult);
+      e.armor.maxDurability = Math.round(e.armor.maxDurability * statMult * bossMult);
       e.armor.durability = e.armor.maxDurability;
-      e.frame.maxIntegrity = Math.round(e.frame.maxIntegrity * statMult);
+      e.frame.maxIntegrity = Math.round(e.frame.maxIntegrity * statMult * bossMult);
       e.frame.integrity = e.frame.maxIntegrity;
-      e.damage = Math.round(e.damage * statMult);
+      e.damage = Math.round(e.damage * statMult * (isBoss ? 1.2 : 1.0));
       e.speed = Math.round(e.speed * speedMult);
-      e.emissiveColor = depth === 3 ? '#f43f5e' : depth === 2 ? '#c084fc' : '#38bdf8';
+      e.emissiveColor = isBoss
+        ? '#f43f5e'
+        : depth >= maxDepth
+          ? '#fb7185'
+          : depth >= 2
+            ? '#c084fc'
+            : '#38bdf8';
       if (type === 'bog_wurm') {
         e.isSubmerged = !hasPoeLanternGuidance(state);
       }
     };
 
+    // If this max-depth room rolled a Boss (1 in clvl + 1 rooms), spawn the Fog Boss!
+    if (depth >= maxDepth && node.hasFogBoss) {
+      const fogBossPool = isBogBiome
+        ? [
+            { type: 'bog_wurm', title: `Elder Æther Wurm (Depth ${depth} Boss)` },
+            { type: 'orc_warrior', title: `Fog-Bound Warlord (Depth ${depth} Boss)` },
+            { type: 'percival_knight', title: `Drifting Grail Warden (Depth ${depth} Boss)` },
+          ]
+        : [
+            { type: 'percival_knight', title: `Drifting Grail Warden (Depth ${depth} Boss)` },
+            { type: 'tristan_knight', title: `Mist-Stalker Ranger (Depth ${depth} Boss)` },
+            { type: 'bors_knight', title: `Desynchronized Berserker (Depth ${depth} Boss)` },
+          ];
+      const pick = fogBossPool[node.id.length % fogBossPool.length];
+      spawnScaledLoopEnemy(
+        pick.type,
+        Math.round(widthPx * 0.5),
+        Math.round(heightPx * 0.45),
+        0,
+        true,
+        pick.title
+      );
+      if (pick.type === 'orc_warrior' || depth >= 3) {
+        spawnScaledLoopEnemy(
+          'orc_scout',
+          Math.round(widthPx * 0.28),
+          Math.round(heightPx * 0.62),
+          1,
+          false
+        );
+      }
+      return;
+    }
+
     if (depth === 1) {
-      spawnScaledLoopEnemy('bog_crawler', Math.round(widthPx * 0.34), Math.round(heightPx * 0.42), 0);
+      // Canonical Orc pair: Warrior + Scout
+      spawnScaledLoopEnemy(
+        'orc_warrior',
+        Math.round(widthPx * 0.34),
+        Math.round(heightPx * 0.42),
+        0
+      );
+      spawnScaledLoopEnemy(
+        'orc_scout',
+        Math.round(widthPx * 0.66),
+        Math.round(heightPx * 0.58),
+        1
+      );
     } else if (depth === 2) {
-      spawnScaledLoopEnemy('orc_warrior', Math.round(widthPx * 0.32), Math.round(heightPx * 0.38), 0);
-      spawnScaledLoopEnemy('bog_wurm', Math.round(widthPx * 0.68), Math.round(heightPx * 0.62), 1);
+      if (isBogBiome) {
+        spawnScaledLoopEnemy(
+          'bog_wurm',
+          Math.round(widthPx * 0.5),
+          Math.round(heightPx * 0.48),
+          0
+        );
+      } else {
+        spawnScaledLoopEnemy(
+          'orc_warrior',
+          Math.round(widthPx * 0.32),
+          Math.round(heightPx * 0.38),
+          0
+        );
+        spawnScaledLoopEnemy(
+          'orc_scout',
+          Math.round(widthPx * 0.68),
+          Math.round(heightPx * 0.62),
+          1
+        );
+      }
     } else {
-      spawnScaledLoopEnemy('orc_warrior', Math.round(widthPx * 0.28), Math.round(heightPx * 0.36), 0);
-      spawnScaledLoopEnemy('bog_wurm', Math.round(widthPx * 0.72), Math.round(heightPx * 0.36), 1);
-      spawnScaledLoopEnemy('percival_knight', Math.round(widthPx * 0.5), Math.round(heightPx * 0.64), 2);
+      // Depth 3+: Orc pair + Bog Wurm (in Bog) or Knight (outside Bog)
+      spawnScaledLoopEnemy(
+        'orc_warrior',
+        Math.round(widthPx * 0.28),
+        Math.round(heightPx * 0.36),
+        0
+      );
+      spawnScaledLoopEnemy(
+        'orc_scout',
+        Math.round(widthPx * 0.72),
+        Math.round(heightPx * 0.36),
+        1
+      );
+      spawnScaledLoopEnemy(
+        isBogBiome ? 'bog_wurm' : 'tristan_knight',
+        Math.round(widthPx * 0.5),
+        Math.round(heightPx * 0.65),
+        2
+      );
     }
   }
+}
+
+/**
+ * Clears the Æther Fog and returns the player to the last room they stood on along the main path
+ * when a Fog Boss is defeated at `maxDepth = clvl + 1`.
+ */
+export function clearAetherFogOnBossDefeat(
+  rooms: Record<string, string[]>,
+  state: OrionState,
+  ctx?: OrionCombatContext
+): void {
+  const graph = ensureAetherFogGraph(state);
+  const currentNode = getActiveAetherNode(state);
+  const safeTarget = resolveSafeEmergenceNode(graph, currentNode);
+
+  // Remove dynamic loop nodes so the cleared fog pocket dissolves
+  for (const [nodeId, n] of Object.entries(graph.nodes)) {
+    if (nodeId.startsWith('fog:loop:') || n.nodeType === 'loop') {
+      delete graph.nodes[nodeId];
+      delete rooms[nodeId];
+      delete ORION_ROOM_METADATA[nodeId];
+      delete ORION_CACHE_DEFINITIONS[nodeId];
+    }
+  }
+  for (const n of Object.values(graph.nodes)) {
+    for (const d of ALL_CARDINAL_DIRS) {
+      const targetId = n.edges[d];
+      if (targetId && !graph.nodes[targetId]) {
+        delete n.edges[d];
+      }
+    }
+  }
+
+  const targetGrid = rooms[safeTarget.id] || ORION_TUTORIAL_ROOMS[safeTarget.id];
+  if (targetGrid) {
+    rooms[safeTarget.id] = targetGrid;
+    const dim = getRoomDimensions(targetGrid);
+    state.x = Math.round(dim.widthPx * 0.5);
+    state.y = Math.round(dim.heightPx * 0.52);
+  }
+
+  const parsed = parseCoordPair(safeTarget.coord);
+  state.rx = safeTarget.mapRx ?? parsed.rx;
+  state.ry = safeTarget.mapRy ?? parsed.ry;
+  state.room = safeTarget.id;
+
+  graph.activeNodeId = safeTarget.id;
+  graph.loopDepth = 0;
+  graph.loopStage = 0;
+  graph.loopMaxDepth = getMaxAetherFogDepth(state);
+  graph.maxDepthNonBossStreak = 0;
+
+  state.projectiles = [];
+  state.pickups = [];
+
+  syncRoomHierarchyState(state);
+  spawnRoomEnemies(rooms, state);
+
+  soundSystem.playPowerup();
+  const info = getRoomWorldInfo(state);
+  const msg = `FOG BOSS DEFEATED · ÆTHER FOG CLEARED -> ${info.roomTitle.toUpperCase()}`;
+  if (ctx) {
+    ctx.say(msg);
+  } else {
+    state.toastText = msg;
+    state.toastTimer = 2.8;
+  }
+  notifyOrionStateChange();
 }
 
 export function transitionViaAetherDoor(
@@ -1438,7 +1704,7 @@ export function transitionViaAetherDoor(
     state.x = Math.max(arrivalDoor.minPx, Math.min(arrivalDoor.maxPx, alignedX));
   }
 
-  // Map-relative coordinates (`rx`, `ry`) track both safe nodes and Æther Loop rooms relative to the map
+  // Map-relative coordinates (`rx`, `ry`) track both safe nodes and Æther Fog rooms relative to the map
   const parsedCoord = parseCoordPair(targetNode.coord);
   state.rx = targetNode.mapRx ?? parsedCoord.rx;
   state.ry = targetNode.mapRy ?? parsedCoord.ry;
@@ -1448,11 +1714,14 @@ export function transitionViaAetherDoor(
 
   if (targetNode.nodeType === 'loop') {
     graph.loopStage = targetNode.loopStage ?? 1;
-    graph.loopDepth = targetNode.loopDepth ?? AETHER_PYRAMID_DEPTHS[graph.loopStage] ?? 1;
-    state.flickerTimer = 0.25 + graph.loopDepth * 0.1;
+    graph.loopDepth = targetNode.loopDepth ?? 1;
+    graph.loopMaxDepth = targetNode.loopMaxDepth ?? getMaxAetherFogDepth(state);
+    state.flickerTimer = 0.22 + Math.min(0.45, graph.loopDepth * 0.08);
   } else {
     graph.loopStage = 0;
     graph.loopDepth = 0;
+    graph.loopMaxDepth = getMaxAetherFogDepth(state);
+    graph.maxDepthNonBossStreak = 0;
   }
 
   state.projectiles = [];
@@ -1466,20 +1735,22 @@ export function transitionViaAetherDoor(
   soundSystem.playSelect();
   const info = getRoomWorldInfo(state);
 
-  // Room-to-room pop-ups are suppressed unless needed (sealed zone, entering/peaking/escaping an Æther Loop, or major area change)
+  // Room-to-room pop-ups are suppressed unless needed (sealed zone, entering fog, reaching max depth, boss room, or escaping fog)
   let toastMsg: string | null = null;
   if (targetNode.bannerTitle.startsWith('SEALED BY ÆTHER FOG')) {
-    toastMsg = `${targetNode.bannerTitle} · ÆTHER LOOP DEPTH ${graph.loopDepth}`;
+    toastMsg = `${targetNode.bannerTitle} · DEPTH ${graph.loopDepth}/${graph.loopMaxDepth}`;
+  } else if (targetNode.nodeType === 'loop' && targetNode.hasFogBoss) {
+    toastMsg = `MAX DEPTH ${graph.loopDepth} · FOG BOSS ENCOUNTER (DEFEAT TO CLEAR FOG)`;
   } else if (currentNode.nodeType !== 'loop' && targetNode.nodeType === 'loop') {
-    toastMsg = `ENTERING ÆTHER LOOP · DEPTH ${graph.loopDepth}`;
+    toastMsg = `ENTERING ÆTHER FOG · DEPTH 1/${graph.loopMaxDepth}`;
   } else if (
     targetNode.nodeType === 'loop' &&
-    graph.loopDepth === 3 &&
-    (currentNode.loopDepth || 0) < 3
+    graph.loopDepth >= (graph.loopMaxDepth || 2) &&
+    (currentNode.loopDepth || 0) < (graph.loopMaxDepth || 2)
   ) {
-    toastMsg = 'ÆTHER DENSITY CRITICAL · DEPTH 3 APEX';
+    toastMsg = `MAX ÆTHER DEPTH ${graph.loopDepth} · FIND & DEFEAT A BOSS TO ESCAPE`;
   } else if (escapedLoop) {
-    toastMsg = `ÆTHER LOOP CLEARED · ${info.roomTitle.toUpperCase()}`;
+    toastMsg = `RETRACED OUT OF ÆTHER FOG · ${info.roomTitle.toUpperCase()}`;
   } else if (prevAreaId && state.areaId !== prevAreaId) {
     toastMsg = info.areaName.toUpperCase();
   }
@@ -1507,8 +1778,8 @@ export function isDesyncWallSolid(state: OrionState): boolean {
   }
   const biome = getBiomeDefinition(state.biomeId);
   const loopDepth = state.fogGraph?.loopDepth || 0;
-  // Deeper Æther loops cycle phase-desync barriers faster
-  const depthPeriodMult = loopDepth >= 3 ? 0.55 : loopDepth === 2 ? 0.75 : 1.0;
+  // Deeper Æther fog cycles phase-desync barriers faster
+  const depthPeriodMult = Math.max(0.45, 1 - loopDepth * 0.12);
   const period = Math.max(0.85, (biome.tileRules?.desyncPeriodSec || 3.5) * depthPeriodMult);
   return Math.floor(state.t / period) % 2 === 0;
 }
@@ -1524,9 +1795,10 @@ export function updateEnvironmentalHazards(
 
   const biome = getBiomeDefinition(state.biomeId);
   const loopDepth = state.fogGraph?.loopDepth || 0;
-  const isBiomeCorrosive = (biome.tileRules?.corrosiveWater ?? true) || loopDepth > 0;
+  // Bog water is corrosive because of the bog biome, not the Æther fog itself
+  const isBiomeCorrosive = Boolean(biome.tileRules?.corrosiveWater);
   const baseCorrosionRate = biome.tileRules?.corrosiveDamagePerSec ?? 5.0;
-  const corrosionRate = baseCorrosionRate * (1 + loopDepth * 0.45);
+  const corrosionRate = baseCorrosionRate * (1 + loopDepth * 0.25);
 
   corrosionParticleTimer -= dt;
   let spawnedCorrosionParticle = false;
@@ -1725,6 +1997,8 @@ export function getRoomWorldInfo(state: OrionState): {
   routeTotal?: number;
   loopDepth: number;
   loopStage: number;
+  loopMaxDepth: number;
+  hasFogBoss: boolean;
   endFeature?: AetherEndFeature;
   bannerTitle: string;
   mapName: string;
@@ -1765,6 +2039,9 @@ export function getRoomWorldInfo(state: OrionState): {
     routeTotal: activeNode?.routeTotal ?? meta?.routeTotal,
     loopDepth: graph.loopDepth || 0,
     loopStage: graph.loopStage || 0,
+    loopMaxDepth:
+      activeNode?.loopMaxDepth || graph.loopMaxDepth || getMaxAetherFogDepth(state),
+    hasFogBoss: Boolean(activeNode?.hasFogBoss),
     endFeature: activeNode?.endFeature || meta?.endFeature,
     bannerTitle: cleanBannerTitle,
     mapName: mapDef?.name || 'Bog Sector',

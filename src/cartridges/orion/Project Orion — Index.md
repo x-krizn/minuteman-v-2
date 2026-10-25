@@ -87,20 +87,34 @@ Your mech is a frame with a combat identity. Six are available, and none of them
 - **Frame (`Feats`)**: **System Feats** step up Load Capacity (`light → medium → heavy → superheavy`); **Interface Feats** trade stats sideways within a fixed static budget.Feats can be re-distributed at any time.
 - **Equipment (`13 Slots + Mods`)**: Weapon Set 1 (`2`), Weapon Set 2 (`2`), Utility (`1`, `Action 6`), Aux (`4`, `Actions 7–10`), Belt (`4`, `Actions 7–10`), plus `Head`, `Torso`, `Arms`, `Legs`, and `Generator`. Action Modifications alter behavior with a paired drawback.
 
+### The Æther Fog
+
+Belldor does not hold still. Beyond the places that were built, the land frays into **æther fog**: stretches of the same ruined country that shift, fold back on themselves and refuse to stay mapped. It is what desynchronization feels like from the ground. Nothing in it is fixed, and a pilot who has been through it once cannot be sure the same road will be there twice. The fog is also what makes the world larger than it looks. There is no wall at the edge of the map, only more fog.
+
+**Density.** The fog gets thicker the farther in you go, and everything gets worse with it. Enemies grow more aggressive, the mist hangs heavier, and the ground becomes harder to cross. Pilots are immune to the æther itself, so the æther is not what hurts you. The danger is the environment it creates, and nothing in it is safe.
+
+**The path.** The fog is built around authored places: towns, boss sanctums, waystations and waygates. Between them lie corridors that carry you from one place to the next, with branches off to side pockets that hold a reward, a fight or a hidden switch. The game nudges you along the path, but you never have to follow it. You can wander the fog all day if you want to.
+
+**Going deeper.** Some branches lead into the fog proper, and each room is one step deeper than the last. Until you reach the deepest room, you can always turn around and retrace your steps, and every room back toward the path is as safe as it was when you passed through. The deepest room is different. It holds a boss that must be cleared, and clearing it returns you to the last place you stood on the main path. The depth where the boss waits is not the same everywhere. A shallow pocket may bottom out after two or three rooms, and a deep one after five or more.
+
+**The Lantern.** The Poe's gift is the one tool that reads the fog. It shows where the fog deepens and what is waiting beneath the water, and it never points you toward the story.
+
+---
+
 ---
 
 ## Part IV — The Road Through Belldor
 
 ### Stage 1: The Bog (Levels 1–2)
 
-You arrive in a drowned maze of fallen trees and the ruins of an old temple or monastery. The air is thick with æther. The water is not the æther's doing, but it is dangerous in its own right: **bog water is corrosive**. It eats armor, and it does not care who is standing in it. That includes the things hunting you.
+You arrive in a drowned maze of fallen trees and the ruins of an old temple or monastery. The air is thick with æther. The water is not the æther's doing, but it is dangerous in its own right: **bog water is corrosive**. It eats armor, and it does not care who is standing in it. That includes the things hunting you. The marsh lies inside Belldor's æther fog, so the two overlap here, but they are separate things. The bog is not æther, and not every stretch of fog holds bog water.
 
 **What lives here**
 
 - **Orc pairs.** Orcs always come as a Warrior and a Scout. The Warrior is a shield-bearing brawler who closes distance and hits hard. The Scout stays back, shoots from range, and tries to slip away to heal if you hurt it. Kill the Scout first, but don't let the Warrior reach you.
 - **The Bog Wurm.** A snake-like hybrid of machine and flesh, with glowing ætheric veins running through its mechanical parts. It hides invisible beneath the water, strikes first, and retreats to heal when hurt. The bog is its friend, and it knows it.
 
-**The Poe.** Somewhere in the maze you will find a small floating lantern-spirit that calls itself "Poe." Every Poe says the same thing about itself, and they only manifest where the æther is thick. Helping it back to its lantern will earn you a gift, and it will change how you fight the Wurm. Ignoring it or killing it is also allowed. The way out of the bog stays hidden until you deal with it one way or another.
+**The Poe.** Somewhere in the maze you will find a small floating lantern-spirit that calls itself "Poe." Every Poe says the same thing about itself, and they only manifest where the æther is thick. Helping it back to its lantern will earn you a gift. It reveals what hides beneath the water and where the fog grows deeper, and it will change how you fight the Wurm. Ignoring it or killing it is also allowed. The way out of the bog stays hidden until you deal with it one way or another.
 
 **Bedivere.** Further on lies the body of a knight who was heading for the border town and never made it. He carries a **signet ring** and a **numbered list** of items that makes no sense yet. Taking the ring has consequences in the next zone. Leaving it has consequences too. The game will not explain the weight of that choice.
 

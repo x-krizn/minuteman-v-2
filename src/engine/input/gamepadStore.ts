@@ -29,7 +29,9 @@ export class GamepadStore {
   };
 
   private stick: StickVector = { x: 0, y: 0 };
+  private stickSources: Map<string, StickVector> = new Map();
   private buttonSources: Map<ButtonKey, Set<string>> = new Map();
+  private latchedPresses: Set<ButtonKey> = new Set();
   private listeners: Set<(state: GamepadButtons, stick: StickVector) => void> = new Set();
 
   private constructor() {}
@@ -49,6 +51,15 @@ export class GamepadStore {
     return { ...this.stick };
   }
 
+  public consumeLatchedPresses(): Set<ButtonKey> {
+    if (this.latchedPresses.size === 0) {
+      return new Set();
+    }
+    const copy = new Set(this.latchedPresses);
+    this.latchedPresses.clear();
+    return copy;
+  }
+
   public setButtonState(
     key: ButtonKey,
     isActive: boolean,
@@ -61,6 +72,7 @@ export class GamepadStore {
       this.buttonSources.set(key, sources);
     }
 
+    const wasActive = sources.size > 0;
     if (isActive) {
       sources.add(source);
     } else {
@@ -68,6 +80,10 @@ export class GamepadStore {
     }
 
     const nextIsActive = sources.size > 0;
+    if (!wasActive && nextIsActive) {
+      this.latchedPresses.add(key);
+    }
+
     if (this.state[key] !== nextIsActive) {
       this.state[key] = nextIsActive;
       if (nextIsActive && vibrate) {
@@ -78,21 +94,45 @@ export class GamepadStore {
   }
 
   public setStick(x: number, y: number, source = 'stick'): void {
-    if (this.stick.x === x && this.stick.y === y) return;
-    this.stick.x = x;
-    this.stick.y = y;
+    const prevSourceVec = this.stickSources.get(source) ?? { x: 0, y: 0 };
+    const sourceChanged = prevSourceVec.x !== x || prevSourceVec.y !== y;
 
-    // Derive directional digital buttons from stick
+    if (x === 0 && y === 0) {
+      this.stickSources.delete(source);
+    } else {
+      this.stickSources.set(source, { x, y });
+    }
+
+    // Always synchronize directional button state for this source so releasing never leaves stale sources
     this.setButtonState('left', x < -DIGITAL_THRESHOLD, false, source);
     this.setButtonState('right', x > DIGITAL_THRESHOLD, false, source);
     this.setButtonState('up', y < -DIGITAL_THRESHOLD, false, source);
     this.setButtonState('down', y > DIGITAL_THRESHOLD, false, source);
 
-    this.notify();
+    // Resolve combined stick from active stick sources (prefer latest non-zero or largest magnitude)
+    let resolvedX = 0;
+    let resolvedY = 0;
+    let maxMag = 0;
+    this.stickSources.forEach((vec) => {
+      const mag = Math.hypot(vec.x, vec.y);
+      if (mag >= maxMag) {
+        maxMag = mag;
+        resolvedX = vec.x;
+        resolvedY = vec.y;
+      }
+    });
+
+    if (this.stick.x !== resolvedX || this.stick.y !== resolvedY || sourceChanged) {
+      this.stick.x = resolvedX;
+      this.stick.y = resolvedY;
+      this.notify();
+    }
   }
 
   public resetAll(): void {
     this.buttonSources.clear();
+    this.stickSources.clear();
+    this.latchedPresses.clear();
     (Object.keys(this.state) as ButtonKey[]).forEach((k) => {
       this.state[k] = false;
     });

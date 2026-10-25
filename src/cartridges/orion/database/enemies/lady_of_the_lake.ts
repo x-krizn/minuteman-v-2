@@ -36,7 +36,7 @@ export const ladyOfTheLakeEnemy: EnemyWikiDefinition = {
     state.flags = state.flags || {};
     state.flags.lady_of_the_lake_defeated = true;
     soundSystem.playPowerup();
-    ctx.say("THE LADY OF THE LAKE VANQUISHED! · KNIGHT'S OATH FEAT NODE & TITANITE/MOONSTONE DROPPED!");
+    ctx.say('THE LADY OF THE LAKE VANQUISHED! · AVALON SIEGE LANCE & RELIC GEMSTONES RECOVERED!');
     notifyOrionStateChange();
   },
   render25D(g, e, _state, ey, isHurt) {

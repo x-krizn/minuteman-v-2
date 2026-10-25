@@ -144,9 +144,14 @@ export default function App() {
         // SHIFT (Select) -> Inventory / Character Screen
         if (isCartActive) {
           const currentMenu = inGameMenuRef.current;
+          const activeTag =
+            typeof document !== 'undefined' ? document.activeElement?.tagName : undefined;
+          const isTypingInInput = activeTag === 'INPUT' || activeTag === 'TEXTAREA';
+          let menuConsumedInput = false;
 
           // Emergency escape hatch: hold START + SHIFT together
           if (
+            !isTypingInInput &&
             input.held.start &&
             input.held.select &&
             (input.pressed.start || input.pressed.select)
@@ -158,7 +163,8 @@ export default function App() {
           }
 
           // START button: Game Menu
-          if (input.pressed.start && !input.held.select) {
+          if (!isTypingInInput && input.pressed.start && !input.held.select) {
+            menuConsumedInput = true;
             if (currentMenu === 'game-menu') {
               updateInGameMenu('none');
             } else {
@@ -167,7 +173,8 @@ export default function App() {
           }
 
           // SHIFT (Select) button: Inventory / Character screen
-          if (input.pressed.select && !input.held.start) {
+          if (!isTypingInInput && input.pressed.select && !input.held.start) {
+            menuConsumedInput = true;
             if (currentMenu === 'inventory') {
               updateInGameMenu('none');
             } else {
@@ -175,9 +182,18 @@ export default function App() {
             }
           }
 
-          // B button while menu is open: Close and resume game
-          if (input.pressed.b && currentMenu !== 'none') {
+          // B button while menu is open: Close and resume game without leaking B into gameplay
+          if (!isTypingInInput && input.pressed.b && currentMenu !== 'none') {
+            menuConsumedInput = true;
             updateInGameMenu('none');
+          }
+
+          if (menuConsumedInput) {
+            input.pressed.b = false;
+            input.held.b = false;
+            input.pressed.start = false;
+            input.pressed.select = false;
+            return;
           }
         }
 

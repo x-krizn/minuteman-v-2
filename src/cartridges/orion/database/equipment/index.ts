@@ -10,7 +10,7 @@ import {
   isAuxiliaryEquipment,
   isTrueWeaponEquipment,
   WEAPON_SKILL_ACTIONS,
-} from '../weapons';
+} from './weapons';
 import {
   CLASS_UTILITY_CATALOG,
   ClassUtilityItemDefinition,
@@ -25,8 +25,14 @@ export {
   getClassUtilityDefinition,
   getDefaultClassUtilityId,
 };
+export * from './arms';
+export * from './auxiliaries';
 export * from './chassis_hardware';
+export * from './head';
+export * from './legs';
 export * from './plating';
+export * from './reactors';
+export * from './sensory';
 export * from './weapons';
 
 // Auto-discover all assignable equipment/reactor/utility/belt modules in this directory via Vite import.meta.glob

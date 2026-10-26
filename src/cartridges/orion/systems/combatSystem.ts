@@ -29,7 +29,7 @@ import {
   isBlockingWeapon,
   isTrueWeaponEquipment,
   isTwoHandOnlyWeapon,
-} from '../database/weapons';
+} from '../database/equipment/weapons';
 import {
   ArmorState,
   DamageType,

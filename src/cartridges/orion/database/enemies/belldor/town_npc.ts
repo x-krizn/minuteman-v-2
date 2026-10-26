@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { getDirFromVector } from '../../constants';
-import { EnemyEntity, EnemyWikiDefinition, OrionState } from '../../types';
+import { getDirFromVector } from '../../../constants';
+import { EnemyEntity, EnemyWikiDefinition, OrionState } from '../../../types';
 
 export const townNpcEntity: EnemyWikiDefinition = {
   type: 'town_npc',
@@ -24,7 +24,7 @@ export const townNpcEntity: EnemyWikiDefinition = {
   damageType: 'Impact',
   tellDurationSec: 0.4,
   attackCooldownSec: 1.8,
-  lootTable: [{ itemId: 'salvage_scrap', chance: 0.8, count: 5 }],
+  lootTable: [{ itemId: 'trade_coin', chance: 0.8, count: 5 }],
   customSpawnSetup(_state, _px, _py, spawnCountOfType) {
     const dispositions: Array<'calm' | 'linger' | 'feral'> = ['calm', 'linger', 'feral'];
     const disp = dispositions[spawnCountOfType % 3];

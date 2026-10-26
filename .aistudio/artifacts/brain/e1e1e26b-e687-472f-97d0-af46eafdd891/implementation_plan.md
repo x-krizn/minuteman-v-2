@@ -1,130 +1,121 @@
-# Project Orion — M00 Bog Mapping, Atmospheric Lighting & Loot Table Overhaul
+# Project Orion — Codebase Housekeeping & Modular Architecture Plan
 
-Overhaul the opening world area (**M00 The Bog**) and procedural **Æther Fog** templates from cramped single-screen `10×9` rooms into expansive multi-screen (`14×11` to `20×15`) sectors with distinct sub-zone landmarks, dynamic threat/visibility lighting that shrouds distant hazards and enemies in shadow while brightening safe sanctuaries, directional 2.5D wall/tree shadows, and structured Enemy, Area, and Region loot tables.
-
----
+This housekeeping pass refactors Project Orion's database, gameplay systems, and tactical UI from monolithic files into clean, domain-aligned modules while eliminating duplicate hardware definitions, legacy item aliases, and obsolete directory shims.
 
 ## User Review & Critical Decisions
 
 > [!IMPORTANT]
-> All core architectural choices below incorporate your confirmed preferences from the design review:
+> All four housekeeping tracks and structural preferences were confirmed during interactive clarification. Review the architectural boundaries below before execution begins.
 
-- **Confirmed Decision 1 — Multi-Screen Room Scale (`14×11` to `20×15`)**: Expand all authored Bog rooms (`map_bog_drop_zone` and `map_deep_bog_maze`) as well as procedural **General**, **Side**, **Loop**, and **End** room templates in the Æther Fog composer from `10×9` to multi-screen layouts (`14×11` up to `20×15`) with smooth scrolling camera tracking and multi-tile cardinal doorways.
-- **Confirmed Decision 2 — Dynamic Vision Radius, Corner Shadows & Safe/Threat Lighting**:
-  - **Dynamic Threat & Awareness Fog**: Restrict player visibility in dark/hostile zones to an active vision radius around the player (expanded by equipped **Optics / Sensory Hardware**, **Poe Lantern** guidance, and active sanctuaries). Distant enemies outside the awareness radius remain hidden in the mire or appear only as faint emissive eyes/ripples until within detection range or telegraphing an attack.
-  - **Safe vs. Threat Lighting Posture**: Safe sanctuaries (**First Campfire `0,0`**, **Poe Lantern Clearing `0,-2`**, **Drop-Pod Beacon `-3,0`**) cast warm, wide radial illumination that pushes back corner shadows; deep marsh trails, corrosive basins, and **Æther Loop** rooms tighten the vision cone and deepen corner darkness.
-  - **Corner Darkness & 2.5D Directional Shadows**: Add room-corner ambient occlusion gradients and angled 2.5D drop shadows cast by walls (`#`), ancient pylons (`P`), downed trees, and ruins.
-- **Confirmed Decision 3 — Distinct Sub-Zone Palettes & Environmental Storytelling Landmarks**: Differentiate every Bog room so none bleed together—featuring orbital scorch rings and wreckage trails in the Crater, felled timber mazes and hollow logs in the Downed Trees, dry flagstone sanctuary rings at the Campfire, drowned monastic colonnades and glowing shrines in the Poe Branch, Sir Bedivere's ruined temple courtyard, and Bubbling Corrosive Mire basins leading to the Lake Sanctum.
-- **Confirmed Decision 4 — Structured Enemy, Area & Region Loot Tables**: Replace ad-hoc weapon/equipment drops with deterministic + weighted **Contextual Loot Tables** scoped by **Enemy Archetype**, **Area (`AreaWikiDefinition`)**, and **Region (`RegionDefinition`)**, including support for finding 1st and 2nd weapon copies (`×2` for Dual-Wield Paired Stance), hardware modules, gemstones, and consumables.
+- **Confirmed Decision 1 (Full Housekeeping Scope)**: Execute all four tracks: (1) reorganize database domains for equipment, items, and enemies; (2) split monolithic UI and system engines into focused sub-modules; (3) clean up legacy state fields, dead code, and duplicate definitions; and (4) update the authoring documentation to reflect the canonical architecture.
+- **Confirmed Decision 2 (Slot-Based Equipment Architecture & Deduplication)**: Decompose the monolithic hardware catalog into dedicated slot domains (Head/Optics, Arms, Legs, Coreplate/Plating, Reactors, Sensory Arrays, Auxiliaries, Utilities, and Weapons) and remove duplicate coreplate definitions.
+- **Confirmed Decision 3 (Direct Equipment Weapon Resolution)**: Migrate all weapon imports across systems and UI directly to the equipment domain and remove the legacy top-level weapons forwarding directory.
 
 ---
 
 ## 1. Overview & Core Concept
 
-- **What It Does**: Transforms world exploration from a sequence of similar single-screen boxes into atmospheric, multi-screen tactical zones where terrain layout, lighting contrast, line-of-sight awareness, and environmental props tell the story of each sector.
-- **Target Audience / Persona**: Players exploring Belldor's outskirts who need immediate visual and spatial context to orient themselves, read environmental danger before stepping into ambushes or corrosive traps, and hunt specific enemies or areas for targeted equipment and second weapon copies.
-- **Key Value**: Eliminates "room bleed" by giving each sector a bespoke spatial footprint, sub-biome palette, landmark props, and dynamic light-and-shadow tension.
+- **What It Does**: Establishes a clean, single-source-of-truth architecture across Project Orion's data registries, simulation systems, and tactical interface without altering canonical Belldor gameplay mechanics, combat laws, or visual fidelity.
+- **Target Audience / Persona**: Game designers, world authors, and engineers extending Project Orion with new worlds, mechs, equipment, enemies, and quests.
+- **Key Value**: Eliminates multi-thousand-line monolithic files, prevents data drift from duplicate definitions, removes superseded item/weapon shims, and makes authoring new content predictable and self-contained.
 
 ---
 
 ## 2. User Experience & Visual Design
 
-### Key User Flows
-1. **Multi-Screen Sector Exploration**:
-   - Stepping out of the Drop-Pod Bay (`-4,0`) into the **Drop-Pod Impact Crater (`-3,0`, `16×12`)**, the camera smoothly tracks across a smoking orbital trench bordered by shattered fuselage plating and glowing beacon pylons before funneling east into the **Maze of Downed Trees (`-2,0` & `-1,0`, `16×12` / `16×13`)**.
-   - Navigating through giant felled trunks, mud channels, and ambush pockets leads into the open **First Campfire Clearing (`0,0`, `16×12`)**, where warm amber hearth light pushes the darkness out to the room perimeter.
-2. **Restricted Awareness & Threat Discovery**:
-   - Entering the **Overgrown Ruin Approach (`0,-1`)** or **Corrosive Marsh Trail (`2,0`, `18×13`)**, ambient darkness creeps in from the room corners and edges.
-   - Enemies (`Bog Crawlers`, `Bog Wurms`, `Orc Scouts`) beyond the player's current vision & sensor radius are shrouded by the darkness mask—revealing only subtle mire ripples, faint eye glints, or sound/telegraph flares until the pilot closes distance, fires a tracer, or equips higher-tier **Optics / Sensory** hardware.
-   - Traps, sinkholes (`_`), and corrosive pools (`~`) outside the illuminated radius are dimmed under the shadow veil, rewarding deliberate movement and lantern/sensor upgrades.
-3. **Environmental Landmarks & Wayfinding**:
-   - Every room features a signature central or asymmetric landmark (e.g., **Orbital Crater Scorch Ring**, **Split Great-Tree Bridge**, **Campfire Waystation Dias**, **Sunken Monastic Shrine**, **Sir Bedivere's Broken Lance Courtyard**, **Lady of the Lake's Flooded Amphitheater `20×15`**).
-4. **Targeted Loot & Equipment Discovery**:
-   - Defeating specific enemies, looting area caches (`C` / `V`), or salvaging fallen knights rolls against the hierarchical **Enemy -> Area -> Region Loot Table**, granting canonical weapons (including `×2` second copies of 1H weapons for Dual-Wielding), Aux/Optics/Leg hardware, and region-specific gemstones.
-
-### Visual Identity & Theme
-- **Aesthetic Direction**: Retro-futuristic 2.5D tactical dark fantasy (Magitech mech-knight navigating a toxic, desynchronized Arthurian marshland).
-- **Color Palette & Mood**:
-  - **Safe Sanctuaries (`0,0` Campfire, `0,-2` Poe Clearing)**: Warm amber hearth glow (`#f59e0b` / `#fde68a`) and cyan-violet lantern resonance (`#22d3ee` / `#c084fc`) with low ambient darkness (`0.18–0.25`).
-  - **Downed Timber & Ruin Trails (`-2,0`, `-1,0`, `0,-1`, `1,0`)**: Mossy slate timber, wet flagstone (`#1e293b` / `#334155`), deep corner shadows (`0.48`), and dappled canopy shadow bands.
-  - **Deep Corrosive Marsh & Æther Loops (`2,0`, `3,-1`, `3,0`, `Loop` nodes)**: Oppressive abyssal mire (`#090d14` / `#132a38`), bioluminescent acid ripples (`#a855f7` / `#22d3ee`), and high corner/distance darkness (`0.62–0.78`).
-- **Typography & HUD Discipline**: Clean pixel/monospace HUD telemetry with outlined floating prompts (`drawOutlinedCanvasText`) and zero intrusive UI chrome over the playfield.
+- **Key User Flows**:
+  - **Tactical Satchel & Loadout Flow**: Pilots open the Satchel (`LOADOUT`, `MECH STATUS`, `FEATS & MODS`, ` GEM POUCH`, `WORLD & CODEX`), inspect their live composite mech sprite (`Head + Arms + Coreplate + Weapon`), and swap hardware or weapons with immediate visual and stat feedback.
+  - **Field Exploration & Combat Flow**: Seamless 60fps top-down 2.5D rendering with Three Defense Layers HUD (Shields, Armor, Frame Integrity), reactor heat management, and Aether Fog navigation.
+- **Visual Identity & Theme**:
+  - *Aesthetic Direction*: Tactical retro-futuristic Magitech console UI paired with crisp 2.5D pixel-art canvas rendering.
+  - *Color Palette & Mood*: Following the 60-30-10 discipline — 60% deep obsidian/slate tactical surfaces (`#05070a`, `#090d14`, `#0f172a`), 30% structural frame panels and metallic borders (`#1e293b`, `#334155`), and 10% high-contrast telemetry accents (Shield Cyan `#38bdf8`, Armor Amber `#facc15`, Critical Crimson `#ef4444`, Ichor Orange `#f97316`, Emerald Restoration `#10b981`).
+  - *Typography & Hierarchy*: Crisp monospace pixel/tactical typography with tabular numerals (`tabular-nums`) for all defense layer meters, damage readouts, and stat comparisons; single-line controls (`whitespace-nowrap shrink-0`) with unboxed metadata separators (`·`).
+  - *Component Styling & Layout*: Unobtrusive HUD framing the viewport without obscuring combat; modular Satchel tabs with clear active states and zero dead controls.
+- **Interactive Feedback & Motion**: Instantaneous equipment swap previews on the composite mech canvas, crisp Web Audio synthesized sound cues on menu and combat actions, and smooth compositor transitions.
 
 ---
 
 ## 3. Key Product Decisions & Trade-Offs
 
-- **Decision 1 — Multi-Screen Room Footprints (`14×11` to `20×15`) with Preserved Graph Topology**
-  - *Chosen Approach*: Scale individual rooms to `14×11`–`20×15` tiles (`224×176px` to `320×240px`) while keeping the canonical `KEY_NODE_ROUTES` and 5-node Æther Fog graph structure intact.
-  - *Why*: Gives each room 2× to 3.5× the playable surface area so terrain features, cover pillars, elevation sinkholes, and enemy patrols have room to breathe without breaking existing quest coordinates or save states.
-  - *Alternatives Considered*: Merging all rooms into a single giant open map was passed over because the doorway-driven **Æther Fog 5-Node Topology** (`SAFE -> 1 -> 2 -> 3 -> 2 -> 1 -> SAFE`) relies on room transitions.
-- **Decision 2 — Composite Canvas Darkness Mask + Sensor/Light Cutouts**
-  - *Chosen Approach*: Render an offscreen/composite darkness & corner-shadow layer modulated by room safety tier, player **Optics/Sensory** vision radius, **Poe Lantern** state, and local point lights (campfires, lanterns, beacons, projectiles), coupled with distance-based entity opacity/shrouding.
-  - *Why*: Delivers authentic survival-tactical tension on the 2D canvas at 60 FPS while making **Optics**, **Sensory**, and **Poe Lantern** items mechanically meaningful in exploration.
-- **Decision 3 — Hierarchical Loot Table Resolution (`Enemy -> Room/Area -> Region`)**
-  - *Chosen Approach*: Define structured `LootTableEntry` pools on Enemies, Areas, and Regions with deterministic first-time unlocks and weighted duplicate/equipment rolls.
-  - *Why*: Prepares the engine for multi-region expansion so specific weapons, second copies (`×2`), and hardware drop from thematic sources rather than a single global pool.
+- **Decision 1: Slot-Specific Hardware Modules as Single Source of Truth**
+  - *Chosen Approach*: Partition chassis hardware into dedicated slot modules (Head, Arms, Legs, Plating, Reactors, Sensory, Auxiliaries, Utilities, Weapons) that auto-register into the unified Equipment & Hardware Registry, eliminating redundant array declarations.
+  - *Why*: Previously, coreplates were defined in both a plating module and the general chassis hardware catalog. Consolidating each slot into its own domain guarantees zero stat drift and pairs each piece's combat stats directly with its composite sprite theme.
+  - *Alternatives Considered*: Keeping a single monolithic hardware catalog file was rejected by user preference because it scales poorly as new worlds and manufacturers are added.
+- **Decision 2: Decomposing Monolithic UI & Gameplay Engines by Responsibility**
+  - *Chosen Approach*: Break up the ~3,200-line Satchel UI into tab-focused sub-components (Loadout View, Mech Status View, Feats & Gems View, World & Codex View, and Shared Sprite Canvases) and modularize the 3,300–4,300 line system engines (separating HUD/lighting passes from world rendering, and separating Aether Fog graph generation from room interaction logic).
+  - *Why*: Improves maintainability, isolates rendering and state-mutation concerns, and keeps barrel exports clean so external callers require zero breaking signature changes.
+  - *Alternatives Considered*: Leaving systems as 4,000-line single files was rejected as it impedes readability and future feature work.
+- **Decision 3: Eradicating Superseded Item Aliases & Legacy Shims**
+  - *Chosen Approach*: Remove legacy `repair_kit` alias shims, standardize currency pickups around Belldor Trade Coins (`currency`), organize enemies by region/faction (Belldor Bog, Orc Raiders, Camelot Knights, Town NPCs), and categorize items into Consumables, Gemstones, Currency, and Regional Quest items.
+  - *Why*: Ensures every ID in the runtime state corresponds strictly to canon lore and eliminates dead fallback branches.
 
 ---
 
-## 4. Technical Architecture & Data Strategy
+## 4. Technical Architecture & Data Strategy *(Technical Reference)*
 
 ### Architecture & Component Diagram
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                     WORLD & BOG OVERHAUL ARCHITECTURE                        │
-├──────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  ┌────────────────────────────────────┐   ┌────────────────────────────────┐ │
-│  │   Multi-Screen Room Definitions    │   │   Contextual Loot Registry     │ │
-│  │  • Authored Bog Rooms (14x11–20x15)│   │  • Region Loot Pools           │ │
-│  │  • Procedural General/Side/Loop    │   │  • Area Cache & Salvage Pools  │ │
-│  │  • Sub-Zone Palettes & Landmarks   │   │  • Enemy Equipment & Gem Drops │ │
-│  └─────────────────┬──────────────────┘   └───────────────┬────────────────┘ │
-│                    │                                      │                  │
-│                    ▼                                      ▼                  │
-│  ┌────────────────────────────────────┐   ┌────────────────────────────────┐ │
-│  │   World & Entity Systems           │   │   Vision & Threat Awareness    │ │
-│  │  • Multi-Screen Doorway Carving    │◄──┤  • Base Vision + Optics/Sensor │ │
-│  │  • Spawn Scaling & Ambush States   │   │  • Safe Zone vs Threat Radius  │ │
-│  │  • Landmark Prop Rendering (2.5D)  │   │  • Enemy Shroud / Eye Glints   │ │
-│  └─────────────────┬──────────────────┘   └───────────────┬────────────────┘ │
-│                    │                                      │                  │
-│                    └──────────────────┬───────────────────┘                  │
-│                                       ▼                                      │
-│  ┌─────────────────────────────────────────────────────────────────────────┐ │
-│  │                  2.5D Atmospheric Render Pipeline                       │ │
-│  │  1. Sub-Zone Ground Clusters & Planar Corrosive Reflections             │ │
-│  │  2. Directional 2.5D Wall, Pylon & Felled-Tree Cast Shadows             │ │
-│  │  3. Depth-Sorted Props, Landmarks & Visibility-Gated Entities/Traps     │ │
-│  │  4. Room-Corner Ambient Occlusion + Dynamic Light Cutout Mask           │ │
-│  └─────────────────────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────────┐
+│                        PROJECT ORION RUNTIME STATE                         │
+│     Pilot Profile · Equipment Slots · Defense Layers · World & Fog Graph   │
+└──────────────────┬──────────────────────────────────────┬──────────────────┘
+                   │                                      │
+                   ▼                                      ▼
+┌─────────────────────────────────────┐ ┌────────────────────────────────────┐
+│      MODULAR DATABASE REGISTRIES    │ │       MODULAR GAMEPLAY SYSTEMS     │
+│                                     │ │                                    │
+│ ┌─────────────────────────────────┐ │ │ ┌────────────────────────────────┐ │
+│ │ Equipment Domain                │ │ │ │ Player & Sprite System         │ │
+│ │  ├─ Weapons (Lineage Builders)  │ │ │ │  ├─ Composite Mech Renderer    │ │
+│ │  ├─ Plating (Coreplates)        │ │ │ │  ├─ Capability & Gate Sync     │ │
+│ │  ├─ Head & Optics               │ │ │ │  └─ Movement & Physics         │ │
+│ │  ├─ Arms & Actuators            │ │ │ └────────────────────────────────┘ │
+│ │  ├─ Legs & Striders             │ │ │ ┌────────────────────────────────┐ │
+│ │  ├─ Reactors & Storage          │ │ │ │ Combat & Action System         │ │
+│ │  ├─ Sensory Arrays (A & B)      │ │ │ │  ├─ 3-Layer Damage Resolution  │ │
+│ │  └─ Auxiliaries & Utilities     │ │ │ │  ├─ Weapon Stances & Skills    │ │
+│ └─────────────────────────────────┘ │ │ │  └─ Enemy AI & Boss Trials     │ │
+│ ┌─────────────────────────────────┐ │ │ └────────────────────────────────┘ │
+│ │ Items Domain                    │ │ │ ┌────────────────────────────────┐ │
+│ │  ├─ Consumables (Gem Flasks)    │ │ │ │ World & Aether Fog System      │ │
+│ │  ├─ Gemstones (9 Canonical)     │ │ │ │  ├─ Aether Graph Generator     │ │
+│ │  ├─ Currency (Trade Coins)      │ │ │ │  ├─ Room & Cache Interactions  │ │
+│ │  └─ Quest / Belldor Relics      │ │ │ │  └─ Contextual Loot Resolver   │ │
+│ └─────────────────────────────────┘ │ │ └────────────────────────────────┘ │
+│ ┌─────────────────────────────────┐ │ │ ┌────────────────────────────────┐ │
+│ │ Enemies Domain (Regional)       │ │ │ │ Render & Lighting System       │ │
+│ │  ├─ Belldor Bog Fauna           │ │ │ │  ├─ 2.5D Room & Prop Renderer  │ │
+│ │  ├─ Orc Siege Raiders           │ │ │ │  ├─ Weather & Bloom Pass       │ │
+│ │  └─ Camelot Knights & Town      │ │ │ │  └─ Canvas HUD Overlay         │ │
+│ └─────────────────────────────────┘ │ │ └────────────────────────────────┘ │
+└──────────────────┬──────────────────┘ └─────────────────┬──────────────────┘
+                   │                                      │
+                   └──────────────────┬───────────────────┘
+                                      ▼
+┌────────────────────────────────────────────────────────────────────────────┐
+│                        TACTICAL UI & SATCHEL SHELL                         │
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌───────────────────┐  │
+│  │ Loadout &    │ │ Mech Status  │ │ Feats, Mods  │ │ World Map, Wiki   │  │
+│  │ Composite    │ │ & Defense    │ │ & Gemstone   │ │ Codex & Dev       │  │
+│  │ Mech Preview │ │ Telemetry    │ │ Crafting     │ │ Inspector         │  │
+│  └──────────────┘ └──────────────┘ └──────────────┘ └───────────────────┘  │
+└────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Data Model & State
-- **Room Lighting & Atmosphere Metadata (`RoomLightingProfile`)**:
-  - Support optional per-room or sub-zone lighting overrides (`safetyTier: 'sanctuary' | 'trail' | 'hazard' | 'abyss'`, `ambientDarkness`, `cornerShadowIntensity`, `playerVisionRadiusPx`, `tintColor`) so safe rooms (`0,0`, `0,-2`, `-3,0`) feel immediately welcoming and hazard rooms (`2,0`, `2,1`, `3,-1`, `Loop` nodes) feel tense and claustrophobic.
-- **Vision & Threat Awareness Calculation**:
-  - Base player vision radius (`~68px` in standard trails, `~110px` in sanctuaries, `~48px` in deep bog / Æther Loop rooms).
-  - Expanded dynamically by equipped **Optics** and **Sensory** hardware (`+12px` to `+26px`) and **Poe Lantern** guidance (`+16px`).
-  - Enemies and traps beyond `visionRadiusPx` fade into shadow (`alpha` scaled down to `0.08–0.15` silhouette or submerged state, with only faint emissive eye glints or attack windup flares visible) and cannot be soft-locked until within sensor range.
-- **Structured Loot Tables (`LootTableConfig`)**:
-  - `RegionDefinition.lootPool`, `AreaWikiDefinition.lootPool`, and `EnemyDefinition.equipmentDrops` allow each enemy (e.g., `orc_warrior`, `bog_wurm`, `percival_knight`, `lady_of_the_lake`) and each area cache (`m00_the_bog`, `orc_siege_encampment`, `camelot_border_town`) to drop specific canonical weapons (including `×2` second copies of 1H weapons), hardware pieces, and materials.
+### Data Model & State Cleanup
+
+- **Unified Equipment & Hardware Resolution**:
+  - Every hardware slot (`head`, `arms`, `legs`, `plating`, `reactor`, `sensoryA`, `sensoryB`, `aux3`, `aux4`) and weapon slot (`slot1`, `slot2`, `slot3`, `utility`, `belt`) resolves from its dedicated domain module in the Equipment Registry.
+  - Duplicate coreplate definitions between the general hardware catalog and the plating module are unified so `CANONICAL_HARDWARE_CATALOG` derives its `plating` entries directly from `CANONICAL_COREPLATES`.
+- **Clean Item & Enemy Taxonomy**:
+  - Items are grouped into logical sub-domains: `consumables` (Gem Flasks, Booster Kit), `gemstones` (the 9 canonical gemstones), `currency` (Belldor Trade Coins), and `quest/belldor` (signet ring, cryptic list, keys, relics, grail artifacts).
+  - Legacy `repair_kit` fallback shims and dead item references are removed from state initialization and registries.
+  - Enemies are grouped into regional/faction sub-domains under the enemy registry while preserving auto-discovery.
 
 ### Interactive Component & State Mapping
-1. **Multi-Screen Room Redesign (`M00 The Bog` & Global Procedural Templates)**:
-   - `-3,0` **Drop-Pod Impact Crater (`16×12`)**: Central scorched impact crater, smoking pod beacon, shattered fuselage walls, and western security door to `-4,0`.
-   - `-2,0` **Downed Trees West (`16×12`)** & `-1,0` **Downed Trees East (`16×12`)**: Winding hollow-log corridors, moss-draped pylon stumps, flanking mire pockets, and hidden cache alcoves.
-   - `0,0` **First Campfire Clearing (`16×12`)**: Raised ancient flagstone sanctuary ring around the Waystation Campfire (`A`), warm radial hearth illumination, and clear 4-way crossroads.
-   - `0,-1` **Overgrown Ruin Approach (`16×13`)** & `0,-2` **Poe Lantern Sanctuary (`16×12`)**: Sunken monastic colonnade leading to a tranquil lantern shrine (`L`) with cyan-gold light falloff.
-   - `1,0` **Temple Ruins & Sir Bedivere's Corpse (`18×12`)**: Shattered temple nave, broken pillar rows, Sir Bedivere's fallen frame (`S`) in a central courtyard, and multi-angle crawler ambushes.
-   - `2,0` **Corrosive Marsh Trail (`18×13`)**, `3,-1` **Northern Bog Hollow (`16×12`)**, `3,0` **Main Bog Expanse & Exit Gate (`18×13`)**, and `2,1` **Lady of the Lake Arena (`20×15`)**: Expansive hazardous marshlands with stepping-stone islands, corrosive channels, and boss amphitheater.
-   - **Global Procedural Templates (`templates.ts` & `worldSystem.ts`)**: Expand `global_marsh_crossing`, `global_sinkhole_bridge`, `global_pillar_sanctuary`, `global_ruined_arcade`, and `generateProceduralRoomGrid` from `10×9` to `16×12` / `14×11` so procedural **General**, **Side**, and **Loop** nodes match the larger room scale.
-2. **2.5D Directional Shadows, Corner Darkness & Vision Mask (`renderSystem.ts`)**:
-   - Render angled 2.5D cast shadows on the ground layer to the south-east of walls (`#`), pillars (`P`), and large props.
-   - Render room-perimeter corner darkness gradients in world space so the four corners and wall recesses of every multi-screen room are naturally darker.
-   - Apply dynamic visibility gating to enemies, traps/sinkholes, and lock-on targeting based on distance to player + active light sources + equipped Optics/Sensors.
-3. **Enemy / Area / Region Loot Table Wiring (`entitySystem.ts`, `worldSystem.ts`, `database/`)**:
-   - Wire `resolveContextualEquipmentDrop(state, context)` so enemy kills, area caches, and scavenger trades pull from area- and enemy-specific equipment pools (unlocking 1st copies first and allowing 2nd copies of 1H weapons from matching faction/area sources).
+
+- **Loadout Sub-View**: Handles slot selection (`slot1`, `slot2`, `slot3`, `head`, `arms`, `legs`, `plating`, `reactorCore`, `sensoryA`, `sensoryB`, `aux3`, `aux4`, `utility`, `belt`), triggers `syncStateGates(state)`, and immediately re-renders the `CompositeMechPreviewCanvas` and active weapon stance skills (`ac1`–`ac5`).
+- **Mech Status & Progression Sub-Views**: Handle gemstone funding into pilot skills, feat socketing, and real-time calculation of Layer 1 Shield Capacity, Layer 2 Armor Threshold/Rating/Durability, and Layer 3 Frame Integrity.
+- **World & Codex Sub-Views**: Provide interactive fast-travel to discovered Waystations/Waygates, live Aether Fog graph inspection, and dynamically populated Codex entries for all registered Equipment, Weapons, Items, Enemies, and Biomes.
+- **Authoring Documentation Synchronization**: Update `AUTHORING_GUIDE.md` so all documented domain structures, weapon/equipment registration instructions, and quest item templates accurately reflect the cleaned-up architecture.

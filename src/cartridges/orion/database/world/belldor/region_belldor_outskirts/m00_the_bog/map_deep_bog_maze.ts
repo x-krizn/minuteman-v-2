@@ -188,8 +188,8 @@ export const room3Neg1BogLoopHollow: RoomDefinition = {
   ],
   cache: {
     scrap: 24,
-    items: [{ itemId: 'repair_kit', count: 1 }],
-    toast: 'LOOTED MIST HOLLOW: +24 SCRAP & FIELD REPAIR KIT',
+    items: [{ itemId: 'demantoid_flask', count: 1 }],
+    toast: 'LOOTED MIST HOLLOW: +24 SCRAP & DEMANTOID FLASK',
   },
 };
 

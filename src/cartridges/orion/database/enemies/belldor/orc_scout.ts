@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { getDirFromVector, getRoomDimensions } from '../../constants';
-import { EnemyEntity, EnemyWikiDefinition, OrionState } from '../../types';
+import { getDirFromVector, getRoomDimensions } from '../../../constants';
+import { EnemyEntity, EnemyWikiDefinition, OrionState } from '../../../types';
 
 function getOrcTarget(
   state: OrionState,

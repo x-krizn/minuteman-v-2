@@ -48,7 +48,7 @@ export const m00TheBogArea: AreaWikiDefinition = {
       'grace_edge',
     ],
     gemIds: ['spinel', 'hematite', 'moonstone', 'charoite', 'rubellite'],
-    consumableIds: ['repair_kit', 'grail_water'],
+    consumableIds: ['demantoid_flask', 'grail_water'],
     equipmentDropChance: 0.45,
   },
   zoneFeatures: [

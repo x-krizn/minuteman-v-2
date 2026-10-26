@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { getDirFromVector } from '../../constants';
-import { EnemyEntity, EnemyWikiDefinition, OrionState } from '../../types';
+import { getDirFromVector } from '../../../constants';
+import { EnemyEntity, EnemyWikiDefinition, OrionState } from '../../../types';
 
 function getOrcTarget(
   state: OrionState,
@@ -50,7 +50,7 @@ export const orcWarriorEnemy: EnemyWikiDefinition = {
   tellDurationSec: 0.4,
   attackCooldownSec: 1.6,
   lootTable: [
-    { itemId: 'salvage_scrap', chance: 1.0, count: 8 },
+    { itemId: 'trade_coin', chance: 1.0, count: 8 },
     { itemId: 'orc_war_paint', chance: 0.35 },
   ],
   render25D(g, e, _state, ey, isHurt) {

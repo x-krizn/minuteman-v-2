@@ -14,7 +14,7 @@ import {
   unlockEquipmentItem,
   unlockLevel2SecondaryWeapon,
 } from '../database/progression';
-import { getWeaponDefinition } from '../database/weapons';
+import { getWeaponDefinition } from '../database/equipment/weapons';
 import { EnemyEntity, OrionCombatContext, OrionExecutionContext, OrionState } from '../types';
 import { applyDamageToLayers, PERFECT_BLOCK_WINDOW_SEC } from './combatSystem';
 import { addOrionInventoryItem, isSolidAt, notifyOrionStateChange, syncStateGates } from './playerSystem';
@@ -256,10 +256,10 @@ export function updateEnemies(
           const scaledChance = Math.min(1, drop.chance * (1 + effDepth * 0.2));
           if (Math.random() <= scaledChance) {
             const baseCount = drop.count || 1;
-            const count =
-              drop.itemId === 'salvage_scrap'
-                ? baseCount + effDepth * 2 + (e.isFogBoss ? 6 : 0)
-                : baseCount + (effDepth >= 3 && Math.random() < 0.35 ? 1 : 0);
+            const isCurrency = drop.itemId === 'trade_coin';
+            const count = isCurrency
+              ? baseCount + effDepth * 2 + (e.isFogBoss ? 6 : 0)
+              : baseCount + (effDepth >= 3 && Math.random() < 0.35 ? 1 : 0);
             const dropDef = getItemDefinition(drop.itemId);
             for (let c = 0; c < count; c++) {
               state.pickups.push({
@@ -268,13 +268,10 @@ export function updateEnemies(
                 y: e.y + (Math.random() - 0.5) * 12,
                 z: 6,
                 vz: 30 + Math.random() * 20,
-                kind: drop.itemId === 'salvage_scrap' ? 'scrap' : 'item',
+                kind: isCurrency ? 'scrap' : 'item',
                 itemId: drop.itemId,
                 value: 1,
-                color:
-                  drop.itemId === 'salvage_scrap'
-                    ? '#ffd27d'
-                    : dropDef?.iconColor || '#77c7ff',
+                color: isCurrency ? '#ffd27d' : dropDef?.iconColor || '#77c7ff',
                 t: Math.random() * 5,
               });
             }
@@ -612,9 +609,9 @@ export function updatePickups(
     if (dist < 10) {
       soundSystem.playCoin();
 
-      if (p.kind === 'scrap' || p.itemId === 'salvage_scrap') {
+      if (p.kind === 'scrap' || p.itemId === 'trade_coin') {
         state.salvageScrap += p.value || 1;
-        ctx.say(`+${p.value || 1} SALVAGE SCRAP`);
+        ctx.say(`+${p.value || 1} TRADE COINS`);
       } else if (p.itemId) {
         const weaponDef = getWeaponDefinition(p.itemId);
         if (weaponDef) {

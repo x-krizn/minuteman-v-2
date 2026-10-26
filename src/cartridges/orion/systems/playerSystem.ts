@@ -39,7 +39,7 @@ import {
   syncPostTutorialFrameLevel,
   unlockLevel2SecondaryWeapon,
 } from '../database/progression';
-import { getWeaponDefinition } from '../database/weapons';
+import { getWeaponDefinition } from '../database/equipment/weapons';
 import { getBiomeDefinition, getTileDefinition } from '../database/world';
 import {
   OrionCapabilityGates,

@@ -56,7 +56,7 @@ import {
   isTrueWeaponEquipment,
   isTwoHandOnlyWeapon,
   WEAPON_REGISTRY,
-} from '../database/weapons';
+} from '../database/equipment/weapons';
 import {
   addOrionInventoryItem,
   getTutorialPromptOverride,

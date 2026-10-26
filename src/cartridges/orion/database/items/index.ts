@@ -33,13 +33,7 @@ export function getItemDefinition(id: string): ItemWikiDefinition | undefined {
   return ITEM_REGISTRY[id];
 }
 
-// Legacy alias support: repair_kit resolves to demantoid_flask
-if (ITEM_REGISTRY['demantoid_flask'] && !ITEM_REGISTRY['repair_kit']) {
-  ITEM_REGISTRY['repair_kit'] = ITEM_REGISTRY['demantoid_flask'];
-}
-
+export * from './consumables';
 export * from './currency';
-export * from './gem_flasks';
 export * from './gemstones';
 export * from './quest/belldor';
-

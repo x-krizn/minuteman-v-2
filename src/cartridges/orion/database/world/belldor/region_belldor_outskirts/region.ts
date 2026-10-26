@@ -38,7 +38,7 @@ export const regionBelldorOutskirts: RegionDefinition = {
       'cl350_litany',
     ],
     gemIds: ['spinel', 'hematite', 'carnelian', 'moonstone', 'charoite', 'rubellite'],
-    consumableIds: ['repair_kit', 'grail_water'],
+    consumableIds: ['demantoid_flask', 'grail_water'],
     equipmentDropChance: 0.4,
   },
 };

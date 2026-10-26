@@ -78,20 +78,37 @@ src/cartridges/orion/
 │   │   │   └── templates.ts      # Global biomes, regions, areas, maps & procedural rooms
 │   │   └── tiles/                # Shared tile & 2.5D prop definitions + embedded 16x16 base tiles
 │   ├── enemies/                  # [ORION-ANCHOR: ENEMY-GLOB-REGISTRY] Self-contained Enemy, Boss & NPC modules
-│   ├── weapons/                  # Self-contained 5-Action Weapon modules (29 Magitech + 12 Heritage)
-│   ├── items/                    # Consumables, 9 Gemstones, Keys & Relics
-│   ├── equipment/                # Tactical Utilities [Action 6] & Hardware/Reactor assignable [L]/[R] skills
+│   │   └── belldor/              # Belldor regional enemies, bosses & NPCs (bog_crawler, bog_wurm, Grail Knights, etc.)
+│   ├── items/                    # Consumables, 9 Gemstones, Currency & Quest Relics
+│   │   ├── consumables/          # gem_flasks.ts, booster_kit.ts
+│   │   ├── quest/belldor/        # Belldor quest items, keys & relics
+│   │   ├── currency.ts           # trade_coin
+│   │   └── gemstones.ts          # 9 Canonical Gemstones
+│   ├── equipment/                # Slot-organized Weapons, Hardware, Coreplates, Reactors & Utilities
+│   │   ├── weapons/              # Self-contained 5-Action Weapon modules (29 Magitech + 12 Heritage + Auxiliaries)
+│   │   ├── plating/              # 6 Canonical Coreplates
+│   │   ├── reactors/             # 6 Canonical Reactors
+│   │   ├── head/                 # 6 Head Optics / Command Domes
+│   │   ├── sensory/              # 12 Sensory A & B Arrays
+│   │   ├── arms/                 # 6 Arms Gauntlets / Assemblies
+│   │   ├── legs/                 # 6 Legs Striders
+│   │   ├── auxiliaries/          # 14 Aux 3 / Aux 4 & Energy Storage modules
+│   │   ├── chassis_hardware.ts   # Hardware aggregator & resolveEquippedHardwareStats(state)
+│   │   └── utility_and_belt_modules.ts # Tactical Utilities [Action 6] & assignable [L]/[R] skills
 │   ├── characters/               # 6 Classless Starting Loadout Kit profiles (Bastion, Fortress, Dawnforge, etc.)
 │   └── progression/              # [ORION-ANCHOR: PROG-FEAT-SYNERGY] 97 Canonical Feats, 58 Hardware items & Level Gates
 │
-├── systems/                      # 5 Cohesive Engine Systems
+├── systems/                      # Modular Engine Systems
 │   ├── renderSystem.ts           # [ORION-ANCHOR: RENDER-CLUSTER-BAKE] & [ORION-ANCHOR: RENDER-POST-PROCESS]
+│   ├── renderHudAndFogTells.ts   # Canonical 3-Layer HUD & Aether Fog wayfinding tells
+│   ├── playerSpriteSystem.ts     # Dynamic 8-dir composite player mech sprite renderer
 │   ├── worldSystem.ts            # [ORION-ANCHOR: WORLD-COMPOSER-INIT] & [ORION-ANCHOR: AETHER-FOG-TOPOLOGY]
 │   ├── playerSystem.ts           # State store, save/load, 2.5D physics, player controller & state gates
 │   ├── combatSystem.ts           # [ORION-ANCHOR: COMBAT-DEFENSE-MATH] & [ORION-ANCHOR: COMBAT-ACTION-PAYLOAD]
 │   └── entitySystem.ts           # [ORION-ANCHOR: ENTITY-SPAWN-ROOM] Enemy spawning/AI, projectiles, pickups & particles
 │
 └── ui/                           # React HUD, Satchel & Menu overlays
+    └── satchel/                  # Modular Satchel sub-components (SatchelCanvases, SatchelWorldTab)
 ```
 
 ### Recommended Order for Building New World Content
@@ -163,19 +180,19 @@ Every character in a `10 × 9` Room `grid` resolves through two passes:
 | `3` | `hidden_switch_3` | `tiles/hidden_switch.ts` | Layer 2 · Walkable | Secret exploration floor/wall switch #3 (`[A]` to toggle). |
 | `!` | `toggle_switch` | `tiles/hidden_switch.ts` | Layer 2 · Walkable | Room mechanism / desync lock lever (`[A]` to toggle). |
 
-#### Table 2: Reserved Global Enemy & NPC Spawn Characters (`database/enemies/`)
+#### Table 2: Reserved Global Enemy & NPC Spawn Characters (`database/enemies/belldor/`)
 | Char | Enemy Type ID | Entry File | Faction | Role & Notes |
 | :---: | :--- | :--- | :--- | :--- |
-| `E` | `bog_crawler` | `enemies/bog_crawler.ts` | `hostile` | Armored Bog arthropod ambusher (`M00 The Bog`). |
-| `W` | `bog_wurm` | `enemies/bog_wurm.ts` | `hostile` | Submerged bio-machine serpent mini-boss (`M00 The Bog`). |
-| `p` | `bog_poe` | `enemies/bog_poe.ts` | `poe` | Floating Lantern Spirit (`M00 The Bog`; escort or slay). |
-| `o` | `orc_warrior` | `enemies/orc_warrior.ts` | `hostile` | Frontline Orc boarding-axe & shield raider (`Belldor` / `Novarin`). |
-| `s` | `orc_scout` | `enemies/orc_scout.ts` | `hostile` | Ranged Orc boltcaster skirmisher (`Belldor` / `Novarin`). |
-| `K` | `percival_knight` | `enemies/percival_knight.ts` | `camelot` | Sir Percival — Grail Knight phalanx boss (`Camelot Border Town`). |
-| `T` | `tristan_knight` | `enemies/tristan_knight.ts` | `camelot` | Sir Tristan — Corrupted Ranger boss (`Camelot Border Town`). |
-| `B` | `bors_knight` | `enemies/bors_knight.ts` | `camelot` | Sir Bors — Berserk Striker boss (`Camelot Border Town`). |
-| `N` | `town_npc` | `enemies/town_npc.ts` | `npc` | Border Town Survivor (`calm`, `linger`, or `feral` disposition). |
-| *(Event)*| `lady_of_the_lake`| `enemies/lady_of_the_lake.ts`| `hostile` | Awakened via `awakenLadyOfTheLake()` in `0,-2` when carrying Bedivere's items. |
+| `E` | `bog_crawler` | `enemies/belldor/bog_crawler.ts` | `hostile` | Armored Bog arthropod ambusher (`M00 The Bog`). |
+| `W` | `bog_wurm` | `enemies/belldor/bog_wurm.ts` | `hostile` | Submerged bio-machine serpent mini-boss (`M00 The Bog`). |
+| `p` | `bog_poe` | `enemies/belldor/bog_poe.ts` | `poe` | Floating Lantern Spirit (`M00 The Bog`; escort or slay). |
+| `o` | `orc_warrior` | `enemies/belldor/orc_warrior.ts` | `hostile` | Frontline Orc boarding-axe & shield raider (`Belldor` / `Novarin`). |
+| `s` | `orc_scout` | `enemies/belldor/orc_scout.ts` | `hostile` | Ranged Orc boltcaster skirmisher (`Belldor` / `Novarin`). |
+| `K` | `percival_knight` | `enemies/belldor/percival_knight.ts` | `camelot` | Sir Percival — Grail Knight phalanx boss (`Camelot Border Town`). |
+| `T` | `tristan_knight` | `enemies/belldor/tristan_knight.ts` | `camelot` | Sir Tristan — Corrupted Ranger boss (`Camelot Border Town`). |
+| `B` | `bors_knight` | `enemies/belldor/bors_knight.ts` | `camelot` | Sir Bors — Berserk Striker boss (`Camelot Border Town`). |
+| `N` | `town_npc` | `enemies/belldor/town_npc.ts` | `npc` | Border Town Survivor (`calm`, `linger`, or `feral` disposition). |
+| *(Event)*| `lady_of_the_lake`| `enemies/belldor/lady_of_the_lake.ts`| `hostile` | Awakened via `awakenLadyOfTheLake()` in `0,-2` when carrying Bedivere's items. |
 
 #### Free Unclaimed ASCII Characters for New Global Tiles or Enemies
 - **Uppercase Letters Free Globally**: `F`, `H`, `I`, `J`, `O`, `R`, `U`, `X`, `Y`, `Z`
@@ -301,8 +318,8 @@ export const room02SunkenShrine: RoomDefinition = {
   ],
   cache: {
     scrap: 45,
-    items: [{ itemId: 'repair_kit', count: 2 }],
-    toast: 'LOOTED SHRINE: +45 SCRAP & 2x REPAIR KITS',
+    items: [{ itemId: 'demantoid_flask', count: 2 }],
+    toast: 'LOOTED SHRINE: +45 COINS & 2x DEMANTOID FLASKS',
   },
 };
 
@@ -378,13 +395,13 @@ Regions are top-level territories or Shattered Worlds assembled from `localAreaI
 
 ## 3. Authoring Gameplay Entities (Enemies, Weapons, Items, Equipment)
 
-### Adding an Enemy (`database/enemies/<enemy_name>.ts` → `[ORION-ANCHOR: ENEMY-GLOB-REGISTRY]`)
+### Adding an Enemy (`database/enemies/<world>/<enemy_name>.ts` → `[ORION-ANCHOR: ENEMY-GLOB-REGISTRY]`)
 Every enemy file encapsulates its own **spawn token (`spawnChar`)**, **Three Defense Layers (`shields`, `armor`, `frameIntegrity`)**, **telegraph (`tellDurationSec`, `tellRadius`)**, **loot table**, **AI (`update`)**, and **visuals (`sprite` or `render25D`)**.
 - Check Section 2B's **Master ASCII Registry** to pick an unclaimed `spawnChar` (such as `'H'`, `'J'`, `'R'`, `'U'`, `'X'`, `'Y'`, `'Z'`), or map the enemy per-biome in `biome.enemySpawnTypes`.
 
 ```ts
-// Example: src/cartridges/orion/database/enemies/tyrranus_centurion.ts
-import { EnemyWikiDefinition } from '../../types';
+// Example: src/cartridges/orion/database/enemies/tyrranus/tyrranus_centurion.ts
+import { EnemyWikiDefinition } from '../../../types';
 
 export const tyrranusCenturionEnemy: EnemyWikiDefinition = {
   type: 'tyrranus_centurion',
@@ -404,8 +421,8 @@ export const tyrranusCenturionEnemy: EnemyWikiDefinition = {
   tellDurationSec: 0.65,
   attackCooldownSec: 1.6,
   lootTable: [
-    { itemId: 'salvage_scrap', chance: 1.0, count: 20 },
-    { itemId: 'repair_kit', chance: 0.35, count: 1 },
+    { itemId: 'trade_coin', chance: 1.0, count: 20 },
+    { itemId: 'demantoid_flask', chance: 0.35, count: 1 },
   ],
   update(_rooms, state, e, dt) {
     const dx = state.x - e.x;
@@ -419,17 +436,17 @@ export const tyrranusCenturionEnemy: EnemyWikiDefinition = {
 };
 ```
 
-### Adding a Weapon (`database/weapons/<weapon_name>.ts` or `database/weapons/magitech_catalog.ts`)
+### Adding a Weapon (`database/equipment/weapons/<category>/<weapon_name>.ts` or `database/equipment/weapons/magitech_catalog.ts`)
 Every weapon defines a 5-action moveset (`slot: 0` = primary chain, `slot: 1..4` = active skills assignable to `[L]` and `[R]`), `weaponClass`, `weightClass` (`'light' | 'medium' | 'heavy'`), optional `adaptiveDamageTypes` (`[DamageType, DamageType]`), optional `supportPulseOnHit`, and an optional `hardpointSprite` or `renderHardpoint25D`.
 
-### Adding an Item (`database/items/<item_name>.ts`)
+### Adding an Item (`database/items/consumables/<item_name>.ts` or `database/items/quest/<world>/<item_name>.ts`)
 Create a file exporting an `ItemWikiDefinition` (`id`, `name`, `category`, `iconColor`, optional `iconSprite`, and optional `onUse(state, ctx)` callback). Reference its `id` in any Room `cache` or Enemy `lootTable`.
 
 ---
 
 ## 4. Embedding Drafted PNG Assets Directly in Entry Files (`[ORION-ANCHOR: RENDER-CLUSTER-BAKE]`)
 
-All visual assets in Project Orion are embedded directly inside their respective entry files (`database/world/tiles/`, `database/world/<world>/biomes.ts`, `database/enemies/`, `database/items/`, `database/weapons/`) — there is no separate `assets/` directory.
+All visual assets in Project Orion are embedded directly inside their respective entry files (`database/world/tiles/`, `database/world/<world>/biomes.ts`, `database/enemies/`, `database/items/`, `database/equipment/weapons/`) — there is no separate `assets/` directory.
 - Images and sub-tile clusters are decoded and baked once into an in-memory `Map<string, HTMLImageElement | HTMLCanvasElement>` cache (`systems/renderSystem.ts`) and drawn with `imageSmoothingEnabled = false` so pixel art stays razor-sharp.
 - Floor terrain tiles (`.`, `,`, `~`, `:`, `;`), walls (`#`), and pillars (`P`) are automatically rendered via the `bog_tileset` (`5×5` clusters of `3×3` tiles) or `ruins_tileset` (`4×5` clusters of `3×3` tiles) auto-tiler, while interactive doodads (`V`, `A`, `Q`, `L`, `1`/`2`/`3`/`!`) slice directly from `DOODADS_01_BASE64`.
 
@@ -524,8 +541,8 @@ Frame Level (1–20 Milestones, No Gems)
    - **Sanctum Support Kit (`SANC Sanctum`)**: `Sanctum Support Coreplate`, `SANC Heartwell Reactor Mk.IV`, `SANC Providence Command Helm` (Head), `Sanctum Benediction Assemblies` (Arms), `Sanctum Steadfast Striders` (Legs), `CL-700 Sanctifier`, `SANC Radiant Ward Projector`.
 
 3. **Canonical Equipment Catalog (`Project Orion — Equipment & Feats.md`)**:
-   - **Weapons (`database/weapons/magitech_catalog.ts` + Heritage Set)**: 29 canonical Magitech weapons (Bolters, Polybolos, Ballistas, Gatling Guns, Grenade/Rocket/Missile Systems, Beam Projectors/Lances, Energy Carbines, Hybrid Rifles/Staves, Monomolecular/Thermal Blades, and Physical Shields) alongside the 12 heritage field weapons, all executing weapon-class-authentic melee/ranged combat payloads across Skills 1–5 (`[ORION-ANCHOR: COMBAT-ACTION-PAYLOAD]`).
-   - **Chassis Hardware & Frame Components (`database/equipment/chassis_hardware.ts`)**: 6 Coreplates (`plating`), 6 Reactors (`reactorCore`), 6 Head Command Domes/Helms (`head`), 6 Sensory A (`sensoryA`), 6 Sensory B (`sensoryB`, including `SANC Blessing Resonance Grid`), 6 Arms Gauntlets/Assemblies (`arms`), 6 Legs Striders (`legs`), 6 Aux 3 Systems (`aux3`), 6 Aux 4 Systems (`aux4`), and Energy Storage (`Crystal Dynamics ERD Lodestone`, `VX Shadow Capacitor`). All items are explicitly flagged with `isPlaceholderAsset: true` and `futureAssetPlanned` documentation. Equipping any Coreplate, Reactor, or Aux module dynamically drives live frame stats (`armor.type`, `armor.threshold`, `armor.rating`, `armor.maxDurability`, `shields.maxCapacity`, `reactor`, and `effectiveLoadCapacity`) via `resolveEquippedHardwareStats(state)`.
+   - **Weapons (`database/equipment/weapons/magitech_catalog.ts` + Heritage Set)**: 29 canonical Magitech weapons (Bolters, Polybolos, Ballistas, Gatling Guns, Grenade/Rocket/Missile Systems, Beam Projectors/Lances, Energy Carbines, Hybrid Rifles/Staves, Monomolecular/Thermal Blades, and Physical Shields) alongside the 12 heritage field weapons, all executing weapon-class-authentic melee/ranged combat payloads across Skills 1–5 (`[ORION-ANCHOR: COMBAT-ACTION-PAYLOAD]`).
+   - **Chassis Hardware & Frame Components (`database/equipment/chassis_hardware.ts` & Slot Folders `plating/`, `reactors/`, `head/`, `sensory/`, `arms/`, `legs/`, `auxiliaries/`)**: 6 Coreplates (`plating`), 6 Reactors (`reactor`), 6 Head Command Domes/Helms (`head`), 6 Sensory A (`sensoryA`), 6 Sensory B (`sensoryB`, including `SANC Blessing Resonance Grid`), 6 Arms Gauntlets/Assemblies (`arms`), 6 Legs Striders (`legs`), 6 Aux 3 Systems (`aux3`), 6 Aux 4 Systems (`aux4`), and Energy Storage (`Crystal Dynamics ERD Lodestone`, `VX Shadow Capacitor`). All items are explicitly flagged with `isPlaceholderAsset: true` and `futureAssetPlanned` documentation. Equipping any Coreplate, Reactor, or Aux module dynamically drives live frame stats (`armor.type`, `armor.threshold`, `armor.rating`, `armor.maxDurability`, `shields.maxCapacity`, `reactor`, and `effectiveLoadCapacity`) via `resolveEquippedHardwareStats(state)`.
    - **Tactical Utilities (`database/equipment/utility_and_belt_modules.ts`)**: 6 classless `Action 6` utilities (`PNSY D-0g Repair Drone`, `RAD R463 Fathomless System`, `TI Lightwell Recovery System`, `VX Smoke Dispersal System`, `ARC Rift Anchor`, `SANC Radiant Ward Projector`).
 
 4. **95 Verbatim Lore Feats (Tiers I–V) + `Knight's Oath` Reward Feat (`database/progression/canonical_feats.ts` → `[ORION-ANCHOR: PROG-FEAT-SYNERGY]`)**:

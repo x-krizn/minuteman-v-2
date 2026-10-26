@@ -3,10 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { soundSystem } from '../../../../engine/core/soundSystem';
-import { getDirFromVector, getRoomDimensions } from '../../constants';
-import { notifyOrionStateChange } from '../../systems/playerSystem';
-import { EnemyEntity, EnemyWikiDefinition, OrionState } from '../../types';
+import { soundSystem } from '../../../../../engine/core/soundSystem';
+import { getDirFromVector, getRoomDimensions } from '../../../constants';
+import { notifyOrionStateChange } from '../../../systems/playerSystem';
+import { EnemyEntity, EnemyWikiDefinition, OrionState } from '../../../types';
 
 export const ladyOfTheLakeEnemy: EnemyWikiDefinition = {
   type: 'lady_of_the_lake',
@@ -26,7 +26,7 @@ export const ladyOfTheLakeEnemy: EnemyWikiDefinition = {
   tellDurationSec: 0.55,
   attackCooldownSec: 2.0,
   lootTable: [
-    { itemId: 'salvage_scrap', chance: 1.0, count: 100 },
+    { itemId: 'trade_coin', chance: 1.0, count: 100 },
     { itemId: 'corrupted_shard', chance: 1.0, count: 3 },
     { itemId: 'grail_water', chance: 1.0, count: 2 },
     { itemId: 'titanite', chance: 1.0, count: 1 },

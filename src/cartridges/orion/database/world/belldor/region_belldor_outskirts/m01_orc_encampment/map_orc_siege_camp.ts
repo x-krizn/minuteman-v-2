@@ -54,8 +54,8 @@ export const room31OrcEncampmentSiege: RoomDefinition = {
     scrap: 40,
     items: [
       { itemId: 'orc_war_paint', count: 2 },
-      { itemId: 'repair_kit', count: 1 },
+      { itemId: 'demantoid_flask', count: 1 },
     ],
-    toast: 'LOOTED SIEGE CACHE: +40 SCRAP, 2x ORC WAR PAINT & REPAIR KIT',
+    toast: 'LOOTED SIEGE CACHE: +40 SCRAP, 2x ORC WAR PAINT & DEMANTOID FLASK',
   },
 };

@@ -56,9 +56,9 @@ export const room70TyrranusWaygateLanding: RoomDefinition = {
   cache: {
     scrap: 60,
     items: [
-      { itemId: 'repair_kit', count: 2 },
+      { itemId: 'demantoid_flask', count: 2 },
       { itemId: 'grail_water', count: 1 },
     ],
-    toast: 'LOOTED TYRRANUS CACHE: +60 SCRAP, 2x REPAIR KITS & GRAIL WATER',
+    toast: 'LOOTED TYRRANUS CACHE: +60 SCRAP, 2x DEMANTOID FLASKS & GRAIL WATER',
   },
 };

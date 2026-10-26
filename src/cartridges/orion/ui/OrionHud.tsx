@@ -14,7 +14,7 @@ import {
   getInventoryGemCount,
   TRAIT_FUNDING_GEMS,
 } from '../database/progression';
-import { getWeaponDefinition } from '../database/weapons';
+import { getWeaponDefinition } from '../database/equipment/weapons';
 import { getItemDefinition } from '../database/items';
 import {
   activateResolvedCombatSkill,

@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { getDirFromVector } from '../../constants';
-import { EnemyEntity, EnemyWikiDefinition, OrionState } from '../../types';
+import { getDirFromVector } from '../../../constants';
+import { EnemyEntity, EnemyWikiDefinition, OrionState } from '../../../types';
 
 export const bogCrawlerEnemy: EnemyWikiDefinition = {
   type: 'bog_crawler',

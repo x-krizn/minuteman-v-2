@@ -173,7 +173,7 @@ export const globalAetherDriftCorridorArea: AreaWikiDefinition = {
     'Pilots immune to raw æther can walk the calcified mineral bridges that still tether neighboring worlds together.',
   localMapIds: [],
   globalMapIds: ['global_aether_drift_bridge_map'],
-  connectedAreaIds: ['camelot_waygate_depths', 'tyrranus_marble_gatehead'],
+  connectedAreaIds: ['camelot_interior', 'tyrranus_marble_gatehead'],
   spawnAnchor: { room: '6,-1', x: 80, y: 72 },
   exitAnchor: { room: '7,1', x: 80, y: 72 },
 };
@@ -193,7 +193,7 @@ export const globalShatteredWildsArea: AreaWikiDefinition = {
     'Where tuning crystals were stripped away, shifting marshlands and fractured arcades drift between settled regions.',
   localMapIds: [],
   globalMapIds: ['global_wetland_expanse_map', 'global_desync_outskirts_map'],
-  connectedAreaIds: ['m00_the_bog', 'orc_siege_encampment', 'border_town_slums'],
+  connectedAreaIds: ['m00_the_bog', 'm01_orc_encampment', 'camelot_border_town'],
   spawnAnchor: { room: '0,1', x: 80, y: 72 },
   exitAnchor: { room: '4,1', x: 80, y: 72 },
 };
@@ -377,7 +377,7 @@ export const globalOrcOutpostCorridorRoom: RoomDefinition = {
   id: 'global_orc_outpost_corridor',
   scope: 'global',
   coord: 'global:orc_outpost_corridor',
-  areaId: 'orc_siege_encampment',
+  areaId: 'm01_orc_encampment',
   biomeId: 'orc_siege_encampment',
   title: 'Siege Trench Approach',
   bannerTitle: 'NOVARIN SIEGE TRENCH · ORC PATROL',

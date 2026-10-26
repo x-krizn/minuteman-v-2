@@ -8,5 +8,4 @@ export * from './enemies';
 export * from './equipment';
 export * from './items';
 export * from './progression';
-export * from './weapons';
 export * from './world';

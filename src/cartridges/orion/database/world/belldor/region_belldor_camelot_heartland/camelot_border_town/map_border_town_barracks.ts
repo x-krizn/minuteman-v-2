@@ -57,8 +57,8 @@ export const room4Neg1BorderTownBarracks: RoomDefinition = {
     scrap: 30,
     items: [
       { itemId: 'bedivere_relic', count: 1 },
-      { itemId: 'repair_kit', count: 2 },
+      { itemId: 'demantoid_flask', count: 2 },
     ],
-    toast: 'LOOTED: +30 SCRAP, BEDIVERE RELIC (3/3) & REPAIR KITS',
+    toast: 'LOOTED: +30 SCRAP, BEDIVERE RELIC (3/3) & DEMANTOID FLASKS',
   },
 };

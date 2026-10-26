@@ -3,10 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { soundSystem } from '../../../../engine/core/soundSystem';
-import { getDirFromVector, getRoomDimensions } from '../../constants';
-import { addOrionInventoryItem, notifyOrionStateChange } from '../../systems/playerSystem';
-import { EnemyEntity, EnemyWikiDefinition, OrionCombatContext, OrionState } from '../../types';
+import { soundSystem } from '../../../../../engine/core/soundSystem';
+import { getDirFromVector, getRoomDimensions } from '../../../constants';
+import { addOrionInventoryItem, notifyOrionStateChange } from '../../../systems/playerSystem';
+import { EnemyEntity, EnemyWikiDefinition, OrionCombatContext, OrionState } from '../../../types';
 
 function handleGrailKnightDefeat(state: OrionState, ctx: OrionCombatContext): void {
   state.flags = state.flags || {};
@@ -48,7 +48,7 @@ export const percivalKnightEnemy: EnemyWikiDefinition = {
   tellDurationSec: 0.5,
   attackCooldownSec: 2.1,
   lootTable: [
-    { itemId: 'salvage_scrap', chance: 1.0, count: 40 },
+    { itemId: 'trade_coin', chance: 1.0, count: 40 },
     { itemId: 'grail_fragment', chance: 1.0, count: 1 },
   ],
   onDeath(state, _e, ctx) {

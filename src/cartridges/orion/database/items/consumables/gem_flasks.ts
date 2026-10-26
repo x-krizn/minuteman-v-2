@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { ItemWikiDefinition, OrionExecutionContext, OrionState } from '../../types';
+import { ItemWikiDefinition, OrionExecutionContext, OrionState } from '../../../types';
 
 /**
  * Row 3 (row = 2) Gem-Infused Belt Flasks (Cols 1, 2, 3, 5, 6, 7, 8: Spinel, Carnelian, Titanite, Kyanite, Charoite, Rubellite, Hematite)

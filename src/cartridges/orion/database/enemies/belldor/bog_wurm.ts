@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { getDirFromVector, getRoomDimensions, TILE_SIZE } from '../../constants';
-import { EnemyEntity, EnemyWikiDefinition, OrionState } from '../../types';
+import { getDirFromVector, getRoomDimensions, TILE_SIZE } from '../../../constants';
+import { EnemyEntity, EnemyWikiDefinition, OrionState } from '../../../types';
 
 export const bogWurmEnemy: EnemyWikiDefinition = {
   type: 'bog_wurm',

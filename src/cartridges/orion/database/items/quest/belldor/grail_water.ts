@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { ItemWikiDefinition, OrionExecutionContext, OrionState } from '../../types';
+import { ItemWikiDefinition, OrionExecutionContext, OrionState } from '../../../../types';
 
 /** Row 3, Col 0: Moonstone Grail Flask 16x16 Base64 PNG */
 export const FLASK_MOONSTONE_BASE64 =

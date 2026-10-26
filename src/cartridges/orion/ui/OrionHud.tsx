@@ -23,12 +23,10 @@ import {
   cycleTargetLock,
   deletePilotFromRoster,
   firePrimarySalvoShot,
-  getDoorwayAetherTransitionInfo,
   getLockedTarget,
   getOrionStateRef,
   getResolvedCombatSkills,
   getRoomWorldInfo,
-  hasPoeLanternGuidance,
   loadPilotFromRoster,
   loadPilotRoster,
   notifyOrionStateChange,
@@ -41,7 +39,7 @@ import {
   TUTORIAL_STEP_DESCRIPTORS,
   TutorialStepId,
 } from '../systems';
-import { AetherCardinalDir, OrionState } from '../types';
+import { OrionState } from '../types';
 
 const OUTLINED_TEXT =
   '[text-shadow:_-1px_-1px_0_#020617,_1px_-1px_0_#020617,_-1px_1px_0_#020617,_1px_1px_0_#020617,_0_1px_3px_#020617]';
@@ -199,7 +197,7 @@ function renderSkillGlyph(skill: ResolvedCombatSkill | null, index: number): Rea
 
   // Belt Consumables
   if (skill.sourceCategory === 'belt') {
-    if (skill.itemId === 'repair_kit') {
+    if (skill.itemId === 'demantoid_flask') {
       return (
         <svg viewBox="0 0 24 24" className="w-4 h-4 text-[#4ade80]" fill="none" stroke="currentColor" strokeWidth="2.2">
           <path d="M12 5v14M5 12h14" strokeLinecap="round" />
@@ -211,13 +209,6 @@ function renderSkillGlyph(skill: ResolvedCombatSkill | null, index: number): Rea
       return (
         <svg viewBox="0 0 24 24" className="w-4 h-4 text-[#38bdf8]" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M12 3c-4 5-6 8-6 11a6 6 0 0012 0c0-3-2-6-6-11z" />
-        </svg>
-      );
-    }
-    if (skill.itemId === 'poe_lantern_charm') {
-      return (
-        <svg viewBox="0 0 24 24" className="w-4 h-4 text-[#22d3ee]" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M9 4h6M8 8h8l-1 11H9L8 8zM12 11v4" strokeLinecap="round" />
         </svg>
       );
     }
@@ -909,10 +900,10 @@ export const OrionHud: React.FC = () => {
           </div>
         </section>
 
-        {/* CENTER CLUSTER: Room Title, Map-Relative Mini-Map & Æther Pyramid Gauge (SAFE · 1 · 2 · 3 · 2 · 1 · SAFE) */}
+        {/* CENTER CLUSTER: Room Title & Æther Depth Gauge */}
         <section
-          aria-label="Sector Info & Mini-Map"
-          className={`hidden xs:flex flex-col items-center gap-0.5 bg-transparent ${OUTLINED_TEXT}`}
+          aria-label="Sector Info & Æther Gauge"
+          className={`flex flex-col items-center gap-0.5 bg-transparent ${OUTLINED_TEXT}`}
         >
           <div className="text-[8.5px] sm:text-[9px] text-[#cbd5e1] tracking-wider uppercase font-bold flex items-center gap-1 bg-transparent">
             <span>{worldInfo.roomTitle}</span>
@@ -930,22 +921,12 @@ export const OrionHud: React.FC = () => {
             )}
           </div>
 
-          {/* Map-Relative Mini-Map (5x3 local window around [state.rx, state.ry]) + Æther Fog Depth Gauge */}
+          {/* Æther Fog Depth Gauge (SAFE · 1 .. clvl+1) */}
           {(() => {
-            const hasLantern = hasPoeLanternGuidance(state);
             const curStage = worldInfo.loopStage || 0;
             const curDepth = worldInfo.loopDepth || 0;
             const maxDepth = Math.max(2, worldInfo.loopMaxDepth || (state.level || 1) + 1);
             const inLoop = worldInfo.nodeType === 'loop' || curDepth > 0;
-            const nodesMap = state.fogGraph?.nodes || {};
-
-            const dirByDelta = (dx: number, dy: number): AetherCardinalDir | null => {
-              if (dx === 0 && dy === -1) return 'N';
-              if (dx === 0 && dy === 1) return 'S';
-              if (dx === 1 && dy === 0) return 'E';
-              if (dx === -1 && dy === 0) return 'W';
-              return null;
-            };
 
             const depthSteps: Array<{ label: string; depth: number }> = [
               { label: 'SAFE', depth: 0 },
@@ -956,141 +937,52 @@ export const OrionHud: React.FC = () => {
             ];
 
             return (
-              <div className="flex flex-col items-center gap-0.5 bg-transparent">
-                {/* 5x3 Map-Relative Grid */}
-                <div
-                  aria-label="Map-Relative Mini-Map"
-                  className="grid grid-cols-5 gap-0.5 p-0.5 bg-transparent"
-                >
-                  {[-1, 0, 1].map((dy) =>
-                    [-2, -1, 0, 1, 2].map((dx) => {
-                      const cellRx = state.rx + dx;
-                      const cellRy = state.ry + dy;
-                      const isCenter = dx === 0 && dy === 0;
-                      const adjDir = dirByDelta(dx, dy);
-                      const transInfo = adjDir
-                        ? getDoorwayAetherTransitionInfo(state, adjDir)
-                        : null;
+              <div className="flex items-center gap-0.5 text-[6.5px] tracking-tighter font-bold bg-transparent">
+                {depthSteps.map((step, i) => {
+                  const isActiveStep = inLoop
+                    ? curDepth === step.depth
+                    : step.depth === 0;
+                  const activeColor =
+                    step.depth >= maxDepth
+                      ? 'text-[#f43f5e] border-[#f43f5e]/85'
+                      : step.depth >= 2
+                        ? 'text-[#c084fc] border-[#c084fc]/85'
+                        : step.depth === 1
+                          ? 'text-[#22d3ee] border-[#22d3ee]/85'
+                          : 'text-[#4ade80] border-[#4ade80]/80';
 
-                      const authoredNode = nodesMap[`${cellRx},${cellRy}`];
-                      const dynamicNodeAtCell = Object.values(nodesMap).find(
-                        (n) =>
-                          n.id.startsWith('fog:') &&
-                          n.mapRx === cellRx &&
-                          n.mapRy === cellRy
-                      );
-                      const cellNode = dynamicNodeAtCell || authoredNode;
-
-                      const isDensityWarning = Boolean(
-                        inLoop && transInfo?.increasesDensity
-                      );
-                      const isPoeLoopReveal = Boolean(
-                        !inLoop && transInfo?.isLoopEntrance && hasLantern
-                      );
-
-                      let cellClass = 'border-[#334155]/45 text-[#475569]';
-                      let symbol = '·';
-
-                      if (isCenter) {
-                        cellClass = inLoop
-                          ? curDepth >= maxDepth
-                            ? 'border-[#f43f5e] text-[#fda4af] font-black'
-                            : 'border-[#c084fc] text-[#e9d5ff] font-black'
-                          : 'border-[#38bdf8] text-[#7dd3fc] font-black';
-                        symbol = inLoop ? String(curDepth) : '◈';
-                      } else if (isDensityWarning) {
-                        cellClass =
-                          (transInfo?.nextDepth || 0) >= maxDepth
-                            ? 'border-[#f43f5e]/90 text-[#f43f5e] font-black'
-                            : 'border-[#c084fc]/90 text-[#e879f9] font-black';
-                        symbol = '!';
-                      } else if (isPoeLoopReveal) {
-                        cellClass = 'border-[#22d3ee]/90 text-[#22d3ee] font-black';
-                        symbol = '◎';
-                      } else if (cellNode) {
-                        if (cellNode.nodeType === 'loop') {
-                          cellClass = 'border-[#a855f7]/70 text-[#d8b4fe]';
-                          symbol = String(cellNode.loopDepth || 1);
-                        } else if (cellNode.nodeType === 'end') {
-                          cellClass = 'border-[#fbbf24]/75 text-[#fde047]';
-                          symbol = '★';
-                        } else {
-                          cellClass = 'border-[#64748b]/75 text-[#cbd5e1]';
-                          symbol = '□';
-                        }
-                      }
-
-                      return (
-                        <div
-                          key={`${dx},${dy}`}
-                          className={`w-3.5 h-2.5 rounded-[1px] border bg-transparent flex items-center justify-center text-[6.5px] leading-none ${cellClass}`}
-                          title={
-                            isCenter
-                              ? `Current [${cellRx},${cellRy}] ${inLoop ? `· Æther Depth ${curDepth}/${maxDepth}` : '· Safe'}`
-                              : isDensityWarning
-                                ? `Warning: Increased Æther Density (Depth ${transInfo?.nextDepth}/${maxDepth})`
-                                : isPoeLoopReveal
-                                  ? 'Poe Lamp Reveal: Æther Fog Entrance (Depth 1)'
-                                  : cellNode
-                                    ? `${cellNode.title} [${cellRx},${cellRy}]`
-                                    : `Uncharted [${cellRx},${cellRy}]`
-                          }
-                        >
-                          {symbol}
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-
-                {/* Æther Fog Depth Gauge: SAFE · 1 .. (clvl + 1) + Room Progress */}
-                <div className="flex items-center gap-0.5 text-[6.5px] tracking-tighter font-bold bg-transparent">
-                  {depthSteps.map((step, i) => {
-                    const isActiveStep = inLoop
-                      ? curDepth === step.depth
-                      : step.depth === 0;
-                    const activeColor =
-                      step.depth >= maxDepth
-                        ? 'text-[#f43f5e] border-[#f43f5e]/85'
-                        : step.depth >= 2
-                          ? 'text-[#c084fc] border-[#c084fc]/85'
-                          : step.depth === 1
-                            ? 'text-[#22d3ee] border-[#22d3ee]/85'
-                            : 'text-[#4ade80] border-[#4ade80]/80';
-
-                    return (
-                      <React.Fragment key={step.depth}>
-                        <span
-                          className={`px-1 rounded-[1px] border ${
-                            isActiveStep
-                              ? `${activeColor} font-black`
-                              : 'border-transparent text-[#64748b]'
-                          }`}
-                        >
-                          {step.label}
-                        </span>
-                        {i < depthSteps.length - 1 && (
-                          <span className="text-[#475569]">·</span>
-                        )}
-                      </React.Fragment>
-                    );
-                  })}
-                  {inLoop && (
-                    <span
-                      className={`ml-0.5 px-1 rounded-[1px] border ${
-                        curDepth >= maxDepth
-                          ? 'border-[#f43f5e]/80 text-[#fda4af]'
-                          : 'border-[#a855f7]/60 text-[#d8b4fe]'
-                      }`}
-                    >
-                      {curDepth >= maxDepth
-                        ? worldInfo.hasFogBoss
-                          ? 'MAX·BOSS'
-                          : `MAX·1/${maxDepth}`
-                        : `RM ${Math.max(1, curStage)}/${curDepth}`}
-                    </span>
-                  )}
-                </div>
+                  return (
+                    <React.Fragment key={step.depth}>
+                      <span
+                        className={`px-1 rounded-[1px] border ${
+                          isActiveStep
+                            ? `${activeColor} font-black`
+                            : 'border-transparent text-[#64748b]'
+                        }`}
+                      >
+                        {step.label}
+                      </span>
+                      {i < depthSteps.length - 1 && (
+                        <span className="text-[#475569]">·</span>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+                {inLoop && (
+                  <span
+                    className={`ml-0.5 px-1 rounded-[1px] border ${
+                      curDepth >= maxDepth
+                        ? 'border-[#f43f5e]/80 text-[#fda4af]'
+                        : 'border-[#a855f7]/60 text-[#d8b4fe]'
+                    }`}
+                  >
+                    {curDepth >= maxDepth
+                      ? worldInfo.hasFogBoss
+                        ? 'MAX·BOSS'
+                        : `MAX·1/${maxDepth}`
+                      : `RM ${Math.max(1, curStage)}/${curDepth}`}
+                  </span>
+                )}
               </div>
             );
           })()}

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { ItemWikiDefinition } from '../../types';
+import { ItemWikiDefinition } from '../../../../types';
 
 /** Row 1, Col 5: Ring 16x16 Base64 PNG */
 export const RING_ICON_BASE64 =

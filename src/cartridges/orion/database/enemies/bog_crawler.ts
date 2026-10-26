@@ -25,8 +25,7 @@ export const bogCrawlerEnemy: EnemyWikiDefinition = {
   tellDurationSec: 0.35,
   attackCooldownSec: 1.8,
   lootTable: [
-    { itemId: 'salvage_scrap', chance: 1.0, count: 6 },
-    { itemId: 'repair_kit', chance: 0.35 },
+    { itemId: 'demantoid_flask', chance: 0.35 },
     { itemId: 'rusted_gate_key', chance: 0.25 },
   ],
   render25D(g, e, _state, ey, isHurt, isWindup) {

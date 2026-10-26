@@ -3,8 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { ItemWikiDefinition } from '../../types';
-
 /**
  * Row 1 (row = 0, Cols 0..2) Self-Contained 16x16 Base64 Coin & Coin Bag Sprites:
  * - Col 0: Small Coin (value 1..4)
@@ -23,20 +21,3 @@ export function getCoinPickupSpriteBase64(value: number): string {
   if (value >= 5) return LARGE_COIN_BASE64;
   return SMALL_COIN_BASE64;
 }
-
-export const salvageScrapItem: ItemWikiDefinition = {
-  id: 'salvage_scrap',
-  name: 'Salvage Coins & Scrap',
-  category: 'valuable',
-  description: 'Stamped Belldor trade coins and salvaged alloys (Small Coin, Large Coin & Coin Bag).',
-  lore: 'The standard trade currency across the Border Town markets.',
-  buyPrice: 1,
-  sellPrice: 1,
-  iconColor: '#ffd27d',
-  iconSprite: {
-    base64: LARGE_COIN_BASE64,
-    cellWidth: 16,
-    cellHeight: 16,
-    anchor: 'bottom-center',
-  },
-};

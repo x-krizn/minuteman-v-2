@@ -12,7 +12,7 @@ import {
   getResolvedActionDescriptor,
 } from '../database/equipment';
 import { getItemDefinition } from '../database/items';
-import { getCoinPickupSpriteBase64 } from '../database/items/salvage_scrap';
+import { getCoinPickupSpriteBase64 } from '../database/items/currency';
 import {
   ACTION_MODIFICATION_CATALOG,
   CHASSIS_HARDWARE_CATALOG,
@@ -59,6 +59,7 @@ import {
   assignTriggerAction,
   awakenLadyOfTheLake,
   consolidateInventorySlots,
+  drawCompositePlayerMech,
   evaluateCathedralDoorStatus,
   fastTravelToWaystation,
   fastTravelViaWaygate,
@@ -74,6 +75,7 @@ import {
   ORION_ROOM_METADATA,
   performAuxiliarySwap,
   resetAetherFogGraph,
+  resolvePlayerSpriteParts,
   setBypassProgressionGates,
   setTutorialStateActive,
   subscribeOrionStateChange,
@@ -84,7 +86,7 @@ import {
   TUTORIAL_STEP_DESCRIPTORS,
   TutorialStepId,
 } from '../systems';
-import { AetherCardinalDir, FeatSynergyCategory, FeatTier, TraitLine } from '../types';
+import { AetherCardinalDir, FeatSynergyCategory, FeatTier, OrionState, TraitLine } from '../types';
 
 export interface OrionSatchelProps {
   onResume: () => void;
@@ -132,6 +134,37 @@ const SpriteCanvasIcon: React.FC<{
       width={16}
       height={16}
       className={`${sizeClass} shrink-0 [image-rendering:pixelated]`}
+    />
+  );
+};
+
+const CompositeMechPreviewCanvas: React.FC<{
+  state: OrionState;
+  head?: string;
+  arms?: string;
+  plating?: string;
+  weaponId?: string;
+}> = ({ state, head, arms, plating, weaponId }) => {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  useEffect(() => {
+    const cvs = canvasRef.current;
+    if (!cvs) return;
+    const ctx = cvs.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, 32, 32);
+    ctx.imageSmoothingEnabled = false;
+    drawCompositePlayerMech(ctx, state, 16, 28, state.t || 0, {
+      dir: 'S',
+      isMoving: false,
+    });
+  }, [state, head, arms, plating, weaponId, state.traitLine]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={32}
+      height={32}
+      className="w-10 h-10 shrink-0 [image-rendering:pixelated] bg-[#020617] border border-[#38bdf8]/40 rounded-xs"
     />
   );
 };
@@ -252,7 +285,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                 : 'bg-[#0f172a] text-[#94a3b8] hover:bg-[#1e293b]'
             }`}
           >
-            ACTIONS & WPN
+            LOADOUT
           </button>
           <button
             onClick={() => {
@@ -689,13 +722,27 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
               {/* 1. Weapon Action Grid & Active Stance Resolution (ac1..ac5) + Loadout Edit Toggle */}
               <div className="p-2 bg-[#090d14] rounded-xs border border-[#38bdf8]/40 space-y-1.5">
                 <div className="flex flex-wrap items-center justify-between gap-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[#38bdf8] font-bold text-[10px]">
-                      ACTIVE LOADOUT & STANCE:
-                    </span>
-                    <span className="text-[#ffd27d] font-black text-[9px]">
-                      {activeStance.label}
-                    </span>
+                  <div className="flex items-center gap-2">
+                    <CompositeMechPreviewCanvas
+                      state={state}
+                      head={currentHeadName}
+                      arms={currentArmsName}
+                      plating={currentPlatingName}
+                      weaponId={slot1Id}
+                    />
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[#38bdf8] font-bold text-[10px]">
+                          ACTIVE LOADOUT & STANCE:
+                        </span>
+                        <span className="text-[#ffd27d] font-black text-[9px]">
+                          {activeStance.label}
+                        </span>
+                      </div>
+                      <div className="text-[7.5px] text-[#94a3b8]">
+                        SPRITE COMPOSITE: HEAD ({resolvePlayerSpriteParts(state).headStyle.toUpperCase()}) · ARMS ({resolvePlayerSpriteParts(state).armsStyle.toUpperCase()}) · COREPLATE ({resolvePlayerSpriteParts(state).coreplateStyle.toUpperCase()})
+                      </div>
+                    </div>
                   </div>
                   <div className="flex items-center gap-1">
                     <button
@@ -1328,8 +1375,16 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                                         sizeClass="w-4 h-4"
                                       />
                                       <div className="min-w-0">
-                                        <div className="text-[8.5px] font-bold text-[#e2e8f0] truncate">
-                                          {candidate.name} (×{copies})
+                                        <div className="text-[8.5px] font-bold text-[#e2e8f0] truncate flex items-center gap-1">
+                                          <span>{candidate.name} (×{copies})</span>
+                                          {candidate.isPlaceholderAsset && (
+                                            <span
+                                              className="text-[6px] px-1 py-0.2 bg-[#334155]/60 text-[#fbbf24] border border-[#fbbf24]/40 rounded-[2px] shrink-0"
+                                              title={candidate.futureAssetPlanned || 'Placeholder visual asset: dedicated sprite planned'}
+                                            >
+                                              PLCH
+                                            </span>
+                                          )}
                                         </div>
                                         <div className="text-[7px] text-[#94a3b8] truncate">
                                           {stInfo.subtype} · {(candidate.weightClass || 'medium').toUpperCase()}
@@ -1504,8 +1559,16 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                             }`}
                           >
                             <div>
-                              <div className="font-bold text-[8.5px] text-[#ffd27d]">
-                                {hw.name}
+                              <div className="font-bold text-[8.5px] text-[#ffd27d] flex items-center justify-between gap-1">
+                                <span>{hw.name}</span>
+                                {hw.isPlaceholderAsset && (
+                                  <span
+                                    className="text-[6px] px-1 py-0.2 bg-[#334155]/60 text-[#fbbf24] border border-[#fbbf24]/40 rounded-[2px]"
+                                    title={hw.futureAssetPlanned || 'Placeholder visual asset: dedicated sprite planned'}
+                                  >
+                                    PLCH
+                                  </span>
+                                )}
                               </div>
                               <div className="text-[7px] text-[#38bdf8]">{hw.subtype}</div>
                               <div className="text-[7.5px] text-[#94a3b8] mt-0.5">
@@ -1815,7 +1878,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                           soundSystem.playPowerup();
                           for (const flaskId of [
                             'grail_water',
-                            'repair_kit',
+                            'demantoid_flask',
                             'spinel_flask',
                             'carnelian_flask',
                             'titanite_flask',
@@ -1843,7 +1906,6 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                             'bedivere_ring',
                             'bedivere_list',
                             'bedivere_relic',
-                            'poe_lantern_charm',
                           ]) {
                             addOrionInventoryItem(state, relicId, 1);
                           }
@@ -1997,8 +2059,16 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                           className="p-1.5 bg-[#090d14] rounded-xs border border-[#1e293b] flex items-center justify-between gap-2"
                         >
                           <div className="min-w-0">
-                            <div className="font-bold text-[8.5px] text-[#e2e8f0] truncate">
-                              {hw.name}
+                            <div className="font-bold text-[8.5px] text-[#e2e8f0] truncate flex items-center gap-1">
+                              <span>{hw.name}</span>
+                              {hw.isPlaceholderAsset && (
+                                <span
+                                  className="text-[6px] px-1 py-0.2 bg-[#334155]/60 text-[#fbbf24] border border-[#fbbf24]/40 rounded-[2px] shrink-0"
+                                  title={hw.futureAssetPlanned || 'Placeholder visual asset: dedicated sprite planned'}
+                                >
+                                  PLCH
+                                </span>
+                              )}
                             </div>
                             <div className="text-[7px] text-[#94a3b8] truncate">
                               Hardware · {hw.slot.toUpperCase()} · {hw.subtype}

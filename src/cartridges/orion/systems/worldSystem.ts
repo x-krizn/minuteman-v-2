@@ -488,10 +488,7 @@ function deterministicHash(seed: number, counter: number, salt: number = 0): num
 }
 
 export function hasPoeLanternGuidance(state: OrionState): boolean {
-  if (state.flags?.poe_state === 'helped' || state.flags?.poe_lantern_gift) {
-    return true;
-  }
-  return state.inventorySlots.some((s) => s.itemId === 'poe_lantern_charm');
+  return Boolean(state.flags?.poe_state === 'helped' || state.flags?.poe_lantern_gift);
 }
 
 export const AETHER_PYRAMID_DEPTHS = [0, 1, 2, 3, 2, 1, 0] as const;
@@ -657,37 +654,70 @@ function buildEndNodeCacheDefinition(feature: AetherEndFeature): OrionCacheDefin
     return {
       scrap: 45,
       items: [
-        { itemId: 'repair_kit', count: 2 },
+        { itemId: 'demantoid_flask', count: 2 },
         { itemId: 'corrupted_shard', count: 1 },
         { itemId: 'grail_water', count: 1 },
       ],
-      toast: 'MINI-BOSS HORDE LOOTED: +45 SCRAP, SHARD & 2 REPAIR KITS',
+      toast: 'MINI-BOSS HORDE LOOTED: +45 SCRAP, SHARD & 2 REPAIR FLASKS',
     };
   }
   if (feature === 'secret_switch') {
     return {
       scrap: 35,
       items: [
-        { itemId: 'poe_lantern_charm', count: 1 },
+        { itemId: 'demantoid_flask', count: 1 },
         { itemId: 'grail_water', count: 1 },
       ],
-      toast: 'SHRINE CACHE LOOTED: +35 SCRAP, POE LANTERN CHARM & GRAIL WATER',
+      toast: 'SHRINE CACHE LOOTED: +35 SCRAP, DEMANTOID FLASK & GRAIL WATER',
     };
   }
   if (feature === 'dead_end') {
     return {
       scrap: 20,
-      items: [{ itemId: 'repair_kit', count: 1 }],
-      toast: 'CUL-DE-SAC CACHE LOOTED: +20 SCRAP & FIELD REPAIR KIT',
+      items: [{ itemId: 'demantoid_flask', count: 1 }],
+      toast: 'CUL-DE-SAC CACHE LOOTED: +20 SCRAP & DEMANTOID FLASK',
     };
   }
   return {
     scrap: 30,
     items: [
-      { itemId: 'repair_kit', count: 1 },
+      { itemId: 'demantoid_flask', count: 1 },
       { itemId: 'grail_water', count: 1 },
     ],
-    toast: 'FOG END-CHEST OPENED: +30 SCRAP, REPAIR KIT & GRAIL WATER',
+    toast: 'FOG END-CHEST OPENED: +30 SCRAP, REPAIR FLASK & GRAIL WATER',
+  };
+}
+
+function buildLoopNodeCacheDefinition(
+  depth: number,
+  maxDepth: number,
+  hasFogBoss: boolean
+): OrionCacheDefinition {
+  if (depth >= maxDepth && hasFogBoss) {
+    return {
+      scrap: 50,
+      items: [
+        { itemId: 'demantoid_flask', count: 2 },
+        { itemId: 'corrupted_shard', count: 1 },
+        { itemId: 'grail_water', count: 2 },
+      ],
+      toast: 'LOOTED FOG BOSS RELIQUARY: +50 SCRAP, CORRUPTED SHARD & GRAIL WATER',
+    };
+  }
+  if (depth >= maxDepth) {
+    return {
+      scrap: 35,
+      items: [
+        { itemId: 'demantoid_flask', count: 1 },
+        { itemId: 'corrupted_shard', count: 1 },
+      ],
+      toast: 'LOOTED MAX-DEPTH CACHE: +35 SCRAP & CORRUPTED SHARD',
+    };
+  }
+  return {
+    scrap: 20 + depth * 5,
+    items: [{ itemId: 'demantoid_flask', count: 1 }],
+    toast: `LOOTED FOG DEPTH ${depth} CACHE: +${20 + depth * 5} SCRAP & REPAIR FLASK`,
   };
 }
 
@@ -864,6 +894,19 @@ export function resetAetherFogGraph(
     }
   }
 
+  if (state.clearedRooms) {
+    for (const key of Object.keys(state.clearedRooms)) {
+      if (
+        key.startsWith('fog:') ||
+        key.startsWith('fog_slot:loop') ||
+        key.startsWith('fog_slot:side') ||
+        key.startsWith('fog_slot:end')
+      ) {
+        delete state.clearedRooms[key];
+      }
+    }
+  }
+
   state.fogGraph = undefined;
   const freshGraph = ensureAetherFogGraph(state);
   freshGraph.seed = (prevSeed + 7919) % 9999991;
@@ -979,6 +1022,15 @@ function decorateDynamicRoomGrid(
     const effDepth = Math.max(1, loopDepth || 1);
     const hazardChar = biomeHasCorrosiveWater ? '~' : '_';
 
+    // Clear residual static template enemies so spawnDynamicNodeFeatures has full authority over scaled encounters
+    for (let y = 1; y < rows - 1; y++) {
+      for (let x = 1; x < cols - 1; x++) {
+        if (matrix[y][x] === 'E' || matrix[y][x] === 'o' || matrix[y][x] === 's') {
+          matrix[y][x] = '.';
+        }
+      }
+    }
+
     // Depth 1+: Central hazard obstacle
     if (matrix[midY]) {
       matrix[midY][midX - 1] = hazardChar;
@@ -995,7 +1047,15 @@ function decorateDynamicRoomGrid(
       }
     }
 
-    // Depth 2+: Pillars and phase-desync barriers constrict movement
+    // Depth 1: Supply cache near entry clearing
+    if (effDepth === 1) {
+      const cacheY = Math.min(rows - 3, midY + 3);
+      if (matrix[cacheY] && matrix[cacheY][midX] === '.') {
+        matrix[cacheY][midX] = 'C';
+      }
+    }
+
+    // Depth 2+: Pillars and phase-desync barriers constrict movement + interactive toggle lever or cache
     if (effDepth >= 2) {
       const topRow = Math.max(2, midY - 2);
       const botRow = Math.min(rows - 3, midY + 2);
@@ -1017,6 +1077,11 @@ function decorateDynamicRoomGrid(
       if (matrix[midY]) {
         if (leftCol >= 2) matrix[midY][leftCol] = '%';
         if (rightCol <= cols - 3) matrix[midY][rightCol] = '%';
+      }
+
+      const switchY = Math.max(2, midY - 3);
+      if (matrix[switchY] && matrix[switchY][midX] === '.') {
+        matrix[switchY][midX] = hashVal % 2 === 0 ? '!' : 'C';
       }
     }
 
@@ -1042,6 +1107,33 @@ function decorateDynamicRoomGrid(
       if (matrix[midY + 1]) {
         matrix[midY + 1][Math.max(2, midX - 2)] = hazardChar;
         matrix[midY + 1][Math.min(cols - 3, midX + 1)] = hazardChar;
+      }
+    }
+
+    // Max Depth: Chamber feature — dais with Reliquary Chest ('V') for Boss / deep salvage
+    const chestRow = Math.max(2, midY - 3);
+    if (effDepth >= 2 && matrix[chestRow] && matrix[chestRow][midX] === '.') {
+      matrix[chestRow][midX] = 'V';
+      if (matrix[chestRow][midX - 1] === '.') matrix[chestRow][midX - 1] = ':';
+      if (matrix[chestRow][midX + 1] === '.') matrix[chestRow][midX + 1] = ':';
+    }
+  }
+
+  // Ensure general and side rooms have at least one supply cache if none present
+  if (nodeType === 'general' || nodeType === 'side') {
+    let hasLoot = false;
+    for (let y = 1; y < rows - 1; y++) {
+      for (let x = 1; x < cols - 1; x++) {
+        if (matrix[y][x] === 'C' || matrix[y][x] === 'V') {
+          hasLoot = true;
+          break;
+        }
+      }
+    }
+    if (!hasLoot && matrix[midY]) {
+      const targetCol = hashVal % 2 === 0 ? Math.max(2, midX - 2) : Math.min(cols - 3, midX + 2);
+      if (matrix[midY][targetCol] === '.') {
+        matrix[midY][targetCol] = 'C';
       }
     }
   }
@@ -1238,6 +1330,18 @@ function createDynamicAetherNode(
 
   if (nodeType === 'end' && endFeature) {
     ORION_CACHE_DEFINITIONS[id] = buildEndNodeCacheDefinition(endFeature);
+  } else if (nodeType === 'loop') {
+    ORION_CACHE_DEFINITIONS[id] = buildLoopNodeCacheDefinition(
+      loopDepth,
+      loopMaxDepth,
+      hasFogBoss
+    );
+  } else if (nodeType === 'general' || nodeType === 'side') {
+    ORION_CACHE_DEFINITIONS[id] = {
+      scrap: 15 + (options?.routeStep || 1) * 5,
+      items: [{ itemId: 'demantoid_flask', count: 1 }],
+      toast: `LOOTED SUPPLY CRATE: +${15 + (options?.routeStep || 1) * 5} SCRAP & DEMANTOID FLASK`,
+    };
   }
 
   return newNode;
@@ -1606,7 +1710,7 @@ function spawnDynamicNodeFeatures(
   if (
     state.clearedRooms[node.id] ||
     state.clearedRooms[canonicalKey] ||
-    state.clearedRooms[miniBossSpawnKey]
+    (node.nodeType === 'end' && state.clearedRooms[miniBossSpawnKey])
   ) {
     return;
   }
@@ -1625,6 +1729,77 @@ function spawnDynamicNodeFeatures(
       damage: 22,
       spawnKey: miniBossSpawnKey,
     });
+    return;
+  }
+
+  // Active patrols along general inter-key corridors
+  if (node.nodeType === 'general') {
+    const step = node.routeStep || 1;
+    if (step % 2 === 1) {
+      spawnEnemyByType(
+        state,
+        'orc_scout',
+        Math.round(widthPx * 0.65),
+        Math.round(heightPx * 0.45),
+        {
+          name: 'Ætheric Scout',
+          spawnKey: `${canonicalKey}:scout`,
+          emissiveColor: '#38bdf8',
+        }
+      );
+    } else {
+      spawnEnemyByType(
+        state,
+        'orc_warrior',
+        Math.round(widthPx * 0.35),
+        Math.round(heightPx * 0.45),
+        {
+          name: 'Waystation Interceptor',
+          spawnKey: `${canonicalKey}:warrior`,
+          emissiveColor: '#f97316',
+        }
+      );
+      spawnEnemyByType(
+        state,
+        'orc_scout',
+        Math.round(widthPx * 0.70),
+        Math.round(heightPx * 0.55),
+        {
+          name: 'Ætheric Scout',
+          spawnKey: `${canonicalKey}:scout`,
+          emissiveColor: '#38bdf8',
+        }
+      );
+    }
+    return;
+  }
+
+  // Off-path side wilds skirmish
+  if (node.nodeType === 'side') {
+    const isBogBiome =
+      node.biomeId === 'belldor_bog' || node.biomeId === 'global_toxic_wetlands';
+    spawnEnemyByType(
+      state,
+      'orc_warrior',
+      Math.round(widthPx * 0.38),
+      Math.round(heightPx * 0.42),
+      {
+        name: 'Wilds Marauder',
+        spawnKey: `${canonicalKey}:warrior`,
+        emissiveColor: '#c084fc',
+      }
+    );
+    spawnEnemyByType(
+      state,
+      isBogBiome ? 'bog_wurm' : 'orc_scout',
+      Math.round(widthPx * 0.66),
+      Math.round(heightPx * 0.55),
+      {
+        name: isBogBiome ? 'Fen Lurker' : 'Wilds Scout',
+        spawnKey: `${canonicalKey}:add`,
+        emissiveColor: '#c084fc',
+      }
+    );
     return;
   }
 
@@ -1669,7 +1844,7 @@ function spawnDynamicNodeFeatures(
             ? '#c084fc'
             : '#38bdf8';
       if (type === 'bog_wurm') {
-        e.isSubmerged = !hasPoeLanternGuidance(state);
+        e.isSubmerged = isBoss ? false : !hasPoeLanternGuidance(state);
       }
     };
 
@@ -1695,15 +1870,52 @@ function spawnDynamicNodeFeatures(
         true,
         pick.title
       );
-      if (pick.type === 'orc_warrior' || depth >= 3) {
-        spawnScaledLoopEnemy(
-          'orc_scout',
-          Math.round(widthPx * 0.28),
-          Math.round(heightPx * 0.62),
-          1,
-          false
-        );
-      }
+      // Spawn two tactical adds for the boss encounter
+      spawnScaledLoopEnemy(
+        'orc_scout',
+        Math.round(widthPx * 0.28),
+        Math.round(heightPx * 0.62),
+        1,
+        false,
+        'Warlord Vanguard'
+      );
+      spawnScaledLoopEnemy(
+        isBogBiome ? 'bog_wurm' : 'tristan_knight',
+        Math.round(widthPx * 0.72),
+        Math.round(heightPx * 0.62),
+        2,
+        false,
+        isBogBiome ? 'Bog Thrall' : 'Phantasm Guard'
+      );
+      return;
+    }
+
+    // At Max Depth (non-boss chamber while hunting the boss): spawn an Elite Fog Strike Team!
+    if (depth >= maxDepth) {
+      spawnScaledLoopEnemy(
+        'orc_warrior',
+        Math.round(widthPx * 0.32),
+        Math.round(heightPx * 0.40),
+        0,
+        false,
+        'Elite Fog Vanguard'
+      );
+      spawnScaledLoopEnemy(
+        'orc_scout',
+        Math.round(widthPx * 0.68),
+        Math.round(heightPx * 0.40),
+        1,
+        false,
+        'Mist Sniper'
+      );
+      spawnScaledLoopEnemy(
+        isBogBiome ? 'bog_wurm' : 'tristan_knight',
+        Math.round(widthPx * 0.50),
+        Math.round(heightPx * 0.64),
+        2,
+        false,
+        isBogBiome ? 'Æther Lurker' : 'Phantom Knight'
+      );
       return;
     }
 
@@ -1722,29 +1934,27 @@ function spawnDynamicNodeFeatures(
         1
       );
     } else if (depth === 2) {
-      if (isBogBiome) {
-        spawnScaledLoopEnemy(
-          'bog_wurm',
-          Math.round(widthPx * 0.5),
-          Math.round(heightPx * 0.48),
-          0
-        );
-      } else {
-        spawnScaledLoopEnemy(
-          'orc_warrior',
-          Math.round(widthPx * 0.32),
-          Math.round(heightPx * 0.38),
-          0
-        );
-        spawnScaledLoopEnemy(
-          'orc_scout',
-          Math.round(widthPx * 0.68),
-          Math.round(heightPx * 0.62),
-          1
-        );
-      }
+      // Depth 2: Orc Warrior + Scout + Bog Wurm / Knight
+      spawnScaledLoopEnemy(
+        'orc_warrior',
+        Math.round(widthPx * 0.32),
+        Math.round(heightPx * 0.38),
+        0
+      );
+      spawnScaledLoopEnemy(
+        'orc_scout',
+        Math.round(widthPx * 0.68),
+        Math.round(heightPx * 0.62),
+        1
+      );
+      spawnScaledLoopEnemy(
+        isBogBiome ? 'bog_wurm' : 'tristan_knight',
+        Math.round(widthPx * 0.5),
+        Math.round(heightPx * 0.50),
+        2
+      );
     } else {
-      // Depth 3+: Orc pair + Bog Wurm (in Bog) or Knight (outside Bog)
+      // Depth 3+: Orc Warrior + 2 Orc Scouts + Bog Wurm (in Bog) or Knight (outside Bog)
       spawnScaledLoopEnemy(
         'orc_warrior',
         Math.round(widthPx * 0.28),
@@ -1787,6 +1997,19 @@ export function clearAetherFogOnBossDefeat(
       delete rooms[nodeId];
       delete ORION_ROOM_METADATA[nodeId];
       delete ORION_CACHE_DEFINITIONS[nodeId];
+    }
+  }
+
+  if (state.clearedRooms) {
+    for (const key of Object.keys(state.clearedRooms)) {
+      if (
+        key.startsWith('fog:') ||
+        key.startsWith('fog_slot:loop') ||
+        key.startsWith('fog_slot:side') ||
+        key.startsWith('fog_slot:end')
+      ) {
+        delete state.clearedRooms[key];
+      }
     }
   }
   for (const n of Object.values(graph.nodes)) {
@@ -2653,7 +2876,6 @@ export function executeWorldInteraction(
       state.level = 2;
     }
     unlockLevel2SecondaryWeapon(state);
-    addOrionInventoryItem(state, 'poe_lantern_charm', 1);
     for (const e of state.enemies) {
       if (e.type === 'bog_wurm') e.isSubmerged = false;
     }
@@ -2681,12 +2903,12 @@ export function executeWorldInteraction(
         soundSystem.playSelect();
         if (!state.lootedCaches[`npc_gift:${nearbyCalmNpc.id}`]) {
           state.lootedCaches[`npc_gift:${nearbyCalmNpc.id}`] = true;
-          addOrionInventoryItem(state, 'repair_kit', 1);
+          addOrionInventoryItem(state, 'demantoid_flask', 1);
           const giftedHeater = unlockEquipmentItem(state, 'heater_shield');
           ctx.say(
             giftedHeater
-              ? 'LOYALIST: "YOU HONORED BEDIVERE. TAKE THIS HEATER SHIELD & FIELD PATCH!"'
-              : 'LOYALIST: "YOU HONORED BEDIVERE. TAKE THIS FIELD PATCH."'
+              ? 'LOYALIST: "YOU HONORED BEDIVERE. TAKE THIS HEATER SHIELD & DEMANTOID FLASK!"'
+              : 'LOYALIST: "YOU HONORED BEDIVERE. TAKE THIS DEMANTOID FLASK."'
           );
         } else {
           ctx.say('LOYALIST: "MAY AVALON GUARD YOUR CHASSIS, PILOT."');
@@ -2695,7 +2917,7 @@ export function executeWorldInteraction(
     } else {
       if (state.salvageScrap >= 15) {
         state.salvageScrap -= 15;
-        addOrionInventoryItem(state, 'repair_kit', 1);
+        addOrionInventoryItem(state, 'demantoid_flask', 1);
         const nextGear = resolveContextualEquipmentDrop(state, {
           areaId: state.areaId,
           regionId: state.regionId,
@@ -2708,16 +2930,16 @@ export function executeWorldInteraction(
           soundSystem.playPowerup();
           ctx.say(
             wasFirstCopy
-              ? `TRADED 15 SCRAP: REPAIR KIT + SALVAGED ${gName.toUpperCase()} UNLOCKED!`
-              : `TRADED 15 SCRAP: REPAIR KIT + 2ND COPY OF ${gName.toUpperCase()} (PAIRED STANCE)!`
+              ? `TRADED 15 SCRAP: DEMANTOID FLASK + SALVAGED ${gName.toUpperCase()} UNLOCKED!`
+              : `TRADED 15 SCRAP: DEMANTOID FLASK + 2ND COPY OF ${gName.toUpperCase()} (PAIRED STANCE)!`
           );
         } else {
           soundSystem.playCoin();
-          ctx.say('TRADED 15 SCRAP FOR FIELD REPAIR KIT');
+          ctx.say('TRADED 15 SCRAP FOR DEMANTOID REPAIR FLASK');
         }
       } else {
         soundSystem.playMenuBeep();
-        ctx.say('SCAVENGER: "15 SCRAP FOR A REPAIR KIT & SALVAGED HARDPOINT GEAR, PILOT."');
+        ctx.say('SCAVENGER: "15 SCRAP FOR A DEMANTOID FLASK & SALVAGED HARDPOINT GEAR, PILOT."');
       }
     }
     notifyOrionStateChange();
@@ -2837,7 +3059,7 @@ export function executeWorldInteraction(
       unlockLevel2SecondaryWeapon(state);
       unlockEquipmentItem(state, 'khopesh');
       addOrionInventoryItem(state, 'bedivere_list', 1);
-      addOrionInventoryItem(state, 'repair_kit', 1);
+      addOrionInventoryItem(state, 'demantoid_flask', 1);
       setOrionFlag(state, 'scout_salvaged', true);
       state.flags.bedivere_list_collected = true;
       state.flags.bedivere_ring_choice = 'pending';
@@ -2951,11 +3173,11 @@ export function executeWorldInteraction(
           refundInventoryGem(state, g.id, 5);
         }
         state.salvageScrap += 200;
+        state.flags.poe_lantern_gift = true;
         for (const id of [
-          'repair_kit',
+          'demantoid_flask',
           'grail_water',
           'rusted_gate_key',
-          'poe_lantern_charm',
           'bedivere_list',
           'bedivere_ring',
         ]) {

@@ -50,8 +50,7 @@ export const orcScoutEnemy: EnemyWikiDefinition = {
   tellDurationSec: 0.35,
   attackCooldownSec: 2.0,
   lootTable: [
-    { itemId: 'salvage_scrap', chance: 1.0, count: 7 },
-    { itemId: 'repair_kit', chance: 0.45 },
+    { itemId: 'demantoid_flask', chance: 0.45 },
   ],
   render25D(g, e, _state, ey, isHurt) {
     g.fillStyle = isHurt ? '#ffffff' : '#c2410c';

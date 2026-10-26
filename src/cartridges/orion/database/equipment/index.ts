@@ -25,6 +25,9 @@ export {
   getClassUtilityDefinition,
   getDefaultClassUtilityId,
 };
+export * from './chassis_hardware';
+export * from './plating';
+export * from './weapons';
 
 // Auto-discover all assignable equipment/reactor/utility/belt modules in this directory via Vite import.meta.glob
 const modules = import.meta.glob<Record<string, unknown>>('./**/*.ts', { eager: true });

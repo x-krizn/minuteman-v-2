@@ -43,12 +43,25 @@ export function getCanonicalRoomPersistenceKey(
 
   const src = node.sourceKeyCoord || state.areaId || 'belldor';
   if (node.nodeType === 'end') {
-    return `fog_slot:end:${src}:${node.endFeature || 'loot_cache'}`;
+    return `fog_slot:end:${src}:${node.id}:${node.endFeature || 'loot_cache'}`;
   }
   if (node.nodeType === 'general') {
     return `fog_slot:general:${src}->${node.targetKeyCoord || 'wilds'}:step_${node.routeStep || 1}`;
   }
-  return `fog_slot:${node.nodeType}:${src}:step_${node.routeStep || 0}`;
+  if (node.nodeType === 'loop') {
+    const depth = node.loopDepth || 1;
+    const stage = node.loopStage || 1;
+    const maxDepth = node.loopMaxDepth || 2;
+    // At max depth, each room is a dynamically generated chamber in the deep fog
+    if (depth >= maxDepth) {
+      return `fog_slot:loop_max:${src}:${node.id}`;
+    }
+    return `fog_slot:loop:${src}:d${depth}_s${stage}`;
+  }
+  if (node.nodeType === 'side') {
+    return `fog_slot:side:${src}:${node.id}`;
+  }
+  return `fog_slot:${node.nodeType}:${src}:${node.id}`;
 }
 
 export function isRoomCacheLooted(

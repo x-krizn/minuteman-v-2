@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { addOrionInventoryItem } from '../../systems/playerSystem';
-import { ItemWikiDefinition } from '../../types';
+import { addOrionInventoryItem } from '../../../../systems/playerSystem';
+import { ItemWikiDefinition } from '../../../../types';
 import { KEY_ICON_BASE64 } from './rusted_gate_key';
 
 export const dungeonKeyItem: ItemWikiDefinition = {

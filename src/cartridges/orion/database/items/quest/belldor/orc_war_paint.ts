@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { ItemWikiDefinition, OrionExecutionContext, OrionState } from '../../types';
+import { ItemWikiDefinition, OrionExecutionContext, OrionState } from '../../../../types';
 
 export const orcWarPaintItem: ItemWikiDefinition = {
   id: 'orc_war_paint',

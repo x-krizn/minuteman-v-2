@@ -797,6 +797,10 @@ export interface WeaponDefinition {
   hardpointSprite?: Base64SpriteConfig;
   /** Optional embedded Base64 PNG icon for UI displays */
   iconSprite?: Base64SpriteConfig;
+  /** Whether this weapon currently uses a recycled/placeholder visual asset */
+  isPlaceholderAsset?: boolean;
+  /** Future asset design notes or plans for dedicated custom artwork */
+  futureAssetPlanned?: string;
   renderHardpoint25D?: (
     g: CanvasRenderingContext2D,
     wx: number,

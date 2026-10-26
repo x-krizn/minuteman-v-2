@@ -15,6 +15,8 @@ export const FLASK_CARNELIAN_BASE64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAfklEQVR42mNgwAL+4wAMpACohv8w8xhIBRTZjuQCDDbR4MyZM/+xsUky4NcvbzAm24D/ZxjAeGAMAAc91ACy0gBcM6mGgJ0+kwGCoRphfKK8AlI0O5YBYQgUg8SINgBZE7JhRBuQ5mOM4QKQGNGxAfI2SAMyJjkmQLYhY1zqAMid+zVznFphAAAAAElFTkSuQmCC';
 export const FLASK_TITANITE_BASE64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAgElEQVR42mNgwAL+4wAMpACohv8w8xhIBRTZjuQCDDbR4MyZM/+xsUky4NcvbzAm24A7d8zBeGAMAAUczACy0gBMM8mGgJx74oQNGMM0wvhEeQWkaNo0XbgmGAaJEW0AsiZkw4g2ICVFDsMFIDGiYwPkb5AGZExyTIBsQ8a41AEAjRkBmhkz/aMAAAAASUVORK5CYII=';
+export const FLASK_DEMANTOID_BASE64 =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAf0lEQVR42mNgwAL+4wAMpACohv8w8xhIBRTZjuQCDDbR4MyZM/+xsUkyIOVXChiTbUDUiSgwHhgDQAEHM4CsNADTTLIhIOe6rXIDY5hGGJ8or4AU2UyzgWuCYZAY0QYga0I2jGgDNFI0MFwAEiM6NkD+BmlAxiTHBMg2ZIxLHQAoRe/oww9GhgAAAABJRU5ErkJggg==';
 export const FLASK_KYANITE_BASE64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAf0lEQVR42mNgwAL+4wAMpACohv8w8xhIBRTZjuQCDDbR4MyZM/+xsUkyICpqCxiTbUB9yzIwHhgDQAEHM4CsNADTTLIhIOfGJTeBMUwjjE+UV0CKPP0y4JpgGCRGtAHImpANI9oAG4dIDBeAxIiODZC/QRqQMckxAbINGeNSBwDldvJ9xG71+gAAAABJRU5ErkJggg==';
 export const FLASK_CHAROITE_BASE64 =
@@ -78,6 +80,33 @@ export const titaniteFlaskItem: ItemWikiDefinition = {
     state.armor.durability = Math.min(state.armor.maxDurability, state.armor.durability + 30);
     ctx.sound.playHeal();
     ctx.say('TITANITE FLASK: +40 SHIELD & +30 ARMOR');
+    return true;
+  },
+};
+
+export const demantoidFlaskItem: ItemWikiDefinition = {
+  id: 'demantoid_flask',
+  name: 'Demantoid Repair Flask',
+  category: 'consumable',
+  description: 'Restores +50 Layer 2 Armor Durability (Layer 3 Frame HP cannot be field-repaired; requires a Campfire or Waygate).',
+  lore: 'Cleric-grade Demantoid suspension that seals outer armor plating. Out-of-place mech frames cannot be structurally repaired without specialized equipment, rare materials, and unknown ætheric magics.',
+  buyPrice: 20,
+  sellPrice: 8,
+  iconColor: '#22c55e',
+  iconSprite: {
+    base64: FLASK_DEMANTOID_BASE64,
+    cellWidth: 16,
+    cellHeight: 16,
+    anchor: 'bottom-center',
+  },
+  onUse(state: OrionState, ctx: OrionExecutionContext) {
+    if (state.armor.durability >= state.armor.maxDurability) {
+      ctx.say('ARMOR DURABILITY OPTIMAL');
+      return false;
+    }
+    state.armor.durability = Math.min(state.armor.maxDurability, state.armor.durability + 50);
+    ctx.sound.playHeal();
+    ctx.say('DEMANTOID FLASK: +50 ARMOR DURABILITY');
     return true;
   },
 };

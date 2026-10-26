@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { addOrionInventoryItem } from '../../systems/playerSystem';
-import { ItemWikiDefinition } from '../../types';
+import { addOrionInventoryItem } from '../../../../systems/playerSystem';
+import { ItemWikiDefinition } from '../../../../types';
 
 /** Row 1, Col 3: Key 16x16 Base64 PNG */
 export const KEY_ICON_BASE64 =

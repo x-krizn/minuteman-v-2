@@ -25,7 +25,6 @@ export const bogWurmEnemy: EnemyWikiDefinition = {
   tellDurationSec: 0.45,
   attackCooldownSec: 2.0,
   lootTable: [
-    { itemId: 'salvage_scrap', chance: 1.0, count: 30 },
     { itemId: 'corrupted_shard', chance: 1.0, count: 1 },
     { itemId: 'bedivere_relic', chance: 1.0, count: 1 },
   ],
@@ -57,9 +56,7 @@ export const bogWurmEnemy: EnemyWikiDefinition = {
     const ty = Math.floor(e.y / TILE_SIZE);
     const onWater = rooms[state.room]?.[ty]?.[tx] === '~';
     const lanternReveals = Boolean(
-      state.flags?.poe_lantern_gift ||
-        state.flags?.poe_state === 'helped' ||
-        state.inventorySlots?.some((s) => s.itemId === 'poe_lantern_charm')
+      state.flags?.poe_lantern_gift || state.flags?.poe_state === 'helped'
     );
 
     const dx = state.x - e.x;
@@ -142,7 +139,14 @@ export const bogWurmEnemy: EnemyWikiDefinition = {
       return;
     }
 
-    e.isSubmerged = onWater && !lanternReveals;
+    if (e.isFogBoss) {
+      e.isSubmerged = false;
+    } else if (dist <= 52) {
+      // Breaches to ambush when player is within striking range
+      e.isSubmerged = false;
+    } else {
+      e.isSubmerged = onWater && !lanternReveals;
+    }
 
     if (dist <= 34 && e.attackCd <= 0) {
       e.state = 'windup';

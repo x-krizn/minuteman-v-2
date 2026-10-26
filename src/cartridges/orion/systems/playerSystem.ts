@@ -516,7 +516,7 @@ export function createInitialOrionState(
 
     salvageScrap: 0,
     inventorySlots: consolidateInventorySlots([
-      { itemId: 'repair_kit', count: 2 },
+      { itemId: 'demantoid_flask', count: 2 },
       { itemId: 'grail_water', count: 1 },
       { itemId: 'spinel_flask', count: 1 },
       { itemId: 'kyanite_flask', count: 1 },
@@ -708,7 +708,7 @@ export function syncStateGates(state: OrionState): OrionCapabilityGates {
     state.equipmentSlots.slot2 = state.equippedWeapons[1] || null;
   }
   if (state.equipmentSlots.slot3 === undefined) {
-    state.equipmentSlots.slot3 = 'repair_kit';
+    state.equipmentSlots.slot3 = null;
   }
   if (state.equipmentSlots.slot1 === 'great_bow') {
     state.equipmentSlots.mainGrip = '2h';

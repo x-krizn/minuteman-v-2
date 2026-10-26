@@ -288,10 +288,7 @@ export function getKeyBorderBranchType(
 }
 
 export function hasPoeLanternGuidance(state: OrionState): boolean {
-  if (state.flags?.poe_state === 'helped' || state.flags?.poe_lantern_gift) {
-    return true;
-  }
-  return state.inventorySlots.some((s) => s.itemId === 'poe_lantern_charm');
+  return Boolean(state.flags?.poe_state === 'helped' || state.flags?.poe_lantern_gift);
 }
 
 export interface DoorwayAetherTransitionInfo {
@@ -300,8 +297,10 @@ export interface DoorwayAetherTransitionInfo {
   currentStage: number;
   nextDepth: number;
   nextStage: number;
+  maxDepth?: number;
   isLoopEntrance: boolean;
   increasesDensity: boolean;
+  isRetrace?: boolean;
 }
 
 /**
@@ -332,36 +331,72 @@ export function getDoorwayAetherTransitionInfo(
     };
   }
 
-  if (currentNode.nodeType === 'loop') {
-    const currentStage = Math.max(
-      1,
-      Math.min(5, currentNode.loopStage ?? graph?.loopStage ?? 1)
-    );
-    const currentDepth =
-      currentNode.loopDepth ?? AETHER_PYRAMID_DEPTHS[currentStage] ?? 1;
+  const maxDepth =
+    currentNode?.loopMaxDepth ?? graph?.loopMaxDepth ?? Math.max(2, (state.level || 1) + 1);
 
-    let nextStage = currentStage + 1;
-    if (currentStage === 1) {
-      nextStage = 2; // 1 -> 2
-    } else if (currentStage === 2) {
-      nextStage = 3; // 2 -> 3 (Apex)
-    } else if (currentStage === 3) {
-      nextStage = 4; // 3 -> 2 (Descending)
-    } else if (currentStage === 4) {
-      nextStage = dir === currentNode.relapseDir ? 3 : 5;
-    } else {
-      nextStage = dir === currentNode.relapseDir ? 2 : 0;
+  if (currentNode.nodeType === 'loop') {
+    const currentDepth = Math.max(
+      1,
+      Math.min(maxDepth, currentNode.loopDepth ?? graph?.loopDepth ?? 1)
+    );
+    const currentStage = Math.max(1, currentNode.loopStage ?? graph?.loopStage ?? 1);
+
+    if (currentDepth < maxDepth) {
+      if (dir === currentNode.returnDir) {
+        let nextDepth = currentDepth;
+        let nextStage = currentStage - 1;
+        if (currentStage > 1) {
+          nextDepth = currentDepth;
+          nextStage = currentStage - 1;
+        } else if (currentDepth > 1) {
+          nextDepth = currentDepth - 1;
+          nextStage = currentDepth - 1;
+        } else {
+          nextDepth = 0;
+          nextStage = 0;
+        }
+        return {
+          dir,
+          currentDepth,
+          currentStage,
+          nextDepth,
+          nextStage,
+          maxDepth,
+          isLoopEntrance: false,
+          increasesDensity: false,
+          isRetrace: true,
+        };
+      }
+
+      const advancesToNextTier = currentStage >= currentDepth;
+      const nextDepth = advancesToNextTier
+        ? Math.min(maxDepth, currentDepth + 1)
+        : currentDepth;
+      const nextStage = advancesToNextTier ? 1 : currentStage + 1;
+
+      return {
+        dir,
+        currentDepth,
+        currentStage,
+        nextDepth,
+        nextStage,
+        maxDepth,
+        isLoopEntrance: false,
+        increasesDensity: true,
+        isRetrace: false,
+      };
     }
 
-    const nextDepth = AETHER_PYRAMID_DEPTHS[nextStage] ?? 0;
     return {
       dir,
-      currentDepth,
+      currentDepth: maxDepth,
       currentStage,
-      nextDepth,
-      nextStage,
+      nextDepth: maxDepth,
+      nextStage: currentStage + 1,
+      maxDepth,
       isLoopEntrance: false,
-      increasesDensity: nextDepth > currentDepth,
+      increasesDensity: true,
+      isRetrace: false,
     };
   }
 

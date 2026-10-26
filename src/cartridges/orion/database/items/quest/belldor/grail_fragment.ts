@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { ItemWikiDefinition } from '../../types';
+import { ItemWikiDefinition } from '../../../../types';
 
 export const grailFragmentItem: ItemWikiDefinition = {
   id: 'grail_fragment',

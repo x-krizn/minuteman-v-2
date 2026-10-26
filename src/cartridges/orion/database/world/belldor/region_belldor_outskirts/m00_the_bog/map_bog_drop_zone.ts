@@ -79,10 +79,10 @@ export const roomCheatPodBay: RoomDefinition = {
   cache: {
     scrap: 100,
     items: [
-      { itemId: 'repair_kit', count: 3 },
+      { itemId: 'demantoid_flask', count: 3 },
       { itemId: 'grail_water', count: 2 },
     ],
-    toast: 'TEST CACHE: +100 SCRAP, 3x REPAIR KIT & 2x GRAIL WATER',
+    toast: 'TEST CACHE: +100 SCRAP, 3x DEMANTOID FLASK & 2x GRAIL WATER',
   },
 };
 
@@ -167,8 +167,8 @@ export const roomDownedTreesWest: RoomDefinition = {
   ],
   cache: {
     scrap: 18,
-    items: [{ itemId: 'repair_kit', count: 1 }],
-    toast: 'LOOTED HOLLOW TRUNK: +18 SCRAP & FIELD REPAIR KIT',
+    items: [{ itemId: 'demantoid_flask', count: 1 }],
+    toast: 'LOOTED HOLLOW TRUNK: +18 SCRAP & DEMANTOID FLASK',
   },
 };
 
@@ -248,8 +248,8 @@ export const room00DropPodCrater: RoomDefinition = {
   ],
   cache: {
     scrap: 20,
-    items: [{ itemId: 'repair_kit', count: 1 }],
-    toast: 'LOOTED WAYSTATION CACHE: +20 SCRAP & EMERGENCY REPAIR KIT',
+    items: [{ itemId: 'demantoid_flask', count: 1 }],
+    toast: 'LOOTED WAYSTATION CACHE: +20 SCRAP & DEMANTOID FLASK',
   },
 };
 
@@ -330,8 +330,8 @@ export const room0Neg2PoeLanternSanctuary: RoomDefinition = {
   ],
   cache: {
     scrap: 25,
-    items: [{ itemId: 'poe_lantern_charm', count: 1 }],
-    toast: 'LOOTED SANCTUARY RELIQUARY: +25 SCRAP & POE LANTERN CHARM',
+    items: [{ itemId: 'grail_water', count: 1 }],
+    toast: 'LOOTED SANCTUARY RELIQUARY: +25 SCRAP & GRAIL WATER',
   },
 };
 
@@ -375,7 +375,7 @@ export const room10SunkenPylonTrail: RoomDefinition = {
   ],
   cache: {
     scrap: 22,
-    items: [{ itemId: 'repair_kit', count: 1 }],
-    toast: 'LOOTED TEMPLE NAVE: +22 SCRAP & FIELD REPAIR KIT',
+    items: [{ itemId: 'demantoid_flask', count: 1 }],
+    toast: 'LOOTED TEMPLE NAVE: +22 SCRAP & DEMANTOID FLASK',
   },
 };

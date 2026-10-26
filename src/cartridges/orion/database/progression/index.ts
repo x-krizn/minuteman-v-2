@@ -21,10 +21,23 @@ import {
 import { TRAIT_REGISTRY } from '../characters';
 import { GEMSTONE_CATALOG, GEMSTONE_REGISTRY, TRAIT_FUNDING_GEMS } from '../items/gemstones';
 import {
-  CANONICAL_FRAME_FEAT_CATALOG,
   CANONICAL_HARDWARE_CATALOG,
   CanonicalHardwareItemDefinition,
-} from './canonical_feats_and_hardware';
+  CHASSIS_HARDWARE_CATALOG,
+  ChassisHardwareItemDefinition,
+  findHardwareItemByNameOrId,
+  resolveEquippedHardwareStats,
+} from '../equipment/chassis_hardware';
+import { CANONICAL_FRAME_FEAT_CATALOG } from './canonical_feats';
+
+export {
+  CANONICAL_HARDWARE_CATALOG,
+  type CanonicalHardwareItemDefinition,
+  CHASSIS_HARDWARE_CATALOG,
+  type ChassisHardwareItemDefinition,
+  findHardwareItemByNameOrId,
+  resolveEquippedHardwareStats,
+};
 
 export { GEMSTONE_CATALOG, GEMSTONE_REGISTRY, TRAIT_FUNDING_GEMS };
 
@@ -369,9 +382,6 @@ export function createStarterGemPouch(
   return Array.from(map.entries()).map(([itemId, count]) => ({ itemId, count }));
 }
 
-export type ChassisHardwareItemDefinition = CanonicalHardwareItemDefinition;
-
-export const CHASSIS_HARDWARE_CATALOG: ChassisHardwareItemDefinition[] = CANONICAL_HARDWARE_CATALOG;
 
 export function getWeaponSubtypeInfo(weaponId: string): {
   equipmentType: 'Weapon' | 'Auxiliary';
@@ -542,7 +552,13 @@ export function createInitialEquipmentSlots(traitLine: TraitLine = 'Warrior'): O
   return {
     slot1: w1,
     slot2: isBowMain ? null : w2,
-    slot3: isBowMain ? w2 : 'repair_kit',
+    slot3: isBowMain
+      ? (w2 || 'quiver')
+      : traitLine === 'Guardian'
+      ? 'aegis_charge_buckler'
+      : traitLine === 'Wizard' || traitLine === 'Cleric'
+      ? 'aether_catalyst'
+      : null,
     mainGrip: hasSide ? '1h' : '2h',
     ownedWeaponCounts: initialCounts,
     head: hw.head,
@@ -564,7 +580,7 @@ export function createInitialEquipmentSlots(traitLine: TraitLine = 'Warrior'): O
       'mod_arms_shock_grapple',
       'mod_legs_seismic_stomp',
     ],
-    belt: ['repair_kit', 'grail_water', 'spinel_flask', 'kyanite_flask'],
+    belt: ['demantoid_flask', 'grail_water', 'spinel_flask', 'kyanite_flask'],
     armor: {
       head: hw.head,
       torso: hw.plating,
@@ -1801,76 +1817,6 @@ export function generateEquipmentModWithGems(
   return true;
 }
 
-export function findHardwareItemByNameOrId(
-  nameOrId: string | undefined | null
-): CanonicalHardwareItemDefinition | undefined {
-  if (!nameOrId) return undefined;
-  const norm = nameOrId.trim().toLowerCase();
-  return CANONICAL_HARDWARE_CATALOG.find(
-    (item) => item.id.toLowerCase() === norm || item.name.toLowerCase() === norm
-  );
-}
-
-/**
- * Resolves the pilot's active Coreplate, Reactor, and Aux 3/4 stats dynamically from equipped hardware.
- * In classless Project Orion, swapping a Coreplate or Reactor immediately updates Armor Type,
- * Base Load Capacity, Shield/Armor baseline, and Reactor Family.
- */
-export function resolveEquippedHardwareStats(state: OrionState): {
-  baseLoadCapacity: FrameLoadCapacity;
-  armorType: 'Ablative' | 'Reactive' | 'Hardened' | 'Layered';
-  armorThreshold: number;
-  armorRating: number;
-  baseArmorDurability: number;
-  baseShieldCapacity: number;
-  hardwareShieldBonus: number;
-  hardwareArmorBonus: number;
-  reactorFamily: 'Ichor' | 'Mana' | 'Ether';
-} {
-  const fallbackProfile = TRAIT_REGISTRY[state.traitLine] || TRAIT_REGISTRY.Warrior;
-  const eq = state.equipmentSlots;
-
-  const coreplate = findHardwareItemByNameOrId(eq?.plating);
-  const reactor = findHardwareItemByNameOrId(eq?.reactorCore);
-  const headItem = findHardwareItemByNameOrId(eq?.head);
-  const aux3Item = findHardwareItemByNameOrId(eq?.aux3);
-  const aux4Item = findHardwareItemByNameOrId(eq?.aux4);
-
-  const baseLoadCapacity: FrameLoadCapacity =
-    coreplate?.baseLoadCapacity || fallbackProfile.weightClass || 'medium';
-  const armorType =
-    coreplate?.armorType || fallbackProfile.baseArmor.type || 'Reactive';
-  const armorThreshold =
-    coreplate?.armorThreshold ?? fallbackProfile.baseArmor.threshold;
-  const armorRating =
-    coreplate?.armorRating ?? fallbackProfile.baseArmor.rating;
-  const baseArmorDurability =
-    coreplate?.armorDurability ?? fallbackProfile.baseArmor.durability;
-  const baseShieldCapacity =
-    coreplate?.shieldBonus ?? fallbackProfile.baseShield.capacity;
-
-  const hardwareShieldBonus =
-    (headItem?.shieldBonus || 0) +
-    (aux3Item?.shieldBonus || 0) +
-    (aux4Item?.shieldBonus || 0);
-  const hardwareArmorBonus =
-    (aux3Item?.armorDurability || 0) + (aux4Item?.armorDurability || 0);
-
-  const reactorFamily =
-    reactor?.reactorFamily || state.reactor || fallbackProfile.reactor || 'Ichor';
-
-  return {
-    baseLoadCapacity,
-    armorType,
-    armorThreshold,
-    armorRating,
-    baseArmorDurability,
-    baseShieldCapacity,
-    hardwareShieldBonus,
-    hardwareArmorBonus,
-    reactorFamily,
-  };
-}
 
 export function computeEffectiveLoadCapacity(
   traitLine: TraitLine,

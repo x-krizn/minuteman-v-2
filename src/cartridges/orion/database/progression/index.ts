@@ -476,7 +476,7 @@ const DEFAULT_CANONICAL_HARDWARE_BY_KIT: Record<
     sensoryB: 'Federated EchoPulse Scanner',
     arms: 'BWI Twinstrike Gauntlets',
     legs: 'BWI Gatecrasher Striders',
-    plating: 'BWI Bastion Coreplate',
+    plating: 'BWI Bastion Frame Plating',
     reactorCore: 'PNSY Alchemic Turbine Core Mk.IV',
     aux3: 'PNSY R-11 Rockweiler Buckler',
     aux4: 'PNSY UF-9 Rough Rider Booster',
@@ -487,7 +487,7 @@ const DEFAULT_CANONICAL_HARDWARE_BY_KIT: Record<
     sensoryB: 'NDS EchoStorm Threat Analyzer',
     arms: 'Fire & Ice Line Holder',
     legs: 'Fire & Ice Outrigger Striders',
-    plating: 'Fire & Ice Fortress Coreplate',
+    plating: 'Fire & Ice Fortress Frame Plating',
     reactorCore: 'RAD Battleheart Ether Reactor Mk.V',
     aux3: 'RAD R-22 Bastion Kinetic Recycling',
     aux4: 'RAD UF-12 Ether Vapor Launcher',
@@ -498,7 +498,7 @@ const DEFAULT_CANONICAL_HARDWARE_BY_KIT: Record<
     sensoryB: 'Aegis Lightveil Analyzer',
     arms: 'Solbright Cleaver Assemblies',
     legs: 'Dawnforge Stabilizer Striders',
-    plating: 'Dawnforge Guardian Coreplate',
+    plating: 'Dawnforge Guardian Frame Plating',
     reactorCore: 'TI Manaheart Reactor Mk.IV',
     aux3: 'TI Aegis Hard-Light Shield',
     aux4: 'TI Radiant Sphere Generator',
@@ -509,7 +509,7 @@ const DEFAULT_CANONICAL_HARDWARE_BY_KIT: Record<
     sensoryB: 'VX Echo-Null Scanner',
     arms: 'Shadowcraft Silencer Gauntlets',
     legs: 'Shadowcraft Ghost Striders',
-    plating: 'Shadowcraft Recon Coreplate',
+    plating: 'Shadowcraft Recon Frame Plating',
     reactorCore: 'VX Phantom Core Mk.III',
     aux3: 'VX Eclipse Cloak Generator',
     aux4: 'VX Phase-Shift Module',
@@ -520,7 +520,7 @@ const DEFAULT_CANONICAL_HARDWARE_BY_KIT: Record<
     sensoryB: 'ARC Convergence Predictor',
     arms: 'Arcanum Channeler Assemblies',
     legs: 'Arcanum Anchor Striders',
-    plating: 'Arcanum Heavy Projector Coreplate',
+    plating: 'Arcanum Heavy Projector Frame Plating',
     reactorCore: 'ARC Infinite Well Reactor Mk.VI',
     aux3: 'ARC Prismatic Barrier',
     aux4: 'ARC Feedback Loop Capacitor',
@@ -531,7 +531,7 @@ const DEFAULT_CANONICAL_HARDWARE_BY_KIT: Record<
     sensoryB: 'SANC Blessing Resonance Grid',
     arms: 'Sanctum Benediction Assemblies',
     legs: 'Sanctum Steadfast Striders',
-    plating: 'Sanctum Support Coreplate',
+    plating: 'Sanctum Support Frame Plating',
     reactorCore: 'SANC Heartwell Reactor Mk.IV',
     aux3: 'SANC Aegis Restoration Field',
     aux4: 'SANC Martyrdom Plating',
@@ -1159,6 +1159,7 @@ export function doesPilotMeetFeatEquipmentRequirement(
   const reqLower = req.toLowerCase();
   if (
     reqLower === 'any loadout' ||
+    reqLower.includes('any frame plating') ||
     reqLower.includes('any coreplate') ||
     reqLower.includes('any core frame') ||
     reqLower.includes('any reactor') ||

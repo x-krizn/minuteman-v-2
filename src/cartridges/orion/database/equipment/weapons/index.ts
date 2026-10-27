@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { OrionActionDescriptor, WeaponDefinition } from '../../../types';
+import { OrionActionTemplate, WeaponDefinition } from '../../../types';
 
 export * from './base_sprites';
 export * from './builder';
@@ -94,10 +94,11 @@ export function isBlockingWeapon(weaponOrId?: WeaponDefinition | string | null):
 }
 
 /**
- * Canonical Assignable Weapon Skill Slot Proxies (Slots 1..4)
- * Dynamically resolve to the currently active weapon's moveset slot at runtime.
+ * Canonical Assignable Weapon Skill Slot Proxies (Slots 1..4).
+ * Pure slot-binding metadata — all combat stats (tell, action, cd, heat, damage, type, family, range)
+ * are sourced strictly from the equipped weapon's `moveset[weaponSkillSlot]` entry in `getResolvedActionDescriptor`.
  */
-export const WEAPON_SKILL_ACTIONS: OrionActionDescriptor[] = [
+export const WEAPON_SKILL_ACTIONS: OrionActionTemplate[] = [
   {
     id: 'weapon_skill_1',
     name: 'Weapon Skill 1 (Default L)',
@@ -106,15 +107,7 @@ export const WEAPON_SKILL_ACTIONS: OrionActionDescriptor[] = [
     sourceLabel: 'Active Weapon [Slot 1]',
     weaponSkillSlot: 1,
     sortOrder: 1,
-    description: 'Executes the active weapon’s primary special skill (AP Slug / Execution Lunge).',
-    tellDurationSec: 0.25,
-    actionDurationSec: 0.35,
-    cooldownSec: 4.0,
-    heatCost: 15,
-    damage: 18,
-    damageType: 'Pierce',
-    damageFamily: 'Kinetic',
-    range: 95,
+    description: 'Executes the active weapon’s Slot 1 ability.',
   },
   {
     id: 'weapon_skill_2',
@@ -124,15 +117,7 @@ export const WEAPON_SKILL_ACTIONS: OrionActionDescriptor[] = [
     sourceLabel: 'Active Weapon [Slot 2]',
     weaponSkillSlot: 2,
     sortOrder: 2,
-    description: 'Executes the active weapon’s tactical secondary skill (Concussion Grenade / Sweep Deflection).',
-    tellDurationSec: 0.3,
-    actionDurationSec: 0.4,
-    cooldownSec: 5.5,
-    heatCost: 18,
-    damage: 24,
-    damageType: 'Blast',
-    damageFamily: 'Kinetic',
-    range: 75,
+    description: 'Executes the active weapon’s Slot 2 ability.',
   },
   {
     id: 'weapon_skill_3',
@@ -142,15 +127,7 @@ export const WEAPON_SKILL_ACTIONS: OrionActionDescriptor[] = [
     sourceLabel: 'Active Weapon [Slot 3]',
     weaponSkillSlot: 3,
     sortOrder: 3,
-    description: 'Executes the active weapon’s suppression/control skill (Suppression Arc / Hamstring Arc).',
-    tellDurationSec: 0.18,
-    actionDurationSec: 0.38,
-    cooldownSec: 5.0,
-    heatCost: 16,
-    damage: 12,
-    damageType: 'Pierce',
-    damageFamily: 'Kinetic',
-    range: 65,
+    description: 'Executes the active weapon’s Slot 3 ability.',
   },
   {
     id: 'weapon_skill_4',
@@ -160,14 +137,6 @@ export const WEAPON_SKILL_ACTIONS: OrionActionDescriptor[] = [
     sourceLabel: 'Active Weapon [Slot 4]',
     weaponSkillSlot: 4,
     sortOrder: 4,
-    description: 'Executes the active weapon’s heavy finisher (Overcharge Discharge / Whirlwind Sever).',
-    tellDurationSec: 0.4,
-    actionDurationSec: 0.7,
-    cooldownSec: 8.5,
-    heatCost: 30,
-    damage: 30,
-    damageType: 'Beam',
-    damageFamily: 'Energy',
-    range: 85,
+    description: 'Executes the active weapon’s Slot 4 ability.',
   },
 ];

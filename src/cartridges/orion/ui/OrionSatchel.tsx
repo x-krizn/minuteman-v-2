@@ -518,7 +518,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                   <span className="text-[#38bdf8]">ARMOR</span>
                 </div>
                 <div className="text-[#94a3b8] truncate mt-0.5">
-                  Head · Arms · Plating (Cuirass)
+                  Head · Arms · Frame Plating
                 </div>
               </div>
 
@@ -625,7 +625,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                         </span>
                       </div>
                       <div className="text-[7.5px] text-[#94a3b8]">
-                        SPRITE COMPOSITE: HEAD ({resolvePlayerSpriteParts(state).headStyle.toUpperCase()}) · ARMS ({resolvePlayerSpriteParts(state).armsStyle.toUpperCase()}) · COREPLATE ({resolvePlayerSpriteParts(state).coreplateStyle.toUpperCase()})
+                        16×16 4-FRAME COMPOSITE: HEAD ({resolvePlayerSpriteParts(state).headStyle.toUpperCase()}) · ARMS ({resolvePlayerSpriteParts(state).armsStyle.toUpperCase()}) · FRAME PLATING ({resolvePlayerSpriteParts(state).framePlatingStyle.toUpperCase()})
                       </div>
                     </div>
                   </div>
@@ -995,7 +995,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                       },
                       {
                         slot: 'plating' as EditableLoadoutSlot,
-                        label: 'COREPLATE',
+                        label: 'FRAME PLATING',
                         val: currentPlatingName,
                         sub: `Hardware · ${state.armor.type}`,
                       },
@@ -1120,7 +1120,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                         { id: 'sensoryB', label: 'Sensory B' },
                         { id: 'arms', label: 'Arms Actuators' },
                         { id: 'legs', label: 'Legs Actuators' },
-                        { id: 'plating', label: 'Coreplate' },
+                        { id: 'plating', label: 'Frame Plating' },
                         { id: 'reactor', label: 'Reactor Core' },
                         { id: 'aux3', label: 'Aux 3 System' },
                         { id: 'aux4', label: 'Aux 4 System' },
@@ -1433,7 +1433,9 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                                         : editingSlot === 'aux3'
                                           ? currentAux3Name
                                           : currentAux4Name;
-                        const isEquipped = curVal === hw.name;
+                        const isEquipped =
+                          curVal === hw.name ||
+                          Boolean(hw.legacyNames?.includes(curVal));
                         return (
                           <div
                             key={hw.id}
@@ -2604,7 +2606,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                         'ALL',
                         'Ballistics & Ordnance',
                         'Melee & CQC',
-                        'Coreplate & Defense',
+                        'Frame Plating & Defense',
                         'Reactor & Thermal',
                         'Mobility & Stealth',
                         'Optics & Support',
@@ -2630,7 +2632,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                     {FRAME_FEAT_CATALOG.filter((feat) => {
                       if (featTierFilter !== 'ALL' && feat.tier !== featTierFilter) return false;
-                      const cat = feat.synergyCategory || 'Coreplate & Defense';
+                      const cat = feat.synergyCategory || 'Frame Plating & Defense';
                       if (featSynergyFilter !== 'ALL' && cat !== featSynergyFilter) return false;
                       return true;
                     }).map((feat) => {
@@ -2688,7 +2690,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                           </div>
                           <div className="flex items-center justify-between gap-1 text-[7px] mt-0.5">
                             <span className="text-[#7dd3fc] truncate">
-                              {feat.synergyCategory || 'Coreplate & Defense'}
+                              {feat.synergyCategory || 'Frame Plating & Defense'}
                             </span>
                             <span
                               className={`font-bold shrink-0 ${

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { OrionActionDescriptor, OrionState } from '../../types';
+import { OrionActionDescriptor, OrionActionTemplate, OrionState } from '../../types';
 import { getItemDefinition } from '../items';
 import {
   getWeaponDefinition,
@@ -18,7 +18,7 @@ import {
   getDefaultClassUtilityId,
 } from './utility_and_belt_modules';
 
-export type { OrionActionDescriptor } from '../../types';
+export type { OrionActionDescriptor, OrionActionTemplate } from '../../types';
 export {
   CLASS_UTILITY_CATALOG,
   type ClassUtilityItemDefinition,
@@ -38,9 +38,9 @@ export * from './weapons';
 // Auto-discover all assignable equipment/reactor/utility/belt modules in this directory via Vite import.meta.glob
 const modules = import.meta.glob<Record<string, unknown>>('./**/*.ts', { eager: true });
 
-const discoveredActions: OrionActionDescriptor[] = [...WEAPON_SKILL_ACTIONS];
+const discoveredActions: OrionActionTemplate[] = [...WEAPON_SKILL_ACTIONS];
 
-function isOrionActionDescriptor(val: unknown): val is OrionActionDescriptor {
+function isOrionActionTemplate(val: unknown): val is OrionActionTemplate {
   return (
     typeof val === 'object' &&
     val !== null &&
@@ -53,13 +53,13 @@ function isOrionActionDescriptor(val: unknown): val is OrionActionDescriptor {
 for (const [path, mod] of Object.entries(modules)) {
   if (path === './index.ts') continue;
   for (const exportedValue of Object.values(mod)) {
-    if (isOrionActionDescriptor(exportedValue)) {
+    if (isOrionActionTemplate(exportedValue)) {
       discoveredActions.push(exportedValue);
     }
   }
 }
 
-export const ASSIGNABLE_ACTION_CATALOG: OrionActionDescriptor[] = discoveredActions.sort(
+export const ASSIGNABLE_ACTION_CATALOG: OrionActionTemplate[] = discoveredActions.sort(
   (a, b) => (a.sortOrder ?? 99) - (b.sortOrder ?? 99)
 );
 
@@ -84,33 +84,38 @@ export function getResolvedActionDescriptor(
       item2 && w3 && isAuxiliaryEquipment(w3)
         ? slot3Id!
         : slot2Id || slot3Id || 'buckler_shield';
-    const weapon = getWeaponDefinition(targetWeaponId);
+    const weapon =
+      getWeaponDefinition(targetWeaponId) || getWeaponDefinition('buckler_shield')!;
     const isUnpairedWeapon =
-      weapon && isTrueWeaponEquipment(weapon) && targetWeaponId !== slot1Id;
+      isTrueWeaponEquipment(weapon) && targetWeaponId !== slot1Id;
     const movesetSlot: 1 | 2 | 3 | 4 = isUnpairedWeapon ? 1 : 3;
-    const move = weapon?.moveset[movesetSlot] || weapon?.moveset[3] || weapon?.moveset[1];
+    const move =
+      weapon.moveset[movesetSlot] ||
+      weapon.moveset[3] ||
+      weapon.moveset[1] ||
+      weapon.moveset[0];
 
     return {
       id: 'weapon_slot2_skill4',
-      name: move?.name || 'Side Skill 4',
-      shortLabel: (move?.name || 'SKILL 4').slice(0, 14).toUpperCase(),
+      name: move.name,
+      shortLabel: move.name.slice(0, 14).toUpperCase(),
       sourceCategory: 'weapon',
-      sourceLabel: `${weapon?.name || 'Side Hand'} [Skill ${isUnpairedWeapon ? 2 : 4}]`,
+      sourceLabel: `${weapon.name} [Skill ${isUnpairedWeapon ? 2 : 4}]`,
       weaponSkillSlot: movesetSlot,
-      weaponId: targetWeaponId,
-      description: move?.description || 'Side-hand weapon or auxiliary action.',
-      tellDurationSec: move?.tellDurationSec ?? 0.2,
-      actionDurationSec: move?.actionDurationSec ?? 0.35,
-      cooldownSec: move?.cooldownSec ?? 4.0,
-      isChain: move?.isChain,
-      activeDurationSec: move?.activeDurationSec,
-      reloadDurationSec: move?.reloadDurationSec,
-      isBlock: move?.isBlock,
-      heatCost: move?.heatCost ?? 12,
-      damage: move?.damage ?? 16,
-      damageType: move?.damageType ?? 'Impact',
-      damageFamily: move?.damageFamily ?? 'Kinetic',
-      range: move?.range ?? 30,
+      weaponId: weapon.id,
+      description: move.description,
+      tellDurationSec: move.tellDurationSec,
+      actionDurationSec: move.actionDurationSec,
+      cooldownSec: move.cooldownSec,
+      isChain: move.isChain,
+      activeDurationSec: move.activeDurationSec,
+      reloadDurationSec: move.reloadDurationSec,
+      isBlock: move.isBlock,
+      heatCost: move.heatCost,
+      damage: move.damage,
+      damageType: move.damageType,
+      damageFamily: move.damageFamily,
+      range: move.range,
     };
   }
 
@@ -118,33 +123,38 @@ export function getResolvedActionDescriptor(
     const slot1Id = state.equipmentSlots?.slot1 || state.equippedWeapons?.[0] || 'long_sword';
     const slot2WeaponId =
       state.equipmentSlots?.slot2 || state.equipmentSlots?.slot3 || 'buckler_shield';
-    const weapon = getWeaponDefinition(slot2WeaponId);
+    const weapon =
+      getWeaponDefinition(slot2WeaponId) || getWeaponDefinition('buckler_shield')!;
     const isUnpairedWeapon =
-      weapon && isTrueWeaponEquipment(weapon) && slot2WeaponId !== slot1Id;
+      isTrueWeaponEquipment(weapon) && slot2WeaponId !== slot1Id;
     const movesetSlot: 1 | 2 | 3 | 4 = isUnpairedWeapon ? 2 : 4;
-    const move = weapon?.moveset[movesetSlot] || weapon?.moveset[4] || weapon?.moveset[2];
+    const move =
+      weapon.moveset[movesetSlot] ||
+      weapon.moveset[4] ||
+      weapon.moveset[2] ||
+      weapon.moveset[0];
 
     return {
       id: 'weapon_slot2_skill5',
-      name: move?.name || 'Side Skill 5',
-      shortLabel: (move?.name || 'SKILL 5').slice(0, 14).toUpperCase(),
+      name: move.name,
+      shortLabel: move.name.slice(0, 14).toUpperCase(),
       sourceCategory: 'weapon',
-      sourceLabel: `${weapon?.name || 'Side Hand'} [Skill ${isUnpairedWeapon ? 3 : 5}]`,
+      sourceLabel: `${weapon.name} [Skill ${isUnpairedWeapon ? 3 : 5}]`,
       weaponSkillSlot: movesetSlot,
-      weaponId: slot2WeaponId,
-      description: move?.description || 'Side-hand weapon or auxiliary finisher action.',
-      tellDurationSec: move?.tellDurationSec ?? 0.3,
-      actionDurationSec: move?.actionDurationSec ?? 0.45,
-      cooldownSec: move?.cooldownSec ?? 6.5,
-      isChain: move?.isChain,
-      activeDurationSec: move?.activeDurationSec,
-      reloadDurationSec: move?.reloadDurationSec,
-      isBlock: move?.isBlock,
-      heatCost: move?.heatCost ?? 20,
-      damage: move?.damage ?? 24,
-      damageType: move?.damageType ?? 'Wave',
-      damageFamily: move?.damageFamily ?? 'Energy',
-      range: move?.range ?? 35,
+      weaponId: weapon.id,
+      description: move.description,
+      tellDurationSec: move.tellDurationSec,
+      actionDurationSec: move.actionDurationSec,
+      cooldownSec: move.cooldownSec,
+      isChain: move.isChain,
+      activeDurationSec: move.activeDurationSec,
+      reloadDurationSec: move.reloadDurationSec,
+      isBlock: move.isBlock,
+      heatCost: move.heatCost,
+      damage: move.damage,
+      damageType: move.damageType,
+      damageFamily: move.damageFamily,
+      range: move.range,
     };
   }
 
@@ -181,30 +191,32 @@ export function getResolvedActionDescriptor(
       state.equipmentSlots?.slot1 ||
       state.equippedWeapons[state.activeWeaponIndex] ||
       'gladius_boltcaster';
-    const weapon = getWeaponDefinition(currentWeaponId);
-    const move = weapon?.moveset[base.weaponSkillSlot];
-    if (move && weapon) {
-      return {
-        ...base,
-        name: move.name,
-        shortLabel: move.name.toUpperCase(),
-        sourceLabel: `${weapon.name} [Skill ${base.weaponSkillSlot}]`,
-        weaponId: currentWeaponId,
-        description: move.description,
-        tellDurationSec: move.tellDurationSec,
-        actionDurationSec: move.actionDurationSec,
-        cooldownSec: move.cooldownSec,
-        isChain: move.isChain,
-        activeDurationSec: move.activeDurationSec,
-        reloadDurationSec: move.reloadDurationSec,
-        isBlock: move.isBlock,
-        heatCost: move.heatCost,
-        damage: move.damage,
-        damageType: move.damageType,
-        damageFamily: move.damageFamily,
-        range: move.range,
-      };
-    }
+    const weapon =
+      getWeaponDefinition(currentWeaponId) ||
+      getWeaponDefinition('gladius_boltcaster')!;
+    const move =
+      weapon.moveset[base.weaponSkillSlot] || weapon.moveset[0];
+
+    return {
+      ...base,
+      name: move.name,
+      shortLabel: move.name.toUpperCase(),
+      sourceLabel: `${weapon.name} [Skill ${base.weaponSkillSlot}]`,
+      weaponId: weapon.id,
+      description: move.description,
+      tellDurationSec: move.tellDurationSec,
+      actionDurationSec: move.actionDurationSec,
+      cooldownSec: move.cooldownSec,
+      isChain: move.isChain,
+      activeDurationSec: move.activeDurationSec,
+      reloadDurationSec: move.reloadDurationSec,
+      isBlock: move.isBlock,
+      heatCost: move.heatCost,
+      damage: move.damage,
+      damageType: move.damageType,
+      damageFamily: move.damageFamily,
+      range: move.range,
+    };
   }
 
   if (base && base.sourceCategory === 'utility') {
@@ -222,6 +234,10 @@ export function getResolvedActionDescriptor(
       actionDurationSec: utilityDef.actionDurationSec,
       cooldownSec: utilityDef.cooldownSec,
       heatCost: utilityDef.heatCost,
+      damage: base.damage ?? 0,
+      damageType: base.damageType ?? 'Pulse',
+      damageFamily: base.damageFamily ?? 'Energy',
+      range: base.range ?? 0,
     };
   }
 
@@ -233,9 +249,20 @@ export function getResolvedActionDescriptor(
       ? state.inventorySlots.find((s) => s.itemId === itemId)
       : undefined;
     const count = invSlot ? invSlot.count : 0;
+    const resolvedBase: OrionActionDescriptor = {
+      ...base,
+      tellDurationSec: base.tellDurationSec ?? 0.1,
+      actionDurationSec: base.actionDurationSec ?? 0.2,
+      cooldownSec: base.cooldownSec ?? 4.0,
+      heatCost: base.heatCost ?? 0,
+      damage: base.damage ?? 0,
+      damageType: base.damageType ?? 'Impact',
+      damageFamily: base.damageFamily ?? 'Kinetic',
+      range: base.range ?? 0,
+    };
     if (itemDef) {
       return {
-        ...base,
+        ...resolvedBase,
         name: `${itemDef.name} (×${count})`,
         shortLabel: `${itemDef.name.slice(0, 12).toUpperCase()} ×${count}`,
         sourceLabel: `Belt Slot ${idx + 1} [Action ${7 + idx}]`,
@@ -243,12 +270,22 @@ export function getResolvedActionDescriptor(
       };
     }
     return {
-      ...base,
+      ...resolvedBase,
       name: `Belt Slot ${idx + 1} (Empty)`,
       shortLabel: `BELT ${idx + 1} [EMPTY]`,
       sourceLabel: `Belt Slot ${idx + 1} [Action ${7 + idx}]`,
     };
   }
 
-  return base;
+  return {
+    ...base,
+    tellDurationSec: base.tellDurationSec ?? 0,
+    actionDurationSec: base.actionDurationSec ?? 0,
+    cooldownSec: base.cooldownSec ?? 0,
+    heatCost: base.heatCost ?? 0,
+    damage: base.damage ?? 0,
+    damageType: base.damageType ?? 'Impact',
+    damageFamily: base.damageFamily ?? 'Kinetic',
+    range: base.range ?? 0,
+  };
 }

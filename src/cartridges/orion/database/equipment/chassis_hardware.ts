@@ -9,13 +9,29 @@ import { CANONICAL_ARMS } from './arms';
 import { CANONICAL_AUXILIARIES } from './auxiliaries';
 import { CANONICAL_HEAD_OPTICS } from './head';
 import { CANONICAL_LEGS } from './legs';
-import { CANONICAL_COREPLATES } from './plating';
+import {
+  CANONICAL_COREPLATES,
+  CANONICAL_FRAME_PLATING,
+} from './plating';
 import { CANONICAL_REACTORS } from './reactors';
 import { CANONICAL_SENSORY_ARRAYS } from './sensory';
+
+export interface MechPartSpriteStripConfig {
+  /** Optional 64x16px (4 frames of 16x16px) Base64 PNG sprite strip for this mech part */
+  base64?: string;
+  /** Number of animation frames in the strip (defaults to 4) */
+  frameCount?: number;
+  /** Width of each frame cell in pixels (defaults to 16) */
+  cellWidth?: number;
+  /** Height of each frame cell in pixels (defaults to 16) */
+  cellHeight?: number;
+}
 
 export interface CanonicalHardwareItemDefinition {
   id: string;
   name: string;
+  /** Optional legacy item names for backward-compatible save & loadout resolution */
+  legacyNames?: string[];
   slot:
     | 'head'
     | 'arms'
@@ -28,6 +44,14 @@ export interface CanonicalHardwareItemDefinition {
     | 'aux4';
   canonicalSlotLabel: string;
   subtype: string;
+  /** Optional visual set index (0..11 for the 12 baseline sets; omit for standalone pieces without a full set) */
+  setIndex?: number;
+  /** Optional set identifier for grouping matching pieces (omit for standalone pieces) */
+  setId?: string;
+  /** 4-frame (64x16px, 16x16px per frame) aligned sprite strip configuration for head, arms, or frame plating */
+  partSprite?: MechPartSpriteStripConfig;
+  /** Procedural/fallback palette and geometry theme for the 4-frame 16x16 part strip */
+  spriteTheme?: Record<string, any>;
   armorType?: 'Ablative' | 'Reactive' | 'Hardened' | 'Layered';
   baseLoadCapacity?: FrameLoadCapacity;
   armorThreshold?: number;
@@ -45,16 +69,16 @@ export interface CanonicalHardwareItemDefinition {
 
 /**
  * Unified Hardware Catalog aggregated from dedicated slot modules:
- * - Coreplates & Cuirasses (`./plating`)
+ * - Frame Plating (`./plating`)
  * - Reactors & Energy Storage (`./reactors`)
  * - Head Helms & Optics (`./head`)
  * - Sensory A & B Arrays (`./sensory`)
- * - Arms & Actuators (`./arms`)
+ * - Arms & Shoulder Actuators (`./arms`)
  * - Legs & Striders (`./legs`)
  * - Aux 3 & Aux 4 Tactical Systems (`./auxiliaries`)
  */
 export const CANONICAL_HARDWARE_CATALOG: CanonicalHardwareItemDefinition[] = [
-  ...CANONICAL_COREPLATES,
+  ...CANONICAL_FRAME_PLATING,
   ...CANONICAL_REACTORS,
   ...CANONICAL_HEAD_OPTICS,
   ...CANONICAL_SENSORY_ARRAYS,
@@ -62,6 +86,8 @@ export const CANONICAL_HARDWARE_CATALOG: CanonicalHardwareItemDefinition[] = [
   ...CANONICAL_LEGS,
   ...CANONICAL_AUXILIARIES,
 ];
+
+export { CANONICAL_COREPLATES, CANONICAL_FRAME_PLATING };
 
 export type ChassisHardwareItemDefinition = CanonicalHardwareItemDefinition;
 export const CHASSIS_HARDWARE_CATALOG: ChassisHardwareItemDefinition[] = CANONICAL_HARDWARE_CATALOG;
@@ -72,13 +98,16 @@ export function findHardwareItemByNameOrId(
   if (!nameOrId) return undefined;
   const norm = nameOrId.trim().toLowerCase();
   return CANONICAL_HARDWARE_CATALOG.find(
-    (item) => item.id.toLowerCase() === norm || item.name.toLowerCase() === norm
+    (item) =>
+      item.id.toLowerCase() === norm ||
+      item.name.toLowerCase() === norm ||
+      item.legacyNames?.some((legacy) => legacy.toLowerCase() === norm)
   );
 }
 
 /**
- * Resolves the pilot's active Coreplate, Reactor, and Aux 3/4 stats dynamically from equipped hardware.
- * In classless Project Orion, swapping a Coreplate or Reactor immediately updates Armor Type,
+ * Resolves the pilot's active Frame Plating, Reactor, and Aux 3/4 stats dynamically from equipped hardware.
+ * In classless Project Orion, swapping Frame Plating or a Reactor immediately updates Armor Type,
  * Base Load Capacity, Shield/Armor baseline, and Reactor Family.
  */
 export function resolveEquippedHardwareStats(state: OrionState): {

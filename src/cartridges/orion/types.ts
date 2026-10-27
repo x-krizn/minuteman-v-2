@@ -587,7 +587,7 @@ export interface PilotSkillProgress {
 export type FeatSynergyCategory =
   | 'Ballistics & Ordnance'
   | 'Melee & CQC'
-  | 'Coreplate & Defense'
+  | 'Frame Plating & Defense'
   | 'Reactor & Thermal'
   | 'Mobility & Stealth'
   | 'Optics & Support';
@@ -601,7 +601,7 @@ export interface FrameFeatDefinition {
   requiredSkillLevel: number;
   /** Functional hardware/weapon synergy category for classless UI filtering */
   synergyCategory?: FeatSynergyCategory;
-  /** Canonical Weapon Family or Hardware prerequisite (e.g. 'Bolter', 'Energy Shield', 'Heavy Coreplate') — never restricted by class */
+  /** Canonical Weapon Family or Hardware prerequisite (e.g. 'Bolter', 'Energy Shield', 'Heavy Frame Plating') — never restricted by class */
   requiredEquipment?: string;
   gainDescription: string;
   costDescription: string;
@@ -999,7 +999,7 @@ export type OrionActionSourceCategory =
   | 'utility'
   | 'belt';
 
-export interface OrionActionDescriptor {
+export interface OrionActionTemplate {
   id: string;
   name: string;
   shortLabel: string;
@@ -1013,20 +1013,31 @@ export interface OrionActionDescriptor {
   traitLineId?: TraitLine;
   sortOrder?: number;
   description: string;
-  tellDurationSec: number;
-  actionDurationSec: number;
-  cooldownSec: number;
+  tellDurationSec?: number;
+  actionDurationSec?: number;
+  cooldownSec?: number;
   isChain?: boolean;
   activeDurationSec?: number;
   reloadDurationSec?: number;
   isBlock?: boolean;
+  heatCost?: number; // Negative values vent heat
+  damage?: number;
+  damageType?: DamageType;
+  damageFamily?: DamageFamily;
+  range?: number;
+  /** Optional embedded Base64 PNG icon for hardware/skill displays */
+  iconSprite?: Base64SpriteConfig;
+}
+
+export interface OrionActionDescriptor extends OrionActionTemplate {
+  tellDurationSec: number;
+  actionDurationSec: number;
+  cooldownSec: number;
   heatCost: number; // Negative values vent heat
   damage: number;
   damageType: DamageType;
   damageFamily: DamageFamily;
   range: number;
-  /** Optional embedded Base64 PNG icon for hardware/skill displays */
-  iconSprite?: Base64SpriteConfig;
 }
 
 export interface OrionAssignedActions {

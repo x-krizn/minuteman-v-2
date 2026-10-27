@@ -84,24 +84,24 @@ src/cartridges/orion/
 │   │   ├── quest/belldor/        # Belldor quest items, keys & relics
 │   │   ├── currency.ts           # trade_coin
 │   │   └── gemstones.ts          # 9 Canonical Gemstones
-│   ├── equipment/                # Slot-organized Weapons, Hardware, Coreplates, Reactors & Utilities
+│   ├── equipment/                # Slot-organized Weapons, Hardware, Frame Plating, Reactors & Utilities
 │   │   ├── weapons/              # Self-contained 5-Action Weapon modules (29 Magitech + 12 Heritage + Auxiliaries)
-│   │   ├── plating/              # 6 Canonical Coreplates
+│   │   ├── plating/              # 12+ Baseline Frame Plating sets (drives Torso/Legs 4-frame 16x16px sprite layer)
 │   │   ├── reactors/             # 6 Canonical Reactors
-│   │   ├── head/                 # 6 Head Optics / Command Domes
+│   │   ├── head/                 # 12+ Baseline Head Optics / Command Domes (drives Head 4-frame 16x16px sprite layer)
 │   │   ├── sensory/              # 12 Sensory A & B Arrays
-│   │   ├── arms/                 # 6 Arms Gauntlets / Assemblies
+│   │   ├── arms/                 # 12+ Baseline Arms / Shoulder Assemblies (drives Shoulders/Arms 4-frame 16x16px sprite layer)
 │   │   ├── legs/                 # 6 Legs Striders
 │   │   ├── auxiliaries/          # 14 Aux 3 / Aux 4 & Energy Storage modules
 │   │   ├── chassis_hardware.ts   # Hardware aggregator & resolveEquippedHardwareStats(state)
 │   │   └── utility_and_belt_modules.ts # Tactical Utilities [Action 6] & assignable [L]/[R] skills
 │   ├── characters/               # 6 Classless Starting Loadout Kit profiles (Bastion, Fortress, Dawnforge, etc.)
-│   └── progression/              # [ORION-ANCHOR: PROG-FEAT-SYNERGY] 97 Canonical Feats, 58 Hardware items & Level Gates
+│   └── progression/              # [ORION-ANCHOR: PROG-FEAT-SYNERGY] 97 Canonical Feats, Hardware items & Level Gates
 │
 ├── systems/                      # Modular Engine Systems
 │   ├── renderSystem.ts           # [ORION-ANCHOR: RENDER-CLUSTER-BAKE] & [ORION-ANCHOR: RENDER-POST-PROCESS]
 │   ├── renderHudAndFogTells.ts   # Canonical 3-Layer HUD & Aether Fog wayfinding tells
-│   ├── playerSpriteSystem.ts     # Dynamic 8-dir composite player mech sprite renderer
+│   ├── playerSpriteSystem.ts     # Dynamic 3-layer × 4-frame (64x16px, 16x16px aligned) composite player mech renderer
 │   ├── worldSystem.ts            # [ORION-ANCHOR: WORLD-COMPOSER-INIT] & [ORION-ANCHOR: AETHER-FOG-TOPOLOGY]
 │   ├── playerSystem.ts           # State store, save/load, 2.5D physics, player controller & state gates
 │   ├── combatSystem.ts           # [ORION-ANCHOR: COMBAT-DEFENSE-MATH] & [ORION-ANCHOR: COMBAT-ACTION-PAYLOAD]
@@ -442,6 +442,11 @@ Every weapon defines a 5-action moveset (`slot: 0` = primary chain, `slot: 1..4`
 ### Adding an Item (`database/items/consumables/<item_name>.ts` or `database/items/quest/<world>/<item_name>.ts`)
 Create a file exporting an `ItemWikiDefinition` (`id`, `name`, `category`, `iconColor`, optional `iconSprite`, and optional `onUse(state, ctx)` callback). Reference its `id` in any Room `cache` or Enemy `lootTable`.
 
+### Adding a Mech Part (`Head`, `Arms`, or `Frame Plating`) — Full Sets OR Standalone Pieces
+`database/equipment/head/`, `database/equipment/arms/`, and `database/equipment/plating/` each use `import.meta.glob` auto-discovery. You can add **standalone individual parts** (e.g. a unique boss-drop Head or a standalone Frame Plating piece) without needing a matching 3-piece set or `setIndex`:
+- Omit `setIndex` on standalone pieces (`setIndex` is optional and only used to label numbered sets).
+- Provide `partSprite: { base64: 'data:image/png;base64,...', frameCount: 4, cellWidth: 16, cellHeight: 16 }` (`64×16 px` strip aligned to the shared `16×16` origin) and/or `spriteTheme` colors. Each slot (`plating`, `arms`, `head`) resolves and slices its own strip independently.
+
 ---
 
 ## 4. Embedding Drafted PNG Assets Directly in Entry Files (`[ORION-ANCHOR: RENDER-CLUSTER-BAKE]`)
@@ -509,7 +514,7 @@ The engine provides a **5-Pass Post-Processing Pipeline** (`src/cartridges/orion
 ## 6. Classless Build, Equipment & Feat Architecture (`v0.8` Canonical Spec — "Guide, Never Enforce")
 
 > **Core Design Mandate ("Guide, Never Enforce"):**
-> Project Orion has **no player-facing classes or class restrictions**. Archetype profiles exist strictly behind the scenes to guide item theming and offer optional **Starting Loadout Kits** at New Game. Any pilot can equip any weapon, coreplate, reactor, sensor, limb actuator, tactical utility (`Action 6`), or socket any of the **97 Canonical Feats** as long as they meet the **Pilot Skill Tier level (`I–V`), Gemstone sockets, and equipped Hardware/Weapon prerequisites** (`[ORION-ANCHOR: PROG-FEAT-SYNERGY]`).
+> Project Orion has **no player-facing classes or class restrictions**. Archetype profiles exist strictly behind the scenes to guide item theming and offer optional **Starting Loadout Kits** at New Game. Any pilot can equip any weapon, frame plating, reactor, sensor, limb actuator, tactical utility (`Action 6`), or socket any of the **97 Canonical Feats** as long as they meet the **Pilot Skill Tier level (`I–V`), Gemstone sockets, and equipped Hardware/Weapon prerequisites** (`[ORION-ANCHOR: PROG-FEAT-SYNERGY]`).
 
 ### 6.1 The Nine Gemstones & Three-Layer Progression Chain (`[ORION-ANCHOR: PROG-SKILL-SCALING]`)
 Progression is flat (`Static Budget Rule`): total base stats never inflate. **Gems** are a single unified build currency with three uses across the progression chain:
@@ -533,16 +538,16 @@ Frame Level (1–20 Milestones, No Gems)
    - **Black — `hematite`**: Ichor Reactor Resonance (funds *Assault Ballistics & Turbine* and *Heavy Ordnance & Siege*)
 
 2. **Six Optional Starting Loadout Kits (`database/characters/`)**:
-   - **Bastion Striker Kit (`PNSY W416`)**: `BWI Bastion Coreplate`, `PNSY Alchemic Turbine Core Mk.IV`, `Crystal Dynamics G341 Murmillio` (Head), `BWI Twinstrike Gauntlets` (Arms), `BWI Gatecrasher Striders` (Legs), `N-55 Gladius`, `PNSY D-0g Repair Drone`.
-   - **Fortress Siege Kit (`RAD HAU`)**: `Fire & Ice Fortress Coreplate`, `RAD Battleheart Ether Reactor Mk.V`, `BE Ironveil Command Dome` (Head), `Fire & Ice Line Holder` (Arms), `Fire & Ice Outrigger Striders` (Legs), `B-25 Brushcutter`, `RAD R463 Fathomless System`.
-   - **Dawnforge Vanguard Kit (`Trinity DE-14`)**: `Dawnforge Guardian Coreplate`, `TI Manaheart Reactor Mk.IV`, `Aegis Halo Command Dome` (Head), `Solbright Cleaver Assemblies` (Arms), `Dawnforge Stabilizer Striders` (Legs), `LS-900 Swordspear`, `TI Lightwell Recovery System`.
-   - **Phantom Recon Kit (`VX Phantom`)**: `Shadowcraft Recon Coreplate`, `VX Phantom Core Mk.III`, `VX Veilsight Command Helm` (Head), `Shadowcraft Silencer Gauntlets` (Arms), `Shadowcraft Ghost Striders` (Legs), `SV-12 Viper`, `VX Smoke Dispersal System`.
-   - **Arclight Artillery Kit (`ARC Arclight`)**: `Arcanum Heavy Projector Coreplate`, `ARC Infinite Well Reactor Mk.VI`, `ARC Omniscient Command Dome` (Head), `Arcanum Channeler Assemblies` (Arms), `Arcanum Anchor Striders` (Legs), `WZ-800 Arclight Cannon`, `ARC Rift Anchor`.
-   - **Sanctum Support Kit (`SANC Sanctum`)**: `Sanctum Support Coreplate`, `SANC Heartwell Reactor Mk.IV`, `SANC Providence Command Helm` (Head), `Sanctum Benediction Assemblies` (Arms), `Sanctum Steadfast Striders` (Legs), `CL-700 Sanctifier`, `SANC Radiant Ward Projector`.
+   - **Bastion Striker Kit (`PNSY W416`)**: `BWI Bastion Frame Plating`, `PNSY Alchemic Turbine Core Mk.IV`, `Crystal Dynamics G341 Murmillio` (Head), `BWI Twinstrike Gauntlets` (Arms), `BWI Gatecrasher Striders` (Legs), `N-55 Gladius`, `PNSY D-0g Repair Drone`.
+   - **Fortress Siege Kit (`RAD HAU`)**: `Fire & Ice Fortress Frame Plating`, `RAD Battleheart Ether Reactor Mk.V`, `BE Ironveil Command Dome` (Head), `Fire & Ice Line Holder` (Arms), `Fire & Ice Outrigger Striders` (Legs), `B-25 Brushcutter`, `RAD R463 Fathomless System`.
+   - **Dawnforge Vanguard Kit (`Trinity DE-14`)**: `Dawnforge Guardian Frame Plating`, `TI Manaheart Reactor Mk.IV`, `Aegis Halo Command Dome` (Head), `Solbright Cleaver Assemblies` (Arms), `Dawnforge Stabilizer Striders` (Legs), `LS-900 Swordspear`, `TI Lightwell Recovery System`.
+   - **Phantom Recon Kit (`VX Phantom`)**: `Shadowcraft Recon Frame Plating`, `VX Phantom Core Mk.III`, `VX Veilsight Command Helm` (Head), `Shadowcraft Silencer Gauntlets` (Arms), `Shadowcraft Ghost Striders` (Legs), `SV-12 Viper`, `VX Smoke Dispersal System`.
+   - **Arclight Artillery Kit (`ARC Arclight`)**: `Arcanum Heavy Projector Frame Plating`, `ARC Infinite Well Reactor Mk.VI`, `ARC Omniscient Command Dome` (Head), `Arcanum Channeler Assemblies` (Arms), `Arcanum Anchor Striders` (Legs), `WZ-800 Arclight Cannon`, `ARC Rift Anchor`.
+   - **Sanctum Support Kit (`SANC Sanctum`)**: `Sanctum Support Frame Plating`, `SANC Heartwell Reactor Mk.IV`, `SANC Providence Command Helm` (Head), `Sanctum Benediction Assemblies` (Arms), `Sanctum Steadfast Striders` (Legs), `CL-700 Sanctifier`, `SANC Radiant Ward Projector`.
 
 3. **Canonical Equipment Catalog (`Project Orion — Equipment & Feats.md`)**:
    - **Weapons (`database/equipment/weapons/magitech_catalog.ts` + Heritage Set)**: 29 canonical Magitech weapons (Bolters, Polybolos, Ballistas, Gatling Guns, Grenade/Rocket/Missile Systems, Beam Projectors/Lances, Energy Carbines, Hybrid Rifles/Staves, Monomolecular/Thermal Blades, and Physical Shields) alongside the 12 heritage field weapons, all executing weapon-class-authentic melee/ranged combat payloads across Skills 1–5 (`[ORION-ANCHOR: COMBAT-ACTION-PAYLOAD]`).
-   - **Chassis Hardware & Frame Components (`database/equipment/chassis_hardware.ts` & Slot Folders `plating/`, `reactors/`, `head/`, `sensory/`, `arms/`, `legs/`, `auxiliaries/`)**: 6 Coreplates (`plating`), 6 Reactors (`reactor`), 6 Head Command Domes/Helms (`head`), 6 Sensory A (`sensoryA`), 6 Sensory B (`sensoryB`, including `SANC Blessing Resonance Grid`), 6 Arms Gauntlets/Assemblies (`arms`), 6 Legs Striders (`legs`), 6 Aux 3 Systems (`aux3`), 6 Aux 4 Systems (`aux4`), and Energy Storage (`Crystal Dynamics ERD Lodestone`, `VX Shadow Capacitor`). All items are explicitly flagged with `isPlaceholderAsset: true` and `futureAssetPlanned` documentation. Equipping any Coreplate, Reactor, or Aux module dynamically drives live frame stats (`armor.type`, `armor.threshold`, `armor.rating`, `armor.maxDurability`, `shields.maxCapacity`, `reactor`, and `effectiveLoadCapacity`) via `resolveEquippedHardwareStats(state)`.
+   - **Chassis Hardware & 3-Piece Aligned Mech Sprites (`database/equipment/chassis_hardware.ts` & Slot Folders `plating/`, `reactors/`, `head/`, `sensory/`, `arms/`, `legs/`, `auxiliaries/`)**: 12 baseline sets (`setIndex: 0..11`, open-ended for future sets `12+`) of **3 aligned `64×16 px` (`4` frames × `16×16 px`) mech sprite pieces**: **Frame Plating (`plating`)** driving Torso/Legs, **Arms (`arms`)** driving Shoulders/Arms, and **Head (`head`)** driving Head/Optics, alongside 6 Reactors (`reactor`), 6 Sensory A (`sensoryA`), 6 Sensory B (`sensoryB`), 6 Legs Striders (`legs`), 6 Aux 3 Systems (`aux3`), 6 Aux 4 Systems (`aux4`), and Energy Storage. Equipping any Frame Plating, Reactor, or Aux module dynamically drives live frame stats (`armor.type`, `armor.threshold`, `armor.rating`, `armor.maxDurability`, `shields.maxCapacity`, `reactor`, and `effectiveLoadCapacity`) via `resolveEquippedHardwareStats(state)`.
    - **Tactical Utilities (`database/equipment/utility_and_belt_modules.ts`)**: 6 classless `Action 6` utilities (`PNSY D-0g Repair Drone`, `RAD R463 Fathomless System`, `TI Lightwell Recovery System`, `VX Smoke Dispersal System`, `ARC Rift Anchor`, `SANC Radiant Ward Projector`).
 
 4. **95 Verbatim Lore Feats (Tiers I–V) + `Knight's Oath` Reward Feat (`database/progression/canonical_feats.ts` → `[ORION-ANCHOR: PROG-FEAT-SYNERGY]`)**:

@@ -25,6 +25,7 @@ export {
   getClassUtilityDefinition,
   getDefaultClassUtilityId,
 };
+export * from './armor_sheets';
 export * from './arms';
 export * from './auxiliaries';
 export * from './chassis_hardware';

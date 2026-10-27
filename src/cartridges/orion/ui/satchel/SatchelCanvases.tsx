@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import { drawCompositePlayerMech } from '../../systems';
+import { drawCompositePlayerMech, subscribeToMechSpriteLoad } from '../../systems';
 import { OrionState, TraitLine } from '../../types';
 
 export const ALL_TRAIT_LINES: TraitLine[] = [
@@ -48,10 +48,11 @@ export type EquipmentInventoryCategory =
 export const SpriteCanvasIcon: React.FC<{
   base64?: string;
   col?: number;
+  row?: number;
   cellWidth?: number;
   cellHeight?: number;
   sizeClass?: string;
-}> = ({ base64, col = 0, cellWidth = 16, cellHeight = 16, sizeClass = 'w-4 h-4' }) => {
+}> = ({ base64, col = 0, row = 0, cellWidth = 16, cellHeight = 16, sizeClass = 'w-4 h-4' }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   useEffect(() => {
     const cvs = canvasRef.current;
@@ -66,10 +67,20 @@ export const SpriteCanvasIcon: React.FC<{
     img.onload = () => {
       ctx.clearRect(0, 0, 16, 16);
       ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(img, col * cellWidth, 0, cellWidth, cellHeight, 0, 0, 16, 16);
+      ctx.drawImage(
+        img,
+        col * cellWidth,
+        row * cellHeight,
+        cellWidth,
+        cellHeight,
+        0,
+        0,
+        16,
+        16
+      );
     };
     img.src = dataUri;
-  }, [base64, col, cellWidth, cellHeight]);
+  }, [base64, col, row, cellWidth, cellHeight]);
 
   if (!base64) return null;
   return (
@@ -91,16 +102,21 @@ export const CompositeMechPreviewCanvas: React.FC<{
 }> = ({ state, head, arms, plating, weaponId }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   useEffect(() => {
-    const cvs = canvasRef.current;
-    if (!cvs) return;
-    const ctx = cvs.getContext('2d');
-    if (!ctx) return;
-    ctx.clearRect(0, 0, 32, 32);
-    ctx.imageSmoothingEnabled = false;
-    drawCompositePlayerMech(ctx, state, 16, 28, state.t || 0, {
-      dir: 'S',
-      isMoving: false,
-    });
+    const renderPreview = () => {
+      const cvs = canvasRef.current;
+      if (!cvs) return;
+      const ctx = cvs.getContext('2d');
+      if (!ctx) return;
+      ctx.clearRect(0, 0, 32, 32);
+      ctx.imageSmoothingEnabled = false;
+      drawCompositePlayerMech(ctx, state, 16, 28, state.t || 0, {
+        dir: 'S',
+        isMoving: false,
+      });
+    };
+
+    renderPreview();
+    return subscribeToMechSpriteLoad(renderPreview);
   }, [state, head, arms, plating, weaponId, state.traitLine]);
 
   return (

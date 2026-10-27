@@ -4,6 +4,11 @@
  */
 
 import { CANONICAL_ARMS } from '../database/equipment/arms';
+import {
+  armor_sheets,
+  plating_bwi_bastion,
+  set_camelot_knight,
+} from '../database/equipment/armor_sheets';
 import { CanonicalHardwareItemDefinition } from '../database/equipment/chassis_hardware';
 import { CANONICAL_HEAD_OPTICS } from '../database/equipment/head';
 import {
@@ -136,10 +141,18 @@ export function resolvePlayerSpriteParts(state: OrionState): ResolvedPlayerSprit
   };
 }
 
-// ─── 4-FRAME (64x16 PX, FOUR 16x16 PX FRAMES) ALIGNED PART STRIP CACHE ────────
+// ─── 4-FRAME (16x16 PX PER CELL) ALIGNED PART STRIP / SHEET CACHE ─────────────
 
 const decodedBase64ImageCache = new Map<string, HTMLImageElement>();
 const bakedPartStripCache = new Map<string, HTMLCanvasElement>();
+const spriteLoadListeners = new Set<() => void>();
+
+export function subscribeToMechSpriteLoad(listener: () => void): () => void {
+  spriteLoadListeners.add(listener);
+  return () => {
+    spriteLoadListeners.delete(listener);
+  };
+}
 
 function getDecodedPartStripImage(base64: string): HTMLImageElement | null {
   if (typeof Image === 'undefined') return null;
@@ -150,14 +163,26 @@ function getDecodedPartStripImage(base64: string): HTMLImageElement | null {
     ? base64
     : `data:image/png;base64,${base64}`;
   const img = new Image();
+  img.onload = () => {
+    for (const listener of spriteLoadListeners) {
+      listener();
+    }
+  };
   img.src = dataUri;
   decodedBase64ImageCache.set(base64, img);
   return img;
 }
 
+// Pre-warm baseline armor sheets immediately in browser environments
+if (typeof Image !== 'undefined') {
+  getDecodedPartStripImage(plating_bwi_bastion);
+  getDecodedPartStripImage(set_camelot_knight);
+  getDecodedPartStripImage(armor_sheets);
+}
+
 /**
  * Applies a 1px dark silhouette outline (#020617) around non-transparent pixels within each 16x16 frame cell
- * of a 64x16 strip so each layered piece reads cleanly against any background.
+ * of a 64x16 fallback strip so procedural standalone pieces read cleanly against any background.
  */
 function apply1pxOutlinePer16x16Frame(ctx: CanvasRenderingContext2D, frameCount = 4): void {
   const width = frameCount * 16;
@@ -202,11 +227,8 @@ function apply1pxOutlinePer16x16Frame(ctx: CanvasRenderingContext2D, frameCount 
 }
 
 /**
- * Bakes a 64x16 px (4 frames of 16x16 px) Torso & Legs sprite strip for the given Frame Plating definition.
- * Frame 0: Idle / Neutral Stance
- * Frame 1: Walk Stride A (left leg forward, right leg back, 1px torso bob)
- * Frame 2: Walk Passing Stance
- * Frame 3: Walk Stride B (right leg forward, left leg back, 1px torso bob)
+ * Bakes a 64x16 px (4 frames of 16x16 px) fallback Torso & Legs sprite strip for standalone Frame Plating items
+ * that do not supply a Base64 PNG sprite sheet.
  */
 function bakeFramePlatingStrip(
   def: FramePlatingDefinition,
@@ -247,26 +269,21 @@ function bakeFramePlatingStrip(
     const torsoLeft = cx - Math.floor(torsoW / 2);
     const torsoTop = 6 + bob;
 
-    // 1. Legs (aligned to bottom of 16x16 frame: y = 12..15)
     const lLegY = 12 + leftLegs[frame];
     const rLegY = 12 + rightLegs[frame];
     g.fillStyle = legColor;
     g.fillRect(cx - 3, lLegY, 2, 3);
     g.fillRect(cx + 1, rLegY, 2, 3);
-    // Boot trim pips
     g.fillStyle = trimColor;
     g.fillRect(cx - 3, lLegY + 2, 2, 1);
     g.fillRect(cx + 1, rLegY + 2, 2, 1);
 
-    // 2. Torso Chassis (y = 6..12)
     g.fillStyle = baseColor;
     g.fillRect(torsoLeft, torsoTop, torsoW, torsoH);
 
-    // Waist / Hip belt
     g.fillStyle = trimColor;
     g.fillRect(torsoLeft + 1, torsoTop + torsoH - 1, torsoW - 2, 1);
 
-    // Set-specific chest & hip details
     if (theme.torsoStyle === 'heavy') {
       g.fillStyle = trimColor;
       g.fillRect(torsoLeft, torsoTop + 1, 2, 2);
@@ -282,7 +299,6 @@ function bakeFramePlatingStrip(
       g.fillRect(cx - 1, torsoTop, 2, torsoH - 1);
     }
 
-    // Reactor core / rear exhaust pack
     if (!isNorth) {
       g.fillStyle = '#090d16';
       g.fillRect(cx - 1, torsoTop + 2, 3, 3);
@@ -302,8 +318,8 @@ function bakeFramePlatingStrip(
 }
 
 /**
- * Bakes a 64x16 px (4 frames of 16x16 px) Shoulders & Arms sprite strip for the given Arms definition.
- * Aligned to the shared 16x16 origin so shoulders & gauntlets lock onto the Torso/Legs layer.
+ * Bakes a 64x16 px (4 frames of 16x16 px) fallback Shoulders & Arms sprite strip for standalone Arms items
+ * that do not supply a Base64 PNG sprite sheet.
  */
 function bakeArmsStrip(def: CanonicalHardwareItemDefinition): HTMLCanvasElement {
   const cvs = document.createElement('canvas');
@@ -336,7 +352,6 @@ function bakeArmsStrip(def: CanonicalHardwareItemDefinition): HTMLCanvasElement 
     const lY = baseY + leftSwings[frame];
     const rY = baseY + rightSwings[frame];
 
-    // Left & Right Shoulder Pauldrons
     g.fillStyle = shoulderColor;
     if (shoulderStyle === 'heavy') {
       g.fillRect(leftArmX - 1, baseY - 1, armW + 2, 3);
@@ -355,13 +370,11 @@ function bakeArmsStrip(def: CanonicalHardwareItemDefinition): HTMLCanvasElement 
       g.fillRect(rightArmX - 1, baseY, armW + 1, 2);
     }
 
-    // Left Arm & Gauntlet Cuff
     g.fillStyle = armColor;
     g.fillRect(leftArmX, lY + 1, armW, armH - 1);
     g.fillStyle = cuffColor;
     g.fillRect(leftArmX, lY + armH - 2, armW, 2);
 
-    // Right Arm & Gauntlet Cuff
     g.fillStyle = armColor;
     g.fillRect(rightArmX, rY + 1, armW, armH - 1);
     g.fillStyle = cuffColor;
@@ -373,8 +386,8 @@ function bakeArmsStrip(def: CanonicalHardwareItemDefinition): HTMLCanvasElement 
 }
 
 /**
- * Bakes a 64x16 px (4 frames of 16x16 px) Head & Optics sprite strip for the given Head definition.
- * Aligned to the top portion (y = 1..6) of each 16x16 frame cell.
+ * Bakes a 64x16 px (4 frames of 16x16 px) fallback Head & Optics sprite strip for standalone Head items
+ * that do not supply a Base64 PNG sprite sheet.
  */
 function bakeHeadStrip(
   def: CanonicalHardwareItemDefinition,
@@ -392,7 +405,7 @@ function bakeHeadStrip(
   const crestColor: string = theme.crestColor || '#38bdf8';
   const crestStyle: string = theme.crestStyle || 'murmillio';
 
-  const headW = crestStyle === 'ironveil' ? 6 : 6;
+  const headW = 6;
   const headH = 4;
   const headBobs = [0, -1, 0, -1];
 
@@ -403,11 +416,9 @@ function bakeHeadStrip(
     const headLeft = cx - Math.floor(headW / 2);
     const headTop = 2 + bob;
 
-    // Main Helmet Shell
     g.fillStyle = helmColor;
     g.fillRect(headLeft, headTop, headW, headH);
 
-    // Crest / Horns / Halo / Fin details
     g.fillStyle = crestColor;
     if (crestStyle === 'murmillio') {
       g.fillRect(cx - 1, headTop - 1, 2, 2);
@@ -426,7 +437,6 @@ function bakeHeadStrip(
       g.fillRect(cx - 2, headTop - 1, 4, 1);
     }
 
-    // Optic Visor (hidden when facing North)
     if (!isNorth) {
       const visorX = headLeft + 1;
       const visorW = headW - 2;
@@ -449,34 +459,111 @@ function bakeHeadStrip(
   return cvs;
 }
 
-function getPartStripDrawable(
+interface ResolvedLayerSlice {
+  drawable: HTMLImageElement | HTMLCanvasElement;
+  srcX: number;
+  srcY: number;
+  srcW: number;
+  srcH: number;
+  flipX: boolean;
+}
+
+/**
+ * Resolves the exact 16x16 source rectangle and drawable for a single mech part layer (`plating`, `arms`, or `head`).
+ * Supports:
+ * - 192x768 master armor sheet (`armor_sheets` with `atlasColumn: 0|1|2`, `atlasSetRow: 0..11`, 4 directional rows x 4 frames)
+ * - 64x64 standalone 4-direction part sheet (`plating_bwi_bastion`, 4 directional rows x 4 frames)
+ * - 64x16 standalone 1-row 4-frame strip
+ * - Procedural fallback 64x16 strip for standalone parts without a Base64 PNG
+ */
+function resolvePartLayerSlice(
   slot: 'plating' | 'arms' | 'head',
   def: CanonicalHardwareItemDefinition | FramePlatingDefinition,
-  isNorth: boolean,
+  dir: OrionDir,
+  step: number,
   isCriticalBlink: boolean
-): HTMLImageElement | HTMLCanvasElement {
-  const customBase64 = def.partSprite?.base64;
-  if (customBase64) {
-    const img = getDecodedPartStripImage(customBase64);
+): ResolvedLayerSlice {
+  const partSprite = def.partSprite;
+  const cellW = partSprite?.cellWidth || 16;
+  const cellH = partSprite?.cellHeight || 16;
+  const frameCount = partSprite?.frameCount || 4;
+  const frameIdx = step % frameCount;
+
+  const isWest = dir === 'W' || dir === 'NW' || dir === 'SW';
+  const isNorth = dir === 'N';
+
+  if (partSprite?.base64) {
+    const img = getDecodedPartStripImage(partSprite.base64);
     if (img && img.complete && img.naturalWidth > 0) {
-      return img;
+      const dirRows =
+        partSprite.directionalRows ?? (img.naturalHeight >= cellH * 4 ? 4 : 1);
+      const isMasterAtlas =
+        partSprite.atlasColumn !== undefined || img.naturalWidth >= cellW * frameCount * 3;
+
+      const colIndex = isMasterAtlas
+        ? (partSprite.atlasColumn ?? (slot === 'plating' ? 0 : slot === 'arms' ? 1 : 2))
+        : 0;
+      const maxSetRows = Math.max(1, Math.floor(img.naturalHeight / (dirRows * cellH)));
+      const rawSetRowIndex = isMasterAtlas
+        ? (partSprite.atlasSetRow ?? def.setIndex ?? 0)
+        : 0;
+      const setRowIndex = Math.min(rawSetRowIndex, maxSetRows - 1);
+
+      const blockOriginX = colIndex * (frameCount * cellW);
+      const blockOriginY = setRowIndex * (dirRows * cellH);
+
+      if (dirRows >= 4) {
+        // Row 0 = East/Right, Row 1 = West/Left, Row 2 = South/Down, Row 3 = North/Up
+        const dirRow =
+          dir === 'N'
+            ? 3
+            : dir === 'S'
+              ? 2
+              : isWest
+                ? 1
+                : 0;
+        return {
+          drawable: img,
+          srcX: blockOriginX + frameIdx * cellW,
+          srcY: blockOriginY + dirRow * cellH,
+          srcW: cellW,
+          srcH: cellH,
+          flipX: false,
+        };
+      }
+
+      return {
+        drawable: img,
+        srcX: blockOriginX + frameIdx * cellW,
+        srcY: blockOriginY,
+        srcW: cellW,
+        srcH: cellH,
+        flipX: isWest,
+      };
     }
   }
 
   const key = `${slot}:${def.id}:${isNorth ? 'N' : 'S'}:${isCriticalBlink ? 'crit' : 'ok'}`;
-  const cached = bakedPartStripCache.get(key);
-  if (cached) return cached;
-
-  let baked: HTMLCanvasElement;
-  if (slot === 'plating') {
-    baked = bakeFramePlatingStrip(def as FramePlatingDefinition, isNorth, isCriticalBlink);
-  } else if (slot === 'arms') {
-    baked = bakeArmsStrip(def);
-  } else {
-    baked = bakeHeadStrip(def, isNorth);
+  let baked = bakedPartStripCache.get(key);
+  if (!baked) {
+    if (slot === 'plating') {
+      baked = bakeFramePlatingStrip(def as FramePlatingDefinition, isNorth, isCriticalBlink);
+    } else if (slot === 'arms') {
+      baked = bakeArmsStrip(def);
+    } else {
+      baked = bakeHeadStrip(def, isNorth);
+    }
+    bakedPartStripCache.set(key, baked);
   }
-  bakedPartStripCache.set(key, baked);
-  return baked;
+
+  return {
+    drawable: baked,
+    srcX: (step % 4) * 16,
+    srcY: 0,
+    srcW: 16,
+    srcH: 16,
+    flipX: isWest,
+  };
 }
 
 export interface DrawCompositePlayerOptions {
@@ -486,13 +573,13 @@ export interface DrawCompositePlayerOptions {
 }
 
 /**
- * Renders the modular player Mech sprite composed of 3 aligned 16x16 px layers
- * sliced from 4-frame (64x16 px) walk/idle animation strips:
+ * Renders the modular player Mech sprite composed of 3 aligned 16x16 px layers:
  * 1. Frame Plating (Torso & Legs — `state.equipmentSlots.plating`)
  * 2. Arms (Shoulders & Arms — `state.equipmentSlots.arms`)
  * 3. Head (Command Helm & Optics — `state.equipmentSlots.head`)
  *
- * Supports the 12 baseline sets (0..11) and any future sets (12+) added to the equipment catalog.
+ * Supports the 12 baseline sets (0..11) from `armor_sheets` / `plating_bwi_bastion`,
+ * future sets (12+), and standalone parts without a full set.
  */
 export function drawCompositePlayerMech(
   g: CanvasRenderingContext2D,
@@ -509,47 +596,57 @@ export function drawCompositePlayerMech(
   const isCriticalBlink =
     state.frame?.state === 'Critical' && Math.floor(timeSec * 8) % 2 === 0;
 
-  // Compute per-part 4-frame animation strip offsets independently so standalone parts mix & match freely
   const step = isMoving ? Math.floor(timeSec * 8) : 0;
-  const platingW = framePlatingDef.partSprite?.cellWidth || 16;
-  const platingH = framePlatingDef.partSprite?.cellHeight || 16;
-  const platingSrcX = (step % (framePlatingDef.partSprite?.frameCount || 4)) * platingW;
 
-  const armsW = armsDef.partSprite?.cellWidth || 16;
-  const armsH = armsDef.partSprite?.cellHeight || 16;
-  const armsSrcX = (step % (armsDef.partSprite?.frameCount || 4)) * armsW;
-
-  const headW = headDef.partSprite?.cellWidth || 16;
-  const headH = headDef.partSprite?.cellHeight || 16;
-  const headSrcX = (step % (headDef.partSprite?.frameCount || 4)) * headW;
-
-  const isWest = dir === 'W' || dir === 'NW' || dir === 'SW';
-  const isNorth = dir === 'N' || dir === 'NE' || dir === 'NW';
+  const platingSlice = resolvePartLayerSlice(
+    'plating',
+    framePlatingDef,
+    dir,
+    step,
+    isCriticalBlink
+  );
+  const armsSlice = resolvePartLayerSlice('arms', armsDef, dir, step, false);
+  const headSlice = resolvePartLayerSlice('head', headDef, dir, step, false);
 
   const cx = Math.round(x);
   const cy = Math.round(py);
 
-  const platingStrip = getPartStripDrawable('plating', framePlatingDef, isNorth, isCriticalBlink);
-  const armsStrip = getPartStripDrawable('arms', armsDef, isNorth, false);
-  const headStrip = getPartStripDrawable('head', headDef, isNorth, false);
-
   g.save();
   g.imageSmoothingEnabled = false;
 
-  if (isWest) {
-    g.translate(cx, cy);
-    g.scale(-1, 1);
-    g.drawImage(platingStrip, platingSrcX, 0, platingW, platingH, -8, -16, 16, 16);
-    g.drawImage(armsStrip, armsSrcX, 0, armsW, armsH, -8, -16, 16, 16);
-    g.drawImage(headStrip, headSrcX, 0, headW, headH, -8, -16, 16, 16);
-  } else {
-    const destX = cx - 8;
-    const destY = cy - 16;
-    g.drawImage(platingStrip, platingSrcX, 0, platingW, platingH, destX, destY, 16, 16);
-    g.drawImage(armsStrip, armsSrcX, 0, armsW, armsH, destX, destY, 16, 16);
-    g.drawImage(headStrip, headSrcX, 0, headW, headH, destX, destY, 16, 16);
+  for (const slice of [platingSlice, armsSlice, headSlice]) {
+    if (slice.flipX) {
+      g.save();
+      g.translate(cx, cy);
+      g.scale(-1, 1);
+      g.drawImage(
+        slice.drawable,
+        slice.srcX,
+        slice.srcY,
+        slice.srcW,
+        slice.srcH,
+        -8,
+        -16,
+        16,
+        16
+      );
+      g.restore();
+    } else {
+      g.drawImage(
+        slice.drawable,
+        slice.srcX,
+        slice.srcY,
+        slice.srcW,
+        slice.srcH,
+        cx - 8,
+        cy - 16,
+        16,
+        16
+      );
+    }
   }
 
   g.restore();
 }
+
 

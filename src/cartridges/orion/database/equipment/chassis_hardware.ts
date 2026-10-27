@@ -17,10 +17,16 @@ import { CANONICAL_REACTORS } from './reactors';
 import { CANONICAL_SENSORY_ARRAYS } from './sensory';
 
 export interface MechPartSpriteStripConfig {
-  /** Optional 64x16px (4 frames of 16x16px) Base64 PNG sprite strip for this mech part */
+  /** Optional Base64 PNG sprite sheet or strip (64x16 strip, 64x64 4-dir part sheet, or 192x768 master armor sheet) */
   base64?: string;
-  /** Number of animation frames in the strip (defaults to 4) */
+  /** Number of animation frames per row in the strip (defaults to 4) */
   frameCount?: number;
+  /** Number of directional rows in the part block (1 for 64x16 strip, 4 for 64x64 4-dir sheet: 0=E, 1=W, 2=S, 3=N) */
+  directionalRows?: number;
+  /** Optional column index in a 3-column master armor sheet (0 = Frame Plating, 1 = Arms, 2 = Head) */
+  atlasColumn?: 0 | 1 | 2;
+  /** Optional set row index (0..11) in a master armor sheet (each set band is 64px tall) */
+  atlasSetRow?: number;
   /** Width of each frame cell in pixels (defaults to 16) */
   cellWidth?: number;
   /** Height of each frame cell in pixels (defaults to 16) */

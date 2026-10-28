@@ -5,11 +5,11 @@
 
 import {
   CANONICAL_FRAME_PLATING as BASELINE_FRAME_PLATING,
-  CoreplateDefinition,
   FramePlatingDefinition,
 } from './coreplates';
 
-export type { CoreplateDefinition, FramePlatingDefinition };
+export type { FramePlatingDefinition };
+export * from './sprites';
 
 // Auto-discover any standalone Frame Plating (.ts) modules dropped into database/equipment/plating/
 const modules = import.meta.glob<Record<string, unknown>>('./**/*.ts', { eager: true });
@@ -29,7 +29,7 @@ function isFramePlatingDefinition(val: unknown): val is FramePlatingDefinition {
 }
 
 for (const [path, mod] of Object.entries(modules)) {
-  if (path === './index.ts' || path === './coreplates.ts') continue;
+  if (path === './index.ts' || path === './coreplates.ts' || path === './sprites.ts') continue;
   for (const exportedValue of Object.values(mod)) {
     if (isFramePlatingDefinition(exportedValue) && !seenIds.has(exportedValue.id)) {
       discoveredPlating.push(exportedValue);
@@ -39,7 +39,6 @@ for (const [path, mod] of Object.entries(modules)) {
 }
 
 export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = discoveredPlating;
-export const CANONICAL_COREPLATES: FramePlatingDefinition[] = CANONICAL_FRAME_PLATING;
 
 export function getFramePlatingDefinition(idOrName?: string | null): FramePlatingDefinition | undefined {
   if (!idOrName) return undefined;
@@ -53,5 +52,3 @@ export function getFramePlatingDefinition(idOrName?: string | null): FramePlatin
     )
   );
 }
-
-export const getCoreplateDefinition = getFramePlatingDefinition;

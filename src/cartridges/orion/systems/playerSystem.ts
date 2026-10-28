@@ -51,6 +51,10 @@ import {
 import { updateTargetLock } from './combatSystem';
 import { spawnRoomEnemies, updateParticles } from './entitySystem';
 import {
+  computePlayerWeightRecoveryProfile,
+  stepPlayerGlideAnimation,
+} from './playerSpriteSystem';
+import {
   executeWorldInteraction,
   rebootAtSpawnAnchor,
   rehydrateAetherFogRooms,
@@ -447,6 +451,13 @@ export function createInitialOrionState(
     faceX: 0,
     faceY: 1,
     t: 0,
+    glidePhase: 'idle',
+    glideFrame: 0,
+    glideStepIndex: 0,
+    glideStepTimer: 0,
+    glideRecoveryFrames: [],
+    glideInertiaVx: 0,
+    glideInertiaVy: 0,
 
     pilotName,
     traitLine,
@@ -1483,7 +1494,11 @@ export function updatePlayerSystem(
     state.bHoldTimer = 0;
   }
 
-  // Execute Movement
+  // Execute Magic-Current Glide Movement & Weight-Scaled Stopping Inertia
+  const prevX = state.x;
+  const prevY = state.y;
+  const weightProfile = computePlayerWeightRecoveryProfile(state);
+
   if (state.isBoosterDashing) {
     if (!state.isContinuousBoosting) {
       state.boosterTimer -= dt;
@@ -1496,6 +1511,10 @@ export function updatePlayerSystem(
     const step = boostSpeed * dt;
     state.x = moveEntityX(rooms, state, state.x, state.y, state.z, state.boosterDirX * step);
     state.y = moveEntityY(rooms, state, state.x, state.y, state.z, state.boosterDirY * step);
+    state.vx = dt > 0 ? (state.x - prevX) / dt : state.boosterDirX * boostSpeed;
+    state.vy = dt > 0 ? (state.y - prevY) / dt : state.boosterDirY * boostSpeed;
+    state.glideInertiaVx = state.vx * weightProfile.inertiaCarryMult;
+    state.glideInertiaVy = state.vy * weightProfile.inertiaCarryMult;
   } else if (hasMoveInput) {
     const tx = Math.floor(state.x / TILE_SIZE);
     const ty = Math.floor(state.y / TILE_SIZE);
@@ -1514,6 +1533,42 @@ export function updatePlayerSystem(
 
     state.x = moveEntityX(rooms, state, state.x, state.y, state.z, stepX);
     state.y = moveEntityY(rooms, state, state.x, state.y, state.z, stepY);
+    state.vx = normMoveX * speed;
+    state.vy = normMoveY * speed;
+    state.glideInertiaVx = state.vx * weightProfile.inertiaCarryMult;
+    state.glideInertiaVy = state.vy * weightProfile.inertiaCarryMult;
+  }
+
+  // Advance Magic-Current Glide state machine (Idle [1] -> Windup [2,3,4] -> Glide [3 <-> 2] / Boost [4] -> Wind-Down [3,2,1])
+  stepPlayerGlideAnimation(
+    state,
+    dt,
+    hasMoveInput,
+    state.isBoosterDashing || Boolean(state.isContinuousBoosting)
+  );
+
+  if (!state.isBoosterDashing && !hasMoveInput) {
+    const ivx = state.glideInertiaVx || 0;
+    const ivy = state.glideInertiaVy || 0;
+    if (
+      state.glidePhase === 'winddown' &&
+      (Math.abs(ivx) > 0.8 || Math.abs(ivy) > 0.8)
+    ) {
+      const decay = Math.exp(-weightProfile.inertiaDecayRate * dt);
+      const nextIvx = ivx * decay;
+      const nextIvy = ivy * decay;
+      state.x = moveEntityX(rooms, state, state.x, state.y, state.z, nextIvx * dt);
+      state.y = moveEntityY(rooms, state, state.x, state.y, state.z, nextIvy * dt);
+      state.glideInertiaVx = nextIvx;
+      state.glideInertiaVy = nextIvy;
+      state.vx = nextIvx;
+      state.vy = nextIvy;
+    } else {
+      state.glideInertiaVx = 0;
+      state.glideInertiaVy = 0;
+      state.vx = 0;
+      state.vy = 0;
+    }
   }
 
   // Update 2.5D vertical height z physics

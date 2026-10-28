@@ -9,10 +9,7 @@ import { CANONICAL_ARMS } from './arms';
 import { CANONICAL_AUXILIARIES } from './auxiliaries';
 import { CANONICAL_HEAD_OPTICS } from './head';
 import { CANONICAL_LEGS } from './legs';
-import {
-  CANONICAL_COREPLATES,
-  CANONICAL_FRAME_PLATING,
-} from './plating';
+import { CANONICAL_FRAME_PLATING } from './plating';
 import { CANONICAL_REACTORS } from './reactors';
 import { CANONICAL_SENSORY_ARRAYS } from './sensory';
 
@@ -93,7 +90,7 @@ export const CANONICAL_HARDWARE_CATALOG: CanonicalHardwareItemDefinition[] = [
   ...CANONICAL_AUXILIARIES,
 ];
 
-export { CANONICAL_COREPLATES, CANONICAL_FRAME_PLATING };
+export { CANONICAL_FRAME_PLATING };
 
 export type ChassisHardwareItemDefinition = CanonicalHardwareItemDefinition;
 export const CHASSIS_HARDWARE_CATALOG: ChassisHardwareItemDefinition[] = CANONICAL_HARDWARE_CATALOG;

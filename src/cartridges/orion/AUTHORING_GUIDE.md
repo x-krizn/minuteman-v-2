@@ -86,13 +86,14 @@ src/cartridges/orion/
 │   │   └── gemstones.ts          # 9 Canonical Gemstones
 │   ├── equipment/                # Slot-organized Weapons, Hardware, Frame Plating, Reactors & Utilities
 │   │   ├── weapons/              # Self-contained 5-Action Weapon modules (29 Magitech + 12 Heritage + Auxiliaries)
-│   │   ├── plating/              # 12+ Baseline Frame Plating sets (drives Torso/Legs 4-frame 16x16px sprite layer)
+│   │   ├── plating/              # 13+ Frame Plating pieces + plating/sprites.ts (64x64 4-frame×4-dir Torso/Legs sheets)
 │   │   ├── reactors/             # 6 Canonical Reactors
-│   │   ├── head/                 # 12+ Baseline Head Optics / Command Domes (drives Head 4-frame 16x16px sprite layer)
+│   │   ├── head/                 # 13+ Head Optics / Command Domes + head/sprites.ts (64x64 4-frame×4-dir Head sheets)
 │   │   ├── sensory/              # 12 Sensory A & B Arrays
-│   │   ├── arms/                 # 12+ Baseline Arms / Shoulder Assemblies (drives Shoulders/Arms 4-frame 16x16px sprite layer)
+│   │   ├── arms/                 # 13+ Arms / Shoulder Assemblies + arms/sprites.ts (64x64 4-frame×4-dir Arms sheets)
 │   │   ├── legs/                 # 6 Legs Striders
 │   │   ├── auxiliaries/          # 14 Aux 3 / Aux 4 & Energy Storage modules
+│   │   ├── armor_sheets.ts       # Barrel re-export for ./plating/sprites, ./arms/sprites, and ./head/sprites
 │   │   ├── chassis_hardware.ts   # Hardware aggregator & resolveEquippedHardwareStats(state)
 │   │   └── utility_and_belt_modules.ts # Tactical Utilities [Action 6] & assignable [L]/[R] skills
 │   ├── characters/               # 6 Classless Starting Loadout Kit profiles (Bastion, Fortress, Dawnforge, etc.)
@@ -101,7 +102,7 @@ src/cartridges/orion/
 ├── systems/                      # Modular Engine Systems
 │   ├── renderSystem.ts           # [ORION-ANCHOR: RENDER-CLUSTER-BAKE] & [ORION-ANCHOR: RENDER-POST-PROCESS]
 │   ├── renderHudAndFogTells.ts   # Canonical 3-Layer HUD & Aether Fog wayfinding tells
-│   ├── playerSpriteSystem.ts     # Dynamic 3-layer × 4-frame (64x16px, 16x16px aligned) composite player mech renderer
+│   ├── playerSpriteSystem.ts     # 3-layer composite Mech renderer & 5-phase Magic-Current Glide state machine
 │   ├── worldSystem.ts            # [ORION-ANCHOR: WORLD-COMPOSER-INIT] & [ORION-ANCHOR: AETHER-FOG-TOPOLOGY]
 │   ├── playerSystem.ts           # State store, save/load, 2.5D physics, player controller & state gates
 │   ├── combatSystem.ts           # [ORION-ANCHOR: COMBAT-DEFENSE-MATH] & [ORION-ANCHOR: COMBAT-ACTION-PAYLOAD]
@@ -443,9 +444,15 @@ Every weapon defines a 5-action moveset (`slot: 0` = primary chain, `slot: 1..4`
 Create a file exporting an `ItemWikiDefinition` (`id`, `name`, `category`, `iconColor`, optional `iconSprite`, and optional `onUse(state, ctx)` callback). Reference its `id` in any Room `cache` or Enemy `lootTable`.
 
 ### Adding a Mech Part (`Head`, `Arms`, or `Frame Plating`) — Full Sets OR Standalone Pieces
-`database/equipment/head/`, `database/equipment/arms/`, and `database/equipment/plating/` each use `import.meta.glob` auto-discovery. You can add **standalone individual parts** (e.g. a unique boss-drop Head or a standalone Frame Plating piece) without needing a matching 3-piece set or `setIndex`:
+`database/equipment/head/`, `database/equipment/arms/`, and `database/equipment/plating/` each use `import.meta.glob` auto-discovery, with per-piece `64×64 px` Base64 sprite sheets stored in `head/sprites.ts`, `arms/sprites.ts`, and `plating/sprites.ts`. You can add **standalone individual parts** (e.g. a unique boss-drop Head or a standalone Frame Plating piece) without needing a matching 3-piece set or `setIndex`:
 - Omit `setIndex` on standalone pieces (`setIndex` is optional and only used to label numbered sets).
-- Provide `partSprite: { base64: 'data:image/png;base64,...', frameCount: 4, cellWidth: 16, cellHeight: 16 }` (`64×16 px` strip aligned to the shared `16×16` origin) and/or `spriteTheme` colors. Each slot (`plating`, `arms`, `head`) resolves and slices its own strip independently.
+- Provide `partSprite: { base64: 'data:image/png;base64,...', frameCount: 4, directionalRows: 4, cellWidth: 16, cellHeight: 16 }` (`64×64 px` 4-frame × 4-direction sheet, or `64×16 px` 1-row strip aligned to the shared `16×16` origin) and/or `spriteTheme` fallback colors.
+- **4-Frame Magic-Current Glide Semantics (`systems/playerSpriteSystem.ts`)**:
+  - **Frame 1 (0-based Col `0`)**: Grounded Idle posture (`'idle'`).
+  - **Frames 2, 3, 4 (0-based Cols `1, 2, 3`)**: Glide Windup sequence (`'windup'`) when directional movement begins.
+  - **Frame 3 ↔ Frame 2 (0-based Col `2` with off-count shifts to Col `1`)**: Sustained Magic-Current Glide (`'glide'`).
+  - **Frame 4 (0-based Col `3`)**: Active Boost surge (`'boost'`); returns directly to Frame 3 (`Col 2`) when boost ends.
+  - **Frames 3 → 2 → 1 (0-based Cols `2 → 1 → 0`)**: Weight-scaled Wind-Down recovery (`'winddown'`) and stopping glide inertia scaled by equipped Frame Plating load capacity and active Weapon weight class.
 
 ---
 

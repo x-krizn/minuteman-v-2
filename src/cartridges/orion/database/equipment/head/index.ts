@@ -3,8 +3,24 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { armor_sheets, set_camelot_knight } from '../armor_sheets';
+import {
+  head_aegis_halo_dome,
+  head_arc_omniscient_dome,
+  head_be_ironveil_dome,
+  head_camelot_knight,
+  head_cd_g341_murmillio,
+  head_optics_aegis_radiant,
+  head_optics_arc_omniscient,
+  head_optics_be_foresight,
+  head_optics_embersight,
+  head_optics_sanc_providence,
+  head_optics_veilsight,
+  head_sanc_providence_helm,
+  head_vx_veilsight_helm,
+} from './sprites';
 import { CanonicalHardwareItemDefinition } from '../chassis_hardware';
+
+export * from './sprites';
 
 export const CANONICAL_HEAD_OPTICS: CanonicalHardwareItemDefinition[] = [
   // ─── SET 0: Crystal Dynamics G341 Murmillio ───────────────────────────────
@@ -17,9 +33,7 @@ export const CANONICAL_HEAD_OPTICS: CanonicalHardwareItemDefinition[] = [
     setIndex: 0,
     setId: 'set_01_bastion',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 2,
-      atlasSetRow: 1,
+      base64: head_cd_g341_murmillio,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -45,9 +59,7 @@ export const CANONICAL_HEAD_OPTICS: CanonicalHardwareItemDefinition[] = [
     setIndex: 1,
     setId: 'set_02_fortress',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 2,
-      atlasSetRow: 0,
+      base64: head_be_ironveil_dome,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -74,9 +86,7 @@ export const CANONICAL_HEAD_OPTICS: CanonicalHardwareItemDefinition[] = [
     setIndex: 2,
     setId: 'set_03_dawnforge',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 2,
-      atlasSetRow: 2,
+      base64: head_aegis_halo_dome,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -103,9 +113,7 @@ export const CANONICAL_HEAD_OPTICS: CanonicalHardwareItemDefinition[] = [
     setIndex: 3,
     setId: 'set_04_shadowcraft',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 2,
-      atlasSetRow: 3,
+      base64: head_vx_veilsight_helm,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -131,9 +139,7 @@ export const CANONICAL_HEAD_OPTICS: CanonicalHardwareItemDefinition[] = [
     setIndex: 4,
     setId: 'set_05_arcanum',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 2,
-      atlasSetRow: 4,
+      base64: head_arc_omniscient_dome,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -159,9 +165,7 @@ export const CANONICAL_HEAD_OPTICS: CanonicalHardwareItemDefinition[] = [
     setIndex: 5,
     setId: 'set_06_sanctum',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 2,
-      atlasSetRow: 5,
+      base64: head_sanc_providence_helm,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -187,9 +191,7 @@ export const CANONICAL_HEAD_OPTICS: CanonicalHardwareItemDefinition[] = [
     setIndex: 6,
     setId: 'set_07_blastplate',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 2,
-      atlasSetRow: 6,
+      base64: head_optics_embersight,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -215,9 +217,7 @@ export const CANONICAL_HEAD_OPTICS: CanonicalHardwareItemDefinition[] = [
     setIndex: 7,
     setId: 'set_08_siegebreaker',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 2,
-      atlasSetRow: 7,
+      base64: head_optics_be_foresight,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -243,9 +243,7 @@ export const CANONICAL_HEAD_OPTICS: CanonicalHardwareItemDefinition[] = [
     setIndex: 8,
     setId: 'set_09_radiant',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 2,
-      atlasSetRow: 8,
+      base64: head_optics_aegis_radiant,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -271,9 +269,7 @@ export const CANONICAL_HEAD_OPTICS: CanonicalHardwareItemDefinition[] = [
     setIndex: 9,
     setId: 'set_10_whisperblade',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 2,
-      atlasSetRow: 9,
+      base64: head_optics_veilsight,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -299,9 +295,7 @@ export const CANONICAL_HEAD_OPTICS: CanonicalHardwareItemDefinition[] = [
     setIndex: 10,
     setId: 'set_11_conduit',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 2,
-      atlasSetRow: 10,
+      base64: head_optics_arc_omniscient,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -327,9 +321,7 @@ export const CANONICAL_HEAD_OPTICS: CanonicalHardwareItemDefinition[] = [
     setIndex: 11,
     setId: 'set_12_reliquary',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 2,
-      atlasSetRow: 11,
+      base64: head_optics_sanc_providence,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -356,9 +348,7 @@ export const CANONICAL_HEAD_OPTICS: CanonicalHardwareItemDefinition[] = [
     setIndex: 12,
     setId: 'set_camelot_knight',
     partSprite: {
-      base64: set_camelot_knight,
-      atlasColumn: 2,
-      atlasSetRow: 0,
+      base64: head_camelot_knight,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -392,7 +382,7 @@ function isHeadDefinition(val: unknown): val is CanonicalHardwareItemDefinition 
 }
 
 for (const [path, mod] of Object.entries(headModules)) {
-  if (path === './index.ts') continue;
+  if (path === './index.ts' || path === './sprites.ts') continue;
   for (const exportedValue of Object.values(mod)) {
     if (isHeadDefinition(exportedValue) && !seenHeadIds.has(exportedValue.id)) {
       CANONICAL_HEAD_OPTICS.push(exportedValue);

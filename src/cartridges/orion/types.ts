@@ -1059,6 +1059,8 @@ export interface OrionSavedPilotEntry {
   savedDataJson: string;
 }
 
+export type OrionGlidePhase = 'idle' | 'windup' | 'glide' | 'boost' | 'winddown';
+
 // Master Player / Orion State
 export interface OrionState {
   pilotId?: string;
@@ -1084,6 +1086,20 @@ export interface OrionState {
   faceX: number;
   faceY: number;
   t: number;
+  /** Magic-current glide animation phase ('idle' | 'windup' | 'glide' | 'boost' | 'winddown') */
+  glidePhase?: OrionGlidePhase;
+  /** Active 0-based sprite column (0 = Frame 1 Idle, 1 = Frame 2, 2 = Frame 3 Glide, 3 = Frame 4 Boost/Apex) */
+  glideFrame?: 0 | 1 | 2 | 3;
+  /** Step index within the active windup, sustained glide cadence, or weight-scaled wind-down sequence */
+  glideStepIndex?: number;
+  /** Elapsed time in seconds within the current glide animation step */
+  glideStepTimer?: number;
+  /** Weight-scaled recovery frame sequence (0-based columns) for the active wind-down phase */
+  glideRecoveryFrames?: Array<0 | 1 | 2 | 3>;
+  /** Residual X velocity during weight-scaled stopping inertia */
+  glideInertiaVx?: number;
+  /** Residual Y velocity during weight-scaled stopping inertia */
+  glideInertiaVy?: number;
   /** Viewport camera top-left offset in world pixels (smoothly clamped to room bounds, or centered if smaller) */
   camX?: number;
   camY?: number;

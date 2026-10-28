@@ -1,6 +1,6 @@
 {
-  "summary":  "Implementation plan for renaming Coreplate to Frame Plating and upgrading the composite mech sprite architecture to support extensible 12+ sets of 3-layer (Head, Shoulders/Arms, Torso/Legs) 64x16 (4 frames of 16x16 px) spritesheets.",
-  "updatedAt":  "2026-10-27T09:11:16.879806234Z",
+  "summary":  "Implementation plan for the Orion Magic-Current Glide Animation State Machine, weight-scaled stopping inertia and recovery frames, Satchel preview animation showcase cycle, and codebase organization/cleanup with commit preparation.",
+  "updatedAt":  "2026-10-28T01:43:05.125261975Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

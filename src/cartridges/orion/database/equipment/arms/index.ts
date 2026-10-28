@@ -3,8 +3,24 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { armor_sheets, set_camelot_knight } from '../armor_sheets';
+import {
+  arms_aegis_radiant_vambraces,
+  arms_arc_prism_refractors,
+  arms_arcanum_channeler,
+  arms_be_siegebreaker_pauldrons,
+  arms_bwi_twinstrike,
+  arms_camelot_knight,
+  arms_cd_striker_vambraces,
+  arms_fire_ice_line_holder,
+  arms_sanc_seraphic_pinions,
+  arms_sanctum_benediction,
+  arms_shadowcraft_silencer,
+  arms_solbright_cleaver,
+  arms_vx_whisperblade_gauntlets,
+} from './sprites';
 import { CanonicalHardwareItemDefinition } from '../chassis_hardware';
+
+export * from './sprites';
 
 export const CANONICAL_ARMS: CanonicalHardwareItemDefinition[] = [
   // ─── SET 0: BWI Twinstrike Gauntlets ──────────────────────────────────────
@@ -17,9 +33,7 @@ export const CANONICAL_ARMS: CanonicalHardwareItemDefinition[] = [
     setIndex: 0,
     setId: 'set_01_bastion',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 1,
-      atlasSetRow: 1,
+      base64: arms_bwi_twinstrike,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -46,9 +60,7 @@ export const CANONICAL_ARMS: CanonicalHardwareItemDefinition[] = [
     setIndex: 1,
     setId: 'set_02_fortress',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 1,
-      atlasSetRow: 0,
+      base64: arms_fire_ice_line_holder,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -75,9 +87,7 @@ export const CANONICAL_ARMS: CanonicalHardwareItemDefinition[] = [
     setIndex: 2,
     setId: 'set_03_dawnforge',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 1,
-      atlasSetRow: 2,
+      base64: arms_solbright_cleaver,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -104,9 +114,7 @@ export const CANONICAL_ARMS: CanonicalHardwareItemDefinition[] = [
     setIndex: 3,
     setId: 'set_04_shadowcraft',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 1,
-      atlasSetRow: 3,
+      base64: arms_shadowcraft_silencer,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -133,9 +141,7 @@ export const CANONICAL_ARMS: CanonicalHardwareItemDefinition[] = [
     setIndex: 4,
     setId: 'set_05_arcanum',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 1,
-      atlasSetRow: 4,
+      base64: arms_arcanum_channeler,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -162,9 +168,7 @@ export const CANONICAL_ARMS: CanonicalHardwareItemDefinition[] = [
     setIndex: 5,
     setId: 'set_06_sanctum',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 1,
-      atlasSetRow: 5,
+      base64: arms_sanctum_benediction,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -191,9 +195,7 @@ export const CANONICAL_ARMS: CanonicalHardwareItemDefinition[] = [
     setIndex: 6,
     setId: 'set_07_blastplate',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 1,
-      atlasSetRow: 6,
+      base64: arms_cd_striker_vambraces,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -220,9 +222,7 @@ export const CANONICAL_ARMS: CanonicalHardwareItemDefinition[] = [
     setIndex: 7,
     setId: 'set_08_siegebreaker',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 1,
-      atlasSetRow: 7,
+      base64: arms_be_siegebreaker_pauldrons,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -249,9 +249,7 @@ export const CANONICAL_ARMS: CanonicalHardwareItemDefinition[] = [
     setIndex: 8,
     setId: 'set_09_radiant',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 1,
-      atlasSetRow: 8,
+      base64: arms_aegis_radiant_vambraces,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -278,9 +276,7 @@ export const CANONICAL_ARMS: CanonicalHardwareItemDefinition[] = [
     setIndex: 9,
     setId: 'set_10_whisperblade',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 1,
-      atlasSetRow: 9,
+      base64: arms_vx_whisperblade_gauntlets,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -307,9 +303,7 @@ export const CANONICAL_ARMS: CanonicalHardwareItemDefinition[] = [
     setIndex: 10,
     setId: 'set_11_conduit',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 1,
-      atlasSetRow: 10,
+      base64: arms_arc_prism_refractors,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -336,9 +330,7 @@ export const CANONICAL_ARMS: CanonicalHardwareItemDefinition[] = [
     setIndex: 11,
     setId: 'set_12_reliquary',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 1,
-      atlasSetRow: 11,
+      base64: arms_sanc_seraphic_pinions,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -366,9 +358,7 @@ export const CANONICAL_ARMS: CanonicalHardwareItemDefinition[] = [
     setIndex: 12,
     setId: 'set_camelot_knight',
     partSprite: {
-      base64: set_camelot_knight,
-      atlasColumn: 1,
-      atlasSetRow: 0,
+      base64: arms_camelot_knight,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -402,7 +392,7 @@ function isArmsDefinition(val: unknown): val is CanonicalHardwareItemDefinition 
 }
 
 for (const [path, mod] of Object.entries(armModules)) {
-  if (path === './index.ts') continue;
+  if (path === './index.ts' || path === './sprites.ts') continue;
   for (const exportedValue of Object.values(mod)) {
     if (isArmsDefinition(exportedValue) && !seenArmIds.has(exportedValue.id)) {
       CANONICAL_ARMS.push(exportedValue);

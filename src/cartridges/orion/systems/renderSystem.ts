@@ -15,7 +15,6 @@ import {
   TILE_SIZE,
   Z_SCALE,
 } from '../constants';
-import { getTraitDefinition } from '../database/characters';
 import { getEnemyDefinition } from '../database/enemies';
 import { getCoinPickupSpriteBase64, getItemDefinition } from '../database/items';
 import { getWeaponGemVisuals } from '../database/progression';
@@ -3642,18 +3641,10 @@ export function drawOrionGame(
         drawOffhandHardpoint();
       }
 
-      const traitDef = getTraitDefinition(state.traitLine);
-      const drewPlayerSprite = drawBase64Sprite(g, traitDef?.sprite, state.x, py, state.t, {
+      drawCompositePlayerMech(g, state, state.x, py, state.t, {
         dir: state.dir,
-        defaultAnchor: 'bottom-center',
+        isAttacking: state.activeSkillSlot !== null && state.skillActionTimer > 0,
       });
-
-      if (!drewPlayerSprite) {
-        drawCompositePlayerMech(g, state, state.x, py, state.t, {
-          dir: state.dir,
-          isAttacking: state.activeSkillSlot !== null && state.skillActionTimer > 0,
-        });
-      }
 
       if (isFacingNorth) {
         drawOffhandHardpoint();

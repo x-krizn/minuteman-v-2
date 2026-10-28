@@ -4,7 +4,21 @@
  */
 
 import { FrameLoadCapacity } from '../../../types';
-import { armor_sheets, plating_bwi_bastion, set_camelot_knight } from '../armor_sheets';
+import {
+  plating_ablative_cuirass,
+  plating_arcanum_conduit,
+  plating_arcanum_projector,
+  plating_bwi_bastion,
+  plating_camelot_knight,
+  plating_dawnforge_guardian,
+  plating_fire_ice_fortress,
+  plating_hardened_sanctum,
+  plating_layered_weave,
+  plating_reactive_blastplate,
+  plating_sanctum_reliquary,
+  plating_sanctum_support,
+  plating_shadowcraft_recon,
+} from './sprites';
 import { MechPartSpriteStripConfig } from '../chassis_hardware';
 
 export interface FramePlatingDefinition {
@@ -93,9 +107,7 @@ export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = [
     setIndex: 1,
     setId: 'set_02_fortress',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 0,
-      atlasSetRow: 0,
+      base64: plating_fire_ice_fortress,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -131,9 +143,7 @@ export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = [
     setIndex: 2,
     setId: 'set_03_dawnforge',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 0,
-      atlasSetRow: 2,
+      base64: plating_dawnforge_guardian,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -169,9 +179,7 @@ export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = [
     setIndex: 3,
     setId: 'set_04_shadowcraft',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 0,
-      atlasSetRow: 3,
+      base64: plating_shadowcraft_recon,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -207,9 +215,7 @@ export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = [
     setIndex: 4,
     setId: 'set_05_arcanum',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 0,
-      atlasSetRow: 4,
+      base64: plating_arcanum_projector,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -245,9 +251,7 @@ export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = [
     setIndex: 5,
     setId: 'set_06_sanctum',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 0,
-      atlasSetRow: 5,
+      base64: plating_sanctum_support,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -283,9 +287,7 @@ export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = [
     setIndex: 6,
     setId: 'set_07_blastplate',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 0,
-      atlasSetRow: 6,
+      base64: plating_reactive_blastplate,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -321,9 +323,7 @@ export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = [
     setIndex: 7,
     setId: 'set_08_siegebreaker',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 0,
-      atlasSetRow: 7,
+      base64: plating_hardened_sanctum,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -359,9 +359,7 @@ export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = [
     setIndex: 8,
     setId: 'set_09_radiant',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 0,
-      atlasSetRow: 8,
+      base64: plating_layered_weave,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -397,9 +395,7 @@ export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = [
     setIndex: 9,
     setId: 'set_10_whisperblade',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 0,
-      atlasSetRow: 9,
+      base64: plating_ablative_cuirass,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -434,9 +430,7 @@ export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = [
     setIndex: 10,
     setId: 'set_11_conduit',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 0,
-      atlasSetRow: 10,
+      base64: plating_arcanum_conduit,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -471,9 +465,7 @@ export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = [
     setIndex: 11,
     setId: 'set_12_reliquary',
     partSprite: {
-      base64: armor_sheets,
-      atlasColumn: 0,
-      atlasSetRow: 11,
+      base64: plating_sanctum_reliquary,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -509,9 +501,7 @@ export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = [
     setIndex: 12,
     setId: 'set_camelot_knight',
     partSprite: {
-      base64: set_camelot_knight,
-      atlasColumn: 0,
-      atlasSetRow: 0,
+      base64: plating_camelot_knight,
       frameCount: 4,
       directionalRows: 4,
       cellWidth: 16,
@@ -538,9 +528,6 @@ export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = [
   },
 ];
 
-/** Backward-compatible catalog alias */
-export const CANONICAL_COREPLATES: FramePlatingDefinition[] = CANONICAL_FRAME_PLATING;
-
 export function getFramePlatingDefinition(idOrName?: string | null): FramePlatingDefinition | undefined {
   if (!idOrName) return undefined;
   const norm = idOrName.trim().toLowerCase();
@@ -551,6 +538,3 @@ export function getFramePlatingDefinition(idOrName?: string | null): FramePlatin
     CANONICAL_FRAME_PLATING.find((p) => norm.includes(p.id.replace('coreplate_', '').replace('hw_plating_', '')))
   );
 }
-
-/** Backward-compatible lookup alias */
-export const getCoreplateDefinition = getFramePlatingDefinition;

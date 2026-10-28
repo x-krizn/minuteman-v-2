@@ -51,6 +51,7 @@ import {
   ASSIGNABLE_ACTION_CATALOG,
   assignTriggerAction,
   awakenLadyOfTheLake,
+  computePlayerWeightRecoveryProfile,
   consolidateInventorySlots,
   evaluateCathedralDoorStatus,
   getActiveWeaponStance,
@@ -625,7 +626,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                         </span>
                       </div>
                       <div className="text-[7.5px] text-[#94a3b8]">
-                        16×16 4-FRAME COMPOSITE: HEAD ({resolvePlayerSpriteParts(state).headStyle.toUpperCase()}) · ARMS ({resolvePlayerSpriteParts(state).armsStyle.toUpperCase()}) · FRAME PLATING ({resolvePlayerSpriteParts(state).framePlatingStyle.toUpperCase()})
+                        16×16 4-FRAME GLIDE COMPOSITE ({computePlayerWeightRecoveryProfile(state).weightLabel} · {computePlayerWeightRecoveryProfile(state).recoveryFrames.length}F RECOVERY): HEAD ({resolvePlayerSpriteParts(state).headStyle.toUpperCase()}) · ARMS ({resolvePlayerSpriteParts(state).armsStyle.toUpperCase()}) · FRAME PLATING ({resolvePlayerSpriteParts(state).framePlatingStyle.toUpperCase()})
                       </div>
                     </div>
                   </div>

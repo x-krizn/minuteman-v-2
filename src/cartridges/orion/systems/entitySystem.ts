@@ -16,8 +16,18 @@ import {
 } from '../database/progression';
 import { getWeaponDefinition } from '../database/equipment/weapons';
 import { EnemyEntity, OrionCombatContext, OrionExecutionContext, OrionState } from '../types';
-import { applyDamageToLayers, PERFECT_BLOCK_WINDOW_SEC } from './combatSystem';
-import { addOrionInventoryItem, isSolidAt, notifyOrionStateChange, syncStateGates } from './playerSystem';
+import {
+  computeEffectiveWeight,
+  computeMomentumFraction,
+  resolveEnemyInertiaProfile,
+} from './inertiaSystem';
+import {
+  addOrionInventoryItem,
+  moveEntityX,
+  moveEntityY,
+  notifyOrionStateChange,
+  syncStateGates,
+} from './playerSystem';
 import {
   clearAetherFogOnBossDefeat,
   ENEMY_EQUIPMENT_DROP_POOLS,
@@ -122,9 +132,23 @@ export function spawnEnemyByType(
     emissiveColor: def.emissiveColor || '#ffd27d',
     faction: def.faction || 'hostile',
     hitsLanded: 0,
+    vx: 0,
+    vy: 0,
+    prevX: x,
+    prevY: y,
+    knockbackVx: 0,
+    knockbackVy: 0,
+    currentMu: 0,
+    lastInertiaOutcome: 'none',
+    lastInertiaOutcomeTimer: 0,
     ...overrides,
     name: overrides?.name || def.name,
   };
+
+  const inertiaProf = resolveEnemyInertiaProfile(entity);
+  entity.baseWeight = inertiaProf.baseWeight;
+  entity.stability = inertiaProf.stability;
+  entity.effectiveWeight = inertiaProf.baseWeight;
 
   state.enemies.push(entity);
   return entity;
@@ -218,11 +242,42 @@ export function updateEnemies(
     const e = state.enemies[i];
 
     if (e.hurt > 0) e.hurt -= dt;
+    if ((e.lastInertiaOutcomeTimer || 0) > 0) {
+      e.lastInertiaOutcomeTimer = Math.max(0, (e.lastInertiaOutcomeTimer || 0) - dt);
+    }
+
+    // Apply physical knockback displacement slide (`Δv = J / m_eff`, `inertia-v0.md`)
+    const ekvx = e.knockbackVx || 0;
+    const ekvy = e.knockbackVy || 0;
+    if (Math.abs(ekvx) > 1.0 || Math.abs(ekvy) > 1.0) {
+      e.x = moveEntityX(rooms, state, e.x, e.y, e.z, ekvx * dt);
+      e.y = moveEntityY(rooms, state, e.x, e.y, e.z, ekvy * dt);
+      const decay = Math.exp(-10.0 * dt);
+      e.knockbackVx = ekvx * decay;
+      e.knockbackVy = ekvy * decay;
+    } else {
+      e.knockbackVx = 0;
+      e.knockbackVy = 0;
+    }
+
+    const beforeX = e.x;
+    const beforeY = e.y;
 
     const def = getEnemyDefinition(e.type);
     if (def) {
       def.update(rooms, state, e, dt);
     }
+
+    // Track enemy velocity (`vx`, `vy`), forward momentum fraction `μ`, and effective weight `m_eff`
+    e.vx = dt > 0 ? (e.x - beforeX) / dt : 0;
+    e.vy = dt > 0 ? (e.y - beforeY) / dt : 0;
+    e.prevX = e.x;
+    e.prevY = e.y;
+    const eProf = resolveEnemyInertiaProfile(e);
+    e.baseWeight = eProf.baseWeight;
+    e.stability = eProf.stability;
+    e.currentMu = computeMomentumFraction(e.vx, e.vy, state.x - e.x, state.y - e.y);
+    e.effectiveWeight = computeEffectiveWeight(eProf.baseWeight, e.currentMu);
 
     if (e.frame.integrity <= 0) {
       soundSystem.playExplosion();
@@ -441,142 +496,7 @@ export function updateEnemies(
 
 // ─── 3. PROJECTILES ──────────────────────────────────────────────────────────
 
-export function updateProjectiles(
-  rooms: Record<string, string[]>,
-  state: OrionState,
-  ctx: OrionCombatContext,
-  dt: number
-): void {
-  for (let i = state.projectiles.length - 1; i >= 0; i--) {
-    const p = state.projectiles[i];
-    p.life -= dt;
-    p.x += p.vx * dt;
-    p.y += p.vy * dt;
-    p.z += p.vz * dt;
-
-    if (Math.random() < 0.6) {
-      state.particles.push({
-        x: p.x + (Math.random() - 0.5) * 4,
-        y: p.y + (Math.random() - 0.5) * 4,
-        z: p.z + (Math.random() - 0.5) * 2,
-        vx: -p.vx * 0.1,
-        vy: -p.vy * 0.1,
-        vz: 4,
-        life: 0.18,
-        maxLife: 0.18,
-        color: p.trailColor,
-        size: 2,
-        fade: true,
-      });
-    }
-
-    const tx = Math.floor(p.x / TILE_SIZE);
-    const ty = Math.floor(p.y / TILE_SIZE);
-    if (isSolidAt(rooms, state, tx, ty, p.z)) {
-      if (p.onImpact) {
-        p.onImpact(p.x, p.y, p.z, state);
-      }
-      state.projectiles.splice(i, 1);
-      continue;
-    }
-
-    if (p.isPlayer) {
-      let hit = false;
-      for (const e of state.enemies) {
-        if (e.isSubmerged) continue;
-        if (e.type === 'town_npc' && e.npcDisposition !== 'feral') continue;
-
-        const dist = Math.hypot(e.x - p.x, e.y - p.y);
-        if (dist < 14 && Math.abs(e.z - p.z) < 14) {
-          hit = true;
-          e.stun = 0.2;
-          e.hurt = 0.2;
-
-          const hasKnightsOath = state.equippedFeats.includes('knights_oath');
-          const oathMult = hasKnightsOath && e.faction === 'camelot' ? 1.1 : 1.0;
-          const opticMult = (state.opticMarkTimer || 0) > 0 ? 1.25 : 1.0;
-          const hasBeamFocus =
-            p.damageType === 'Beam' &&
-            state.equippedFeats.some((f) =>
-              ['beam_focus', 'sustained_channeling', 'solar_convergence'].includes(f)
-            );
-          const beamMult = hasBeamFocus ? 1.15 : 1.0;
-          const hasAssassinate =
-            state.equippedFeats.some((f) => ['assassinate', 'executioners_gambit'].includes(f)) &&
-            e.frame.integrity <= e.frame.maxIntegrity * 0.4;
-          const execMult = hasAssassinate ? 1.2 : 1.0;
-          const effDamage = Math.round(p.damage * oathMult * opticMult * beamMult * execMult);
-
-          applyDamageToLayers(
-            e.shields,
-            e.armor,
-            e.frame,
-            effDamage,
-            p.damageType,
-            (count, color, label) => ctx.spawnParticles(e.x, e.y, e.z + 8, count, color, label)
-          );
-
-          soundSystem.playHit();
-
-          if (p.onImpact) {
-            p.onImpact(p.x, p.y, p.z, state);
-          }
-          break;
-        }
-      }
-
-      if (hit) {
-        state.projectiles.splice(i, 1);
-        continue;
-      }
-    } else {
-      const dist = Math.hypot(state.x - p.x, state.y - p.y);
-      if (dist < 12 && Math.abs(state.z - p.z) < 12 && !state.isBoosterDashing) {
-        const isPerfectBlock = Boolean(
-          state.isHoldingBlock && (state.blockHoldTimer || 0) <= PERFECT_BLOCK_WINDOW_SEC
-        );
-        const isGuarding = Boolean(state.isHoldingBlock || (state.blockTimer || 0) > 0);
-
-        if (isPerfectBlock) {
-          soundSystem.playPowerup();
-          state.shields.capacity = Math.min(
-            state.shields.maxCapacity,
-            state.shields.capacity + 10
-          );
-          state.heat = Math.max(0, state.heat - 8);
-          ctx.spawnParticles(state.x, state.y, state.z + 10, 8, '#38bdf8', 'PERFECT BLOCK!');
-        } else {
-          soundSystem.playHit();
-          const finalProjDamage = isGuarding
-            ? Math.max(1, Math.round(p.damage * 0.35))
-            : p.damage;
-          if (isGuarding) {
-            ctx.spawnParticles(state.x, state.y, state.z + 8, 4, '#38bdf8', 'BLOCKED');
-          }
-          applyDamageToLayers(
-            state.shields,
-            state.armor,
-            state.frame,
-            finalProjDamage,
-            p.damageType,
-            (count, color, label) =>
-              ctx.spawnParticles(state.x, state.y, state.z + 8, count, color, label)
-          );
-        }
-
-        if (p.onImpact) {
-          p.onImpact(p.x, p.y, p.z, state);
-        }
-        state.projectiles.splice(i, 1);
-        continue;
-      }
-    }
-
-    if (p.life <= 0) {
-      state.projectiles.splice(i, 1);
-    }
-  }
-}
+export { updateProjectiles } from './combat/projectileSystem';
 
 // ─── 4. LOOT PICKUPS ─────────────────────────────────────────────────────────
 

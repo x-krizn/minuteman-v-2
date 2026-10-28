@@ -353,6 +353,19 @@ export const ACTION_MODIFICATION_CATALOG: ActionModificationDefinition[] = [
       heatCostDelta: 4,
     },
   },
+  {
+    id: 'mod_inertial_gyro_telemetry',
+    name: 'Inertial Gyro-Telemetry Mod',
+    targetCategory: 'mobility',
+    gainDescription: 'Unlocks live HUD Inertia & Stability Telemetry + +12 Stability (S)',
+    drawbackDescription: '+2 Reactor Heat Cost on Booster Dash',
+    gemCost: [{ gemId: 'titanite', count: 1 }],
+    modifiers: {
+      stabilityBonus: 12,
+      enableInertiaHudTelemetry: true,
+      heatCostDelta: 2,
+    },
+  },
 ];
 
 const DEFAULT_UTILITY_BY_TRAIT: Record<TraitLine, string> = {

@@ -167,6 +167,13 @@ export function createOrionCartridge(): Cartridge {
         return;
       }
 
+      // 0. Hitstop Freeze-Frame Window (Inertia System `inertia-v0.md`)
+      if ((state.hitstopTimer || 0) > 0) {
+        state.hitstopTimer = Math.max(0, (state.hitstopTimer || 0) - dt);
+        updateParticles(state, dt);
+        return;
+      }
+
       // 1. Player Controller, 2.5D Physics, Boosters, Jump/Interact, Tutorial & Defeat Reboot
       const canContinue = updatePlayerSystem(input, rooms, state, combatCtx, dt);
       if (!canContinue) return;

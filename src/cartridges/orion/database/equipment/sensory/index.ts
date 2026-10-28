@@ -138,4 +138,17 @@ export const CANONICAL_SENSORY_ARRAYS: CanonicalHardwareItemDefinition[] = [
     isPlaceholderAsset: true,
     futureAssetPlanned: 'Dedicated SANC Blessing Resonance Grid sprite planned',
   },
+  {
+    id: 'sensory_b_inertial_gyro_telemetry',
+    name: 'Inertial Gyro-Telemetry Array',
+    slot: 'sensoryB',
+    canonicalSlotLabel: 'Sensory B',
+    subtype: 'Sensory B · Inertia & Stability HUD Readout',
+    linkedActionId: 'mod_head_optic_scan',
+    description:
+      'Projects real-time Effective Weight (m_eff), Charge Momentum (μ), Stability Deadband (k1·S), and collision outcome band telemetry onto the cockpit HUD.',
+    isPlaceholderAsset: true,
+    futureAssetPlanned: 'Dedicated Inertial Gyro-Telemetry Array sprite planned',
+  },
 ];
+

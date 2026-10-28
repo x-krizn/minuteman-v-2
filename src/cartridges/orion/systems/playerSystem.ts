@@ -55,6 +55,12 @@ import {
   stepPlayerGlideAnimation,
 } from './playerSpriteSystem';
 import {
+  computeEffectiveWeight,
+  computeMomentumFraction,
+  INERTIAL_TELEMETRY_SENSORY_ID,
+  resolvePlayerInertiaProfile,
+} from './inertiaSystem';
+import {
   executeWorldInteraction,
   rebootAtSpawnAnchor,
   rehydrateAetherFogRooms,
@@ -458,6 +464,20 @@ export function createInitialOrionState(
     glideRecoveryFrames: [],
     glideInertiaVx: 0,
     glideInertiaVy: 0,
+    knockbackVx: 0,
+    knockbackVy: 0,
+    recoilRestrictionTimer: 0,
+    recoilSpeedMult: 1,
+    hitstopTimer: 0,
+    staggerRecoveryTimer: 0,
+    currentMu: 0,
+    baseWeight: 110,
+    effectiveWeight: 110,
+    stability: 48,
+    lastInertiaOutcome: 'none',
+    lastInertiaOutcomeTimer: 0,
+    lastImpactDv: 0,
+    lastImpactDvEff: 0,
 
     pilotName,
     traitLine,
@@ -700,6 +720,13 @@ export function syncStateGates(state: OrionState): OrionCapabilityGates {
   if (!state.equipmentSlots.unlockedEquipment.includes('aether_catalyst')) {
     state.equipmentSlots.unlockedEquipment.push('aether_catalyst');
   }
+  if (!state.equipmentSlots.unlockedEquipment.includes(INERTIAL_TELEMETRY_SENSORY_ID)) {
+    state.equipmentSlots.unlockedEquipment.push(INERTIAL_TELEMETRY_SENSORY_ID);
+  }
+  state.equipmentSlots.unlockedMods = state.equipmentSlots.unlockedMods || [];
+  if (!state.equipmentSlots.unlockedMods.includes('mod_inertial_gyro_telemetry')) {
+    state.equipmentSlots.unlockedMods.push('mod_inertial_gyro_telemetry');
+  }
 
   // Advance Frame Level 6..20 naturally from Gemstone investments, Feats, Mods & Bosses
   syncPostTutorialFrameLevel(state);
@@ -826,6 +853,14 @@ export function syncStateGates(state: OrionState): OrionCapabilityGates {
     }
     state.reloadDuration = activeWDef.reloadDurationSec * (hasQuiverSynergy ? 0.75 : 1.0);
   }
+
+  const inertiaProfile = resolvePlayerInertiaProfile(state);
+  state.baseWeight = inertiaProfile.totalBaseWeight;
+  state.stability = inertiaProfile.stability;
+  state.effectiveWeight = computeEffectiveWeight(
+    inertiaProfile.totalBaseWeight,
+    state.currentMu || 0
+  );
 
   return gates;
 }
@@ -1356,13 +1391,36 @@ export function updatePlayerSystem(
   const gates = syncStateGates(state);
   const featMods = computeInterfaceFeatModifiers(state.equippedFeats || []);
   const gemCombatMods = getWeaponGemCombatModifiers(state);
+
+  // Tick Inertia System timers (recoil restriction, stagger recovery, last outcome display)
+  if ((state.recoilRestrictionTimer || 0) > 0) {
+    state.recoilRestrictionTimer = Math.max(0, (state.recoilRestrictionTimer || 0) - dt);
+    if (state.recoilRestrictionTimer <= 0) {
+      state.recoilSpeedMult = 1.0;
+    }
+  } else {
+    state.recoilSpeedMult = 1.0;
+  }
+  if ((state.staggerRecoveryTimer || 0) > 0) {
+    state.staggerRecoveryTimer = Math.max(0, (state.staggerRecoveryTimer || 0) - dt);
+  }
+  if ((state.lastInertiaOutcomeTimer || 0) > 0) {
+    state.lastInertiaOutcomeTimer = Math.max(0, (state.lastInertiaOutcomeTimer || 0) - dt);
+  }
+
+  const recoilMult =
+    (state.recoilRestrictionTimer || 0) > 0 ? (state.recoilSpeedMult ?? 0.8) : 1.0;
+  const staggerMult = (state.staggerRecoveryTimer || 0) > 0 ? 0.38 : 1.0;
+
   // §3.5 Critical Frame State (LOCKED): <= 40 HP (<= 20%) imposes -30% movement speed
   const criticalSpeedMult = state.frame.integrity <= 40 ? 0.7 : 1.0;
   const totalMobilityMult =
     gates.loadPenalty.mobilityMult *
     featMods.moveSpeedMult *
     gemCombatMods.moveSpeedMult *
-    criticalSpeedMult;
+    criticalSpeedMult *
+    recoilMult *
+    staggerMult;
 
   const installedMobilityModId = state.equipmentSlots?.installedMods?.mobility;
   const mobilityMod = ACTION_MODIFICATION_CATALOG.find((m) => m.id === installedMobilityModId);
@@ -1570,6 +1628,30 @@ export function updatePlayerSystem(
       state.vy = 0;
     }
   }
+
+  // Apply physical knockback displacement velocity (`Δv = J / m_eff`, `inertia-v0.md` §4 & §5)
+  const kbVx = state.knockbackVx || 0;
+  const kbVy = state.knockbackVy || 0;
+  if (Math.abs(kbVx) > 1.0 || Math.abs(kbVy) > 1.0) {
+    state.x = moveEntityX(rooms, state, state.x, state.y, state.z, kbVx * dt);
+    state.y = moveEntityY(rooms, state, state.x, state.y, state.z, kbVy * dt);
+    const kbDecay = Math.exp(-10.5 * dt);
+    state.knockbackVx = kbVx * kbDecay;
+    state.knockbackVy = kbVy * kbDecay;
+  } else {
+    state.knockbackVx = 0;
+    state.knockbackVy = 0;
+  }
+
+  // Update player forward momentum fraction `μ` and effective weight `m_eff = m × (1 + μ)`
+  const inertiaProfile = resolvePlayerInertiaProfile(state);
+  state.baseWeight = inertiaProfile.totalBaseWeight;
+  state.stability = inertiaProfile.stability;
+  const lockedForMu = state.enemies.find((en) => en.id === state.lockedTargetId);
+  const refDirX = lockedForMu ? lockedForMu.x - state.x : state.faceX || 0;
+  const refDirY = lockedForMu ? lockedForMu.y - state.y : state.faceY || 1;
+  state.currentMu = computeMomentumFraction(state.vx, state.vy, refDirX, refDirY);
+  state.effectiveWeight = computeEffectiveWeight(state.baseWeight, state.currentMu);
 
   // Update 2.5D vertical height z physics
   updateElevationPhysics(rooms, state, dt);

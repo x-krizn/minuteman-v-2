@@ -1,0 +1,588 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import {
+  DIR_VECTORS,
+  getRoomDimensions,
+  PERFECT_BLOCK_WINDOW_SEC,
+  TILE_SIZE,
+  Z_SCALE,
+} from '../../constants';
+import { getEnemyDefinition } from '../../database/enemies';
+import { getCoinPickupSpriteBase64, getItemDefinition } from '../../database/items';
+import { getWeaponGemVisuals } from '../../database/progression';
+import { getWeaponDefinition } from '../../database/equipment/weapons';
+import { getTileDefinition } from '../../database/world';
+import { BiomeDefinition, OrionState } from '../../types';
+import { INERTIA_CONSTANTS } from '../inertiaSystem';
+import { drawCompositePlayerMech } from '../playerSpriteSystem';
+import { getPointVisibilityFactor } from './effectsRenderer';
+import { drawBase64Sprite } from './spriteAtlasCache';
+import { drawClusterBiomeWall, isClusterSingleWallChar } from './worldRenderer';
+
+// ─── DEPTH-SORTED ENTITY, PROP, PICKUP & PLAYER MECH RENDERER (LAYER 2) ──────
+
+export function renderDepthSortedEntitiesAndProps(
+  g: CanvasRenderingContext2D,
+  room: string[] | undefined,
+  activeBiome: BiomeDefinition,
+  state: OrionState
+): void {
+  interface RenderItem {
+    y: number;
+    draw: () => void;
+  }
+  const renderQueue: RenderItem[] = [];
+
+  if (room) {
+    const { cols, rows } = getRoomDimensions(room);
+    for (let ty = 0; ty < rows; ty++) {
+      for (let tx = 0; tx < cols; tx++) {
+        const char = room[ty]?.[tx] || '.';
+        const tile = getTileDefinition(char, state.biomeId);
+        if (tile.propSprite || tile.renderProp25D || isClusterSingleWallChar(char)) {
+          const sx = tx * TILE_SIZE + 8;
+          const sy = ty * TILE_SIZE + 12;
+          renderQueue.push({
+            y: sy,
+            draw: () => {
+              const drewProp =
+                drawBase64Sprite(g, tile.propSprite, sx, sy, state.t, {
+                  defaultAnchor: 'bottom-center',
+                }) ||
+                (isClusterSingleWallChar(char) &&
+                  drawClusterBiomeWall(
+                    g,
+                    room,
+                    activeBiome,
+                    tx,
+                    ty,
+                    tx * TILE_SIZE,
+                    ty * TILE_SIZE,
+                    state.t
+                  ));
+              if (!drewProp) {
+                tile.renderProp25D?.(g, tx, ty, sx, sy, state);
+              }
+            },
+          });
+        }
+      }
+    }
+  }
+
+  for (const p of state.pickups) {
+    renderQueue.push({
+      y: p.y,
+      draw: () => {
+        const shadowR = Math.max(2, 5 * (1 - p.z / 60));
+        g.fillStyle = 'rgba(0, 0, 0, 0.35)';
+        g.beginPath();
+        g.ellipse(p.x, p.y + 1, shadowR, shadowR * 0.5, 0, 0, Math.PI * 2);
+        g.fill();
+
+        const py = p.y - p.z * Z_SCALE;
+        const bob = Math.sin(p.t * 5) * 2;
+        const itemDef = p.itemId ? getItemDefinition(p.itemId) : undefined;
+
+        const coinSpriteConfig =
+          p.kind === 'scrap'
+            ? {
+                base64: getCoinPickupSpriteBase64(p.value || 1),
+                cellWidth: 16,
+                cellHeight: 16,
+                col: 0,
+                row: 0,
+                renderWidth: 10,
+                renderHeight: 10,
+                anchor: 'bottom-center' as const,
+                outlineColor: '#05070a',
+              }
+            : undefined;
+
+        const drewIcon = drawBase64Sprite(
+          g,
+          itemDef?.iconSprite || coinSpriteConfig,
+          p.x,
+          py + bob,
+          state.t,
+          {
+            defaultAnchor: 'bottom-center',
+          }
+        );
+
+        if (!drewIcon) {
+          if (p.kind === 'scrap') {
+            g.fillStyle = '#ffd27d';
+            g.fillRect(p.x - 2, py - 4 + bob, 4, 5);
+            g.fillStyle = '#fffbeb';
+            g.fillRect(p.x - 1, py - 3 + bob, 2, 2);
+          } else {
+            g.fillStyle = p.color || '#77c7ff';
+            g.fillRect(p.x - 3, py - 5 + bob, 6, 6);
+          }
+        }
+      },
+    });
+  }
+
+  for (const e of state.enemies) {
+    renderQueue.push({
+      y: e.y,
+      draw: () => {
+        const ey = e.y - e.z * Z_SCALE;
+        const isHurt = e.hurt > 0;
+        const isWindup = e.state === 'windup';
+        const def = getEnemyDefinition(e.type);
+
+        const isFriendlyOrSanctuary =
+          e.type === 'bog_poe' || (e.type === 'town_npc' && e.npcDisposition !== 'feral');
+        const rawVis = getPointVisibilityFactor(e.x, e.y, state, room);
+        const visFactor =
+          isFriendlyOrSanctuary || isHurt || isWindup || (state.opticMarkTimer || 0) > 0
+            ? Math.max(rawVis, 0.85)
+            : rawVis;
+
+        if (visFactor < 0.26 && !isFriendlyOrSanctuary) {
+          g.save();
+          const glintPulse = 0.25 + 0.2 * Math.sin(state.t * 5 + e.id);
+          g.fillStyle = e.emissiveColor || '#ef4444';
+          g.globalAlpha = glintPulse;
+          g.fillRect(Math.round(e.x - 2), Math.round(ey - 10), 1.5, 1.5);
+          g.fillRect(Math.round(e.x + 1), Math.round(ey - 10), 1.5, 1.5);
+          g.restore();
+          return;
+        }
+
+        if (e.isSubmerged && def?.render25D) {
+          const handledFullDraw = def.render25D(g, e, state, ey, isHurt, isWindup);
+          if (handledFullDraw === true) return;
+        }
+
+        g.save();
+        if (visFactor < 0.95) {
+          g.globalAlpha = Math.max(0.28, Math.min(1, 0.2 + visFactor * 0.85));
+        }
+
+        const shadowR = Math.max(3, 8 * (1 - e.z / 60));
+        g.fillStyle = 'rgba(0, 0, 0, 0.45)';
+        g.beginPath();
+        g.ellipse(e.x, e.y + 1, shadowR, shadowR * 0.5, 0, 0, Math.PI * 2);
+        g.fill();
+
+        if (isWindup) {
+          const tellAng = e.attackAngle ?? Math.atan2(state.y - e.y, state.x - e.x);
+          const tCos = Math.cos(tellAng);
+          const tSin = Math.sin(tellAng);
+          const tPx = -tSin;
+          const tPy = tCos;
+          const tellColor = e.emissiveColor || '#ffd27d';
+
+          g.save();
+          g.strokeStyle = tellColor;
+          g.fillStyle = tellColor;
+          g.lineWidth = 1.3;
+
+          if (e.type === 'bors_knight' && e.enraged) {
+            const len = 38;
+            const hw = 11;
+            g.globalAlpha = 0.22;
+            g.beginPath();
+            g.moveTo(e.x + tPx * hw, e.y + tPy * hw);
+            g.lineTo(e.x + tCos * len + tPx * hw, e.y + tSin * len + tPy * hw);
+            g.lineTo(e.x + tCos * (len + 6), e.y + tSin * (len + 6));
+            g.lineTo(e.x + tCos * len - tPx * hw, e.y + tSin * len - tPy * hw);
+            g.lineTo(e.x - tPx * hw, e.y - tPy * hw);
+            g.closePath();
+            g.fill();
+            g.globalAlpha = 0.85;
+            g.stroke();
+          } else if (e.type === 'bors_knight') {
+            const ix = e.x + tCos * 14;
+            const iy = e.y + tSin * 14;
+            g.globalAlpha = 0.2;
+            g.beginPath();
+            g.ellipse(ix, iy, 19, 13, 0, 0, Math.PI * 2);
+            g.fill();
+            g.globalAlpha = 0.85;
+            g.stroke();
+          } else if (e.type === 'percival_knight') {
+            const r = 28;
+            const span = Math.PI * 0.72;
+            g.globalAlpha = 0.2;
+            g.beginPath();
+            g.moveTo(e.x, e.y);
+            g.arc(e.x, e.y, r, tellAng - span * 0.5, tellAng + span * 0.5);
+            g.closePath();
+            g.fill();
+            g.globalAlpha = 0.85;
+            g.stroke();
+          } else if (e.type === 'tristan_knight') {
+            g.globalAlpha = 0.75;
+            for (const off of [-0.18, 0, 0.18]) {
+              const a = tellAng + off;
+              g.beginPath();
+              g.moveTo(e.x + Math.cos(a) * 6, ey - 6 + Math.sin(a) * 6);
+              g.lineTo(e.x + Math.cos(a) * 48, ey - 6 + Math.sin(a) * 48);
+              g.stroke();
+            }
+          } else if (e.type === 'orc_scout') {
+            g.globalAlpha = 0.75;
+            g.beginPath();
+            g.moveTo(e.x + tCos * 6, ey - 6 + tSin * 6);
+            g.lineTo(e.x + tCos * 52, ey - 6 + tSin * 52);
+            g.stroke();
+          } else if (e.type === 'lady_of_the_lake') {
+            g.globalAlpha = 0.65;
+            for (const off of [-0.45, -0.22, 0, 0.22, 0.45]) {
+              const a = tellAng + off;
+              g.beginPath();
+              g.moveTo(e.x + Math.cos(a) * 8, e.y + Math.sin(a) * 8);
+              g.lineTo(e.x + Math.cos(a) * 42, e.y + Math.sin(a) * 42);
+              g.stroke();
+            }
+            g.beginPath();
+            g.ellipse(e.x, e.y, 26, 16, 0, 0, Math.PI * 2);
+            g.stroke();
+          } else {
+            const r = e.type === 'bog_wurm' ? 26 : 23;
+            const span =
+              e.type === 'bog_crawler'
+                ? Math.PI * 0.55
+                : e.type === 'orc_warrior'
+                  ? Math.PI * 0.8
+                  : Math.PI * 0.7;
+            g.globalAlpha = 0.18;
+            g.beginPath();
+            g.moveTo(e.x, e.y);
+            g.arc(e.x, e.y, r, tellAng - span * 0.5, tellAng + span * 0.5);
+            g.closePath();
+            g.fill();
+            g.globalAlpha = 0.82;
+            g.stroke();
+          }
+          g.restore();
+        }
+
+        const drewEnemySprite = drawBase64Sprite(g, def?.sprite, e.x, ey, state.t, {
+          dir: e.dir,
+          stateName: e.state,
+          isHurt,
+          defaultAnchor: 'bottom-center',
+        });
+
+        if (!drewEnemySprite) {
+          if (def?.render25D) {
+            def.render25D(g, e, state, ey, isHurt, isWindup);
+          } else {
+            g.fillStyle = isHurt ? '#ffffff' : e.emissiveColor || '#64748b';
+            g.fillRect(e.x - 5, ey - 14, 10, 14);
+          }
+        }
+
+        if (visFactor >= 0.45 || isHurt || state.lockedTargetId === e.id) {
+          const barW = 16;
+          g.fillStyle = '#000000';
+          g.fillRect(e.x - barW / 2, ey - 22, barW, 3);
+          const framePct = Math.max(0, e.frame.integrity / e.frame.maxIntegrity);
+          g.fillStyle = e.npcDisposition === 'calm' ? '#7dd3fc' : '#8dd7ad';
+          g.fillRect(e.x - barW / 2, ey - 22, barW * framePct, 3);
+        }
+
+        if (state.lockedTargetId === e.id) {
+          const pulse = 9 + Math.sin(state.t * 8) * 1.5;
+          g.strokeStyle = '#38bdf8';
+          g.lineWidth = 1.2;
+          g.beginPath();
+          g.arc(e.x, ey - 9, pulse, 0, Math.PI * 2);
+          g.stroke();
+
+          g.fillStyle = '#fbbf24';
+          g.fillRect(e.x - pulse - 1, ey - 9 - pulse, 3, 1);
+          g.fillRect(e.x + pulse - 2, ey - 9 - pulse, 3, 1);
+          g.fillRect(e.x - pulse - 1, ey - 9 + pulse, 3, 1);
+          g.fillRect(e.x + pulse - 2, ey - 9 + pulse, 3, 1);
+        }
+
+        // §8 Player Legibility: Visible Charge State (forward momentum μ >= 0.55) on Enemy
+        if ((e.currentMu || 0) >= INERTIA_CONSTANTS.CHARGE_VISUAL_MU_THRESHOLD && e.stun <= 0) {
+          const evx = e.vx || 0;
+          const evy = e.vy || 0;
+          const eAng =
+            Math.hypot(evx, evy) > 1
+              ? Math.atan2(evy, evx)
+              : Math.atan2(state.y - e.y, state.x - e.x);
+          g.save();
+          g.strokeStyle = '#38bdf8';
+          g.lineWidth = 1.2;
+          g.globalAlpha = 0.78;
+          const cx = e.x + Math.cos(eAng) * 9;
+          const cy = ey - 8 + Math.sin(eAng) * 7;
+          g.beginPath();
+          g.arc(cx, cy, 6, eAng - 0.65, eAng + 0.65);
+          g.stroke();
+          g.restore();
+        }
+
+        // §8 Player Legibility: Distinct visible outcome ring for Shrugged-Off / Flinch / Stagger / Knockback
+        if ((e.lastInertiaOutcomeTimer || 0) > 0 && e.lastInertiaOutcome) {
+          g.save();
+          const outColor =
+            e.lastInertiaOutcome === 'none'
+              ? '#94a3b8'
+              : e.lastInertiaOutcome === 'flinch'
+                ? '#fde047'
+                : e.lastInertiaOutcome === 'stagger'
+                  ? '#fb923c'
+                  : '#f43f5e';
+          g.strokeStyle = outColor;
+          g.lineWidth = e.lastInertiaOutcome === 'none' ? 1.4 : 1.8;
+          g.globalAlpha = Math.min(0.9, (e.lastInertiaOutcomeTimer || 0) * 1.6);
+          g.beginPath();
+          g.arc(e.x, ey - 8, e.lastInertiaOutcome === 'none' ? 9 : 11, 0, Math.PI * 2);
+          g.stroke();
+          g.restore();
+        }
+
+        g.restore();
+      },
+    });
+  }
+
+  renderQueue.push({
+    y: state.y,
+    draw: () => {
+      const isFalling = Boolean(state.isFallingIntoPit || state.z < 0);
+      const scale = isFalling ? Math.max(0.15, 1 + state.z / 45) : 1.0;
+      const alpha = isFalling ? Math.max(0, 1 + state.z / 40) : 1.0;
+
+      if (!isFalling && state.z >= 0) {
+        const shadowR = Math.max(3, 7 * (1 - state.z / 60));
+        g.fillStyle = 'rgba(0, 0, 0, 0.45)';
+        g.beginPath();
+        g.ellipse(state.x, state.y + 1, shadowR, shadowR * 0.45, 0, 0, Math.PI * 2);
+        g.fill();
+      }
+
+      const py = state.y - state.z * Z_SCALE;
+
+      if (state.lockedTargetId !== null && !isFalling) {
+        const lockedEnemy = state.enemies.find((en) => en.id === state.lockedTargetId);
+        if (lockedEnemy) {
+          g.strokeStyle = 'rgba(56, 189, 248, 0.28)';
+          g.lineWidth = 1;
+          g.beginPath();
+          g.moveTo(state.x, py - 8);
+          g.lineTo(lockedEnemy.x, lockedEnemy.y - lockedEnemy.z * Z_SCALE - 8);
+          g.stroke();
+        }
+      }
+
+      g.save();
+      g.globalAlpha = alpha;
+      if (scale < 1.0) {
+        g.translate(state.x, py);
+        g.scale(scale, scale);
+        g.translate(-state.x, -py);
+      }
+
+      if (state.isBoosterDashing || state.isContinuousBoosting) {
+        g.fillStyle = state.isContinuousBoosting ? '#38bdf8' : '#77c7ff';
+        g.beginPath();
+        g.arc(
+          state.x - state.boosterDirX * 6,
+          py - 6 - state.boosterDirY * 6,
+          state.isContinuousBoosting ? 6 : 5,
+          0,
+          Math.PI * 2
+        );
+        g.fill();
+      }
+
+      const dirInfo = DIR_VECTORS[state.dir] || DIR_VECTORS.S;
+      const isFacingNorth = state.dir === 'N' || state.dir === 'NE' || state.dir === 'NW';
+      const activeWeaponId = state.equippedWeapons[state.activeWeaponIndex] || 'gladius_boltcaster';
+      const weaponDef = getWeaponDefinition(activeWeaponId);
+      const gemVis = getWeaponGemVisuals(state, activeWeaponId);
+
+      const drawOffhandHardpoint = () => {
+        if (state.equippedWeapons.length <= 1) return;
+        const offIdx = (state.activeWeaponIndex + 1) % state.equippedWeapons.length;
+        const offWeaponId = state.equippedWeapons[offIdx];
+        const offDef = offWeaponId ? getWeaponDefinition(offWeaponId) : undefined;
+        if (
+          offDef &&
+          (offDef.equipmentRole === 'shield' || offDef.equipmentRole === 'quiver') &&
+          offDef.hardpointSprite
+        ) {
+          const offGemVis = getWeaponGemVisuals(state, offWeaponId);
+          const ox = state.x - dirInfo.dx * 5 - dirInfo.dy * 4;
+          const oy = py - 8 - dirInfo.dy * 3;
+          drawBase64Sprite(
+            g,
+            {
+              ...offDef.hardpointSprite,
+              col: offGemVis.colIndex,
+              renderWidth: 10,
+              renderHeight: 10,
+              orientFromEast: true,
+            },
+            ox,
+            oy,
+            state.t,
+            {
+              dir: state.dir,
+              defaultAnchor: 'center',
+              transformFromEast: true,
+            }
+          );
+        }
+      };
+
+      const drawMainWeaponHardpoint = () => {
+        const isAttacking = state.activeSkillSlot !== null && state.skillActionTimer > 0;
+        const isSpearOrLance =
+          activeWeaponId === 'short_spear' || activeWeaponId === 'avalon_siege_lance';
+        const isMace = activeWeaponId === 'mace';
+        const isShield = weaponDef?.equipmentRole === 'shield';
+        const isRanged =
+          weaponDef?.equipmentRole === 'ranged' || weaponDef?.equipmentRole === 'quiver';
+
+        const thrustOffset = isAttacking
+          ? isSpearOrLance
+            ? 7
+            : isShield
+              ? 5
+              : isRanged
+                ? -1.5
+                : 3
+          : 0;
+        const swingRot = isAttacking
+          ? isSpearOrLance || isShield || isRanged
+            ? 0
+            : isMace
+              ? 0.65
+              : (state.ammo % 2 === 0 ? 1 : -1) * 0.52
+          : 0;
+        const slamDropY = isAttacking && isMace ? 3 : 0;
+
+        const wx = state.x + dirInfo.dx * (7 + thrustOffset);
+        const wy = py - 9 + dirInfo.dy * (5 + thrustOffset) + slamDropY;
+        const mainHardpointSprite = weaponDef?.hardpointSprite
+          ? {
+              ...weaponDef.hardpointSprite,
+              col: gemVis.colIndex,
+              orientFromEast: true,
+            }
+          : undefined;
+
+        const drewHardpointSprite = drawBase64Sprite(g, mainHardpointSprite, wx, wy, state.t, {
+          dir: state.dir,
+          defaultAnchor: 'center',
+          transformFromEast: true,
+          extraRotationRad: swingRot,
+        });
+
+        if (!drewHardpointSprite) {
+          if (weaponDef?.renderHardpoint25D) {
+            weaponDef.renderHardpoint25D(g, wx, wy, dirInfo.dx, dirInfo.dy, state);
+          } else {
+            g.fillStyle = '#94a3b8';
+            g.fillRect(wx - 1, wy, 3, 6);
+          }
+        }
+      };
+
+      if (isFacingNorth) {
+        drawMainWeaponHardpoint();
+      } else {
+        drawOffhandHardpoint();
+      }
+
+      drawCompositePlayerMech(g, state, state.x, py, state.t, {
+        dir: state.dir,
+        isAttacking: state.activeSkillSlot !== null && state.skillActionTimer > 0,
+      });
+
+      if (isFacingNorth) {
+        drawOffhandHardpoint();
+      } else {
+        drawMainWeaponHardpoint();
+      }
+
+      if (state.isHoldingBlock) {
+        const isPerfectWindow =
+          (state.blockHoldTimer || 0) <= PERFECT_BLOCK_WINDOW_SEC;
+        const blockAng = Math.atan2(dirInfo.dy, dirInfo.dx);
+        g.save();
+        g.strokeStyle = isPerfectWindow ? '#38bdf8' : '#93c5fd';
+        g.lineWidth = isPerfectWindow ? 2.2 : 1.4;
+        g.globalAlpha = isPerfectWindow ? 0.95 : 0.65;
+        g.beginPath();
+        g.arc(
+          state.x,
+          py - 8,
+          isPerfectWindow ? 12 : 10,
+          blockAng - Math.PI * 0.42,
+          blockAng + Math.PI * 0.42
+        );
+        g.stroke();
+        g.restore();
+      }
+
+      // §8 Player Legibility: Visible Charge State slipstream chevron when player moves forward with μ >= 0.55
+      if (
+        (state.currentMu || 0) >= INERTIA_CONSTANTS.CHARGE_VISUAL_MU_THRESHOLD &&
+        (state.staggerRecoveryTimer || 0) <= 0
+      ) {
+        const cAng =
+          Math.hypot(state.vx, state.vy) > 1
+            ? Math.atan2(state.vy, state.vx)
+            : Math.atan2(dirInfo.dy, dirInfo.dx);
+        g.save();
+        g.strokeStyle = '#38bdf8';
+        g.lineWidth = 1.3;
+        g.globalAlpha = 0.82;
+        g.beginPath();
+        g.arc(
+          state.x + Math.cos(cAng) * 4,
+          py - 8 + Math.sin(cAng) * 3,
+          10,
+          cAng - 0.68,
+          cAng + 0.68
+        );
+        g.stroke();
+        g.restore();
+      }
+
+      // §8 Player Legibility: Distinct visible outcome ring for Shrugged-Off / Flinch / Stagger / Knockback on Player
+      if ((state.lastInertiaOutcomeTimer || 0) > 0 && state.lastInertiaOutcome) {
+        g.save();
+        const pOutColor =
+          state.lastInertiaOutcome === 'none'
+            ? '#94a3b8'
+            : state.lastInertiaOutcome === 'flinch'
+              ? '#fde047'
+              : state.lastInertiaOutcome === 'stagger'
+                ? '#fb923c'
+                : '#f43f5e';
+        g.strokeStyle = pOutColor;
+        g.lineWidth = state.lastInertiaOutcome === 'none' ? 1.5 : 1.9;
+        g.globalAlpha = Math.min(0.92, (state.lastInertiaOutcomeTimer || 0) * 1.5);
+        g.beginPath();
+        g.arc(state.x, py - 8, state.lastInertiaOutcome === 'none' ? 10 : 12, 0, Math.PI * 2);
+        g.stroke();
+        g.restore();
+      }
+
+      g.restore();
+    },
+  });
+
+  renderQueue.sort((a, b) => a.y - b.y);
+  for (const item of renderQueue) {
+    item.draw();
+  }
+}

@@ -1,6 +1,17 @@
 # Project Orion — Index
 
-*A field guide to the Shattered Worlds, and the road through Belldor*
+*A field guide to the Shattered Worlds, the road through Belldor, and the canonical documentation index*
+
+---
+
+## Documentation Directory (`src/cartridges/orion/docs/`)
+
+| Document | Scope & Contents |
+| --- | --- |
+| **`docs/INDEX.md`** *(this file)* | Narrative worldbuilding, the Shattered Worlds, Belldor campaign stages (`M00 The Bog`, `Camelot Border Town`), starting loadout kits, and documentation map. |
+| **`docs/AUTHORING_GUIDE.md`** | Technical architecture, modular domain systems (`types/`, `systems/combat/`, `systems/render/`, `systems/world/`, `ui/hud/`, `ui/satchel/`), `[ORION-ANCHOR]` jump table, 5-tier world hierarchy, and Base64 asset recipes. |
+| **`docs/EQUIPMENT_AND_FEATS.md`** | Full `v0.8` canonical catalog of 29 magitech weapons, 6 coreplates, 6 reactors, 18 aux/utility systems, 18 optics/sensors, 12 limb actuators, and 97 classless feats. |
+| **`docs/INERTIA_SYSTEM.md`** | Working specification (`inertia-v0.md`) for the simplified classical mechanics Inertia & Stability model (`Δv = J / m_eff`, Stability `S`, directional charge `μ`, rock-paper-scissors triangle, and recoil). |
 
 ---
 
@@ -71,7 +82,7 @@ The campaign on Belldor is built as a lesson. You are never handed a tool before
 
 ### Choosing Your Starting Loadout Kit (`v0.8` Classless Spec)
 
-Your mech is a modular war machine, and **Project Orion has no player-facing classes**. Six pre-configured **Starting Loadout Kits** are available at Pilot Creation so you begin with a coherent frame, reactor, and weapon pairing—none of them locks you in. Any pilot can equip any weapon, coreplate, utility system, or feat as long as they meet the hardware and gemstone requirements. See `Project Orion — Equipment & Feats.md` for the full catalog of 29 magitech weapons, 6 coreplates, 6 reactors, 18 aux/utility systems, 18 optics/sensors, 12 limb actuators, and 97 feats.
+Your mech is a modular war machine, and **Project Orion has no player-facing classes**. Six pre-configured **Starting Loadout Kits** are available at Pilot Creation so you begin with a coherent frame, reactor, and weapon pairing—none of them locks you in. Any pilot can equip any weapon, coreplate, utility system, or feat as long as they meet the hardware and gemstone requirements. See `docs/EQUIPMENT_AND_FEATS.md` for the full catalog of 29 magitech weapons, 6 coreplates, 6 reactors, 18 aux/utility systems, 18 optics/sensors, 12 limb actuators, and 97 feats.
 
 | Starting Kit | Frame Model | Reactor | Base Load | Lv.6 Tactical Utility (`Action 6`) | Starting Role & Design Direction |
 | --- | --- | --- | --- | --- | --- |
@@ -86,6 +97,7 @@ Your mech is a modular war machine, and **Project Orion has no player-facing cla
 - **Pilot (`Skills`)**: Created at New Game (`Starting Kit → Pilot Callsign → Level 1 in M00 The Bog`) and listed on the Load Game roster. Six **Combat Disciplines** progress through gemstone investment (locked out during the `Levels 1–5` tutorial until `Level 6: Border Town Complete`) and unlock **Feat Tiers (`I–V`)**.
 - **Frame (`Feats`)**: **97 Canonical Feats** across Tiers I–V. **System Feats** step up Load Capacity (`light → medium → heavy → superheavy`); **Interface Feats** tune combat behavior and weapon/hardware synergies within a fixed static budget. Feats are gated by Skill Tier, Gemstone sockets, and equipped Hardware/Weapon families—never by class—and can be unsocketed and refunded at any time.
 - **Equipment (`13 Slots + Mods`)**: Weapon Set 1 (`Weapon 1–2`), Weapon Set 2 (`Weapon 3–4`), Tactical Utility (`1`, `Action 6`), Aux (`Aux 1–4`, `Actions 7–10`), Belt (`4`, `Actions 7–10`), plus `Coreplate`, `Reactor Core`, `Optics`, `Sensory A/B`, `Arms`, and `Legs`. Action Modifications alter behavior with a paired drawback.
+- **Inertia & Stability (`docs/INERTIA_SYSTEM.md`)**: Hit reactions (`none`, `flinch`, `stagger`, `knockback`), hitstop freeze frames, and ranged recoil restriction are governed by the unified impulse-momentum model (`Δv = J / m_eff`) and frame Stability (`S`).
 
 ### The Æther Fog
 
@@ -98,8 +110,6 @@ Belldor does not hold still. Beyond the places that were built, the land frays i
 **Going deeper.** Some branches lead into the fog proper, and each room is one step deeper than the last. Until you reach the deepest room, you can always turn around and retrace your steps, and every room back toward the path is as safe as it was when you passed through. The deepest room is different. It holds a boss that must be cleared, and clearing it returns you to the last place you stood on the main path. The depth where the boss waits is not the same everywhere. A shallow pocket may bottom out after two or three rooms, and a deep one after five or more.
 
 **The Lantern.** The Poe's gift is the one tool that reads the fog. It shows where the fog deepens and what is waiting beneath the water, and it never points you toward the story.
-
----
 
 ---
 
@@ -188,4 +198,4 @@ By the time you are done here, you will have everything the game has to teach. Y
 
 ---
 
-*Project Orion — Index*
+*Project Orion — Index (`src/cartridges/orion/docs/INDEX.md`)*

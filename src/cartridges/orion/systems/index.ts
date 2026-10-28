@@ -9,3 +9,4 @@ export * from './entitySystem';
 export * from './playerSystem';
 export * from './playerSpriteSystem';
 export * from './worldSystem';
+export * from './inertiaSystem';

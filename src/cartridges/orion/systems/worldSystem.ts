@@ -2497,6 +2497,14 @@ export function fastTravelToWaystation(
   state.y = ws.y;
   state.z = 0;
   state.vz = 0;
+  state.vx = 0;
+  state.vy = 0;
+  state.glidePhase = 'idle';
+  state.glideFrame = 0;
+  state.glideStepIndex = 0;
+  state.glideStepTimer = 0;
+  state.glideInertiaVx = 0;
+  state.glideInertiaVy = 0;
   state.projectiles = [];
   state.pickups = [];
 
@@ -2565,6 +2573,14 @@ export function fastTravelViaWaygate(
   state.y = wg.y + 18;
   state.z = 0;
   state.vz = 0;
+  state.vx = 0;
+  state.vy = 0;
+  state.glidePhase = 'idle';
+  state.glideFrame = 0;
+  state.glideStepIndex = 0;
+  state.glideStepTimer = 0;
+  state.glideInertiaVx = 0;
+  state.glideInertiaVy = 0;
   state.projectiles = [];
   state.pickups = [];
   state.flickerTimer = 0.8;
@@ -2628,7 +2644,16 @@ export function rebootAtSpawnAnchor(
   state.isReloading = false;
   state.isFallingIntoPit = false;
   state.isBoosterDashing = false;
+  state.isContinuousBoosting = false;
   state.onGround = true;
+  state.vx = 0;
+  state.vy = 0;
+  state.glidePhase = 'idle';
+  state.glideFrame = 0;
+  state.glideStepIndex = 0;
+  state.glideStepTimer = 0;
+  state.glideInertiaVx = 0;
+  state.glideInertiaVy = 0;
 
   resetAetherFogGraph(rooms, state);
 

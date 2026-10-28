@@ -144,10 +144,25 @@ export const CompositeMechPreviewCanvas: React.FC<{
 }> = ({ state, head, arms, plating, weaponId }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [previewDirIdx, setPreviewDirIdx] = useState<number>(0);
+  const [pausedFrame, setPausedFrame] = useState<0 | 1 | 2 | 3 | null>(null);
 
   useEffect(() => {
     let rafId = 0;
-    const weightProfile = computePlayerWeightRecoveryProfile(state);
+    const previewState: OrionState =
+      state.equipmentSlots && (head || arms || plating || weaponId)
+        ? {
+            ...state,
+            equipmentSlots: {
+              ...state.equipmentSlots,
+              ...(head ? { head } : {}),
+              ...(arms ? { arms } : {}),
+              ...(plating ? { plating } : {}),
+              ...(weaponId ? { slot1: weaponId } : {}),
+            },
+          }
+        : state;
+
+    const weightProfile = computePlayerWeightRecoveryProfile(previewState);
     const timeline = buildGlideShowcaseTimeline(
       weightProfile.recoveryFrames,
       weightProfile.winddownStepSec
@@ -156,6 +171,17 @@ export const CompositeMechPreviewCanvas: React.FC<{
     const activeDir = PREVIEW_DIRS[previewDirIdx % PREVIEW_DIRS.length] || state.dir || 'S';
 
     const resolveShowcaseStep = (tSec: number): ShowcaseKeyframe => {
+      if (pausedFrame !== null) {
+        const pausedPhase: OrionGlidePhase =
+          pausedFrame === 0
+            ? 'idle'
+            : pausedFrame === 1
+              ? 'windup'
+              : pausedFrame === 2
+                ? 'glide'
+                : 'boost';
+        return { phase: pausedPhase, frame: pausedFrame, durationSec: 1 };
+      }
       let cursor = tSec % totalCycleSec;
       for (const kf of timeline) {
         if (cursor < kf.durationSec) return kf;
@@ -180,7 +206,7 @@ export const CompositeMechPreviewCanvas: React.FC<{
 
       ctx.clearRect(0, 0, 32, 32);
       ctx.imageSmoothingEnabled = false;
-      drawCompositePlayerMech(ctx, state, 16, 26, tSec, {
+      drawCompositePlayerMech(ctx, previewState, 16, 26, tSec, {
         dir: activeDir,
         overrideFrame: step.frame,
       });
@@ -208,26 +234,44 @@ export const CompositeMechPreviewCanvas: React.FC<{
 
     const tick = (nowMs: number) => {
       renderPreview(nowMs);
-      rafId = window.requestAnimationFrame(tick);
+      if (pausedFrame === null) {
+        rafId = window.requestAnimationFrame(tick);
+      }
     };
 
     renderPreview();
-    rafId = window.requestAnimationFrame(tick);
+    if (pausedFrame === null) {
+      rafId = window.requestAnimationFrame(tick);
+    }
     const unsubscribe = subscribeToMechSpriteLoad(() => renderPreview());
 
     return () => {
       window.cancelAnimationFrame(rafId);
       unsubscribe();
     };
-  }, [state, head, arms, plating, weaponId, state.traitLine, previewDirIdx]);
+  }, [state, head, arms, plating, weaponId, state.traitLine, previewDirIdx, pausedFrame]);
 
   const activeDir = PREVIEW_DIRS[previewDirIdx % PREVIEW_DIRS.length] || 'S';
 
   return (
     <button
       type="button"
-      onClick={() => setPreviewDirIdx((prev) => (prev + 1) % PREVIEW_DIRS.length)}
-      title={`Magic-Current Glide Preview (Facing ${activeDir} — Click to rotate S/E/N/W)`}
+      onClick={(e) => {
+        if (e.shiftKey) {
+          setPausedFrame((prev) =>
+            prev === null ? 0 : prev === 3 ? null : ((prev + 1) as 0 | 1 | 2 | 3)
+          );
+        } else {
+          setPreviewDirIdx((prev) => (prev + 1) % PREVIEW_DIRS.length);
+        }
+      }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        setPausedFrame((prev) =>
+          prev === null ? 0 : prev === 3 ? null : ((prev + 1) as 0 | 1 | 2 | 3)
+        );
+      }}
+      title={`Magic-Current Glide Preview (Facing ${activeDir}${pausedFrame !== null ? ` · Paused F${pausedFrame + 1}` : ''} — Click: Rotate S/E/N/W · Right-Click or Shift+Click: Step/Resume Frames F1–F4)`}
       className="relative w-10 h-10 shrink-0 bg-[#020617] border border-[#38bdf8]/40 hover:border-[#38bdf8] rounded-xs cursor-pointer p-0 overflow-hidden"
     >
       <canvas
@@ -236,9 +280,15 @@ export const CompositeMechPreviewCanvas: React.FC<{
         height={32}
         className="w-full h-full [image-rendering:pixelated]"
       />
+      {pausedFrame !== null && (
+        <span className="absolute top-0.5 left-0.5 text-[6px] leading-none font-bold text-[#fde047] bg-[#020617]/85 px-0.5 rounded-xs">
+          F{pausedFrame + 1}
+        </span>
+      )}
       <span className="absolute top-0.5 right-0.5 text-[6px] leading-none font-bold text-[#7dd3fc] bg-[#020617]/80 px-0.5 rounded-xs">
         {activeDir}
       </span>
     </button>
   );
 };
+

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { registerBase64Atlas, registerCanvasAtlas } from '../../../systems/renderSystem';
+import { registerBase64Atlas, registerCanvasAtlas } from '../../../systems/render/spriteAtlasCache';
 
 export const BOG_TILESET_ATLAS_ID = 'bog_tileset';
 

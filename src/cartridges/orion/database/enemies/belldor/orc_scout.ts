@@ -3,7 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { getDirFromVector, getRoomDimensions } from '../../../constants';
+import { getDirFromVector } from '../../../constants';
+import {
+  canEnemyDetectPlayer,
+  idlePatrolEnemy,
+  stepEnemyWithCollision,
+} from '../../../systems/enemyHelpers';
 import { EnemyEntity, EnemyWikiDefinition, OrionState } from '../../../types';
 
 function getOrcTarget(
@@ -65,21 +70,10 @@ export const orcScoutEnemy: EnemyWikiDefinition = {
     }
     if (e.attackCd > 0) e.attackCd -= dt;
 
-    const { widthPx, heightPx } = getRoomDimensions(rooms[state.room]);
     const target = getOrcTarget(state, e);
     const dx = target.x - e.x;
     const dy = target.y - e.y;
     const dist = Math.hypot(dx, dy) || 1;
-    e.dir = getDirFromVector(dx, dy);
-
-    // Slip away to heal when hurt (<60% HP)
-    const isHurtRetreating = e.frame.integrity < e.frame.maxIntegrity * 0.6;
-    if (isHurtRetreating && dist < 75) {
-      e.x = Math.max(16, Math.min(widthPx - 16, e.x - (dx / dist) * e.speed * 1.1 * dt));
-      e.y = Math.max(16, Math.min(heightPx - 16, e.y - (dy / dist) * e.speed * 1.1 * dt));
-      e.frame.integrity = Math.min(e.frame.maxIntegrity, e.frame.integrity + 7 * dt);
-      return;
-    }
 
     if (e.state === 'windup') {
       e.stateTimer -= dt;
@@ -133,15 +127,46 @@ export const orcScoutEnemy: EnemyWikiDefinition = {
       return;
     }
 
-    if (dist < 42) {
-      e.x = Math.max(16, Math.min(widthPx - 16, e.x - (dx / dist) * e.speed * 0.85 * dt));
-      e.y = Math.max(16, Math.min(heightPx - 16, e.y - (dy / dist) * e.speed * 0.85 * dt));
-    } else if (dist > 88) {
-      e.x += (dx / dist) * e.speed * 0.8 * dt;
-      e.y += (dy / dist) * e.speed * 0.8 * dt;
+    if (!target.isNpc && !canEnemyDetectPlayer(rooms, state, e, 96)) {
+      idlePatrolEnemy(rooms, state, e, dt, 8);
+      return;
     }
 
-    if (dist <= 105 && e.attackCd <= 0) {
+    e.dir = getDirFromVector(dx, dy);
+
+    // Slip away to heal when hurt (<60% HP)
+    const isHurtRetreating = e.frame.integrity < e.frame.maxIntegrity * 0.6;
+    if (isHurtRetreating && dist < 75) {
+      stepEnemyWithCollision(
+        rooms,
+        state,
+        e,
+        -(dx / dist) * e.speed * 1.1 * dt,
+        -(dy / dist) * e.speed * 1.1 * dt
+      );
+      e.frame.integrity = Math.min(e.frame.maxIntegrity, e.frame.integrity + 7 * dt);
+      return;
+    }
+
+    if (dist < 42) {
+      stepEnemyWithCollision(
+        rooms,
+        state,
+        e,
+        -(dx / dist) * e.speed * 0.85 * dt,
+        -(dy / dist) * e.speed * 0.85 * dt
+      );
+    } else if (dist > 82) {
+      stepEnemyWithCollision(
+        rooms,
+        state,
+        e,
+        (dx / dist) * e.speed * 0.8 * dt,
+        (dy / dist) * e.speed * 0.8 * dt
+      );
+    }
+
+    if (dist <= 96 && e.attackCd <= 0) {
       e.state = 'windup';
       e.stateTimer = this.tellDurationSec;
       e.attackAngle = Math.atan2(dy, dx);

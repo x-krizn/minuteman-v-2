@@ -9,9 +9,11 @@ import {
   COLOR_FRAME,
   COLOR_HEAT,
   COLOR_SHIELD,
+  computeChunkFogMetrics,
   getDoorwayAetherTransitionInfo,
   getRoomDoorwayCenterPx,
   hasPoeLanternGuidance,
+  isChunkedExpanseRoom,
   SCREEN_H,
   SCREEN_W,
   Z_SCALE,
@@ -25,6 +27,38 @@ export function drawAetherFogWayfindingTells(
   camX: number = 0,
   camY: number = 0
 ): void {
+  // Off-Path Expanse Fog peripheral veil (scales with distance from Set-Path Spine + clvl)
+  if (isChunkedExpanseRoom(state.room)) {
+    const fogMetrics = computeChunkFogMetrics(state);
+    if (fogMetrics.distFromSetPath > 0 && fogMetrics.fogIntensity > 0) {
+      g.save();
+      const intensityClamped = Math.min(1.6, fogMetrics.fogIntensity);
+      const baseMist = Math.min(0.46, 0.1 + intensityClamped * 0.2);
+      const mistPulse =
+        baseMist + 0.05 * Math.sin(state.t * (1.8 + intensityClamped * 1.6));
+      const innerR = SCREEN_W * Math.max(0.11, 0.3 - intensityClamped * 0.11);
+      const mistGrad = g.createRadialGradient(
+        SCREEN_W * 0.5,
+        SCREEN_H * 0.5,
+        innerR,
+        SCREEN_W * 0.5,
+        SCREEN_H * 0.5,
+        SCREEN_W * 0.68
+      );
+      mistGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+      const veilRgb = fogMetrics.isSoftCapAbyss
+        ? '244, 63, 94'
+        : fogMetrics.distFromSetPath >= 2
+          ? '192, 132, 252'
+          : '34, 211, 238';
+      mistGrad.addColorStop(1, `rgba(${veilRgb}, ${mistPulse.toFixed(2)})`);
+      g.fillStyle = mistGrad;
+      g.fillRect(0, 0, SCREEN_W, SCREEN_H);
+      g.restore();
+    }
+    return;
+  }
+
   const activeNode = state.fogGraph?.nodes?.[state.room];
   if (!activeNode) return;
 

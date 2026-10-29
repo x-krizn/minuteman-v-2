@@ -29,12 +29,16 @@ import {
   syncStateGates,
 } from './playerSystem';
 import {
+  checkAndUnlockClearedDeepFogDungeon,
   clearAetherFogOnBossDefeat,
+  computeChunkFogMetrics,
   ENEMY_EQUIPMENT_DROP_POOLS,
   getCanonicalRoomPersistenceKey,
   getMaxAetherFogDepth,
+  isChunkedExpanseRoom,
   resolveContextualEquipmentDrop,
   resolveContextualGemPool,
+  updateChunkedRoomStreaming,
 } from './worldSystem';
 
 // ─── 1. 2.5D PARTICLES ───────────────────────────────────────────────────────
@@ -159,6 +163,12 @@ export function spawnRoomEnemies(
   rooms: Record<string, string[]>,
   state: OrionState
 ): void {
+  if (isChunkedExpanseRoom(state.room)) {
+    state.lockedTargetId = null;
+    updateChunkedRoomStreaming(rooms, state, true);
+    return;
+  }
+
   state.enemies = [];
   state.lockedTargetId = null;
   const room = rooms[state.room];
@@ -305,16 +315,25 @@ export function updateEnemies(
         0,
         Math.min(maxFogDepth, e.fogDepth ?? state.fogGraph?.loopDepth ?? 0)
       );
+      const effFogIntensity =
+        e.fogIntensity ??
+        (isChunkedExpanseRoom(state.room) ? computeChunkFogMetrics(state).fogIntensity : 0);
+      const fogBonusTier = Math.max(effDepth, Math.round(effFogIntensity * 2.5));
 
       if (def?.lootTable) {
         for (const drop of def.lootTable) {
-          const scaledChance = Math.min(1, drop.chance * (1 + effDepth * 0.2));
+          const scaledChance = Math.min(
+            1,
+            drop.chance * (1 + effDepth * 0.2 + effFogIntensity * 0.35)
+          );
           if (Math.random() <= scaledChance) {
             const baseCount = drop.count || 1;
             const isCurrency = drop.itemId === 'trade_coin';
             const count = isCurrency
-              ? baseCount + effDepth * 2 + (e.isFogBoss ? 6 : 0)
-              : baseCount + (effDepth >= 3 && Math.random() < 0.35 ? 1 : 0);
+              ? baseCount +
+                fogBonusTier * 2 +
+                (e.isFogBoss || e.isDungeonGuardian ? 6 : e.isAbyssElite ? 3 : 0)
+              : baseCount + (fogBonusTier >= 3 && Math.random() < 0.38 ? 1 : 0);
             const dropDef = getItemDefinition(drop.itemId);
             for (let c = 0; c < count; c++) {
               state.pickups.push({
@@ -334,7 +353,7 @@ export function updateEnemies(
         }
       }
 
-      // Canonical Gemstone Drop Table by Enemy / Area / Region (Scaled by Æther Depth 1..clvl+1)
+      // Canonical Gemstone Drop Table by Enemy / Area / Region (Scaled by Æther Depth & Off-Path Fog Intensity)
       if (e.faction !== 'poe' && e.faction !== 'npc') {
         const dropChanceByEnemy: Record<string, number> = {
           bog_crawler: 0.22,
@@ -346,8 +365,16 @@ export function updateEnemies(
           bors_knight: 1.0,
           lady_of_the_lake: 1.0,
         };
-        const baseChance = e.isFogBoss ? 1.0 : dropChanceByEnemy[e.type] ?? 0.25;
-        const dropChance = Math.min(1, baseChance * (1 + effDepth * 0.22));
+        const baseChance =
+          e.isFogBoss || e.isDungeonGuardian
+            ? 1.0
+            : e.isAbyssElite
+              ? Math.max(0.65, dropChanceByEnemy[e.type] ?? 0.35)
+              : dropChanceByEnemy[e.type] ?? 0.25;
+        const dropChance = Math.min(
+          1,
+          baseChance * (1 + effDepth * 0.22 + effFogIntensity * 0.42)
+        );
         const pool = resolveContextualGemPool(state, e.type);
         if (Math.random() <= dropChance) {
           const chosenGemId = pool[Math.floor(Math.random() * pool.length)];
@@ -365,8 +392,12 @@ export function updateEnemies(
             t: Math.random() * 5,
           });
         }
-        // Bonus gemstone roll at deep fog tiers or on fog boss kill
-        if (e.isFogBoss || (effDepth >= 3 && Math.random() < 0.12 * effDepth)) {
+        // Bonus gemstone roll at deep fog tiers, high off-path fog intensity, or on boss/warden kill
+        if (
+          e.isFogBoss ||
+          e.isDungeonGuardian ||
+          (fogBonusTier >= 2 && Math.random() < 0.14 * fogBonusTier)
+        ) {
           const bonusGemId = pool[Math.floor(Math.random() * pool.length)];
           const bonusGemDef = getItemDefinition(bonusGemId);
           state.pickups.push({
@@ -396,10 +427,14 @@ export function updateEnemies(
       // Contextual Enemy -> Room -> Area -> Region Equipment & 2nd Copy Drop Roll
       if (e.faction !== 'poe' && e.faction !== 'npc') {
         const enemyEquipConfig = ENEMY_EQUIPMENT_DROP_POOLS[e.type];
-        const baseEquipChance = e.isFogBoss
-          ? 1.0
-          : def?.equipmentDropChance ?? enemyEquipConfig?.baseChance ?? 0.12;
-        const scaledEquipChance = Math.min(1, baseEquipChance * (1 + effDepth * 0.25));
+        const baseEquipChance =
+          e.isFogBoss || e.isDungeonGuardian
+            ? 1.0
+            : def?.equipmentDropChance ?? enemyEquipConfig?.baseChance ?? 0.12;
+        const scaledEquipChance = Math.min(
+          1,
+          baseEquipChance * (1 + effDepth * 0.25 + effFogIntensity * 0.45)
+        );
         if (Math.random() <= scaledEquipChance) {
           const droppedEquipId = resolveContextualEquipmentDrop(state, {
             enemyType: e.type,
@@ -472,9 +507,14 @@ export function updateEnemies(
       const remainingHostiles = state.enemies.filter(
         (rem) => rem.faction !== 'npc' && rem.faction !== 'poe'
       );
-      if (remainingHostiles.length === 0 && defeatedFaction !== 'poe') {
+      if (remainingHostiles.length === 0 && defeatedFaction !== 'poe' && !isChunkedExpanseRoom(state.room)) {
         state.clearedRooms[state.room] = true;
         state.clearedRooms[getCanonicalRoomPersistenceKey(state, state.room)] = true;
+      }
+
+      // Check if defeating this enemy cleared a Deep-Fog Dungeon in the chunked expanse
+      if (isChunkedExpanseRoom(state.room)) {
+        checkAndUnlockClearedDeepFogDungeon(rooms, state);
       }
 
       // Defeating a boss at max Æther fog depth clears the fog and returns the player to the main path

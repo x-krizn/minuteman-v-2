@@ -4,6 +4,11 @@
  */
 
 import { getDirFromVector } from '../../../constants';
+import {
+  canEnemyDetectPlayer,
+  idlePatrolEnemy,
+  stepEnemyWithCollision,
+} from '../../../systems/enemyHelpers';
 import { EnemyEntity, EnemyWikiDefinition, OrionState } from '../../../types';
 
 function getOrcTarget(
@@ -59,7 +64,7 @@ export const orcWarriorEnemy: EnemyWikiDefinition = {
     g.fillStyle = '#fdba74';
     g.fillRect(e.x - 8, ey - 12, 4, 10);
   },
-  update(_rooms, state: OrionState, e: EnemyEntity, dt: number) {
+  update(rooms, state: OrionState, e: EnemyEntity, dt: number) {
     if (e.stun > 0) {
       e.stun -= dt;
       return;
@@ -70,7 +75,6 @@ export const orcWarriorEnemy: EnemyWikiDefinition = {
     const dx = target.x - e.x;
     const dy = target.y - e.y;
     const dist = Math.hypot(dx, dy) || 1;
-    e.dir = getDirFromVector(dx, dy);
 
     if (e.state === 'windup') {
       e.stateTimer -= dt;
@@ -79,8 +83,7 @@ export const orcWarriorEnemy: EnemyWikiDefinition = {
         e.stateTimer = 0.22;
         e.hasStruckThisAttack = false;
         const ang = e.attackAngle ?? Math.atan2(dy, dx);
-        e.x += Math.cos(ang) * 12;
-        e.y += Math.sin(ang) * 12;
+        stepEnemyWithCollision(rooms, state, e, Math.cos(ang) * 12, Math.sin(ang) * 12);
         state.bladeTrails = state.bladeTrails || [];
         state.bladeTrails.push({
           x: e.x,
@@ -116,6 +119,13 @@ export const orcWarriorEnemy: EnemyWikiDefinition = {
       return;
     }
 
+    if (!target.isNpc && !canEnemyDetectPlayer(rooms, state, e, 84)) {
+      idlePatrolEnemy(rooms, state, e, dt, 8);
+      return;
+    }
+
+    e.dir = getDirFromVector(dx, dy);
+
     if (dist <= 26 && e.attackCd <= 0) {
       e.state = 'windup';
       e.stateTimer = this.tellDurationSec;
@@ -125,8 +135,13 @@ export const orcWarriorEnemy: EnemyWikiDefinition = {
     }
 
     if (dist > 16) {
-      e.x += (dx / dist) * e.speed * dt;
-      e.y += (dy / dist) * e.speed * dt;
+      stepEnemyWithCollision(
+        rooms,
+        state,
+        e,
+        (dx / dist) * e.speed * dt,
+        (dy / dist) * e.speed * dt
+      );
     }
   },
 };

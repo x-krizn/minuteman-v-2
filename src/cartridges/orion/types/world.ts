@@ -254,6 +254,8 @@ export interface RoomDefinition {
   /** Optional explicit grid column/row dimensions (derived automatically from grid if omitted) */
   cols?: number;
   rows?: number;
+  /** True if this room uses dynamic 10x10 screen chunk streaming (100x90 tiles) */
+  isChunkedExpanse?: boolean;
   grid: string[];
   /** Allowed doorway directions for global procedural template rooms */
   doorDirs?: Array<'N' | 'S' | 'E' | 'W'>;

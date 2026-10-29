@@ -4,8 +4,13 @@
  */
 
 import { soundSystem } from '../../../../../engine/core/soundSystem';
-import { getDirFromVector, getRoomDimensions } from '../../../constants';
-import { notifyOrionStateChange } from '../../../systems/playerSystem';
+import { getDirFromVector } from '../../../constants';
+import {
+  canEnemyDetectPlayer,
+  idlePatrolEnemy,
+  stepEnemyWithCollision,
+} from '../../../systems/enemyHelpers';
+import { notifyOrionStateChange } from '../../../systems/stateStore';
 import { EnemyEntity, EnemyWikiDefinition, OrionState } from '../../../types';
 
 export const ladyOfTheLakeEnemy: EnemyWikiDefinition = {
@@ -60,7 +65,6 @@ export const ladyOfTheLakeEnemy: EnemyWikiDefinition = {
     const dx = state.x - e.x;
     const dy = state.y - e.y;
     const dist = Math.hypot(dx, dy) || 1;
-    e.dir = getDirFromVector(dx, dy);
 
     if (e.state === 'windup') {
       e.stateTimer -= dt;
@@ -130,15 +134,19 @@ export const ladyOfTheLakeEnemy: EnemyWikiDefinition = {
       return;
     }
 
-    const { widthPx, heightPx } = getRoomDimensions(rooms[state.room]);
+    if (!canEnemyDetectPlayer(rooms, state, e, 135)) {
+      idlePatrolEnemy(rooms, state, e, dt, 8);
+      return;
+    }
+
+    e.dir = getDirFromVector(dx, dy);
     e.t += dt;
-    e.x = Math.max(
-      20,
-      Math.min(widthPx - 20, e.x + (dx / dist) * e.speed * 0.6 * dt + Math.cos(e.t * 2) * 12 * dt)
-    );
-    e.y = Math.max(
-      20,
-      Math.min(heightPx - 20, e.y + (dy / dist) * e.speed * 0.6 * dt + Math.sin(e.t * 2) * 12 * dt)
+    stepEnemyWithCollision(
+      rooms,
+      state,
+      e,
+      (dx / dist) * e.speed * 0.6 * dt + Math.cos(e.t * 2) * 12 * dt,
+      (dy / dist) * e.speed * 0.6 * dt + Math.sin(e.t * 2) * 12 * dt
     );
 
     if (e.attackCd <= 0) {

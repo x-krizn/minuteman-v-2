@@ -1,6 +1,6 @@
 {
-  "summary":  "Implementation plan for Project Orion codebase cleanup: splitting oversized systems (combat, render, world), types, and UI components (OrionSatchel, OrionHud) into domain modules, removing legacy poise fields and dead code, and consolidating documentation into a dedicated docs directory.",
-  "updatedAt":  "2026-10-28T16:39:21.117754930Z",
+  "summary":  "Revised implementation plan incorporating the exact fix for the Minuteman Debugger 'Cannot read properties of undefined (reading split)' crash from the screenshot, alongside the solid wall-tile (#) fallback, doorway-only room padding, enemy aggro/line-of-sight/wall collision, and safe spawn sanctuary.",
+  "updatedAt":  "2026-10-29T12:45:09.504627786Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

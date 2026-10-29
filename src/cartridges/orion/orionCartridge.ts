@@ -30,6 +30,7 @@ import {
   spawnRoomEnemies,
   syncRoomHierarchyState,
   syncStateGates,
+  updateChunkedRoomStreaming,
   updateCombat,
   updateEnemies,
   updateEnvironmentalHazards,
@@ -74,6 +75,7 @@ export function createOrionCartridge(): Cartridge {
 
     init(_surface: CartridgeSurface) {
       state.atTitleMenu = true;
+      state.spawnGraceTimer = 3.0;
       titleMenuBootGuard = 0.35;
       syncRoomHierarchyState(state);
       syncStateGates(state);
@@ -156,15 +158,21 @@ export function createOrionCartridge(): Cartridge {
               state.traitLine,
               state.pilotName || DEFAULT_CALLSIGNS[state.traitLine]
             );
+            state.spawnGraceTimer = 3.0;
             soundSystem.playPowerup();
           } else if (p.y) {
             const roster = loadPilotRoster();
             if (roster.length > 0 && loadPilotFromRoster(state, roster[0].pilotId)) {
+              state.spawnGraceTimer = 3.0;
               soundSystem.playPowerup();
             }
           }
         }
         return;
+      }
+
+      if ((state.spawnGraceTimer || 0) > 0) {
+        state.spawnGraceTimer = Math.max(0, (state.spawnGraceTimer || 0) - dt);
       }
 
       // 0. Hitstop Freeze-Frame Window (Inertia System `inertia-v0.md`)
@@ -213,8 +221,9 @@ export function createOrionCartridge(): Cartridge {
       updatePickups(state, combatCtx, dt);
       updateParticles(state, dt);
 
-      // 4. Seamless World Room Transitions & Contextual Prompts
+      // 4. Seamless World Room Transitions, Dynamic 10x10 Chunk Streaming & Contextual Prompts
       handleWorldRoomTransition(rooms, state, combatCtx);
+      updateChunkedRoomStreaming(rooms, state);
       checkWorldInteractivePrompt(rooms, state);
 
       // 5. Auto-expire transient pop-up notifications

@@ -4,6 +4,11 @@
  */
 
 import { getDirFromVector } from '../../../constants';
+import {
+  canEnemyDetectPlayer,
+  idlePatrolEnemy,
+  stepEnemyWithCollision,
+} from '../../../systems/enemyHelpers';
 import { EnemyEntity, EnemyWikiDefinition, OrionState } from '../../../types';
 
 export const bogCrawlerEnemy: EnemyWikiDefinition = {
@@ -37,7 +42,7 @@ export const bogCrawlerEnemy: EnemyWikiDefinition = {
     g.fillRect(e.x - 7, ey - 8, 3, 4);
     g.fillRect(e.x + 4, ey - 8, 3, 4);
   },
-  update(_rooms, state: OrionState, e: EnemyEntity, dt: number) {
+  update(rooms, state: OrionState, e: EnemyEntity, dt: number) {
     if (e.stun > 0) {
       e.stun -= dt;
       return;
@@ -55,8 +60,7 @@ export const bogCrawlerEnemy: EnemyWikiDefinition = {
         const ang = e.attackAngle ?? Math.atan2(state.y - e.y, state.x - e.x);
         const ldx = Math.cos(ang);
         const ldy = Math.sin(ang);
-        e.x += ldx * 14;
-        e.y += ldy * 14;
+        stepEnemyWithCollision(rooms, state, e, ldx * 14, ldy * 14);
         state.bladeTrails = state.bladeTrails || [];
         state.bladeTrails.push({
           x: e.x,
@@ -96,7 +100,7 @@ export const bogCrawlerEnemy: EnemyWikiDefinition = {
       return;
     }
 
-    if (distToPlayer < 90) {
+    if (canEnemyDetectPlayer(rooms, state, e, 76)) {
       const dx = state.x - e.x;
       const dy = state.y - e.y;
       e.dir = getDirFromVector(dx, dy);
@@ -111,13 +115,16 @@ export const bogCrawlerEnemy: EnemyWikiDefinition = {
 
       const step = e.speed * dt;
       if (distToPlayer > 18) {
-        e.x += (dx / distToPlayer) * step;
-        e.y += (dy / distToPlayer) * step;
+        stepEnemyWithCollision(
+          rooms,
+          state,
+          e,
+          (dx / distToPlayer) * step,
+          (dy / distToPlayer) * step
+        );
       }
     } else {
-      e.t += dt;
-      e.x += Math.cos(e.t * 1.5) * 8 * dt;
-      e.y += Math.sin(e.t * 1.5) * 8 * dt;
+      idlePatrolEnemy(rooms, state, e, dt, 8);
     }
   },
 };

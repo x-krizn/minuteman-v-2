@@ -97,6 +97,8 @@ export interface OrionState {
   recoilSpeedMult?: number;
   /** Active hitstop freeze-frame timer in seconds */
   hitstopTimer?: number;
+  /** Spawn / reboot grace period timer in seconds during which enemies cannot aggro onto the player */
+  spawnGraceTimer?: number;
   /** Active stagger/knockback recovery timer in seconds (`Δv_eff / (k2 * S)`) */
   staggerRecoveryTimer?: number;
   /** Current directional forward momentum fraction `μ` (0..1) */
@@ -222,6 +224,25 @@ export interface OrionState {
   projectiles: OrionProjectile[];
   particles: OrionParticle[];
   bladeTrails?: BladeTrailEffect[];
+
+  // Dynamic Off-Screen Chunk Streaming & Enemy Hibernation (100x90 / 10x10 Chunks)
+  activeChunkX?: number;
+  activeChunkY?: number;
+  generatedChunks?: Record<string, boolean>;
+  hibernatedChunkEnemies?: Record<string, EnemyEntity[]>;
+  /** Last visited Set-Path Spine chunk coordinates for fast-travel return after clearing a Deep-Fog Dungeon */
+  lastSafeChunkCoord?: {
+    roomId: string;
+    cx: number;
+    cy: number;
+    x: number;
+    y: number;
+    title: string;
+  };
+  /** Off-path chunk Lantern Anchors ignited by the pilot (`${roomId}:${cx},${cy}` -> true) */
+  litChunkLanterns?: Record<string, boolean>;
+  /** Deep-Fog Dungeon chunks cleared by the pilot (`${roomId}:${cx},${cy}` -> true) */
+  clearedDeepFogDungeons?: Record<string, boolean>;
 
   // Feedback & Toasts
   toastText: string | null;

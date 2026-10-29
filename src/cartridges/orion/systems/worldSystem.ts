@@ -7,3 +7,4 @@ export * from './world/roomLoader';
 export * from './world/worldPersistence';
 export * from './world/worldTransitions';
 export * from './world/tutorialSystem';
+export * from './world/chunkStreamingSystem';

@@ -41,6 +41,7 @@ export interface OrionRoomMetadata {
   routeStep?: number;
   routeTotal?: number;
   endFeature?: AetherEndFeature;
+  isChunkedExpanse?: boolean;
 }
 
 export interface OrionCacheDefinition {
@@ -190,7 +191,12 @@ export function carveRoomCardinalDoors(
 ): string[] {
   const { cols, rows } = getRoomDimensions(rawGrid);
   const openSet = new Set<AetherCardinalDir>(openDirs);
-  const matrix = rawGrid.map((row) => row.padEnd(cols, '#').split(''));
+  const matrix = (rawGrid || []).map((row) =>
+    String(row ?? '')
+      .padEnd(cols, '#')
+      .split('')
+      .map((ch) => (!ch || ch === ' ' ? '#' : ch))
+  );
 
   const nx1 = Math.max(1, Math.floor(cols / 2) - 1);
   const nx2 = Math.min(cols - 2, nx1 + 1);
@@ -383,7 +389,7 @@ export function decorateDynamicRoomGrid(
       : baseGrid;
   const carved = carveRoomCardinalDoors(sourceGrid, openDirs);
   const { cols, rows } = getRoomDimensions(carved);
-  const matrix = carved.map((r) => r.split(''));
+  const matrix = carved.map((r) => String(r ?? '').split(''));
 
   const midX = Math.floor(cols / 2);
   const midY = Math.floor(rows / 2);
@@ -563,14 +569,18 @@ function assembleNestedWorld(): void {
       'belldor_bog';
 
     const isCheatRoom = coord === '-4,0';
+    const isChunked = Boolean(localRoom.isChunkedExpanse);
     const isSecretEndRoom = coord === '1,-1' || localRoom.nodeType === 'end';
     const nodeType: AetherNodeType = isSecretEndRoom ? 'end' : localRoom.nodeType || 'key';
-    const openDirs: AetherCardinalDir[] = isCheatRoom
-      ? []
-      : isSecretEndRoom
-        ? ['S']
-        : ALL_CARDINAL_DIRS;
-    const borderlessGrid = carveRoomCardinalDoors(localRoom.grid, openDirs);
+    const openDirs: AetherCardinalDir[] =
+      isCheatRoom || isChunked
+        ? []
+        : isSecretEndRoom
+          ? ['S']
+          : ALL_CARDINAL_DIRS;
+    const borderlessGrid = isChunked
+      ? [...localRoom.grid]
+      : carveRoomCardinalDoors(localRoom.grid, openDirs);
 
     const resolvedRoom: RoomDefinition = {
       ...localRoom,
@@ -599,6 +609,7 @@ function assembleNestedWorld(): void {
       nodeType,
       trueExitDir: isSecretEndRoom ? 'S' : getPrimaryKeyExitDir(coord),
       endFeature: isSecretEndRoom ? 'loot_cache' : undefined,
+      isChunkedExpanse: isChunked,
     };
 
     if (resolvedRoom.cache) {

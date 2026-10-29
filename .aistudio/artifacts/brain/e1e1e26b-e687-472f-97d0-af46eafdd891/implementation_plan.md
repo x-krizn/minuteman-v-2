@@ -1,92 +1,76 @@
-# Project Orion — Codebase Cleanup & Modularization Plan
+# Debugger `.split()` Crash Fix, Solid Wall Fallback & Enemy Engagement Overhaul
 
-## Goal Description
-Refactor and clean up the Project Orion cartridge codebase (`/src/cartridges/orion/`) following the transition to the Inertia v0 combat system and magic-current glide mechanics. This pass breaks down oversized monolithic files (`combatSystem.ts`, `renderSystem.ts`, `worldSystem.ts`, `types.ts`, `OrionSatchel.tsx`, and `OrionHud.tsx`) into focused domain modules, strips out deprecated poise fields and unused code, and consolidates all Project Orion design and authoring documentation into `/src/cartridges/orion/docs/`.
+This plan resolves the `Cannot read properties of undefined (reading 'split')` crash shown in the Minuteman Debugger screenshot, introduces a solid wall-tile (`#`) fallback for all ungenerated tiles and room-padding cells across the Unified Bog Grid, overhauls enemy engagement with finite aggro range, line-of-sight checks, and wall collision, and establishes a protected Sanctuary Zone around the Drop-Pod Impact Crater (`-3,0`) and First Campfire (`0,0`).
 
----
+## User Review & Critical Decisions
 
-## Proposed Changes
+> [!IMPORTANT]
+> **Root Cause Found from Your Minuteman Debugger Screenshot (`Cannot read properties of undefined (reading 'split')`)**:
+> 1. In `resolveChunkBlueprint`, `chunkHash` is a 32-bit unsigned integer (`0 .. 4,294,967,295`), but lines 678, 689, 693, and 706 used **signed right-shift (`>>`)** instead of **unsigned right-shift (`>>>`)**. Whenever `chunkHash >= 0x80000000` (50% of chunks), `(chunkHash >> 7) % elitePool.length` evaluated to a negative index (`-1`, `-2`, or `-3`), making `typeC` evaluate to `undefined` and crashing on `typeC.split('_')[0]` during `orion update`.
+> 2. Because `state` persists across cartridge restarts and `state.generatedChunks[chunkKey]` was not marked complete before the throw, re-launching the cartridge immediately re-ran `updateChunkedRoomStreaming` on the same chunk and threw the identical error during `orion init`.
 
-### 1. Types Consolidation & Domain Organization (`/src/cartridges/orion/types/`)
-Split `/src/cartridges/orion/types.ts` (1,349 lines) into domain-specific definition files while preserving `/src/cartridges/orion/types.ts` as a barrel re-export so existing imports remain unbroken:
-- **`types/common.ts`**: Primitives, vectors, elemental affinities, damage types, rarity tiers, and shared utility interfaces.
-- **`types/combat.ts`**: Inertia v0 state/config interfaces, attack profiles, skills, projectiles, hitboxes, status effects, and salvo telemetry.
-- **`types/equipment.ts`**: Weapons, armor frames, equipment slots, mods, consumables, and crafting/upgrade definitions.
-- **`types/entities.ts`**: Player state, enemy definitions, NPCs, bosses, AI states, and animation/glide state structures.
-- **`types/world.ts`**: Rooms, biomes, tiles, hazards, interactables, chests, transitions, and map data.
-- **`types/state.ts`**: Root `OrionGameState`, UI/Satchel state, save data schemas, and input/settings structures.
-- **`types.ts` (Barrel)**: Re-export all domain type modules cleanly.
+- **Confirmed Decision 1 — Fix Signed Bit-Shift & Harden All `.split()` Calls**: Replace all signed bit-shifts (`>>`) on `chunkHash` with unsigned shifts (`>>>`), add null-safe string guards on every `.split()` call across the world/chunk systems, and ensure `init()` safely recovers if a previous session halted mid-stream.
+- **Confirmed Decision 2 — Solid Wall (`#`) Fallback & Doorway Alignment**: All ungenerated expanse grid cells and `20×18` room-padding margins around smaller authored rooms (`16×12`, `18×13`, `20×15`) default to solid walls (`#`). Causeway openings (`:`) are carved only where the authored room actually has an open doorway or where a Set-Path Corridor connects.
+- **Confirmed Decision 3 — Enemy Aggro Range, Line-of-Sight, Wall Collision & Safe Spawn Sanctuary**: All Belldor enemies enforce finite detection range, tile line-of-sight raycasting (blocked by `#` and closed gates `G`), and axis-separated wall collision (`moveEntityX` / `moveEntityY`). Zero off-path ambush spawns occur in chunks adjacent to the Drop-Pod (`-3,0`) and First Campfire (`0,0`), a `3.0s` spawn grace timer protects the player upon arrival, and baseline enemy counts are reduced (`0–1` on Set-Path Corridors, `1–2` in shallow off-path fog chunks).
 
 ---
 
-### 2. Legacy Poise & Dead Code Removal
-Audit the codebase to remove deprecated poise remnants superseded by Inertia v0 (`inertiaSystem.ts`):
-- Strip obsolete poise properties (`poise`, `maxPoise`, `poiseDamage`, `poiseRegen`, `poiseResetTimer`, etc.) from type definitions, enemy templates, equipment/feat definitions, and runtime initializers where no longer used.
-- Remove unused helper functions, dead imports, and commented-out legacy blocks across `/src/cartridges/orion/systems/`, `/src/cartridges/orion/database/`, and `/src/cartridges/orion/ui/`.
-- Verify that all stagger, micro-flinch, knockback, and hitstop mechanics route exclusively through `inertiaSystem.ts`.
+## 1. Overview & Core Concept
+
+- **What It Does**:
+  1. **Eliminates the `.split()` Debugger Crash**: Fixes negative modulo indexing on 32-bit chunk hashes (`>>>` vs `>>`) and hardens all coordinate/grid `.split()` helpers so neither `orion update` nor `orion init` can ever dereference `undefined`.
+  2. **Solid Wall (`#`) Fallback**: Seals ungenerated expanse regions and `20×18` room-padding margins with solid `#` walls, opening `:` causeways strictly at real doorways.
+  3. **Tactical Enemy Engagement & Safe Spawn Zone**: Stops enemies from aggroing across rooms or phasing through solid `#` walls, clears adjacent off-path chunks around `-3,0` and `0,0`, and lowers baseline enemy density.
+- **Target Audience / Persona**: Players exploring M00 The Bog who expect crash-free streaming into deep fog, solid physical room walls, and fair room-by-room combat pacing.
+- **Key Value**: Resolves the blocker crash immediately while fixing the two core gameplay issues (wall fallback and immediate spawn ambushes).
 
 ---
 
-### 3. Combat System Modularization (`/src/cartridges/orion/systems/combat/`)
-Break down `/src/cartridges/orion/systems/combatSystem.ts` (4,549 lines) into focused combat submodules:
-- **`combat/damageSystem.ts`**: Damage calculation, elemental affinity multipliers, Inertia v0 impact resolution hooks, hitstop application, shield/guard mitigation, and floating combat text triggers.
-- **`combat/skillExecution.ts`**: Weapon attacks, active skill routines, melee arcs, lunge/glide velocity coupling, and stamina/aether costs.
-- **`combat/projectileSystem.ts`**: Projectile spawning, homing/ballistic updates, collision detection, beam/raycast handling, and hazard zones.
-- **`combat/combatHelpers.ts`**: Target lock-on resolution, line-of-sight checks, hitbox geometry helpers, and status effect ticking.
-- **`combatSystem.ts` (Orchestrator & Barrel)**: Retain main combat loop entry points and re-export all public functions for backward compatibility with `systems/index.ts`.
+## 2. User Experience & Visual Design
+
+- **Key User Flows**:
+  1. **Booting & Streaming Deep Fog Without Crashes**: Launching Orion (`orion init`) and walking into any Off-Path Fog or Deep-Fog Dungeon chunk (`orion update`) cleanly resolves enemy pools and tile matrices without negative-modulo `undefined` lookups.
+  2. **Spawning at the Drop-Pod (`-3,0`)**: The player awakens inside a sealed crater enclosure surrounded by solid `#` walls, with a sole eastern exit leading toward `-2,0`. A `3.0s` spawn grace period is active, and adjacent off-path chunks around `-3,0` and `0,0` spawn zero enemies.
+  3. **Traversing Room Perimeters & Doorways**: Smaller authored rooms (`16×12`) stamped into `20×18` (`2×2` chunk) footprints have their outer padding filled with solid `#` walls rather than open mud (`,`), with 4-tile causeways (`:`) carved strictly where the room's authored doorway opens.
+  4. **Encountering Enemies**: Enemies remain in an unalerted idle/patrol state until the player steps within their detection radius (`80–115 px`) with unobstructed line-of-sight, and respect solid `#` walls during movement and lunges.
+- **Visual Identity & Theme**:
+  - *Aesthetic Direction*: Dark retro-futuristic 16-bit action-RPG (`#0d1410` bog slate, `#2a382f` mire stone walls `#`, `#6a5a44` ancient causeway `:`).
+  - *Interactive Feedback & Motion*: Enemies display subtle wall-colliding patrol movement prior to aggro and only trigger combat windups when within range and line-of-sight.
 
 ---
 
-### 4. Render System Modularization (`/src/cartridges/orion/systems/render/`)
-Break down `/src/cartridges/orion/systems/renderSystem.ts` (3,805 lines) into focused rendering submodules:
-- **`render/spriteAtlasCache.ts`**: Offscreen canvas caching, palette/silhouette baking, and sprite sheet lookup utilities.
-- **`render/worldRenderer.ts`**: Floor tiles, walls, environmental props, lighting/ambient overlays, interactables, and room transition masks.
-- **`render/entityRenderer.ts`**: Player layered mech sprite rendering (including glide banking/hover), enemy sprites, bosses, telegraphs, and world-space health/inertia bars.
-- **`render/effectsRenderer.ts`**: Projectiles, weapon swing trails, thruster/magic-current particles, hit sparks, screen shake, and floating text.
-- **`renderSystem.ts` (Orchestrator & Barrel)**: Coordinate the main `renderGame` pipeline and re-export public helpers.
+## 3. Key Product Decisions & Trade-Offs
+
+- **Decision 1: Unsigned Bit-Shift (`>>>`) & Null-Safe `.split()` Guards**
+  - *Chosen Approach*: Convert `chunkHash >> n` to `chunkHash >>> n` in `resolveChunkBlueprint`, guard `typeC`, and add defensive string fallbacks (`String(val || '')`) before `.split()` in `finalizeChunkGridBorders`, `parseCoordPair`, `getKeyBorderBranchType`, and room transition helpers.
+  - *Why*: JavaScript's `>>` preserves the sign bit of 32-bit hashes `>= 2^31`, producing negative remainders with `%` and returning `undefined` from array lookups.
+- **Decision 2: Solid Wall (`#`) Default for Unfilled Grid Spots & Room Padding**
+  - *Chosen Approach*: Initialize ungenerated expanse cells to `'#'`, fallback any missing character during chunk stitching to `'#'`, and fill the `20×18` stamp buffer in authored room stamping with `'#'` before stamping the room interior and carving doorway channels.
+  - *Why*: Guarantees players and entities can never walk into uninitialized void space or bypass authored room walls through mud padding.
+- **Decision 3: Line-of-Sight Raycast + Axis-Separated Wall Collision + Sanctuary Zone**
+  - *Chosen Approach*: Provide a shared `canEnemyDetectPlayer(rooms, state, e, baseAggroRadius)` helper that checks distance, spawn grace timer, and stepped tile raycasting against solid wall tiles (`#`, closed `G`), paired with `moveEntityX` / `moveEntityY` on all enemy movement vectors and zero off-path spawns adjacent to `-3,0` and `0,0`.
+  - *Why*: Prevents enemies in neighboring chunks or behind walls from detecting or walking through solid geometry to attack the player.
 
 ---
 
-### 5. World System Modularization (`/src/cartridges/orion/systems/world/`)
-Break down `/src/cartridges/orion/systems/worldSystem.ts` (3,365 lines) into focused world management submodules:
-- **`world/roomLoader.ts`**: Room instantiation, entity/enemy spawning, chest/pickup placement, and room layout parsing.
-- **`world/worldTransitions.ts`**: Door/gate traversal, zone transitions, respawn/beacon logic, and camera bounds clamping.
-- **`world/worldPersistence.ts`**: Save/load serialization (`localStorage`), world flags, unlocked shortcuts, and state migration helpers.
-- **`world/tutorialSystem.ts`**: Tutorial room triggers, combat dummy scenarios, and onboarding prompts.
-- **`worldSystem.ts` (Orchestrator & Barrel)**: Main world update loop and barrel re-exports.
+## 4. Technical Architecture & Data Strategy *(Technical Reference)*
 
----
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                     UNIFIED BOG GRID (26×18 Chunks)                      │
+├────────────────────────┬─────────────────────────┬───────────────────────┤
+│  Hash & .split() Guard │  Wall (#) Fallback      │  Enemy Engagement AI  │
+│                        │                         │                       │
+│ • chunkHash >>> n      │ • Unfilled expanse &    │ • Sanctuary Buffer    │
+│   unsigned shifts      │   20×18 room padding    │   around (-3,0)/(0,0) │
+│ • Safe string guards   │   default to '#'        │ • 3.0s Spawn Grace    │
+│   on all .split()      │ • Doorway detector only │ • Line-of-Sight +     │
+│   calls in init/update │   opens true exits ':'  │   moveEntityX/Y walls │
+└────────────────────────┴─────────────────────────┴───────────────────────┘
+```
 
-### 6. UI Modularization (`/src/cartridges/orion/ui/`)
-Extract cohesive subcomponents from the two largest UI files while keeping state management responsive and clean:
-- **Satchel Subcomponents (`/src/cartridges/orion/ui/satchel/`)**:
-  - `SatchelMechPreview.tsx`: Interactive/animated mech canvas preview cycling through idle, windup, glide, and wind-down states.
-  - `SatchelLoadoutTab.tsx`: Armor frame, weapons, mods, and Inertia/weight readout panel.
-  - `SatchelFeatsTab.tsx`: Aspect progression, feats tree, and stat allocation views.
-  - `SatchelInventoryTab.tsx`: Consumables, key items, crafting/salvage, and item detail cards.
-  - `SatchelMapTab.tsx`: World map, room discovery, and lore/codex entries.
-  - `OrionSatchel.tsx`: Top-level Satchel container, tab navigation, and keyboard/controller shortcut handling.
-- **HUD Subcomponents (`/src/cartridges/orion/ui/hud/`)**:
-  - `HudStatusBars.tsx`: Player HP, Stamina, Aether, and conditional Inertia HUD mod gauge.
-  - `HudActionBar.tsx`: Weapon slots, active skills, salvo cooldowns, and quick-use items.
-  - `HudTargetOverlay.tsx`: Boss health bars, target lock indicators, and combat notifications.
-  - `OrionHud.tsx`: Top-level HUD layout orchestrating the subcomponents.
-
----
-
-### 7. Documentation Consolidation (`/src/cartridges/orion/docs/`)
-Organize all Project Orion markdown documentation into `/src/cartridges/orion/docs/` and synchronize content with the current codebase:
-- Move and update:
-  - `/src/cartridges/orion/docs/INDEX.md` (from `Project Orion — Index.md`)
-  - `/src/cartridges/orion/docs/AUTHORING_GUIDE.md` (from `AUTHORING_GUIDE.md`)
-  - `/src/cartridges/orion/docs/EQUIPMENT_AND_FEATS.md` (from `Project Orion — Equipment & Feats.md`)
-  - `/src/cartridges/orion/docs/INERTIA_SYSTEM.md` (from `/public/assets/aistudio/inertia-v0_84295f9f.md`)
-- Update directory diagrams, system architecture references, and authoring instructions to reflect the new modular folder structure and Inertia v0 mechanics.
-- Update `/COMMIT_SUMMARY.md` with a comprehensive summary of the Inertia v0 system, glide animation architecture, and codebase modularization.
-
----
-
-## Verification Plan
-1. **Static Analysis & Type Checking**: Run `lint_applet` (`npm run lint`) to verify zero TypeScript errors, broken imports, or unused symbol issues across all split modules.
-2. **Production Bundle Compilation**: Run `compile_applet` (`npm run build`) to ensure Vite bundles all new submodules and barrel exports cleanly.
-3. **Runtime Integrity**: Confirm that all barrel exports (`types.ts`, `systems/index.ts`, `combatSystem.ts`, `renderSystem.ts`, `worldSystem.ts`) preserve exact signatures for `OrionCartridge.tsx` and all UI components.
+- **Data Model & State**:
+  - **Unsigned Chunk Hash Indexing**: All array index derivations from `chunkHash` use `(chunkHash >>> shift) % array.length`.
+  - **Wall Fallback**: Any unfilled cell (`undefined`, `' '`, or unstreamed chunk cell) resolves to `'#'`.
+  - **Doorway Detection**: Inspects the authored room's N/S/E/W edges and `SET_PATH_CORRIDOR_BY_CHUNK` adjacency before carving a 4-tile causeway through the `#` padding.
+  - **Enemy Engagement State**: Enemies evaluate `canEnemyDetectPlayer(rooms, state, e, radius)` each tick and move via `moveEntityX` / `moveEntityY` so solid `#` walls block movement across all Belldor enemy types.

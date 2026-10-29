@@ -10,13 +10,16 @@ import {
   BOOSTER_DASH_DURATION,
   BOOSTER_HEAT_COST,
   BOOSTER_SPEED,
+  convertBogRoomPosToUnifiedPx,
   DIR_VECTORS,
   getDirFromVector,
+  getEffectiveRoomCoord,
   getRoomDimensions,
+  getUnifiedBogRoomPlacement,
   GRAVITY,
   JUMP_VELOCITY,
   MUD_SPEED_PENALTY,
-  RoomDimensions,
+  SUNKEN_BOG_EXPANSE_ROOM_ID,
   TILE_SIZE,
   WALK_SPEED,
 } from '../constants';
@@ -61,6 +64,17 @@ import {
   resolvePlayerInertiaProfile,
 } from './inertiaSystem';
 import {
+  addOrionInventoryItem,
+  consolidateInventorySlots,
+  getActiveRoomBounds,
+  getOrionRoomsRef,
+  getOrionStateRef,
+  notifyOrionStateChange,
+  setOrionRoomsRef,
+  setOrionStateRef,
+  subscribeOrionStateChange,
+} from './stateStore';
+import {
   executeWorldInteraction,
   rebootAtSpawnAnchor,
   rehydrateAetherFogRooms,
@@ -72,70 +86,17 @@ import {
 const ORION_ACTIVE_SAVE_KEY = 'orion_save_slot_canonical';
 const ORION_PILOT_ROSTER_KEY = 'orion_pilot_roster_v1';
 
-let orionStateRef: OrionState | null = null;
-let orionRoomsRef: Record<string, string[]> | null = null;
-let onStateChangeListeners: Array<() => void> = [];
-
-export function setOrionStateRef(state: OrionState): void {
-  orionStateRef = state;
-  notifyOrionStateChange();
-}
-
-export function getOrionStateRef(): OrionState | null {
-  return orionStateRef;
-}
-
-export function setOrionRoomsRef(rooms: Record<string, string[]>): void {
-  orionRoomsRef = rooms;
-}
-
-export function getOrionRoomsRef(): Record<string, string[]> | null {
-  return orionRoomsRef;
-}
-
-export function getActiveRoomBounds(
-  state: OrionState,
-  rooms?: Record<string, string[]> | null
-): RoomDimensions {
-  const mapRef = rooms || orionRoomsRef;
-  return getRoomDimensions(mapRef?.[state.room]);
-}
-
-export function subscribeOrionStateChange(listener: () => void): () => void {
-  onStateChangeListeners.push(listener);
-  return () => {
-    onStateChangeListeners = onStateChangeListeners.filter((l) => l !== listener);
-  };
-}
-
-export function notifyOrionStateChange(): void {
-  for (const listener of onStateChangeListeners) {
-    listener();
-  }
-}
-
-export function consolidateInventorySlots(
-  slots: Array<{ itemId: string; count: number }>
-): Array<{ itemId: string; count: number }> {
-  const map = new Map<string, number>();
-  for (const slot of slots) {
-    map.set(slot.itemId, (map.get(slot.itemId) || 0) + slot.count);
-  }
-  return Array.from(map.entries()).map(([itemId, count]) => ({ itemId, count }));
-}
-
-export function addOrionInventoryItem(
-  state: OrionState,
-  itemId: string,
-  count: number = 1
-): void {
-  const existing = state.inventorySlots.find((s) => s.itemId === itemId);
-  if (existing) {
-    existing.count += count;
-  } else {
-    state.inventorySlots.push({ itemId, count });
-  }
-}
+export {
+  addOrionInventoryItem,
+  consolidateInventorySlots,
+  getActiveRoomBounds,
+  getOrionRoomsRef,
+  getOrionStateRef,
+  notifyOrionStateChange,
+  setOrionRoomsRef,
+  setOrionStateRef,
+  subscribeOrionStateChange,
+};
 
 function serializeOrionSaveData(state: OrionState) {
   if (!state.pilotId) {
@@ -187,6 +148,10 @@ function serializeOrionSaveData(state: OrionState) {
     x: state.x,
     y: state.y,
     fogGraph: state.fogGraph,
+    hibernatedChunkEnemies: state.hibernatedChunkEnemies || {},
+    lastSafeChunkCoord: state.lastSafeChunkCoord,
+    litChunkLanterns: state.litChunkLanterns || {},
+    clearedDeepFogDungeons: state.clearedDeepFogDungeons || {},
   };
 }
 
@@ -269,10 +234,45 @@ function applySerializedSaveDataToState(
   state.ry = data.ry ?? state.ry;
   state.x = data.x ?? state.x;
   state.y = data.y ?? state.y;
+
+  // Migrate any legacy standalone M00 Bog room save directly onto the Unified Bog Grid
+  const legacyBogPlacement = getUnifiedBogRoomPlacement(state.room);
+  if (legacyBogPlacement) {
+    const unifiedPos = convertBogRoomPosToUnifiedPx(
+      legacyBogPlacement.roomCoord,
+      state.x,
+      state.y,
+      legacyBogPlacement.roomCoord === '3,0' ? 20 : 16,
+      legacyBogPlacement.roomCoord === '3,0' ? 15 : 12
+    );
+    state.room = SUNKEN_BOG_EXPANSE_ROOM_ID;
+    state.rx = legacyBogPlacement.rx;
+    state.ry = legacyBogPlacement.ry;
+    state.x = unifiedPos.x;
+    state.y = unifiedPos.y;
+  }
+  state.generatedChunks = {};
+  state.hibernatedChunkEnemies =
+    data.hibernatedChunkEnemies && typeof data.hibernatedChunkEnemies === 'object'
+      ? data.hibernatedChunkEnemies
+      : {};
+  state.lastSafeChunkCoord =
+    data.lastSafeChunkCoord && typeof data.lastSafeChunkCoord === 'object'
+      ? data.lastSafeChunkCoord
+      : undefined;
+  state.litChunkLanterns =
+    data.litChunkLanterns && typeof data.litChunkLanterns === 'object'
+      ? data.litChunkLanterns
+      : {};
+  state.clearedDeepFogDungeons =
+    data.clearedDeepFogDungeons && typeof data.clearedDeepFogDungeons === 'object'
+      ? data.clearedDeepFogDungeons
+      : {};
   if (data.fogGraph && typeof data.fogGraph === 'object') {
     state.fogGraph = data.fogGraph;
-    if (orionRoomsRef) {
-      rehydrateAetherFogRooms(orionRoomsRef, state);
+    const roomsRef = getOrionRoomsRef();
+    if (roomsRef) {
+      rehydrateAetherFogRooms(roomsRef, state);
     }
   }
 }
@@ -354,8 +354,9 @@ export function loadOrionGame(state: OrionState): boolean {
     applySerializedSaveDataToState(state, data);
     state.atTitleMenu = false;
     syncRoomHierarchyState(state);
-    if (orionRoomsRef) {
-      spawnRoomEnemies(orionRoomsRef, state);
+    const roomsRef = getOrionRoomsRef();
+    if (roomsRef) {
+      spawnRoomEnemies(roomsRef, state);
     }
     syncStateGates(state);
     notifyOrionStateChange();
@@ -375,8 +376,9 @@ export function loadPilotFromRoster(state: OrionState, pilotId: string): boolean
     state.atTitleMenu = false;
     localStorage.setItem(ORION_ACTIVE_SAVE_KEY, target.savedDataJson);
     syncRoomHierarchyState(state);
-    if (orionRoomsRef) {
-      spawnRoomEnemies(orionRoomsRef, state);
+    const roomsRef = getOrionRoomsRef();
+    if (roomsRef) {
+      spawnRoomEnemies(roomsRef, state);
     }
     syncStateGates(state);
     notifyOrionStateChange();
@@ -413,8 +415,9 @@ export function createNewPilotGame(
 
   Object.assign(state, fresh);
   syncRoomHierarchyState(state);
-  if (orionRoomsRef) {
-    spawnRoomEnemies(orionRoomsRef, state);
+  const roomsRef = getOrionRoomsRef();
+  if (roomsRef) {
+    spawnRoomEnemies(roomsRef, state);
   }
   syncStateGates(state);
   saveOrionGame(state);
@@ -431,6 +434,7 @@ export function createInitialOrionState(
       ? [...defaultTrait.startingWeapons]
       : ['gladius_boltcaster', 'khopesh'];
   const primaryWeaponDef = getWeaponDefinition(startingWeapons[0]);
+  const startPos = convertBogRoomPosToUnifiedPx('-3,0', 120, 88, 16, 12);
   return {
     pilotId: `pilot_${traitLine.toLowerCase()}_${pilotName
       .trim()
@@ -438,16 +442,16 @@ export function createInitialOrionState(
       .replace(/[^a-z0-9]+/g, '_')}`,
     regionId: 'region_belldor_outskirts',
     areaId: 'm00_the_bog',
-    mapId: 'map_bog_drop_zone',
+    mapId: 'map_bog_chunked_expanse',
     biomeId: 'belldor_bog',
-    room: '-3,0',
+    room: SUNKEN_BOG_EXPANSE_ROOM_ID,
     rx: -3,
     ry: 0,
     discoveredWaystations: [],
     discoveredWaygates: [],
 
-    x: 120,
-    y: 88,
+    x: startPos.x,
+    y: startPos.y,
     z: 0,
     vx: 0,
     vy: 0,
@@ -469,6 +473,7 @@ export function createInitialOrionState(
     recoilRestrictionTimer: 0,
     recoilSpeedMult: 1,
     hitstopTimer: 0,
+    spawnGraceTimer: 3.0,
     staggerRecoveryTimer: 0,
     currentMu: 0,
     baseWeight: 110,
@@ -584,9 +589,9 @@ export function createInitialOrionState(
     },
     spawnAnchor: {
       areaId: 'm00_the_bog',
-      room: '-3,0',
-      x: 120,
-      y: 88,
+      room: SUNKEN_BOG_EXPANSE_ROOM_ID,
+      x: startPos.x,
+      y: startPos.y,
     },
 
     enemies: [],
@@ -1223,7 +1228,7 @@ export function getTutorialPromptOverride(
   if (!state.tutorialActive) return null;
 
   if (tileChar === 'S') {
-    const scoutKey = `scout:${state.room}`;
+    const scoutKey = `scout:${getEffectiveRoomCoord(state)}`;
     if (!state.lootedCaches[scoutKey]) {
       return '[A] EXAMINE FALLEN KNIGHT';
     }
@@ -1241,7 +1246,8 @@ export function updateTutorialSystem(
 
   syncStateGates(state);
 
-  if (state.tutorialStep === 'drop_pod_boot' && state.room !== state.spawnAnchor.room) {
+  const effRoom = getEffectiveRoomCoord(state);
+  if (state.tutorialStep === 'drop_pod_boot' && effRoom !== '-3,0') {
     state.tutorialStep = 'locate_fallen_scout';
     notifyOrionStateChange();
   }

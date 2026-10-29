@@ -4,7 +4,14 @@
  */
 
 import { soundSystem } from '../../../../engine/core/soundSystem';
-import { DIR_VECTORS, getRoomDimensions, TILE_SIZE } from '../../constants';
+import {
+  convertBogRoomPosToUnifiedPx,
+  DIR_VECTORS,
+  getEffectiveRoomCoord,
+  getRoomDimensions,
+  getUnifiedBogRoomPlacement,
+  TILE_SIZE,
+} from '../../constants';
 import {
   getWeaponDefinition,
   WEAPON_REGISTRY,
@@ -42,11 +49,21 @@ import {
   resolveContextualEquipmentDrop,
 } from './worldPersistence';
 import {
+  enterOffPathFogLoopDungeon,
   fastTravelToWaystation,
   fastTravelViaWaygate,
   resetAetherFogGraph,
   syncRoomHierarchyState,
 } from './worldTransitions';
+import {
+  checkAndUnlockClearedDeepFogDungeon,
+  computeChunkFogMetrics,
+  fastTravelFromDeepDungeonToSafeSpot,
+  hibernateAllActiveExpanseEnemies,
+  isChunkedExpanseRoom,
+  SUNKEN_BOG_EXPANSE_ROOM_ID,
+  updateChunkedRoomStreaming,
+} from './chunkStreamingSystem';
 
 // ─── ENVIRONMENTAL HAZARDS, ORC RAIDS, TRIALS & INTERACTIVE PROMPTS ──────────
 
@@ -197,13 +214,22 @@ export function awakenLadyOfTheLake(state: OrionState, ctx?: OrionCombatContext)
   const existing = state.enemies.some((e) => e.type === 'lady_of_the_lake');
   if (existing) return false;
 
-  const { widthPx, heightPx } = getRoomDimensions(ORION_TUTORIAL_ROOMS[state.room]);
-  spawnEnemyByType(
-    state,
-    'lady_of_the_lake',
-    Math.round(widthPx * 0.5),
-    Math.round(heightPx * 0.45)
-  );
+  if (isChunkedExpanseRoom(state.room)) {
+    const effRoom = getEffectiveRoomCoord(state);
+    const spawnPos =
+      effRoom === '2,1'
+        ? convertBogRoomPosToUnifiedPx('2,1', 128, 90, 16, 12)
+        : { x: Math.round(state.x), y: Math.max(48, Math.round(state.y - 24)) };
+    spawnEnemyByType(state, 'lady_of_the_lake', spawnPos.x, spawnPos.y);
+  } else {
+    const { widthPx, heightPx } = getRoomDimensions(ORION_TUTORIAL_ROOMS[state.room]);
+    spawnEnemyByType(
+      state,
+      'lady_of_the_lake',
+      Math.round(widthPx * 0.5),
+      Math.round(heightPx * 0.45)
+    );
+  }
   soundSystem.playPowerup();
   const msg = 'THE WATER ANSWERS BEDIVERE’S LIST — LADY OF THE LAKE AWAKENED!';
   if (ctx) {
@@ -236,9 +262,10 @@ export function checkWorldInteractivePrompt(
 
   const currentTile = roomData[ty]?.[tx] || '.';
   const facingTile = roomData[ay]?.[ax] || '.';
+  const effectiveRoom = getEffectiveRoomCoord(state);
 
   const nearScout = currentTile === 'S' || facingTile === 'S';
-  const scoutKey = `scout:${state.room}`;
+  const scoutKey = `scout:${effectiveRoom}`;
   if (
     !nearScout &&
     state.lootedCaches[scoutKey] &&
@@ -264,27 +291,57 @@ export function checkWorldInteractivePrompt(
   );
 
   if (nearbyPoe && state.flags.poe_state !== 'helped') {
-    candidateKey = `${state.room}:poe`;
+    candidateKey = `${effectiveRoom}:poe`;
     candidateText = '[A] HELP THE POE';
   } else if (facingTile === 'L' || currentTile === 'L') {
-    candidateKey = `${state.room}:lantern`;
-    candidateText =
-      state.flags.poe_state === 'helped'
-        ? 'POE LANTERN (LIT)'
-        : '[A] LIGHT POE LANTERN';
+    if (isChunkedExpanseRoom(state.room)) {
+      const fogMetrics = computeChunkFogMetrics(state);
+      if (fogMetrics.distFromSetPath > 0) {
+        candidateKey = `${fogMetrics.chunkKey}:lantern:${fogMetrics.isLanternLit ? 'lit' : 'unlit'}`;
+        candidateText = fogMetrics.isLanternLit
+          ? 'FOG LANTERN ANCHOR (LIT · FOG SUPPRESSED)'
+          : '[A] IGNITE LANTERN ANCHOR (SUPPRESS FOG)';
+      } else {
+        candidateKey = `${effectiveRoom}:lantern`;
+        candidateText =
+          state.flags.poe_state === 'helped'
+            ? 'POE LANTERN (LIT)'
+            : '[A] LIGHT POE LANTERN';
+      }
+    } else {
+      candidateKey = `${state.room}:lantern`;
+      candidateText =
+        state.flags.poe_state === 'helped'
+          ? 'POE LANTERN (LIT)'
+          : '[A] LIGHT POE LANTERN';
+    }
   } else if (nearbyCalmNpc) {
-    candidateKey = `${state.room}:npc:${nearbyCalmNpc.id}`;
+    candidateKey = `${effectiveRoom}:npc:${nearbyCalmNpc.id}`;
     candidateText = nearbyCalmNpc.isLoyalist
       ? '[A] SPEAK WITH LOYALIST'
       : '[A] TRADE (15 SCRAP)';
   } else if (currentTile === 'D' || facingTile === 'D') {
-    candidateKey = `${state.room}:D`;
-    candidateText =
-      state.room === '-4,0'
-        ? '[A] EXIT CHEAT ROOM -> DROP-POD CRATER'
-        : '[A] ENTER DROP-POD CHEAT ROOM';
+    if (isChunkedExpanseRoom(state.room)) {
+      checkAndUnlockClearedDeepFogDungeon(rooms, state);
+      const fogMetrics = computeChunkFogMetrics(state);
+      if (fogMetrics.hasDeepDungeon) {
+        candidateKey = `${fogMetrics.chunkKey}:D:${fogMetrics.isDeepDungeonCleared ? 'clear' : 'loop'}`;
+        candidateText = fogMetrics.isDeepDungeonCleared
+          ? '[A] CLAIM DUNGEON REWARD & FAST-TRAVEL TO SAFE PATH'
+          : '[A] ENTER ABYSSAL FOG LOOP DUNGEON (CLEAR FOR FAST-TRAVEL)';
+      } else {
+        candidateKey = `${effectiveRoom}:D`;
+        candidateText = '[A] ENTER DROP-POD CHEAT ROOM';
+      }
+    } else {
+      candidateKey = `${state.room}:D`;
+      candidateText =
+        state.room === '-4,0'
+          ? '[A] EXIT CHEAT ROOM -> DROP-POD CRATER'
+          : '[A] ENTER DROP-POD CHEAT ROOM';
+    }
   } else if (currentTile === 'A' || facingTile === 'A') {
-    candidateKey = `${state.room}:A`;
+    candidateKey = `${effectiveRoom}:A`;
     const wsCount = (state.discoveredWaystations || []).filter(
       (id) => id !== 'ws_bog_drop_pod'
     ).length;
@@ -293,10 +350,22 @@ export function checkWorldInteractivePrompt(
         ? `[A] REST AT CAMPFIRE · TRANSIT (${wsCount} LIT)`
         : '[A] REST AT CAMPFIRE';
   } else if (currentTile === 'Q' || facingTile === 'Q') {
-    candidateKey = `${state.room}:Q`;
-    candidateText = '[A] STEP INTO WAYGATE';
+    candidateKey = `${effectiveRoom}:Q`;
+    if (state.room === '-3,0' || state.room === '-4,0') {
+      candidateText = '[A] ENTER UNIFIED BOG GRID (26×18 CHUNKS)';
+    } else if (state.room === SUNKEN_BOG_EXPANSE_ROOM_ID) {
+      const fogMetrics = computeChunkFogMetrics(state);
+      if (fogMetrics.hasDeepDungeon && fogMetrics.isDeepDungeonCleared) {
+        const safeTitle = state.lastSafeChunkCoord?.title || 'SAFE PATH';
+        candidateText = `[A] FAST-TRAVEL TO ${safeTitle.toUpperCase()}`;
+      } else {
+        candidateText = '[A] WAYGATE TRANSIT (CAMPFIRE / POE LANTERN / EXIT GATE)';
+      }
+    } else {
+      candidateText = '[A] STEP INTO WAYGATE';
+    }
   } else if (nearScout) {
-    candidateKey = `${state.room}:${scoutKey}:${state.flags.bedivere_ring_choice || 'none'}`;
+    candidateKey = `${effectiveRoom}:${scoutKey}:${state.flags.bedivere_ring_choice || 'none'}`;
     const tutorialOverride = getTutorialPromptOverride(state, 'S');
     if (!state.lootedCaches[scoutKey]) {
       candidateText = tutorialOverride || '[A] EXAMINE FALLEN KNIGHT';
@@ -336,7 +405,7 @@ export function checkWorldInteractivePrompt(
             ? '[A] TERMINAL 2: UNLOCK ALL WEAPONS & MODS'
             : '[A] TERMINAL 3: GRANT +5 ALL GEMS & +200 SCRAP';
     } else {
-      const switchKey = `switch:${state.room}:${facingTile}`;
+      const switchKey = `switch:${effectiveRoom}:${facingTile}`;
       candidateKey = switchKey;
       candidateText = state.lootedCaches[switchKey] ? null : '[A] PULL SWITCH';
     }
@@ -353,10 +422,10 @@ export function checkWorldInteractivePrompt(
     }
   } else if (facingTile === 'G' || currentTile === 'G') {
     if (state.flags.orc_raid_active) {
-      candidateKey = `${state.room}:gate:raid`;
+      candidateKey = `${effectiveRoom}:gate:raid`;
       candidateText = 'GATE SEALED';
-    } else if (!state.unlockedGates[state.room]) {
-      candidateKey = `${state.room}:gate`;
+    } else if (!state.unlockedGates[effectiveRoom] && !state.unlockedGates[state.room]) {
+      candidateKey = `${effectiveRoom}:gate`;
       const hasKey = state.inventorySlots.some((s) => s.itemId === 'rusted_gate_key');
       const poeResolved = Boolean(state.flags.bog_exit_revealed);
       candidateText = hasKey || poeResolved ? '[A] UNSEAL GATE' : 'GATE SEALED';
@@ -375,7 +444,7 @@ export function checkWorldInteractivePrompt(
     !state.flags.lady_of_the_lake_defeated &&
     !state.enemies.some((e) => e.type === 'lady_of_the_lake')
   ) {
-    candidateKey = `${state.room}:lady_of_the_lake`;
+    candidateKey = `${effectiveRoom}:lady_of_the_lake`;
     candidateText = '[A] DISTURB THE BOG WATERS';
   }
 
@@ -422,10 +491,43 @@ export function executeWorldInteraction(
 
   const currentTile = roomData[ty]?.[tx] || '.';
   const facingTile = roomData[ay]?.[ax] || '.';
+  const effectiveRoom = getEffectiveRoomCoord(state);
 
   const nearbyPoe = state.enemies.find(
     (e) => e.type === 'bog_poe' && Math.hypot(e.x - state.x, e.y - state.y) < 24
   );
+
+  // Off-Path Chunk Lantern Anchor Ignition (suppresses local fog & expands vision dome)
+  if ((facingTile === 'L' || currentTile === 'L') && isChunkedExpanseRoom(state.room)) {
+    const fogMetrics = computeChunkFogMetrics(state);
+    if (fogMetrics.distFromSetPath > 0) {
+      state.litChunkLanterns = state.litChunkLanterns || {};
+      if (!state.litChunkLanterns[fogMetrics.chunkKey]) {
+        state.litChunkLanterns[fogMetrics.chunkKey] = true;
+        state.shields.overloaded = false;
+        state.shields.capacity = Math.min(
+          state.shields.maxCapacity,
+          state.shields.capacity + 25
+        );
+        state.heat = Math.max(0, state.heat - 20);
+        for (const e of state.enemies) {
+          if (e.type === 'bog_wurm') e.isSubmerged = false;
+        }
+        soundSystem.playPowerup();
+        const updatedMetrics = computeChunkFogMetrics(state);
+        ctx.say(
+          `LANTERN ANCHOR IGNITED [${fogMetrics.cx},${fogMetrics.cy}] · FOG REDUCED TO ${Math.round(updatedMetrics.fogIntensity * 100)}%`
+        );
+        notifyOrionStateChange();
+        return true;
+      } else {
+        soundSystem.playSelect();
+        ctx.say(`LANTERN ANCHOR ACTIVE · LOCAL ÆTHER FOG SUPPRESSED`);
+        return true;
+      }
+    }
+  }
+
   if (
     (nearbyPoe && state.flags.poe_state !== 'helped') ||
     ((facingTile === 'L' || currentTile === 'L') && state.flags.poe_state !== 'helped')
@@ -482,7 +584,7 @@ export function executeWorldInteraction(
         const nextGear = resolveContextualEquipmentDrop(state, {
           areaId: state.areaId,
           regionId: state.regionId,
-          roomCoord: state.room,
+          roomCoord: effectiveRoom,
           allowSecondCopy: true,
         });
         if (nextGear) {
@@ -508,23 +610,45 @@ export function executeWorldInteraction(
   }
 
   if (currentTile === 'D' || facingTile === 'D') {
+    if (isChunkedExpanseRoom(state.room)) {
+      checkAndUnlockClearedDeepFogDungeon(rooms, state);
+      const fogMetrics = computeChunkFogMetrics(state);
+      if (fogMetrics.hasDeepDungeon) {
+        if (!fogMetrics.isDeepDungeonCleared) {
+          return enterOffPathFogLoopDungeon(
+            rooms,
+            state,
+            fogMetrics.chunkKey,
+            fogMetrics.cx,
+            fogMetrics.cy,
+            ctx
+          );
+        }
+        return fastTravelFromDeepDungeonToSafeSpot(rooms, state, ctx);
+      }
+    }
+
     if (state.room === '-4,0') {
-      state.room = '-3,0';
+      const craterPos = convertBogRoomPosToUnifiedPx('-3,0', 120, 88, 16, 12);
+      state.room = SUNKEN_BOG_EXPANSE_ROOM_ID;
       state.rx = -3;
       state.ry = 0;
-      state.x = 120;
-      state.y = 88;
+      state.x = craterPos.x;
+      state.y = craterPos.y;
       state.z = 0;
       state.vz = 0;
       state.projectiles = [];
       state.pickups = [];
       syncRoomHierarchyState(state);
-      spawnRoomEnemies(rooms, state);
+      updateChunkedRoomStreaming(rooms, state, true);
       soundSystem.playSelect();
-      ctx.say('EXITED DROP-POD CHEAT ROOM');
+      ctx.say('EXITED DROP-POD CHEAT ROOM -> UNIFIED BOG GRID [-3,0]');
       notifyOrionStateChange();
       return true;
     } else {
+      if (isChunkedExpanseRoom(state.room)) {
+        hibernateAllActiveExpanseEnemies(state);
+      }
       state.room = '-4,0';
       state.rx = -4;
       state.ry = 0;
@@ -592,6 +716,89 @@ export function executeWorldInteraction(
   }
 
   if (currentTile === 'Q' || facingTile === 'Q') {
+    if (state.room === '-3,0' || state.room === '-4,0') {
+      state.frame.integrity = state.frame.maxIntegrity || 200;
+      state.frame.state = 'Operational';
+      state.armor.durability = state.armor.maxDurability;
+      state.shields.capacity = state.shields.maxCapacity;
+      state.shields.overloaded = false;
+      state.heat = 0;
+
+      const craterPos = convertBogRoomPosToUnifiedPx('-3,0', 136, 84, 16, 12);
+      state.room = SUNKEN_BOG_EXPANSE_ROOM_ID;
+      state.rx = -3;
+      state.ry = 0;
+      state.x = craterPos.x;
+      state.y = craterPos.y;
+      state.z = 0;
+      state.vz = 0;
+      state.vx = 0;
+      state.vy = 0;
+      state.projectiles = [];
+      state.pickups = [];
+      state.enemies = [];
+      state.flickerTimer = 0.6;
+
+      syncRoomHierarchyState(state);
+      updateChunkedRoomStreaming(rooms, state, true);
+      soundSystem.playPowerup();
+      ctx.say('WAYGATE TRANSIT -> UNIFIED BOG GRID (26×18 CHUNKS · SET-PATH SPINE)');
+      notifyOrionStateChange();
+      return true;
+    }
+
+    if (state.room === SUNKEN_BOG_EXPANSE_ROOM_ID) {
+      const fogMetrics = computeChunkFogMetrics(state);
+      if (fogMetrics.hasDeepDungeon && fogMetrics.isDeepDungeonCleared) {
+        return fastTravelFromDeepDungeonToSafeSpot(rooms, state, ctx);
+      }
+
+      const bogWaygateStops = [
+        { room: '0,0', localX: 128, localY: 88, label: 'FIRST CAMPFIRE SANCTUARY [0,0]' },
+        { room: '0,-2', localX: 128, localY: 88, label: 'POE LANTERN CLEARING [0,-2]' },
+        { room: '3,0', localX: 120, localY: 96, label: 'MAIN BOG EXIT GATE [3,0]' },
+        { room: '-3,0', localX: 136, localY: 84, label: 'DROP-POD IMPACT CRATER [-3,0]' },
+      ];
+      const nextStopIdx = Number(state.flags.bog_waygate_idx || 0) % bogWaygateStops.length;
+      state.flags.bog_waygate_idx = nextStopIdx + 1;
+      const stop = bogWaygateStops[nextStopIdx];
+      const placement = getUnifiedBogRoomPlacement(stop.room)!;
+      const unifiedPos = convertBogRoomPosToUnifiedPx(
+        stop.room,
+        stop.localX,
+        stop.localY,
+        stop.room === '3,0' ? 20 : 16,
+        stop.room === '3,0' ? 15 : 12
+      );
+
+      hibernateAllActiveExpanseEnemies(state);
+      state.frame.integrity = state.frame.maxIntegrity || 200;
+      state.frame.state = 'Operational';
+      state.armor.durability = state.armor.maxDurability;
+      state.shields.capacity = state.shields.maxCapacity;
+      state.shields.overloaded = false;
+      state.heat = 0;
+
+      state.rx = placement.rx;
+      state.ry = placement.ry;
+      state.x = unifiedPos.x;
+      state.y = unifiedPos.y;
+      state.z = 0;
+      state.vz = 0;
+      state.vx = 0;
+      state.vy = 0;
+      state.projectiles = [];
+      state.pickups = [];
+      state.flickerTimer = 0.5;
+
+      syncRoomHierarchyState(state);
+      updateChunkedRoomStreaming(rooms, state, true);
+      soundSystem.playPowerup();
+      ctx.say(`WAYGATE TRANSIT -> ${stop.label}`);
+      notifyOrionStateChange();
+      return true;
+    }
+
     syncRoomHierarchyState(state);
     const allWaygates = Object.values(WAYGATE_REGISTRY);
     for (const wg of allWaygates) {
@@ -607,7 +814,7 @@ export function executeWorldInteraction(
   }
 
   if (facingTile === 'S' || currentTile === 'S') {
-    const scoutKey = `scout:${state.room}`;
+    const scoutKey = `scout:${effectiveRoom}`;
     if (!state.lootedCaches[scoutKey]) {
       state.lootedCaches[scoutKey] = true;
       state.hasBoosterKit = true;
@@ -652,8 +859,16 @@ export function executeWorldInteraction(
       markRoomCacheLooted(state, cx, cy);
       soundSystem.playPowerup();
 
-      const cacheDef = ORION_CACHE_DEFINITIONS[state.room] || ORION_CACHE_DEFINITIONS.default;
-      state.salvageScrap += cacheDef.scrap;
+      const cacheDef =
+        ORION_CACHE_DEFINITIONS[effectiveRoom] ||
+        ORION_CACHE_DEFINITIONS[state.room] ||
+        ORION_CACHE_DEFINITIONS.default;
+      const fogMetrics = isChunkedExpanseRoom(state.room)
+        ? computeChunkFogMetrics(state)
+        : null;
+      const lootMult = fogMetrics ? fogMetrics.lootMultiplier : 1;
+      const earnedScrap = Math.round(cacheDef.scrap * lootMult);
+      state.salvageScrap += earnedScrap;
       for (const item of cacheDef.items) {
         addOrionInventoryItem(state, item.itemId, item.count);
       }
@@ -668,11 +883,14 @@ export function executeWorldInteraction(
       const [traitGem, reactorGem] = traitGemByLine[state.traitLine] || ['spinel', 'hematite'];
       addOrionInventoryItem(state, traitGem, 1);
       addOrionInventoryItem(state, reactorGem, 1);
+      if (fogMetrics && fogMetrics.fogIntensity >= 0.5) {
+        addOrionInventoryItem(state, traitGem, 1);
+      }
 
       const unlockedGearId = resolveContextualEquipmentDrop(state, {
         areaId: state.areaId,
         regionId: state.regionId,
-        roomCoord: state.room,
+        roomCoord: effectiveRoom,
         allowSecondCopy: true,
       });
       let gearSuffix = '';
@@ -688,7 +906,11 @@ export function executeWorldInteraction(
         state.flags.bedivere_list_items = Number(state.flags.bedivere_list_items || 0) + 1;
         addOrionInventoryItem(state, 'bedivere_relic', 1);
       }
-      ctx.say(`${cacheDef.toast}${gearSuffix}`);
+      const fogBonusTag =
+        fogMetrics && fogMetrics.distFromSetPath > 0
+          ? ` [FOG LOOT ×${fogMetrics.lootMultiplier}]`
+          : '';
+      ctx.say(`${cacheDef.toast}${gearSuffix}${fogBonusTag}`);
       notifyOrionStateChange();
       return true;
     }
@@ -747,7 +969,7 @@ export function executeWorldInteraction(
       }
     }
 
-    const switchKey = `switch:${state.room}:${facingTile}`;
+    const switchKey = `switch:${effectiveRoom}:${facingTile}`;
     if (!state.lootedCaches[switchKey]) {
       state.lootedCaches[switchKey] = true;
       state.flags[`${switchKey}:anim_t`] = state.t;
@@ -772,16 +994,36 @@ export function executeWorldInteraction(
       const nextIdx = Number(state.flags.cheat_warp_idx || 0) % warpTargets.length;
       state.flags.cheat_warp_idx = nextIdx + 1;
       const dest = warpTargets[nextIdx];
-      const [rxStr, ryStr] = dest.room.split(',');
-      state.room = dest.room;
-      state.rx = Number(rxStr) || 0;
-      state.ry = Number(ryStr) || 0;
-      state.x = dest.x;
-      state.y = dest.y;
-      state.z = 0;
-      state.vz = 0;
-      syncRoomHierarchyState(state);
-      spawnRoomEnemies(rooms, state);
+      const bogPlacement = getUnifiedBogRoomPlacement(dest.room);
+      if (bogPlacement) {
+        const unifiedPos = convertBogRoomPosToUnifiedPx(
+          dest.room,
+          dest.x,
+          dest.y,
+          dest.room === '3,0' ? 20 : 16,
+          dest.room === '3,0' ? 15 : 12
+        );
+        state.room = SUNKEN_BOG_EXPANSE_ROOM_ID;
+        state.rx = bogPlacement.rx;
+        state.ry = bogPlacement.ry;
+        state.x = unifiedPos.x;
+        state.y = unifiedPos.y;
+        state.z = 0;
+        state.vz = 0;
+        syncRoomHierarchyState(state);
+        updateChunkedRoomStreaming(rooms, state, true);
+      } else {
+        const [rxStr, ryStr] = dest.room.split(',');
+        state.room = dest.room;
+        state.rx = Number(rxStr) || 0;
+        state.ry = Number(ryStr) || 0;
+        state.x = dest.x;
+        state.y = dest.y;
+        state.z = 0;
+        state.vz = 0;
+        syncRoomHierarchyState(state);
+        spawnRoomEnemies(rooms, state);
+      }
       soundSystem.playPowerup();
       ctx.say(`CHEAT WARP -> ${dest.label}`);
       notifyOrionStateChange();
@@ -812,7 +1054,7 @@ export function executeWorldInteraction(
       ctx.say('EXIT SEALED UNTIL ORC RAID IS DEALT WITH!');
       return true;
     }
-    if (state.unlockedGates[state.room]) return false;
+    if (state.unlockedGates[effectiveRoom] || state.unlockedGates[state.room]) return false;
 
     const keySlotIndex = state.inventorySlots.findIndex((s) => s.itemId === 'rusted_gate_key');
     const poeResolved = Boolean(state.flags.bog_exit_revealed);
@@ -824,16 +1066,18 @@ export function executeWorldInteraction(
           state.inventorySlots.splice(keySlotIndex, 1);
         }
       }
+      state.unlockedGates[effectiveRoom] = true;
       state.unlockedGates[state.room] = true;
+      state.clearedRooms[effectiveRoom] = true;
       state.clearedRooms[state.room] = true;
 
       const curRoom = rooms[state.room];
       if (curRoom) {
-        rooms[state.room] = curRoom.map((r) => r.replace(/G/g, '.'));
+        rooms[state.room] = curRoom.map((r) => r.replace(/G/g, ':'));
       }
 
       soundSystem.playPowerup();
-      ctx.say('BOG PERIMETER GATE UNSEALED · BORDER TOWN ACCESS');
+      ctx.say('BOG PERIMETER GATE UNSEALED · WALK EAST INTO CAMELOT BORDER TOWN');
       notifyOrionStateChange();
       return true;
     } else {

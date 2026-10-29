@@ -4,6 +4,11 @@
  */
 
 import { getDirFromVector } from '../../../constants';
+import {
+  canEnemyDetectPlayer,
+  idlePatrolEnemy,
+  stepEnemyWithCollision,
+} from '../../../systems/enemyHelpers';
 import { EnemyEntity, EnemyWikiDefinition, OrionState } from '../../../types';
 
 export const townNpcEntity: EnemyWikiDefinition = {
@@ -50,7 +55,7 @@ export const townNpcEntity: EnemyWikiDefinition = {
     g.fillStyle = e.isLoyalist ? '#93c5fd' : '#cbd5e1';
     g.fillRect(e.x - 3, ey - 15, 6, 3);
   },
-  update(_rooms, state: OrionState, e: EnemyEntity, dt: number) {
+  update(rooms, state: OrionState, e: EnemyEntity, dt: number) {
     if (e.stun > 0) {
       e.stun -= dt;
       return;
@@ -92,7 +97,6 @@ export const townNpcEntity: EnemyWikiDefinition = {
     }
 
     if (e.npcDisposition === 'feral') {
-      e.dir = getDirFromVector(dx, dy);
       if (e.state === 'windup') {
         e.stateTimer -= dt;
         if (e.stateTimer <= 0) {
@@ -100,8 +104,7 @@ export const townNpcEntity: EnemyWikiDefinition = {
           e.stateTimer = 0.2;
           e.hasStruckThisAttack = false;
           const ang = e.attackAngle ?? Math.atan2(dy, dx);
-          e.x += Math.cos(ang) * 10;
-          e.y += Math.sin(ang) * 10;
+          stepEnemyWithCollision(rooms, state, e, Math.cos(ang) * 10, Math.sin(ang) * 10);
           state.bladeTrails = state.bladeTrails || [];
           state.bladeTrails.push({
             x: e.x,
@@ -128,6 +131,11 @@ export const townNpcEntity: EnemyWikiDefinition = {
         }
         return;
       }
+      if (!canEnemyDetectPlayer(rooms, state, e, 84)) {
+        idlePatrolEnemy(rooms, state, e, dt, 5);
+        return;
+      }
+      e.dir = getDirFromVector(dx, dy);
       if (dist <= 24 && e.attackCd <= 0) {
         e.state = 'windup';
         e.stateTimer = this.tellDurationSec;
@@ -136,13 +144,16 @@ export const townNpcEntity: EnemyWikiDefinition = {
         return;
       }
       if (dist > 16) {
-        e.x += (dx / dist) * e.speed * dt;
-        e.y += (dy / dist) * e.speed * dt;
+        stepEnemyWithCollision(
+          rooms,
+          state,
+          e,
+          (dx / dist) * e.speed * dt,
+          (dy / dist) * e.speed * dt
+        );
       }
     } else {
-      e.t += dt;
-      e.x += Math.cos(e.t * 1.1) * 5 * dt;
-      e.y += Math.sin(e.t * 1.1) * 5 * dt;
+      idlePatrolEnemy(rooms, state, e, dt, 5);
     }
   },
 };

@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { getRoomDimensions, TILE_SIZE } from '../../../constants';
-import { drawBase64Sprite } from '../../../systems/renderSystem';
+import { getEffectiveRoomCoord, getRoomDimensions, TILE_SIZE } from '../../../constants';
+import { drawBase64Sprite } from '../../../systems/render/spriteAtlasCache';
 import { TileDefinition } from '../../../types';
 import { bogTiles_14_11, bogTiles_15_10, bogTiles_15_11, bogTiles_15_12 } from './bog_tileset_atlas';
 
@@ -19,18 +19,24 @@ export const rustedGateTile: TileDefinition = {
   bakedFrontColor: '#0369a1',
   checkSolid(state, roomKey) {
     if (state.flags?.orc_raid_active) return true;
+    const effRoom = getEffectiveRoomCoord(state);
     return (
       !state.unlockedGates?.[roomKey] &&
+      !state.unlockedGates?.[effRoom] &&
       !state.clearedRooms?.[roomKey] &&
+      !state.clearedRooms?.[effRoom] &&
       !state.flags?.bog_exit_revealed
     );
   },
   renderLayer1(g, tx, ty, sx, sy, state) {
+    const effRoom = getEffectiveRoomCoord(state);
     const isOpen =
       !state.flags?.orc_raid_active &&
       Boolean(
         state.unlockedGates[state.room] ||
+          state.unlockedGates[effRoom] ||
           state.clearedRooms[state.room] ||
+          state.clearedRooms[effRoom] ||
           state.flags?.bog_exit_revealed
       );
 

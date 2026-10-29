@@ -4,8 +4,13 @@
  */
 
 import { soundSystem } from '../../../../../engine/core/soundSystem';
-import { getDirFromVector, getRoomDimensions } from '../../../constants';
-import { addOrionInventoryItem, notifyOrionStateChange } from '../../../systems/playerSystem';
+import { getDirFromVector } from '../../../constants';
+import {
+  canEnemyDetectPlayer,
+  idlePatrolEnemy,
+  stepEnemyWithCollision,
+} from '../../../systems/enemyHelpers';
+import { addOrionInventoryItem, notifyOrionStateChange } from '../../../systems/stateStore';
 import { EnemyEntity, EnemyWikiDefinition, OrionCombatContext, OrionState } from '../../../types';
 
 function handleGrailKnightDefeat(state: OrionState, ctx: OrionCombatContext): void {
@@ -68,32 +73,9 @@ export const tristanKnightEnemy: EnemyWikiDefinition = {
     }
     if (e.attackCd > 0) e.attackCd -= dt;
 
-    const { widthPx, heightPx } = getRoomDimensions(rooms[state.room]);
     const dx = state.x - e.x;
     const dy = state.y - e.y;
     const dist = Math.hypot(dx, dy) || 1;
-    e.dir = getDirFromVector(dx, dy);
-
-    if (dist < 30 && e.state === 'idle') {
-      for (let i = 0; i < 6; i++) {
-        state.particles.push({
-          x: e.x + (Math.random() - 0.5) * 10,
-          y: e.y + (Math.random() - 0.5) * 10,
-          z: 6,
-          vx: (Math.random() - 0.5) * 25,
-          vy: (Math.random() - 0.5) * 25,
-          vz: 12,
-          life: 0.35,
-          maxLife: 0.35,
-          color: '#94a3b8',
-          size: 3,
-          fade: true,
-        });
-      }
-      e.x = state.x > widthPx * 0.5 ? 28 : widthPx - 28;
-      e.y = state.y > heightPx * 0.5 ? 28 : heightPx - 28;
-      return;
-    }
 
     if (e.state === 'windup') {
       e.stateTimer -= dt;
@@ -145,6 +127,34 @@ export const tristanKnightEnemy: EnemyWikiDefinition = {
         e.state = 'idle';
         e.attackCd = this.attackCooldownSec;
       }
+      return;
+    }
+
+    const aggroRange = state.flags?.knights_pulled_together || e.isFogBoss ? 135 : 112;
+    if (!canEnemyDetectPlayer(rooms, state, e, aggroRange)) {
+      idlePatrolEnemy(rooms, state, e, dt, 7);
+      return;
+    }
+
+    e.dir = getDirFromVector(dx, dy);
+
+    if (dist < 30 && e.state === 'idle') {
+      for (let i = 0; i < 6; i++) {
+        state.particles.push({
+          x: e.x + (Math.random() - 0.5) * 10,
+          y: e.y + (Math.random() - 0.5) * 10,
+          z: 6,
+          vx: (Math.random() - 0.5) * 25,
+          vy: (Math.random() - 0.5) * 25,
+          vz: 12,
+          life: 0.35,
+          maxLife: 0.35,
+          color: '#94a3b8',
+          size: 3,
+          fade: true,
+        });
+      }
+      stepEnemyWithCollision(rooms, state, e, -(dx / dist) * 44, -(dy / dist) * 44);
       return;
     }
 

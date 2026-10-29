@@ -4,11 +4,16 @@
  */
 
 import {
+  computeChunkFogMetrics,
   DIR_VECTORS,
+  getChunkCoordsFromPx,
   getDoorwayAetherTransitionInfo,
-  getRoomDimensions,
+  getEffectiveRoomCoord,
   getRoomDoorwayCenterPx,
+  getVisibleTileBounds,
   hasPoeLanternGuidance,
+  isChunkedExpanseRoom,
+  makeChunkPersistenceKey,
   SCREEN_H,
   SCREEN_W,
   TILE_SIZE,
@@ -497,6 +502,37 @@ export function drawBiomeWeatherLayer(
     }
   }
 
+  // Dynamic Off-Path Aether Mist overlay scaled by distance from Set-Path Spine & clvl
+  if (isChunkedExpanseRoom(state.room)) {
+    const fogMetrics = computeChunkFogMetrics(state);
+    if (fogMetrics.distFromSetPath > 0 && fogMetrics.fogIntensity > 0) {
+      const mistCount = Math.min(34, Math.round(8 + fogMetrics.fogIntensity * 14));
+      for (let i = 0; i < mistCount; i++) {
+        const seed = (i + 1) * 67.83;
+        const driftX = Math.sin(state.t * (1.2 + fogMetrics.fogIntensity * 0.4) + i) * 11;
+        const px = (seed * 41 + driftX + SCREEN_W) % SCREEN_W;
+        const py =
+          (SCREEN_H -
+            ((state.t * (11 + fogMetrics.fogIntensity * 5) + seed * 47) % SCREEN_H)) %
+          SCREEN_H;
+        const alpha = Math.min(
+          0.78,
+          (0.22 + fogMetrics.fogIntensity * 0.18) *
+            (0.65 + 0.35 * Math.sin(state.t * 3.2 + i * 1.3))
+        );
+        g.fillStyle = fogMetrics.isSoftCapAbyss
+          ? i % 2 === 0
+            ? `rgba(244, 63, 94, ${alpha.toFixed(2)})`
+            : `rgba(192, 132, 252, ${alpha.toFixed(2)})`
+          : i % 2 === 0
+            ? `rgba(34, 211, 238, ${alpha.toFixed(2)})`
+            : `rgba(168, 85, 247, ${alpha.toFixed(2)})`;
+        const sz = fogMetrics.isSoftCapAbyss ? 2 : 1.5;
+        g.fillRect(Math.round(px), Math.round(py), sz, sz);
+      }
+    }
+  }
+
   g.restore();
 }
 
@@ -514,60 +550,78 @@ export function resolveRoomLightingProfile(
   state: OrionState,
   room?: string[]
 ): ResolvedRoomLightingState {
-  const activeNode = state.fogGraph?.nodes?.[state.room];
-  const localDef = LOCAL_ROOM_REGISTRY[state.room];
+  const effectiveRoomKey = getEffectiveRoomCoord(state);
+  const activeNode = state.fogGraph?.nodes?.[effectiveRoomKey] || state.fogGraph?.nodes?.[state.room];
+  const localDef = LOCAL_ROOM_REGISTRY[effectiveRoomKey] || LOCAL_ROOM_REGISTRY[state.room];
   const globalDef = activeNode?.id ? GLOBAL_ROOM_REGISTRY[activeNode.id] : undefined;
   const authoredProfile: RoomLightingProfile | undefined =
     localDef?.lighting || globalDef?.lighting;
+
+  const isExpanse = isChunkedExpanseRoom(state.room);
+  const expanseFog = isExpanse ? computeChunkFogMetrics(state) : null;
 
   const isLoop = activeNode?.nodeType === 'loop';
   const loopDepth = Math.max(0, state.fogGraph?.loopDepth || activeNode?.loopDepth || 0);
 
   const safetyTier: 'sanctuary' | 'trail' | 'hazard' | 'abyss' =
-    authoredProfile?.safetyTier ||
-    (isLoop
-      ? loopDepth >= 2
+    expanseFog && expanseFog.distFromSetPath > 0
+      ? expanseFog.isSoftCapAbyss
         ? 'abyss'
         : 'hazard'
-      : state.room === '0,0' || state.room === '0,-2' || state.room === '-3,0' || state.room === '-4,0'
-        ? 'sanctuary'
-        : 'trail');
+      : authoredProfile?.safetyTier ||
+        (isLoop
+          ? loopDepth >= 2
+            ? 'abyss'
+            : 'hazard'
+          : effectiveRoomKey === '0,0' ||
+              effectiveRoomKey === '0,-2' ||
+              effectiveRoomKey === '-3,0' ||
+              effectiveRoomKey === '-4,0'
+            ? 'sanctuary'
+            : 'trail');
 
   const baseDarkness =
-    authoredProfile?.ambientDarkness ??
-    (safetyTier === 'sanctuary'
-      ? 0.2
-      : safetyTier === 'trail'
-        ? 0.45
-        : safetyTier === 'hazard'
-          ? 0.58
-          : 0.66);
+    expanseFog && expanseFog.distFromSetPath > 0
+      ? Math.min(0.84, 0.38 + expanseFog.fogIntensity * 0.26)
+      : authoredProfile?.ambientDarkness ??
+        (safetyTier === 'sanctuary'
+          ? 0.2
+          : safetyTier === 'trail'
+            ? 0.38
+            : safetyTier === 'hazard'
+              ? 0.56
+              : 0.64);
   const ambientDarkness = isLoop
     ? Math.min(0.78, Math.max(baseDarkness, 0.54 + loopDepth * 0.06))
     : baseDarkness;
 
   const baseCornerShadow =
-    authoredProfile?.cornerShadowIntensity ??
-    (safetyTier === 'sanctuary'
-      ? 0.38
-      : safetyTier === 'trail'
-        ? 0.66
-        : safetyTier === 'hazard'
-          ? 0.78
-          : 0.86);
+    expanseFog && expanseFog.distFromSetPath > 0
+      ? Math.min(0.92, 0.66 + expanseFog.fogIntensity * 0.16)
+      : authoredProfile?.cornerShadowIntensity ??
+        (safetyTier === 'sanctuary'
+          ? 0.38
+          : safetyTier === 'trail'
+            ? 0.56
+            : safetyTier === 'hazard'
+              ? 0.76
+              : 0.84);
   const cornerShadowIntensity = isLoop
     ? Math.min(0.9, Math.max(baseCornerShadow, 0.72 + loopDepth * 0.05))
     : baseCornerShadow;
 
   const baseVisionPx =
-    authoredProfile?.playerVisionRadiusPx ??
-    (safetyTier === 'sanctuary'
-      ? 124
-      : safetyTier === 'trail'
-        ? 74
-        : safetyTier === 'hazard'
-          ? 58
-          : 50);
+    expanseFog && expanseFog.distFromSetPath > 0
+      ? Math.max(36, Math.round(92 - expanseFog.fogIntensity * 26)) +
+        (expanseFog.isLanternLit ? 26 : 0)
+      : authoredProfile?.playerVisionRadiusPx ??
+        (safetyTier === 'sanctuary'
+          ? 124
+          : safetyTier === 'trail'
+            ? 88
+            : safetyTier === 'hazard'
+              ? 64
+              : 56);
   const loopAdjustedVision = isLoop
     ? Math.max(42, baseVisionPx - loopDepth * 5)
     : baseVisionPx;
@@ -586,9 +640,14 @@ export function resolveRoomLightingProfile(
 
   const staticLightAnchors: Array<{ x: number; y: number; radius: number; color: string }> = [];
   if (room) {
-    const { cols, rows } = getRoomDimensions(room);
-    for (let ty = 0; ty < rows; ty++) {
-      for (let tx = 0; tx < cols; tx++) {
+    const { minTx, maxTx, minTy, maxTy } = getVisibleTileBounds(
+      room,
+      state.camX || 0,
+      state.camY || 0,
+      6
+    );
+    for (let ty = minTy; ty <= maxTy; ty++) {
+      for (let tx = minTx; tx <= maxTx; tx++) {
         const ch = room[ty]?.[tx];
         if (!ch) continue;
         const cx = tx * TILE_SIZE + 8;
@@ -596,15 +655,23 @@ export function resolveRoomLightingProfile(
         if (ch === 'A') {
           staticLightAnchors.push({ x: cx, y: cy, radius: 74, color: '#f59e0b' });
         } else if (ch === 'L') {
-          const isLit = state.flags?.poe_state === 'helped' || hasLantern;
+          const tileChunk = getChunkCoordsFromPx(cx, cy);
+          const chunkLanternKey = makeChunkPersistenceKey(
+            state.room,
+            tileChunk.cx,
+            tileChunk.cy
+          );
+          const isChunkLanternLit = Boolean(state.litChunkLanterns?.[chunkLanternKey]);
+          const isLit =
+            isChunkLanternLit || state.flags?.poe_state === 'helped' || hasLantern;
           staticLightAnchors.push({
             x: cx,
             y: cy,
-            radius: isLit ? 68 : 42,
-            color: isLit ? '#22d3ee' : '#fbbf24',
+            radius: isChunkLanternLit ? 82 : isLit ? 68 : 42,
+            color: isChunkLanternLit ? '#22d3ee' : isLit ? '#22d3ee' : '#fbbf24',
           });
         } else if (ch === 'D') {
-          staticLightAnchors.push({ x: cx, y: cy, radius: 56, color: '#38bdf8' });
+          staticLightAnchors.push({ x: cx, y: cy, radius: 58, color: '#f43f5e' });
         } else if (ch === 'Q') {
           staticLightAnchors.push({ x: cx, y: cy, radius: 76, color: '#22d3ee' });
         }
@@ -735,10 +802,10 @@ export function drawDynamicLightingAndBloomPass(
   }
 
   if (room) {
-    const { cols, rows } = getRoomDimensions(room);
+    const { minTx, maxTx, minTy, maxTy } = getVisibleTileBounds(room, camX, camY, 5);
     const pulse = Math.sin(state.t * 4) * 2;
-    for (let ty = 0; ty < rows; ty++) {
-      for (let tx = 0; tx < cols; tx++) {
+    for (let ty = minTy; ty <= maxTy; ty++) {
+      for (let tx = minTx; tx <= maxTx; tx++) {
         const ch = room[ty]?.[tx];
         if (!ch || ch === '.' || ch === ',' || ch === ':' || ch === '#') continue;
         const cx = tx * TILE_SIZE + 8;

@@ -13,11 +13,14 @@ import {
   getInventoryGemCount,
 } from '../../database/progression';
 import {
+  computeChunkFogMetrics,
   cycleTargetLock,
   formatInertiaOutcomeLabel,
+  getActiveChunkLandmarkLabel,
   getLockedTarget,
   getRoomWorldInfo,
   hasInertialTelemetryModEquipped,
+  isChunkedExpanseRoom,
   performAuxiliarySwap,
   resolvePlayerInertiaProfile,
   TUTORIAL_STEP_DESCRIPTORS,
@@ -238,11 +241,19 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
         className={`flex flex-col items-center gap-0.5 bg-transparent ${OUTLINED_TEXT}`}
       >
         <div className="text-[8.5px] sm:text-[9px] text-[#cbd5e1] tracking-wider uppercase font-bold flex items-center gap-1 bg-transparent">
-          <span>{worldInfo.roomTitle}</span>
+          <span>{getActiveChunkLandmarkLabel(state) || worldInfo.roomTitle}</span>
           <span className="text-[#64748b]">·</span>
           <span className="text-[#94a3b8] text-[7.5px]">
             [{state.rx},{state.ry}]
           </span>
+          {state.activeChunkX !== undefined && state.activeChunkY !== undefined && (
+            <>
+              <span className="text-[#64748b]">·</span>
+              <span className="text-[#22d3ee] text-[7.5px]">
+                CHK({state.activeChunkX},{state.activeChunkY})
+              </span>
+            </>
+          )}
           {isCheatMode && (
             <>
               <span className="text-[#64748b]">·</span>
@@ -253,8 +264,63 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
           )}
         </div>
 
-        {/* Æther Fog Depth Gauge (SAFE · 1 .. clvl+1) */}
+        {/* Æther Fog Depth Gauge (Set-Path Spine / Off-Path Distance + clvl Fog Intensity OR Loop Depth) */}
         {(() => {
+          if (isChunkedExpanseRoom(state.room)) {
+            const fog = computeChunkFogMetrics(state);
+            const isSetPath = fog.distFromSetPath === 0;
+            const fogPct = Math.round(fog.fogIntensity * 100);
+
+            return (
+              <div className="flex flex-wrap items-center justify-center gap-1 text-[6.5px] tracking-tighter font-bold bg-transparent">
+                <span
+                  className={`px-1 rounded-[1px] border ${
+                    isSetPath
+                      ? 'text-[#4ade80] border-[#4ade80]/85 font-black'
+                      : fog.isSoftCapAbyss
+                        ? 'text-[#f43f5e] border-[#f43f5e]/85 font-black animate-pulse'
+                        : 'text-[#c084fc] border-[#c084fc]/85 font-black'
+                  }`}
+                >
+                  {isSetPath
+                    ? 'SET PATH · SAFE'
+                    : fog.isSoftCapAbyss
+                      ? `ABYSS CAP · DIST ${fog.distFromSetPath} (SAFE ≤${fog.safeDepth})`
+                      : `OFF-PATH · DIST ${fog.distFromSetPath}/${fog.safeDepth}`}
+                </span>
+                {!isSetPath && (
+                  <span
+                    className={`px-1 rounded-[1px] border ${
+                      fog.isSoftCapAbyss
+                        ? 'border-[#f43f5e]/80 text-[#fda4af]'
+                        : 'border-[#38bdf8]/75 text-[#7dd3fc]'
+                    }`}
+                  >
+                    FOG {fogPct}% · LOOT ×{fog.lootMultiplier}
+                  </span>
+                )}
+                {fog.isLanternLit && (
+                  <span className="px-1 rounded-[1px] border border-[#22d3ee]/85 text-[#67e8f9] font-black">
+                    LANTERN LIT
+                  </span>
+                )}
+                {fog.hasDeepDungeon && (
+                  <span
+                    className={`px-1 rounded-[1px] border font-black ${
+                      fog.isDeepDungeonCleared
+                        ? 'border-[#4ade80]/85 text-[#86efac]'
+                        : 'border-[#fbbf24]/85 text-[#fde047]'
+                    }`}
+                  >
+                    {fog.isDeepDungeonCleared
+                      ? 'DUNGEON CLEAR · FAST-TRAVEL [D]/[Q]'
+                      : 'ABYSSAL DUNGEON [D]'}
+                  </span>
+                )}
+              </div>
+            );
+          }
+
           const curStage = worldInfo.loopStage || 0;
           const curDepth = worldInfo.loopDepth || 0;
           const maxDepth = Math.max(2, worldInfo.loopMaxDepth || (state.level || 1) + 1);

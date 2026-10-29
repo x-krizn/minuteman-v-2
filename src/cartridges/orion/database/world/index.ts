@@ -3,11 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { registerBase64Atlas } from '../../systems/render/spriteAtlasCache';
 import {
   BasicFourTilesInput,
   bakeBiomeClusterTileset,
-  registerBase64Atlas,
-} from '../../systems/renderSystem';
+} from '../../systems/render/worldRenderer';
 import {
   AreaWikiDefinition,
   BiomeDefinition,

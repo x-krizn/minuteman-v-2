@@ -3,7 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { getDirFromVector, getRoomDimensions, TILE_SIZE } from '../../../constants';
+import { getDirFromVector, TILE_SIZE } from '../../../constants';
+import {
+  canEnemyDetectPlayer,
+  idlePatrolEnemy,
+  stepEnemyWithCollision,
+} from '../../../systems/enemyHelpers';
 import { EnemyEntity, EnemyWikiDefinition, OrionState } from '../../../types';
 
 export const bogWurmEnemy: EnemyWikiDefinition = {
@@ -62,7 +67,6 @@ export const bogWurmEnemy: EnemyWikiDefinition = {
     const dx = state.x - e.x;
     const dy = state.y - e.y;
     const dist = Math.hypot(dx, dy) || 1;
-    e.dir = getDirFromVector(dx, dy);
 
     if (e.state === 'windup') {
       e.isSubmerged = false;
@@ -72,8 +76,7 @@ export const bogWurmEnemy: EnemyWikiDefinition = {
         e.stateTimer = 0.25;
         e.hasStruckThisAttack = false;
         const ang = e.attackAngle ?? Math.atan2(dy, dx);
-        e.x += Math.cos(ang) * 18;
-        e.y += Math.sin(ang) * 18;
+        stepEnemyWithCollision(rooms, state, e, Math.cos(ang) * 18, Math.sin(ang) * 18);
         state.bladeTrails = state.bladeTrails || [];
         state.bladeTrails.push({
           x: e.x,
@@ -128,16 +131,27 @@ export const bogWurmEnemy: EnemyWikiDefinition = {
       return;
     }
 
-    const { widthPx, heightPx } = getRoomDimensions(rooms[state.room]);
-
     if (e.frame.integrity < e.frame.maxIntegrity * 0.65 && e.attackCd > 0.4) {
       e.isSubmerged = !lanternReveals;
       e.frame.integrity = Math.min(e.frame.maxIntegrity, e.frame.integrity + 9 * dt);
       e.t += dt * 3;
-      e.x = Math.max(20, Math.min(widthPx - 20, e.x + Math.cos(e.t) * e.speed * dt));
-      e.y = Math.max(20, Math.min(heightPx - 20, e.y + Math.sin(e.t) * e.speed * dt));
+      stepEnemyWithCollision(
+        rooms,
+        state,
+        e,
+        Math.cos(e.t) * e.speed * dt,
+        Math.sin(e.t) * e.speed * dt
+      );
       return;
     }
+
+    if (!canEnemyDetectPlayer(rooms, state, e, e.isFogBoss ? 115 : 88)) {
+      e.isSubmerged = e.isFogBoss ? false : onWater && !lanternReveals;
+      idlePatrolEnemy(rooms, state, e, dt, 7);
+      return;
+    }
+
+    e.dir = getDirFromVector(dx, dy);
 
     if (e.isFogBoss) {
       e.isSubmerged = false;
@@ -156,7 +170,12 @@ export const bogWurmEnemy: EnemyWikiDefinition = {
       return;
     }
 
-    e.x += (dx / dist) * e.speed * dt;
-    e.y += (dy / dist) * e.speed * dt;
+    stepEnemyWithCollision(
+      rooms,
+      state,
+      e,
+      (dx / dist) * e.speed * dt,
+      (dy / dist) * e.speed * dt
+    );
   },
 };

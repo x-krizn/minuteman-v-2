@@ -4,7 +4,7 @@
  */
 
 import { TILE_SIZE } from '../../../constants';
-import { drawBase64Sprite } from '../../../systems/renderSystem';
+import { drawBase64Sprite } from '../../../systems/render/spriteAtlasCache';
 import { TileDefinition } from '../../../types';
 import { bogTiles_14_11, bogTiles_15_10, bogTiles_15_11, bogTiles_15_12 } from './bog_tileset_atlas';
 

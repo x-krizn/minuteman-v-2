@@ -4,8 +4,13 @@
  */
 
 import { soundSystem } from '../../../../../engine/core/soundSystem';
-import { getDirFromVector, getRoomDimensions } from '../../../constants';
-import { addOrionInventoryItem, notifyOrionStateChange } from '../../../systems/playerSystem';
+import { getDirFromVector } from '../../../constants';
+import {
+  canEnemyDetectPlayer,
+  idlePatrolEnemy,
+  stepEnemyWithCollision,
+} from '../../../systems/enemyHelpers';
+import { addOrionInventoryItem, notifyOrionStateChange } from '../../../systems/stateStore';
 import { EnemyEntity, EnemyWikiDefinition, OrionCombatContext, OrionState } from '../../../types';
 
 function handleGrailKnightDefeat(state: OrionState, ctx: OrionCombatContext): void {
@@ -67,11 +72,9 @@ export const percivalKnightEnemy: EnemyWikiDefinition = {
     }
     if (e.attackCd > 0) e.attackCd -= dt;
 
-    const { widthPx, heightPx } = getRoomDimensions(rooms[state.room]);
     const dx = state.x - e.x;
     const dy = state.y - e.y;
     const dist = Math.hypot(dx, dy) || 1;
-    e.dir = getDirFromVector(dx, dy);
 
     if (e.frame.integrity < e.frame.maxIntegrity * 0.5 && e.hurt <= 0) {
       e.shields.capacity = Math.min(e.shields.maxCapacity, e.shields.capacity + 16 * dt);
@@ -84,8 +87,7 @@ export const percivalKnightEnemy: EnemyWikiDefinition = {
         e.stateTimer = 0.28;
         e.hasStruckThisAttack = false;
         const ang = e.attackAngle ?? Math.atan2(dy, dx);
-        e.x = Math.max(16, Math.min(widthPx - 16, e.x + Math.cos(ang) * 24));
-        e.y = Math.max(16, Math.min(heightPx - 16, e.y + Math.sin(ang) * 24));
+        stepEnemyWithCollision(rooms, state, e, Math.cos(ang) * 24, Math.sin(ang) * 24);
         state.bladeTrails = state.bladeTrails || [];
         state.bladeTrails.push({
           x: e.x,
@@ -115,6 +117,14 @@ export const percivalKnightEnemy: EnemyWikiDefinition = {
       return;
     }
 
+    const aggroRange = state.flags?.knights_pulled_together || e.isFogBoss ? 130 : 105;
+    if (!canEnemyDetectPlayer(rooms, state, e, aggroRange)) {
+      idlePatrolEnemy(rooms, state, e, dt, 6);
+      return;
+    }
+
+    e.dir = getDirFromVector(dx, dy);
+
     if (dist <= 48 && e.attackCd <= 0) {
       e.state = 'windup';
       e.stateTimer = this.tellDurationSec;
@@ -124,8 +134,13 @@ export const percivalKnightEnemy: EnemyWikiDefinition = {
     }
 
     if (dist > 20) {
-      e.x += (dx / dist) * e.speed * dt;
-      e.y += (dy / dist) * e.speed * dt;
+      stepEnemyWithCollision(
+        rooms,
+        state,
+        e,
+        (dx / dist) * e.speed * dt,
+        (dy / dist) * e.speed * dt
+      );
     }
   },
 };

@@ -5,8 +5,10 @@
 
 import {
   DIR_VECTORS,
-  getRoomDimensions,
+  getVisibleTileBounds,
   PERFECT_BLOCK_WINDOW_SEC,
+  SCREEN_H,
+  SCREEN_W,
   TILE_SIZE,
   Z_SCALE,
 } from '../../constants';
@@ -35,11 +37,13 @@ export function renderDepthSortedEntitiesAndProps(
     draw: () => void;
   }
   const renderQueue: RenderItem[] = [];
+  const camX = state.camX || 0;
+  const camY = state.camY || 0;
 
   if (room) {
-    const { cols, rows } = getRoomDimensions(room);
-    for (let ty = 0; ty < rows; ty++) {
-      for (let tx = 0; tx < cols; tx++) {
+    const { minTx, maxTx, minTy, maxTy } = getVisibleTileBounds(room, camX, camY, 3);
+    for (let ty = minTy; ty <= maxTy; ty++) {
+      for (let tx = minTx; tx <= maxTx; tx++) {
         const char = room[ty]?.[tx] || '.';
         const tile = getTileDefinition(char, state.biomeId);
         if (tile.propSprite || tile.renderProp25D || isClusterSingleWallChar(char)) {
@@ -74,6 +78,14 @@ export function renderDepthSortedEntitiesAndProps(
   }
 
   for (const p of state.pickups) {
+    if (
+      p.x < camX - 48 ||
+      p.x > camX + SCREEN_W + 48 ||
+      p.y < camY - 48 ||
+      p.y > camY + SCREEN_H + 48
+    ) {
+      continue;
+    }
     renderQueue.push({
       y: p.y,
       draw: () => {

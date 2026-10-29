@@ -4,7 +4,17 @@
  */
 
 import { soundSystem } from '../../../../engine/core/soundSystem';
-import { getRoomDimensions, getRoomDoorwayCenterPx } from '../../constants';
+import {
+  CHUNK_H_PX,
+  CHUNK_W_PX,
+  convertBogRoomPosToUnifiedPx,
+  getEffectiveRoomCoord,
+  getRoomDimensions,
+  getRoomDoorwayCenterPx,
+  getUnifiedBogRoomPlacement,
+  isChunkedExpanseRoom,
+  SUNKEN_BOG_EXPANSE_ROOM_ID,
+} from '../../constants';
 import {
   AREA_REGISTRY,
   getAreaDefinition,
@@ -26,6 +36,11 @@ import {
 } from '../../types';
 import { spawnEnemyByType, spawnRoomEnemies } from '../entitySystem';
 import { notifyOrionStateChange, syncStateGates } from '../playerSystem';
+import {
+  fastTravelFromDeepDungeonToSafeSpot,
+  hibernateAllActiveExpanseEnemies,
+  updateChunkedRoomStreaming,
+} from './chunkStreamingSystem';
 import {
   ALL_CARDINAL_DIRS,
   buildEndNodeCacheDefinition,
@@ -63,7 +78,7 @@ export function getMaxAetherFogDepth(state: OrionState): number {
 }
 
 function parseCoordPair(coord: string | undefined): { rx: number; ry: number } {
-  if (!coord) return { rx: 0, ry: 0 };
+  if (!coord || typeof coord !== 'string') return { rx: 0, ry: 0 };
   const [rxStr, ryStr] = coord.split(',');
   return {
     rx: Number.isFinite(Number(rxStr)) ? Number(rxStr) : 0,
@@ -93,7 +108,7 @@ function getKeyBorderBranchType(
   coord: string,
   dir: AetherCardinalDir
 ): AetherNodeType {
-  const coordSalt = coord
+  const coordSalt = String(coord ?? '')
     .split('')
     .reduce((acc, ch, idx) => acc + ch.charCodeAt(0) * (idx + 17), 0);
   const borderHash = deterministicHash(seed, coordSalt, dir.charCodeAt(0));
@@ -1071,6 +1086,80 @@ function spawnDynamicNodeFeatures(
   }
 }
 
+/**
+ * Spawns an Æther Fog Loop (`1 → 2 → 3 → 2 → 1`) as an Off-Path Deep-Fog Dungeon (`D` at `distFromSetPath >= 3`).
+ * Clearing the Fog Loop (by defeating the Max-Depth Boss or retracing `3 → 2 → 1 → 0`) awards the dungeon cache
+ * and fast-travels the pilot back to `state.lastSafeChunkCoord` on the Set-Path Spine.
+ */
+export function enterOffPathFogLoopDungeon(
+  rooms: Record<string, string[]>,
+  state: OrionState,
+  dungeonChunkKey: string,
+  cx: number,
+  cy: number,
+  ctx?: OrionCombatContext
+): boolean {
+  const graph = ensureAetherFogGraph(state);
+  const anchorNode =
+    graph.nodes[SUNKEN_BOG_EXPANSE_ROOM_ID] || getActiveAetherNode(state);
+
+  hibernateAllActiveExpanseEnemies(state);
+  state.flags = state.flags || {};
+  state.flags.__active_fog_dungeon_chunk = dungeonChunkKey;
+  state.flags.__active_fog_dungeon_cx = cx;
+  state.flags.__active_fog_dungeon_cy = cy;
+
+  const maxDepth = getMaxAetherFogDepth(state);
+  const loopNode = createDynamicAetherNode(rooms, state, anchorNode, 'N', 'loop', {
+    loopStage: 1,
+    loopDepth: 1,
+    loopMaxDepth: maxDepth,
+    mapRx: cx,
+    mapRy: cy,
+    anchorSafeNodeId: SUNKEN_BOG_EXPANSE_ROOM_ID,
+  });
+  loopNode.title = `Fog Loop Dungeon [${cx},${cy} · Depth 1]`;
+  loopNode.bannerTitle = `FOG LOOP DUNGEON [${cx},${cy}] · DEPTH 1/${maxDepth}`;
+  ORION_ROOM_METADATA[loopNode.id].title = loopNode.title;
+  ORION_ROOM_METADATA[loopNode.id].bannerTitle = loopNode.bannerTitle;
+
+  const targetGrid = rooms[loopNode.id];
+  const dim = getRoomDimensions(targetGrid);
+  state.room = loopNode.id;
+  state.rx = cx;
+  state.ry = cy;
+  state.x = Math.round(dim.widthPx * 0.5);
+  state.y = dim.heightPx - 24;
+  state.z = 0;
+  state.vz = 0;
+  state.vx = 0;
+  state.vy = 0;
+  state.projectiles = [];
+  state.pickups = [];
+  state.enemies = [];
+
+  graph.activeNodeId = loopNode.id;
+  graph.loopStage = 1;
+  graph.loopDepth = 1;
+  graph.loopMaxDepth = maxDepth;
+  state.flickerTimer = 0.45;
+
+  syncRoomHierarchyState(state);
+  spawnRoomEnemies(rooms, state);
+  spawnDynamicNodeFeatures(rooms, state, loopNode);
+
+  soundSystem.playPowerup();
+  const msg = `ENTERED ABYSSAL FOG LOOP DUNGEON [${cx},${cy}] · DEPTH 1/${maxDepth} (CLEAR TO FAST-TRAVEL TO SAFE PATH)`;
+  if (ctx) {
+    ctx.say(msg);
+  } else {
+    state.toastText = msg;
+    state.toastTimer = 3.0;
+  }
+  notifyOrionStateChange();
+  return true;
+}
+
 export function clearAetherFogOnBossDefeat(
   rooms: Record<string, string[]>,
   state: OrionState,
@@ -1110,6 +1199,54 @@ export function clearAetherFogOnBossDefeat(
     }
   }
 
+  graph.loopDepth = 0;
+  graph.loopStage = 0;
+  graph.loopMaxDepth = getMaxAetherFogDepth(state);
+  graph.maxDepthNonBossStreak = 0;
+
+  // If this Fog Loop was an Off-Path Deep-Fog Dungeon from the Unified Bog Grid, mark it cleared and fast-travel to last safe spot!
+  const activeDungeonChunkKey = state.flags?.__active_fog_dungeon_chunk;
+  if (activeDungeonChunkKey && typeof activeDungeonChunkKey === 'string') {
+    state.clearedDeepFogDungeons = state.clearedDeepFogDungeons || {};
+    state.clearedDeepFogDungeons[activeDungeonChunkKey] = true;
+    delete state.flags.__active_fog_dungeon_chunk;
+    delete state.flags.__active_fog_dungeon_cx;
+    delete state.flags.__active_fog_dungeon_cy;
+    graph.activeNodeId = SUNKEN_BOG_EXPANSE_ROOM_ID;
+    fastTravelFromDeepDungeonToSafeSpot(rooms, state, ctx, activeDungeonChunkKey);
+    return;
+  }
+
+  const bogPlacement = getUnifiedBogRoomPlacement(safeTarget.id);
+  if (safeTarget.id === SUNKEN_BOG_EXPANSE_ROOM_ID || bogPlacement) {
+    state.room = SUNKEN_BOG_EXPANSE_ROOM_ID;
+    graph.activeNodeId = SUNKEN_BOG_EXPANSE_ROOM_ID;
+    if (bogPlacement) {
+      const unifiedPos = convertBogRoomPosToUnifiedPx(bogPlacement.roomCoord, 128, 96);
+      state.x = unifiedPos.x;
+      state.y = unifiedPos.y;
+      state.rx = bogPlacement.rx;
+      state.ry = bogPlacement.ry;
+    } else if (state.lastSafeChunkCoord) {
+      state.x = state.lastSafeChunkCoord.x;
+      state.y = state.lastSafeChunkCoord.y;
+    }
+    state.projectiles = [];
+    state.pickups = [];
+    syncRoomHierarchyState(state);
+    updateChunkedRoomStreaming(rooms, state, true);
+    soundSystem.playPowerup();
+    const info = getRoomWorldInfo(state);
+    const msg = `FOG BOSS DEFEATED · ÆTHER FOG CLEARED -> ${info.roomTitle.toUpperCase()}`;
+    if (ctx) ctx.say(msg);
+    else {
+      state.toastText = msg;
+      state.toastTimer = 2.8;
+    }
+    notifyOrionStateChange();
+    return;
+  }
+
   const targetGrid = rooms[safeTarget.id] || ORION_TUTORIAL_ROOMS[safeTarget.id];
   if (targetGrid) {
     rooms[safeTarget.id] = targetGrid;
@@ -1124,11 +1261,6 @@ export function clearAetherFogOnBossDefeat(
   state.room = safeTarget.id;
 
   graph.activeNodeId = safeTarget.id;
-  graph.loopDepth = 0;
-  graph.loopStage = 0;
-  graph.loopMaxDepth = getMaxAetherFogDepth(state);
-  graph.maxDepthNonBossStreak = 0;
-
   state.projectiles = [];
   state.pickups = [];
 
@@ -1166,6 +1298,72 @@ export function transitionViaAetherDoor(
     currentNode,
     dir
   );
+
+  // If retracing out of an Off-Path Fog Loop Dungeon (3 -> 2 -> 1 -> 0), award dungeon clear & fast-travel to last safe spot!
+  const activeDungeonChunkKey = state.flags?.__active_fog_dungeon_chunk;
+  if (escapedLoop && activeDungeonChunkKey && typeof activeDungeonChunkKey === 'string') {
+    state.clearedDeepFogDungeons = state.clearedDeepFogDungeons || {};
+    state.clearedDeepFogDungeons[activeDungeonChunkKey] = true;
+    delete state.flags.__active_fog_dungeon_chunk;
+    delete state.flags.__active_fog_dungeon_cx;
+    delete state.flags.__active_fog_dungeon_cy;
+    graph.loopStage = 0;
+    graph.loopDepth = 0;
+    graph.loopMaxDepth = getMaxAetherFogDepth(state);
+    graph.maxDepthNonBossStreak = 0;
+    graph.activeNodeId = SUNKEN_BOG_EXPANSE_ROOM_ID;
+    return fastTravelFromDeepDungeonToSafeSpot(rooms, state, ctx, activeDungeonChunkKey);
+  }
+
+  // If transitioning into an authored M00 Bog Room node (e.g. walking West from '4,0' Border Town into '3,0'),
+  // place the pilot directly onto the Unified Bog Grid at that RoomDefinition's coordinates!
+  const targetBogPlacement = getUnifiedBogRoomPlacement(targetNode.id);
+  if (targetBogPlacement || targetNode.id === SUNKEN_BOG_EXPANSE_ROOM_ID) {
+    const placement = targetBogPlacement || getUnifiedBogRoomPlacement('3,0')!;
+    const authoredGrid =
+      ROOM_REGISTRY[placement.roomCoord]?.grid || ORION_TUTORIAL_ROOMS[placement.roomCoord];
+    const nextDim = getRoomDimensions(authoredGrid);
+    const localX =
+      dir === 'E'
+        ? 16
+        : dir === 'W'
+          ? nextDim.widthPx - 16
+          : Math.round(nextDim.widthPx * 0.5);
+    const localY =
+      dir === 'S'
+        ? 16
+        : dir === 'N'
+          ? nextDim.heightPx - 16
+          : Math.round(nextDim.heightPx * 0.5);
+    const unifiedPos = convertBogRoomPosToUnifiedPx(
+      placement.roomCoord,
+      localX,
+      localY,
+      nextDim.cols,
+      nextDim.rows
+    );
+
+    state.room = SUNKEN_BOG_EXPANSE_ROOM_ID;
+    state.rx = placement.rx;
+    state.ry = placement.ry;
+    state.x = unifiedPos.x;
+    state.y = unifiedPos.y;
+    state.projectiles = [];
+    state.pickups = [];
+    state.enemies = [];
+
+    graph.activeNodeId = SUNKEN_BOG_EXPANSE_ROOM_ID;
+    graph.loopStage = 0;
+    graph.loopDepth = 0;
+    graph.loopMaxDepth = getMaxAetherFogDepth(state);
+    graph.maxDepthNonBossStreak = 0;
+
+    syncRoomHierarchyState(state);
+    updateChunkedRoomStreaming(rooms, state, true);
+    soundSystem.playSelect();
+    notifyOrionStateChange();
+    return true;
+  }
 
   const targetRoomGrid = rooms[targetNode.id];
   if (!targetRoomGrid) return false;
@@ -1254,7 +1452,8 @@ export function transitionViaAetherDoor(
 
 export function syncRoomHierarchyState(state: OrionState): void {
   ensureAetherFogGraph(state);
-  const meta = ORION_ROOM_METADATA[state.room];
+  const effRoom = getEffectiveRoomCoord(state);
+  const meta = ORION_ROOM_METADATA[effRoom] || ORION_ROOM_METADATA[state.room];
   const areaId = meta?.areaId || state.areaId || 'm00_the_bog';
   const areaDef = getAreaDefinition(areaId);
   const regionId = meta?.regionId || areaDef.regionId || 'region_belldor_outskirts';
@@ -1280,7 +1479,7 @@ export function syncRoomHierarchyState(state: OrionState): void {
 
   if (
     regionDef.waygate &&
-    regionDef.waygate.room === state.room &&
+    (regionDef.waygate.room === state.room || regionDef.waygate.room === effRoom) &&
     !state.discoveredWaygates.includes(regionDef.waygate.id)
   ) {
     state.discoveredWaygates.push(regionDef.waygate.id);
@@ -1324,8 +1523,12 @@ export function getRoomWorldInfo(state: OrionState): {
   worldName: string;
 } {
   const graph = ensureAetherFogGraph(state);
-  const activeNode = getActiveAetherNode(state);
-  const meta = ORION_ROOM_METADATA[state.room];
+  const effRoom = getEffectiveRoomCoord(state);
+  const activeNode =
+    isChunkedExpanseRoom(state.room) && effRoom !== state.room && graph.nodes[effRoom]
+      ? graph.nodes[effRoom]
+      : getActiveAetherNode(state);
+  const meta = ORION_ROOM_METADATA[effRoom] || ORION_ROOM_METADATA[state.room];
   const areaId = meta?.areaId || state.areaId || 'm00_the_bog';
   const areaDef = AREA_REGISTRY[areaId] || getAreaDefinition('m00_the_bog');
   const regionDef = getRegionDefinition(meta?.regionId || state.regionId || areaDef.regionId);
@@ -1402,14 +1605,38 @@ export function fastTravelToWaystation(
     return false;
   }
 
+  if (isChunkedExpanseRoom(state.room)) {
+    hibernateAllActiveExpanseEnemies(state);
+  }
   resetAetherFogGraph(rooms, state);
 
-  const [rxStr, ryStr] = ws.room.split(',');
-  state.room = ws.room;
-  state.rx = Number(rxStr) || 0;
-  state.ry = Number(ryStr) || 0;
-  state.x = ws.x;
-  state.y = ws.y;
+  const bogPlacement = getUnifiedBogRoomPlacement(ws.room);
+  if (bogPlacement) {
+    const authoredGrid =
+      ROOM_REGISTRY[bogPlacement.roomCoord]?.grid ||
+      ORION_TUTORIAL_ROOMS[bogPlacement.roomCoord];
+    const dim = getRoomDimensions(authoredGrid);
+    const unifiedPos = convertBogRoomPosToUnifiedPx(
+      bogPlacement.roomCoord,
+      ws.x,
+      ws.y,
+      dim.cols,
+      dim.rows
+    );
+    state.room = SUNKEN_BOG_EXPANSE_ROOM_ID;
+    state.rx = bogPlacement.rx;
+    state.ry = bogPlacement.ry;
+    state.x = unifiedPos.x;
+    state.y = unifiedPos.y;
+  } else {
+    const [rxStr, ryStr] = String(ws.room ?? '0,0').split(',');
+    state.room = ws.room;
+    state.rx = Number(rxStr) || 0;
+    state.ry = Number(ryStr) || 0;
+    state.x = ws.x;
+    state.y = ws.y;
+  }
+
   state.z = 0;
   state.vz = 0;
   state.vx = 0;
@@ -1422,13 +1649,14 @@ export function fastTravelToWaystation(
   state.glideInertiaVy = 0;
   state.projectiles = [];
   state.pickups = [];
+  state.spawnGraceTimer = 3.0;
 
   syncRoomHierarchyState(state);
   state.spawnAnchor = {
     areaId: state.areaId,
     room: state.room,
-    x: ws.x,
-    y: ws.y,
+    x: state.x,
+    y: state.y,
   };
   state.frame.integrity = state.frame.maxIntegrity || 200;
   state.frame.state = 'Operational';
@@ -1437,7 +1665,11 @@ export function fastTravelToWaystation(
   state.shields.overloaded = false;
   state.heat = 0;
 
-  spawnRoomEnemies(rooms, state);
+  if (isChunkedExpanseRoom(state.room)) {
+    updateChunkedRoomStreaming(rooms, state, true);
+  } else {
+    spawnRoomEnemies(rooms, state);
+  }
   soundSystem.playPowerup();
   const msg = `ÆTHER WAYSTATION TRANSIT -> ${ws.name.toUpperCase()} · FRAME REPAIRED`;
   if (ctx) ctx.say(msg);
@@ -1479,7 +1711,11 @@ export function fastTravelViaWaygate(
     return false;
   }
 
-  const [rxStr, ryStr] = wg.room.split(',');
+  if (isChunkedExpanseRoom(state.room)) {
+    hibernateAllActiveExpanseEnemies(state);
+  }
+
+  const [rxStr, ryStr] = String(wg.room ?? '0,0').split(',');
   state.room = wg.room;
   state.rx = Number(rxStr) || 0;
   state.ry = Number(ryStr) || 0;
@@ -1498,6 +1734,7 @@ export function fastTravelViaWaygate(
   state.projectiles = [];
   state.pickups = [];
   state.flickerTimer = 0.8;
+  state.spawnGraceTimer = 3.0;
 
   syncRoomHierarchyState(state);
   if (!state.discoveredWaygates?.includes(wg.id)) {
@@ -1543,22 +1780,64 @@ export function rebootAtSpawnAnchor(
   state.glideInertiaVx = 0;
   state.glideInertiaVy = 0;
 
+  if (isChunkedExpanseRoom(state.room)) {
+    hibernateAllActiveExpanseEnemies(state);
+  }
+  if (state.flags) {
+    delete state.flags.__active_fog_dungeon_chunk;
+    delete state.flags.__active_fog_dungeon_cx;
+    delete state.flags.__active_fog_dungeon_cy;
+  }
   resetAetherFogGraph(rooms, state);
 
-  const anchor = state.spawnAnchor || { areaId: 'm00_the_bog', room: '-3,0', x: 72, y: 72 };
-  const [rxStr, ryStr] = anchor.room.split(',');
-  state.areaId = anchor.areaId;
-  state.room = anchor.room;
-  state.rx = Number(rxStr) || 0;
-  state.ry = Number(ryStr) || 0;
-  state.x = anchor.x;
-  state.y = anchor.y;
+  const defaultPos = convertBogRoomPosToUnifiedPx('-3,0', 120, 88, 16, 12);
+  const anchor = state.spawnAnchor || {
+    areaId: 'm00_the_bog',
+    room: SUNKEN_BOG_EXPANSE_ROOM_ID,
+    x: defaultPos.x,
+    y: defaultPos.y,
+  };
+
+  const bogPlacement = getUnifiedBogRoomPlacement(anchor.room);
+  if (bogPlacement) {
+    const authoredGrid =
+      ROOM_REGISTRY[bogPlacement.roomCoord]?.grid ||
+      ORION_TUTORIAL_ROOMS[bogPlacement.roomCoord];
+    const dim = getRoomDimensions(authoredGrid);
+    const unifiedPos = convertBogRoomPosToUnifiedPx(
+      bogPlacement.roomCoord,
+      anchor.x,
+      anchor.y,
+      dim.cols,
+      dim.rows
+    );
+    state.areaId = anchor.areaId;
+    state.room = SUNKEN_BOG_EXPANSE_ROOM_ID;
+    state.rx = bogPlacement.rx;
+    state.ry = bogPlacement.ry;
+    state.x = unifiedPos.x;
+    state.y = unifiedPos.y;
+  } else {
+    const [rxStr, ryStr] = String(anchor.room ?? '0,0').split(',');
+    state.areaId = anchor.areaId;
+    state.room = anchor.room;
+    state.rx = Number(rxStr) || 0;
+    state.ry = Number(ryStr) || 0;
+    state.x = anchor.x;
+    state.y = anchor.y;
+  }
+
   state.z = 0;
   state.vz = 0;
+  state.spawnGraceTimer = 3.0;
 
   syncRoomHierarchyState(state);
   ctx.say(reasonToast);
-  spawnRoomEnemies(rooms, state);
+  if (isChunkedExpanseRoom(state.room)) {
+    updateChunkedRoomStreaming(rooms, state, true);
+  } else {
+    spawnRoomEnemies(rooms, state);
+  }
   syncStateGates(state);
   notifyOrionStateChange();
 }
@@ -1568,6 +1847,34 @@ export function handleWorldRoomTransition(
   state: OrionState,
   ctx: OrionCombatContext
 ): void {
+  // On the Unified Bog Grid, walking East across the unsealed '3,0' Exit Gate (cx=22, cy=9..10)
+  // transitions seamlessly into '4,0' (Camelot Border Town)!
+  if (isChunkedExpanseRoom(state.room)) {
+    const gateUnlocked = Boolean(
+      state.unlockedGates?.['3,0'] ||
+        state.unlockedGates?.[state.room] ||
+        state.flags?.bog_exit_revealed
+    );
+    const exitEastX = 23 * CHUNK_W_PX - 18;
+    if (
+      gateUnlocked &&
+      !state.flags?.orc_raid_active &&
+      state.x >= exitEastX &&
+      state.y >= 9 * CHUNK_H_PX &&
+      state.y < 11 * CHUNK_H_PX
+    ) {
+      hibernateAllActiveExpanseEnemies(state);
+      const localY = Math.max(24, Math.min(168, state.y - 9 * CHUNK_H_PX));
+      state.room = '3,0';
+      state.rx = 3;
+      state.ry = 0;
+      state.x = 240;
+      state.y = localY;
+      transitionViaAetherDoor(rooms, state, 'E', ctx);
+      return;
+    }
+  }
+
   const { widthPx: roomW, heightPx: roomH } = getRoomDimensions(rooms[state.room]);
 
   if (state.x >= roomW) {

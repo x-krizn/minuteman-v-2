@@ -20,7 +20,7 @@ export const m00TheBogArea: AreaWikiDefinition = {
     'Starting zone of Belldor featuring a maze of downed trees, temple/monastery ruins, corrosive bog water zones, Sir Bedivere’s corpse, The Poe, and the secret Lady of the Lake arena.',
   lore:
     'Following orbital drop-pod impact, the pilot mechs reinitialize in the toxic boglands outside Camelot. Rescuing The Poe triggers Level 2 and unlocks the eastern exit toward Camelot Border Town.',
-  localMapIds: ['map_bog_drop_zone', 'map_deep_bog_maze'],
+  localMapIds: ['map_bog_drop_zone', 'map_deep_bog_maze', 'map_bog_chunked_expanse'],
   globalMapIds: ['global_wetland_expanse_map'],
   connectedAreaIds: ['camelot_border_town', 'm01_orc_encampment', 'global_shattered_wilds_area'],
   spawnAnchor: { room: '-3,0', x: 120, y: 88 },
@@ -52,7 +52,8 @@ export const m00TheBogArea: AreaWikiDefinition = {
     equipmentDropChance: 0.45,
   },
   zoneFeatures: [
-    { name: 'Drop-Pod Cheat Room Door', status: 'LOCKED', coord: '-3,0' },
+    { name: 'Drop-Pod Cheat Room Door & Expanse Waygate', status: 'LOCKED', coord: '-3,0' },
+    { name: 'Sunken Bog Expanse (100x90 Dynamic 10x10 Chunks)', status: 'LOCKED', coord: '-3,-1' },
     { name: 'Downed trees trail', status: 'LOCKED', coord: '-2,0' },
     { name: 'First Campfire (Respawn & Transit)', status: 'LOCKED', coord: '0,0' },
     {

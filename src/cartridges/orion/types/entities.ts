@@ -55,8 +55,14 @@ export interface EnemyEntity {
   spawnKey?: string;
   /** True if this enemy is a max-depth Æther Fog Boss whose defeat clears the fog and returns the pilot to the main path */
   isFogBoss?: boolean;
-  /** Æther Fog depth (1 .. clvl + 1) where this enemy was spawned, used for loot/gem drop scaling */
+  /** Æther Fog depth (1 .. clvl + 1) or Off-Path chunk distance where this enemy was spawned, used for loot/gem drop scaling */
   fogDepth?: number;
+  /** Continuous off-path Æther Fog intensity multiplier at spawn (scales loot, essence, and gem drops) */
+  fogIntensity?: number;
+  /** True if spawned in the deep off-path soft-cap abyss zone */
+  isAbyssElite?: boolean;
+  /** True if this enemy guards a random deep-fog dungeon entrance */
+  isDungeonGuardian?: boolean;
   /** Runtime velocity & Inertia System (`inertia-v0.md`) state */
   vx?: number;
   vy?: number;

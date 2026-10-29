@@ -4,7 +4,7 @@
  */
 
 import { TILE_SIZE } from '../../../constants';
-import { drawBase64Sprite } from '../../../systems/renderSystem';
+import { drawBase64Sprite } from '../../../systems/render/spriteAtlasCache';
 import { OrionState, TileDefinition } from '../../../types';
 import { DOODADS_01_BASE64, resolveLeverDoodadCell } from './doodads_atlas';
 

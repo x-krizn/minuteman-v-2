@@ -4,8 +4,13 @@
  */
 
 import { soundSystem } from '../../../../../engine/core/soundSystem';
-import { getDirFromVector, getRoomDimensions } from '../../../constants';
-import { addOrionInventoryItem, notifyOrionStateChange } from '../../../systems/playerSystem';
+import { getDirFromVector } from '../../../constants';
+import {
+  canEnemyDetectPlayer,
+  idlePatrolEnemy,
+  stepEnemyWithCollision,
+} from '../../../systems/enemyHelpers';
+import { addOrionInventoryItem, notifyOrionStateChange } from '../../../systems/stateStore';
 import { EnemyEntity, EnemyWikiDefinition, OrionCombatContext, OrionState } from '../../../types';
 
 function handleGrailKnightDefeat(state: OrionState, ctx: OrionCombatContext): void {
@@ -77,11 +82,9 @@ export const borsKnightEnemy: EnemyWikiDefinition = {
       state.toastTimer = 2.2;
     }
 
-    const { widthPx, heightPx } = getRoomDimensions(rooms[state.room]);
     const dx = state.x - e.x;
     const dy = state.y - e.y;
     const dist = Math.hypot(dx, dy) || 1;
-    e.dir = getDirFromVector(dx, dy);
 
     if (e.state === 'windup') {
       e.stateTimer -= dt;
@@ -91,8 +94,13 @@ export const borsKnightEnemy: EnemyWikiDefinition = {
         e.hasStruckThisAttack = false;
         const ang = e.attackAngle ?? Math.atan2(dy, dx);
         const lungeDist = e.enraged ? 26 : 14;
-        e.x = Math.max(12, Math.min(widthPx - 12, e.x + Math.cos(ang) * lungeDist));
-        e.y = Math.max(12, Math.min(heightPx - 12, e.y + Math.sin(ang) * lungeDist));
+        stepEnemyWithCollision(
+          rooms,
+          state,
+          e,
+          Math.cos(ang) * lungeDist,
+          Math.sin(ang) * lungeDist
+        );
         state.bladeTrails = state.bladeTrails || [];
         if (e.enraged) {
           state.bladeTrails.push({
@@ -142,20 +150,25 @@ export const borsKnightEnemy: EnemyWikiDefinition = {
       return;
     }
 
-    if (dist < 180) {
-      if (dist <= (e.enraged ? 44 : 32) && e.attackCd <= 0) {
-        e.state = 'windup';
-        e.stateTimer = this.tellDurationSec;
-        e.attackAngle = Math.atan2(dy, dx);
-        e.hasStruckThisAttack = false;
-        return;
-      }
+    const aggroRange = state.flags?.knights_pulled_together || e.isFogBoss ? 130 : 105;
+    if (!canEnemyDetectPlayer(rooms, state, e, aggroRange)) {
+      idlePatrolEnemy(rooms, state, e, dt, 6);
+      return;
+    }
 
-      const step = e.speed * dt;
-      if (dist > 20) {
-        e.x += (dx / dist) * step;
-        e.y += (dy / dist) * step;
-      }
+    e.dir = getDirFromVector(dx, dy);
+
+    if (dist <= (e.enraged ? 44 : 32) && e.attackCd <= 0) {
+      e.state = 'windup';
+      e.stateTimer = this.tellDurationSec;
+      e.attackAngle = Math.atan2(dy, dx);
+      e.hasStruckThisAttack = false;
+      return;
+    }
+
+    const step = e.speed * dt;
+    if (dist > 20) {
+      stepEnemyWithCollision(rooms, state, e, (dx / dist) * step, (dy / dist) * step);
     }
   },
 };

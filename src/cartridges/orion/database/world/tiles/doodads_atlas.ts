@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { registerBase64Atlas } from '../../../systems/renderSystem';
+import { registerBase64Atlas } from '../../../systems/render/spriteAtlasCache';
 import { OrionState } from '../../../types';
 
 /**

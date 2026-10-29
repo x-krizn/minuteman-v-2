@@ -5,6 +5,7 @@
 
 import {
   getRoomDimensions,
+  getVisibleTileBounds,
   hasPoeLanternGuidance,
   TILE_SIZE,
   Z_SCALE,
@@ -1508,13 +1509,18 @@ export function drawPlanarWaterReflections(
   const pp = resolveBiomePostProcess(activeBiome);
   if (!pp.liquidReflection) return;
 
-  const { cols, rows } = getRoomDimensions(room);
+  const { minTx, maxTx, minTy, maxTy } = getVisibleTileBounds(
+    room,
+    state.camX || 0,
+    state.camY || 0,
+    3
+  );
 
   g.save();
   g.beginPath();
   let hasWater = false;
-  for (let ty = 0; ty < rows; ty++) {
-    for (let tx = 0; tx < cols; tx++) {
+  for (let ty = minTy; ty <= maxTy; ty++) {
+    for (let tx = minTx; tx <= maxTx; tx++) {
       if (room[ty]?.[tx] === '~') {
         g.rect(tx * TILE_SIZE, ty * TILE_SIZE, TILE_SIZE, TILE_SIZE);
         hasWater = true;
@@ -1529,8 +1535,8 @@ export function drawPlanarWaterReflections(
 
   g.clip();
 
-  for (let ty = 1; ty < rows; ty++) {
-    for (let tx = 0; tx < cols; tx++) {
+  for (let ty = Math.max(1, minTy); ty <= maxTy; ty++) {
+    for (let tx = minTx; tx <= maxTx; tx++) {
       if (room[ty]?.[tx] !== '~') continue;
       const northChar = room[ty - 1]?.[tx];
       const sx = tx * TILE_SIZE;
@@ -1579,8 +1585,8 @@ export function drawPlanarWaterReflections(
   }
 
   g.globalAlpha = 0.28;
-  for (let ty = 0; ty < rows; ty++) {
-    for (let tx = 0; tx < cols; tx++) {
+  for (let ty = minTy; ty <= maxTy; ty++) {
+    for (let tx = minTx; tx <= maxTx; tx++) {
       if (room[ty]?.[tx] !== '~') continue;
       const sx = tx * TILE_SIZE;
       const sy = ty * TILE_SIZE;
@@ -1599,13 +1605,19 @@ export function drawDirectionalCastShadowsAndLandmarks(
   room: string[],
   state: OrionState
 ): void {
-  const { cols, rows, widthPx, heightPx } = getRoomDimensions(room);
+  const { widthPx, heightPx } = getRoomDimensions(room);
+  const { minTx, maxTx, minTy, maxTy } = getVisibleTileBounds(
+    room,
+    state.camX || 0,
+    state.camY || 0,
+    4
+  );
   const lighting = resolveRoomLightingProfile(state, room);
 
   g.save();
 
-  for (let ty = 0; ty < rows; ty++) {
-    for (let tx = 0; tx < cols; tx++) {
+  for (let ty = minTy; ty <= maxTy; ty++) {
+    for (let tx = minTx; tx <= maxTx; tx++) {
       const ch = room[ty]?.[tx];
       const cx = tx * TILE_SIZE + 8;
       const cy = ty * TILE_SIZE + 8;
@@ -1664,8 +1676,8 @@ export function drawDirectionalCastShadowsAndLandmarks(
 
   const isDesyncSolidNow = Math.floor(state.t / 3.5) % 2 === 0;
   g.fillStyle = 'rgba(2, 6, 16, 0.36)';
-  for (let ty = 0; ty < rows; ty++) {
-    for (let tx = 0; tx < cols; tx++) {
+  for (let ty = minTy; ty <= maxTy; ty++) {
+    for (let tx = minTx; tx <= maxTx; tx++) {
       const ch = room[ty]?.[tx];
       const isSolidWallTile = ch === '#' || (ch === '%' && isDesyncSolidNow);
       if (!isSolidWallTile && ch !== 'P' && ch !== 'G' && ch !== 'D') continue;
@@ -1705,7 +1717,7 @@ export function drawDirectionalCastShadowsAndLandmarks(
 
   const cornerAlpha = Math.min(0.86, lighting.cornerShadowIntensity * 0.72);
   if (cornerAlpha > 0.05) {
-    const cornerRadius = Math.max(56, Math.min(widthPx, heightPx) * 0.52);
+    const cornerRadius = Math.max(56, Math.min(320, Math.min(widthPx, heightPx) * 0.52));
     const corners = [
       { x: 0, y: 0 },
       { x: widthPx, y: 0 },
@@ -1737,12 +1749,17 @@ export function renderWorldLayer0And1(
   state: OrionState
 ): void {
   if (!room) return;
-  const { cols, rows } = getRoomDimensions(room);
+  const { minTx, maxTx, minTy, maxTy } = getVisibleTileBounds(
+    room,
+    state.camX || 0,
+    state.camY || 0,
+    2
+  );
   const defaultFloorTile = getTileDefinition('.', state.biomeId);
 
   // 1. LAYER 0: Ground, Transitions, Corrosive Aether & Sinkholes
-  for (let ty = 0; ty < rows; ty++) {
-    for (let tx = 0; tx < cols; tx++) {
+  for (let ty = minTy; ty <= maxTy; ty++) {
+    for (let tx = minTx; tx <= maxTx; tx++) {
       const char = room[ty]?.[tx] || '.';
       const tile = getTileDefinition(char, state.biomeId);
       const sx = tx * TILE_SIZE;
@@ -1773,8 +1790,8 @@ export function renderWorldLayer0And1(
   drawDirectionalCastShadowsAndLandmarks(g, room, state);
 
   // 2. LAYER 1: Baked 2.5D Walls, Desync Barriers & Gates
-  for (let ty = 0; ty < rows; ty++) {
-    for (let tx = 0; tx < cols; tx++) {
+  for (let ty = minTy; ty <= maxTy; ty++) {
+    for (let tx = minTx; tx <= maxTx; tx++) {
       const char = room[ty]?.[tx] || '.';
       const tile = getTileDefinition(char, state.biomeId);
       const sx = tx * TILE_SIZE;

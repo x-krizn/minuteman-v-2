@@ -149,18 +149,14 @@ export function renderDepthSortedEntitiesAndProps(
         const isWindup = e.state === 'windup';
         const def = getEnemyDefinition(e.type);
 
-        const isFriendlyOrSanctuary =
-          e.type === 'bog_poe' || (e.type === 'town_npc' && e.npcDisposition !== 'feral');
         const rawVis = getPointVisibilityFactor(e.x, e.y, state, room);
         const visFactor =
           isHurt || (state.opticMarkTimer || 0) > 0
             ? Math.max(rawVis, 0.85)
-            : isFriendlyOrSanctuary
-              ? Math.max(rawVis, 0.45)
-              : rawVis;
+            : rawVis;
 
-        // Dynamic enemies outside active light are hidden (even in explored gray fog)
-        if (visFactor < 0.28 && !isFriendlyOrSanctuary) {
+        // Entities outside active light or occluded behind walls/trees are hidden
+        if (visFactor < 0.24) {
           return;
         }
 

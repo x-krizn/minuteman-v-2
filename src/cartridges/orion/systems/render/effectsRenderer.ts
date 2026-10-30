@@ -693,6 +693,192 @@ export function resolveRoomLightingProfile(
   };
 }
 
+/**
+ * Returns true if the tile at `(tx, ty)` is an opaque vision/light blocker
+ * (walls `#`, trees/pillars `P`, solid-phase desync walls `%`, or closed gates `G`/`M`).
+ */
+export function isTileOpaqueToLight(
+  room: string[] | undefined,
+  tx: number,
+  ty: number,
+  state: OrionState
+): boolean {
+  if (!room || ty < 0 || ty >= room.length) return true;
+  const row = room[ty];
+  if (!row || tx < 0 || tx >= row.length) return true;
+  const ch = row[tx];
+  if (!ch || ch === ' ' || ch === '#' || ch === 'P') return true;
+  if (ch === '%') {
+    return Math.floor((state.t || 0) / 3.5) % 2 === 0;
+  }
+  if (ch === 'G') {
+    const gateUnlocked = Boolean(
+      state.unlockedGates?.[state.room] ||
+        state.unlockedGates?.['3,0'] ||
+        state.flags?.bog_exit_revealed
+    );
+    return !gateUnlocked;
+  }
+  if (ch === 'M') {
+    return !state.flags?.cathedral_door_open;
+  }
+  return false;
+}
+
+/**
+ * Checks whether a specific world-space sample point `(sx, sy)` inside tile `(tx, ty)`
+ * intersects the physical occluder volume of that tile:
+ * - Trees (`'P'`) have a central trunk/canopy cylinder (`r ≈ 5.8px`), allowing narrow slivers
+ *   of light to graze past the outer corners while casting a distinct shadow cone behind the tree.
+ * - Solid walls (`'#'`, `'G'`, `'M'`, `'%'`) occlude the entire `16×16` tile cell.
+ */
+function isSampleInsideTileOccluder(
+  room: string[],
+  tx: number,
+  ty: number,
+  sx: number,
+  sy: number,
+  state: OrionState
+): boolean {
+  if (!isTileOpaqueToLight(room, tx, ty, state)) return false;
+  const ch = room[ty]?.[tx];
+  if (ch === 'P') {
+    const cx = tx * TILE_SIZE + 8;
+    const cy = ty * TILE_SIZE + 8;
+    const dx = sx - cx;
+    const dy = sy - cy;
+    return dx * dx + dy * dy <= 34; // ~5.83px radius tree trunk/canopy core
+  }
+  return true;
+}
+
+/**
+ * Traces a ray from `(lx, ly)` to `(targetX, targetY)` and returns a transmission factor `[0..1]`.
+ * - Any wall (`#`), tree (`P`), or closed gate (`G`/`M`) strictly between the origin and the target
+ *   tile blocks the ray (`0.0`).
+ * - If `(targetX, targetY)` itself lies on a wall or tree tile, and the ray reaches that tile
+ *   unobstructed, its front/near face is illuminated (`1.0` on the lit face, tapering on the back)
+ *   so the player can see the wall or tree blocking their view while everything behind it is in shadow.
+ */
+function traceSingleRayTransmission(
+  room: string[],
+  state: OrionState,
+  lx: number,
+  ly: number,
+  targetX: number,
+  targetY: number
+): number {
+  const dx = targetX - lx;
+  const dy = targetY - ly;
+  const dist = Math.hypot(dx, dy);
+  if (dist < 3) return 1.0;
+
+  const srcTx = Math.floor(lx / TILE_SIZE);
+  const srcTy = Math.floor(ly / TILE_SIZE);
+  const targetTx = Math.floor(targetX / TILE_SIZE);
+  const targetTy = Math.floor(targetY / TILE_SIZE);
+
+  if (srcTx === targetTx && srcTy === targetTy) {
+    return 1.0;
+  }
+
+  const targetIsOpaque = isTileOpaqueToLight(room, targetTx, targetTy, state);
+  const steps = Math.max(3, Math.ceil(dist / 3.5));
+
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps;
+    const sx = lx + dx * t;
+    const sy = ly + dy * t;
+    const tx = Math.floor(sx / TILE_SIZE);
+    const ty = Math.floor(sy / TILE_SIZE);
+
+    if (tx === srcTx && ty === srcTy) continue;
+
+    if (tx === targetTx && ty === targetTy) {
+      if (!targetIsOpaque) return 1.0;
+      // Target point is inside an opaque wall/tree tile that was reached unobstructed:
+      // illuminate the front/lit face of the wall or tree so it is visible, and shade its back edge.
+      const tileCx = targetTx * TILE_SIZE + 8;
+      const tileCy = targetTy * TILE_SIZE + 8;
+      const nx = dx / dist;
+      const ny = dy / dist;
+      // Projection of (target - tileCenter) along ray direction:
+      // negative = front half facing the light source, positive = back half away from light source
+      const depthIntoTile = (targetX - tileCx) * nx + (targetY - tileCy) * ny;
+      if (depthIntoTile <= 2.5) return 1.0;
+      return Math.max(0.28, 1 - (depthIntoTile - 2.5) / 8.0);
+    }
+
+    if (isSampleInsideTileOccluder(room, tx, ty, sx, sy, state)) {
+      return 0.0;
+    }
+  }
+
+  return 1.0;
+}
+
+/**
+ * Computes soft-edged dynamic line-of-sight transmission `[0..1]` from `(lx, ly)` to `(targetX, targetY)`
+ * by sampling a primary center ray and two slight perpendicular penumbra offsets.
+ */
+export function computeRayLightTransmission(
+  room: string[] | undefined,
+  state: OrionState,
+  lx: number,
+  ly: number,
+  targetX: number,
+  targetY: number
+): number {
+  if (!room || room.length === 0) return 1.0;
+  const dx = targetX - lx;
+  const dy = targetY - ly;
+  const dist = Math.hypot(dx, dy);
+  if (dist < 4) return 1.0;
+
+  const centerHit = traceSingleRayTransmission(room, state, lx, ly, targetX, targetY);
+  if (dist < 14) return centerHit;
+
+  // Perpendicular 2.2px offset rays at the source for smooth dynamic shadow penumbra around trees/corners
+  const px = (-dy / dist) * 2.2;
+  const py = (dx / dist) * 2.2;
+  const leftHit = traceSingleRayTransmission(room, state, lx + px, ly + py, targetX, targetY);
+  const rightHit = traceSingleRayTransmission(room, state, lx - px, ly - py, targetX, targetY);
+
+  return centerHit * 0.6 + (leftHit + rightHit) * 0.2;
+}
+
+/**
+ * Casts a single ray from `(originX, originY)` along `angleRad` up to `maxRadiusPx`
+ * and returns the distance at which it hits a wall (`#`), tree (`P`), or closed gate.
+ */
+function castVisionRayDistancePx(
+  room: string[] | undefined,
+  state: OrionState,
+  originX: number,
+  originY: number,
+  angleRad: number,
+  maxRadiusPx: number
+): number {
+  if (!room || room.length === 0) return maxRadiusPx;
+  const cos = Math.cos(angleRad);
+  const sin = Math.sin(angleRad);
+  const srcTx = Math.floor(originX / TILE_SIZE);
+  const srcTy = Math.floor(originY / TILE_SIZE);
+  const stepPx = 3;
+
+  for (let d = stepPx; d <= maxRadiusPx; d += stepPx) {
+    const sx = originX + cos * d;
+    const sy = originY + sin * d;
+    const tx = Math.floor(sx / TILE_SIZE);
+    const ty = Math.floor(sy / TILE_SIZE);
+    if (tx === srcTx && ty === srcTy) continue;
+    if (isSampleInsideTileOccluder(room, tx, ty, sx, sy, state)) {
+      return Math.min(maxRadiusPx, d + 2);
+    }
+  }
+  return maxRadiusPx;
+}
+
 export function getPointVisibilityFactor(
   x: number,
   y: number,
@@ -702,6 +888,14 @@ export function getPointVisibilityFactor(
   const lighting = resolveRoomLightingProfile(state, room);
   if (state.room === '-4,0') {
     return 1.0;
+  }
+
+  // Player line-of-sight transmission: walls ('#') and trees ('P') block the player's view
+  const playerLos = room
+    ? computeRayLightTransmission(room, state, state.x, state.y, x, y)
+    : 1.0;
+  if (playerLos <= 0.01) {
+    return 0;
   }
 
   const visionR = lighting.effectiveVisionRadiusPx;
@@ -716,19 +910,24 @@ export function getPointVisibilityFactor(
 
   let bestVis = 0;
   if (distToPlayer <= effPlayerR * 0.56) {
-    bestVis = 1.0;
+    bestVis = playerLos;
   } else if (distToPlayer < effPlayerR) {
     const t = (distToPlayer - effPlayerR * 0.56) / (effPlayerR * 0.44);
-    bestVis = Math.max(0, 1 - t);
+    bestVis = Math.max(0, (1 - t) * playerLos);
   }
 
   for (const anchor of lighting.staticLightAnchors) {
     const d = Math.hypot(x - anchor.x, y - anchor.y);
-    if (d <= anchor.radius * 0.55) {
-      return 1.0;
-    }
     if (d < anchor.radius) {
-      const aVis = 1 - (d - anchor.radius * 0.55) / (anchor.radius * 0.45);
+      const rawAnchorVis =
+        d <= anchor.radius * 0.55
+          ? 1.0
+          : 1 - (d - anchor.radius * 0.55) / (anchor.radius * 0.45);
+      // Light from the static anchor is blocked by walls/trees around the anchor AND requires player view
+      const anchorLos = room
+        ? computeRayLightTransmission(room, state, anchor.x, anchor.y, x, y)
+        : 1.0;
+      const aVis = rawAnchorVis * anchorLos * playerLos;
       if (aVis > bestVis) bestVis = aVis;
     }
   }
@@ -738,7 +937,11 @@ export function getPointVisibilityFactor(
       const d = Math.hypot(x - p.x, y - p.y);
       const pr = p.lightRadius * 1.4;
       if (d < pr) {
-        const pVis = Math.max(0, 1 - d / pr);
+        const rawProjVis = Math.max(0, 1 - d / pr);
+        const projLos = room
+          ? computeRayLightTransmission(room, state, p.x, p.y, x, y)
+          : 1.0;
+        const pVis = rawProjVis * projLos * playerLos;
         if (pVis > bestVis) bestVis = pVis;
       }
     }
@@ -896,7 +1099,11 @@ export function drawDynamicLightingAndBloomPass(
     g.translate(-camX, -camY);
     g.globalCompositeOperation = 'lighter';
     for (const light of lights) {
-      const alpha = Math.min(0.48, light.intensity * pp.bloomIntensity);
+      const sourceLos = room
+        ? computeRayLightTransmission(room, state, state.x, state.y, light.x, light.y)
+        : 1.0;
+      if (sourceLos <= 0.05) continue;
+      const alpha = Math.min(0.48, light.intensity * pp.bloomIntensity * sourceLos);
       const grad = g.createRadialGradient(light.x, light.y, 1, light.x, light.y, light.radius);
       grad.addColorStop(0, light.color);
       grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
@@ -909,13 +1116,13 @@ export function drawDynamicLightingAndBloomPass(
     g.restore();
   }
 
-  // Dual-State World Darkness & Fog of War Pass (8x8 sub-tile precision):
+  // Dual-State World Darkness, Dynamic Wall/Tree Shadow Occlusion & Fog of War Pass (4x4 sub-tile precision):
   // - Entire game world is darkened.
-  // - All characters (player and enemies) have a modifiable vision radius (base 5 = half one screen).
-  // - At the edge of the vision radius:
+  // - Walls ('#'), trees ('P'), desync barriers ('%'), and closed gates ('G'/'M') dynamically block views and light.
+  // - At the edge of the vision radius or inside cast shadows:
   //   * Unexplored areas fade to pitch black (#000000).
-  //   * Explored areas fade to slate gray (rgba(71, 85, 105, ...)) where static terrain remains visible
-  //     under gray fog while dynamic enemies are hidden.
+  //   * Explored areas fade to 50% darkened slate gray (rgba(35, 42, 52, up to 0.90)) where static terrain
+  //     remains faintly readable while dynamic enemies are hidden.
   if (room && state.room !== '-4,0') {
     state.exploredTiles = state.exploredTiles || {};
     const roomExplored =
@@ -953,28 +1160,79 @@ export function drawDynamicLightingAndBloomPass(
       }
     }
 
-    const subSize = 8; // 2x2 sub-cells per 16x16 tile for smooth circular edge fade
+    const subSize = 4; // 4x4 sub-cells per 16x16 tile for crisp dynamic wall/tree shadow cones
+    const maxPlayerLightReach = roomLighting.effectiveVisionRadiusPx * 1.16 + 14;
+
     for (let ty = minTy; ty <= maxTy; ty++) {
       for (let tx = minTx; tx <= maxTx; tx++) {
-        const tileCenterX = tx * TILE_SIZE + 8;
-        const tileCenterY = ty * TILE_SIZE + 8;
-        const centerVis = getPointVisibilityFactor(tileCenterX, tileCenterY, state, room);
+        const tileX = tx * TILE_SIZE;
+        const tileY = ty * TILE_SIZE;
+        const tileCenterX = tileX + 8;
+        const tileCenterY = tileY + 8;
         const tileKey = `${tx},${ty}`;
-        if (centerVis >= 0.42) {
+
+        // Fast check if this tile is well outside all possible light sources
+        let nearAnyLight =
+          Math.hypot(tileCenterX - state.x, tileCenterY - state.y) <= maxPlayerLightReach;
+        if (!nearAnyLight) {
+          for (const anchor of roomLighting.staticLightAnchors) {
+            if (
+              Math.hypot(tileCenterX - anchor.x, tileCenterY - anchor.y) <=
+              anchor.radius + 14
+            ) {
+              nearAnyLight = true;
+              break;
+            }
+          }
+        }
+        if (!nearAnyLight) {
+          for (const p of state.projectiles) {
+            if (
+              p.lightRadius &&
+              Math.hypot(tileCenterX - p.x, tileCenterY - p.y) <= p.lightRadius * 1.4 + 14
+            ) {
+              nearAnyLight = true;
+              break;
+            }
+          }
+        }
+
+        if (!nearAnyLight) {
+          const isExplored = Boolean(roomExplored[tileKey]);
+          g.fillStyle = isExplored
+            ? 'rgba(35, 42, 52, 0.90)'
+            : 'rgba(0, 0, 0, 0.98)';
+          g.fillRect(tileX, tileY, TILE_SIZE, TILE_SIZE);
+          continue;
+        }
+
+        let maxSubVis = 0;
+        const subVisGrid: number[] = [];
+
+        for (let syOff = 0; syOff < TILE_SIZE; syOff += subSize) {
+          for (let sxOff = 0; sxOff < TILE_SIZE; sxOff += subSize) {
+            const subCx = tileX + sxOff + subSize * 0.5;
+            const subCy = tileY + syOff + subSize * 0.5;
+            const vis = getPointVisibilityFactor(subCx, subCy, state, room);
+            subVisGrid.push(vis);
+            if (vis > maxSubVis) maxSubVis = vis;
+          }
+        }
+
+        if (maxSubVis >= 0.42) {
           roomExplored[tileKey] = true;
         }
         const isExplored = Boolean(roomExplored[tileKey]);
 
+        let idx = 0;
         for (let syOff = 0; syOff < TILE_SIZE; syOff += subSize) {
           for (let sxOff = 0; sxOff < TILE_SIZE; sxOff += subSize) {
-            const sx = tx * TILE_SIZE + sxOff;
-            const sy = ty * TILE_SIZE + syOff;
-            const subCx = sx + subSize * 0.5;
-            const subCy = sy + subSize * 0.5;
-            const vis = getPointVisibilityFactor(subCx, subCy, state, room);
+            const sx = tileX + sxOff;
+            const sy = tileY + syOff;
+            const vis = subVisGrid[idx++];
 
             if (!isExplored) {
-              // Unexplored areas fade to pitch black (#000000) at the edge of vision
+              // Unexplored areas fade to pitch black (#000000) at the edge of vision / behind walls & trees
               const blackAlpha =
                 vis <= 0.02 ? 0.98 : Math.min(0.98, Math.max(0, Math.pow(1 - vis, 0.85) * 0.98));
               if (blackAlpha > 0.02) {
@@ -982,11 +1240,11 @@ export function drawDynamicLightingAndBloomPass(
                 g.fillRect(sx, sy, subSize, subSize);
               }
             } else if (vis < 0.96) {
-              // Explored areas outside active vision fade to distinct slate gray
+              // Explored areas outside active vision or occluded behind walls/trees fade to 50% darkened slate gray
               const fade = 1 - vis;
-              const grayAlpha = Math.min(0.84, Math.max(0, Math.pow(fade, 0.85) * 0.84));
+              const grayAlpha = Math.min(0.9, Math.max(0, Math.pow(fade, 0.8) * 0.9));
               if (grayAlpha > 0.02) {
-                g.fillStyle = `rgba(71, 85, 105, ${grayAlpha.toFixed(2)})`;
+                g.fillStyle = `rgba(35, 42, 52, ${grayAlpha.toFixed(2)})`;
                 g.fillRect(sx, sy, subSize, subSize);
               }
             }
@@ -995,19 +1253,31 @@ export function drawDynamicLightingAndBloomPass(
       }
     }
 
-    // Subtle vision-radius perimeter ring for Player and visible Enemies
+    // Dynamic Raycast Vision-Radius Perimeter Polygon for Player and visible Enemies
+    // (hugs walls '#' and trees 'P' to show live line-of-sight blocking)
     g.save();
-    g.strokeStyle = 'rgba(253, 224, 71, 0.16)';
+    g.strokeStyle = 'rgba(253, 224, 71, 0.18)';
     g.lineWidth = 1;
     g.setLineDash([3, 3]);
+    const rayCount = 64;
+    const playerOriginY = state.y - state.z * Z_SCALE - 4;
     g.beginPath();
-    g.arc(
-      state.x,
-      state.y - state.z * Z_SCALE - 4,
-      roomLighting.effectiveVisionRadiusPx,
-      0,
-      Math.PI * 2
-    );
+    for (let i = 0; i <= rayCount; i++) {
+      const ang = (i / rayCount) * Math.PI * 2;
+      const reach = castVisionRayDistancePx(
+        room,
+        state,
+        state.x,
+        state.y,
+        ang,
+        roomLighting.effectiveVisionRadiusPx
+      );
+      const rx = state.x + Math.cos(ang) * reach;
+      const ry = playerOriginY + Math.sin(ang) * reach;
+      if (i === 0) g.moveTo(rx, ry);
+      else g.lineTo(rx, ry);
+    }
+    g.closePath();
     g.stroke();
 
     for (const e of state.enemies) {
@@ -1016,9 +1286,26 @@ export function drawDynamicLightingAndBloomPass(
       if (eVis < 0.35) continue;
       const enemyVisionPx =
         Math.max(1, e.visionRadiusTiles ?? state.enemyBaseLight ?? 5) * 13.6;
-      g.strokeStyle = 'rgba(248, 113, 113, 0.18)';
+      const enemyOriginY = e.y - e.z * Z_SCALE - 4;
+      g.strokeStyle = 'rgba(248, 113, 113, 0.2)';
       g.beginPath();
-      g.arc(e.x, e.y - e.z * Z_SCALE - 4, enemyVisionPx, 0, Math.PI * 2);
+      const enemyRays = 40;
+      for (let i = 0; i <= enemyRays; i++) {
+        const ang = (i / enemyRays) * Math.PI * 2;
+        const reach = castVisionRayDistancePx(
+          room,
+          state,
+          e.x,
+          e.y,
+          ang,
+          enemyVisionPx
+        );
+        const rx = e.x + Math.cos(ang) * reach;
+        const ry = enemyOriginY + Math.sin(ang) * reach;
+        if (i === 0) g.moveTo(rx, ry);
+        else g.lineTo(rx, ry);
+      }
+      g.closePath();
       g.stroke();
     }
     g.setLineDash([]);

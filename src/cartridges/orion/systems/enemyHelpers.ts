@@ -8,13 +8,17 @@ import { EnemyEntity, OrionState } from '../types';
 import { moveEntityX, moveEntityY } from './playerSystem';
 
 /**
- * Checks whether a tile character blocks enemy line-of-sight (solid wall '#' or sealed gate 'G'/'M').
+ * Checks whether a tile character blocks line-of-sight (solid wall '#', tree/pillar 'P',
+ * solid-phase desync barrier '%', or sealed gate 'G'/'M').
  */
-function isTileBlockingSight(
+export function isTileBlockingSight(
   char: string | undefined,
   state: OrionState
 ): boolean {
-  if (!char || char === ' ' || char === '#') return true;
+  if (!char || char === ' ' || char === '#' || char === 'P') return true;
+  if (char === '%') {
+    return Math.floor((state.t || 0) / 3.5) % 2 === 0;
+  }
   if (char === 'G') {
     const gateUnlocked = Boolean(
       state.unlockedGates?.[state.room] ||

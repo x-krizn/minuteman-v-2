@@ -1670,7 +1670,7 @@ export function drawDirectionalCastShadowsAndLandmarks(
         g.ellipse(cx, cy + 2, 18, 11, 0, 0, Math.PI * 2);
         g.stroke();
       } else if (ch === '_') {
-        const trapVis = getPointVisibilityFactor(cx, cy, state);
+        const trapVis = getPointVisibilityFactor(cx, cy, state, room);
         if (trapVis < 0.65) {
           const concealAlpha = Math.min(0.78, (0.65 - trapVis) * 1.15);
           g.fillStyle = `rgba(18, 22, 28, ${concealAlpha.toFixed(2)})`;

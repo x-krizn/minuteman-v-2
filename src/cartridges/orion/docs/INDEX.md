@@ -9,6 +9,7 @@
 | Document | Scope & Contents |
 | --- | --- |
 | **`docs/INDEX.md`** *(this file)* | Narrative worldbuilding, the Shattered Worlds, Belldor campaign stages (`M00 The Bog`, `Camelot Border Town`), starting loadout kits, and documentation map. |
+| **`docs/CODE_RULES.md`** | Mandatory engineering rules for any human or AI authoring Orion code: Apache-2.0 license headers, JSDoc contracts, `[ORION-ANCHOR]` discipline, modularity, memory/network safety, and baseline verification. |
 | **`docs/AUTHORING_GUIDE.md`** | Technical architecture, modular domain systems (`types/`, `systems/combat/`, `systems/render/`, `systems/world/`, `ui/hud/`, `ui/satchel/`), `[ORION-ANCHOR]` jump table, 5-tier world hierarchy, and Base64 asset recipes. |
 | **`docs/EQUIPMENT_AND_FEATS.md`** | Full `v0.8` canonical catalog of 29 magitech weapons, 6 coreplates, 6 reactors, 18 aux/utility systems, 18 optics/sensors, 12 limb actuators, and 97 classless feats. |
 | **`docs/INERTIA_SYSTEM.md`** | Working specification (`inertia-v0.md`) for the simplified classical mechanics Inertia & Stability model (`Δv = J / m_eff`, Stability `S`, directional charge `μ`, rock-paper-scissors triangle, and recoil). |

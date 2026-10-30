@@ -1319,6 +1319,27 @@ export function executeWorldInteraction(
         state.bypassProgressionGates
     );
     const isLit = Boolean(state.flags.first_campfire_lit);
+    const options = [
+      {
+        id: 'primary',
+        label:
+          effectiveRoom === '0,0' && !canUse
+            ? 'Attempt to Light (Locked — Speak to Poe)'
+            : effectiveRoom === '0,0' && !isLit
+              ? 'Light First Campfire & Rest'
+              : 'Rest & Attune Spawn',
+      },
+    ];
+    if (canUse) {
+      options.push({
+        id: 'world_map_campfire',
+        label: 'World Map & Fast Travel (Within World)',
+      });
+    }
+    options.push(
+      { id: 'inspect', label: 'Inspect Campfire' },
+      { id: 'leave', label: 'Leave' }
+    );
     state.contextMenu = {
       title:
         effectiveRoom === '0,0' && !isLit
@@ -1331,19 +1352,7 @@ export function executeWorldInteraction(
       x: cx * TILE_SIZE + 8,
       y: cy * TILE_SIZE + 8,
       selectedIndex: 0,
-      options: [
-        {
-          id: 'primary',
-          label:
-            effectiveRoom === '0,0' && !canUse
-              ? 'Attempt to Light (Locked — Speak to Poe)'
-              : effectiveRoom === '0,0' && !isLit
-                ? 'Light First Campfire & Rest'
-                : 'Rest & Attune Spawn',
-        },
-        { id: 'inspect', label: 'Inspect Campfire' },
-        { id: 'leave', label: 'Leave' },
-      ],
+      options,
     };
     return true;
   }
@@ -1361,7 +1370,11 @@ export function executeWorldInteraction(
       y: qy * TILE_SIZE + 8,
       selectedIndex: 0,
       options: [
-        { id: 'primary', label: 'Step Into Waygate' },
+        {
+          id: 'world_map_waygate',
+          label: 'World Map & Fast Travel (All Worlds & Local)',
+        },
+        { id: 'primary', label: 'Step Into Waygate (Direct Transit)' },
         { id: 'inspect', label: 'Inspect Waygate' },
         { id: 'leave', label: 'Leave' },
       ],
@@ -1546,6 +1559,57 @@ export function executeContextMenuOption(
     return false;
   }
 
+  if (chosen.id === 'world_map_campfire') {
+    state.flags = state.flags || {};
+    state.flags.campfire_unlocked = true;
+    state.flags.first_campfire_lit = true;
+    syncRoomHierarchyState(state);
+    const areaDef = getAreaDefinition(state.areaId);
+    const currentWsId = areaDef.waystation?.id;
+    state.discoveredWaystations = (state.discoveredWaystations || []).filter(
+      (id) => id !== 'ws_bog_drop_pod'
+    );
+    if (currentWsId && !state.discoveredWaystations.includes(currentWsId)) {
+      state.discoveredWaystations.push(currentWsId);
+    }
+    state.spawnAnchor = {
+      areaId: state.areaId,
+      room: state.room,
+      x: Math.round(state.x),
+      y: Math.round(state.y),
+    };
+    state.frame.integrity = state.frame.maxIntegrity || 200;
+    state.frame.state = 'Operational';
+    state.armor.durability = state.armor.maxDurability;
+    state.shields.capacity = state.shields.maxCapacity;
+    state.shields.overloaded = false;
+    state.heat = 0;
+    saveOrionGame(state);
+    state.worldMapModalMode = 'campfire';
+    soundSystem.playSelect();
+    notifyOrionStateChange();
+    return true;
+  }
+
+  if (chosen.id === 'world_map_waygate') {
+    syncRoomHierarchyState(state);
+    for (const wg of Object.values(WAYGATE_REGISTRY)) {
+      if (!state.discoveredWaygates?.includes(wg.id)) {
+        state.discoveredWaygates = [...(state.discoveredWaygates || []), wg.id];
+      }
+    }
+    state.frame.integrity = state.frame.maxIntegrity || 200;
+    state.frame.state = 'Operational';
+    state.armor.durability = state.armor.maxDurability;
+    state.shields.capacity = state.shields.maxCapacity;
+    state.shields.overloaded = false;
+    state.heat = 0;
+    state.worldMapModalMode = 'waygate';
+    soundSystem.playSelect();
+    notifyOrionStateChange();
+    return true;
+  }
+
   if (chosen.id === 'inspect') {
     soundSystem.playSelect();
     const inspectMessages: Record<string, string> = {
@@ -1554,9 +1618,9 @@ export function executeContextMenuOption(
       campfire:
         getEffectiveRoomCoord(state) === '0,0' && !state.flags?.first_campfire_lit
           ? 'FIRST CAMPFIRE: COLD HEARTH. SPEAK TO THE POE BEHIND THE TREES TO UNLOCK & IGNITE.'
-          : 'ÆTHER WAYSTATION: RESTORES DEFENSES, SAVES ANCHOR & ENABLES FAST TRAVEL.',
+          : 'ÆTHER WAYSTATION: RESTORES DEFENSES, SAVES ANCHOR & ENABLES WITHIN-WORLD FAST TRAVEL.',
       poe: 'POE SPIRIT: TUCKED BEHIND THE TREELINE. SPEAKING UNLOCKS CAMPFIRE ATTUNEMENT.',
-      waygate: 'COLOSSAL WAYGATE: ANCIENT AETHER TRANSIT CONDUIT.',
+      waygate: 'COLOSSAL WAYGATE: ANCIENT AETHER TRANSIT CONDUIT FOR WORLD-TO-WORLD & LOCAL FAST TRAVEL.',
       scout: "SIR BEDIVERE'S CHASSIS: FALLEN CAMELOT KNIGHT CLUTCHING A KHOPESH & RELIC LIST.",
       gate: 'SEALED GATEWAY: REQUIRES POE GUIDANCE, KEY OR TRIAL COMPLETION.',
     };

@@ -29,11 +29,19 @@ import {
 import { OrionState } from '../../types';
 import { ALL_TRAIT_LINES } from './SatchelCanvases';
 
+/**
+ * Props for the Pilot Satchel Status Tab component.
+ */
 export interface SatchelStatusTabProps {
   state: OrionState;
   isCheatMode: boolean;
 }
 
+/**
+ * Pilot Satchel Status Tab displaying defense layer breakdowns, inertia telemetry,
+ * and Main Hand (Right), Side Hand (Left), and Auxiliary (Back) progression status.
+ * Supports both HUD modes inside the Pilot Satchel overlay. Mutates `state: OrionState` only via debug/light adjustments.
+ */
 export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({ state, isCheatMode }) => {
   const gates = syncStateGates(state);
   const currentWeaponId = state.equippedWeapons[state.activeWeaponIndex] || 'gladius_boltcaster';
@@ -481,7 +489,7 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({ state, isChe
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 text-[8px]">
           <div className="p-1 bg-[#0f172a] rounded-xs border border-[#ffd27d]/40">
             <div className="flex justify-between font-bold text-[#ffd27d]">
-              <span>MAIN HAND</span>
+              <span>MAIN HAND (RIGHT)</span>
               <span className="text-[#86efac]">
                 {getEffectiveMainGrip(state) === '2h' ? 'AC1–AC5 (2H)' : 'AC1, AC2, AC3'}
               </span>
@@ -495,13 +503,13 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({ state, isChe
               {getEffectiveMainGrip(state) === '2h' ? ' (2H)' : ' (1H)'}
             </div>
             <div className="text-[7px] text-[#94a3b8]">
-              Stance: {getActiveWeaponStance(state).shortTag}
+              Right Hand · Stance: {getActiveWeaponStance(state).shortTag}
             </div>
           </div>
 
           <div className="p-1 bg-[#0f172a] rounded-xs border border-[#38bdf8]/40">
             <div className="flex justify-between font-bold text-[#38bdf8]">
-              <span>SIDE HAND</span>
+              <span>SIDE HAND (LEFT)</span>
               <span className="text-[#86efac]">AC4, AC5</span>
             </div>
             <div className="text-[#cbd5e1] truncate mt-0.5">
@@ -512,12 +520,14 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({ state, isChe
                   getItemDefinition(state.equipmentSlots?.slot2 || '')?.name ||
                   (state.equipmentSlots?.slot2 ? state.equipmentSlots.slot2 : '—')}
             </div>
-            <div className="text-[7px] text-[#94a3b8]">{getActiveWeaponStance(state).label}</div>
+            <div className="text-[7px] text-[#94a3b8]">
+              Left Hand · {getActiveWeaponStance(state).label}
+            </div>
           </div>
 
           <div className="p-1 bg-[#0f172a] rounded-xs border border-[#c084fc]/40">
             <div className="flex justify-between font-bold text-[#c084fc]">
-              <span>AUXILIARY</span>
+              <span>AUXILIARY (BACK)</span>
               <span className="text-[#86efac]">HOLD [L] SIDE⇄AUX</span>
             </div>
             <div className="text-[#cbd5e1] truncate mt-0.5">
@@ -526,7 +536,7 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({ state, isChe
                 (state.equipmentSlots?.slot3 ? state.equipmentSlots.slot3 : '—')}
             </div>
             <div className="text-[7px] text-[#94a3b8]">
-              Main hand never swaps with [L] · Side & Aux switch
+              Back Mount · Swaps with Side Hand via [L]
             </div>
           </div>
 

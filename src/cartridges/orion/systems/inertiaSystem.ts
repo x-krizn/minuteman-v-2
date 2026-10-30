@@ -55,6 +55,11 @@ import {
 
 // ─── 1. TUNABLE CONSTANTS & OPEN DECISION DEFAULTS (§4, §11 of `inertia-v0.md`) ───
 
+// [ORION-ANCHOR: INERTIA-PHYSICS-ENGINE]
+/**
+ * Tunable classical-mechanics parameters (`inertia-v0.md §4`) governing impulse `J`,
+ * effective defender mass `m_eff`, and stability `S` deadband/recovery scaling.
+ */
 export const INERTIA_CONSTANTS = {
   /** OD-INR-01: Global reference glide speed (px/s) used to normalize forward momentum fraction μ */
   REFERENCE_SPEED: 180,

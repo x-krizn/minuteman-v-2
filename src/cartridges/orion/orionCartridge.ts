@@ -75,6 +75,8 @@ export function createOrionCartridge(): Cartridge {
 
     init(_surface: CartridgeSurface) {
       state.atTitleMenu = true;
+      state.titleMenuCursor = 0;
+      state.titleMenuSubView = 'root';
       state.spawnGraceTimer = 3.0;
       titleMenuBootGuard = 0.35;
       syncRoomHierarchyState(state);
@@ -116,7 +118,7 @@ export function createOrionCartridge(): Cartridge {
       const dt = Math.min(0.05, dtSeconds);
       state.t += dt;
 
-      // While on the boot Main Menu / Pilot Creation screen, animate ambient world and handle gamepad selection
+      // While on the boot Main Menu, handle navigation across Root Menu ('New', 'Load', 'Training', 'Options') and Subviews
       if (state.atTitleMenu) {
         updateParticles(state, dt);
         if (titleMenuBootGuard > 0) {
@@ -128,43 +130,149 @@ export function createOrionCartridge(): Cartridge {
           document.activeElement?.tagName === 'INPUT';
         if (!isTypingInput) {
           const p = input.pressed;
-          const traitIds = TRAIT_LIST.map((t) => t.id);
-          const curIdx = Math.max(0, traitIds.indexOf(state.traitLine));
+          const subView = state.titleMenuSubView || 'root';
+          const cursor = Math.max(0, Math.min(3, state.titleMenuCursor ?? 0));
 
-          if (p.left || p.up) {
-            const nextTrait =
-              traitIds[(curIdx + traitIds.length - 1) % traitIds.length];
-            const isDefaultCallsign = Object.values(DEFAULT_CALLSIGNS).includes(
-              state.pilotName
-            );
-            applyTraitLineProfile(state, nextTrait);
-            if (isDefaultCallsign) {
-              state.pilotName = DEFAULT_CALLSIGNS[nextTrait];
+          if (subView === 'root') {
+            if (p.up) {
+              state.titleMenuCursor = (cursor + 3) % 4;
+              soundSystem.playMenuBeep();
+            } else if (p.down) {
+              state.titleMenuCursor = (cursor + 1) % 4;
+              soundSystem.playMenuBeep();
+            } else if (p.a) {
+              if (cursor === 0) {
+                state.titleMenuSubView = 'new';
+                soundSystem.playSelect();
+              } else if (cursor === 1) {
+                state.titleMenuLoadCursor = 0;
+                state.titleMenuSubView = 'load';
+                soundSystem.playSelect();
+              } else if (cursor === 2) {
+                state.room = '-4,0';
+                state.rx = -4;
+                state.ry = 0;
+                state.x = 96;
+                state.y = 120;
+                state.z = 0;
+                state.vz = 0;
+                state.vx = 0;
+                state.vy = 0;
+                state.projectiles = [];
+                state.pickups = [];
+                state.enemies = [];
+                state.bypassProgressionGates = true;
+                state.hasBoosterKit = true;
+                state.atTitleMenu = false;
+                state.titleMenuSubView = 'root';
+                state.spawnGraceTimer = 3.0;
+                syncRoomHierarchyState(state);
+                syncStateGates(state);
+                spawnRoomEnemies(rooms, state);
+                state.toastText = 'TRAINING SANDBOX [-4,0] · ALL TERMINALS & SATCHEL UNLOCKED';
+                state.toastTimer = 3.0;
+                soundSystem.playPowerup();
+              } else if (cursor === 3) {
+                state.titleMenuOptionCursor = 0;
+                state.titleMenuSubView = 'options';
+                soundSystem.playSelect();
+              }
+            } else if (p.y) {
+              const roster = loadPilotRoster();
+              if (roster.length > 0 && loadPilotFromRoster(state, roster[0].pilotId)) {
+                state.atTitleMenu = false;
+                state.titleMenuSubView = 'root';
+                state.spawnGraceTimer = 3.0;
+                soundSystem.playPowerup();
+              }
             }
-            soundSystem.playMenuBeep();
-          } else if (p.right || p.down) {
-            const nextTrait = traitIds[(curIdx + 1) % traitIds.length];
-            const isDefaultCallsign = Object.values(DEFAULT_CALLSIGNS).includes(
-              state.pilotName
-            );
-            applyTraitLineProfile(state, nextTrait);
-            if (isDefaultCallsign) {
-              state.pilotName = DEFAULT_CALLSIGNS[nextTrait];
-            }
-            soundSystem.playMenuBeep();
-          } else if (p.a) {
-            createNewPilotGame(
-              state,
-              state.traitLine,
-              state.pilotName || DEFAULT_CALLSIGNS[state.traitLine]
-            );
-            state.spawnGraceTimer = 3.0;
-            soundSystem.playPowerup();
-          } else if (p.y) {
-            const roster = loadPilotRoster();
-            if (roster.length > 0 && loadPilotFromRoster(state, roster[0].pilotId)) {
+          } else if (subView === 'new') {
+            const traitIds = TRAIT_LIST.map((t) => t.id);
+            const curIdx = Math.max(0, traitIds.indexOf(state.traitLine));
+            if (p.b) {
+              state.titleMenuSubView = 'root';
+              soundSystem.playMenuBeep();
+            } else if (p.left || p.up) {
+              const nextTrait =
+                traitIds[(curIdx + traitIds.length - 1) % traitIds.length];
+              const isDefaultCallsign = Object.values(DEFAULT_CALLSIGNS).includes(
+                state.pilotName
+              );
+              applyTraitLineProfile(state, nextTrait);
+              if (isDefaultCallsign) {
+                state.pilotName = DEFAULT_CALLSIGNS[nextTrait];
+              }
+              soundSystem.playMenuBeep();
+            } else if (p.right || p.down) {
+              const nextTrait = traitIds[(curIdx + 1) % traitIds.length];
+              const isDefaultCallsign = Object.values(DEFAULT_CALLSIGNS).includes(
+                state.pilotName
+              );
+              applyTraitLineProfile(state, nextTrait);
+              if (isDefaultCallsign) {
+                state.pilotName = DEFAULT_CALLSIGNS[nextTrait];
+              }
+              soundSystem.playMenuBeep();
+            } else if (p.a) {
+              createNewPilotGame(
+                state,
+                state.traitLine,
+                state.pilotName || DEFAULT_CALLSIGNS[state.traitLine]
+              );
+              state.atTitleMenu = false;
+              state.titleMenuSubView = 'root';
               state.spawnGraceTimer = 3.0;
               soundSystem.playPowerup();
+            }
+          } else if (subView === 'load') {
+            const roster = loadPilotRoster();
+            const loadIdx = Math.max(
+              0,
+              Math.min(Math.max(0, roster.length - 1), state.titleMenuLoadCursor ?? 0)
+            );
+            if (p.b) {
+              state.titleMenuSubView = 'root';
+              soundSystem.playMenuBeep();
+            } else if (p.up && roster.length > 0) {
+              state.titleMenuLoadCursor = (loadIdx + roster.length - 1) % roster.length;
+              soundSystem.playMenuBeep();
+            } else if (p.down && roster.length > 0) {
+              state.titleMenuLoadCursor = (loadIdx + 1) % roster.length;
+              soundSystem.playMenuBeep();
+            } else if (p.a) {
+              if (roster.length > 0 && loadPilotFromRoster(state, roster[loadIdx].pilotId)) {
+                state.atTitleMenu = false;
+                state.titleMenuSubView = 'root';
+                state.spawnGraceTimer = 3.0;
+                soundSystem.playPowerup();
+              } else {
+                soundSystem.playMenuBeep();
+              }
+            }
+          } else if (subView === 'options') {
+            const optIdx = Math.max(0, Math.min(1, state.titleMenuOptionCursor ?? 0));
+            if (p.b) {
+              state.titleMenuSubView = 'root';
+              soundSystem.playMenuBeep();
+            } else if (p.up || p.down) {
+              state.titleMenuOptionCursor = optIdx === 0 ? 1 : 0;
+              soundSystem.playMenuBeep();
+            } else if (p.left) {
+              if (optIdx === 0) {
+                state.useStandardResolutionHud = !(state.useStandardResolutionHud ?? true);
+                soundSystem.playSelect();
+              } else {
+                state.baseLight = Math.max(2, (state.baseLight ?? 5) - 1);
+                soundSystem.playMenuBeep();
+              }
+            } else if (p.right || p.a) {
+              if (optIdx === 0) {
+                state.useStandardResolutionHud = !(state.useStandardResolutionHud ?? true);
+                soundSystem.playSelect();
+              } else {
+                state.baseLight = Math.min(12, (state.baseLight ?? 5) + 1);
+                soundSystem.playMenuBeep();
+              }
             }
           }
         }

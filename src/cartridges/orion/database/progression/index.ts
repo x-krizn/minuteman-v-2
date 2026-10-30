@@ -557,21 +557,29 @@ export function createInitialEquipmentSlots(traitLine: TraitLine = 'Warrior'): O
   const w1 = trait.startingWeapons?.[0] || 'long_sword';
   const w2 = trait.startingWeapons?.[1] || null;
   const isBowMain = w1 === 'great_bow';
+  const defaultAuxBack = isBowMain
+    ? w2 || 'quiver'
+    : traitLine === 'Guardian'
+      ? 'aegis_charge_buckler'
+      : traitLine === 'Wizard' || traitLine === 'Cleric'
+        ? 'aether_catalyst'
+        : traitLine === 'Marauder'
+          ? 'heater_shield'
+          : traitLine === 'Rogue'
+            ? 'short_spear'
+            : 'buckler_shield';
   const initialCounts: Record<string, number> = { [w1]: 1 };
   if (w2) {
     initialCounts[w2] = (initialCounts[w2] || 0) + 1;
+  }
+  if (defaultAuxBack) {
+    initialCounts[defaultAuxBack] = Math.max(1, initialCounts[defaultAuxBack] || 1);
   }
   const hasSide = Boolean(!isBowMain && w2);
   return {
     slot1: w1,
     slot2: isBowMain ? null : w2,
-    slot3: isBowMain
-      ? (w2 || 'quiver')
-      : traitLine === 'Guardian'
-      ? 'aegis_charge_buckler'
-      : traitLine === 'Wizard' || traitLine === 'Cleric'
-      ? 'aether_catalyst'
-      : null,
+    slot3: defaultAuxBack,
     mainGrip: hasSide ? '1h' : '2h',
     ownedWeaponCounts: initialCounts,
     head: hw.head,
@@ -603,7 +611,9 @@ export function createInitialEquipmentSlots(traitLine: TraitLine = 'Warrior'): O
     },
     installedMods: {},
     unlockedMods: [],
-    unlockedEquipment: [w1, ...(w2 ? [w2] : []), 'aether_catalyst'],
+    unlockedEquipment: Array.from(
+      new Set([w1, ...(w2 ? [w2] : []), ...(defaultAuxBack ? [defaultAuxBack] : []), 'aether_catalyst'])
+    ),
     weaponGemMods: {},
   };
 }

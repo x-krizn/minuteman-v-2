@@ -1,8 +1,13 @@
-// ─── FRAME PLATING SPRITE SHEETS (64×64: 4 cols × 4 directional rows) ───────
-// Col 0 (Frame 1): Grounded Idle
-// Cols 1, 2, 3 (Frames 2, 3, 4): Magic-Current Glide Windup / Glide (3 ↔ 2) / Boost (4)
-// Rows 0..3: South (0), West (1), East (2), North (3)
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
+/**
+ * Base64-encoded `64x64` (`4 cols x 4 directional rows`, `16x16` px per cell) sprite sheets
+ * for Mech Coreplate / Frame Plating (`Col 0`: Grounded Idle; `Cols 1..3`: Magic-Current Glide
+ * Windup / Glide / Boost; `Rows 0..3`: `S`, `W`, `E`, `N`).
+ */
 export const plating_bwi_bastion =
   'data:image/png;base64,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';
 

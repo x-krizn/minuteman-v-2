@@ -11,7 +11,16 @@ import {
   FramePlatingDefinition,
 } from '../database/equipment/plating';
 import { getWeaponDefinition } from '../database/equipment/weapons';
+import { getItemDefinition } from '../database/items';
+import {
+  getEffectiveMainGrip,
+  getWeaponGemVisuals,
+} from '../database/progression';
 import { OrionDir, OrionGlidePhase, OrionState, TraitLine } from '../types';
+import {
+  getBase64Image,
+  getOutlinedSpriteCanvas,
+} from './render/spriteAtlasCache';
 
 export interface ResolvedPlayerSpriteParts {
   /** Optional set index (0..11 for baseline sets, undefined for standalone pieces without a full set) */
@@ -739,12 +748,14 @@ function bakeHeadStrip(
 }
 
 interface ResolvedLayerSlice {
+  sourceKey: string;
   drawable: HTMLImageElement | HTMLCanvasElement;
   srcX: number;
   srcY: number;
   srcW: number;
   srcH: number;
   flipX: boolean;
+  needsPostOutline: boolean;
 }
 
 /**
@@ -787,22 +798,26 @@ function resolvePartLayerSlice(
                 ? 1
                 : 0;
         return {
+          sourceKey: `${slot}:${def.id}:sheet`,
           drawable: img,
           srcX: frameIdx * cellW,
           srcY: dirRow * cellH,
           srcW: cellW,
           srcH: cellH,
           flipX: false,
+          needsPostOutline: true,
         };
       }
 
       return {
+        sourceKey: `${slot}:${def.id}:strip`,
         drawable: img,
         srcX: frameIdx * cellW,
         srcY: 0,
         srcW: cellW,
         srcH: cellH,
         flipX: isWest,
+        needsPostOutline: true,
       };
     }
   }
@@ -821,29 +836,445 @@ function resolvePartLayerSlice(
   }
 
   return {
+    sourceKey: key,
     drawable: baked,
     srcX: (frameIdx % 4) * 16,
     srcY: 0,
     srcW: 16,
     srcH: 16,
     flipX: isWest,
+    needsPostOutline: false,
   };
 }
 
 export interface DrawCompositePlayerOptions {
   dir?: OrionDir;
-  /** Explicit 0-based frame column override (0 = Frame 1 Idle, 1 = Frame 2, 2 = Frame 3 Glide, 3 = Frame 4 Boost) */
+  /** Explicit 0-based frame column override (`0` = Frame 1 Idle, `1` = Frame 2, `2` = Frame 3 Glide, `3` = Frame 4 Boost) */
   overrideFrame?: 0 | 1 | 2 | 3;
   isAttacking?: boolean;
+  /** Optional override for Main Hand (`slot1`, Right) weapon ID in preview canvases */
+  mainWeaponId?: string | null;
+  /** Optional override for Side Hand (`slot2`, Left) weapon/item ID in preview canvases */
+  sideWeaponId?: string | null;
+  /** Optional override for Auxiliary (`slot3`, Back) weapon/item ID in preview canvases */
+  auxWeaponId?: string | null;
+  /** Set `true` to suppress rendering the Main (Right), Side (Left), and Aux (Back) weapon hardpoints */
+  hideWeaponMounts?: boolean;
+}
+
+const MOUNT_DIR_VECTORS: Record<OrionDir, { dx: number; dy: number }> = {
+  N: { dx: 0, dy: -1 },
+  NE: { dx: 0.707, dy: -0.707 },
+  E: { dx: 1, dy: 0 },
+  SE: { dx: 0.707, dy: 0.707 },
+  S: { dx: 0, dy: 1 },
+  SW: { dx: -0.707, dy: 0.707 },
+  W: { dx: -1, dy: 0 },
+  NW: { dx: -0.707, dy: -0.707 },
+};
+
+const COMPONENT_OUTLINE_COLOR = '#05070a';
+
+/**
+ * Resolves the grip/mount pivot coordinate `(gripCellX, gripCellY)` inside a `16x16` weapon sprite cell
+ * so rotations and flips stay locked to the Mech's hand or dorsal back mount.
+ * Does not mutate `state: OrionState`.
+ */
+function resolveEquipmentCellGripPivot(
+  itemId: string,
+  equipmentRole: string | undefined,
+  mountRole: 'main' | 'side' | 'aux'
+): { gripCellX: number; gripCellY: number; scale: number } {
+  const isBolter = equipmentRole === 'ranged' && itemId !== 'great_bow';
+  const isMelee = equipmentRole === 'melee';
+  const isShield = equipmentRole === 'shield';
+
+  if (mountRole === 'aux') {
+    // Back-stowed items pivot around their visual center of mass
+    if (isBolter) {
+      return { gripCellX: 6.5, gripCellY: 13.0, scale: 0.68 };
+    }
+    if (isShield) {
+      return { gripCellX: 8.0, gripCellY: 8.0, scale: 0.68 };
+    }
+    return { gripCellX: 8.0, gripCellY: 8.0, scale: 0.68 };
+  }
+
+  // Hand-held Main (Right) or Side (Left) mounts pivot around the weapon's hilt / handle
+  const handScale = mountRole === 'main' ? 0.78 : 0.72;
+  if (isMelee) {
+    // Melee strips (Long Sword, Shotel, Mace, Axe, Spear) have their hilt at bottom-left (3.5, 12.5)
+    return { gripCellX: 3.5, gripCellY: 12.5, scale: handScale };
+  }
+  if (isBolter) {
+    // Boltcaster strip has its grip/receiver at bottom-left (3.5, 13.0)
+    return { gripCellX: 3.5, gripCellY: 13.0, scale: handScale };
+  }
+  if (isShield) {
+    return { gripCellX: 8.0, gripCellY: 8.0, scale: 0.72 };
+  }
+  return { gripCellX: 8.0, gripCellY: 8.0, scale: handScale };
 }
 
 /**
- * Renders the modular player Mech sprite composed of 3 aligned 16x16 px layers:
- * 1. Frame Plating (Torso & Legs — `state.equipmentSlots.plating`)
- * 2. Arms (Shoulders & Arms — `state.equipmentSlots.arms`)
- * 3. Head (Command Helm & Optics — `state.equipmentSlots.head`)
- *
- * Uses the active Magic-Current Glide state machine frame (`state.glideFrame`, or `options.overrideFrame`).
+ * Renders a single equipped weapon or auxiliary item at `(mx, my)` for the `'main'` (Right Hand),
+ * `'side'` (Left Hand), or `'aux'` (Back Stowed) mount with a 1px post-processed silhouette outline.
+ * Does not mutate `state: OrionState`.
+ */
+function drawSinglePlayerEquipmentMount(
+  g: CanvasRenderingContext2D,
+  state: OrionState,
+  itemId: string,
+  mountRole: 'main' | 'side' | 'aux',
+  mx: number,
+  my: number,
+  scaleX: number,
+  rotationRad: number
+): void {
+  if (!itemId) return;
+  const weaponDef = getWeaponDefinition(itemId);
+  const itemDef = !weaponDef ? getItemDefinition(itemId) : undefined;
+  const spriteCfg = weaponDef?.hardpointSprite || itemDef?.iconSprite;
+  const gemVis = getWeaponGemVisuals(state, itemId);
+
+  if (spriteCfg?.base64) {
+    const src = getBase64Image(spriteCfg.base64);
+    if (src) {
+      const cellW = spriteCfg.cellWidth || 16;
+      const cellH = spriteCfg.cellHeight || 16;
+      const col = weaponDef ? gemVis.colIndex : (spriteCfg.col ?? 0);
+      const row = spriteCfg.row ?? 0;
+      const srcX = col * cellW;
+      const srcY = row * cellH;
+
+      const outlined = getOutlinedSpriteCanvas(
+        spriteCfg.base64,
+        src,
+        srcX,
+        srcY,
+        cellW,
+        cellH,
+        COMPONENT_OUTLINE_COLOR
+      );
+
+      if (outlined) {
+        const { gripCellX, gripCellY, scale } = resolveEquipmentCellGripPivot(
+          itemId,
+          weaponDef?.equipmentRole,
+          mountRole
+        );
+        const destW = outlined.width * scale;
+        const destH = outlined.height * scale;
+        const drawX = -(gripCellX + 1) * scale;
+        const drawY = -(gripCellY + 1) * scale;
+
+        g.save();
+        g.translate(Math.round(mx), Math.round(my));
+        if (scaleX !== 1) {
+          g.scale(scaleX, 1);
+        }
+        if (rotationRad !== 0) {
+          g.rotate(rotationRad);
+        }
+        g.drawImage(
+          outlined,
+          0,
+          0,
+          outlined.width,
+          outlined.height,
+          drawX,
+          drawY,
+          destW,
+          destH
+        );
+        g.restore();
+        return;
+      }
+    }
+  }
+
+  if (weaponDef?.renderHardpoint25D && mountRole !== 'aux') {
+    const dirVec = MOUNT_DIR_VECTORS[state.dir] || MOUNT_DIR_VECTORS.S;
+    weaponDef.renderHardpoint25D(g, mx, my, dirVec.dx, dirVec.dy, state);
+    return;
+  }
+
+  // Fallback pixel-art hardpoint silhouette with 1px dark outline (#05070a)
+  g.save();
+  g.translate(Math.round(mx), Math.round(my));
+  if (scaleX !== 1) {
+    g.scale(scaleX, 1);
+  }
+  if (rotationRad !== 0) {
+    g.rotate(rotationRad);
+  }
+  if (itemId.includes('catalyst')) {
+    g.fillStyle = COMPONENT_OUTLINE_COLOR;
+    g.fillRect(-3, -3, 6, 6);
+    g.fillStyle = '#e879f9';
+    g.fillRect(-2, -2, 4, 4);
+    g.fillStyle = '#f8fafc';
+    g.fillRect(-1, -1, 2, 2);
+  } else if (itemId.includes('shield') || itemId.includes('buckler')) {
+    g.fillStyle = COMPONENT_OUTLINE_COLOR;
+    g.fillRect(-3, -4, 6, 8);
+    g.fillStyle = '#38bdf8';
+    g.fillRect(-2, -3, 4, 6);
+    g.fillStyle = '#bae6fd';
+    g.fillRect(-1, -2, 2, 4);
+  } else if (mountRole === 'aux') {
+    g.fillStyle = COMPONENT_OUTLINE_COLOR;
+    g.fillRect(-2, -4, 4, 8);
+    g.fillStyle = '#c084fc';
+    g.fillRect(-1, -3, 2, 6);
+    g.fillStyle = '#fde047';
+    g.fillRect(-1, -3, 2, 2);
+  } else {
+    g.fillStyle = COMPONENT_OUTLINE_COLOR;
+    g.fillRect(-2, -4, 4, 8);
+    g.fillStyle = mountRole === 'main' ? '#38bdf8' : '#94a3b8';
+    g.fillRect(-1, -3, 2, 6);
+  }
+  g.restore();
+}
+
+/**
+ * Renders the pilot's three weapon hardpoints (`Main Hand [Right]`, `Side Hand [Left]`, and `Aux [Back]`)
+ * for either the `'behindBody'` pass or the `'inFrontOfBody'` pass so 2.5D depth sorting matches `dir`.
+ * Does not mutate `state: OrionState`.
+ */
+export function drawPlayerWeaponMounts25D(
+  g: CanvasRenderingContext2D,
+  state: OrionState,
+  cx: number,
+  cy: number,
+  dir: OrionDir,
+  timeSec: number,
+  pass: 'behindBody' | 'inFrontOfBody',
+  options?: DrawCompositePlayerOptions
+): void {
+  void timeSec;
+  const mainId =
+    options?.mainWeaponId !== undefined
+      ? options.mainWeaponId || ''
+      : state.equipmentSlots?.slot1 ||
+        state.equippedWeapons?.[state.activeWeaponIndex || 0] ||
+        'gladius_boltcaster';
+
+  const rawSideId =
+    options?.sideWeaponId !== undefined
+      ? options.sideWeaponId
+      : state.equipmentSlots !== undefined
+        ? state.equipmentSlots.slot2
+        : state.equippedWeapons?.[1] || null;
+  const mainGrip = getEffectiveMainGrip(state);
+  const sideId =
+    rawSideId && !(mainGrip === '2h' && rawSideId === mainId) ? rawSideId : null;
+
+  const auxId =
+    options?.auxWeaponId !== undefined
+      ? options.auxWeaponId
+      : state.equipmentSlots?.slot3 || state.equippedWeapons?.[2] || null;
+
+  const isFacingNorth = dir === 'N' || dir === 'NE' || dir === 'NW';
+  const isFacingEast = dir === 'E';
+  const isFacingWest = dir === 'W';
+  const dirVec = MOUNT_DIR_VECTORS[dir] || MOUNT_DIR_VECTORS.S;
+
+  // 1. AUX (BACK — slot3):
+  //    - Facing North (N/NE/NW): back faces camera -> drawn inFrontOfBody centered on the dorsal torso
+  //    - Facing South/East/West: back is behind torso -> drawn behindBody along the dorsal spine/shoulder
+  const auxPass: 'behindBody' | 'inFrontOfBody' = isFacingNorth
+    ? 'inFrontOfBody'
+    : 'behindBody';
+  if (auxId && auxPass === pass) {
+    const auxDef = getWeaponDefinition(auxId);
+    const auxIsBolter =
+      auxDef?.equipmentRole === 'ranged' && auxId !== 'great_bow';
+    const bx = isFacingNorth
+      ? cx
+      : isFacingEast
+        ? cx - 3.5
+        : isFacingWest
+          ? cx + 3.5
+          : cx - 2.5;
+    const by = isFacingNorth
+      ? cy - 8.5
+      : isFacingEast || isFacingWest
+        ? cy - 9.0
+        : cy - 10.0;
+    const auxScaleX = isFacingWest ? -1 : 1;
+    const auxRotRad = auxIsBolter
+      ? isFacingEast || isFacingWest
+        ? -1.1
+        : -0.75
+      : 0;
+
+    drawSinglePlayerEquipmentMount(
+      g,
+      state,
+      auxId,
+      'aux',
+      bx,
+      by,
+      auxScaleX,
+      auxRotRad
+    );
+  }
+
+  // 2. SIDE HAND (LEFT — slot2):
+  //    - Held in the Left Hand:
+  //      * East ('E'): far arm ('behindBody'), reaching forward at (cx + 3, cy - 8)
+  //      * West ('W'): near foreground arm ('inFrontOfBody'), hand cuff at (cx - 2, cy - 6.5)
+  //      * South ('S'/'SE'/'SW'): screen-left hand cuff ('inFrontOfBody') at (cx - 4.5, cy - 6.5)
+  //      * North ('N'/'NE'/'NW'): screen-left hand cuff ('behindBody') at (cx - 4.5, cy - 7.5)
+  const sidePass: 'behindBody' | 'inFrontOfBody' =
+    isFacingNorth || isFacingEast ? 'behindBody' : 'inFrontOfBody';
+  if (sideId && sidePass === pass) {
+    const sideDef = getWeaponDefinition(sideId);
+    const sideIsMelee = sideDef?.equipmentRole === 'melee';
+    const sideIsBolter =
+      sideDef?.equipmentRole === 'ranged' && sideId !== 'great_bow';
+
+    const lx = isFacingEast
+      ? cx + 3.0
+      : isFacingWest
+        ? cx - 2.0
+        : cx - 4.5;
+    const ly = isFacingEast
+      ? cy - 8.0
+      : isFacingWest
+        ? cy - 6.5
+        : isFacingNorth
+          ? cy - 7.5
+          : cy - 6.5;
+    const sideScaleX = isFacingEast ? 1 : -1;
+    const sideRotRad = isFacingEast
+      ? sideIsMelee
+        ? 0.45
+        : sideIsBolter
+          ? -0.1
+          : 0
+      : isFacingWest
+        ? sideIsMelee
+          ? 0.12
+          : 0
+        : isFacingNorth
+          ? sideIsMelee
+            ? -0.12
+            : sideIsBolter
+              ? 0.52
+              : 0
+          : sideIsMelee
+            ? 0.15
+            : sideIsBolter
+              ? -0.22
+              : 0;
+
+    drawSinglePlayerEquipmentMount(
+      g,
+      state,
+      sideId,
+      'side',
+      lx,
+      ly,
+      sideScaleX,
+      sideRotRad
+    );
+  }
+
+  // 3. MAIN HAND (RIGHT — slot1):
+  //    - Held in the Right Hand:
+  //      * East ('E'): near foreground arm ('inFrontOfBody'), hand cuff at (cx + 2, cy - 6.5)
+  //      * West ('W'): far arm ('behindBody'), reaching forward at (cx - 3, cy - 8)
+  //      * South ('S'/'SE'/'SW'): screen-right hand cuff ('inFrontOfBody') at (cx + 4.5, cy - 6.5)
+  //      * North ('N'/'NE'/'NW'): screen-right hand cuff ('behindBody') at (cx + 4.5, cy - 7.5)
+  const mainPass: 'behindBody' | 'inFrontOfBody' =
+    isFacingNorth || isFacingWest ? 'behindBody' : 'inFrontOfBody';
+  if (mainId && mainPass === pass) {
+    const isAttacking = Boolean(
+      options?.isAttacking ?? (state.activeSkillSlot !== null && state.skillActionTimer > 0)
+    );
+    const mainDef = getWeaponDefinition(mainId);
+    const mainIsMelee = mainDef?.equipmentRole === 'melee';
+    const mainIsBolter =
+      mainDef?.equipmentRole === 'ranged' && mainId !== 'great_bow';
+    const isSpearOrLance =
+      mainId === 'short_spear' || mainId === 'avalon_siege_lance';
+    const isMace = mainId === 'mace';
+    const isShield = mainDef?.equipmentRole === 'shield';
+    const isRanged =
+      mainDef?.equipmentRole === 'ranged' || mainDef?.equipmentRole === 'quiver';
+
+    const thrustOffset = isAttacking
+      ? isSpearOrLance
+        ? 5.5
+        : isShield
+          ? 4
+          : isRanged
+            ? -1.5
+            : 2.5
+      : 0;
+    const swingRot = isAttacking
+      ? isSpearOrLance || isShield || isRanged
+        ? 0
+        : isMace
+          ? 0.65
+          : (state.ammo % 2 === 0 ? 1 : -1) * 0.55
+      : 0;
+    const slamDropY = isAttacking && isMace ? 2.5 : 0;
+
+    const baseRx = isFacingEast
+      ? cx + 2.0
+      : isFacingWest
+        ? cx - 3.0
+        : cx + 4.5;
+    const baseRy = isFacingEast
+      ? cy - 6.5
+      : isFacingWest
+        ? cy - 8.0
+        : isFacingNorth
+          ? cy - 7.5
+          : cy - 6.5;
+
+    const rx = baseRx + dirVec.dx * thrustOffset;
+    const ry = baseRy + dirVec.dy * thrustOffset + slamDropY;
+    const mainScaleX = isFacingWest ? -1 : 1;
+    const baseMainRot =
+      isFacingEast || isFacingWest
+        ? mainIsMelee
+          ? 0.12
+          : 0
+        : isFacingNorth
+          ? mainIsMelee
+            ? -0.12
+            : mainIsBolter
+              ? -0.52
+              : 0
+          : mainIsMelee
+            ? 0.15
+            : mainIsBolter
+              ? 0.25
+              : 0;
+
+    drawSinglePlayerEquipmentMount(
+      g,
+      state,
+      mainId,
+      'main',
+      rx,
+      ry,
+      mainScaleX,
+      baseMainRot + swingRot
+    );
+  }
+}
+
+/**
+ * Renders the modular player Mech sprite composed of 3 aligned `16x16` px armor layers
+ * (`plating`, `arms`, `head`) plus depth-sorted `Main Hand (Right)`, `Side Hand (Left)`,
+ * and `Aux (Back)` weapon mounts, with 1px post-processed outlines around each component.
+ * Does not mutate `state: OrionState`.
  */
 export function drawCompositePlayerMech(
   g: CanvasRenderingContext2D,
@@ -897,8 +1328,56 @@ export function drawCompositePlayerMech(
     g.restore();
   }
 
+  // Pass 1: Behind-body weapon mounts (e.g., Aux [Back] when facing South/East/West, or forward hands when facing North)
+  if (!options?.hideWeaponMounts) {
+    drawPlayerWeaponMounts25D(g, state, cx, cy, dir, timeSec, 'behindBody', options);
+  }
+
+  // Pass 2: 3-Layer Composite Mech Chassis (Frame Plating -> Arms -> Head), each with a 1px post-processed outline
   for (const slice of [platingSlice, armsSlice, headSlice]) {
-    if (slice.flipX) {
+    const outlinedPart = slice.needsPostOutline
+      ? getOutlinedSpriteCanvas(
+          slice.sourceKey,
+          slice.drawable,
+          slice.srcX,
+          slice.srcY,
+          slice.srcW,
+          slice.srcH,
+          COMPONENT_OUTLINE_COLOR
+        )
+      : null;
+
+    if (outlinedPart) {
+      if (slice.flipX) {
+        g.save();
+        g.translate(cx, cy);
+        g.scale(-1, 1);
+        g.drawImage(
+          outlinedPart,
+          0,
+          0,
+          outlinedPart.width,
+          outlinedPart.height,
+          -9,
+          -17,
+          18,
+          18
+        );
+        g.restore();
+      } else {
+        g.drawImage(
+          outlinedPart,
+          0,
+          0,
+          outlinedPart.width,
+          outlinedPart.height,
+          cx - 9,
+          cy - 17,
+          18,
+          18
+        );
+      }
+    } else if (slice.flipX) {
       g.save();
       g.translate(cx, cy);
       g.scale(-1, 1);
@@ -927,6 +1406,11 @@ export function drawCompositePlayerMech(
         16
       );
     }
+  }
+
+  // Pass 3: Front-of-body weapon mounts (e.g., Main [Right] & Side [Left] when facing South, or Aux [Back] when facing North)
+  if (!options?.hideWeaponMounts) {
+    drawPlayerWeaponMounts25D(g, state, cx, cy, dir, timeSec, 'inFrontOfBody', options);
   }
 
   g.restore();

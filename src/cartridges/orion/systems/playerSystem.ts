@@ -1474,6 +1474,17 @@ export function updatePlayerSystem(
   const h = input.held;
   const stick = input.stick;
 
+  // Intercept input if the Cosmic World Map modal is currently open
+  if (state.worldMapModalMode && state.worldMapModalMode !== 'none') {
+    if (p.b) {
+      state.worldMapModalMode = 'none';
+      soundSystem.playMenuBeep();
+      notifyOrionStateChange();
+    }
+    updateParticles(state, dt);
+    return true;
+  }
+
   // Intercept input if an Interactable Context Menu is currently open
   if (state.contextMenu && state.contextMenu.options.length > 0) {
     const optCount = state.contextMenu.options.length;

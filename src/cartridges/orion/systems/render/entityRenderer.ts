@@ -14,8 +14,6 @@ import {
 } from '../../constants';
 import { getEnemyDefinition } from '../../database/enemies';
 import { getCoinPickupSpriteBase64, getItemDefinition } from '../../database/items';
-import { getWeaponGemVisuals } from '../../database/progression';
-import { getWeaponDefinition } from '../../database/equipment/weapons';
 import { getTileDefinition } from '../../database/world';
 import { BiomeDefinition, OrionState } from '../../types';
 import { INERTIA_CONSTANTS } from '../inertiaSystem';
@@ -26,6 +24,11 @@ import { drawClusterBiomeWall, isClusterSingleWallChar } from './worldRenderer';
 
 // ─── DEPTH-SORTED ENTITY, PROP, PICKUP & PLAYER MECH RENDERER (LAYER 2) ──────
 
+/**
+ * Renders depth-sorted room props, pickups, enemies, and the composite player Mech
+ * (including Main Hand [Right], Side Hand [Left], and Aux [Back] hardpoints).
+ * Does not mutate `state: OrionState`.
+ */
 export function renderDepthSortedEntitiesAndProps(
   g: CanvasRenderingContext2D,
   room: string[] | undefined,
@@ -406,115 +409,11 @@ export function renderDepthSortedEntitiesAndProps(
       }
 
       const dirInfo = DIR_VECTORS[state.dir] || DIR_VECTORS.S;
-      const isFacingNorth = state.dir === 'N' || state.dir === 'NE' || state.dir === 'NW';
-      const activeWeaponId = state.equippedWeapons[state.activeWeaponIndex] || 'gladius_boltcaster';
-      const weaponDef = getWeaponDefinition(activeWeaponId);
-      const gemVis = getWeaponGemVisuals(state, activeWeaponId);
-
-      const drawOffhandHardpoint = () => {
-        if (state.equippedWeapons.length <= 1) return;
-        const offIdx = (state.activeWeaponIndex + 1) % state.equippedWeapons.length;
-        const offWeaponId = state.equippedWeapons[offIdx];
-        const offDef = offWeaponId ? getWeaponDefinition(offWeaponId) : undefined;
-        if (
-          offDef &&
-          (offDef.equipmentRole === 'shield' || offDef.equipmentRole === 'quiver') &&
-          offDef.hardpointSprite
-        ) {
-          const offGemVis = getWeaponGemVisuals(state, offWeaponId);
-          const ox = state.x - dirInfo.dx * 5 - dirInfo.dy * 4;
-          const oy = py - 8 - dirInfo.dy * 3;
-          drawBase64Sprite(
-            g,
-            {
-              ...offDef.hardpointSprite,
-              col: offGemVis.colIndex,
-              renderWidth: 10,
-              renderHeight: 10,
-              orientFromEast: true,
-            },
-            ox,
-            oy,
-            state.t,
-            {
-              dir: state.dir,
-              defaultAnchor: 'center',
-              transformFromEast: true,
-            }
-          );
-        }
-      };
-
-      const drawMainWeaponHardpoint = () => {
-        const isAttacking = state.activeSkillSlot !== null && state.skillActionTimer > 0;
-        const isSpearOrLance =
-          activeWeaponId === 'short_spear' || activeWeaponId === 'avalon_siege_lance';
-        const isMace = activeWeaponId === 'mace';
-        const isShield = weaponDef?.equipmentRole === 'shield';
-        const isRanged =
-          weaponDef?.equipmentRole === 'ranged' || weaponDef?.equipmentRole === 'quiver';
-
-        const thrustOffset = isAttacking
-          ? isSpearOrLance
-            ? 7
-            : isShield
-              ? 5
-              : isRanged
-                ? -1.5
-                : 3
-          : 0;
-        const swingRot = isAttacking
-          ? isSpearOrLance || isShield || isRanged
-            ? 0
-            : isMace
-              ? 0.65
-              : (state.ammo % 2 === 0 ? 1 : -1) * 0.52
-          : 0;
-        const slamDropY = isAttacking && isMace ? 3 : 0;
-
-        const wx = state.x + dirInfo.dx * (7 + thrustOffset);
-        const wy = py - 9 + dirInfo.dy * (5 + thrustOffset) + slamDropY;
-        const mainHardpointSprite = weaponDef?.hardpointSprite
-          ? {
-              ...weaponDef.hardpointSprite,
-              col: gemVis.colIndex,
-              orientFromEast: true,
-            }
-          : undefined;
-
-        const drewHardpointSprite = drawBase64Sprite(g, mainHardpointSprite, wx, wy, state.t, {
-          dir: state.dir,
-          defaultAnchor: 'center',
-          transformFromEast: true,
-          extraRotationRad: swingRot,
-        });
-
-        if (!drewHardpointSprite) {
-          if (weaponDef?.renderHardpoint25D) {
-            weaponDef.renderHardpoint25D(g, wx, wy, dirInfo.dx, dirInfo.dy, state);
-          } else {
-            g.fillStyle = '#94a3b8';
-            g.fillRect(wx - 1, wy, 3, 6);
-          }
-        }
-      };
-
-      if (isFacingNorth) {
-        drawMainWeaponHardpoint();
-      } else {
-        drawOffhandHardpoint();
-      }
 
       drawCompositePlayerMech(g, state, state.x, py, state.t, {
         dir: state.dir,
         isAttacking: state.activeSkillSlot !== null && state.skillActionTimer > 0,
       });
-
-      if (isFacingNorth) {
-        drawOffhandHardpoint();
-      } else {
-        drawMainWeaponHardpoint();
-      }
 
       if (state.isHoldingBlock) {
         const isPerfectWindow =

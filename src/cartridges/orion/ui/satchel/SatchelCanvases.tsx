@@ -11,6 +11,7 @@ import {
 } from '../../systems';
 import { OrionDir, OrionGlidePhase, OrionState, TraitLine } from '../../types';
 
+/** Ordered list of all 6 Starting Loadout Kit trait identifiers (`v0.8`). */
 export const ALL_TRAIT_LINES: TraitLine[] = [
   'Warrior',
   'Marauder',
@@ -20,6 +21,7 @@ export const ALL_TRAIT_LINES: TraitLine[] = [
   'Cleric',
 ];
 
+/** Equipment and action-binding slot keys editable inside the Pilot Satchel (`[SELECT]`). */
 export type EditableLoadoutSlot =
   | 'slot1'
   | 'slot2'
@@ -40,6 +42,7 @@ export type EditableLoadoutSlot =
   | 'bind_l'
   | 'bind_r';
 
+/** Category filter tabs for the Pilot Satchel equipment & consumable inventory view. */
 export type EquipmentInventoryCategory =
   | 'all'
   | 'weapon'
@@ -49,6 +52,10 @@ export type EquipmentInventoryCategory =
   | 'mod'
   | 'consumable';
 
+/**
+ * Renders a `16x16` pixel-art icon sliced from a Base64 sprite sheet at `(col, row)`.
+ * Supports both HUD modes inside the React Pilot Satchel overlay.
+ */
 export const SpriteCanvasIcon: React.FC<{
   base64?: string;
   col?: number;
@@ -135,21 +142,36 @@ function buildGlideShowcaseTimeline(
 
 const PREVIEW_DIRS: OrionDir[] = ['S', 'E', 'N', 'W'];
 
+/**
+ * Interactive `32x32` px preview canvas rendering the 3-layer composite player mech
+ * (including Main Hand [Right], Side Hand [Left], and Aux [Back] hardpoints)
+ * cycling through the 5-phase Magic-Current Glide animation (`idle -> windup -> glide -> boost -> winddown`).
+ * Supports both HUD modes inside the Pilot Satchel overlay. Does not mutate `state: OrionState`.
+ */
 export const CompositeMechPreviewCanvas: React.FC<{
   state: OrionState;
   head?: string;
   arms?: string;
   plating?: string;
   weaponId?: string;
-}> = ({ state, head, arms, plating, weaponId }) => {
+  sideWeaponId?: string | null;
+  auxWeaponId?: string | null;
+}> = ({ state, head, arms, plating, weaponId, sideWeaponId, auxWeaponId }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [previewDirIdx, setPreviewDirIdx] = useState<number>(0);
   const [pausedFrame, setPausedFrame] = useState<0 | 1 | 2 | 3 | null>(null);
 
   useEffect(() => {
     let rafId = 0;
+    let cancelled = false;
     const previewState: OrionState =
-      state.equipmentSlots && (head || arms || plating || weaponId)
+      state.equipmentSlots &&
+      (head ||
+        arms ||
+        plating ||
+        weaponId ||
+        sideWeaponId !== undefined ||
+        auxWeaponId !== undefined)
         ? {
             ...state,
             equipmentSlots: {
@@ -158,6 +180,8 @@ export const CompositeMechPreviewCanvas: React.FC<{
               ...(arms ? { arms } : {}),
               ...(plating ? { plating } : {}),
               ...(weaponId ? { slot1: weaponId } : {}),
+              ...(sideWeaponId !== undefined ? { slot2: sideWeaponId } : {}),
+              ...(auxWeaponId !== undefined ? { slot3: auxWeaponId } : {}),
             },
           }
         : state;
@@ -209,6 +233,9 @@ export const CompositeMechPreviewCanvas: React.FC<{
       drawCompositePlayerMech(ctx, previewState, 16, 26, tSec, {
         dir: activeDir,
         overrideFrame: step.frame,
+        mainWeaponId: weaponId,
+        sideWeaponId,
+        auxWeaponId,
       });
 
       // Compact bottom HUD bar showing current showcase phase (IDLE / WINDUP / GLIDE / BOOST / RECOV) & Frame (F1..F4)
@@ -232,20 +259,24 @@ export const CompositeMechPreviewCanvas: React.FC<{
       ctx.globalAlpha = 1;
     };
 
-    const tick = (nowMs: number) => {
-      renderPreview(nowMs);
-      if (pausedFrame === null) {
+    const scheduleNextTick = () => {
+      if (!cancelled && pausedFrame === null) {
         rafId = window.requestAnimationFrame(tick);
       }
     };
 
+    const tick = (nowMs: number) => {
+      if (cancelled) return;
+      renderPreview(nowMs);
+      scheduleNextTick();
+    };
+
     renderPreview();
-    if (pausedFrame === null) {
-      rafId = window.requestAnimationFrame(tick);
-    }
+    scheduleNextTick();
     const unsubscribe = subscribeToMechSpriteLoad(() => renderPreview());
 
     return () => {
+      cancelled = true;
       window.cancelAnimationFrame(rafId);
       unsubscribe();
     };

@@ -18,9 +18,18 @@ import {
   SCREEN_W,
   Z_SCALE,
 } from '../constants';
-import { computeEffectivePlayerLightTiles } from '../database/progression';
+import { getWeaponDefinition } from '../database/equipment/weapons';
+import { getItemDefinition } from '../database/items';
+import {
+  computeEffectivePlayerLightTiles,
+  getEffectiveMainGrip,
+} from '../database/progression';
 import { AetherCardinalDir, OrionState } from '../types';
 
+/**
+ * Renders peripheral Æther mist veils and doorway path-density / Poe Lantern wayfinding tells.
+ * Supports both HUD modes. Does not mutate `state: OrionState`.
+ */
 export function drawAetherFogWayfindingTells(
   g: CanvasRenderingContext2D,
   state: OrionState,
@@ -181,6 +190,10 @@ export function drawAetherFogWayfindingTells(
   g.restore();
 }
 
+/**
+ * Draws 1px outlined pixel text onto a 2D canvas context.
+ * Does not mutate `state: OrionState`.
+ */
 export function drawOutlinedCanvasText(
   g: CanvasRenderingContext2D,
   text: string,
@@ -198,6 +211,11 @@ export function drawOutlinedCanvasText(
   g.fillText(text, x, y);
 }
 
+/**
+ * Renders the pixel canvas HUD (`state.hudMode === 'canvas'`), including defense bars,
+ * Main Hand (Right), Side Hand (Left), and Aux (Back) equipment readouts, and action cooldown slots.
+ * Does not mutate `state: OrionState`.
+ */
 export function drawCanonicalHud(g: CanvasRenderingContext2D, state: OrionState): void {
   const barW = 40;
   const barH = 2;
@@ -232,6 +250,24 @@ export function drawCanonicalHud(g: CanvasRenderingContext2D, state: OrionState)
   g.font = '6px "orion-font", monospace';
   const activeWeaponId = state.equippedWeapons[state.activeWeaponIndex] || 'gladius_boltcaster';
   const isKhopesh = activeWeaponId === 'khopesh';
+  const mainWeaponId = state.equipmentSlots?.slot1 || activeWeaponId;
+  const sideWeaponId = state.equipmentSlots?.slot2 || null;
+  const auxWeaponId = state.equipmentSlots?.slot3 || null;
+  const mainGrip = getEffectiveMainGrip(state);
+  const mainShort = (getWeaponDefinition(mainWeaponId)?.name || mainWeaponId).slice(0, 7);
+  const sideShort =
+    mainGrip === '2h' && sideWeaponId === mainWeaponId
+      ? '2H'
+      : (
+          getWeaponDefinition(sideWeaponId || '')?.name ||
+          getItemDefinition(sideWeaponId || '')?.name ||
+          '—'
+        ).slice(0, 6);
+  const auxShort = (
+    getWeaponDefinition(auxWeaponId || '')?.name ||
+    getItemDefinition(auxWeaponId || '')?.name ||
+    '—'
+  ).slice(0, 6);
 
   g.textAlign = 'right';
   drawOutlinedCanvasText(
@@ -258,6 +294,13 @@ export function drawCanonicalHud(g: CanvasRenderingContext2D, state: OrionState)
       isKhopesh ? '#e879f9' : '#77c7ff'
     );
   }
+  drawOutlinedCanvasText(
+    g,
+    `R:${mainShort} L:${sideShort} B:${auxShort}`,
+    SCREEN_W - 4,
+    23,
+    '#cbd5e1'
+  );
 
   // 5 Skill Icon slots along bottom center (transparent with cooldown overlay)
   const slotSize = 9;

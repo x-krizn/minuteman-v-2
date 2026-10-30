@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { soundSystem } from '../../../engine/core/soundSystem';
 import { DEFAULT_CALLSIGNS, TRAIT_LIST, TRAIT_REGISTRY } from '../database/characters';
 import { getClassUtilityDefinition } from '../database/equipment';
@@ -18,7 +18,13 @@ import {
   setTutorialStateActive,
 } from '../systems';
 import { OrionSavedPilotEntry, TraitLine } from '../types';
+import { enterTrainingSandboxRoom } from './hud/HudTitleModal';
+import { SatchelWorldTab } from './satchel/SatchelWorldTab';
 
+/**
+ * Props for the `OrionGameMenu` pause overlay (`[START]` menu).
+ * Supports both the React overlay HUD and pixel canvas HUD modes.
+ */
 export interface OrionGameMenuProps {
   soundEnabled: boolean;
   scanlinesEnabled: boolean;
@@ -31,8 +37,14 @@ export interface OrionGameMenuProps {
   connectedGamepads?: string[];
 }
 
-type MenuSubView = 'main' | 'new_pilot' | 'load_roster' | 'controls';
+type MenuSubView = 'main' | 'new_pilot' | 'load_roster' | 'world_map' | 'controls';
 
+/**
+ * Renders the `[START]` pause menu for Project Orion, providing pilot roster save/load,
+ * new pilot creation, `-4,0` Training Sandbox access, view-only Cosmic World Map (`accessMode="menu"`),
+ * and display/audio toggles. Supports both HUD modes (React overlay HUD and pixel canvas HUD)
+ * and mutates `state: OrionState` through `getOrionStateRef()` when saving, loading, or toggling options.
+ */
 export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
   soundEnabled,
   scanlinesEnabled,
@@ -53,9 +65,41 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
   const [roster, setRoster] = useState<OrionSavedPilotEntry[]>(() => loadPilotRoster());
   const [, setTick] = useState(0);
 
+  const toastTimerRef = useRef<number | null>(null);
+  const resumeTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current !== null) {
+        window.clearTimeout(toastTimerRef.current);
+        toastTimerRef.current = null;
+      }
+      if (resumeTimerRef.current !== null) {
+        window.clearTimeout(resumeTimerRef.current);
+        resumeTimerRef.current = null;
+      }
+    };
+  }, []);
+
   const showToast = (msg: string, ms: number = 2000) => {
     setFeedback(msg);
-    setTimeout(() => setFeedback(null), ms);
+    if (toastTimerRef.current !== null) {
+      window.clearTimeout(toastTimerRef.current);
+    }
+    toastTimerRef.current = window.setTimeout(() => {
+      toastTimerRef.current = null;
+      setFeedback(null);
+    }, ms);
+  };
+
+  const scheduleDelayedResume = (delayMs: number = 650) => {
+    if (resumeTimerRef.current !== null) {
+      window.clearTimeout(resumeTimerRef.current);
+    }
+    resumeTimerRef.current = window.setTimeout(() => {
+      resumeTimerRef.current = null;
+      onResume();
+    }, delayMs);
   };
 
   const handleSave = () => {
@@ -80,9 +124,7 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
     if (state && loadPilotFromRoster(state, pilotId)) {
       showToast(`PILOT "${pilotName.toUpperCase()}" SYSTEMS RESTORED!`, 900);
       soundSystem.playPowerup();
-      setTimeout(() => {
-        onResume();
-      }, 650);
+      scheduleDelayedResume(650);
     } else {
       showToast('FAILED TO RESTORE PILOT');
     }
@@ -93,9 +135,7 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
     if (state && loadOrionGame(state)) {
       showToast(`RESTORED ${state.pilotName.toUpperCase()}!`, 900);
       soundSystem.playPowerup();
-      setTimeout(() => {
-        onResume();
-      }, 650);
+      scheduleDelayedResume(650);
     } else {
       showToast('NO SAVE DATA FOUND');
     }
@@ -120,9 +160,7 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
       `DEPLOYING ${finalName.toUpperCase()} (${(kit.frameModel || 'MARK-IV').toUpperCase()}) · LVL 1 M00 BOG`,
       900
     );
-    setTimeout(() => {
-      onResume();
-    }, 650);
+    scheduleDelayedResume(650);
   };
 
   const handleSaveAndExit = () => {
@@ -396,8 +434,32 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
             </div>
           )}
         </div>
+      ) : subView === 'world_map' && activeState ? (
+        /* Subview 3: Cosmic World Map (View-Only from Menu) */
+        <div className="flex-1 min-h-0 flex flex-col space-y-1.5 overflow-hidden">
+          <div className="flex items-center justify-between pb-1 border-b border-[#334155]">
+            <span className="font-bold text-[#22d3ee] text-[10.5px]">
+              COSMIC WORLD MAP (MENU CARTOGRAPHY VIEW)
+            </span>
+            <button
+              onClick={() => {
+                soundSystem.playMenuBeep();
+                setSubView('main');
+              }}
+              className="text-[10px] underline text-[#94a3b8] hover:text-white cursor-pointer"
+            >
+              ← Back to Menu
+            </button>
+          </div>
+          <SatchelWorldTab
+            state={activeState}
+            isCheatMode={activeState.room === '-4,0' || Boolean(activeState.bypassProgressionGates)}
+            onResume={onResume}
+            accessMode="menu"
+          />
+        </div>
       ) : subView === 'controls' ? (
-        /* Subview 3: Controls & 2.5D Mech Mechanics */
+        /* Subview 4: Controls & 2.5D Mech Mechanics */
         <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-[11px] leading-snug">
           <div className="flex items-center justify-between pb-1 border-b border-[#334155]">
             <span className="font-bold text-[#facc15]">2.5D MECH CONTROLS & COMBAT LAWS</span>
@@ -416,7 +478,7 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
             </div>
             <div className="p-1.5 bg-[#1e293b] rounded-xs border border-[#334155]">
               <span className="text-[#facc15] font-bold">[A] JUMP / EXAMINE:</span> Elevation leap
-              over abyssal sinkholes (`_`), sync Spawn Anchors (`D`), loot Caches (`C`), or close pop-ups.
+              over abyssal sinkholes (`_`), rest at Campfires (`A`), transit Waygates (`Q`), or loot Caches (`C`).
             </div>
             <div className="p-1.5 bg-[#1e293b] rounded-xs border border-[#334155]">
               <span className="text-[#facc15] font-bold">[B] TAP DODGE / HOLD CONTINUOUS BOOST:</span> Tap
@@ -440,7 +502,7 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
             </div>
             <div className="p-1.5 bg-[#1e293b] rounded-xs border border-[#334155]">
               <span className="text-[#facc15] font-bold">[SHIFT / SELECT]:</span> Open Pilot Satchel,
-              Equipment Stance & Loadout, 3-Layer Build & Feats, and Action Binder.
+              World Map, Equipment Stance & Loadout, 3-Layer Build & Feats, and Action Binder.
             </div>
           </div>
         </div>
@@ -453,23 +515,48 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
                 soundSystem.playSelect();
                 setSubView('new_pilot');
               }}
-              className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#facc15]/60 rounded-xs text-[10.5px] font-bold text-left flex items-center justify-between"
+              className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#facc15]/60 rounded-xs text-[10.5px] font-bold text-left flex items-center justify-between cursor-pointer"
             >
-              <span className="text-[#ffd27d]">✨ NEW GAME</span>
+              <span className="text-[#ffd27d]">✨ NEW</span>
               <span className="text-[8.5px] text-[#94a3b8]">NEW PILOT</span>
             </button>
 
             <button
               onClick={handleOpenLoadRoster}
-              className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#38bdf8]/60 rounded-xs text-[10.5px] font-bold text-left flex items-center justify-between"
+              className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#38bdf8]/60 rounded-xs text-[10.5px] font-bold text-left flex items-center justify-between cursor-pointer"
             >
-              <span className="text-[#7dd3fc]">📂 LOAD GAME</span>
+              <span className="text-[#7dd3fc]">📂 LOAD</span>
               <span className="text-[8.5px] text-[#94a3b8]">ROSTER ({roster.length})</span>
             </button>
 
             <button
+              onClick={() => {
+                const state = getOrionStateRef();
+                if (state) {
+                  enterTrainingSandboxRoom(state);
+                  onResume();
+                }
+              }}
+              className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#3b82f6] rounded-xs text-[10.5px] font-bold text-left flex items-center justify-between cursor-pointer"
+            >
+              <span className="text-[#93c5fd]">⚔ TRAINING</span>
+              <span className="text-[8.5px] text-[#60a5fa]">SANDBOX [-4,0]</span>
+            </button>
+
+            <button
+              onClick={() => {
+                soundSystem.playSelect();
+                setSubView('world_map');
+              }}
+              className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#a855f7]/70 rounded-xs text-[10.5px] font-bold text-left flex items-center justify-between cursor-pointer"
+            >
+              <span className="text-[#e9d5ff]">🪐 WORLD MAP</span>
+              <span className="text-[8.5px] text-[#c084fc]">VIEW ORB →</span>
+            </button>
+
+            <button
               onClick={handleSave}
-              className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs text-[10.5px] font-bold text-left flex items-center justify-between"
+              className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs text-[10.5px] font-bold text-left flex items-center justify-between cursor-pointer"
             >
               <span>💾 SAVE PILOT</span>
               <span className="text-[8.5px] text-[#4ade80]">SYNC ROSTER</span>
@@ -480,9 +567,9 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
                 soundSystem.playSelect();
                 setSubView('controls');
               }}
-              className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs text-[10.5px] font-bold text-left flex items-center justify-between"
+              className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs text-[10.5px] font-bold text-left flex items-center justify-between cursor-pointer"
             >
-              <span>📖 CONTROLS</span>
+              <span>⚙ OPTIONS & CONTROLS</span>
               <span className="text-[8.5px] text-[#facc15]">GUIDE →</span>
             </button>
           </div>

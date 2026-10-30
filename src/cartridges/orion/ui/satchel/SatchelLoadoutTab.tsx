@@ -54,6 +54,9 @@ import {
   SpriteCanvasIcon,
 } from './SatchelCanvases';
 
+/**
+ * Props for the Pilot Satchel Loadout Tab component.
+ */
 export interface SatchelLoadoutTabProps {
   state: OrionState;
   isCheatMode: boolean;
@@ -67,6 +70,11 @@ export interface SatchelLoadoutTabProps {
   onOpenInventoryTab: () => void;
 }
 
+/**
+ * Pilot Satchel Loadout Tab displaying Main Hand (Right), Side Hand (Left), and Auxiliary (Back)
+ * weapon/equipment slots, composite mech preview, and action slot bindings.
+ * Supports both HUD modes inside the Pilot Satchel overlay. Mutates `state: OrionState` when equipping/swapping items.
+ */
 export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
   state,
   isCheatMode,
@@ -134,6 +142,8 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
               arms={currentArmsName}
               plating={currentPlatingName}
               weaponId={slot1Id}
+              sideWeaponId={slot2Id}
+              auxWeaponId={slot3Id}
             />
             <div>
               <div className="flex items-center gap-1.5">
@@ -345,24 +355,24 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
               {
                 slotIdx: 0,
                 slotKey: 'slot1' as const,
-                label: 'MAIN HAND',
-                sub: mainGrip === '2h' ? '2H Power Stance → ac1–ac5' : '1H Grip → ac1–ac3',
+                label: 'MAIN HAND (RIGHT)',
+                sub: mainGrip === '2h' ? '2H Power Stance → ac1–ac5' : 'Right Hand 1H → ac1–ac3',
                 wId: slot1Id,
               },
               {
                 slotIdx: 1,
                 slotKey: 'slot2' as const,
-                label: 'SIDE HAND',
+                label: 'SIDE HAND (LEFT)',
                 sub: !slot2Id
                   ? 'None Equipped → Main Hand Auto-2H'
-                  : 'Off-Hand Weapon / Aux / Consumable',
+                  : 'Left Hand Off-Hand / Aux / Consumable',
                 wId: slot2Id || '',
               },
               {
                 slotIdx: 2,
                 slotKey: 'slot3' as const,
-                label: 'AUXILIARY',
-                sub: 'Swaps with Side Hand via [L]',
+                label: 'AUXILIARY (BACK)',
+                sub: 'Back Mount · Swaps with Side Hand via [L]',
                 wId: slot3Id || '',
               },
             ] as const

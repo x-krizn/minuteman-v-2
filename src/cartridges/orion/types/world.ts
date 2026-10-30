@@ -310,6 +310,21 @@ export interface MapDefinition {
   zoneFeatures?: ZoneFeatureSpec[];
 }
 
+export type WorldMapAccessMode = 'none' | 'menu' | 'campfire' | 'waygate';
+
+export interface WorldMapNodeCoord {
+  /** Normalized X percentage (0..100) on the cosmic World Map orb */
+  xPct: number;
+  /** Normalized Y percentage (0..100) on the cosmic World Map orb */
+  yPct: number;
+  /** Coordinate index code shown on map-v0 (e.g. '1'..'8' major, '1'..'7' minor, '1'..'10' unstable) */
+  mapCode: string;
+  /** Visual node scale matching map-v0_84bf584d.png */
+  nodeSize: UniverseWorldTier;
+  /** Optional secondary node label */
+  label?: string;
+}
+
 export interface UniverseWorldDefinition {
   id: string;
   index?: number;
@@ -324,6 +339,10 @@ export interface UniverseWorldDefinition {
   hasZoneDocs: boolean;
   regionIds: string[];
   lore: string;
+  /** Primary coordinate node on the Cosmic World Map orb (worldMap_77ef03c9.png / map-v0_84bf584d.png) */
+  mapCoord: WorldMapNodeCoord;
+  /** Optional secondary satellite / drift nodes sharing this world's index on map-v0 */
+  driftCoords?: WorldMapNodeCoord[];
 }
 
 export interface WaystationNode {

@@ -1,8 +1,13 @@
-// ─── ARMS & WEAPON MOUNTS SPRITE SHEETS (64×64: 4 cols × 4 directional rows) ─
-// Col 0 (Frame 1): Grounded Idle
-// Cols 1, 2, 3 (Frames 2, 3, 4): Magic-Current Glide Windup / Glide (3 ↔ 2) / Boost (4)
-// Rows 0..3: South (0), West (1), East (2), North (3)
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
+/**
+ * Base64-encoded `64x64` (`4 cols x 4 directional rows`, `16x16` px per cell) sprite sheets
+ * for Mech Arms & Weapon Mounts (`Col 0`: Grounded Idle; `Cols 1..3`: Magic-Current Glide
+ * Windup / Glide / Boost; `Rows 0..3`: `S`, `W`, `E`, `N`).
+ */
 export const arms_bwi_twinstrike =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAABgUlEQVR42u2Z3Q2DMAyEM0k3YAM26GNX6EydqTP1pRVVjdSI2E4OECb3SXlAcHZ+W86kRAjJeV2vb2nd6R/D8H6O49ym65706X65fEXSpuue9OmW0lckbbruST8HkdZyBpf0siJ75893RPVMVgt/2zDvvKzIHvmXdkJt/r9OI+cQ+Tdq7vgRCNtxQgghhJA1vHX0ugLkrcPXBVBvHb4ugHrrU9QFar157gC3qCt48suKQ/nzQK0OUFZi69y5fYZXfg0vjpzfU9hp1gQIIYQQEs77d3k/98/5fctbH0lfmgC1NuD5nqe920fXu11byWFF1yevdSwl8upLBslrnLSBWjHU+94OIAOQbaptYU8MbQKg+NYDEqRVbxUn5YesNb8Ww1UYtTqADgClubpLCCGEENp561N5ZD8/vSB59YsvU2eqB7Tow/t52A6H9/Nr2GGkHuA1Kmg9QTNcVgx1kr0DKHXA6+cRu+rJYU0AFNx6xrMFkYLF5p/boTN0gPiEEEIq+QA5Kd7+2tsf1AAAAABJRU5ErkJggg==';
 

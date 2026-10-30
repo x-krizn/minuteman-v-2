@@ -19,24 +19,42 @@ import {
   resolveToastPlacement,
 } from './hud/HudSkillDeck';
 import { HudTitleModal } from './hud/HudTitleModal';
+import { SatchelWorldTab } from './satchel/SatchelWorldTab';
 
+/**
+ * Orchestrates the React overlay HUD (`useStandardResolutionHud !== false`), the Title Menu modal
+ * (`atTitleMenu`), and the Cosmic World Map modal (`worldMapModalMode`).
+ * Supports the React overlay HUD for live cockpit telemetry (`HudDefenseBars`, `HudSkillDeck`)
+ * and both HUD modes for modal overlays (`HudTitleModal`, `SatchelWorldTab`, context menus).
+ * Mutates `state: OrionState` when opening/closing modals or executing context menu options.
+ */
 export const OrionHud: React.FC = () => {
   const [, setTick] = useState(0);
   const [showPilotModal, setShowPilotModal] = useState(false);
   const [titleTab, setTitleTab] = useState<'new' | 'load'>('new');
 
   useEffect(() => {
-    let animId: number;
+    let animId = 0;
+    let cancelled = false;
     let lastTime = 0;
+    const scheduleNextFrame = () => {
+      if (!cancelled) {
+        animId = requestAnimationFrame(loop);
+      }
+    };
     const loop = (t: number) => {
+      if (cancelled) return;
       if (t - lastTime >= 32) {
         lastTime = t;
         setTick((prev) => (prev + 1) % 10000);
       }
-      animId = requestAnimationFrame(loop);
+      scheduleNextFrame();
     };
-    animId = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(animId);
+    scheduleNextFrame();
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(animId);
+    };
   }, []);
 
   const state = getOrionStateRef();
@@ -53,6 +71,46 @@ export const OrionHud: React.FC = () => {
         setShowPilotModal={setShowPilotModal}
         forceRerender={() => setTick((t) => t + 1)}
       />
+    );
+  }
+
+  // If the Cosmic World Map modal was opened via Campfire ('campfire'), Waygate ('waygate'), or Menu ('menu')
+  if (state.worldMapModalMode && state.worldMapModalMode !== 'none') {
+    const isCheatMode = state.room === '-4,0' || Boolean(state.bypassProgressionGates);
+    return (
+      <aside
+        aria-label="Cosmic World Map & Fast Travel Modal"
+        className="absolute inset-0 z-40 pointer-events-auto bg-[#05070a]/95 backdrop-blur-xs flex flex-col p-2.5 sm:p-3 overflow-hidden select-none font-mono text-[#e2e8f0]"
+      >
+        <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-[#1e293b]">
+          <div className="flex items-center gap-2">
+            <span className="text-xs sm:text-sm font-black tracking-wider text-[#e9d5ff]">
+              🪐 PROJECT ORION — u00 COSMIC WORLD MAP
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              state.worldMapModalMode = 'none';
+              soundSystem.playMenuBeep();
+              setTick((t) => t + 1);
+            }}
+            className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#facc15] border border-[#475569] rounded-xs text-[9.5px] font-bold cursor-pointer"
+          >
+            ✕ CLOSE MAP [B]
+          </button>
+        </div>
+
+        <SatchelWorldTab
+          state={state}
+          isCheatMode={isCheatMode}
+          accessMode={state.worldMapModalMode}
+          onResume={() => {
+            state.worldMapModalMode = 'none';
+            setTick((t) => t + 1);
+          }}
+        />
+      </aside>
     );
   }
 
@@ -77,7 +135,11 @@ export const OrionHud: React.FC = () => {
       {/* 1. TOP BAR HUD CLUSTER (Transparent, Outlined Readouts) */}
       <HudDefenseBars
         state={state}
-        onOpenPilotModal={() => setShowPilotModal(true)}
+        onOpenPilotModal={() => {
+          state.atTitleMenu = true;
+          state.titleMenuSubView = 'root';
+          setShowPilotModal(true);
+        }}
       />
 
       {/* 2. INTERACTABLE CONTEXT MENU OVERLAY */}

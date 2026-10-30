@@ -1,9 +1,13 @@
-// ─── BARREL RE-EXPORT FOR PER-PIECE ARMOR SPRITE SHEETS ──────────────────────
-// Individual 64×64 piece sheets live in their respective equipment slot modules:
-// - ./plating/sprites.ts
-// - ./arms/sprites.ts
-// - ./head/sprites.ts
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
-export * from './plating/sprites';
+/**
+ * Barrel re-export for `64x64` (`4 cols x 4 directional rows` at `16x16` px per cell)
+ * mech armor piece sprite sheets across Coreplate (`./plating/sprites`),
+ * Arms (`./arms/sprites`), and Head/Optics (`./head/sprites`).
+ */
 export * from './arms/sprites';
 export * from './head/sprites';
+export * from './plating/sprites';

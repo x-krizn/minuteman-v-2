@@ -1,8 +1,13 @@
-// ─── HEAD & OPTICS SPRITE SHEETS (64×64: 4 cols × 4 directional rows) ────────
-// Col 0 (Frame 1): Grounded Idle
-// Cols 1, 2, 3 (Frames 2, 3, 4): Magic-Current Glide Windup / Glide (3 ↔ 2) / Boost (4)
-// Rows 0..3: South (0), West (1), East (2), North (3)
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
+/**
+ * Base64-encoded `64x64` (`4 cols x 4 directional rows`, `16x16` px per cell) sprite sheets
+ * for Mech Head & Optics modules (`Col 0`: Grounded Idle; `Cols 1..3`: Magic-Current Glide
+ * Windup / Glide / Boost; `Rows 0..3`: `S`, `W`, `E`, `N`).
+ */
 export const head_cd_g341_murmillio =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAA6klEQVR42u3bwQ2DMAyFYU/CBkzCGszUYXuhAjXItKqQ41TY5P+kHJ8LKRebIPLDc5oWvcQodf4xjktZ77CpSPb8VmAehm2tQVWoi/xXsdrH8A75vYg4ZM8DAAAAPfH009lnCaJ7aN1b/zsbIb8XKW1k6astG1CbjZA/PEI1baQnGyHfpIem/wcAAAD6nAeE6Om9N6/fqlpfL1+dlxYHJNahghommNrLq/PuDdSDBH3YIEveu4GHi7D+eIS8dwNvwfsHAAAAgHlAj98LfIatRbLnRX9soA8a9JJPPw9o0g5nngfQDgMAAACnXt5qA77aY2VcAAAAAElFTkSuQmCC';
 

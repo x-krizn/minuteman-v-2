@@ -30,10 +30,19 @@ import { SatchelInventoryTab, SatchelLoadoutTab } from './satchel/SatchelLoadout
 import { SatchelStatusTab } from './satchel/SatchelStatusTab';
 import { SatchelWorldTab } from './satchel/SatchelWorldTab';
 
+/**
+ * Props for the `OrionSatchel` (`[SELECT]` / `[SHIFT]`) Pilot Satchel overlay.
+ * Supports both the React overlay HUD and pixel canvas HUD modes.
+ */
 export interface OrionSatchelProps {
   onResume: () => void;
 }
 
+/**
+ * Renders the 5-tab Pilot Satchel (`MECH STATUS`, `LOADOUT & STANCE`, `3-LAYER BUILD`,
+ * `INVENTORY`, and `WORLD MAP`). Supports both HUD modes and mutates `state: OrionState`
+ * through its child tab components when equipping hardware, socketing feats, or using items.
+ */
 export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
   const [tab, setTab] = useState<'status' | 'weapons' | 'inventory' | 'world' | 'progression'>(
     'status'
@@ -152,7 +161,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                 : 'bg-[#0f172a] text-[#94a3b8] hover:bg-[#1e293b]'
             }`}
           >
-            {isCheatMode ? 'WORLD & FOG DEV' : 'CAMPFIRES'}
+            {isCheatMode ? 'WORLD MAP & DEV' : 'WORLD MAP'}
           </button>
           <button
             onClick={() => {
@@ -169,7 +178,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
           </button>
           {state.room === '-4,0' && (
             <span className="px-1.5 py-0.5 bg-[#4c1d95] text-[#f0abfc] border border-[#a855f7] rounded-xs text-[8.5px] font-black shrink-0">
-              CHEAT ROOM ACTIVE
+              TRAINING [-4,0]
             </span>
           )}
         </div>
@@ -256,7 +265,12 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
       )}
 
       {tab === 'world' && (
-        <SatchelWorldTab state={state} isCheatMode={isCheatMode} onResume={onResume} />
+        <SatchelWorldTab
+          state={state}
+          isCheatMode={isCheatMode}
+          onResume={onResume}
+          accessMode="menu"
+        />
       )}
     </div>
   );

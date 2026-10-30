@@ -261,6 +261,12 @@ export interface OrionState {
   isFallingIntoPit?: boolean; // Falling into abyssal sinkhole / pit
   dismissedPromptKey?: string | null; // Currently dismissed interactive prompt tile
   atTitleMenu?: boolean; // True on cartridge boot until New Game / Load Game / Continue is chosen
+  titleMenuCursor?: number; // Selected index on the main title menu (0: New, 1: Load, 2: Training, 3: Options)
+  titleMenuSubView?: 'root' | 'new' | 'load' | 'options'; // Active subview inside the Main Menu
+  titleMenuLoadCursor?: number; // Selected pilot index inside the Load Roster subview
+  titleMenuOptionCursor?: number; // Selected setting row inside the Options subview
+  /** Active World Map modal access authority: 'menu' (view-only), 'campfire' (within world), or 'waygate' (world-to-world & within world) */
+  worldMapModalMode?: 'none' | 'menu' | 'campfire' | 'waygate';
 }
 
 export interface OrionContextMenuOption {

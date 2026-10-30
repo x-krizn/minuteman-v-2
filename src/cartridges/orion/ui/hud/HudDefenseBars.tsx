@@ -37,6 +37,12 @@ interface HudDefenseBarsProps {
   onOpenPilotModal: () => void;
 }
 
+/**
+ * Renders the top cockpit telemetry bar (Three Defense Layers on the left, Sector & Æther Depth Gauge
+ * in the center, and Salvage/Light plus `Main Hand (Right)`, `Side Hand (Left)`, and `Aux (Back)` weapon
+ * readouts on the right). Supports the React overlay HUD (`useStandardResolutionHud !== false`) and
+ * mutates `state: OrionState` when cycling target lock, adjusting base light, or swapping `Side ⇄ Aux`.
+ */
 export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
   state,
   onOpenPilotModal,
@@ -69,17 +75,28 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
       ? TUTORIAL_STEP_DESCRIPTORS[state.tutorialStep as TutorialStepId]
       : null;
 
-  // Active Weapon & Equipment Slots
+  // Active Weapon & Equipment Slots: Main Hand (Right), Side Hand (Left), and Aux (Back)
   const slot1Id = state.equipmentSlots?.slot1 || state.equippedWeapons[0] || 'gladius_boltcaster';
   const slot2Id =
     state.equipmentSlots !== undefined
       ? state.equipmentSlots.slot2
       : state.equippedWeapons[1] || null;
-  const slot3Id = state.equipmentSlots?.slot3 || null;
+  const slot3Id = state.equipmentSlots?.slot3 || state.equippedWeapons[2] || null;
   const mainGrip = getEffectiveMainGrip(state);
 
   const activeWeapon = getWeaponDefinition(slot1Id);
-  const activeWeaponName = `${activeWeapon?.name || 'Gladius Boltcaster'}${mainGrip === '2h' ? ' (2h)' : ''}`;
+  const activeWeaponName = `${activeWeapon?.name || 'Gladius Boltcaster'}${mainGrip === '2h' ? ' (2H)' : ' (1H)'}`;
+  const sideDisplayName = slot2Id
+    ? `${getWeaponDefinition(slot2Id)?.name || getItemDefinition(slot2Id)?.name || slot2Id}${
+        mainGrip === '2h' && slot2Id === slot1Id ? ' (2H)' : ''
+      }`
+    : mainGrip === '2h'
+      ? '2H Grip'
+      : 'Empty';
+  const auxDisplayName = slot3Id
+    ? getWeaponDefinition(slot3Id)?.name || getItemDefinition(slot3Id)?.name || slot3Id
+    : 'Empty';
+
   const isKhopesh = slot1Id === 'khopesh';
   const ammo = state.ammo;
   const maxAmmo = state.maxAmmo || activeWeapon?.shotsPerChain || 9;
@@ -406,10 +423,10 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
         ) : null}
       </section>
 
-      {/* RIGHT CLUSTER: Munitions & Salvage (Transparent, Outlined) */}
+      {/* RIGHT CLUSTER: Munitions, Salvage & 3-Slot Weapon Readout (Main [R], Side [L], Aux [Back]) */}
       <section
         aria-label="Munitions & Salvage"
-        className={`flex flex-col items-end gap-0.5 max-w-[145px] bg-transparent ${OUTLINED_TEXT}`}
+        className={`flex flex-col items-end gap-0.5 max-w-[155px] bg-transparent ${OUTLINED_TEXT}`}
       >
         {/* Salvage Scrap, Gemstone Counter & Modifiable Player Light Stat */}
         <div className="flex items-center gap-1 text-[8.5px] font-bold bg-transparent">
@@ -451,8 +468,15 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
           </div>
         </div>
 
-        {/* Active Weapon & Segmented Ammo Pips */}
-        <div className="flex flex-col items-end bg-transparent w-full">
+        {/* Main Hand (Right), Side Hand (Left), and Aux (Back) Readouts + Segmented Ammo Pips */}
+        <div className="flex flex-col items-end bg-transparent w-full gap-0.5">
+          {/* 1. MAIN HAND (RIGHT) */}
+          <div className="flex items-center justify-end gap-1 max-w-full text-[8px] font-bold leading-none">
+            <span className="text-[#fde047] shrink-0">R·MAIN:</span>
+            <span className="text-[#f8fafc] truncate">{activeWeaponName}</span>
+          </div>
+
+          {/* 2. SIDE HAND (LEFT) */}
           <button
             type="button"
             onClick={() => {
@@ -463,21 +487,30 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
                 },
               });
             }}
-            className="pointer-events-auto text-[8.5px] font-bold text-[#f1f5f9] hover:text-[#fbbf24] tracking-wider truncate max-w-full cursor-pointer bg-transparent"
-            title={
-              slot3Id || slot2Id
-                ? `Main: ${activeWeaponName} · Click [L] to swap Side (${slot2Id ? getWeaponDefinition(slot2Id)?.name || getItemDefinition(slot2Id)?.name || slot2Id : 'Empty'}) ⇄ Aux (${slot3Id ? getWeaponDefinition(slot3Id)?.name || getItemDefinition(slot3Id)?.name || slot3Id : 'Empty'})`
-                : activeWeaponName
-            }
+            title="Side Hand (Left) · Click or Hold [L] to swap Side (Left) ⇄ Aux (Back)"
+            className="pointer-events-auto flex items-center justify-end gap-1 max-w-full text-[7px] font-bold leading-none hover:text-[#fbbf24] cursor-pointer bg-transparent"
           >
-            {activeWeaponName}
+            <span className="text-[#38bdf8] shrink-0">L·SIDE:</span>
+            <span className="text-[#cbd5e1] truncate">{sideDisplayName}</span>
           </button>
-          {slot2Id && (
-            <div className="text-[7px] text-[#94a3b8] truncate max-w-full">
-              {getWeaponDefinition(slot2Id)?.name || getItemDefinition(slot2Id)?.name || slot2Id}
-              {mainGrip === '2h' && slot2Id === slot1Id ? ' (2h)' : ''}
-            </div>
-          )}
+
+          {/* 3. AUXILIARY (BACK) */}
+          <button
+            type="button"
+            onClick={() => {
+              performAuxiliarySwap(state, {
+                say: (txt) => {
+                  state.toastText = txt;
+                  state.toastTimer = 2.2;
+                },
+              });
+            }}
+            title="Auxiliary (Back) · Click or Hold [L] to swap Side (Left) ⇄ Aux (Back)"
+            className="pointer-events-auto flex items-center justify-end gap-1 max-w-full text-[7px] font-bold leading-none hover:text-[#fbbf24] cursor-pointer bg-transparent"
+          >
+            <span className="text-[#c084fc] shrink-0">B·AUX:</span>
+            <span className="text-[#cbd5e1] truncate">{auxDisplayName}</span>
+          </button>
 
           {isReloading ? (
             <div className="text-[8.5px] text-[#f59e0b] font-black tracking-wider animate-pulse mt-0.5">

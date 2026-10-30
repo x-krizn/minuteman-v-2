@@ -25,8 +25,10 @@ Every critical registry, world-composer boundary, and engine hook in the codebas
 | `[ORION-ANCHOR: AETHER-FOG-TOPOLOGY]` | `src/cartridges/orion/systems/world/worldTransitions.ts` | 5-node Æther Fog graph engine (`key`, `general`, `side`, `loop`, `end`) and `maxDepth = clvl + 1` loop scaling. |
 | `[ORION-ANCHOR: ROOM-TRANSITION-GATE]` | `src/cartridges/orion/systems/world/worldTransitions.ts` | `transitionViaAetherDoor()` handling room-to-room doorway alignment, area banners, and dynamic enemy/feature spawning. |
 | `[ORION-ANCHOR: WAYSTATION-WAYGATE-TRAVEL]` | `src/cartridges/orion/systems/world/worldTransitions.ts` | `fastTravelToWaystation()` and Colossal Waygate inter-region / inter-world teleportation & armor repair. |
+| `[ORION-ANCHOR: CONTEXTUAL-LOOT-TABLES]` | `src/cartridges/orion/systems/world/worldPersistence.ts` | `ENEMY_EQUIPMENT_DROP_POOLS` and `resolveContextualEquipmentDrop()` hierarchical loot table resolution (`Enemy → Room → Area → Region`). |
 | `[ORION-ANCHOR: ENTITY-SPAWN-ROOM]` | `src/cartridges/orion/systems/entitySystem.ts` | `spawnRoomEnemies()` parsing `10 × 9` room ASCII grids using `resolveRoomEnemyTypeAtChar(char, state.biomeId)`. |
 | `[ORION-ANCHOR: RENDER-CLUSTER-BAKE]` | `src/cartridges/orion/systems/render/worldRenderer.ts` | `bakeBiomeClusterTileset()` offscreen sub-tile micro-composer baking 20 separated `3×3` biome clusters (`ruins_tileset` & `bog_tileset`). |
+| `[ORION-ANCHOR: RENDER-VISION-LIGHTING]` | `src/cartridges/orion/systems/render/effectsRenderer.ts` | `resolveRoomLightingProfile()` dynamic vision radius (`baseLight` tiles), raycast wall/tree shadow occlusion, and static campfire/lantern light anchors. |
 | `[ORION-ANCHOR: RENDER-POST-PROCESS]` | `src/cartridges/orion/systems/render/effectsRenderer.ts` | `drawDynamicLightingAndBloomPass()` 5-pass 2.5D lighting, water reflection, 1px outline, blade trail, and weather pipeline. |
 | `[ORION-ANCHOR: PROG-LEVEL-SEQUENCE]` | `src/cartridges/orion/database/progression/index.ts` | `LEVEL_UNLOCK_SEQUENCE` (`Levels 1–20`) onboarding & expression milestones. |
 | `[ORION-ANCHOR: PROG-SKILL-SCALING]` | `src/cartridges/orion/database/progression/index.ts` | `PILOT_SKILL_DEFINITIONS` (`6 Combat Discipline Skills`, `Lv 1–20`, funded by Discipline + Reactor Gemstones). |
@@ -45,6 +47,7 @@ All game data lives inside `src/cartridges/orion/database/`, domain types live i
 src/cartridges/orion/
 ├── docs/                         # Consolidated Canonical Design & Authoring Docs
 │   ├── INDEX.md                  # Narrative worldbuilding, Belldor stages & doc index
+│   ├── CODE_RULES.md             # Engineering & AI authoring rules (commenting, modularity, memory/network safety)
 │   ├── AUTHORING_GUIDE.md        # Technical architecture & content authoring manual
 │   ├── EQUIPMENT_AND_FEATS.md    # 29 Magitech weapons, hardware & 97 canonical feats
 │   └── INERTIA_SYSTEM.md         # Inertia v0.1 physics & stability specification

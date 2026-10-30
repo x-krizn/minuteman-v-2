@@ -288,7 +288,7 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({ state, setToas
   };
 
   return (
-    <div className="space-y-4">
+    <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1 pb-2">
       {/* Header Banner: Standard Progression Gate Status */}
       <div
         className={`rounded-lg border p-3 ${

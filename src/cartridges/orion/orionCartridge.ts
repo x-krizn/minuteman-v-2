@@ -250,29 +250,12 @@ export function createOrionCartridge(): Cartridge {
               }
             }
           } else if (subView === 'options') {
-            const optIdx = Math.max(0, Math.min(1, state.titleMenuOptionCursor ?? 0));
             if (p.b) {
               state.titleMenuSubView = 'root';
               soundSystem.playMenuBeep();
-            } else if (p.up || p.down) {
-              state.titleMenuOptionCursor = optIdx === 0 ? 1 : 0;
-              soundSystem.playMenuBeep();
-            } else if (p.left) {
-              if (optIdx === 0) {
-                state.useStandardResolutionHud = !(state.useStandardResolutionHud ?? true);
-                soundSystem.playSelect();
-              } else {
-                state.baseLight = Math.max(2, (state.baseLight ?? 5) - 1);
-                soundSystem.playMenuBeep();
-              }
-            } else if (p.right || p.a) {
-              if (optIdx === 0) {
-                state.useStandardResolutionHud = !(state.useStandardResolutionHud ?? true);
-                soundSystem.playSelect();
-              } else {
-                state.baseLight = Math.min(12, (state.baseLight ?? 5) + 1);
-                soundSystem.playMenuBeep();
-              }
+            } else if (p.left || p.right || p.a) {
+              state.useStandardResolutionHud = !(state.useStandardResolutionHud ?? true);
+              soundSystem.playSelect();
             }
           }
         }

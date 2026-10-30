@@ -245,8 +245,12 @@ export interface OrionState {
   clearedDeepFogDungeons?: Record<string, boolean>;
 
   // Feedback, Light, Fog-of-War Exploration & Interactable Context Menu
-  /** Base player Light stat in tiles (defaults to 5 tiles = half one screen) */
+  /** Base player Light stat in tiles (defaults to 5 tiles = half one screen; modified by feats, items, skills, and spells) */
   baseLight?: number;
+  /** Temporary Light stat modifier in tiles from active skills, spells, or status effects */
+  lightBuffDelta?: number;
+  /** Remaining duration in seconds for `lightBuffDelta` */
+  lightBuffTimer?: number;
   /** Base enemy Light / Vision radius stat in tiles (defaults to 5 tiles = half one screen) */
   enemyBaseLight?: number;
   /** Persistent explored tile coordinates per room (`exploredTiles[roomKey]["tx,ty"] = true`) */

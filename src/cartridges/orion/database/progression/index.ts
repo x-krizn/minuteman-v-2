@@ -19,7 +19,6 @@ import {
   WeaponWeightClass,
 } from '../../types';
 import { TRAIT_REGISTRY } from '../characters';
-import { GEMSTONE_CATALOG, GEMSTONE_REGISTRY, TRAIT_FUNDING_GEMS } from '../items/gemstones';
 import {
   CANONICAL_HARDWARE_CATALOG,
   CanonicalHardwareItemDefinition,
@@ -28,6 +27,9 @@ import {
   findHardwareItemByNameOrId,
   resolveEquippedHardwareStats,
 } from '../equipment/chassis_hardware';
+import { getWeaponDefinition } from '../equipment/weapons';
+import { getItemDefinition } from '../items';
+import { GEMSTONE_CATALOG, GEMSTONE_REGISTRY, TRAIT_FUNDING_GEMS } from '../items/gemstones';
 import { CANONICAL_FRAME_FEAT_CATALOG } from './canonical_feats';
 
 export {
@@ -1711,35 +1713,110 @@ export function getEquippedFeatCountByTier(state: OrionState, tier: FeatTier): n
 }
 
 /**
- * Computes the player's effective Light stat in tiles (base 5 = half one screen).
- * Modifiable via `state.baseLight`, Poe Lantern guidance (+1), Head Optics at Lv3+ (+0.5),
- * active Optic Pulse (+1.5), and socketed Optics & Support feats (+0.5 each).
+ * Structured stat breakdown for the pilot's derived Light stat (in tiles; base 5 = half one screen).
  */
-export function computeEffectivePlayerLightTiles(state: OrionState): number {
-  const baseTiles =
+export interface PlayerLightStatBreakdown {
+  baseLight: number;
+  featBonus: number;
+  hardwareAndItemBonus: number;
+  skillAndSpellBonus: number;
+  effectiveLight: number;
+}
+
+/**
+ * Computes the player's derived Light stat breakdown from base Light (`5.0` tiles) plus
+ * Feats, Hardware/Weapons/Items (e.g. Head Optics, Poe Lantern, Sensory Arrays), and active Skills/Spells.
+ * Does not mutate `state: OrionState`.
+ */
+export function computePlayerLightStatBreakdown(
+  state: OrionState
+): PlayerLightStatBreakdown {
+  const baseLight =
     typeof state.baseLight === 'number' && state.baseLight > 0 ? state.baseLight : 5;
+
+  // 1. Feats & Action Modifications
+  let featBonus = 0;
+  for (const id of state.equippedFeats || []) {
+    const f = FRAME_FEAT_CATALOG.find((item) => item.id === id);
+    if (!f) continue;
+    if (typeof f.modifiers?.lightDelta === 'number') {
+      featBonus += f.modifiers.lightDelta;
+    } else if (f.synergyCategory === 'Optics & Support') {
+      featBonus += 0.5;
+    }
+  }
+  const installedMods = state.equipmentSlots?.installedMods || {};
+  for (const modId of Object.values(installedMods)) {
+    const mod = ACTION_MODIFICATION_CATALOG.find((m) => m.id === modId);
+    if (typeof mod?.modifiers?.lightDelta === 'number') {
+      featBonus += mod.modifiers.lightDelta;
+    }
+  }
+
+  // 2. Hardware, Weapons & Relics / Items (Head Optics, Sensory Arrays, Weapons, Poe Lantern)
+  const hwStats = resolveEquippedHardwareStats(state);
   const hasUnlockedOpticsHead =
     (state.level >= 3 || Boolean(state.bypassProgressionGates)) &&
     Boolean(state.flags?.optics_boost_enabled);
-  const isOpticPulseActive = (state.opticMarkTimer || 0) > 0;
   const hasLantern = Boolean(
     state.flags?.poe_lantern_gift || state.flags?.poe_state === 'helped'
   );
-  const opticsFeatCount = (state.equippedFeats || []).filter((id) => {
-    const f = FRAME_FEAT_CATALOG.find((item) => item.id === id);
-    return f?.synergyCategory === 'Optics & Support';
-  }).length;
+  let weaponAndItemBonus = 0;
+  for (const slotId of [
+    state.equipmentSlots?.slot1,
+    state.equipmentSlots?.slot2,
+    state.equipmentSlots?.slot3,
+    state.equipmentSlots?.utility,
+  ]) {
+    if (!slotId) continue;
+    const wDef = getWeaponDefinition(slotId);
+    if (typeof wDef?.passiveLightBonus === 'number') {
+      weaponAndItemBonus += wDef.passiveLightBonus;
+    }
+    const iDef = getItemDefinition(slotId);
+    if (typeof iDef?.lightBonus === 'number') {
+      weaponAndItemBonus += iDef.lightBonus;
+    }
+  }
 
-  const totalTiles =
-    baseTiles +
+  const hardwareAndItemBonus =
+    hwStats.hardwareLightBonus +
     (hasUnlockedOpticsHead ? 0.5 : 0) +
     (hasLantern ? 1.0 : 0) +
-    (isOpticPulseActive ? 1.5 : 0) +
-    opticsFeatCount * 0.5;
+    weaponAndItemBonus;
 
-  return Math.max(1, Number(totalTiles.toFixed(2)));
+  // 3. Active Skills, Spells & Temporary Buffs
+  const isOpticPulseActive = (state.opticMarkTimer || 0) > 0;
+  const activeSpellBuff =
+    (state.lightBuffTimer || 0) > 0 && typeof state.lightBuffDelta === 'number'
+      ? state.lightBuffDelta
+      : 0;
+  const skillAndSpellBonus = (isOpticPulseActive ? 1.5 : 0) + activeSpellBuff;
+
+  const totalTiles =
+    baseLight + featBonus + hardwareAndItemBonus + skillAndSpellBonus;
+
+  return {
+    baseLight: Number(baseLight.toFixed(2)),
+    featBonus: Number(featBonus.toFixed(2)),
+    hardwareAndItemBonus: Number(hardwareAndItemBonus.toFixed(2)),
+    skillAndSpellBonus: Number(skillAndSpellBonus.toFixed(2)),
+    effectiveLight: Math.max(1, Number(totalTiles.toFixed(2))),
+  };
 }
 
+/**
+ * Computes the player's effective Light stat in tiles (base 5 = half one screen),
+ * modified by Feats, Hardware, Items, Skills, and Spells. Does not mutate `state: OrionState`.
+ */
+export function computeEffectivePlayerLightTiles(state: OrionState): number {
+  return computePlayerLightStatBreakdown(state).effectiveLight;
+}
+
+/**
+ * Applies a delta to the player's base Light stat (used by effects or sandbox tools).
+ * Mutates `state: OrionState` (`state.baseLight`).
+ */
 export function adjustPlayerBaseLight(state: OrionState, delta: number): number {
   const current = typeof state.baseLight === 'number' && state.baseLight > 0 ? state.baseLight : 5;
   const next = Math.max(1, Math.min(12, Number((current + delta).toFixed(1))));
@@ -1747,6 +1824,10 @@ export function adjustPlayerBaseLight(state: OrionState, delta: number): number 
   return next;
 }
 
+/**
+ * Applies a delta to the enemy base Light / vision radius stat.
+ * Mutates `state: OrionState` (`state.enemyBaseLight` and active enemy `visionRadiusTiles`).
+ */
 export function adjustEnemyBaseLight(state: OrionState, delta: number): number {
   const current =
     typeof state.enemyBaseLight === 'number' && state.enemyBaseLight > 0
@@ -2047,6 +2128,7 @@ export function computeInterfaceFeatModifiers(equippedFeats: string[]): {
   armorDurabilityDelta: number;
   cooldownMult: number;
   accuracyMult: number;
+  lightDelta: number;
 } {
   let damageMult = 1.0;
   let heatGenMult = 1.0;
@@ -2057,6 +2139,7 @@ export function computeInterfaceFeatModifiers(equippedFeats: string[]): {
   let armorDurabilityDelta = 0;
   let cooldownMult = 1.0;
   let accuracyMult = 1.0;
+  let lightDelta = 0;
 
   for (const featId of equippedFeats) {
     const feat = FRAME_FEAT_CATALOG.find((f) => f.id === featId);
@@ -2071,6 +2154,7 @@ export function computeInterfaceFeatModifiers(equippedFeats: string[]): {
     if (m.armorDurabilityDelta) armorDurabilityDelta += m.armorDurabilityDelta;
     if (m.cooldownMult) cooldownMult *= m.cooldownMult;
     if (m.accuracyMult) accuracyMult *= m.accuracyMult;
+    if (m.lightDelta) lightDelta += m.lightDelta;
   }
 
   return {
@@ -2083,5 +2167,6 @@ export function computeInterfaceFeatModifiers(equippedFeats: string[]): {
     armorDurabilityDelta,
     cooldownMult,
     accuracyMult,
+    lightDelta,
   };
 }

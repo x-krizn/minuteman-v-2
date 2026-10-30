@@ -1449,6 +1449,12 @@ export function updatePlayerSystem(
   if ((state.lastInertiaOutcomeTimer || 0) > 0) {
     state.lastInertiaOutcomeTimer = Math.max(0, (state.lastInertiaOutcomeTimer || 0) - dt);
   }
+  if ((state.lightBuffTimer || 0) > 0) {
+    state.lightBuffTimer = Math.max(0, (state.lightBuffTimer || 0) - dt);
+    if (state.lightBuffTimer <= 0) {
+      state.lightBuffDelta = 0;
+    }
+  }
 
   const recoilMult =
     (state.recoilRestrictionTimer || 0) > 0 ? (state.recoilSpeedMult ?? 0.8) : 1.0;

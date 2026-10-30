@@ -96,6 +96,8 @@ export interface FrameFeatDefinition {
     armorDurabilityDelta?: number;
     cooldownMult?: number;
     accuracyMult?: number;
+    /** Flat Light stat modifier in tiles (e.g. +0.5 or +1.0) */
+    lightDelta?: number;
   };
 }
 
@@ -116,6 +118,8 @@ export interface ActionModificationDefinition {
     cooldownMult?: number;
     stabilityBonus?: number;
     enableInertiaHudTelemetry?: boolean;
+    /** Flat Light stat modifier in tiles */
+    lightDelta?: number;
   };
 }
 
@@ -237,6 +241,8 @@ export interface WeaponDefinition {
   canBlock?: boolean;
   /** Passive Shield Capacity bonus when equipped (e.g. Heater / Buckler / Pavise shields) */
   passiveShieldBonus?: number;
+  /** Passive Light stat bonus in tiles when equipped in Main Hand, Side Hand, or Aux */
+  passiveLightBonus?: number;
   /** Default blade trail or projectile color when unmodified */
   bladeTrailColor?: string;
   description: string;
@@ -279,6 +285,8 @@ export interface ItemWikiDefinition {
   buyPrice: number;
   sellPrice: number;
   iconColor: string;
+  /** Passive Light stat bonus in tiles when equipped or carried */
+  lightBonus?: number;
   /** Optional embedded Base64 PNG or spritesheet icon for world pickups and satchel UI */
   iconSprite?: Base64SpriteConfig;
   /** Optional custom callback when collected from a world pickup */

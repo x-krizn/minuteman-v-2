@@ -61,6 +61,8 @@ export interface CanonicalHardwareItemDefinition {
   armorRating?: number;
   armorDurability?: number;
   shieldBonus?: number;
+  /** Passive Light stat bonus in tiles granted by this hardware component (e.g. Head Optics, Sensory Array) */
+  lightBonus?: number;
   reactorFamily?: 'Ichor' | 'Mana' | 'Ether';
   linkedActionId: string;
   description: string;
@@ -122,6 +124,7 @@ export function resolveEquippedHardwareStats(state: OrionState): {
   baseShieldCapacity: number;
   hardwareShieldBonus: number;
   hardwareArmorBonus: number;
+  hardwareLightBonus: number;
   reactorFamily: 'Ichor' | 'Mana' | 'Ether';
 } {
   const fallbackProfile = TRAIT_REGISTRY[state.traitLine] || TRAIT_REGISTRY.Warrior;
@@ -131,6 +134,10 @@ export function resolveEquippedHardwareStats(state: OrionState): {
   const equippedAux3Item = findHardwareItemByNameOrId(state.equipmentSlots?.aux3);
   const equippedAux4Item = findHardwareItemByNameOrId(state.equipmentSlots?.aux4);
   const equippedHeadItem = findHardwareItemByNameOrId(state.equipmentSlots?.head);
+  const equippedArmsItem = findHardwareItemByNameOrId(state.equipmentSlots?.arms);
+  const equippedLegsItem = findHardwareItemByNameOrId(state.equipmentSlots?.legs);
+  const equippedSensoryA = findHardwareItemByNameOrId(state.equipmentSlots?.sensoryA);
+  const equippedSensoryB = findHardwareItemByNameOrId(state.equipmentSlots?.sensoryB);
 
   const baseLoadCapacity: FrameLoadCapacity =
     equippedTorsoItem?.baseLoadCapacity ||
@@ -154,10 +161,25 @@ export function resolveEquippedHardwareStats(state: OrionState): {
 
   let hardwareShieldBonus = 0;
   let hardwareArmorBonus = 0;
+  let hardwareLightBonus = 0;
 
   for (const aux of [equippedAux3Item, equippedAux4Item, equippedHeadItem]) {
     if (aux?.shieldBonus) hardwareShieldBonus += aux.shieldBonus;
     if (aux?.armorDurability) hardwareArmorBonus += aux.armorDurability;
+  }
+
+  for (const hw of [
+    equippedTorsoItem,
+    equippedReactorItem,
+    equippedHeadItem,
+    equippedArmsItem,
+    equippedLegsItem,
+    equippedSensoryA,
+    equippedSensoryB,
+    equippedAux3Item,
+    equippedAux4Item,
+  ]) {
+    if (hw?.lightBonus) hardwareLightBonus += hw.lightBonus;
   }
 
   const reactorFamily: 'Ichor' | 'Mana' | 'Ether' =
@@ -172,6 +194,7 @@ export function resolveEquippedHardwareStats(state: OrionState): {
     baseShieldCapacity,
     hardwareShieldBonus,
     hardwareArmorBonus,
+    hardwareLightBonus,
     reactorFamily,
   };
 }

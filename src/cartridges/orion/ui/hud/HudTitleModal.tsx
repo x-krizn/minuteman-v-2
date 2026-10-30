@@ -644,50 +644,6 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
                     {(state.useStandardResolutionHud ?? true) ? 'HI-RES ON' : 'MINIMAL'}
                   </button>
                 </div>
-
-                <div
-                  onClick={() => {
-                    state.titleMenuOptionCursor = 1;
-                    forceRerender();
-                  }}
-                  className={`p-2 rounded-xs flex items-center justify-between border ${
-                    optionCursor === 1
-                      ? 'bg-[#1e293b] border-[#3b82f6]'
-                      : 'bg-[#0b111e]/95 border-[#334155]'
-                  }`}
-                >
-                  <div>
-                    <div className="font-bold text-[#fde68a]">BASE LIGHT STAT (VISION)</div>
-                    <div className="text-[8px] text-[#94a3b8]">Default 5 tiles (~half screen)</div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        state.baseLight = Math.max(2, (state.baseLight ?? 5) - 1);
-                        soundSystem.playMenuBeep();
-                        forceRerender();
-                      }}
-                      className="px-2 py-0.5 bg-[#0f172a] text-white border border-[#475569] rounded-xs font-bold cursor-pointer"
-                    >
-                      -
-                    </button>
-                    <span className="px-1.5 font-bold text-[#fde047]">
-                      {state.baseLight ?? 5}T
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        state.baseLight = Math.min(12, (state.baseLight ?? 5) + 1);
-                        soundSystem.playMenuBeep();
-                        forceRerender();
-                      }}
-                      className="px-2 py-0.5 bg-[#0f172a] text-white border border-[#475569] rounded-xs font-bold cursor-pointer"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
               </div>
 
               <div className="p-2 bg-[#0b111e]/95 border border-[#334155] rounded-xs space-y-1">

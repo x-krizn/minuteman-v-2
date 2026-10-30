@@ -245,14 +245,6 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({ state, setToas
     forceRefresh();
   };
 
-  const handleAdjustBaseLight = (delta: number) => {
-    const nextLight = Math.max(2, Math.min(12, baseLightTiles + delta));
-    state.baseLight = nextLight;
-    soundSystem.playSelect();
-    notifyToast(`BASE LIGHT STAT SET TO ${nextLight} TILES (${nextLight * 16}PX)`);
-    forceRefresh();
-  };
-
   const handleAdjustCheatSkillLevel = (skillId: PilotSkillId, delta: number) => {
     state.pilotSkills = normalizePilotSkills(state.pilotSkills);
     const current = state.pilotSkills[skillId]?.level || 1;
@@ -335,32 +327,12 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({ state, setToas
             </div>
             <div className="px-2 py-1 rounded bg-[#0b1320] border border-[#1e293b] flex items-center gap-1.5">
               <span className="text-[#94a3b8]">LIGHT:</span>{' '}
-              {isCheatMode && (
-                <button
-                  type="button"
-                  onClick={() => handleAdjustBaseLight(-1)}
-                  className="px-1 rounded bg-amber-500/20 border border-amber-400/50 text-amber-200 font-bold hover:bg-amber-500/30 cursor-pointer"
-                  title="Decrease Base Light Stat (Tiles)"
-                >
-                  -
-                </button>
-              )}
               <span
                 className="text-cyan-300 font-bold"
                 title={`Base ${baseLightTiles} tiles (${effectiveLightTiles * 16}px effective radius)`}
               >
                 {effectiveLightTiles} TILES
               </span>
-              {isCheatMode && (
-                <button
-                  type="button"
-                  onClick={() => handleAdjustBaseLight(1)}
-                  className="px-1 rounded bg-amber-500/20 border border-amber-400/50 text-amber-200 font-bold hover:bg-amber-500/30 cursor-pointer"
-                  title="Increase Base Light Stat (Tiles)"
-                >
-                  +
-                </button>
-              )}
             </div>
             <div className="px-2 py-1 rounded bg-[#0b1320] border border-[#1e293b]">
               <span className="text-[#94a3b8]">LOAD CAP:</span>{' '}

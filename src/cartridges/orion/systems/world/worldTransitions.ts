@@ -5,13 +5,17 @@
 
 import { soundSystem } from '../../../../engine/core/soundSystem';
 import {
+  AETHER_PYRAMID_DEPTHS,
   CHUNK_H_PX,
   CHUNK_W_PX,
   convertBogRoomPosToUnifiedPx,
+  deterministicAetherHash,
   getEffectiveRoomCoord,
+  getKeyBorderBranchType,
   getRoomDimensions,
   getRoomDoorwayCenterPx,
   getUnifiedBogRoomPlacement,
+  hasPoeLanternGuidance,
   isChunkedExpanseRoom,
   SUNKEN_BOG_EXPANSE_ROOM_ID,
 } from '../../constants';
@@ -39,6 +43,7 @@ import { notifyOrionStateChange, syncStateGates } from '../playerSystem';
 import {
   fastTravelFromDeepDungeonToSafeSpot,
   hibernateAllActiveExpanseEnemies,
+  regenerateWorldEnemiesAndOffPathTiles,
   updateChunkedRoomStreaming,
 } from './chunkStreamingSystem';
 import {
@@ -56,22 +61,15 @@ import {
 } from './roomLoader';
 import { getCanonicalRoomPersistenceKey } from './worldPersistence';
 
-export { getRoomDoorwayCenterPx };
+export {
+  AETHER_PYRAMID_DEPTHS,
+  getKeyBorderBranchType,
+  getRoomDoorwayCenterPx,
+  hasPoeLanternGuidance,
+};
 
 // [ORION-ANCHOR: AETHER-FOG-TOPOLOGY]
 // ─── AETHER FOG 5-NODE GRAPH ENGINE & WORLD TRANSITIONS ──────────────────────
-
-function deterministicHash(seed: number, counter: number, salt: number = 0): number {
-  let h = (seed ^ (counter * 374761393) ^ (salt * 668265263)) >>> 0;
-  h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0;
-  return (h ^ (h >>> 16)) >>> 0;
-}
-
-export function hasPoeLanternGuidance(state: OrionState): boolean {
-  return Boolean(state.flags?.poe_state === 'helped' || state.flags?.poe_lantern_gift);
-}
-
-export const AETHER_PYRAMID_DEPTHS = [0, 1, 2, 3, 2, 1, 0] as const;
 
 export function getMaxAetherFogDepth(state: OrionState): number {
   return Math.max(2, (state.level || 1) + 1);
@@ -101,18 +99,6 @@ function stepMapCoords(
     case 'N':
       return { rx, ry: ry - 1 };
   }
-}
-
-function getKeyBorderBranchType(
-  seed: number,
-  coord: string,
-  dir: AetherCardinalDir
-): AetherNodeType {
-  const coordSalt = String(coord ?? '')
-    .split('')
-    .reduce((acc, ch, idx) => acc + ch.charCodeAt(0) * (idx + 17), 0);
-  const borderHash = deterministicHash(seed, coordSalt, dir.charCodeAt(0));
-  return borderHash % 3 === 0 ? 'loop' : 'side';
 }
 
 export function ensureAetherFogGraph(state: OrionState): AetherFogGraphState {
@@ -245,18 +231,7 @@ export function resetAetherFogGraph(
     }
   }
 
-  if (state.clearedRooms) {
-    for (const key of Object.keys(state.clearedRooms)) {
-      if (
-        key.startsWith('fog:') ||
-        key.startsWith('fog_slot:loop') ||
-        key.startsWith('fog_slot:side') ||
-        key.startsWith('fog_slot:end')
-      ) {
-        delete state.clearedRooms[key];
-      }
-    }
-  }
+  regenerateWorldEnemiesAndOffPathTiles(rooms, state, false);
 
   state.fogGraph = undefined;
   const freshGraph = ensureAetherFogGraph(state);
@@ -307,7 +282,7 @@ function createDynamicAetherNode(
 ): AetherGraphNode {
   const graph = ensureAetherFogGraph(state);
   const counter = graph.nextCounter++;
-  const hashVal = deterministicHash(graph.seed, counter, moveDir.charCodeAt(0));
+  const hashVal = deterministicAetherHash(graph.seed, counter, moveDir.charCodeAt(0));
 
   const id = `fog:${nodeType}:${counter}`;
   const returnDir = getOppositeCardinalDir(moveDir);
@@ -1711,9 +1686,7 @@ export function fastTravelViaWaygate(
     return false;
   }
 
-  if (isChunkedExpanseRoom(state.room)) {
-    hibernateAllActiveExpanseEnemies(state);
-  }
+  resetAetherFogGraph(rooms, state);
 
   const [rxStr, ryStr] = String(wg.room ?? '0,0').split(',');
   state.room = wg.room;

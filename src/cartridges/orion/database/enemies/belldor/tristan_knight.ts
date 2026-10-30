@@ -13,8 +13,15 @@ import {
 import { addOrionInventoryItem, notifyOrionStateChange } from '../../../systems/stateStore';
 import { EnemyEntity, EnemyWikiDefinition, OrionCombatContext, OrionState } from '../../../types';
 
-function handleGrailKnightDefeat(state: OrionState, ctx: OrionCombatContext): void {
+function handleGrailKnightDefeat(
+  state: OrionState,
+  e: EnemyEntity,
+  ctx: OrionCombatContext
+): void {
   state.flags = state.flags || {};
+  if (!e.isFogBoss && !e.isDungeonGuardian && !e.isAbyssElite) {
+    state.flags[`grail_knight_defeated:${e.type}`] = true;
+  }
   const curFrags = Number(state.flags.grail_fragments || 0);
   state.flags.grail_fragments = Math.min(3, curFrags + 1);
   addOrionInventoryItem(state, 'grail_fragment', 1);
@@ -41,6 +48,7 @@ export const tristanKnightEnemy: EnemyWikiDefinition = {
   faction: 'camelot',
   emissiveColor: '#4ade80',
   tellRadius: 34,
+  visionRadiusTiles: 5,
   description: 'A kiting archer with spread arrow volleys, smoke escapes, and cover-piercing sight.',
   lore:
     'Fragile if caught in close quarters, but punishes any pilot who stands still in the open.',
@@ -48,7 +56,7 @@ export const tristanKnightEnemy: EnemyWikiDefinition = {
   armor: { type: 'Ablative', threshold: 4, rating: 2, durability: 45 },
   frameIntegrity: 110,
   speed: 35,
-  damage: 15,
+  damage: 26,
   damageType: 'Pierce',
   tellDurationSec: 0.4,
   attackCooldownSec: 1.9,
@@ -57,8 +65,8 @@ export const tristanKnightEnemy: EnemyWikiDefinition = {
     { itemId: 'grail_fragment', chance: 1.0, count: 1 },
     { itemId: 'bedivere_relic', chance: 1.0, count: 1 },
   ],
-  onDeath(state, _e, ctx) {
-    handleGrailKnightDefeat(state, ctx);
+  onDeath(state, e, ctx) {
+    handleGrailKnightDefeat(state, e, ctx);
   },
   render25D(g, e, _state, ey, isHurt) {
     g.fillStyle = isHurt ? '#ffffff' : '#065f46';

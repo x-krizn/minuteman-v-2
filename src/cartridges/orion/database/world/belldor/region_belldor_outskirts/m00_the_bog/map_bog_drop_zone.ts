@@ -222,9 +222,9 @@ export const room00DropPodCrater: RoomDefinition = {
   rows: 12,
   lighting: {
     safetyTier: 'sanctuary',
-    ambientDarkness: 0.18,
-    cornerShadowIntensity: 0.36,
-    playerVisionRadiusPx: 128,
+    ambientDarkness: 0.72,
+    cornerShadowIntensity: 0.76,
+    playerVisionRadiusPx: 80,
     ambientTintColor: '#f59e0b',
   },
   lootPool: {
@@ -234,8 +234,8 @@ export const room00DropPodCrater: RoomDefinition = {
   },
   grid: [
     '######,,,,######',
-    '#,,,,..::..,,,,#',
-    '#,,P,::::::,P,,#',
+    '#,,,P..::..P,p,#',
+    '#,,P,::::::,P.,#',
     '#,,..::::::..,,#',
     '#,..:::A::::..,#',
     ',,..::::::::..,,',

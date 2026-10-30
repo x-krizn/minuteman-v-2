@@ -121,8 +121,8 @@ export interface TileDefinition {
   layer1Sprite?: Base64SpriteConfig;
   /** Optional embedded Base64 PNG or grid spritesheet slice for Layer 2 2.5D props */
   propSprite?: Base64SpriteConfig;
-  /** Optional dynamic solid check (e.g. for locked gates or doors) */
-  checkSolid?: (state: OrionState, roomKey: string) => boolean;
+  /** Optional dynamic solid check (e.g. for locked gates, doors, or unopened scavenger caches) */
+  checkSolid?: (state: OrionState, roomKey: string, tx?: number, ty?: number) => boolean;
   renderLayer0?: (
     g: CanvasRenderingContext2D,
     tx: number,

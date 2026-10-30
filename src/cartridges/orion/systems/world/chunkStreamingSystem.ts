@@ -281,7 +281,7 @@ function buildSetPathCorridorChunk10x9(
           '###::::###',
           '#,P::::P,#',
           '#,~~::~~,#',
-          '::::L:::::',
+          '::::::::::',
           '::::::::::',
           '::::C:::::',
           '#,~~::~~,#',
@@ -293,7 +293,7 @@ function buildSetPathCorridorChunk10x9(
           '#,P::::P,#',
           '#,~~::~~,#',
           '#,.::::.,#',
-          '::::L:::::',
+          '::::::::::',
           '#,.::C:.,#',
           '#,~~::~~,#',
           '#,P::::P,#',
@@ -336,7 +336,7 @@ export const AUTHORED_LANDMARK_CHUNKS: Record<string, ChunkBlueprint> = {
       '###....###',
       '#,P~~~~P,#',
       '#,~~::~~,#',
-      '#,~:L!:~,#',
+      '#,~::!:~,#',
       '...:C::...',
       '#,~~::~~,#',
       '#,~~~~~~,#',
@@ -370,7 +370,7 @@ export const AUTHORED_LANDMARK_CHUNKS: Record<string, ChunkBlueprint> = {
       '###;;;;###',
       '###;;;;###',
       '##;;::;;##',
-      '#,;:L:;;,#',
+      '#,;:::;;,#',
       ';;;:V:;;;;',
       '#,;;:C:;,#',
       '##;;::;;##',
@@ -491,7 +491,7 @@ const DEEP_FOG_DUNGEON_CHUNK_TEMPLATE: string[] = [
   '###....###',
   '#,P~~~~P,#',
   '#,~::::~,#',
-  '#,::L:::,#',
+  '#,::::::,#',
   ':::V.D::::',
   '#,::::::,#',
   '#,~::::~,#',
@@ -525,15 +525,6 @@ function finalizeChunkGridBorders(
   });
 
   if (!isLandmark && !hasDeepDungeon && !isAuthoredRoom) {
-    // Place off-path Lantern Anchors (`L`) in deep wilderness chunks so pilots can push back the fog
-    if (distFromSetPath >= 2 && (chunkHash % 2 === 0 || distFromSetPath >= 3)) {
-      const lCol = chunkHash % 2 === 0 ? 4 : 5;
-      const lRow = 3;
-      if (matrix[lRow]?.[lCol]) {
-        matrix[lRow][lCol] = 'L';
-      }
-    }
-
     // Place procedural salvage caches (`C` or `V` in deep fog)
     if (chunkHash % 4 === 0 || (distFromSetPath >= 3 && chunkHash % 3 === 0)) {
       const cacheCol = chunkHash % 2 === 0 ? 3 : 6;
@@ -834,10 +825,12 @@ export function getActiveChunkLandmarkLabel(state: OrionState): string | null {
  */
 export function ensureExpanseGridAllocated(
   rooms: Record<string, string[]>,
-  roomId: string
+  roomId: string,
+  forceReset: boolean = false
 ): string[] {
   let grid = rooms[roomId];
   if (
+    forceReset ||
     !grid ||
     grid.length !== EXPANSE_TOTAL_ROWS ||
     (grid[0]?.length || 0) !== EXPANSE_TOTAL_COLS
@@ -847,6 +840,39 @@ export function ensureExpanseGridAllocated(
     rooms[roomId] = grid;
   }
   return grid;
+}
+
+/**
+ * Despawns all active/hibernated enemies, clears non-boss enemy cleared flags so standard enemies respawn,
+ * re-rolls the off-path Aether Fog seed, and resets dynamic off-path chunk tiles so they regenerate on death or fast travel.
+ */
+export function regenerateWorldEnemiesAndOffPathTiles(
+  rooms: Record<string, string[]>,
+  state: OrionState,
+  advanceSeed: boolean = true
+): void {
+  if (advanceSeed && state.fogGraph) {
+    state.fogGraph.seed = ((state.fogGraph.seed || 104729) + 7919) % 9999991;
+  }
+
+  state.enemies = [];
+  state.hibernatedChunkEnemies = {};
+  state.lockedTargetId = null;
+
+  if (state.clearedRooms) {
+    for (const key of Object.keys(state.clearedRooms)) {
+      if (!key.endsWith(':mini_boss')) {
+        delete state.clearedRooms[key];
+      }
+    }
+  }
+
+  ensureExpanseGridAllocated(rooms, SUNKEN_BOG_EXPANSE_ROOM_ID, true);
+  state.generatedChunks = {};
+  state.litChunkLanterns = {};
+  state.clearedDeepFogDungeons = {};
+  state.activeChunkX = undefined;
+  state.activeChunkY = undefined;
 }
 
 /**
@@ -1115,7 +1141,7 @@ export function fastTravelFromDeepDungeonToSafeSpot(
     title: 'Drop-Pod Impact Crater',
   };
 
-  hibernateAllActiveExpanseEnemies(state);
+  regenerateWorldEnemiesAndOffPathTiles(rooms, state, true);
   state.room = safeSpot.roomId;
   state.x = safeSpot.x;
   state.y = safeSpot.y;
@@ -1126,6 +1152,7 @@ export function fastTravelFromDeepDungeonToSafeSpot(
   state.projectiles = [];
   state.pickups = [];
   state.flickerTimer = 0.55;
+  state.spawnGraceTimer = 3.0;
 
   updateChunkedRoomStreaming(rooms, state, true);
   soundSystem.playPowerup();

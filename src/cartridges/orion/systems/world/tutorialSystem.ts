@@ -10,6 +10,7 @@ import {
   getEffectiveRoomCoord,
   getRoomDimensions,
   getUnifiedBogRoomPlacement,
+  isCheatModeActive,
   TILE_SIZE,
 } from '../../constants';
 import {
@@ -247,6 +248,11 @@ export function checkWorldInteractivePrompt(
   state: OrionState
 ): void {
   state.flags = state.flags || {};
+  if (state.contextMenu) {
+    state.promptText = null;
+    return;
+  }
+
   const tx = Math.floor(state.x / TILE_SIZE);
   const ty = Math.floor(state.y / TILE_SIZE);
 
@@ -281,7 +287,7 @@ export function checkWorldInteractivePrompt(
   let candidateText: string | null = null;
 
   const nearbyPoe = state.enemies.find(
-    (e) => e.type === 'bog_poe' && Math.hypot(e.x - state.x, e.y - state.y) < 24
+    (e) => e.type === 'bog_poe' && Math.hypot(e.x - state.x, e.y - state.y) < 26
   );
   const nearbyCalmNpc = state.enemies.find(
     (e) =>
@@ -290,31 +296,19 @@ export function checkWorldInteractivePrompt(
       Math.hypot(e.x - state.x, e.y - state.y) < 24
   );
 
-  if (nearbyPoe && state.flags.poe_state !== 'helped') {
-    candidateKey = `${effectiveRoom}:poe`;
-    candidateText = '[A] HELP THE POE';
-  } else if (facingTile === 'L' || currentTile === 'L') {
-    if (isChunkedExpanseRoom(state.room)) {
-      const fogMetrics = computeChunkFogMetrics(state);
-      if (fogMetrics.distFromSetPath > 0) {
-        candidateKey = `${fogMetrics.chunkKey}:lantern:${fogMetrics.isLanternLit ? 'lit' : 'unlit'}`;
-        candidateText = fogMetrics.isLanternLit
-          ? 'FOG LANTERN ANCHOR (LIT · FOG SUPPRESSED)'
-          : '[A] IGNITE LANTERN ANCHOR (SUPPRESS FOG)';
-      } else {
-        candidateKey = `${effectiveRoom}:lantern`;
-        candidateText =
-          state.flags.poe_state === 'helped'
-            ? 'POE LANTERN (LIT)'
-            : '[A] LIGHT POE LANTERN';
-      }
-    } else {
-      candidateKey = `${state.room}:lantern`;
-      candidateText =
-        state.flags.poe_state === 'helped'
-          ? 'POE LANTERN (LIT)'
-          : '[A] LIGHT POE LANTERN';
-    }
+  if (nearbyPoe) {
+    candidateKey = `${effectiveRoom}:poe:${state.flags.campfire_unlocked ? 'unlocked' : 'locked'}`;
+    candidateText = !state.flags.campfire_unlocked
+      ? '[A] TALK TO POE (UNLOCK CAMPFIRES)'
+      : state.flags.poe_state !== 'helped'
+        ? '[A] HELP THE POE'
+        : '[A] SPEAK WITH THE POE';
+  } else if ((facingTile === 'L' || currentTile === 'L') && isCheatModeActive(state)) {
+    candidateKey = `${effectiveRoom}:lantern:cheat`;
+    candidateText =
+      state.flags.poe_state === 'helped'
+        ? '[A] TOGGLE POE LANTERN (CHEAT)'
+        : '[A] LIGHT POE LANTERN (CHEAT)';
   } else if (nearbyCalmNpc) {
     candidateKey = `${effectiveRoom}:npc:${nearbyCalmNpc.id}`;
     candidateText = nearbyCalmNpc.isLoyalist
@@ -341,14 +335,26 @@ export function checkWorldInteractivePrompt(
           : '[A] ENTER DROP-POD CHEAT ROOM';
     }
   } else if (currentTile === 'A' || facingTile === 'A') {
-    candidateKey = `${effectiveRoom}:A`;
-    const wsCount = (state.discoveredWaystations || []).filter(
-      (id) => id !== 'ws_bog_drop_pod'
-    ).length;
-    candidateText =
-      wsCount > 1
-        ? `[A] REST AT CAMPFIRE · TRANSIT (${wsCount} LIT)`
-        : '[A] REST AT CAMPFIRE';
+    const isUnlocked = Boolean(
+      state.flags.campfire_unlocked ||
+        state.flags.poe_state === 'helped' ||
+        state.bypassProgressionGates
+    );
+    const isFirstLit = Boolean(state.flags.first_campfire_lit);
+    candidateKey = `${effectiveRoom}:A:${isUnlocked ? 'u' : 'l'}:${isFirstLit ? 'lit' : 'unlit'}`;
+    if (effectiveRoom === '0,0' && !isUnlocked) {
+      candidateText = '[A] CAMPFIRE UNLIT (SPEAK TO POE)';
+    } else if (effectiveRoom === '0,0' && !isFirstLit) {
+      candidateText = '[A] LIGHT FIRST CAMPFIRE';
+    } else {
+      const wsCount = (state.discoveredWaystations || []).filter(
+        (id) => id !== 'ws_bog_drop_pod'
+      ).length;
+      candidateText =
+        wsCount > 1
+          ? `[A] REST AT CAMPFIRE · TRANSIT (${wsCount} LIT)`
+          : '[A] REST AT CAMPFIRE';
+    }
   } else if (currentTile === 'Q' || facingTile === 'Q') {
     candidateKey = `${effectiveRoom}:Q`;
     if (state.room === '-3,0' || state.room === '-4,0') {
@@ -474,15 +480,29 @@ export function checkWorldInteractivePrompt(
   }
 }
 
-export function executeWorldInteraction(
+const HEALTH_CONSUMABLE_IDS = new Set([
+  'demantoid_flask',
+  'grail_water',
+  'spinel_flask',
+  'kyanite_flask',
+]);
+
+export function performDirectWorldInteraction(
   rooms: Record<string, string[]>,
   state: OrionState,
-  ctx: OrionCombatContext
+  ctx: OrionCombatContext,
+  targetOverride?: { tx?: number; ty?: number }
 ): boolean {
   state.flags = state.flags || {};
   const dirInfo = DIR_VECTORS[state.dir] || DIR_VECTORS.S;
-  const ax = Math.floor((state.x + dirInfo.dx * 12) / TILE_SIZE);
-  const ay = Math.floor((state.y + dirInfo.dy * 12) / TILE_SIZE);
+  const ax =
+    targetOverride?.tx !== undefined
+      ? targetOverride.tx
+      : Math.floor((state.x + dirInfo.dx * 12) / TILE_SIZE);
+  const ay =
+    targetOverride?.ty !== undefined
+      ? targetOverride.ty
+      : Math.floor((state.y + dirInfo.dy * 12) / TILE_SIZE);
   const tx = Math.floor(state.x / TILE_SIZE);
   const ty = Math.floor(state.y / TILE_SIZE);
 
@@ -494,45 +514,14 @@ export function executeWorldInteraction(
   const effectiveRoom = getEffectiveRoomCoord(state);
 
   const nearbyPoe = state.enemies.find(
-    (e) => e.type === 'bog_poe' && Math.hypot(e.x - state.x, e.y - state.y) < 24
+    (e) => e.type === 'bog_poe' && Math.hypot(e.x - state.x, e.y - state.y) < 26
   );
 
-  // Off-Path Chunk Lantern Anchor Ignition (suppresses local fog & expands vision dome)
-  if ((facingTile === 'L' || currentTile === 'L') && isChunkedExpanseRoom(state.room)) {
-    const fogMetrics = computeChunkFogMetrics(state);
-    if (fogMetrics.distFromSetPath > 0) {
-      state.litChunkLanterns = state.litChunkLanterns || {};
-      if (!state.litChunkLanterns[fogMetrics.chunkKey]) {
-        state.litChunkLanterns[fogMetrics.chunkKey] = true;
-        state.shields.overloaded = false;
-        state.shields.capacity = Math.min(
-          state.shields.maxCapacity,
-          state.shields.capacity + 25
-        );
-        state.heat = Math.max(0, state.heat - 20);
-        for (const e of state.enemies) {
-          if (e.type === 'bog_wurm') e.isSubmerged = false;
-        }
-        soundSystem.playPowerup();
-        const updatedMetrics = computeChunkFogMetrics(state);
-        ctx.say(
-          `LANTERN ANCHOR IGNITED [${fogMetrics.cx},${fogMetrics.cy}] · FOG REDUCED TO ${Math.round(updatedMetrics.fogIntensity * 100)}%`
-        );
-        notifyOrionStateChange();
-        return true;
-      } else {
-        soundSystem.playSelect();
-        ctx.say(`LANTERN ANCHOR ACTIVE · LOCAL ÆTHER FOG SUPPRESSED`);
-        return true;
-      }
-    }
-  }
-
-  if (
-    (nearbyPoe && state.flags.poe_state !== 'helped') ||
-    ((facingTile === 'L' || currentTile === 'L') && state.flags.poe_state !== 'helped')
-  ) {
+  // Talking / Helping the Poe unlocks Campfire attunement and activates passive Poe Lamp guidance
+  if (nearbyPoe) {
+    const wasAlreadyHelped = state.flags.poe_state === 'helped' && Boolean(state.flags.campfire_unlocked);
     state.flags.poe_state = 'helped';
+    state.flags.campfire_unlocked = true;
     state.flags.poe_lantern_gift = true;
     state.flags.bog_exit_revealed = true;
     if (state.level < 2) {
@@ -544,7 +533,40 @@ export function executeWorldInteraction(
     }
     syncStateGates(state);
     soundSystem.playPowerup();
-    ctx.say('THE POE LANTERN IS LIT');
+    ctx.say(
+      wasAlreadyHelped
+        ? state.flags.first_campfire_lit
+          ? 'POE: "THE HEARTH BURNS WARM, PILOT. FOLLOW THE LANTERN GLOW THROUGH THE MIST."'
+          : 'POE: "KINDLE THE FIRST CAMPFIRE IN THIS CLEARING SO WE MAY BASK IN ITS LIGHT."'
+        : 'SPOKE WITH THE POE · CAMPFIRE ATTUNEMENT & PASSIVE LANTERN GUIDANCE UNLOCKED!'
+    );
+    notifyOrionStateChange();
+    return true;
+  }
+
+  // Poe Lamp ('L') is only interactable in Cheat Mode
+  if ((facingTile === 'L' || currentTile === 'L') && isCheatModeActive(state)) {
+    const nextHelped = state.flags.poe_state !== 'helped';
+    state.flags.poe_state = nextHelped ? 'helped' : 'unmet';
+    state.flags.poe_lantern_gift = nextHelped;
+    if (nextHelped) {
+      state.flags.campfire_unlocked = true;
+      state.flags.bog_exit_revealed = true;
+      if (state.level < 2) {
+        state.level = 2;
+      }
+      unlockLevel2SecondaryWeapon(state);
+      for (const e of state.enemies) {
+        if (e.type === 'bog_wurm') e.isSubmerged = false;
+      }
+    }
+    syncStateGates(state);
+    soundSystem.playPowerup();
+    ctx.say(
+      nextHelped
+        ? 'CHEAT MODE: POE LANTERN LIT · PASSIVE LAMP HELP ACTIVE'
+        : 'CHEAT MODE: POE LANTERN EXTINGUISHED'
+    );
     notifyOrionStateChange();
     return true;
   }
@@ -668,6 +690,22 @@ export function executeWorldInteraction(
   }
 
   if (currentTile === 'A' || facingTile === 'A') {
+    const canUseCampfire = Boolean(
+      state.flags.campfire_unlocked ||
+        state.flags.poe_state === 'helped' ||
+        state.bypassProgressionGates
+    );
+    if (effectiveRoom === '0,0' && !canUseCampfire) {
+      soundSystem.playMenuBeep();
+      ctx.say('CAMPFIRE COLD — SPEAK TO THE POE TUCKED BEHIND THE NORTHERN TREES FIRST!');
+      notifyOrionStateChange();
+      return true;
+    }
+
+    const wasFirstCampfireUnlit = !state.flags.first_campfire_lit;
+    state.flags.campfire_unlocked = true;
+    state.flags.first_campfire_lit = true;
+
     syncRoomHierarchyState(state);
     const areaDef = getAreaDefinition(state.areaId);
     const currentWsId = areaDef.waystation?.id;
@@ -701,7 +739,7 @@ export function executeWorldInteraction(
       const wsArea = wsNode ? AREA_REGISTRY[wsNode.areaId] : undefined;
       return wsArea?.specStatus !== 'UNDEFINED';
     });
-    if (discovered.length > 1 && currentWsId) {
+    if (!wasFirstCampfireUnlit && discovered.length > 1 && currentWsId) {
       const idx = discovered.indexOf(currentWsId);
       const nextWsId = discovered[(idx + 1) % discovered.length];
       if (nextWsId && nextWsId !== currentWsId) {
@@ -709,14 +747,25 @@ export function executeWorldInteraction(
       }
     }
 
+    state.spawnGraceTimer = 3.0;
+    if (isChunkedExpanseRoom(state.room)) {
+      updateChunkedRoomStreaming(rooms, state, true);
+    } else {
+      spawnRoomEnemies(rooms, state);
+    }
     soundSystem.playHeal();
-    ctx.say(`RESTED AT ${areaDef.waystation?.name?.toUpperCase() || 'CAMPFIRE'} · SPAWN MOVED`);
+    ctx.say(
+      wasFirstCampfireUnlit && effectiveRoom === '0,0'
+        ? 'FIRST CAMPFIRE LIT · POE DRAWN TO FIRELIGHT & EASTERN PATH UNSEALED!'
+        : `RESTED AT ${areaDef.waystation?.name?.toUpperCase() || 'CAMPFIRE'} · SPAWN MOVED`
+    );
     notifyOrionStateChange();
     return true;
   }
 
   if (currentTile === 'Q' || facingTile === 'Q') {
     if (state.room === '-3,0' || state.room === '-4,0') {
+      resetAetherFogGraph(rooms, state);
       state.frame.integrity = state.frame.maxIntegrity || 200;
       state.frame.state = 'Operational';
       state.armor.durability = state.armor.maxDurability;
@@ -738,6 +787,7 @@ export function executeWorldInteraction(
       state.pickups = [];
       state.enemies = [];
       state.flickerTimer = 0.6;
+      state.spawnGraceTimer = 3.0;
 
       syncRoomHierarchyState(state);
       updateChunkedRoomStreaming(rooms, state, true);
@@ -771,7 +821,7 @@ export function executeWorldInteraction(
         stop.room === '3,0' ? 15 : 12
       );
 
-      hibernateAllActiveExpanseEnemies(state);
+      resetAetherFogGraph(rooms, state);
       state.frame.integrity = state.frame.maxIntegrity || 200;
       state.frame.state = 'Operational';
       state.armor.durability = state.armor.maxDurability;
@@ -790,6 +840,7 @@ export function executeWorldInteraction(
       state.projectiles = [];
       state.pickups = [];
       state.flickerTimer = 0.5;
+      state.spawnGraceTimer = 3.0;
 
       syncRoomHierarchyState(state);
       updateChunkedRoomStreaming(rooms, state, true);
@@ -853,8 +904,11 @@ export function executeWorldInteraction(
     currentTile === 'V'
   ) {
     const isFacingCache = facingTile === 'C' || facingTile === 'V';
-    const cx = isFacingCache ? ax : tx;
-    const cy = isFacingCache ? ay : ty;
+    const cx = targetOverride?.tx !== undefined ? targetOverride.tx : isFacingCache ? ax : tx;
+    const cy = targetOverride?.ty !== undefined ? targetOverride.ty : isFacingCache ? ay : ty;
+    const targetChar = roomData[cy]?.[cx] || (isFacingCache ? facingTile : currentTile);
+    const isChest = targetChar === 'V';
+
     if (!isRoomCacheLooted(state, cx, cy)) {
       markRoomCacheLooted(state, cx, cy);
       soundSystem.playPowerup();
@@ -869,9 +923,15 @@ export function executeWorldInteraction(
       const lootMult = fogMetrics ? fogMetrics.lootMultiplier : 1;
       const earnedScrap = Math.round(cacheDef.scrap * lootMult);
       state.salvageScrap += earnedScrap;
+
+      // Chests ('V') never drop health/repair flasks; only Caches ('C') drop consumable flasks
       for (const item of cacheDef.items) {
+        if (isChest && HEALTH_CONSUMABLE_IDS.has(item.itemId)) {
+          continue;
+        }
         addOrionInventoryItem(state, item.itemId, item.count);
       }
+
       const traitGemByLine: Record<string, [string, string]> = {
         Warrior: ['spinel', 'hematite'],
         Marauder: ['carnelian', 'hematite'],
@@ -881,7 +941,7 @@ export function executeWorldInteraction(
         Rogue: ['charoite', 'rubellite'],
       };
       const [traitGem, reactorGem] = traitGemByLine[state.traitLine] || ['spinel', 'hematite'];
-      addOrionInventoryItem(state, traitGem, 1);
+      addOrionInventoryItem(state, traitGem, isChest ? 2 : 1);
       addOrionInventoryItem(state, reactorGem, 1);
       if (fogMetrics && fogMetrics.fogIntensity >= 0.5) {
         addOrionInventoryItem(state, traitGem, 1);
@@ -910,7 +970,10 @@ export function executeWorldInteraction(
         fogMetrics && fogMetrics.distFromSetPath > 0
           ? ` [FOG LOOT ×${fogMetrics.lootMultiplier}]`
           : '';
-      ctx.say(`${cacheDef.toast}${gearSuffix}${fogBonusTag}`);
+      const baseToast = isChest
+        ? `CHEST OPENED: +${earnedScrap} SCRAP & GEMS (${traitGem.toUpperCase()} / ${reactorGem.toUpperCase()})`
+        : cacheDef.toast;
+      ctx.say(`${baseToast}${gearSuffix}${fogBonusTag}`);
       notifyOrionStateChange();
       return true;
     }
@@ -1120,3 +1183,391 @@ export function executeWorldInteraction(
 
   return false;
 }
+
+export function executeWorldInteraction(
+  rooms: Record<string, string[]>,
+  state: OrionState,
+  _ctx: OrionCombatContext
+): boolean {
+  state.flags = state.flags || {};
+  const dirInfo = DIR_VECTORS[state.dir] || DIR_VECTORS.S;
+  const ax = Math.floor((state.x + dirInfo.dx * 12) / TILE_SIZE);
+  const ay = Math.floor((state.y + dirInfo.dy * 12) / TILE_SIZE);
+  const tx = Math.floor(state.x / TILE_SIZE);
+  const ty = Math.floor(state.y / TILE_SIZE);
+
+  const roomData = rooms[state.room];
+  if (!roomData) return false;
+
+  const currentTile = roomData[ty]?.[tx] || '.';
+  const facingTile = roomData[ay]?.[ax] || '.';
+  const effectiveRoom = getEffectiveRoomCoord(state);
+
+  const nearbyPoe = state.enemies.find(
+    (e) => e.type === 'bog_poe' && Math.hypot(e.x - state.x, e.y - state.y) < 26
+  );
+  if (nearbyPoe) {
+    state.contextMenu = {
+      title: 'POE (LANTERN SPIRIT)',
+      targetType: 'poe',
+      targetKey: `${effectiveRoom}:poe`,
+      x: nearbyPoe.x,
+      y: nearbyPoe.y,
+      selectedIndex: 0,
+      options: [
+        {
+          id: 'primary',
+          label: !state.flags.campfire_unlocked
+            ? 'Talk to Poe (Unlock Campfires)'
+            : 'Speak with Poe',
+        },
+        { id: 'inspect', label: 'Inspect Spirit' },
+        { id: 'leave', label: 'Leave' },
+      ],
+    };
+    return true;
+  }
+
+  if ((facingTile === 'L' || currentTile === 'L') && isCheatModeActive(state)) {
+    const lx = facingTile === 'L' ? ax : tx;
+    const ly = facingTile === 'L' ? ay : ty;
+    state.contextMenu = {
+      title: 'POE LANTERN (CHEAT)',
+      targetType: 'lantern',
+      targetKey: `${effectiveRoom}:L:${lx},${ly}`,
+      tx: lx,
+      ty: ly,
+      x: lx * TILE_SIZE + 8,
+      y: ly * TILE_SIZE + 8,
+      selectedIndex: 0,
+      options: [
+        {
+          id: 'primary',
+          label:
+            state.flags.poe_state === 'helped'
+              ? 'Extinguish Lantern'
+              : 'Light Lantern (Cheat)',
+        },
+        { id: 'inspect', label: 'Inspect Lantern' },
+        { id: 'leave', label: 'Leave' },
+      ],
+    };
+    return true;
+  }
+
+  const nearbyCalmNpc = state.enemies.find(
+    (e) =>
+      e.type === 'town_npc' &&
+      e.npcDisposition !== 'feral' &&
+      Math.hypot(e.x - state.x, e.y - state.y) < 24
+  );
+  if (nearbyCalmNpc) {
+    state.contextMenu = {
+      title: nearbyCalmNpc.isLoyalist ? 'AVALON LOYALIST' : 'BOG SCAVENGER',
+      targetType: 'npc',
+      targetKey: `${effectiveRoom}:npc:${nearbyCalmNpc.id}`,
+      x: nearbyCalmNpc.x,
+      y: nearbyCalmNpc.y,
+      selectedIndex: 0,
+      options: [
+        {
+          id: 'primary',
+          label: nearbyCalmNpc.isLoyalist
+            ? 'Speak with Loyalist'
+            : 'Trade (15 Scrap)',
+        },
+        { id: 'inspect', label: 'Inspect Citizen' },
+        { id: 'leave', label: 'Leave' },
+      ],
+    };
+    return true;
+  }
+
+  if (currentTile === 'D' || facingTile === 'D') {
+    const dx = facingTile === 'D' ? ax : tx;
+    const dy = facingTile === 'D' ? ay : ty;
+    state.contextMenu = {
+      title: state.room === '-4,0' ? 'CHEAT BAY EXIT' : 'ORBITAL DROP-POD HATCH',
+      targetType: 'drop_pod',
+      targetKey: `${state.room}:D:${dx},${dy}`,
+      tx: dx,
+      ty: dy,
+      x: dx * TILE_SIZE + 8,
+      y: dy * TILE_SIZE + 8,
+      selectedIndex: 0,
+      options: [
+        {
+          id: 'primary',
+          label:
+            state.room === '-4,0'
+              ? 'Exit to Drop-Pod Crater'
+              : 'Enter Drop-Pod Hatch',
+        },
+        { id: 'inspect', label: 'Inspect Pod Telemetry' },
+        { id: 'leave', label: 'Leave' },
+      ],
+    };
+    return true;
+  }
+
+  if (currentTile === 'A' || facingTile === 'A') {
+    const cx = facingTile === 'A' ? ax : tx;
+    const cy = facingTile === 'A' ? ay : ty;
+    const canUse = Boolean(
+      state.flags.campfire_unlocked ||
+        state.flags.poe_state === 'helped' ||
+        state.bypassProgressionGates
+    );
+    const isLit = Boolean(state.flags.first_campfire_lit);
+    state.contextMenu = {
+      title:
+        effectiveRoom === '0,0' && !isLit
+          ? 'UNLIT FIRST CAMPFIRE'
+          : 'ÆTHER WAYSTATION CAMPFIRE',
+      targetType: 'campfire',
+      targetKey: `${effectiveRoom}:A:${cx},${cy}`,
+      tx: cx,
+      ty: cy,
+      x: cx * TILE_SIZE + 8,
+      y: cy * TILE_SIZE + 8,
+      selectedIndex: 0,
+      options: [
+        {
+          id: 'primary',
+          label:
+            effectiveRoom === '0,0' && !canUse
+              ? 'Attempt to Light (Locked — Speak to Poe)'
+              : effectiveRoom === '0,0' && !isLit
+                ? 'Light First Campfire & Rest'
+                : 'Rest & Attune Spawn',
+        },
+        { id: 'inspect', label: 'Inspect Campfire' },
+        { id: 'leave', label: 'Leave' },
+      ],
+    };
+    return true;
+  }
+
+  if (currentTile === 'Q' || facingTile === 'Q') {
+    const qx = facingTile === 'Q' ? ax : tx;
+    const qy = facingTile === 'Q' ? ay : ty;
+    state.contextMenu = {
+      title: 'COLOSSAL WAYGATE',
+      targetType: 'waygate',
+      targetKey: `${effectiveRoom}:Q:${qx},${qy}`,
+      tx: qx,
+      ty: qy,
+      x: qx * TILE_SIZE + 8,
+      y: qy * TILE_SIZE + 8,
+      selectedIndex: 0,
+      options: [
+        { id: 'primary', label: 'Step Into Waygate' },
+        { id: 'inspect', label: 'Inspect Waygate' },
+        { id: 'leave', label: 'Leave' },
+      ],
+    };
+    return true;
+  }
+
+  if (facingTile === 'S' || currentTile === 'S') {
+    const sx = facingTile === 'S' ? ax : tx;
+    const sy = facingTile === 'S' ? ay : ty;
+    const scoutKey = `scout:${effectiveRoom}`;
+    if (
+      !state.lootedCaches[scoutKey] ||
+      !state.flags.bedivere_ring_choice ||
+      state.flags.bedivere_ring_choice === 'pending'
+    ) {
+      state.contextMenu = {
+        title: "SIR BEDIVERE'S REMAINS",
+        targetType: 'scout',
+        targetKey: `${effectiveRoom}:S:${sx},${sy}`,
+        tx: sx,
+        ty: sy,
+        x: sx * TILE_SIZE + 8,
+        y: sy * TILE_SIZE + 8,
+        selectedIndex: 0,
+        options: [
+          {
+            id: 'primary',
+            label: !state.lootedCaches[scoutKey]
+              ? 'Salvage Khopesh & List'
+              : 'Take Signet Ring',
+          },
+          { id: 'inspect', label: 'Inspect Fallen Knight' },
+          { id: 'leave', label: 'Leave' },
+        ],
+      };
+      return true;
+    }
+  }
+
+  if (
+    facingTile === 'C' ||
+    facingTile === 'V' ||
+    currentTile === 'C' ||
+    currentTile === 'V'
+  ) {
+    const isFacingCache = facingTile === 'C' || facingTile === 'V';
+    const cx = isFacingCache ? ax : tx;
+    const cy = isFacingCache ? ay : ty;
+    const tileChar = isFacingCache ? facingTile : currentTile;
+    const isChest = tileChar === 'V';
+    if (!isRoomCacheLooted(state, cx, cy)) {
+      state.contextMenu = {
+        title: isChest
+          ? `TREASURE CHEST [${cx},${cy}]`
+          : `SCAVENGER CACHE [${cx},${cy}]`,
+        targetType: isChest ? 'chest' : 'cache',
+        targetKey: `${state.room}:cache:${cx},${cy}`,
+        tx: cx,
+        ty: cy,
+        x: cx * TILE_SIZE + 8,
+        y: cy * TILE_SIZE + 8,
+        selectedIndex: 0,
+        options: [
+          {
+            id: 'primary',
+            label: isChest ? 'Open Chest (Gear & Gems)' : 'Search Cache',
+          },
+          {
+            id: 'inspect',
+            label: isChest ? 'Inspect Chest' : 'Inspect Cache',
+          },
+          { id: 'leave', label: 'Leave' },
+        ],
+      };
+      return true;
+    }
+  }
+
+  if (
+    facingTile === '1' ||
+    facingTile === '2' ||
+    facingTile === '3' ||
+    facingTile === '!' ||
+    currentTile === '!'
+  ) {
+    const sx =
+      facingTile === '1' || facingTile === '2' || facingTile === '3' || facingTile === '!'
+        ? ax
+        : tx;
+    const sy =
+      facingTile === '1' || facingTile === '2' || facingTile === '3' || facingTile === '!'
+        ? ay
+        : ty;
+    state.contextMenu = {
+      title: state.room === '-4,0' ? 'DIAGNOSTIC TERMINAL' : 'ANCIENT MECHANISM',
+      targetType: 'switch',
+      targetKey: `${state.room}:switch:${sx},${sy}`,
+      tx: sx,
+      ty: sy,
+      x: sx * TILE_SIZE + 8,
+      y: sy * TILE_SIZE + 8,
+      selectedIndex: 0,
+      options: [
+        {
+          id: 'primary',
+          label: state.room === '-4,0' ? 'Execute Terminal' : 'Pull Switch / Lever',
+        },
+        { id: 'inspect', label: 'Inspect Mechanism' },
+        { id: 'leave', label: 'Leave' },
+      ],
+    };
+    return true;
+  }
+
+  if (facingTile === 'G' || currentTile === 'G' || facingTile === 'M' || currentTile === 'M') {
+    const gx = facingTile === 'G' || facingTile === 'M' ? ax : tx;
+    const gy = facingTile === 'G' || facingTile === 'M' ? ay : ty;
+    const isCathedral = facingTile === 'M' || currentTile === 'M';
+    state.contextMenu = {
+      title: isCathedral ? 'CATHEDRAL DUNGEON DOOR' : 'PERIMETER GATE',
+      targetType: 'gate',
+      targetKey: `${effectiveRoom}:gate:${gx},${gy}`,
+      tx: gx,
+      ty: gy,
+      x: gx * TILE_SIZE + 8,
+      y: gy * TILE_SIZE + 8,
+      selectedIndex: 0,
+      options: [
+        {
+          id: 'primary',
+          label: isCathedral ? 'Open Dungeon Door' : 'Unseal Perimeter Gate',
+        },
+        { id: 'inspect', label: 'Inspect Seal' },
+        { id: 'leave', label: 'Leave' },
+      ],
+    };
+    return true;
+  }
+
+  if (
+    (currentTile === '~' || facingTile === '~') &&
+    Number(state.flags.bedivere_list_items || 0) >= 3 &&
+    !state.flags.lady_of_the_lake_defeated
+  ) {
+    state.contextMenu = {
+      title: 'SHIMMERING BOG WATERS',
+      targetType: 'water',
+      targetKey: `${effectiveRoom}:lady_of_the_lake`,
+      x: state.x,
+      y: state.y,
+      selectedIndex: 0,
+      options: [
+        { id: 'primary', label: 'Disturb the Waters' },
+        { id: 'inspect', label: 'Inspect Ripples' },
+        { id: 'leave', label: 'Leave' },
+      ],
+    };
+    return true;
+  }
+
+  return false;
+}
+
+export function executeContextMenuOption(
+  rooms: Record<string, string[]>,
+  state: OrionState,
+  ctx: OrionCombatContext,
+  optionIndexOverride?: number
+): boolean {
+  const menu = state.contextMenu;
+  if (!menu) return false;
+
+  const idx =
+    optionIndexOverride !== undefined ? optionIndexOverride : menu.selectedIndex;
+  const chosen = menu.options[idx] || menu.options[0];
+  state.contextMenu = null;
+
+  if (!chosen || chosen.id === 'leave') {
+    soundSystem.playMenuBeep();
+    notifyOrionStateChange();
+    return false;
+  }
+
+  if (chosen.id === 'inspect') {
+    soundSystem.playSelect();
+    const inspectMessages: Record<string, string> = {
+      chest: 'TREASURE CHEST: CONTAINS SALVAGED EQUIPMENT, GEMSTONES & SCRAP (NO REPAIR FLASKS).',
+      cache: 'SCAVENGER CACHE: BURIED FIELD SUPPLIES; BECOMES PASSABLE TERRAIN AFTER LOOTING.',
+      campfire:
+        getEffectiveRoomCoord(state) === '0,0' && !state.flags?.first_campfire_lit
+          ? 'FIRST CAMPFIRE: COLD HEARTH. SPEAK TO THE POE BEHIND THE TREES TO UNLOCK & IGNITE.'
+          : 'ÆTHER WAYSTATION: RESTORES DEFENSES, SAVES ANCHOR & ENABLES FAST TRAVEL.',
+      poe: 'POE SPIRIT: TUCKED BEHIND THE TREELINE. SPEAKING UNLOCKS CAMPFIRE ATTUNEMENT.',
+      waygate: 'COLOSSAL WAYGATE: ANCIENT AETHER TRANSIT CONDUIT.',
+      scout: "SIR BEDIVERE'S CHASSIS: FALLEN CAMELOT KNIGHT CLUTCHING A KHOPESH & RELIC LIST.",
+      gate: 'SEALED GATEWAY: REQUIRES POE GUIDANCE, KEY OR TRIAL COMPLETION.',
+    };
+    ctx.say(inspectMessages[menu.targetType] || `${menu.title} — READY FOR INTERACTION.`);
+    notifyOrionStateChange();
+    return true;
+  }
+
+  return performDirectWorldInteraction(rooms, state, ctx, {
+    tx: menu.tx,
+    ty: menu.ty,
+  });
+}
+

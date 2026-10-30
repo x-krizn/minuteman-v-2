@@ -622,10 +622,10 @@ export function resolveEnemyInertiaProfile(e: EnemyEntity): EnemyInertiaProfile 
       break;
     case 'orc_warrior':
       // Heavy Strike boarding-axe brawler
-      defaultWeight = 145;
-      defaultAttackWeight = 52;
-      defaultAttackSpeed = 140;
-      defaultCommitment = 0.85;
+      defaultWeight = 185;
+      defaultAttackWeight = 68;
+      defaultAttackSpeed = 158;
+      defaultCommitment = 1.0;
       break;
     case 'percival_knight':
       // Sir Percival: Heavy Guardian Shield Bash & Charging Ram

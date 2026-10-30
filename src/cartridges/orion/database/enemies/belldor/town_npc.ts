@@ -18,6 +18,7 @@ export const townNpcEntity: EnemyWikiDefinition = {
   faction: 'npc',
   emissiveColor: '#94a3b8',
   tellRadius: 24,
+  visionRadiusTiles: 5,
   description: 'A citizen of the contested settlement suffering from Grail Sickness.',
   lore:
     'Some are calm enough to trade, some turn hostile if you linger, and Loyalists attack anyone carrying Bedivere’s Signet Ring as a grave robber.',
@@ -25,7 +26,7 @@ export const townNpcEntity: EnemyWikiDefinition = {
   armor: { type: 'Hardened', threshold: 4, rating: 2, durability: 30 },
   frameIntegrity: 50,
   speed: 24,
-  damage: 12,
+  damage: 18,
   damageType: 'Impact',
   tellDurationSec: 0.4,
   attackCooldownSec: 1.8,

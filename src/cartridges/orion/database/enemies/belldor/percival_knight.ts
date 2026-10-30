@@ -13,8 +13,15 @@ import {
 import { addOrionInventoryItem, notifyOrionStateChange } from '../../../systems/stateStore';
 import { EnemyEntity, EnemyWikiDefinition, OrionCombatContext, OrionState } from '../../../types';
 
-function handleGrailKnightDefeat(state: OrionState, ctx: OrionCombatContext): void {
+function handleGrailKnightDefeat(
+  state: OrionState,
+  e: EnemyEntity,
+  ctx: OrionCombatContext
+): void {
   state.flags = state.flags || {};
+  if (!e.isFogBoss && !e.isDungeonGuardian && !e.isAbyssElite) {
+    state.flags[`grail_knight_defeated:${e.type}`] = true;
+  }
   const curFrags = Number(state.flags.grail_fragments || 0);
   state.flags.grail_fragments = Math.min(3, curFrags + 1);
   addOrionInventoryItem(state, 'grail_fragment', 1);
@@ -41,6 +48,7 @@ export const percivalKnightEnemy: EnemyWikiDefinition = {
   faction: 'camelot',
   emissiveColor: '#60a5fa',
   tellRadius: 34,
+  visionRadiusTiles: 5,
   description: 'A defensive Guardian anchor with a directional shield wall and closing charge.',
   lore:
     'Protects his comrades and recovers shields when badly hurt if not relentlessly pressured.',
@@ -48,7 +56,7 @@ export const percivalKnightEnemy: EnemyWikiDefinition = {
   armor: { type: 'Hardened', threshold: 9, rating: 6, durability: 90 },
   frameIntegrity: 150,
   speed: 22,
-  damage: 19,
+  damage: 28,
   damageType: 'Impact',
   tellDurationSec: 0.5,
   attackCooldownSec: 2.1,
@@ -56,8 +64,8 @@ export const percivalKnightEnemy: EnemyWikiDefinition = {
     { itemId: 'trade_coin', chance: 1.0, count: 40 },
     { itemId: 'grail_fragment', chance: 1.0, count: 1 },
   ],
-  onDeath(state, _e, ctx) {
-    handleGrailKnightDefeat(state, ctx);
+  onDeath(state, e, ctx) {
+    handleGrailKnightDefeat(state, e, ctx);
   },
   render25D(g, e, _state, ey, isHurt) {
     g.fillStyle = isHurt ? '#ffffff' : '#1e3a8a';

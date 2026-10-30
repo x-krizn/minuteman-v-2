@@ -15,6 +15,12 @@ export const cacheTile: TileDefinition = {
   blocksHeight: 1,
   bakedTopColor: '#fbbf24',
   bakedFrontColor: '#92400e',
+  checkSolid(state, _roomKey, tx, ty) {
+    if (tx !== undefined && ty !== undefined) {
+      return !isRoomCacheLooted(state, tx, ty);
+    }
+    return false;
+  },
   renderProp25D(g, tx, ty, sx, sy, state) {
     const isOpened = isRoomCacheLooted(state, tx, ty);
 

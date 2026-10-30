@@ -8,12 +8,18 @@ import { soundSystem } from '../../../../engine/core/soundSystem';
 import { TRAIT_REGISTRY } from '../../database/characters';
 import { getClassUtilityDefinition } from '../../database/equipment';
 import { getItemDefinition } from '../../database/items';
-import { getEffectiveMainGrip } from '../../database/progression';
+import {
+  adjustEnemyBaseLight,
+  adjustPlayerBaseLight,
+  computeEffectivePlayerLightTiles,
+  getEffectiveMainGrip,
+} from '../../database/progression';
 import { getWeaponDefinition } from '../../database/equipment/weapons';
 import {
   applyTraitLineProfile,
   getActiveWeaponStance,
   hasInertialTelemetryModEquipped,
+  hasPoeLanternGuidance,
   INERTIAL_TELEMETRY_SENSORY_ID,
   notifyOrionStateChange,
   resolvePlayerInertiaProfile,
@@ -37,6 +43,10 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({ state, isChe
   const inertiaProf = resolvePlayerInertiaProfile(state);
   const wpnSpec = resolveWeaponAttackInertiaSpec(currentWeaponId, 0);
   const hudModActive = hasInertialTelemetryModEquipped(state);
+  const effectiveLight = computeEffectivePlayerLightTiles(state);
+  const basePlayerLight = state.baseLight ?? 5;
+  const baseEnemyLight = state.enemyBaseLight ?? 5;
+  const lanternLit = hasPoeLanternGuidance(state);
 
   return (
     <div className="flex-1 overflow-y-auto space-y-2 pr-0.5 text-[10px]">
@@ -163,6 +173,118 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({ state, isChe
               fill="#f97316"
             />
           </svg>
+        </div>
+      </div>
+
+      {/* Light Stat & Vision Radius Controls */}
+      <div className="p-2 bg-[#090d14] rounded-xs border border-[#fbbf24]/50 space-y-1.5">
+        <div className="flex items-center justify-between">
+          <span className="text-[#fde047] font-bold text-[10.5px]">
+            ☀ LIGHT STAT &amp; VISION RADIUS (BASE 5 ≈ ½ SCREEN)
+          </span>
+          <span className="px-1.5 py-0.5 rounded-xs bg-[#fbbf24]/20 border border-[#fbbf24] text-[#fde047] font-black text-[9.5px]">
+            EFFECTIVE LIGHT: {effectiveLight} ({Math.round(effectiveLight * 13.6)}px)
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+          {/* Player Base Light Adjuster */}
+          <div className="p-1.5 bg-[#06090e] rounded-xs border border-[#1e293b] flex flex-col gap-1">
+            <div className="flex items-center justify-between text-[8.5px]">
+              <span className="text-[#cbd5e1] font-bold">PLAYER BASE LIGHT</span>
+              <span className="text-[#fde047] font-black">{basePlayerLight}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => {
+                  soundSystem.playSelect();
+                  adjustPlayerBaseLight(state, -0.5);
+                  notifyOrionStateChange();
+                }}
+                className="flex-1 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#f8fafc] font-bold rounded-xs border border-[#475569] cursor-pointer text-[8.5px]"
+              >
+                -0.5
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  soundSystem.playSelect();
+                  state.baseLight = 5;
+                  notifyOrionStateChange();
+                }}
+                className="px-1.5 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#94a3b8] font-bold rounded-xs border border-[#334155] cursor-pointer text-[8px]"
+              >
+                5.0
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  soundSystem.playSelect();
+                  adjustPlayerBaseLight(state, 0.5);
+                  notifyOrionStateChange();
+                }}
+                className="flex-1 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#f8fafc] font-bold rounded-xs border border-[#475569] cursor-pointer text-[8.5px]"
+              >
+                +0.5
+              </button>
+            </div>
+          </div>
+
+          {/* Enemy Vision Radius Adjuster */}
+          <div className="p-1.5 bg-[#06090e] rounded-xs border border-[#1e293b] flex flex-col gap-1">
+            <div className="flex items-center justify-between text-[8.5px]">
+              <span className="text-[#fda4af] font-bold">ENEMY VISION STAT</span>
+              <span className="text-[#f43f5e] font-black">
+                {baseEnemyLight} ({Math.round(baseEnemyLight * 14)}px)
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => {
+                  soundSystem.playSelect();
+                  adjustEnemyBaseLight(state, -0.5);
+                  notifyOrionStateChange();
+                }}
+                className="flex-1 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#f8fafc] font-bold rounded-xs border border-[#475569] cursor-pointer text-[8.5px]"
+              >
+                -0.5
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  soundSystem.playSelect();
+                  adjustEnemyBaseLight(state, 5 - baseEnemyLight);
+                  notifyOrionStateChange();
+                }}
+                className="px-1.5 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#94a3b8] font-bold rounded-xs border border-[#334155] cursor-pointer text-[8px]"
+              >
+                5.0
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  soundSystem.playSelect();
+                  adjustEnemyBaseLight(state, 0.5);
+                  notifyOrionStateChange();
+                }}
+                className="flex-1 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#f8fafc] font-bold rounded-xs border border-[#475569] cursor-pointer text-[8.5px]"
+              >
+                +0.5
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-1 text-[8px] text-[#94a3b8] pt-0.5">
+          <span>
+            UNEXPLORED EDGE: <strong className="text-[#f8fafc]">BLACK FADE</strong> · EXPLORED EDGE:{' '}
+            <strong className="text-[#94a3b8]">SLATE GRAY FADE</strong>
+          </span>
+          <span className="text-[#67e8f9]">
+            {lanternLit ? 'POE LANTERN +1.0 ACTIVE' : 'POE LANTERN UNLIT'}
+          </span>
         </div>
       </div>
 

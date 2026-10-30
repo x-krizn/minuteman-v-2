@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { TILE_SIZE } from '../../../constants';
+import { getEffectiveRoomCoord, TILE_SIZE } from '../../../constants';
 import { drawBase64Sprite } from '../../../systems/render/spriteAtlasCache';
 import { TileDefinition } from '../../../types';
 import { getAreaDefinition } from '../index';
@@ -19,11 +19,15 @@ export const aetherWaystationTile: TileDefinition = {
   bakedTopColor: '#f97316',
   bakedFrontColor: '#7c2d12',
   renderProp25D(g, tx, ty, sx, sy, state) {
+    const effRoom = getEffectiveRoomCoord(state);
     const areaDef = getAreaDefinition(state.areaId);
     const wsId = areaDef?.waystation?.id;
     const isLit =
-      Boolean(wsId && state.discoveredWaystations?.includes(wsId)) ||
-      (state.discoveredWaystations?.length ?? 0) > 0;
+      effRoom === '0,0'
+        ? Boolean(state.flags?.first_campfire_lit)
+        : Boolean(state.flags?.first_campfire_lit) ||
+          Boolean(wsId && state.discoveredWaystations?.includes(wsId)) ||
+          (state.discoveredWaystations?.length ?? 0) > 0;
 
     g.fillStyle = 'rgba(0, 0, 0, 0.42)';
     g.beginPath();

@@ -8,6 +8,8 @@ import { soundSystem } from '../../../../engine/core/soundSystem';
 import { getWeaponDefinition } from '../../database/equipment/weapons';
 import { getItemDefinition } from '../../database/items';
 import {
+  adjustPlayerBaseLight,
+  computeEffectivePlayerLightTiles,
   GEMSTONE_CATALOG,
   getEffectiveMainGrip,
   getInventoryGemCount,
@@ -21,6 +23,7 @@ import {
   getRoomWorldInfo,
   hasInertialTelemetryModEquipped,
   isChunkedExpanseRoom,
+  notifyOrionStateChange,
   performAuxiliarySwap,
   resolvePlayerInertiaProfile,
   TUTORIAL_STEP_DESCRIPTORS,
@@ -408,13 +411,44 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
         aria-label="Munitions & Salvage"
         className={`flex flex-col items-end gap-0.5 max-w-[145px] bg-transparent ${OUTLINED_TEXT}`}
       >
-        {/* Salvage Scrap & Gemstone Counter */}
-        <div className="flex items-center gap-1.5 text-[8.5px] font-bold bg-transparent">
+        {/* Salvage Scrap, Gemstone Counter & Modifiable Player Light Stat */}
+        <div className="flex items-center gap-1 text-[8.5px] font-bold bg-transparent">
           <span className="text-[#fef08a]">⚙ {state.salvageScrap}</span>
           <span className="text-[#475569]">·</span>
           <span className="text-[#7dd3fc]">
             ◆ {GEMSTONE_CATALOG.reduce((sum, g) => sum + getInventoryGemCount(state, g.id), 0)}
           </span>
+          <span className="text-[#475569]">·</span>
+          <div
+            className="pointer-events-auto inline-flex items-center gap-0.5 text-[#fde047]"
+            title="Modifiable Light Stat (Base 5 ≈ half screen)"
+          >
+            <button
+              type="button"
+              onClick={() => {
+                soundSystem.playSelect();
+                adjustPlayerBaseLight(state, -0.5);
+                notifyOrionStateChange();
+              }}
+              className="px-0.5 leading-none text-[#94a3b8] hover:text-white cursor-pointer"
+              aria-label="Decrease Light Stat"
+            >
+              -
+            </button>
+            <span>☀{computeEffectivePlayerLightTiles(state)}</span>
+            <button
+              type="button"
+              onClick={() => {
+                soundSystem.playSelect();
+                adjustPlayerBaseLight(state, 0.5);
+                notifyOrionStateChange();
+              }}
+              className="px-0.5 leading-none text-[#94a3b8] hover:text-white cursor-pointer"
+              aria-label="Increase Light Stat"
+            >
+              +
+            </button>
+          </div>
         </div>
 
         {/* Active Weapon & Segmented Ammo Pips */}

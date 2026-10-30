@@ -18,6 +18,7 @@ export const bogCrawlerEnemy: EnemyWikiDefinition = {
   faction: 'hostile',
   emissiveColor: '#ffd27d',
   tellRadius: 26,
+  visionRadiusTiles: 5,
   description: 'An aggressive armored arthropod dwelling in the deep mud of M00.',
   lore:
     'Native to the toxic marshes of Belldor, it burrows beneath floating reeds and ambushes passing drop-pod pilots with sudden impact lunges.',
@@ -25,7 +26,7 @@ export const bogCrawlerEnemy: EnemyWikiDefinition = {
   armor: { type: 'Hardened', threshold: 5, rating: 2, durability: 35 },
   frameIntegrity: 48,
   speed: 28,
-  damage: 12,
+  damage: 18,
   damageType: 'Impact',
   tellDurationSec: 0.35,
   attackCooldownSec: 1.8,

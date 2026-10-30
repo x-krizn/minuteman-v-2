@@ -18,6 +18,7 @@ import {
   SCREEN_W,
   Z_SCALE,
 } from '../constants';
+import { computeEffectivePlayerLightTiles } from '../database/progression';
 import { AetherCardinalDir, OrionState } from '../types';
 
 export function drawAetherFogWayfindingTells(
@@ -233,7 +234,13 @@ export function drawCanonicalHud(g: CanvasRenderingContext2D, state: OrionState)
   const isKhopesh = activeWeaponId === 'khopesh';
 
   g.textAlign = 'right';
-  drawOutlinedCanvasText(g, `${state.salvageScrap}`, SCREEN_W - 4, 9, '#ffd27d');
+  drawOutlinedCanvasText(
+    g,
+    `☀${computeEffectivePlayerLightTiles(state)} · ${state.salvageScrap}`,
+    SCREEN_W - 4,
+    9,
+    '#ffd27d'
+  );
   if (state.isReloading) {
     drawOutlinedCanvasText(
       g,
@@ -293,7 +300,38 @@ export function drawCanonicalHud(g: CanvasRenderingContext2D, state: OrionState)
   const px = Math.max(24, Math.min(SCREEN_W - 24, state.x - camX));
   const py = Math.max(18, Math.min(SCREEN_H - 22, state.y - state.z * Z_SCALE - camY - 16));
 
-  if (state.promptText) {
+  if (state.contextMenu && state.contextMenu.options.length > 0) {
+    const menu = state.contextMenu;
+    const boxW = 128;
+    const boxH = 16 + menu.options.length * 10;
+    const bx = Math.floor((SCREEN_W - boxW) / 2);
+    const by = Math.floor((SCREEN_H - boxH) / 2);
+
+    g.fillStyle = 'rgba(9, 13, 22, 0.94)';
+    g.fillRect(bx, by, boxW, boxH);
+    g.strokeStyle = '#38bdf8';
+    g.lineWidth = 1;
+    g.strokeRect(bx + 0.5, by + 0.5, boxW - 1, boxH - 1);
+
+    g.textAlign = 'left';
+    drawOutlinedCanvasText(g, menu.title.slice(0, 22), bx + 4, by + 9, '#38bdf8');
+    for (let i = 0; i < menu.options.length; i++) {
+      const opt = menu.options[i];
+      const isSel = i === menu.selectedIndex;
+      const oy = by + 19 + i * 10;
+      if (isSel) {
+        g.fillStyle = 'rgba(56, 189, 248, 0.25)';
+        g.fillRect(bx + 2, oy - 7, boxW - 4, 9);
+      }
+      drawOutlinedCanvasText(
+        g,
+        `${isSel ? '> ' : '  '}${opt.label.slice(0, 21)}`,
+        bx + 4,
+        oy,
+        isSel ? '#fef08a' : '#cbd5e1'
+      );
+    }
+  } else if (state.promptText) {
     g.textAlign = 'center';
     drawOutlinedCanvasText(g, state.promptText, px, py, '#fef08a');
   }

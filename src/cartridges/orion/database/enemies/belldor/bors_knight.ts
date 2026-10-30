@@ -13,8 +13,15 @@ import {
 import { addOrionInventoryItem, notifyOrionStateChange } from '../../../systems/stateStore';
 import { EnemyEntity, EnemyWikiDefinition, OrionCombatContext, OrionState } from '../../../types';
 
-function handleGrailKnightDefeat(state: OrionState, ctx: OrionCombatContext): void {
+function handleGrailKnightDefeat(
+  state: OrionState,
+  e: EnemyEntity,
+  ctx: OrionCombatContext
+): void {
   state.flags = state.flags || {};
+  if (!e.isFogBoss && !e.isDungeonGuardian && !e.isAbyssElite) {
+    state.flags[`grail_knight_defeated:${e.type}`] = true;
+  }
   const curFrags = Number(state.flags.grail_fragments || 0);
   state.flags.grail_fragments = Math.min(3, curFrags + 1);
   addOrionInventoryItem(state, 'grail_fragment', 1);
@@ -41,6 +48,7 @@ export const borsKnightEnemy: EnemyWikiDefinition = {
   faction: 'camelot',
   emissiveColor: '#b8a4ff',
   tellRadius: 34,
+  visionRadiusTiles: 5,
   description: 'A relentless brawler who grows stronger with every hit and enrages at half health.',
   lore:
     'Gains +10% damage per strike landed; below 50% HP enters Grail Overload with a deadly telegraphed execution lunge.',
@@ -48,7 +56,7 @@ export const borsKnightEnemy: EnemyWikiDefinition = {
   armor: { type: 'Reactive', threshold: 8, rating: 5, durability: 80 },
   frameIntegrity: 160,
   speed: 24,
-  damage: 22,
+  damage: 32,
   damageType: 'Impact',
   tellDurationSec: 0.5,
   attackCooldownSec: 2.0,
@@ -58,8 +66,8 @@ export const borsKnightEnemy: EnemyWikiDefinition = {
     { itemId: 'rusted_gate_key', chance: 1.0, count: 1 },
     { itemId: 'corrupted_shard', chance: 1.0, count: 1 },
   ],
-  onDeath(state, _e, ctx) {
-    handleGrailKnightDefeat(state, ctx);
+  onDeath(state, e, ctx) {
+    handleGrailKnightDefeat(state, e, ctx);
   },
   render25D(g, e, _state, ey, isHurt) {
     g.fillStyle = isHurt ? '#ffffff' : '#312e81';

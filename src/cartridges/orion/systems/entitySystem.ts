@@ -145,6 +145,8 @@ export function spawnEnemyByType(
     currentMu: 0,
     lastInertiaOutcome: 'none',
     lastInertiaOutcomeTimer: 0,
+    visionRadiusTiles:
+      overrides?.visionRadiusTiles ?? state.enemyBaseLight ?? def.visionRadiusTiles ?? 5,
     ...overrides,
     name: overrides?.name || def.name,
   };
@@ -195,7 +197,10 @@ export function spawnRoomEnemies(
       const def = getEnemyDefinition(type);
       if (!def) continue;
 
-      if (def.shouldSkipSpawn?.(state)) {
+      if (
+        def.shouldSkipSpawn?.(state) ||
+        state.flags?.[`grail_knight_defeated:${type}`]
+      ) {
         continue;
       }
 

@@ -77,6 +77,8 @@ export interface EnemyEntity {
   hitstopTimer?: number;
   lastInertiaOutcome?: InertiaOutcomeBand;
   lastInertiaOutcomeTimer?: number;
+  /** Enemy Light / vision radius in tiles (defaults to 5 tiles = 80px) */
+  visionRadiusTiles?: number;
 }
 
 // Enemy Wiki Definition (Self-Contained Entity Module Contract)
@@ -101,6 +103,8 @@ export interface EnemyWikiDefinition {
   damageType: DamageType;
   tellDurationSec: number;
   attackCooldownSec: number;
+  /** Optional enemy Light / vision radius in tiles (defaults to 5 tiles = 80px) */
+  visionRadiusTiles?: number;
   /** Optional enemy frame weight class for Inertia System (`inertia-v0.md`) */
   weightClass?: FrameLoadCapacity;
   /** Optional numeric frame mass (`m`) override for Inertia System (`inertia-v0.md`) */

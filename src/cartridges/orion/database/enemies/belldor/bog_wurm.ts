@@ -6,6 +6,7 @@
 import { getDirFromVector, TILE_SIZE } from '../../../constants';
 import {
   canEnemyDetectPlayer,
+  findNearestWaterTilePx,
   idlePatrolEnemy,
   stepEnemyWithCollision,
 } from '../../../systems/enemyHelpers';
@@ -18,14 +19,15 @@ export const bogWurmEnemy: EnemyWikiDefinition = {
   faction: 'hostile',
   emissiveColor: '#38bdf8',
   tellRadius: 26,
+  visionRadiusTiles: 5,
   description: 'A snake-like hybrid of machine and flesh with glowing ætheric veins.',
   lore:
-    'Hides invisible beneath corrosive bog water, strikes first, and retreats to heal when hurt. Helping the Poe back to its lantern reveals its submerged form.',
+    'Can only submerge in corrosive bog water (~). When on dry ground and seeking stealth or regeneration, it slithers toward the nearest water pool first. Helping the Poe reveals its submerged form.',
   shields: { type: 'energy', capacity: 35 },
   armor: { type: 'Layered', threshold: 7, rating: 4, durability: 65 },
   frameIntegrity: 120,
   speed: 32,
-  damage: 20,
+  damage: 28,
   damageType: 'Pulse',
   tellDurationSec: 0.45,
   attackCooldownSec: 2.0,
@@ -50,6 +52,15 @@ export const bogWurmEnemy: EnemyWikiDefinition = {
     g.fillRect(e.x - 4, ey - 15, 8, 4);
   },
   update(rooms, state: OrionState, e: EnemyEntity, dt: number) {
+    const tx = Math.floor(e.x / TILE_SIZE);
+    const ty = Math.floor(e.y / TILE_SIZE);
+    const onWater = rooms[state.room]?.[ty]?.[tx] === '~';
+
+    // Strict rule: Bog Wurm can ONLY be submerged while standing on '~'
+    if (!onWater) {
+      e.isSubmerged = false;
+    }
+
     if (e.stun > 0) {
       e.isSubmerged = false;
       e.stun -= dt;
@@ -57,9 +68,6 @@ export const bogWurmEnemy: EnemyWikiDefinition = {
     }
     if (e.attackCd > 0) e.attackCd -= dt;
 
-    const tx = Math.floor(e.x / TILE_SIZE);
-    const ty = Math.floor(e.y / TILE_SIZE);
-    const onWater = rooms[state.room]?.[ty]?.[tx] === '~';
     const lanternReveals = Boolean(
       state.flags?.poe_lantern_gift || state.flags?.poe_state === 'helped'
     );
@@ -131,23 +139,66 @@ export const bogWurmEnemy: EnemyWikiDefinition = {
       return;
     }
 
+    // Helper: seek nearest '~' tile when the wurm wants to submerge and is not currently on '~'
+    const seekWaterToSubmerge = (speedMult: number = 1.0): boolean => {
+      if (onWater) {
+        e.isSubmerged = !e.isFogBoss && !lanternReveals;
+        return true;
+      }
+      e.isSubmerged = false;
+      const waterTarget = findNearestWaterTilePx(rooms, state, e.x, e.y, 10);
+      if (waterTarget) {
+        const wdx = waterTarget.x - e.x;
+        const wdy = waterTarget.y - e.y;
+        const wDist = Math.hypot(wdx, wdy) || 1;
+        e.dir = getDirFromVector(wdx, wdy);
+        stepEnemyWithCollision(
+          rooms,
+          state,
+          e,
+          (wdx / wDist) * e.speed * speedMult * dt,
+          (wdy / wDist) * e.speed * speedMult * dt
+        );
+        const newTx = Math.floor(e.x / TILE_SIZE);
+        const newTy = Math.floor(e.y / TILE_SIZE);
+        if (rooms[state.room]?.[newTy]?.[newTx] === '~') {
+          e.isSubmerged = !e.isFogBoss && !lanternReveals;
+          return true;
+        }
+      }
+      return false;
+    };
+
+    // Retreating to regenerate at < 65% HP: must reach '~' before it can submerge and heal
     if (e.frame.integrity < e.frame.maxIntegrity * 0.65 && e.attackCd > 0.4) {
-      e.isSubmerged = !lanternReveals;
-      e.frame.integrity = Math.min(e.frame.maxIntegrity, e.frame.integrity + 9 * dt);
-      e.t += dt * 3;
-      stepEnemyWithCollision(
-        rooms,
-        state,
-        e,
-        Math.cos(e.t) * e.speed * dt,
-        Math.sin(e.t) * e.speed * dt
-      );
+      if (seekWaterToSubmerge(1.15)) {
+        e.frame.integrity = Math.min(e.frame.maxIntegrity, e.frame.integrity + 9 * dt);
+        e.t += dt * 3;
+        const driftX = Math.cos(e.t) * e.speed * 0.45 * dt;
+        const driftY = Math.sin(e.t) * e.speed * 0.45 * dt;
+        const nextTx = Math.floor((e.x + driftX) / TILE_SIZE);
+        const nextTy = Math.floor((e.y + driftY) / TILE_SIZE);
+        if (rooms[state.room]?.[nextTy]?.[nextTx] === '~') {
+          stepEnemyWithCollision(rooms, state, e, driftX, driftY);
+        }
+      }
       return;
     }
 
-    if (!canEnemyDetectPlayer(rooms, state, e, e.isFogBoss ? 115 : 88)) {
-      e.isSubmerged = e.isFogBoss ? false : onWater && !lanternReveals;
-      idlePatrolEnemy(rooms, state, e, dt, 7);
+    if (!canEnemyDetectPlayer(rooms, state, e, e.isFogBoss ? 115 : 80)) {
+      if (!onWater) {
+        if (!seekWaterToSubmerge(0.85)) {
+          idlePatrolEnemy(rooms, state, e, dt, 7);
+        }
+      } else {
+        e.isSubmerged = e.isFogBoss ? false : !lanternReveals;
+        idlePatrolEnemy(rooms, state, e, dt, 6);
+        const afterTx = Math.floor(e.x / TILE_SIZE);
+        const afterTy = Math.floor(e.y / TILE_SIZE);
+        if (rooms[state.room]?.[afterTy]?.[afterTx] !== '~') {
+          e.isSubmerged = false;
+        }
+      }
       return;
     }
 
@@ -158,11 +209,17 @@ export const bogWurmEnemy: EnemyWikiDefinition = {
     } else if (dist <= 52) {
       // Breaches to ambush when player is within striking range
       e.isSubmerged = false;
+    } else if (!onWater) {
+      // Wants to stalk submerged outside 52px but is not on '~' -> seek '~' first
+      if (seekWaterToSubmerge(1.0)) {
+        return;
+      }
     } else {
-      e.isSubmerged = onWater && !lanternReveals;
+      e.isSubmerged = !lanternReveals;
     }
 
     if (dist <= 34 && e.attackCd <= 0) {
+      e.isSubmerged = false;
       e.state = 'windup';
       e.stateTimer = this.tellDurationSec;
       e.attackAngle = Math.atan2(dy, dx);
@@ -177,5 +234,10 @@ export const bogWurmEnemy: EnemyWikiDefinition = {
       (dx / dist) * e.speed * dt,
       (dy / dist) * e.speed * dt
     );
+    const finalTx = Math.floor(e.x / TILE_SIZE);
+    const finalTy = Math.floor(e.y / TILE_SIZE);
+    if (rooms[state.room]?.[finalTy]?.[finalTx] !== '~') {
+      e.isSubmerged = false;
+    }
   },
 };

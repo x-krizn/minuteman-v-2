@@ -40,29 +40,38 @@ export const orcWarriorEnemy: EnemyWikiDefinition = {
   spawnChar: 'o',
   faction: 'orc',
   emissiveColor: '#fb923c',
-  tellRadius: 26,
+  tellRadius: 28,
+  visionRadiusTiles: 5,
   companionSpawnType: 'orc_scout',
   companionSpawnChar: 's',
-  description: 'A shield-bearing brawler who closes distance aggressively and hits hard.',
+  description: 'A heavy shield-bearing brawler who closes distance relentlessly and hits like a siege ram.',
   lore:
-    'Orcs always patrol Belldor in pairs: a Warrior and a Scout. The Warrior anchors the front line with a physical bulwark while the Scout fires from cover.',
-  shields: { type: 'physical', capacity: 45 },
-  armor: { type: 'Hardened', threshold: 6, rating: 3, durability: 45 },
-  frameIntegrity: 60,
-  speed: 30,
-  damage: 16,
+    'Orcs always patrol Belldor in pairs: a heavy Warrior and a Scout. The Warrior anchors the front line with heavy hardened plating and a high-impulse boarding axe while the Scout fires from cover.',
+  shields: { type: 'physical', capacity: 60 },
+  armor: { type: 'Hardened', threshold: 9, rating: 4, durability: 75 },
+  frameIntegrity: 95,
+  speed: 26,
+  damage: 28,
   damageType: 'Impact',
-  tellDurationSec: 0.4,
-  attackCooldownSec: 1.6,
+  tellDurationSec: 0.44,
+  attackCooldownSec: 1.65,
+  weightClass: 'heavy',
+  baseWeight: 185,
+  baseStability: 72,
+  attackWeight: 68,
+  attackSpeed: 158,
+  commitment: 1.0,
   lootTable: [
     { itemId: 'trade_coin', chance: 1.0, count: 8 },
     { itemId: 'orc_war_paint', chance: 0.35 },
   ],
   render25D(g, e, _state, ey, isHurt) {
-    g.fillStyle = isHurt ? '#ffffff' : '#9a3412';
-    g.fillRect(e.x - 6, ey - 15, 12, 15);
+    g.fillStyle = isHurt ? '#ffffff' : '#7c2d12';
+    g.fillRect(e.x - 7, ey - 16, 14, 16);
+    g.fillStyle = '#ea580c';
+    g.fillRect(e.x - 5, ey - 14, 10, 8);
     g.fillStyle = '#fdba74';
-    g.fillRect(e.x - 8, ey - 12, 4, 10);
+    g.fillRect(e.x - 9, ey - 13, 4, 11);
   },
   update(rooms, state: OrionState, e: EnemyEntity, dt: number) {
     if (e.stun > 0) {
@@ -80,24 +89,24 @@ export const orcWarriorEnemy: EnemyWikiDefinition = {
       e.stateTimer -= dt;
       if (e.stateTimer <= 0) {
         e.state = 'attack';
-        e.stateTimer = 0.22;
+        e.stateTimer = 0.24;
         e.hasStruckThisAttack = false;
         const ang = e.attackAngle ?? Math.atan2(dy, dx);
-        stepEnemyWithCollision(rooms, state, e, Math.cos(ang) * 12, Math.sin(ang) * 12);
+        stepEnemyWithCollision(rooms, state, e, Math.cos(ang) * 15, Math.sin(ang) * 15);
         state.bladeTrails = state.bladeTrails || [];
         state.bladeTrails.push({
           x: e.x,
           y: e.y,
           z: e.z,
           angle: ang,
-          arcSpan: Math.PI * 0.8,
-          radius: 24,
-          width: 14,
+          arcSpan: Math.PI * 0.85,
+          radius: 26,
+          width: 16,
           style: 'chop',
           color: '#fb923c',
           coreColor: '#ffedd5',
-          life: 0.22,
-          maxLife: 0.22,
+          life: 0.24,
+          maxLife: 0.24,
           isEnemy: true,
         });
         if (target.isNpc && target.npcEntity && dist < 24) {

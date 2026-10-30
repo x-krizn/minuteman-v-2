@@ -1635,15 +1635,21 @@ export function drawDirectionalCastShadowsAndLandmarks(
         g.ellipse(cx + 6, cy + 4, 22, 14, -0.15, 0, Math.PI * 2);
         g.stroke();
       } else if (ch === 'A') {
-        const hearthPulse = 26 + Math.sin(state.t * 3.5) * 2;
-        const hearthGrad = g.createRadialGradient(cx, cy, 4, cx, cy, hearthPulse);
-        hearthGrad.addColorStop(0, 'rgba(251, 191, 36, 0.28)');
-        hearthGrad.addColorStop(0.6, 'rgba(249, 115, 22, 0.12)');
-        hearthGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        g.fillStyle = hearthGrad;
-        g.beginPath();
-        g.arc(cx, cy, hearthPulse, 0, Math.PI * 2);
-        g.fill();
+        const isLit =
+          state.room === '0,0' || state.rx === 0 && state.ry === 0
+            ? Boolean(state.flags?.first_campfire_lit)
+            : true;
+        if (isLit) {
+          const hearthPulse = 26 + Math.sin(state.t * 3.5) * 2;
+          const hearthGrad = g.createRadialGradient(cx, cy, 4, cx, cy, hearthPulse);
+          hearthGrad.addColorStop(0, 'rgba(251, 191, 36, 0.28)');
+          hearthGrad.addColorStop(0.6, 'rgba(249, 115, 22, 0.12)');
+          hearthGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          g.fillStyle = hearthGrad;
+          g.beginPath();
+          g.arc(cx, cy, hearthPulse, 0, Math.PI * 2);
+          g.fill();
+        }
       } else if (ch === 'L') {
         const isLit = state.flags?.poe_state === 'helped' || hasPoeLanternGuidance(state);
         const lRadius = (isLit ? 28 : 18) + Math.sin(state.t * 3) * 2;

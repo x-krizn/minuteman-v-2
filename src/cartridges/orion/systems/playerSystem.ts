@@ -75,6 +75,7 @@ import {
   subscribeOrionStateChange,
 } from './stateStore';
 import {
+  executeContextMenuOption,
   executeWorldInteraction,
   rebootAtSpawnAnchor,
   rehydrateAetherFogRooms,
@@ -152,6 +153,9 @@ function serializeOrionSaveData(state: OrionState) {
     lastSafeChunkCoord: state.lastSafeChunkCoord,
     litChunkLanterns: state.litChunkLanterns || {},
     clearedDeepFogDungeons: state.clearedDeepFogDungeons || {},
+    baseLight: state.baseLight ?? 5,
+    enemyBaseLight: state.enemyBaseLight ?? 5,
+    exploredTiles: state.exploredTiles || {},
   };
 }
 
@@ -268,6 +272,17 @@ function applySerializedSaveDataToState(
     data.clearedDeepFogDungeons && typeof data.clearedDeepFogDungeons === 'object'
       ? data.clearedDeepFogDungeons
       : {};
+  state.baseLight =
+    typeof data.baseLight === 'number' ? data.baseLight : state.baseLight ?? 5;
+  state.enemyBaseLight =
+    typeof data.enemyBaseLight === 'number'
+      ? data.enemyBaseLight
+      : state.enemyBaseLight ?? 5;
+  state.exploredTiles =
+    data.exploredTiles && typeof data.exploredTiles === 'object'
+      ? data.exploredTiles
+      : {};
+  state.contextMenu = null;
   if (data.fogGraph && typeof data.fogGraph === 'object') {
     state.fogGraph = data.fogGraph;
     const roomsRef = getOrionRoomsRef();
@@ -572,9 +587,15 @@ export function createInitialOrionState(
     tutorialActive: true,
     tutorialStep: 'drop_pod_boot',
     bypassProgressionGates: false,
+    baseLight: 5,
+    enemyBaseLight: 5,
+    exploredTiles: {},
+    contextMenu: null,
     flags: {
       poe_state: 'unmet',
       poe_lantern_gift: false,
+      campfire_unlocked: false,
+      first_campfire_lit: false,
       bog_exit_revealed: false,
       bedivere_ring_choice: 'unchosen',
       bedivere_list_collected: false,
@@ -980,13 +1001,28 @@ export function isSolidAt(
   const currentRoom = rooms[state.room];
   const { cols, rows } = getRoomDimensions(currentRoom);
 
+  // Room 0,0 Eastern Exit Barrier: blocked until the First Campfire is lit
+  if (!state.flags?.first_campfire_lit && !state.bypassProgressionGates) {
+    if (state.room === '0,0' && tx >= 15 && ty >= 4 && ty <= 7) {
+      return true;
+    }
+    if (
+      state.room === SUNKEN_BOG_EXPANSE_ROOM_ID &&
+      tx === 139 &&
+      ty >= 84 &&
+      ty <= 94
+    ) {
+      return true;
+    }
+  }
+
   if (tx >= 0 && tx < cols && ty >= 0 && ty < rows) {
     if (!currentRoom || !currentRoom[ty]) return true;
 
     const char = currentRoom[ty][tx] || '.';
     const tile = getTileDefinition(char, state.biomeId);
     if (tile.checkSolid) {
-      return tile.checkSolid(state, state.room);
+      return tile.checkSolid(state, state.room, tx, ty);
     }
     if (!tile.solid) return false;
 
@@ -1018,7 +1054,7 @@ export function isSolidAt(
   const edgeTile = getTileDefinition(edgeChar, state.biomeId);
 
   if (edgeTile.checkSolid) {
-    return edgeTile.checkSolid(state, state.room);
+    return edgeTile.checkSolid(state, state.room, edgeTx, edgeTy);
   }
   if (!edgeTile.solid) return false;
   if (edgeTile.isDesync && Math.floor(state.t / 3.5) % 2 !== 0) return false;
@@ -1437,6 +1473,31 @@ export function updatePlayerSystem(
   const p = input.pressed;
   const h = input.held;
   const stick = input.stick;
+
+  // Intercept input if an Interactable Context Menu is currently open
+  if (state.contextMenu && state.contextMenu.options.length > 0) {
+    const optCount = state.contextMenu.options.length;
+    if (p.up) {
+      state.contextMenu.selectedIndex =
+        (state.contextMenu.selectedIndex - 1 + optCount) % optCount;
+      soundSystem.playSelect();
+      notifyOrionStateChange();
+    } else if (p.down) {
+      state.contextMenu.selectedIndex =
+        (state.contextMenu.selectedIndex + 1) % optCount;
+      soundSystem.playSelect();
+      notifyOrionStateChange();
+    } else if (p.a) {
+      executeContextMenuOption(rooms, state, combatCtx);
+      notifyOrionStateChange();
+    } else if (p.b) {
+      state.contextMenu = null;
+      soundSystem.playMenuBeep();
+      notifyOrionStateChange();
+    }
+    updateParticles(state, dt);
+    return true;
+  }
 
   let moveDx = 0;
   let moveDy = 0;

@@ -19,6 +19,7 @@ export const ladyOfTheLakeEnemy: EnemyWikiDefinition = {
   faction: 'hostile',
   emissiveColor: '#c084fc',
   tellRadius: 34,
+  visionRadiusTiles: 5,
   description: 'Something half machine and half serpent, an old name twisted by the æther.',
   lore:
     'Whoever collects all items on Bedivere’s numbered list and returns to the bog will find the water has been waiting.',
@@ -26,7 +27,7 @@ export const ladyOfTheLakeEnemy: EnemyWikiDefinition = {
   armor: { type: 'Reactive', threshold: 8, rating: 5, durability: 95 },
   frameIntegrity: 200,
   speed: 30,
-  damage: 24,
+  damage: 34,
   damageType: 'Wave',
   tellDurationSec: 0.55,
   attackCooldownSec: 2.0,

@@ -153,18 +153,14 @@ export function renderDepthSortedEntitiesAndProps(
           e.type === 'bog_poe' || (e.type === 'town_npc' && e.npcDisposition !== 'feral');
         const rawVis = getPointVisibilityFactor(e.x, e.y, state, room);
         const visFactor =
-          isFriendlyOrSanctuary || isHurt || isWindup || (state.opticMarkTimer || 0) > 0
+          isHurt || (state.opticMarkTimer || 0) > 0
             ? Math.max(rawVis, 0.85)
-            : rawVis;
+            : isFriendlyOrSanctuary
+              ? Math.max(rawVis, 0.45)
+              : rawVis;
 
-        if (visFactor < 0.26 && !isFriendlyOrSanctuary) {
-          g.save();
-          const glintPulse = 0.25 + 0.2 * Math.sin(state.t * 5 + e.id);
-          g.fillStyle = e.emissiveColor || '#ef4444';
-          g.globalAlpha = glintPulse;
-          g.fillRect(Math.round(e.x - 2), Math.round(ey - 10), 1.5, 1.5);
-          g.fillRect(Math.round(e.x + 1), Math.round(ey - 10), 1.5, 1.5);
-          g.restore();
+        // Dynamic enemies outside active light are hidden (even in explored gray fog)
+        if (visFactor < 0.28 && !isFriendlyOrSanctuary) {
           return;
         }
 

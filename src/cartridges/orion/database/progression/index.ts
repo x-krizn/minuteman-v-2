@@ -1683,10 +1683,78 @@ export function fundPilotSkillWithGem(
   return true;
 }
 
+export const FEAT_TIER_MAX_SLOTS: Record<FeatTier, number> = {
+  I: 6,
+  II: 5,
+  III: 4,
+  IV: 3,
+  V: 2,
+};
+
+export function getEquippedFeatCountByTier(state: OrionState, tier: FeatTier): number {
+  let count = 0;
+  for (const id of state.equippedFeats || []) {
+    const f = FRAME_FEAT_CATALOG.find((item) => item.id === id);
+    if (f?.tier === tier) count += 1;
+  }
+  return count;
+}
+
+/**
+ * Computes the player's effective Light stat in tiles (base 5 = half one screen).
+ * Modifiable via `state.baseLight`, Poe Lantern guidance (+1), Head Optics at Lv3+ (+0.5),
+ * active Optic Pulse (+1.5), and socketed Optics & Support feats (+0.5 each).
+ */
+export function computeEffectivePlayerLightTiles(state: OrionState): number {
+  const baseTiles =
+    typeof state.baseLight === 'number' && state.baseLight > 0 ? state.baseLight : 5;
+  const hasUnlockedOpticsHead =
+    (state.level >= 3 || Boolean(state.bypassProgressionGates)) &&
+    Boolean(state.flags?.optics_boost_enabled);
+  const isOpticPulseActive = (state.opticMarkTimer || 0) > 0;
+  const hasLantern = Boolean(
+    state.flags?.poe_lantern_gift || state.flags?.poe_state === 'helped'
+  );
+  const opticsFeatCount = (state.equippedFeats || []).filter((id) => {
+    const f = FRAME_FEAT_CATALOG.find((item) => item.id === id);
+    return f?.synergyCategory === 'Optics & Support';
+  }).length;
+
+  const totalTiles =
+    baseTiles +
+    (hasUnlockedOpticsHead ? 0.5 : 0) +
+    (hasLantern ? 1.0 : 0) +
+    (isOpticPulseActive ? 1.5 : 0) +
+    opticsFeatCount * 0.5;
+
+  return Math.max(1, Number(totalTiles.toFixed(2)));
+}
+
+export function adjustPlayerBaseLight(state: OrionState, delta: number): number {
+  const current = typeof state.baseLight === 'number' && state.baseLight > 0 ? state.baseLight : 5;
+  const next = Math.max(1, Math.min(12, Number((current + delta).toFixed(1))));
+  state.baseLight = next;
+  return next;
+}
+
+export function adjustEnemyBaseLight(state: OrionState, delta: number): number {
+  const current =
+    typeof state.enemyBaseLight === 'number' && state.enemyBaseLight > 0
+      ? state.enemyBaseLight
+      : 5;
+  const next = Math.max(1, Math.min(12, Number((current + delta).toFixed(1))));
+  state.enemyBaseLight = next;
+  for (const e of state.enemies || []) {
+    e.visionRadiusTiles = next;
+  }
+  return next;
+}
+
 /**
  * GEM USE 2 — FEAT NODE SOCKETING (Gems Removed from Inventory, Retained in Build, Refunded on Unsocket):
  * Installing the required Discipline + Reactor Gems unlocks and activates the Feat Node.
  * Unsocketing the Feat Node returns all retained gems back to the player's inventory.
+ * Enforces Per-Tier Feat Limits: Tier I: 6, Tier II: 5, Tier III: 4, Tier IV: 3, Tier V: 2.
  */
 export function toggleFeatNodeGemSocket(
   state: OrionState,
@@ -1730,6 +1798,16 @@ export function toggleFeatNodeGemSocket(
     return false;
   }
 
+  // Enforce per-tier feat limit (Tier I: 6, II: 5, III: 4, IV: 3, V: 2)
+  const tierCap = FEAT_TIER_MAX_SLOTS[feat.tier] ?? 6;
+  const currentTierCount = getEquippedFeatCountByTier(state, feat.tier);
+  if (currentTierCount >= tierCap) {
+    ctx?.say(
+      `TIER ${feat.tier} FEAT LIMIT REACHED (${currentTierCount}/${tierCap}) — UNSOCKET A TIER ${feat.tier} FEAT FIRST`
+    );
+    return false;
+  }
+
   // Socket: check skill/tier availability first
   if (!isFeatNodeAvailable(state, feat)) {
     const skillDef = PILOT_SKILL_DEFINITIONS.find((s) => s.id === feat.requiredSkillId);
@@ -1768,7 +1846,7 @@ export function toggleFeatNodeGemSocket(
   state.equippedFeats = [...state.equippedFeats, feat.id];
   const hwStatus = doesPilotMeetFeatEquipmentRequirement(state, feat);
   ctx?.say(
-    `SOCKETED ${socketedLabels.join(' + ').toUpperCase()} → ${feat.name.toUpperCase()} ACTIVE${hwStatus.met ? '' : ` (${hwStatus.reason.toUpperCase()})`}`
+    `SOCKETED ${socketedLabels.join(' + ').toUpperCase()} → ${feat.name.toUpperCase()} ACTIVE [TIER ${feat.tier}: ${currentTierCount + 1}/${tierCap}]${hwStatus.met ? '' : ` (${hwStatus.reason.toUpperCase()})`}`
   );
   syncPostTutorialFrameLevel(state);
   return true;

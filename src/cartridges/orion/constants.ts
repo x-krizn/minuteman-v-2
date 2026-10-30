@@ -318,6 +318,14 @@ export function hasPoeLanternGuidance(state: OrionState): boolean {
   return Boolean(state.flags?.poe_state === 'helped' || state.flags?.poe_lantern_gift);
 }
 
+export function isCheatModeActive(state: OrionState): boolean {
+  return Boolean(
+    state.bypassProgressionGates ||
+      state.room === '-4,0' ||
+      getEffectiveRoomCoord(state) === '-4,0'
+  );
+}
+
 export interface DoorwayAetherTransitionInfo {
   dir: AetherCardinalDir;
   currentDepth: number;
@@ -788,7 +796,7 @@ export function computeChunkFogMetrics(
   const hasLantern = hasPoeLanternGuidance(state);
   const safeDepth = 1 + Math.floor(clvl / 2) + (hasLantern ? 1 : 0);
   const overDepth = Math.max(0, distFromSetPath - safeDepth);
-  const isLanternLit = Boolean(state.litChunkLanterns?.[chunkKey]);
+  const isLanternLit = hasLantern || Boolean(state.litChunkLanterns?.[chunkKey]);
 
   const rawFogIntensity =
     distFromSetPath === 0

@@ -73,8 +73,7 @@ export function isRoomCacheLooted(
   const canonicalKey = getCanonicalRoomPersistenceKey(state, roomKey);
   return Boolean(
     state.lootedCaches[`${roomKey}:${tx},${ty}`] ||
-      state.lootedCaches[`${canonicalKey}:${tx},${ty}`] ||
-      state.lootedCaches[`${canonicalKey}:reward`]
+      state.lootedCaches[`${canonicalKey}:${tx},${ty}`]
   );
 }
 
@@ -87,7 +86,6 @@ export function markRoomCacheLooted(
   const canonicalKey = getCanonicalRoomPersistenceKey(state, roomKey);
   state.lootedCaches[`${roomKey}:${tx},${ty}`] = true;
   state.lootedCaches[`${canonicalKey}:${tx},${ty}`] = true;
-  state.lootedCaches[`${canonicalKey}:reward`] = true;
 }
 
 /**

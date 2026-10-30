@@ -19,6 +19,7 @@ import {
   TILE_SIZE,
   Z_SCALE,
 } from '../../constants';
+import { computeEffectivePlayerLightTiles } from '../../database/progression';
 import { GLOBAL_ROOM_REGISTRY, LOCAL_ROOM_REGISTRY } from '../../database/world';
 import {
   AetherCardinalDir,
@@ -610,33 +611,18 @@ export function resolveRoomLightingProfile(
     ? Math.min(0.9, Math.max(baseCornerShadow, 0.72 + loopDepth * 0.05))
     : baseCornerShadow;
 
-  const baseVisionPx =
+  const playerLightTiles = computeEffectivePlayerLightTiles(state);
+  const baseLightStatPx = playerLightTiles * 13.6; // 5 Light = 68px radius (136px diameter ≈ half of 256px screen)
+
+  const fogPenaltyPx =
     expanseFog && expanseFog.distFromSetPath > 0
-      ? Math.max(36, Math.round(92 - expanseFog.fogIntensity * 26)) +
-        (expanseFog.isLanternLit ? 26 : 0)
-      : authoredProfile?.playerVisionRadiusPx ??
-        (safetyTier === 'sanctuary'
-          ? 124
-          : safetyTier === 'trail'
-            ? 88
-            : safetyTier === 'hazard'
-              ? 64
-              : 56);
-  const loopAdjustedVision = isLoop
-    ? Math.max(42, baseVisionPx - loopDepth * 5)
-    : baseVisionPx;
+      ? Math.round(expanseFog.fogIntensity * 14) - (expanseFog.isLanternLit ? 14 : 0)
+      : isLoop
+        ? loopDepth * 5
+        : 0;
 
-  const hasOpticsHead = Boolean(state.equipmentSlots?.head || state.gates?.opticsActive);
-  const hasSensors = Boolean(state.equipmentSlots?.sensoryA || state.equipmentSlots?.sensoryB);
-  const isOpticPulseActive = (state.opticMarkTimer || 0) > 0;
+  const effectiveVisionRadiusPx = Math.max(16, baseLightStatPx - fogPenaltyPx);
   const hasLantern = hasPoeLanternGuidance(state);
-
-  const effectiveVisionRadiusPx =
-    loopAdjustedVision +
-    (hasOpticsHead ? 14 : 0) +
-    (hasSensors ? 10 : 0) +
-    (isOpticPulseActive ? 24 : 0) +
-    (hasLantern ? 16 : 0);
 
   const staticLightAnchors: Array<{ x: number; y: number; radius: number; color: string }> = [];
   if (room) {
@@ -653,7 +639,13 @@ export function resolveRoomLightingProfile(
         const cx = tx * TILE_SIZE + 8;
         const cy = ty * TILE_SIZE + 8;
         if (ch === 'A') {
-          staticLightAnchors.push({ x: cx, y: cy, radius: 74, color: '#f59e0b' });
+          const isCampfireLit =
+            effectiveRoomKey === '0,0'
+              ? Boolean(state.flags?.first_campfire_lit)
+              : true;
+          if (isCampfireLit) {
+            staticLightAnchors.push({ x: cx, y: cy, radius: 54, color: '#f59e0b' });
+          }
         } else if (ch === 'L') {
           const tileChunk = getChunkCoordsFromPx(cx, cy);
           const chunkLanternKey = makeChunkPersistenceKey(
@@ -667,15 +659,27 @@ export function resolveRoomLightingProfile(
           staticLightAnchors.push({
             x: cx,
             y: cy,
-            radius: isChunkLanternLit ? 82 : isLit ? 68 : 42,
+            radius: isChunkLanternLit ? 58 : isLit ? 52 : 16,
             color: isChunkLanternLit ? '#22d3ee' : isLit ? '#22d3ee' : '#fbbf24',
           });
         } else if (ch === 'D') {
-          staticLightAnchors.push({ x: cx, y: cy, radius: 58, color: '#f43f5e' });
+          staticLightAnchors.push({ x: cx, y: cy, radius: 22, color: '#f43f5e' });
         } else if (ch === 'Q') {
-          staticLightAnchors.push({ x: cx, y: cy, radius: 76, color: '#22d3ee' });
+          staticLightAnchors.push({ x: cx, y: cy, radius: 26, color: '#22d3ee' });
         }
       }
+    }
+  }
+
+  // Poe Spirit casts a localized spirit-lantern light aura (visible behind the trees at the edge of 0,0)
+  for (const e of state.enemies) {
+    if (e.type === 'bog_poe') {
+      staticLightAnchors.push({
+        x: e.x,
+        y: e.y,
+        radius: 26,
+        color: '#7dd3fc',
+      });
     }
   }
 
@@ -696,7 +700,7 @@ export function getPointVisibilityFactor(
   room?: string[]
 ): number {
   const lighting = resolveRoomLightingProfile(state, room);
-  if (lighting.safetyTier === 'sanctuary' && lighting.ambientDarkness <= 0.24) {
+  if (state.room === '-4,0') {
     return 1.0;
   }
 
@@ -707,24 +711,24 @@ export function getPointVisibilityFactor(
   const dx = x - state.x;
   const dy = y - state.y;
   const dot = distToPlayer > 1 ? (dx * dirInfo.dx + dy * dirInfo.dy) / distToPlayer : 1;
-  const directionalBonus = dot > 0.25 ? 1 + (dot - 0.25) * 0.24 : 1.0;
+  const directionalBonus = dot > 0.25 ? 1 + (dot - 0.25) * 0.14 : 1.0;
   const effPlayerR = visionR * directionalBonus;
 
   let bestVis = 0;
-  if (distToPlayer <= effPlayerR * 0.78) {
+  if (distToPlayer <= effPlayerR * 0.56) {
     bestVis = 1.0;
-  } else if (distToPlayer < effPlayerR * 1.38) {
-    const t = (distToPlayer - effPlayerR * 0.78) / (effPlayerR * 0.6);
+  } else if (distToPlayer < effPlayerR) {
+    const t = (distToPlayer - effPlayerR * 0.56) / (effPlayerR * 0.44);
     bestVis = Math.max(0, 1 - t);
   }
 
   for (const anchor of lighting.staticLightAnchors) {
     const d = Math.hypot(x - anchor.x, y - anchor.y);
-    if (d <= anchor.radius * 0.75) {
+    if (d <= anchor.radius * 0.55) {
       return 1.0;
     }
-    if (d < anchor.radius * 1.25) {
-      const aVis = 1 - (d - anchor.radius * 0.75) / (anchor.radius * 0.5);
+    if (d < anchor.radius) {
+      const aVis = 1 - (d - anchor.radius * 0.55) / (anchor.radius * 0.45);
       if (aVis > bestVis) bestVis = aVis;
     }
   }
@@ -732,7 +736,7 @@ export function getPointVisibilityFactor(
   for (const p of state.projectiles) {
     if (p.lightRadius && p.lightRadius > 0) {
       const d = Math.hypot(x - p.x, y - p.y);
-      const pr = p.lightRadius * 1.6;
+      const pr = p.lightRadius * 1.4;
       if (d < pr) {
         const pVis = Math.max(0, 1 - d / pr);
         if (pVis > bestVis) bestVis = pVis;
@@ -816,41 +820,46 @@ export function drawDynamicLightingAndBloomPass(
           lights.push({
             x: cx,
             y: cy - 6,
-            radius: (isHelped ? 46 : 28) + pulse,
+            radius: (isHelped ? 46 : 20) + pulse,
             color: isHelped ? '#38bdf8' : '#fbbf24',
-            intensity: isHelped ? 0.42 : 0.28,
+            intensity: isHelped ? 0.42 : 0.24,
           });
         } else if (ch === 'D') {
           lights.push({
             x: cx,
             y: cy - 4,
-            radius: 36 + pulse,
+            radius: 24 + pulse,
             color: '#38bdf8',
-            intensity: 0.32,
+            intensity: 0.28,
           });
         } else if (ch === 'A') {
-          lights.push({
-            x: cx,
-            y: cy - 3,
-            radius: 52 + pulse * 1.2,
-            color: '#f97316',
-            intensity: 0.42,
-          });
+          const effRoom = getEffectiveRoomCoord(state);
+          const isCampfireLit =
+            effRoom === '0,0' ? Boolean(state.flags?.first_campfire_lit) : true;
+          if (isCampfireLit) {
+            lights.push({
+              x: cx,
+              y: cy - 3,
+              radius: 52 + pulse * 1.2,
+              color: '#f97316',
+              intensity: 0.44,
+            });
+          }
         } else if (ch === 'Q') {
           lights.push({
             x: cx,
             y: cy - 8,
-            radius: 48 + pulse * 1.5,
+            radius: 28 + pulse * 1.2,
             color: '#22d3ee',
-            intensity: 0.4,
+            intensity: 0.34,
           });
         } else if (ch === '~' && (tx + ty) % 2 === 0) {
           lights.push({
             x: cx,
             y: cy,
-            radius: 18,
+            radius: 16,
             color: '#a855f7',
-            intensity: 0.14,
+            intensity: 0.12,
           });
         }
       }
@@ -875,9 +884,9 @@ export function drawDynamicLightingAndBloomPass(
       lights.push({
         x: e.x,
         y: e.y - e.z * Z_SCALE - 6,
-        radius: e.state === 'windup' ? 24 : 20,
+        radius: e.type === 'bog_poe' ? 28 : e.state === 'windup' ? 24 : 20,
         color: e.state === 'windup' ? '#fbbf24' : e.emissiveColor || '#38bdf8',
-        intensity: 0.24,
+        intensity: e.type === 'bog_poe' ? 0.36 : 0.24,
       });
     }
   }
@@ -900,8 +909,126 @@ export function drawDynamicLightingAndBloomPass(
     g.restore();
   }
 
+  // Dual-State World Darkness & Fog of War Pass (8x8 sub-tile precision):
+  // - Entire game world is darkened.
+  // - All characters (player and enemies) have a modifiable vision radius (base 5 = half one screen).
+  // - At the edge of the vision radius:
+  //   * Unexplored areas fade to pitch black (#000000).
+  //   * Explored areas fade to slate gray (rgba(71, 85, 105, ...)) where static terrain remains visible
+  //     under gray fog while dynamic enemies are hidden.
+  if (room && state.room !== '-4,0') {
+    state.exploredTiles = state.exploredTiles || {};
+    const roomExplored =
+      state.exploredTiles[state.room] || (state.exploredTiles[state.room] = {});
+    const { minTx, maxTx, minTy, maxTy } = getVisibleTileBounds(room, camX, camY, 2);
+
+    // Base world darkening veil across the viewport
+    g.save();
+    g.fillStyle = 'rgba(4, 7, 15, 0.24)';
+    g.fillRect(0, 0, SCREEN_W, SCREEN_H);
+    g.restore();
+
+    g.save();
+    g.translate(-camX, -camY);
+
+    // Render Room 0,0 Eastern Exit Mist Seal when First Campfire is unlit
+    if (!state.flags?.first_campfire_lit && !state.bypassProgressionGates) {
+      const isStandalone00 = state.room === '0,0';
+      const isExpanse = isChunkedExpanseRoom(state.room);
+      if (isStandalone00 || isExpanse) {
+        const barrierTx = isStandalone00 ? 15 : 139;
+        const barrierMinTy = isStandalone00 ? 4 : 85;
+        const barrierMaxTy = isStandalone00 ? 7 : 92;
+        if (barrierTx >= minTx && barrierTx <= maxTx) {
+          const pulseAlpha = 0.45 + 0.25 * Math.sin(state.t * 4);
+          for (let bty = barrierMinTy; bty <= barrierMaxTy; bty++) {
+            const bx = barrierTx * TILE_SIZE;
+            const by = bty * TILE_SIZE;
+            g.fillStyle = `rgba(56, 189, 248, ${(pulseAlpha * 0.45).toFixed(2)})`;
+            g.fillRect(bx + 2, by, TILE_SIZE - 4, TILE_SIZE);
+            g.fillStyle = `rgba(192, 132, 252, ${pulseAlpha.toFixed(2)})`;
+            g.fillRect(bx + 7, by, 2, TILE_SIZE);
+          }
+        }
+      }
+    }
+
+    const subSize = 8; // 2x2 sub-cells per 16x16 tile for smooth circular edge fade
+    for (let ty = minTy; ty <= maxTy; ty++) {
+      for (let tx = minTx; tx <= maxTx; tx++) {
+        const tileCenterX = tx * TILE_SIZE + 8;
+        const tileCenterY = ty * TILE_SIZE + 8;
+        const centerVis = getPointVisibilityFactor(tileCenterX, tileCenterY, state, room);
+        const tileKey = `${tx},${ty}`;
+        if (centerVis >= 0.42) {
+          roomExplored[tileKey] = true;
+        }
+        const isExplored = Boolean(roomExplored[tileKey]);
+
+        for (let syOff = 0; syOff < TILE_SIZE; syOff += subSize) {
+          for (let sxOff = 0; sxOff < TILE_SIZE; sxOff += subSize) {
+            const sx = tx * TILE_SIZE + sxOff;
+            const sy = ty * TILE_SIZE + syOff;
+            const subCx = sx + subSize * 0.5;
+            const subCy = sy + subSize * 0.5;
+            const vis = getPointVisibilityFactor(subCx, subCy, state, room);
+
+            if (!isExplored) {
+              // Unexplored areas fade to pitch black (#000000) at the edge of vision
+              const blackAlpha =
+                vis <= 0.02 ? 0.98 : Math.min(0.98, Math.max(0, Math.pow(1 - vis, 0.85) * 0.98));
+              if (blackAlpha > 0.02) {
+                g.fillStyle = `rgba(0, 0, 0, ${blackAlpha.toFixed(2)})`;
+                g.fillRect(sx, sy, subSize, subSize);
+              }
+            } else if (vis < 0.96) {
+              // Explored areas outside active vision fade to distinct slate gray
+              const fade = 1 - vis;
+              const grayAlpha = Math.min(0.84, Math.max(0, Math.pow(fade, 0.85) * 0.84));
+              if (grayAlpha > 0.02) {
+                g.fillStyle = `rgba(71, 85, 105, ${grayAlpha.toFixed(2)})`;
+                g.fillRect(sx, sy, subSize, subSize);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Subtle vision-radius perimeter ring for Player and visible Enemies
+    g.save();
+    g.strokeStyle = 'rgba(253, 224, 71, 0.16)';
+    g.lineWidth = 1;
+    g.setLineDash([3, 3]);
+    g.beginPath();
+    g.arc(
+      state.x,
+      state.y - state.z * Z_SCALE - 4,
+      roomLighting.effectiveVisionRadiusPx,
+      0,
+      Math.PI * 2
+    );
+    g.stroke();
+
+    for (const e of state.enemies) {
+      if (e.isSubmerged || e.faction === 'poe' || e.faction === 'npc') continue;
+      const eVis = getPointVisibilityFactor(e.x, e.y, state, room);
+      if (eVis < 0.35) continue;
+      const enemyVisionPx =
+        Math.max(1, e.visionRadiusTiles ?? state.enemyBaseLight ?? 5) * 13.6;
+      g.strokeStyle = 'rgba(248, 113, 113, 0.18)';
+      g.beginPath();
+      g.arc(e.x, e.y - e.z * Z_SCALE - 4, enemyVisionPx, 0, Math.PI * 2);
+      g.stroke();
+    }
+    g.setLineDash([]);
+    g.restore();
+
+    g.restore();
+  }
+
   const effectiveDarkness = Math.max(pp.ambientDarkness * 0.5, roomLighting.ambientDarkness);
-  if (effectiveDarkness > 0.05) {
+  if (effectiveDarkness > 0.05 && state.room !== '-4,0') {
     g.save();
     const playerScreenX = Math.max(0, Math.min(SCREEN_W, state.x - camX));
     const playerScreenY = Math.max(
@@ -915,23 +1042,23 @@ export function drawDynamicLightingAndBloomPass(
       if (d < anchor.radius * 1.2) {
         nearSanctuaryBoost = Math.max(
           nearSanctuaryBoost,
-          (1 - d / (anchor.radius * 1.2)) * 42
+          (1 - d / (anchor.radius * 1.2)) * 36
         );
       }
     }
 
     const innerClearR = Math.max(
-      20,
+      18,
       Math.min(
         SCREEN_W * 0.55,
-        roomLighting.effectiveVisionRadiusPx * 0.46 + nearSanctuaryBoost * 0.5
+        roomLighting.effectiveVisionRadiusPx * 0.65 + nearSanctuaryBoost * 0.5
       )
     );
     const outerShroudR = Math.max(
-      innerClearR + 28,
+      innerClearR + 22,
       Math.min(
         SCREEN_W * 0.95,
-        roomLighting.effectiveVisionRadiusPx * 1.08 + nearSanctuaryBoost
+        roomLighting.effectiveVisionRadiusPx * 1.2 + nearSanctuaryBoost
       )
     );
 
@@ -946,9 +1073,9 @@ export function drawDynamicLightingAndBloomPass(
     vig.addColorStop(0, 'rgba(0, 0, 0, 0)');
     vig.addColorStop(
       0.62,
-      `rgba(4, 8, 16, ${(effectiveDarkness * 0.55).toFixed(2)})`
+      `rgba(15, 23, 42, ${(effectiveDarkness * 0.38).toFixed(2)})`
     );
-    vig.addColorStop(1, `rgba(2, 5, 12, ${effectiveDarkness.toFixed(2)})`);
+    vig.addColorStop(1, `rgba(2, 6, 17, ${(effectiveDarkness * 0.62).toFixed(2)})`);
     g.fillStyle = vig;
     g.fillRect(0, 0, SCREEN_W, SCREEN_H);
     g.restore();

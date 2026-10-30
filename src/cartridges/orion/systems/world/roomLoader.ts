@@ -3,7 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { getRoomDimensions } from '../../constants';
+import {
+  getRoomDimensions,
+  KEY_NODE_ROUTES,
+  KeyNodeRouteDescriptor,
+} from '../../constants';
 import {
   AREA_REGISTRY,
   getAreaDefinition,
@@ -76,82 +80,9 @@ export function getOppositeCardinalDir(dir: AetherCardinalDir): AetherCardinalDi
   }
 }
 
-export interface KeyNodeRouteDescriptor {
-  targetKeyCoord: string;
-  routeTotal: number;
-  isDirectEndNode?: boolean;
-}
-
 // [ORION-ANCHOR: WORLD-KEY-ROUTES]
-export const KEY_NODE_ROUTES: Record<
-  string,
-  Partial<Record<AetherCardinalDir, KeyNodeRouteDescriptor>>
-> = {
-  '-3,0': {
-    E: { targetKeyCoord: '-2,0', routeTotal: 0 },
-  },
-  '-2,0': {
-    W: { targetKeyCoord: '-3,0', routeTotal: 0 },
-    E: { targetKeyCoord: '-1,0', routeTotal: 0 },
-  },
-  '-1,0': {
-    W: { targetKeyCoord: '-2,0', routeTotal: 0 },
-    E: { targetKeyCoord: '0,0', routeTotal: 0 },
-  },
-  '0,0': {
-    W: { targetKeyCoord: '-1,0', routeTotal: 0 },
-    N: { targetKeyCoord: '0,-1', routeTotal: 0 },
-    E: { targetKeyCoord: '1,0', routeTotal: 0 },
-  },
-  '0,-1': {
-    S: { targetKeyCoord: '0,0', routeTotal: 0 },
-    N: { targetKeyCoord: '0,-2', routeTotal: 0 },
-    E: { targetKeyCoord: '3,-1', routeTotal: 0 },
-  },
-  '0,-2': {
-    S: { targetKeyCoord: '0,-1', routeTotal: 0 },
-    E: { targetKeyCoord: '3,-1', routeTotal: 0 },
-  },
-  '1,0': {
-    W: { targetKeyCoord: '0,0', routeTotal: 0 },
-    N: { targetKeyCoord: '1,-1', routeTotal: 0, isDirectEndNode: true },
-    E: { targetKeyCoord: '2,0', routeTotal: 0 },
-  },
-  '2,0': {
-    W: { targetKeyCoord: '1,0', routeTotal: 0 },
-    E: { targetKeyCoord: '3,0', routeTotal: 0 },
-    S: { targetKeyCoord: '2,1', routeTotal: 0 },
-  },
-  '2,1': {
-    N: { targetKeyCoord: '2,0', routeTotal: 0 },
-  },
-  '3,-1': {
-    W: { targetKeyCoord: '0,-2', routeTotal: 0 },
-    S: { targetKeyCoord: '3,0', routeTotal: 0 },
-    N: { targetKeyCoord: '0,-1', routeTotal: 0 },
-  },
-  '3,0': {
-    W: { targetKeyCoord: '2,0', routeTotal: 0 },
-    N: { targetKeyCoord: '3,-1', routeTotal: 0 },
-    E: { targetKeyCoord: '4,0', routeTotal: 2 },
-  },
-  '4,0': {
-    W: { targetKeyCoord: '3,0', routeTotal: 2 },
-    N: { targetKeyCoord: '4,-1', routeTotal: 1 },
-    E: { targetKeyCoord: '5,0', routeTotal: 2 },
-  },
-  '4,-1': {
-    S: { targetKeyCoord: '4,0', routeTotal: 1 },
-  },
-  '5,0': {
-    W: { targetKeyCoord: '4,0', routeTotal: 2 },
-    E: { targetKeyCoord: '6,0', routeTotal: 1 },
-  },
-  '6,0': {
-    W: { targetKeyCoord: '5,0', routeTotal: 1 },
-    E: { targetKeyCoord: '7,0', routeTotal: 2 },
-  },
-};
+export { KEY_NODE_ROUTES };
+export type { KeyNodeRouteDescriptor };
 
 // [ORION-ANCHOR: U00-ZONE-SEALS]
 export function getUndefinedZoneSealReason(coordOrNodeId: string): string | null {
@@ -427,7 +358,7 @@ export function decorateDynamicRoomGrid(
       matrix[midY][midX] = '.';
     } else if (endFeature === 'secret_switch') {
       const switchChar = String((hashVal % 3) + 1);
-      matrix[Math.max(2, midY - 1)][Math.max(2, midX - 2)] = 'L';
+      matrix[Math.max(2, midY - 1)][Math.max(2, midX - 2)] = 'P';
       matrix[Math.max(2, midY - 1)][midX] = switchChar;
       matrix[midY][Math.min(cols - 2, midX + 1)] = 'C';
     } else if (endFeature === 'dead_end') {

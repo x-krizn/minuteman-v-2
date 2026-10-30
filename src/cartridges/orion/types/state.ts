@@ -244,7 +244,15 @@ export interface OrionState {
   /** Deep-Fog Dungeon chunks cleared by the pilot (`${roomId}:${cx},${cy}` -> true) */
   clearedDeepFogDungeons?: Record<string, boolean>;
 
-  // Feedback & Toasts
+  // Feedback, Light, Fog-of-War Exploration & Interactable Context Menu
+  /** Base player Light stat in tiles (defaults to 5 tiles = half one screen) */
+  baseLight?: number;
+  /** Base enemy Light / Vision radius stat in tiles (defaults to 5 tiles = half one screen) */
+  enemyBaseLight?: number;
+  /** Persistent explored tile coordinates per room (`exploredTiles[roomKey]["tx,ty"] = true`) */
+  exploredTiles?: Record<string, Record<string, boolean>>;
+  /** Active world interactable context menu state */
+  contextMenu?: OrionContextMenuState | null;
   toastText: string | null;
   toastTimer: number;
   promptText: string | null;
@@ -253,6 +261,29 @@ export interface OrionState {
   isFallingIntoPit?: boolean; // Falling into abyssal sinkhole / pit
   dismissedPromptKey?: string | null; // Currently dismissed interactive prompt tile
   atTitleMenu?: boolean; // True on cartridge boot until New Game / Load Game / Continue is chosen
+}
+
+export interface OrionContextMenuOption {
+  id: string;
+  label: string;
+  detail?: string;
+  disabled?: boolean;
+}
+
+export interface OrionContextMenuState {
+  title: string;
+  subtitle?: string;
+  targetType: string;
+  targetKey?: string;
+  x?: number;
+  y?: number;
+  worldX?: number;
+  worldY?: number;
+  tx?: number;
+  ty?: number;
+  entityId?: number;
+  selectedIndex: number;
+  options: OrionContextMenuOption[];
 }
 
 export interface OrionSpawnAnchor {

@@ -267,6 +267,13 @@ export interface OrionState {
   enemyBaseLight?: number;
   /** Persistent explored tile coordinates per room (`exploredTiles[roomKey]["tx,ty"] = true`) */
   exploredTiles?: Record<string, Record<string, boolean>>;
+  /** Persistent Pilot Codex discovery registry (entries unlocked as enemies, weapons, items, and zones are encountered) */
+  discoveredCodex?: {
+    enemies?: Record<string, boolean>;
+    weapons?: Record<string, boolean>;
+    items?: Record<string, boolean>;
+    lore?: Record<string, boolean>;
+  };
   /** Active world interactable context menu state */
   contextMenu?: OrionContextMenuState | null;
   toastText: string | null;

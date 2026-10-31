@@ -25,6 +25,7 @@ import {
   EquipmentInventoryCategory,
   SpriteCanvasIcon,
 } from './satchel/SatchelCanvases';
+import { SatchelCodexTab } from './satchel/SatchelCodexTab';
 import { SatchelFeatsTab } from './satchel/SatchelFeatsTab';
 import { SatchelInventoryTab, SatchelLoadoutTab } from './satchel/SatchelLoadoutTab';
 import { SatchelStatusTab } from './satchel/SatchelStatusTab';
@@ -39,14 +40,14 @@ export interface OrionSatchelProps {
 }
 
 /**
- * Renders the 5-tab Pilot Satchel (`MECH STATUS`, `LOADOUT & STANCE`, `3-LAYER BUILD`,
- * `INVENTORY`, and `WORLD MAP`). Supports both HUD modes and mutates `state: OrionState`
+ * Renders the 6-tab Pilot Satchel (`MECH STATUS`, `LOADOUT & STANCE`, `3-LAYER BUILD`,
+ * `INVENTORY`, `WORLD MAP`, and `CODEX`). Supports both HUD modes and mutates `state: OrionState`
  * through its child tab components when equipping hardware, socketing feats, or using items.
  */
 export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
-  const [tab, setTab] = useState<'status' | 'weapons' | 'inventory' | 'world' | 'progression'>(
-    'status'
-  );
+  const [tab, setTab] = useState<
+    'status' | 'weapons' | 'inventory' | 'world' | 'progression' | 'codex'
+  >('status');
   const [isEditingLoadout, setIsEditingLoadout] = useState(false);
   const [editingSlot, setEditingSlot] = useState<EditableLoadoutSlot>('slot1');
   const [loadoutSubtypeFilter, setLoadoutSubtypeFilter] = useState<string>('ALL');
@@ -176,6 +177,19 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
           >
             {isCheatMode ? 'CHEAT & GEMS' : 'SKILLS & GEMS'}
           </button>
+          <button
+            onClick={() => {
+              soundSystem.playMenuBeep();
+              setTab('codex');
+            }}
+            className={`px-2 py-0.5 text-[10px] font-bold rounded-xs transition-colors shrink-0 ${
+              tab === 'codex'
+                ? 'bg-[#50fa7b] text-[#05070a]'
+                : 'bg-[#0f172a] text-[#94a3b8] hover:bg-[#1e293b]'
+            }`}
+          >
+            CODEX
+          </button>
           {state.room === '-4,0' && (
             <span className="px-1.5 py-0.5 bg-[#4c1d95] text-[#f0abfc] border border-[#a855f7] rounded-xs text-[8.5px] font-black shrink-0">
               TRAINING [-4,0]
@@ -272,6 +286,8 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
           accessMode="menu"
         />
       )}
+
+      {tab === 'codex' && <SatchelCodexTab state={state} />}
     </div>
   );
 };

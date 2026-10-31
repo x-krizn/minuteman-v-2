@@ -19,6 +19,7 @@ import {
 } from '../systems';
 import { OrionSavedPilotEntry, TraitLine } from '../types';
 import { enterTrainingSandboxRoom } from './hud/HudTitleModal';
+import { SatchelCodexTab } from './satchel/SatchelCodexTab';
 import { SatchelWorldTab } from './satchel/SatchelWorldTab';
 
 /**
@@ -37,7 +38,7 @@ export interface OrionGameMenuProps {
   connectedGamepads?: string[];
 }
 
-type MenuSubView = 'main' | 'new_pilot' | 'load_roster' | 'world_map' | 'controls' | 'code_wiki';
+type MenuSubView = 'main' | 'new_pilot' | 'load_roster' | 'world_map' | 'controls' | 'codex';
 
 /**
  * Renders the `[START]` pause menu for Project Orion, providing pilot roster save/load,
@@ -506,18 +507,13 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
             </div>
           </div>
         </div>
-      ) : subView === 'code_wiki' ? (
-        /* Subview 5: Live Orion Code Wiki (/wiki/index.html + index.json) */
+      ) : subView === 'codex' && activeState ? (
+        /* Subview 5: Discovery-Gated In-Game Pilot Codex */
         <div className="flex-1 min-h-0 flex flex-col space-y-1.5 overflow-hidden">
           <div className="flex items-center justify-between pb-1 border-b border-[#334155]">
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-[#50fa7b] text-[10.5px]">
-                ORION CODE WIKI
-              </span>
-              <span className="text-[9px] text-[#94a3b8] font-mono">
-                /wiki/index.html
-              </span>
-            </div>
+            <span className="font-bold text-[#50fa7b] text-[10.5px]">
+              PILOT FIELD CODEX (DISCOVERED ARCHIVES)
+            </span>
             <button
               onClick={() => {
                 soundSystem.playMenuBeep();
@@ -528,11 +524,7 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
               ← Back to Menu
             </button>
           </div>
-          <iframe
-            src="./wiki/index.html"
-            title="Orion Code Wiki"
-            className="w-full flex-1 min-h-0 rounded-xs border border-[#2a3730] bg-[#0f1512]"
-          />
+          <SatchelCodexTab state={activeState} />
         </div>
       ) : (
         /* Main Menu Grid */
@@ -604,12 +596,12 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
             <button
               onClick={() => {
                 soundSystem.playSelect();
-                setSubView('code_wiki');
+                setSubView('codex');
               }}
               className="col-span-2 py-1.5 px-2 bg-[#16201a] hover:bg-[#1e2e24] border border-[#50fa7b]/50 rounded-xs text-[10.5px] font-bold text-left flex items-center justify-between cursor-pointer"
             >
-              <span className="text-[#50fa7b]">📖 ORION CODE WIKI</span>
-              <span className="text-[8.5px] text-[#9aa8a0]">ANCHORS · FILES · DOCS · HEALTH →</span>
+              <span className="text-[#50fa7b]">📖 PILOT CODEX</span>
+              <span className="text-[8.5px] text-[#9aa8a0]">BESTIARY · ARSENAL · RELICS · CHRONICLES →</span>
             </button>
           </div>
 

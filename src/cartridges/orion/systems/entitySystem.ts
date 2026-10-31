@@ -283,6 +283,20 @@ export function updateEnemies(
       def.update(rooms, state, e, dt);
     }
 
+    // Record enemy in Pilot Codex once sighted within light range, locked-on, or damaged
+    const distToPlayer = Math.hypot(e.x - state.x, e.y - state.y);
+    if (
+      (!e.isSubmerged && distToPlayer <= 78) ||
+      e.hurt > 0 ||
+      e.frame.integrity < e.frame.maxIntegrity ||
+      state.lockedTargetId === e.id ||
+      e.frame.integrity <= 0
+    ) {
+      state.discoveredCodex = state.discoveredCodex || {};
+      state.discoveredCodex.enemies = state.discoveredCodex.enemies || {};
+      state.discoveredCodex.enemies[e.type] = true;
+    }
+
     // Track enemy velocity (`vx`, `vy`), forward momentum fraction `μ`, and effective weight `m_eff`
     e.vx = dt > 0 ? (e.x - beforeX) / dt : 0;
     e.vy = dt > 0 ? (e.y - beforeY) / dt : 0;
@@ -576,10 +590,16 @@ export function updatePickups(
 
       if (p.kind === 'scrap' || p.itemId === 'trade_coin') {
         state.salvageScrap += p.value || 1;
+        state.discoveredCodex = state.discoveredCodex || {};
+        state.discoveredCodex.items = state.discoveredCodex.items || {};
+        state.discoveredCodex.items.trade_coin = true;
         ctx.say(`+${p.value || 1} TRADE COINS`);
       } else if (p.itemId) {
         const weaponDef = getWeaponDefinition(p.itemId);
         if (weaponDef) {
+          state.discoveredCodex = state.discoveredCodex || {};
+          state.discoveredCodex.weapons = state.discoveredCodex.weapons || {};
+          state.discoveredCodex.weapons[weaponDef.id] = true;
           const wasFirstCopy = unlockEquipmentItem(state, weaponDef.id);
           soundSystem.playPowerup();
           ctx.say(
@@ -590,6 +610,9 @@ export function updatePickups(
           notifyOrionStateChange();
         } else {
           const itemDef = getItemDefinition(p.itemId);
+          state.discoveredCodex = state.discoveredCodex || {};
+          state.discoveredCodex.items = state.discoveredCodex.items || {};
+          state.discoveredCodex.items[p.itemId] = true;
           if (itemDef?.onCollect) {
             itemDef.onCollect(state, ctx);
           } else {

@@ -241,6 +241,8 @@ export interface WeaponDefinition {
   canBlock?: boolean;
   /** Passive Shield Capacity bonus when equipped (e.g. Heater / Buckler / Pavise shields) */
   passiveShieldBonus?: number;
+  /** Passive Armor Durability bonus when equipped (e.g. Kinetic Recycling / Martyrdom / Repair Auxiliaries) */
+  passiveArmorBonus?: number;
   /** Passive Light stat bonus in tiles when equipped in Main Hand, Side Hand, or Aux */
   passiveLightBonus?: number;
   /** Default blade trail or projectile color when unmodified */

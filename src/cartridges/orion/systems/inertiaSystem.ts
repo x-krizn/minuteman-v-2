@@ -37,6 +37,7 @@
  */
 
 import { getEnemyDefinition } from '../database/enemies';
+import { parseEquipmentInstanceId } from '../database/equipment/mod_naming';
 import { getWeaponDefinition } from '../database/equipment/weapons';
 import {
   ACTION_MODIFICATION_CATALOG,
@@ -352,10 +353,10 @@ export function hasInertialTelemetryModEquipped(state: OrionState): boolean {
   const slots = state.equipmentSlots;
   if (!slots) return false;
   if (
-    slots.sensoryA === INERTIAL_TELEMETRY_SENSORY_ID ||
-    slots.sensoryB === INERTIAL_TELEMETRY_SENSORY_ID ||
-    slots.aux3 === INERTIAL_TELEMETRY_SENSORY_ID ||
-    slots.aux4 === INERTIAL_TELEMETRY_SENSORY_ID
+    parseEquipmentInstanceId(slots.sensoryA).baseId === INERTIAL_TELEMETRY_SENSORY_ID ||
+    parseEquipmentInstanceId(slots.sensoryB).baseId === INERTIAL_TELEMETRY_SENSORY_ID ||
+    parseEquipmentInstanceId(slots.aux3).baseId === INERTIAL_TELEMETRY_SENSORY_ID ||
+    parseEquipmentInstanceId(slots.aux4).baseId === INERTIAL_TELEMETRY_SENSORY_ID
   ) {
     return true;
   }
@@ -507,13 +508,14 @@ export function resolveWeaponAttackInertiaSpec(
   weaponId: string,
   slot: number = 0
 ): WeaponAttackInertiaSpec {
+  const baseWeaponId = parseEquipmentInstanceId(weaponId).baseId;
   const weapon = getWeaponDefinition(weaponId);
   const weightClass: WeaponWeightClass = weapon?.weightClass || 'medium';
   const action = weapon?.moveset?.[slot];
   const isMelee =
     weapon?.equipmentRole === 'melee' ||
     weapon?.equipmentRole === 'shield' ||
-    weaponId === 'khopesh';
+    baseWeaponId === 'khopesh';
 
   const baseAttackWeight =
     action?.attackWeight ??
@@ -538,16 +540,16 @@ export function resolveWeaponAttackInertiaSpec(
   // Spears/Daggers on basic poke have lower body commitment; shields/maces/axes have higher commitment
   if (
     slot === 0 &&
-    (weaponId === 'short_spear' ||
-      weaponId === 's4_whisper_blade' ||
-      weaponId === 's6_phantom_edge')
+    (baseWeaponId === 'short_spear' ||
+      baseWeaponId === 's4_whisper_blade' ||
+      baseWeaponId === 's6_phantom_edge')
   ) {
     commitment = INERTIA_CONSTANTS.COMMITMENT_BY_CLASS.poke;
   } else if (
     weapon?.equipmentRole === 'shield' ||
-    weaponId === 'mace' ||
-    weaponId === 'siegebreaker' ||
-    weaponId === 'avalon_siege_lance'
+    baseWeaponId === 'mace' ||
+    baseWeaponId === 'siegebreaker' ||
+    baseWeaponId === 'avalon_siege_lance'
   ) {
     commitment = Math.max(commitment, 0.85);
   }
@@ -561,11 +563,11 @@ export function resolveWeaponAttackInertiaSpec(
   const projectileWeight =
     action?.projectileWeight ??
     weapon?.projectileWeight ??
-    (weaponId === 'm350_mauler' ||
-    weaponId === 'ln1200_avalanche' ||
-    weaponId === 'lg950_tomahawk' ||
-    weaponId === 'm450_pilum' ||
-    weaponId === 'wz800_arclight_cannon'
+    (baseWeaponId === 'm350_mauler' ||
+    baseWeaponId === 'ln1200_avalanche' ||
+    baseWeaponId === 'lg950_tomahawk' ||
+    baseWeaponId === 'm450_pilum' ||
+    baseWeaponId === 'wz800_arclight_cannon'
       ? INERTIA_CONSTANTS.PROJECTILE_WEIGHT_BY_CLASS.heavy
       : weightClass === 'heavy'
         ? 36

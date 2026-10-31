@@ -283,7 +283,7 @@ function buildSetPathCorridorChunk10x9(
           '#,~~::~~,#',
           '::::::::::',
           '::::::::::',
-          '::::C:::::',
+          '::::::::::',
           '#,~~::~~,#',
           '#,P::::P,#',
           '###::::###',
@@ -294,11 +294,22 @@ function buildSetPathCorridorChunk10x9(
           '#,~~::~~,#',
           '#,.::::.,#',
           '::::::::::',
-          '#,.::C:.,#',
+          '#,.::::.,#',
           '#,~~::~~,#',
           '#,P::::P,#',
           '###::::###',
         ];
+
+  // Only rare corridor chunks (~1 in 7) hide a cache tucked beside a tree/wall off the center lane
+  if (chunkHash % 7 === 0) {
+    const tuckTop = ((chunkHash >>> 3) & 1) === 0;
+    const tuckLeft = ((chunkHash >>> 4) & 1) === 0;
+    const r = tuckTop ? 1 : 7;
+    const c = tuckLeft ? 1 : 8;
+    const rowChars = grid10x9[r].split('');
+    rowChars[c] = 'C';
+    grid10x9[r] = rowChars.join('');
+  }
 
   const isSanctuaryBuffer = isNearSanctuaryRoom(cx, cy);
   const shouldSpawnEnemy = !isSanctuaryBuffer && (chunkHash & 1) === 0;
@@ -492,7 +503,7 @@ const DEEP_FOG_DUNGEON_CHUNK_TEMPLATE: string[] = [
   '#,P~~~~P,#',
   '#,~::::~,#',
   '#,::::::,#',
-  ':::V.D::::',
+  ':::V.:::::',
   '#,::::::,#',
   '#,~::::~,#',
   '#,P~~~~P,#',
@@ -501,7 +512,7 @@ const DEEP_FOG_DUNGEON_CHUNK_TEMPLATE: string[] = [
 
 /**
  * Seals outer perimeter edges (`cx === 0`, `cx === 25`, `cy === 0`, `cy === 17`),
- * places off-path Lantern Anchors (`L`) and caches (`C`),
+ * places off-path caches (`C` / `V`) in organic nooks adjacent to trees/walls,
  * defaults any unfilled cell to `#`, and guarantees internal chunk border openings
  * for non-authored wilderness chunks.
  */
@@ -525,16 +536,33 @@ function finalizeChunkGridBorders(
   });
 
   if (!isLandmark && !hasDeepDungeon && !isAuthoredRoom) {
-    // Place procedural salvage caches (`C` or `V` in deep fog)
-    if (chunkHash % 4 === 0 || (distFromSetPath >= 3 && chunkHash % 3 === 0)) {
-      const cacheCol = chunkHash % 2 === 0 ? 3 : 6;
-      const cacheRow = 5;
-      if (
-        matrix[cacheRow]?.[cacheCol] === '.' ||
-        matrix[cacheRow]?.[cacheCol] === ':' ||
-        matrix[cacheRow]?.[cacheCol] === ';'
-      ) {
-        matrix[cacheRow][cacheCol] = distFromSetPath >= 3 && chunkHash % 2 === 0 ? 'V' : 'C';
+    // Place procedural salvage caches (`C` or `V` in deep fog) in organic, non-uniform nooks near trees/walls
+    if (chunkHash % 5 === 0 || (distFromSetPath >= 3 && chunkHash % 4 === 0)) {
+      const candidates: Array<{ r: number; c: number }> = [];
+      for (let r = 1; r <= CHUNK_ROWS - 2; r++) {
+        for (let c = 1; c <= CHUNK_COLS - 2; c++) {
+          // Avoid dead-center doorway lanes (row 4 or cols 4..5) so caches feel tucked away
+          if (r === 4 || c === 4 || c === 5) continue;
+          const tile = matrix[r]?.[c];
+          if (tile !== '.' && tile !== ':' && tile !== ';' && tile !== ',') continue;
+          const touchesCover =
+            matrix[r - 1]?.[c] === 'P' ||
+            matrix[r + 1]?.[c] === 'P' ||
+            matrix[r]?.[c - 1] === 'P' ||
+            matrix[r]?.[c + 1] === 'P' ||
+            matrix[r - 1]?.[c] === '#' ||
+            matrix[r + 1]?.[c] === '#' ||
+            matrix[r]?.[c - 1] === '#' ||
+            matrix[r]?.[c + 1] === '#';
+          if (touchesCover) {
+            candidates.push({ r, c });
+          }
+        }
+      }
+      if (candidates.length > 0) {
+        const pick = candidates[(chunkHash >>> 4) % candidates.length];
+        matrix[pick.r][pick.c] =
+          distFromSetPath >= 3 && (chunkHash & 1) === 0 ? 'V' : 'C';
       }
     }
   }
@@ -1064,16 +1092,7 @@ export function checkAndUnlockClearedDeepFogDungeon(
   state.clearedDeepFogDungeons = state.clearedDeepFogDungeons || {};
   state.clearedDeepFogDungeons[metrics.chunkKey] = true;
 
-  const roomGrid = rooms[state.room];
-  if (roomGrid) {
-    const waygateGx = metrics.cx * CHUNK_COLS + 4;
-    const waygateGy = metrics.cy * CHUNK_ROWS + 4;
-    setExpanseGridTileAt(roomGrid, waygateGx, waygateGy, 'Q');
-  }
-
   soundSystem.playPowerup();
-  state.toastText = `ABYSSAL DUNGEON CLEARED! USE [D] FOR FOG LOOP OR [Q] TO FAST-TRAVEL TO SAFE PATH`;
-  state.toastTimer = 3.2;
   notifyOrionStateChange();
   return true;
 }
@@ -1202,10 +1221,6 @@ export function updateChunkedRoomStreaming(
 
   const activeBogRoom = getUnifiedBogRoomAtChunk(playerCx, playerCy);
   const activeCorridor = SET_PATH_CORRIDOR_BY_CHUNK[`${playerCx},${playerCy}`];
-  const prevBogRoom =
-    prevCx !== undefined && prevCy !== undefined
-      ? getUnifiedBogRoomAtChunk(prevCx, prevCy)
-      : undefined;
 
   if (activeBogRoom) {
     state.rx = activeBogRoom.rx;
@@ -1249,15 +1264,6 @@ export function updateChunkedRoomStreaming(
           spawnChunkInitialEnemies(state, state.room, cx, cy, blueprint);
         }
 
-        if (state.clearedDeepFogDungeons[chunkKey]) {
-          setExpanseGridTileAt(
-            roomGrid,
-            cx * CHUNK_COLS + 4,
-            cy * CHUNK_ROWS + 4,
-            'Q'
-          );
-        }
-
         // If gate '3,0' was unlocked, ensure 'G' tiles in chunk (22, 9) and (22, 10) are open
         if (
           (state.unlockedGates?.['3,0'] ||
@@ -1287,7 +1293,7 @@ export function updateChunkedRoomStreaming(
       }
     }
 
-    // Update room landmark subtitle, lighting, loot pool & fog warning toast when entering a new chunk
+    // Update room landmark metadata silently without pop-up banners
     const metrics = computeChunkFogMetrics(state, playerCx, playerCy);
     const currentLandmark = AUTHORED_LANDMARK_CHUNKS[`${playerCx},${playerCy}`];
     if (ORION_ROOM_METADATA[state.room]) {
@@ -1301,38 +1307,15 @@ export function updateChunkedRoomStreaming(
         ORION_ROOM_METADATA[state.room].lootPool = authoredRoomMeta.lootPool;
       }
       ORION_ROOM_METADATA[state.room].landmarkLabel = activeBogRoom
-        ? `${activeBogRoom.title.toUpperCase()} [${activeBogRoom.roomCoord}] · SET PATH [${playerCx},${playerCy}]`
+        ? `${activeBogRoom.title.toUpperCase()}`
         : activeCorridor
-          ? `${activeCorridor.title.toUpperCase()} [${playerCx},${playerCy}]`
+          ? `${activeCorridor.title.toUpperCase()}`
           : currentLandmark
-            ? `${currentLandmark.title.toUpperCase()} · [${playerCx},${playerCy}]`
-            : metrics.hasDeepDungeon
-              ? `ABYSSAL FOG LOOP DUNGEON [${playerCx},${playerCy}] · DIST ${metrics.distFromSetPath}`
-              : `OFF-PATH WILDS [${playerCx},${playerCy}] · FOG ${Math.round(metrics.fogIntensity * 100)}%`;
+            ? `${currentLandmark.title.toUpperCase()}`
+            : `DROWNED MIRE WILDS`;
     }
-
-    if (!forceRefresh && (prevCx !== playerCx || prevCy !== playerCy)) {
-      if (metrics.hasDeepDungeon && !metrics.isDeepDungeonCleared) {
-        state.toastText = `ABYSSAL FOG DUNGEON DISCOVERED [${playerCx},${playerCy}] · ENTER [D] FOG LOOP OR DEFEAT WARDENS`;
-        state.toastTimer = 2.8;
-      } else if (metrics.isSoftCapAbyss) {
-        state.toastText = `WARNING: DEEP ABYSS FOG (DIST ${metrics.distFromSetPath} > SAFE ${metrics.safeDepth}) · EXTREME ELITE DENSITY`;
-        state.toastTimer = 2.6;
-        state.flickerTimer = Math.max(state.flickerTimer || 0, 0.35);
-      } else if (activeBogRoom && activeBogRoom.roomCoord !== prevBogRoom?.roomCoord) {
-        state.toastText = `${activeBogRoom.title.toUpperCase()} [NODE ${activeBogRoom.roomCoord}]`;
-        state.toastTimer = 2.0;
-      } else if (currentLandmark) {
-        state.toastText = `${currentLandmark.title.toUpperCase()} [${playerCx},${playerCy}]`;
-        state.toastTimer = 2.0;
-      } else if (
-        metrics.distFromSetPath === 1 &&
-        prevCx !== undefined &&
-        getChunkDistanceFromSetPath(prevCx, prevCy ?? playerCy) === 0
-      ) {
-        state.toastText = `STEPPED OFF SET PATH · FOG INTENSITY ${Math.round(metrics.fogIntensity * 100)}% (LOOT ×${metrics.lootMultiplier})`;
-        state.toastTimer = 2.2;
-      }
+    if (!forceRefresh && (prevCx !== playerCx || prevCy !== playerCy) && metrics.isSoftCapAbyss) {
+      state.flickerTimer = Math.max(state.flickerTimer || 0, 0.35);
     }
   }
 

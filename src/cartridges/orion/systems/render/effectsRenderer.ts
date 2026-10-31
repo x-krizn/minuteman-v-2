@@ -14,6 +14,7 @@ import {
   hasPoeLanternGuidance,
   isChunkedExpanseRoom,
   makeChunkPersistenceKey,
+  resolveCompanionPoeColor,
   SCREEN_H,
   SCREEN_W,
   TILE_SIZE,
@@ -1224,7 +1225,7 @@ export function drawDynamicLightingAndBloomPass(
         const cy = ty * TILE_SIZE + 8;
 
         if (ch === 'L') {
-          const isHelped = state.flags?.poe_state === 'helped';
+          const isHelped = hasPoeLanternGuidance(state);
           lights.push({
             x: cx,
             y: cy - 6,
@@ -1297,6 +1298,17 @@ export function drawDynamicLightingAndBloomPass(
         intensity: e.type === 'bog_poe' ? 0.34 : 0.22,
       });
     }
+  }
+
+  if (state.flags?.poe_state === 'companion' && state.poeCompanion) {
+    const poeStyle = resolveCompanionPoeColor(state);
+    lights.push({
+      x: state.poeCompanion.x,
+      y: state.poeCompanion.y - (state.poeCompanion.z || 8) * Z_SCALE,
+      radius: state.poeCompanion.hoveringObjective ? 34 : 26,
+      color: poeStyle.hexColor,
+      intensity: state.poeCompanion.hoveringObjective ? 0.42 : 0.34,
+    });
   }
 
   // Cursed-Bog Multi-Depth Lighting, Cold Penumbra Grading, Soft Shadow Cones & Abyssal Void:

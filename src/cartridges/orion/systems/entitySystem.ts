@@ -9,6 +9,7 @@ import { getEnemyDefinition } from '../database/enemies';
 import { getItemDefinition } from '../database/items';
 import { resolveRoomEnemyTypeAtChar } from '../database/world';
 import {
+  findHardwareItemByNameOrId,
   getWeaponGemCombatModifiers,
   syncPostTutorialFrameLevel,
   unlockEquipmentItem,
@@ -596,6 +597,7 @@ export function updatePickups(
         ctx.say(`+${p.value || 1} TRADE COINS`);
       } else if (p.itemId) {
         const weaponDef = getWeaponDefinition(p.itemId);
+        const hwDef = !weaponDef ? findHardwareItemByNameOrId(p.itemId) : undefined;
         if (weaponDef) {
           state.discoveredCodex = state.discoveredCodex || {};
           state.discoveredCodex.weapons = state.discoveredCodex.weapons || {};
@@ -606,6 +608,15 @@ export function updatePickups(
             wasFirstCopy
               ? `SALVAGED ARMAMENT: ${weaponDef.name.toUpperCase()} UNLOCKED!`
               : `SALVAGED 2ND COPY: ${weaponDef.name.toUpperCase()} (PAIRED STANCE)!`
+          );
+          notifyOrionStateChange();
+        } else if (hwDef) {
+          const wasFirstCopy = unlockEquipmentItem(state, hwDef.id);
+          soundSystem.playPowerup();
+          ctx.say(
+            wasFirstCopy
+              ? `SALVAGED CHASSIS HARDWARE: ${hwDef.name.toUpperCase()} UNLOCKED!`
+              : `SALVAGED EXTRA COPY: ${hwDef.name.toUpperCase()}!`
           );
           notifyOrionStateChange();
         } else {

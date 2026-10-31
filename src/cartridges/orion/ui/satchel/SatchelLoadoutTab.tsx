@@ -3,26 +3,34 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { soundSystem } from '../../../../engine/core/soundSystem';
 import { TRAIT_REGISTRY } from '../../database/characters';
 import {
-  CLASS_UTILITY_CATALOG,
-  getClassUtilityDefinition,
+  formatModifiedEquipmentName,
+  GEM_MOD_PREFIX_BY_ID,
   getResolvedActionDescriptor,
+  parseEquipmentInstanceId,
 } from '../../database/equipment';
+import { findHardwareItemByNameOrId } from '../../database/equipment/chassis_hardware';
 import { getItemDefinition } from '../../database/items';
 import {
   ACTION_MODIFICATION_CATALOG,
   CHASSIS_HARDWARE_CATALOG,
+  GEMSTONE_CATALOG,
   GEMSTONE_REGISTRY,
   generateEquipmentModWithGems,
   getEffectiveMainGrip,
+  getEquipmentDisplayName,
+  getEquipmentMaxModSlots,
   getInventoryGemCount,
+  getOwnedEquipmentInstances,
   getOwnedWeaponCount,
   getWeaponGemVisuals,
   getWeaponSubtypeInfo,
+  installGemModOnEquipment,
   isEquipmentUnlocked,
+  refundInventoryGem,
   setMainWeaponGrip,
 } from '../../database/progression';
 import {
@@ -46,13 +54,149 @@ import {
   resolvePlayerSpriteParts,
   syncStateGates,
 } from '../../systems';
-import { OrionState } from '../../types';
+import { GemId, OrionState } from '../../types';
 import {
   CompositeMechPreviewCanvas,
   EditableLoadoutSlot,
   EquipmentInventoryCategory,
   SpriteCanvasIcon,
 } from './SatchelCanvases';
+
+/**
+ * Inline Gem Mod synthesis panel for any Weapon, Auxiliary, Armor, Reactor, or Sensor instance.
+ * Consumes 1 copy of the source item and 1 Gemstone to synthesize a distinct renamed item copy
+ * (`<Prefix> <Base Name>`, `<Prefix> <Base Name> +II`, `<Prefix> <Base Name> +III`).
+ */
+const EquipmentGemModInstaller: React.FC<{
+  state: OrionState;
+  instanceId: string;
+  baseName: string;
+  isCheatMode: boolean;
+}> = ({ state, instanceId, baseName, isCheatMode }) => {
+  const [open, setOpen] = useState(false);
+  const { installedGems } = parseEquipmentInstanceId(instanceId);
+  const maxSlots = getEquipmentMaxModSlots(instanceId);
+  const remainingSlots = Math.max(0, maxSlots - installedGems.length);
+
+  if (maxSlots <= 0) return null;
+
+  return (
+    <div className="mt-1 pt-1 border-t border-[#1e293b]/80 space-y-1">
+      <div className="flex flex-wrap items-center justify-between gap-1 text-[7px]">
+        <div className="flex items-center gap-1 flex-wrap">
+          <span className="text-[#94a3b8] font-bold">
+            MOD SLOTS [{installedGems.length}/{maxSlots}]:
+          </span>
+          {Array.from({ length: maxSlots }).map((_, idx) => {
+            const gId = installedGems[idx];
+            const gDef = gId ? GEMSTONE_REGISTRY[gId] : undefined;
+            return (
+              <span
+                key={idx}
+                className={`px-1 py-0.2 rounded-[2px] border font-bold ${
+                  gDef
+                    ? 'bg-[#172554]/80 border-[#38bdf8]/60 text-[#7dd3fc]'
+                    : 'bg-[#090d14] border-[#334155] text-[#64748b]'
+                }`}
+              >
+                {gDef ? `${idx === 0 ? `${GEM_MOD_PREFIX_BY_ID[gId]} · ` : ''}${gDef.name}` : 'EMPTY'}
+              </span>
+            );
+          })}
+        </div>
+        {remainingSlots > 0 ? (
+          <button
+            type="button"
+            onClick={() => {
+              soundSystem.playSelect();
+              setOpen((prev) => !prev);
+            }}
+            className={`px-1.5 py-0.2 rounded-xs font-bold border cursor-pointer ${
+              open
+                ? 'bg-[#facc15] text-[#05070a] border-[#fde047]'
+                : 'bg-[#3b0764]/80 hover:bg-[#581c87] text-[#e9d5ff] border-[#c084fc]/60'
+            }`}
+          >
+            {open ? '✕ CANCEL MOD' : `+ INSTALL MOD (${remainingSlots} LEFT)`}
+          </button>
+        ) : (
+          <span className="text-[#4ade80] font-bold">MAX MODS INSTALLED</span>
+        )}
+      </div>
+
+      {open && remainingSlots > 0 && (
+        <div className="p-1.5 bg-[#05070a] rounded-xs border border-[#c084fc]/50 space-y-1">
+          <div className="text-[7px] text-[#cbd5e1]">
+            Select a Gemstone to install on <strong className="text-[#ffd27d]">{ getEquipmentDisplayName(instanceId) }</strong> (consumes 1 copy + 1 Gem → produces distinct renamed item in inventory):
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-1">
+            {GEMSTONE_CATALOG.map((gem) => {
+              const have = getInventoryGemCount(state, gem.id);
+              const canInstall = have > 0 || isCheatMode;
+              const previewName = formatModifiedEquipmentName(baseName, [
+                ...installedGems,
+                gem.id,
+              ]);
+              return (
+                <button
+                  key={gem.id}
+                  type="button"
+                  disabled={!canInstall}
+                  onClick={() => {
+                    if (have <= 0 && isCheatMode) {
+                      refundInventoryGem(state, gem.id as GemId, 1);
+                    }
+                    const newId = installGemModOnEquipment(
+                      state,
+                      instanceId,
+                      gem.id as GemId,
+                      {
+                        say: (txt) => {
+                          state.toastText = txt;
+                          state.toastTimer = 2.8;
+                        },
+                      }
+                    );
+                    if (newId) {
+                      soundSystem.playPowerup();
+                      setOpen(false);
+                      syncStateGates(state);
+                      notifyOrionStateChange();
+                    } else {
+                      soundSystem.playMenuBeep();
+                    }
+                  }}
+                  className={`p-1 rounded-xs border text-left transition-colors ${
+                    canInstall
+                      ? 'bg-[#0f172a] hover:bg-[#1e293b] border-[#38bdf8]/50 cursor-pointer'
+                      : 'bg-[#090d14] border-[#1e293b] opacity-45 cursor-not-allowed'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="inline-flex items-center gap-1 font-bold text-[7.5px] text-[#f8fafc]">
+                      <SpriteCanvasIcon base64={gem.iconBase64} sizeClass="w-3 h-3" />
+                      {gem.name} ({GEM_MOD_PREFIX_BY_ID[gem.id]})
+                    </span>
+                    <span
+                      className={`text-[7px] font-bold ${
+                        have > 0 ? 'text-[#4ade80]' : 'text-[#94a3b8]'
+                      }`}
+                    >
+                      ×{have}
+                    </span>
+                  </div>
+                  <div className="text-[7px] text-[#ffd27d] font-bold truncate mt-0.5">
+                    → {previewName}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 /**
  * Props for the Pilot Satchel Loadout Tab component.
@@ -91,7 +235,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
   const activeStance = getActiveWeaponStance(state);
   const resolvedSkills = getResolvedCombatSkills(state);
   const mainGrip = getEffectiveMainGrip(state);
-  const slot1Id = state.equipmentSlots?.slot1 || state.equippedWeapons[0] || 'gladius_boltcaster';
+  const slot1Id = state.equipmentSlots?.slot1 || state.equippedWeapons[0] || 'long_sword';
   const slot2Id = state.equipmentSlots?.slot2 || null;
   const slot3Id = state.equipmentSlots?.slot3 || null;
   const mainWpnDef = getWeaponDefinition(slot1Id);
@@ -109,9 +253,6 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
     `${trait.frameModel || 'Mark-IV'} ${trait.baseArmor.type} Plating`;
   const currentReactorName =
     state.equipmentSlots?.reactorCore || 'PNSY Alchemic Turbine Core Mk.IV';
-  const currentAux3Name = state.equipmentSlots?.aux3 || 'PNSY R-11 Rockweiler Buckler';
-  const currentAux4Name = state.equipmentSlots?.aux4 || 'PNSY UF-9 Rough Rider Booster';
-  const currentUtilDef = getClassUtilityDefinition(state.equipmentSlots?.utility, state.traitLine);
   const installedRangedMod = ACTION_MODIFICATION_CATALOG.find(
     (m) => m.id === state.equipmentSlots?.installedMods?.ranged
   );
@@ -210,7 +351,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
           <span className="text-[#94a3b8]">
             {!slot2Id
               ? 'No Side Hand equipped → Main Hand is automatically 2H.'
-              : 'Click any slot or EDIT LOADOUT to change equipped items.'}
+              : 'Click any slot or EDIT LOADOUT to change equipped items or install Gem Mods.'}
           </span>
         </div>
 
@@ -292,7 +433,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
         </div>
       </div>
 
-      {/* 2. Weapon, Auxiliary & Consumable Slots (Compact Summary Cards — No Inline Option Dump) */}
+      {/* 2. Weapon, Auxiliary & Consumable Slots (Compact Summary Cards) */}
       <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">
         <div className="flex flex-wrap items-center justify-between gap-1 text-[9px] font-bold text-[#94a3b8]">
           <span>WEAPON, SIDE & AUXILIARY SLOTS</span>
@@ -379,6 +520,9 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
           ).map((sInfo) => {
             const wId = sInfo.wId;
             const wDef = wId ? getWeaponDefinition(wId) : undefined;
+            const baseWDef = wDef
+              ? getWeaponDefinition(parseEquipmentInstanceId(wId).baseId) || wDef
+              : undefined;
             const itemDef = wId && !wDef ? getItemDefinition(wId) : undefined;
             const isEditingThis = isEditingLoadout && editingSlot === sInfo.slotKey;
             const gemVis = wDef ? getWeaponGemVisuals(state, wId) : null;
@@ -440,30 +584,40 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between gap-1.5 bg-[#090d14] px-1.5 py-1 rounded-xs border border-[#1e293b]">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    {stripBase64 && gemVis && (
-                      <SpriteCanvasIcon
-                        base64={stripBase64}
-                        col={gemVis.colIndex}
-                        sizeClass="w-5 h-5"
-                      />
-                    )}
-                    <div className="min-w-0">
-                      <div className="text-[9px] font-bold text-[#ffd27d] truncate">
-                        {wDef
-                          ? `${wDef.name}${sInfo.slotIdx === 0 && mainGrip === '2h' ? ' (2h)' : ''}`
-                          : itemDef?.name || 'None (Empty)'}
-                      </div>
-                      <div className="text-[7px] text-[#94a3b8] truncate">
-                        {wDef && subtypeInfo
-                          ? `${subtypeInfo.subtype} · Copies: ×${ownedCopies}`
-                          : itemDef
-                            ? `Consumable · Skill 5 when in Side`
-                            : sInfo.sub}
+                <div className="bg-[#090d14] px-1.5 py-1 rounded-xs border border-[#1e293b]">
+                  <div className="flex items-center justify-between gap-1.5">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      {stripBase64 && gemVis && (
+                        <SpriteCanvasIcon
+                          base64={stripBase64}
+                          col={gemVis.colIndex}
+                          sizeClass="w-5 h-5"
+                        />
+                      )}
+                      <div className="min-w-0">
+                        <div className="text-[9px] font-bold text-[#ffd27d] truncate">
+                          {wDef
+                            ? `${wDef.name}${sInfo.slotIdx === 0 && mainGrip === '2h' ? ' (2h)' : ''}`
+                            : itemDef?.name || 'None (Empty)'}
+                        </div>
+                        <div className="text-[7px] text-[#94a3b8] truncate">
+                          {wDef && subtypeInfo
+                            ? `${subtypeInfo.subtype} · Copies: ×${ownedCopies}`
+                            : itemDef
+                              ? `Consumable · Skill 5 when in Side`
+                              : sInfo.sub}
+                        </div>
                       </div>
                     </div>
                   </div>
+                  {wDef && baseWDef && (
+                    <EquipmentGemModInstaller
+                      state={state}
+                      instanceId={wId}
+                      baseName={baseWDef.name}
+                      isCheatMode={isCheatMode}
+                    />
+                  )}
                 </div>
               </div>
             );
@@ -471,10 +625,10 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
         </div>
       </div>
 
-      {/* 3. Chassis Hardware, Tactical Utility, Action Mods & Trigger Bindings */}
+      {/* 3. Chassis Hardware, Reactor, Action Mods & Trigger Bindings */}
       <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">
         <div className="text-[9px] font-bold text-[#94a3b8]">
-          CHASSIS HARDWARE · REACTOR · AUXILIARY SYSTEMS · TACTICAL UTILITY · ACTION MODS · TRIGGERS
+          CHASSIS HARDWARE · REACTOR CORE · SENSORY ARRAYS · ACTION MODS · TRIGGERS
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[8px]">
           {(
@@ -482,62 +636,44 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
               {
                 slot: 'head' as EditableLoadoutSlot,
                 label: 'HEAD OPTICS',
-                val: currentHeadName,
-                sub: 'Hardware · Optics',
+                val: getEquipmentDisplayName(currentHeadName),
+                sub: 'Hardware · Optics (2 Mod Slots)',
               },
               {
                 slot: 'sensoryA' as EditableLoadoutSlot,
                 label: 'SENSORY A',
-                val: currentSensoryAName,
-                sub: 'Hardware · Field Monitor',
+                val: getEquipmentDisplayName(currentSensoryAName),
+                sub: 'Hardware · Field Monitor (1 Mod Slot)',
               },
               {
                 slot: 'sensoryB' as EditableLoadoutSlot,
                 label: 'SENSORY B',
-                val: currentSensoryBName,
-                sub: 'Hardware · Threat Scanner',
+                val: getEquipmentDisplayName(currentSensoryBName),
+                sub: 'Hardware · Threat Scanner (1 Mod Slot)',
               },
               {
                 slot: 'arms' as EditableLoadoutSlot,
                 label: 'ARMS ACTUATORS',
-                val: currentArmsName,
-                sub: 'Hardware · Arm Assembly',
+                val: getEquipmentDisplayName(currentArmsName),
+                sub: 'Hardware · Arm Assembly (2 Mod Slots)',
               },
               {
                 slot: 'legs' as EditableLoadoutSlot,
                 label: 'LEGS ACTUATORS',
-                val: currentLegsName,
-                sub: 'Hardware · Leg Assembly',
+                val: getEquipmentDisplayName(currentLegsName),
+                sub: 'Hardware · Leg Assembly (2 Mod Slots)',
               },
               {
                 slot: 'plating' as EditableLoadoutSlot,
                 label: 'FRAME PLATING',
-                val: currentPlatingName,
-                sub: `Hardware · ${state.armor.type}`,
+                val: getEquipmentDisplayName(currentPlatingName),
+                sub: `Hardware · ${state.armor.type} (3 Mod Slots)`,
               },
               {
                 slot: 'reactor' as EditableLoadoutSlot,
                 label: 'REACTOR CORE',
-                val: currentReactorName,
-                sub: 'Core System · Generator',
-              },
-              {
-                slot: 'aux3' as EditableLoadoutSlot,
-                label: 'AUX 3 SYSTEM',
-                val: currentAux3Name,
-                sub: 'Defensive / Tactical Aux',
-              },
-              {
-                slot: 'aux4' as EditableLoadoutSlot,
-                label: 'AUX 4 SYSTEM',
-                val: currentAux4Name,
-                sub: 'Mobility / Evasion Aux',
-              },
-              {
-                slot: 'utility' as EditableLoadoutSlot,
-                label: 'UTILITY [ACT 6]',
-                val: currentUtilDef.name,
-                sub: `${currentUtilDef.frameModel} · ${currentUtilDef.shortLabel}`,
+                val: getEquipmentDisplayName(currentReactorName),
+                sub: 'Core System · Generator (3 Mod Slots)',
               },
               {
                 slot: 'mod_ranged' as EditableLoadoutSlot,
@@ -608,7 +744,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
         <div className="p-2 bg-[#0b111e] rounded-xs border border-[#facc15] space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-1 border-b border-[#1e293b] pb-1">
             <div className="text-[9.5px] font-bold text-[#facc15]">
-              LOADOUT EDITOR — SELECT SLOT & SUBTYPE TO EQUIP:
+              LOADOUT EDITOR — SELECT SLOT, EQUIP ITEM OR INSTALL GEM MOD:
             </div>
             <button
               onClick={() => {
@@ -635,9 +771,6 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                 { id: 'legs', label: 'Legs Actuators' },
                 { id: 'plating', label: 'Frame Plating' },
                 { id: 'reactor', label: 'Reactor Core' },
-                { id: 'aux3', label: 'Aux 3 System' },
-                { id: 'aux4', label: 'Aux 4 System' },
-                { id: 'utility', label: 'Utility [Act 6]' },
                 { id: 'mod_ranged', label: 'Ranged Mod' },
                 { id: 'mod_melee', label: 'Melee Mod' },
                 { id: 'mod_mobility', label: 'Mobility Mod' },
@@ -723,7 +856,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                         const unlocked =
                           isCheatMode ||
                           isEquipmentUnlocked(state, candidate.id) ||
-                          activeSlotId === candidate.id;
+                          parseEquipmentInstanceId(activeSlotId).baseId === candidate.id;
                         if (!unlocked) return false;
                         if (editingSlot === 'slot1' && !isTrueWeaponEquipment(candidate)) {
                           return false;
@@ -740,111 +873,130 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                         }
                         return true;
                       })
-                      .map((candidate) => {
-                        const candGemVis = getWeaponGemVisuals(state, candidate.id);
+                      .flatMap((baseCandidate) => {
+                        const instances = getOwnedEquipmentInstances(state, baseCandidate.id);
+                        const instanceIds =
+                          instances.length > 0 ? instances : [baseCandidate.id];
+                        return instanceIds.map((instanceId) => ({
+                          baseCandidate,
+                          instanceId,
+                        }));
+                      })
+                      .map(({ baseCandidate, instanceId }) => {
+                        const candidate =
+                          getWeaponDefinition(instanceId) || baseCandidate;
+                        const candGemVis = getWeaponGemVisuals(state, instanceId);
                         const candStrip =
                           candidate.variantStripBase64 || candidate.hardpointSprite?.base64;
-                        const stInfo = getWeaponSubtypeInfo(candidate.id);
-                        const copies = getOwnedWeaponCount(state, candidate.id);
-                        const isEquippedHere = activeSlotId === candidate.id;
+                        const stInfo = getWeaponSubtypeInfo(baseCandidate.id);
+                        const copies = getOwnedWeaponCount(state, instanceId);
+                        const isEquippedHere = activeSlotId === instanceId;
 
                         return (
                           <div
-                            key={candidate.id}
-                            className={`p-1.5 rounded-xs border flex items-center justify-between gap-1.5 ${
+                            key={instanceId}
+                            className={`p-1.5 rounded-xs border flex flex-col justify-between gap-1 ${
                               isEquippedHere
                                 ? 'bg-[#172554]/80 border-[#ffd27d]'
                                 : 'bg-[#090d14] border-[#1e293b]'
                             }`}
                           >
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <SpriteCanvasIcon
-                                base64={candStrip}
-                                col={candGemVis.colIndex}
-                                sizeClass="w-4 h-4"
-                              />
-                              <div className="min-w-0">
-                                <div className="text-[8.5px] font-bold text-[#e2e8f0] truncate flex items-center gap-1">
-                                  <span>
-                                    {candidate.name} (×{copies})
-                                  </span>
-                                  {candidate.isPlaceholderAsset && (
-                                    <span
-                                      className="text-[6px] px-1 py-0.2 bg-[#334155]/60 text-[#fbbf24] border border-[#fbbf24]/40 rounded-[2px] shrink-0"
-                                      title={
-                                        candidate.futureAssetPlanned ||
-                                        'Placeholder visual asset: dedicated sprite planned'
-                                      }
-                                    >
-                                      PLCH
+                            <div className="flex items-center justify-between gap-1.5">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <SpriteCanvasIcon
+                                  base64={candStrip}
+                                  col={candGemVis.colIndex}
+                                  sizeClass="w-4 h-4"
+                                />
+                                <div className="min-w-0">
+                                  <div className="text-[8.5px] font-bold text-[#e2e8f0] truncate flex items-center gap-1">
+                                    <span>
+                                      {candidate.name} (×{copies})
                                     </span>
-                                  )}
-                                </div>
-                                <div className="text-[7px] text-[#94a3b8] truncate">
-                                  {stInfo.subtype} · {(candidate.weightClass || 'medium').toUpperCase()}
+                                    {candidate.isPlaceholderAsset && (
+                                      <span
+                                        className="text-[6px] px-1 py-0.2 bg-[#334155]/60 text-[#fbbf24] border border-[#fbbf24]/40 rounded-[2px] shrink-0"
+                                        title={
+                                          candidate.futureAssetPlanned ||
+                                          'Placeholder visual asset: dedicated sprite planned'
+                                        }
+                                      >
+                                        PLCH
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[7px] text-[#94a3b8] truncate">
+                                    {stInfo.subtype} · {(candidate.weightClass || 'medium').toUpperCase()}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                            <div className="flex items-center gap-1 shrink-0">
-                              <button
-                                onClick={() => {
-                                  if (!state.equipmentSlots) return;
-                                  soundSystem.playSelect();
-                                  if (editingSlot === 'slot1') {
-                                    state.equipmentSlots.slot1 = candidate.id;
-                                    if (isTwoHandOnlyWeapon(candidate)) {
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  onClick={() => {
+                                    if (!state.equipmentSlots) return;
+                                    soundSystem.playSelect();
+                                    if (editingSlot === 'slot1') {
+                                      state.equipmentSlots.slot1 = instanceId;
+                                      if (isTwoHandOnlyWeapon(candidate)) {
+                                        if (
+                                          state.equipmentSlots.slot2 &&
+                                          !state.equipmentSlots.slot3
+                                        ) {
+                                          state.equipmentSlots.slot3 = state.equipmentSlots.slot2;
+                                        }
+                                        state.equipmentSlots.slot2 = null;
+                                        state.equipmentSlots.mainGrip = '2h';
+                                      } else if (!state.equipmentSlots.slot2) {
+                                        state.equipmentSlots.mainGrip = '2h';
+                                      }
+                                      state.maxAmmo = candidate.shotsPerChain;
+                                      state.ammo = candidate.shotsPerChain;
+                                      state.reloadDuration = candidate.reloadDurationSec;
+                                    } else if (editingSlot === 'slot2') {
                                       if (
-                                        state.equipmentSlots.slot2 &&
-                                        !state.equipmentSlots.slot3
+                                        instanceId === slot1Id &&
+                                        isTrueWeaponEquipment(candidate) &&
+                                        copies < 2
                                       ) {
-                                        state.equipmentSlots.slot3 = state.equipmentSlots.slot2;
+                                        setMainWeaponGrip(state, '2h', {
+                                          say: (txt) => {
+                                            state.toastText = `${txt} (ACQUIRE 2ND COPY FOR 1H PAIRED STANCE)`;
+                                            state.toastTimer = 2.8;
+                                          },
+                                        });
+                                      } else {
+                                        state.equipmentSlots.slot2 = instanceId;
+                                        if (!isTwoHandOnlyWeapon(slot1Id)) {
+                                          state.equipmentSlots.mainGrip = '1h';
+                                        }
                                       }
-                                      state.equipmentSlots.slot2 = null;
-                                      state.equipmentSlots.mainGrip = '2h';
-                                    } else if (!state.equipmentSlots.slot2) {
-                                      state.equipmentSlots.mainGrip = '2h';
-                                    }
-                                    state.maxAmmo = candidate.shotsPerChain;
-                                    state.ammo = candidate.shotsPerChain;
-                                    state.reloadDuration = candidate.reloadDurationSec;
-                                  } else if (editingSlot === 'slot2') {
-                                    if (
-                                      candidate.id === slot1Id &&
-                                      isTrueWeaponEquipment(candidate) &&
-                                      copies < 2
-                                    ) {
-                                      setMainWeaponGrip(state, '2h', {
-                                        say: (txt) => {
-                                          state.toastText = `${txt} (ACQUIRE 2ND COPY FOR 1H PAIRED STANCE)`;
-                                          state.toastTimer = 2.8;
-                                        },
-                                      });
                                     } else {
-                                      state.equipmentSlots.slot2 = candidate.id;
-                                      if (!isTwoHandOnlyWeapon(slot1Id)) {
-                                        state.equipmentSlots.mainGrip = '1h';
-                                      }
+                                      state.equipmentSlots.slot3 = instanceId;
                                     }
-                                  } else {
-                                    state.equipmentSlots.slot3 = candidate.id;
-                                  }
-                                  state.equippedWeapons = [
-                                    state.equipmentSlots.slot1,
-                                    state.equipmentSlots.slot2,
-                                    state.equipmentSlots.slot3,
-                                  ].filter(Boolean) as string[];
-                                  syncStateGates(state);
-                                  notifyOrionStateChange();
-                                }}
-                                className={`px-2 py-0.5 rounded-xs text-[7.5px] font-bold border cursor-pointer ${
-                                  isEquippedHere
-                                    ? 'bg-[#ffd27d] text-[#05070a] border-[#fbbf24]'
-                                    : 'bg-[#1e293b] hover:bg-[#334155] text-[#e2e8f0] border-[#475569]'
-                                }`}
-                              >
-                                {isEquippedHere ? 'EQUIPPED' : 'EQUIP'}
-                              </button>
+                                    state.equippedWeapons = [
+                                      state.equipmentSlots.slot1,
+                                      state.equipmentSlots.slot2,
+                                      state.equipmentSlots.slot3,
+                                    ].filter(Boolean) as string[];
+                                    syncStateGates(state);
+                                    notifyOrionStateChange();
+                                  }}
+                                  className={`px-2 py-0.5 rounded-xs text-[7.5px] font-bold border cursor-pointer ${
+                                    isEquippedHere
+                                      ? 'bg-[#ffd27d] text-[#05070a] border-[#fbbf24]'
+                                      : 'bg-[#1e293b] hover:bg-[#334155] text-[#e2e8f0] border-[#475569]'
+                                  }`}
+                                >
+                                  {isEquippedHere ? 'EQUIPPED' : 'EQUIP'}
+                                </button>
+                              </div>
                             </div>
+                            <EquipmentGemModInstaller
+                              state={state}
+                              instanceId={instanceId}
+                              baseName={baseCandidate.name}
+                              isCheatMode={isCheatMode}
+                            />
                           </div>
                         );
                       })}
@@ -907,18 +1059,17 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
               );
             })()}
 
-          {/* B. Editing Chassis Hardware */}
+          {/* B. Editing Chassis Hardware (Drop-Gated Outside Starting Loadout, With Mod Synthesis) */}
           {(editingSlot === 'head' ||
             editingSlot === 'sensoryA' ||
             editingSlot === 'sensoryB' ||
             editingSlot === 'arms' ||
             editingSlot === 'legs' ||
             editingSlot === 'plating' ||
-            editingSlot === 'reactor' ||
-            editingSlot === 'aux3' ||
-            editingSlot === 'aux4') && (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
-              {CHASSIS_HARDWARE_CATALOG.filter((h) => h.slot === editingSlot).map((hw) => {
+            editingSlot === 'reactor') && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+              {CHASSIS_HARDWARE_CATALOG.filter((h) => {
+                if (h.slot !== editingSlot) return false;
                 const curVal =
                   editingSlot === 'head'
                     ? currentHeadName
@@ -932,112 +1083,110 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                             ? currentLegsName
                             : editingSlot === 'plating'
                               ? currentPlatingName
-                              : editingSlot === 'reactor'
-                                ? currentReactorName
-                                : editingSlot === 'aux3'
-                                  ? currentAux3Name
-                                  : currentAux4Name;
-                const isEquipped =
-                  curVal === hw.name || Boolean(hw.legacyNames?.includes(curVal));
-                return (
-                  <div
-                    key={hw.id}
-                    className={`p-1.5 rounded-xs border flex flex-col justify-between gap-1 ${
-                      isEquipped
-                        ? 'bg-[#172554]/80 border-[#38bdf8]'
-                        : 'bg-[#090d14] border-[#1e293b]'
-                    }`}
-                  >
-                    <div>
-                      <div className="font-bold text-[8.5px] text-[#ffd27d] flex items-center justify-between gap-1">
-                        <span>{hw.name}</span>
-                        {hw.isPlaceholderAsset && (
-                          <span
-                            className="text-[6px] px-1 py-0.2 bg-[#334155]/60 text-[#fbbf24] border border-[#fbbf24]/40 rounded-[2px]"
-                            title={
-                              hw.futureAssetPlanned ||
-                              'Placeholder visual asset: dedicated sprite planned'
-                            }
-                          >
-                            PLCH
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[7px] text-[#38bdf8]">{hw.subtype}</div>
-                      <div className="text-[7.5px] text-[#94a3b8] mt-0.5">{hw.description}</div>
-                    </div>
-                    <button
-                      onClick={() => {
-                        if (!state.equipmentSlots) return;
-                        soundSystem.playSelect();
-                        if (editingSlot === 'reactor') {
-                          state.equipmentSlots.reactorCore = hw.name;
-                        } else {
-                          state.equipmentSlots[editingSlot] = hw.name;
-                        }
-                        if (editingSlot === 'plating' && hw.armorType) {
-                          state.armor.type = hw.armorType;
-                        }
-                        notifyOrionStateChange();
-                      }}
-                      className={`w-full py-0.5 rounded-xs text-[7.5px] font-bold border cursor-pointer ${
+                              : currentReactorName;
+                const curHw = findHardwareItemByNameOrId(curVal);
+                const isEquippedBase =
+                  curHw && parseEquipmentInstanceId(curHw.id).baseId === h.id;
+                return isCheatMode || isEquipmentUnlocked(state, h.id) || Boolean(isEquippedBase);
+              })
+                .flatMap((baseHw) => {
+                  const instances = getOwnedEquipmentInstances(state, baseHw.id);
+                  const instanceIds = instances.length > 0 ? instances : [baseHw.id];
+                  return instanceIds.map((instanceId) => ({ baseHw, instanceId }));
+                })
+                .map(({ baseHw, instanceId }) => {
+                  const hw = findHardwareItemByNameOrId(instanceId) || baseHw;
+                  const { installedGems } = parseEquipmentInstanceId(instanceId);
+                  const count = getOwnedWeaponCount(state, instanceId);
+                  const curVal =
+                    editingSlot === 'head'
+                      ? currentHeadName
+                      : editingSlot === 'sensoryA'
+                        ? currentSensoryAName
+                        : editingSlot === 'sensoryB'
+                          ? currentSensoryBName
+                          : editingSlot === 'arms'
+                            ? currentArmsName
+                            : editingSlot === 'legs'
+                              ? currentLegsName
+                              : editingSlot === 'plating'
+                                ? currentPlatingName
+                                : currentReactorName;
+                  const curResolved = findHardwareItemByNameOrId(curVal);
+                  const isEquipped =
+                    curVal === instanceId ||
+                    curVal === hw.name ||
+                    curResolved?.id === hw.id ||
+                    (installedGems.length === 0 &&
+                      Boolean(baseHw.legacyNames?.includes(curVal)));
+
+                  return (
+                    <div
+                      key={instanceId}
+                      className={`p-1.5 rounded-xs border flex flex-col justify-between gap-1 ${
                         isEquipped
-                          ? 'bg-[#38bdf8] text-[#05070a] border-[#7dd3fc]'
-                          : 'bg-[#1e293b] hover:bg-[#334155] text-[#e2e8f0] border-[#475569]'
+                          ? 'bg-[#172554]/80 border-[#38bdf8]'
+                          : 'bg-[#090d14] border-[#1e293b]'
                       }`}
                     >
-                      {isEquipped ? 'EQUIPPED' : 'EQUIP HARDWARE'}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* C. Editing Tactical Utility Slot */}
-          {editingSlot === 'utility' && (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
-              {CLASS_UTILITY_CATALOG.map((u) => {
-                const isSelected = currentUtilDef.id === u.id;
-                return (
-                  <div
-                    key={u.id}
-                    className={`p-1.5 rounded-xs border flex flex-col justify-between gap-1 ${
-                      isSelected
-                        ? 'bg-[#052e16]/80 border-[#4ade80]'
-                        : 'bg-[#090d14] border-[#1e293b]'
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-[8.5px] text-[#ffd27d]">{u.name}</span>
-                        <span className="text-[7px] text-[#38bdf8]">{u.frameModel}</span>
+                      <div>
+                        <div className="font-bold text-[8.5px] text-[#ffd27d] flex items-center justify-between gap-1">
+                          <span>
+                            {hw.name} (×{count})
+                          </span>
+                          {hw.isPlaceholderAsset && (
+                            <span
+                              className="text-[6px] px-1 py-0.2 bg-[#334155]/60 text-[#fbbf24] border border-[#fbbf24]/40 rounded-[2px]"
+                              title={
+                                hw.futureAssetPlanned ||
+                                'Placeholder visual asset: dedicated sprite planned'
+                              }
+                            >
+                              PLCH
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[7px] text-[#38bdf8]">{hw.subtype}</div>
+                        <div className="text-[7.5px] text-[#94a3b8] mt-0.5">{hw.description}</div>
                       </div>
-                      <div className="text-[7.5px] text-[#94a3b8] mt-0.5">{u.description}</div>
-                    </div>
-                    <button
-                      onClick={() => {
-                        soundSystem.playSelect();
-                        if (state.equipmentSlots) {
-                          state.equipmentSlots.utility = u.id;
+                      <button
+                        onClick={() => {
+                          if (!state.equipmentSlots) return;
+                          soundSystem.playSelect();
+                          const storeValue =
+                            installedGems.length > 0 ? instanceId : baseHw.name;
+                          if (editingSlot === 'reactor') {
+                            state.equipmentSlots.reactorCore = storeValue;
+                          } else {
+                            state.equipmentSlots[editingSlot] = storeValue;
+                          }
+                          if (editingSlot === 'plating' && hw.armorType) {
+                            state.armor.type = hw.armorType;
+                          }
+                          syncStateGates(state);
                           notifyOrionStateChange();
-                        }
-                      }}
-                      className={`w-full py-0.5 rounded-xs text-[7.5px] font-bold border cursor-pointer ${
-                        isSelected
-                          ? 'bg-[#4ade80] text-[#05070a] border-[#86efac]'
-                          : 'bg-[#1e293b] hover:bg-[#334155] text-[#e2e8f0] border-[#475569]'
-                      }`}
-                    >
-                      {isSelected ? 'EQUIPPED' : 'EQUIP UTILITY'}
-                    </button>
-                  </div>
-                );
-              })}
+                        }}
+                        className={`w-full py-0.5 rounded-xs text-[7.5px] font-bold border cursor-pointer ${
+                          isEquipped
+                            ? 'bg-[#38bdf8] text-[#05070a] border-[#7dd3fc]'
+                            : 'bg-[#1e293b] hover:bg-[#334155] text-[#e2e8f0] border-[#475569]'
+                        }`}
+                      >
+                        {isEquipped ? 'EQUIPPED' : 'EQUIP HARDWARE'}
+                      </button>
+                      <EquipmentGemModInstaller
+                        state={state}
+                        instanceId={instanceId}
+                        baseName={baseHw.name}
+                        isCheatMode={isCheatMode}
+                      />
+                    </div>
+                  );
+                })}
             </div>
           )}
 
-          {/* D. Editing Action Modifications */}
+          {/* C. Editing Action Modifications */}
           {(editingSlot === 'mod_ranged' ||
             editingSlot === 'mod_melee' ||
             editingSlot === 'mod_mobility') &&
@@ -1142,7 +1291,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
               );
             })()}
 
-          {/* E. Editing Multi-Source Trigger Action Bindings ([L] / [R]) */}
+          {/* D. Editing Multi-Source Trigger Action Bindings ([L] / [R]) */}
           {(editingSlot === 'bind_l' || editingSlot === 'bind_r') && (
             <div className="space-y-1 max-h-[210px] overflow-y-auto pr-1">
               {ASSIGNABLE_ACTION_CATALOG.map((catalogItem) => {
@@ -1257,10 +1406,7 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
       'legs',
       'plating',
       'reactor',
-      'aux3',
-      'aux4',
     ],
-    utility: ['ALL'],
     mod: ['ALL', 'ranged', 'melee', 'mobility'],
     consumable: ['ALL', 'consumable', 'gemstone', 'relic'],
   };
@@ -1272,7 +1418,7 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
       <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">
         <div className="flex flex-wrap items-center justify-between gap-1">
           <span className="text-[10px] font-bold text-[#8dd7ad]">
-            EQUIPMENT INVENTORY (WEAPONS · AUXILIARIES · HARDWARE · TACTICAL UTILITIES · MODS · SATCHEL):
+            EQUIPMENT INVENTORY (WEAPONS · AUXILIARIES · HARDWARE · MODS · SATCHEL):
           </span>
           {isCheatMode && (
             <div className="flex items-center gap-1">
@@ -1332,7 +1478,6 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
               { id: 'weapon', label: 'Weapons' },
               { id: 'auxiliary', label: 'Auxiliaries' },
               { id: 'hardware', label: 'Chassis Hardware' },
-              { id: 'utility', label: 'Tactical Utilities' },
               { id: 'mod', label: 'Action Mods' },
               { id: 'consumable', label: 'Consumables & Satchel' },
             ] as Array<{ id: EquipmentInventoryCategory; label: string }>
@@ -1380,7 +1525,7 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
       {(invCategory === 'all' || invCategory === 'weapon' || invCategory === 'auxiliary') && (
         <div className="space-y-1">
           <div className="text-[8.5px] font-bold text-[#ffd27d]">
-            OWNED WEAPONS & AUXILIARIES INVENTORY:
+            OWNED WEAPONS & AUXILIARIES INVENTORY (INSTALL GEM MODS TO SYNTHESIZE RENAMED GEAR):
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
             {Object.values(WEAPON_REGISTRY)
@@ -1394,44 +1539,58 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
                 if (invSubtype !== 'ALL' && stInfo.subtype !== invSubtype) return false;
                 return true;
               })
-              .map((w) => {
-                const stInfo = getWeaponSubtypeInfo(w.id);
-                const copies = getOwnedWeaponCount(state, w.id);
-                const gemVis = getWeaponGemVisuals(state, w.id);
+              .flatMap((baseW) => {
+                const instances = getOwnedEquipmentInstances(state, baseW.id);
+                const instanceIds = instances.length > 0 ? instances : [baseW.id];
+                return instanceIds.map((instanceId) => ({ baseW, instanceId }));
+              })
+              .map(({ baseW, instanceId }) => {
+                const w = getWeaponDefinition(instanceId) || baseW;
+                const stInfo = getWeaponSubtypeInfo(baseW.id);
+                const copies = getOwnedWeaponCount(state, instanceId);
+                const gemVis = getWeaponGemVisuals(state, instanceId);
                 const strip = w.variantStripBase64 || w.hardpointSprite?.base64;
-                const inMain = state.equipmentSlots?.slot1 === w.id;
-                const inSide = state.equipmentSlots?.slot2 === w.id;
-                const inAux = state.equipmentSlots?.slot3 === w.id;
+                const inMain = state.equipmentSlots?.slot1 === instanceId;
+                const inSide = state.equipmentSlots?.slot2 === instanceId;
+                const inAux = state.equipmentSlots?.slot3 === instanceId;
 
                 return (
                   <div
-                    key={w.id}
-                    className="p-1.5 bg-[#090d14] rounded-xs border border-[#1e293b] flex items-center justify-between gap-2"
+                    key={instanceId}
+                    className="p-1.5 bg-[#090d14] rounded-xs border border-[#1e293b] flex flex-col justify-between gap-1"
                   >
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <SpriteCanvasIcon
-                        base64={strip}
-                        col={gemVis.colIndex}
-                        sizeClass="w-4 h-4"
-                      />
-                      <div className="min-w-0">
-                        <div className="font-bold text-[9px] text-[#ffd27d] truncate">
-                          {w.name} <span className="text-[#94a3b8]">×{copies}</span>
-                        </div>
-                        <div className="text-[7.5px] text-[#7dd3fc] truncate">
-                          {stInfo.subtype} · {(w.weightClass || 'medium').toUpperCase()}
-                          {inMain ? ' · [MAIN]' : ''}
-                          {inSide ? ' · [SIDE]' : ''}
-                          {inAux ? ' · [AUX]' : ''}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <SpriteCanvasIcon
+                          base64={strip}
+                          col={gemVis.colIndex}
+                          sizeClass="w-4 h-4"
+                        />
+                        <div className="min-w-0">
+                          <div className="font-bold text-[9px] text-[#ffd27d] truncate">
+                            {w.name} <span className="text-[#94a3b8]">×{copies}</span>
+                          </div>
+                          <div className="text-[7.5px] text-[#7dd3fc] truncate">
+                            {stInfo.subtype} · {(w.weightClass || 'medium').toUpperCase()}
+                            {inMain ? ' · [MAIN]' : ''}
+                            {inSide ? ' · [SIDE]' : ''}
+                            {inAux ? ' · [AUX]' : ''}
+                          </div>
                         </div>
                       </div>
+                      <button
+                        onClick={() => openSlotEditor(isAuxiliaryEquipment(w) ? 'slot2' : 'slot1')}
+                        className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#38bdf8] border border-[#38bdf8]/50 rounded-xs text-[7.5px] font-bold cursor-pointer shrink-0"
+                      >
+                        EDIT IN LOADOUT
+                      </button>
                     </div>
-                    <button
-                      onClick={() => openSlotEditor(isAuxiliaryEquipment(w) ? 'slot2' : 'slot1')}
-                      className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#38bdf8] border border-[#38bdf8]/50 rounded-xs text-[7.5px] font-bold cursor-pointer shrink-0"
-                    >
-                      EDIT IN LOADOUT
-                    </button>
+                    <EquipmentGemModInstaller
+                      state={state}
+                      instanceId={instanceId}
+                      baseName={baseW.name}
+                      isCheatMode={isCheatMode}
+                    />
                   </div>
                 );
               })}
@@ -1439,72 +1598,71 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
         </div>
       )}
 
-      {/* 2. Chassis Hardware, Tactical Utilities & Retained Action Mods Inventory */}
-      {(invCategory === 'all' ||
-        invCategory === 'hardware' ||
-        invCategory === 'utility' ||
-        invCategory === 'mod') && (
+      {/* 2. Chassis Hardware & Retained Action Mods Inventory */}
+      {(invCategory === 'all' || invCategory === 'hardware' || invCategory === 'mod') && (
         <div className="space-y-1">
           <div className="text-[8.5px] font-bold text-[#38bdf8]">
-            CHASSIS HARDWARE, TACTICAL UTILITIES & ACTION MODS INVENTORY:
+            CHASSIS HARDWARE & ACTION MODS INVENTORY:
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
             {(invCategory === 'all' || invCategory === 'hardware') &&
-              CHASSIS_HARDWARE_CATALOG.filter(
-                (hw) => invSubtype === 'ALL' || hw.slot === invSubtype
-              ).map((hw) => (
-                <div
-                  key={hw.id}
-                  className="p-1.5 bg-[#090d14] rounded-xs border border-[#1e293b] flex items-center justify-between gap-2"
-                >
-                  <div className="min-w-0">
-                    <div className="font-bold text-[8.5px] text-[#e2e8f0] truncate flex items-center gap-1">
-                      <span>{hw.name}</span>
-                      {hw.isPlaceholderAsset && (
-                        <span
-                          className="text-[6px] px-1 py-0.2 bg-[#334155]/60 text-[#fbbf24] border border-[#fbbf24]/40 rounded-[2px] shrink-0"
-                          title={
-                            hw.futureAssetPlanned ||
-                            'Placeholder visual asset: dedicated sprite planned'
-                          }
+              CHASSIS_HARDWARE_CATALOG.filter((hw) => {
+                if (invSubtype !== 'ALL' && hw.slot !== invSubtype) return false;
+                return isCheatMode || isEquipmentUnlocked(state, hw.id);
+              })
+                .flatMap((baseHw) => {
+                  const instances = getOwnedEquipmentInstances(state, baseHw.id);
+                  const instanceIds = instances.length > 0 ? instances : [baseHw.id];
+                  return instanceIds.map((instanceId) => ({ baseHw, instanceId }));
+                })
+                .map(({ baseHw, instanceId }) => {
+                  const hw = findHardwareItemByNameOrId(instanceId) || baseHw;
+                  const count = getOwnedWeaponCount(state, instanceId);
+                  const editTargetSlot: EditableLoadoutSlot =
+                    baseHw.slot === 'aux3' || baseHw.slot === 'aux4' ? 'slot3' : baseHw.slot;
+                  return (
+                    <div
+                      key={instanceId}
+                      className="p-1.5 bg-[#090d14] rounded-xs border border-[#1e293b] flex flex-col justify-between gap-1"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="font-bold text-[8.5px] text-[#e2e8f0] truncate flex items-center gap-1">
+                            <span>
+                              {hw.name} <span className="text-[#94a3b8]">×{count}</span>
+                            </span>
+                            {hw.isPlaceholderAsset && (
+                              <span
+                                className="text-[6px] px-1 py-0.2 bg-[#334155]/60 text-[#fbbf24] border border-[#fbbf24]/40 rounded-[2px] shrink-0"
+                                title={
+                                  hw.futureAssetPlanned ||
+                                  'Placeholder visual asset: dedicated sprite planned'
+                                }
+                              >
+                                PLCH
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[7px] text-[#94a3b8] truncate">
+                            Hardware · {hw.slot.toUpperCase()} · {hw.subtype}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => openSlotEditor(editTargetSlot)}
+                          className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#38bdf8] border border-[#38bdf8]/50 rounded-xs text-[7.5px] font-bold cursor-pointer shrink-0"
                         >
-                          PLCH
-                        </span>
-                      )}
+                          EDIT IN LOADOUT
+                        </button>
+                      </div>
+                      <EquipmentGemModInstaller
+                        state={state}
+                        instanceId={instanceId}
+                        baseName={baseHw.name}
+                        isCheatMode={isCheatMode}
+                      />
                     </div>
-                    <div className="text-[7px] text-[#94a3b8] truncate">
-                      Hardware · {hw.slot.toUpperCase()} · {hw.subtype}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => openSlotEditor(hw.slot)}
-                    className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#38bdf8] border border-[#38bdf8]/50 rounded-xs text-[7.5px] font-bold cursor-pointer shrink-0"
-                  >
-                    EDIT IN LOADOUT
-                  </button>
-                </div>
-              ))}
-
-            {(invCategory === 'all' || invCategory === 'utility') &&
-              CLASS_UTILITY_CATALOG.map((u) => (
-                <div
-                  key={u.id}
-                  className="p-1.5 bg-[#090d14] rounded-xs border border-[#1e293b] flex items-center justify-between gap-2"
-                >
-                  <div className="min-w-0">
-                    <div className="font-bold text-[8.5px] text-[#4ade80] truncate">{u.name}</div>
-                    <div className="text-[7px] text-[#94a3b8] truncate">
-                      Tactical Utility · {u.frameModel}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => openSlotEditor('utility')}
-                    className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#4ade80] border border-[#4ade80]/50 rounded-xs text-[7.5px] font-bold cursor-pointer shrink-0"
-                  >
-                    EDIT IN LOADOUT
-                  </button>
-                </div>
-              ))}
+                  );
+                })}
 
             {(invCategory === 'all' || invCategory === 'mod') &&
               ACTION_MODIFICATION_CATALOG.filter((m) => {
@@ -1633,3 +1791,4 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
     </div>
   );
 };
+

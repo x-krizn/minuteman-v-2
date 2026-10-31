@@ -10,21 +10,16 @@ import { getClassUtilityDefinition } from '../../database/equipment';
 import {
   GEMSTONE_REGISTRY,
   TRAIT_FUNDING_GEMS,
-  unlockLevel2SecondaryWeapon,
 } from '../../database/progression';
 import {
   applyTraitLineProfile,
   createNewPilotGame,
   deletePilotFromRoster,
   getOrionRoomsRef,
-  hibernateAllActiveExpanseEnemies,
-  isChunkedExpanseRoom,
   loadPilotFromRoster,
   loadPilotRoster,
   notifyOrionStateChange,
-  spawnRoomEnemies,
-  syncRoomHierarchyState,
-  syncStateGates,
+  toggleTrainingSandboxRoom,
 } from '../../systems';
 import { OrionState } from '../../types';
 import { ORION_LOGO_BASE64, ORION_MENU_BG_BASE64 } from './titleMenuAssets';
@@ -54,40 +49,15 @@ const MAIN_MENU_ITEMS: Array<{
 ];
 
 /**
- * Transitions the player directly into the `"-4,0"` Training Sandbox room (`10 x 9` tiles)
- * with progression gates bypassed (`bypassProgressionGates = true`) and secondary weapons unlocked.
+ * Toggles the player into or out of the `"-4,0"` Training Sandbox room (`10 x 9` tiles),
+ * saving and restoring `state.preTrainingReturnAnchor` when entering/leaving from the field.
  * Mutates `state: OrionState` in place.
  */
 export function enterTrainingSandboxRoom(state: OrionState): void {
   const rooms = getOrionRoomsRef() || {};
-  if (isChunkedExpanseRoom(state.room)) {
-    hibernateAllActiveExpanseEnemies(state);
-  }
-  state.room = '-4,0';
-  state.rx = -4;
-  state.ry = 0;
-  state.x = 96;
-  state.y = 120;
-  state.z = 0;
-  state.vz = 0;
-  state.vx = 0;
-  state.vy = 0;
-  state.projectiles = [];
-  state.pickups = [];
-  state.enemies = [];
-  state.bypassProgressionGates = true;
-  state.hasBoosterKit = true;
-  unlockLevel2SecondaryWeapon(state);
   state.atTitleMenu = false;
   state.titleMenuSubView = 'root';
-  state.spawnGraceTimer = 3.0;
-  syncRoomHierarchyState(state);
-  syncStateGates(state);
-  spawnRoomEnemies(rooms, state);
-  state.toastText = 'TRAINING SANDBOX [-4,0] · ALL TERMINALS & SATCHEL UNLOCKED';
-  state.toastTimer = 3.0;
-  soundSystem.playPowerup();
-  notifyOrionStateChange();
+  toggleTrainingSandboxRoom(rooms, state);
 }
 
 /**

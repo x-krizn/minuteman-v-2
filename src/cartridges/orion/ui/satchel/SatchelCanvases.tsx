@@ -33,9 +33,6 @@ export type EditableLoadoutSlot =
   | 'legs'
   | 'plating'
   | 'reactor'
-  | 'aux3'
-  | 'aux4'
-  | 'utility'
   | 'mod_ranged'
   | 'mod_melee'
   | 'mod_mobility'
@@ -48,7 +45,6 @@ export type EquipmentInventoryCategory =
   | 'weapon'
   | 'auxiliary'
   | 'hardware'
-  | 'utility'
   | 'mod'
   | 'consumable';
 

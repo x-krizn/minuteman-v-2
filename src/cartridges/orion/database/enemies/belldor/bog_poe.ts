@@ -53,7 +53,10 @@ export const bogPoeEntity: EnemyWikiDefinition = {
   attackCooldownSec: 2.0,
   lootTable: [{ itemId: 'corrupted_shard', chance: 1.0, count: 1 }],
   shouldSkipSpawn(state: OrionState) {
-    return state.flags?.poe_state === 'killed';
+    return (
+      state.flags?.poe_state === 'killed' ||
+      state.flags?.poe_state === 'companion'
+    );
   },
   customSpawnSetup(state: OrionState, px: number, py: number) {
     const isFirstCampfireLit = Boolean(
@@ -74,7 +77,10 @@ export const bogPoeEntity: EnemyWikiDefinition = {
     state.flags.poe_state = 'killed';
     state.flags.campfire_unlocked = true;
     state.flags.bog_exit_revealed = true;
-    ctx.say('POE DESTROYED · CAMPFIRE SPARK & BOG EXIT UNSEALED');
+    state.poeCompanion = undefined;
+    ctx.say(
+      'THE FRAGILE FLAME SHATTERS INTO COLD ASH, LEAVING A CRYSTALLINE SHARD IN THE MIRE.'
+    );
     notifyOrionStateChange();
   },
   render25D(g, e, state, ey, isHurt) {

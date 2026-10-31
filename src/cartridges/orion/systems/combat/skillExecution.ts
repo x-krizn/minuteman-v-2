@@ -23,6 +23,7 @@ import {
   getOwnedWeaponCount,
   getWeaponGemCombatModifiers,
   getWeaponGemVisuals,
+  parseEquipmentInstanceId,
 } from '../../database/progression';
 import {
   ArmorState,
@@ -193,24 +194,25 @@ export function executeActionPayload(
   const desc = getResolvedActionDescriptor(state, actionId);
   const aim = getCombatAimVector(state);
   const aimAngle = Math.atan2(aim.dy, aim.dx);
-  const currentWeaponId =
+  const rawWeaponId =
     desc.weaponId ||
     state.equipmentSlots?.slot1 ||
     state.equippedWeapons[state.activeWeaponIndex] ||
     'gladius_boltcaster';
-  const weapon = getWeaponDefinition(currentWeaponId);
+  const weapon = getWeaponDefinition(rawWeaponId);
+  const currentWeaponId = parseEquipmentInstanceId(rawWeaponId).baseId || rawWeaponId;
   const isMeleeOrShield =
     weapon?.equipmentRole === 'melee' ||
     weapon?.equipmentRole === 'shield' ||
     currentWeaponId === 'khopesh';
-  const gemVis = getWeaponGemVisuals(state, currentWeaponId);
+  const gemVis = getWeaponGemVisuals(state, rawWeaponId);
   const trailColor = gemVis.gemId
     ? gemVis.color
     : weapon?.bladeTrailColor || (isMeleeOrShield ? '#e879f9' : '#77c7ff');
   const coreColor = gemVis.gemId ? gemVis.coreColor : '#ffffff';
 
   const featMods = computeInterfaceFeatModifiers(state.equippedFeats || []);
-  const gemCombatMods = getWeaponGemCombatModifiers(state, currentWeaponId);
+  const gemCombatMods = getWeaponGemCombatModifiers(state, rawWeaponId);
   const overdriveMult =
     ((state.overdriveTimer || 0) > 0 ? 1.3 : 1.0) *
     featMods.damageMult *
@@ -471,6 +473,27 @@ export function executeActionPayload(
     const slot = desc.weaponSkillSlot;
     const action = weapon?.moveset[slot] || desc;
     state.bladeTrails = state.bladeTrails || [];
+
+    if (isAuxiliaryEquipment(weapon) && !action.isBlock && weapon?.supportPulseOnHit) {
+      skillHitGrantedBonus = true;
+      const sp = weapon.supportPulseOnHit;
+      if (sp.shieldRestore) {
+        state.shields.overloaded = false;
+        state.shields.capacity = Math.min(
+          state.shields.maxCapacity,
+          state.shields.capacity + sp.shieldRestore * (slot === 4 ? 1.5 : 1)
+        );
+      }
+      if (sp.armorRestore) {
+        state.armor.durability = Math.min(
+          state.armor.maxDurability,
+          state.armor.durability + Math.round(sp.armorRestore * (slot === 4 ? 1.5 : 1))
+        );
+      }
+      if (sp.heatVent) {
+        state.heat = Math.max(0, state.heat - Math.round(sp.heatVent * (slot === 4 ? 1.5 : 1)));
+      }
+    }
 
     // ─── SLOT 1: PRIMARY SPECIAL SKILL ───────────────────────────────────────
     if (slot === 1) {

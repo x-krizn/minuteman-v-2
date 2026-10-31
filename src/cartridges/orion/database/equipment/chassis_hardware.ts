@@ -9,9 +9,15 @@ import { CANONICAL_ARMS } from './arms';
 import { CANONICAL_AUXILIARIES } from './auxiliaries';
 import { CANONICAL_HEAD_OPTICS } from './head';
 import { CANONICAL_LEGS } from './legs';
+import {
+  buildEquipmentInstanceId,
+  formatModifiedEquipmentName,
+  parseEquipmentInstanceId,
+} from './mod_naming';
 import { CANONICAL_FRAME_PLATING } from './plating';
 import { CANONICAL_REACTORS } from './reactors';
 import { CANONICAL_SENSORY_ARRAYS } from './sensory';
+import { getWeaponDefinition } from './weapons';
 
 export interface MechPartSpriteStripConfig {
   /** Optional Base64 PNG sprite sheet or strip (64x16 strip, 64x64 4-dir part sheet, or 192x768 master armor sheet) */
@@ -80,7 +86,6 @@ export interface CanonicalHardwareItemDefinition {
  * - Sensory A & B Arrays (`./sensory`)
  * - Arms & Shoulder Actuators (`./arms`)
  * - Legs & Striders (`./legs`)
- * - Aux 3 & Aux 4 Tactical Systems (`./auxiliaries`)
  */
 export const CANONICAL_HARDWARE_CATALOG: CanonicalHardwareItemDefinition[] = [
   ...CANONICAL_FRAME_PLATING,
@@ -97,22 +102,107 @@ export { CANONICAL_FRAME_PLATING };
 export type ChassisHardwareItemDefinition = CanonicalHardwareItemDefinition;
 export const CHASSIS_HARDWARE_CATALOG: ChassisHardwareItemDefinition[] = CANONICAL_HARDWARE_CATALOG;
 
+const MODIFIED_HARDWARE_CACHE: Record<string, CanonicalHardwareItemDefinition> = {};
+
+/**
+ * Finds a canonical hardware item by its ID, display name, or Gem-modified composite instance ID
+ * (`<baseId>::<gem1>+<gem2>`).
+ */
 export function findHardwareItemByNameOrId(
   nameOrId: string | undefined | null
 ): CanonicalHardwareItemDefinition | undefined {
   if (!nameOrId) return undefined;
-  const norm = nameOrId.trim().toLowerCase();
-  return CANONICAL_HARDWARE_CATALOG.find(
+  if (MODIFIED_HARDWARE_CACHE[nameOrId]) {
+    return MODIFIED_HARDWARE_CACHE[nameOrId];
+  }
+
+  const { baseId, installedGems } = parseEquipmentInstanceId(nameOrId);
+  const norm = baseId.trim().toLowerCase();
+  const baseItem = CANONICAL_HARDWARE_CATALOG.find(
     (item) =>
       item.id.toLowerCase() === norm ||
       item.name.toLowerCase() === norm ||
       item.legacyNames?.some((legacy) => legacy.toLowerCase() === norm)
   );
+  if (!baseItem) return undefined;
+  if (installedGems.length === 0) return baseItem;
+
+  let extraShield = 0;
+  let extraArmorDurability = 0;
+  let extraArmorRating = 0;
+  let extraArmorThreshold = 0;
+  let extraLight = 0;
+
+  for (const gem of installedGems) {
+    switch (gem) {
+      case 'titanite':
+        extraShield += 12;
+        extraArmorRating += 1;
+        break;
+      case 'moonstone':
+        extraShield += 10;
+        break;
+      case 'hematite':
+        extraArmorDurability += 18;
+        break;
+      case 'carnelian':
+        extraArmorDurability += 15;
+        extraArmorThreshold += 1;
+        break;
+      case 'spinel':
+        extraShield += 8;
+        extraArmorDurability += 8;
+        break;
+      case 'demantoid':
+        extraShield += 8;
+        extraArmorDurability += 10;
+        break;
+      case 'kyanite':
+      case 'charoite':
+        extraLight += 0.5;
+        extraShield += 6;
+        break;
+      case 'rubellite':
+        extraShield += 10;
+        extraArmorDurability += 10;
+        break;
+    }
+  }
+
+  const canonicalCompositeId = buildEquipmentInstanceId(baseItem.id, installedGems);
+  const derived: CanonicalHardwareItemDefinition = {
+    ...baseItem,
+    id: canonicalCompositeId,
+    name: formatModifiedEquipmentName(baseItem.name, installedGems),
+    shieldBonus:
+      (baseItem.shieldBonus || 0) + extraShield > 0
+        ? (baseItem.shieldBonus || 0) + extraShield
+        : baseItem.shieldBonus,
+    armorDurability:
+      (baseItem.armorDurability || 0) + extraArmorDurability > 0
+        ? (baseItem.armorDurability || 0) + extraArmorDurability
+        : baseItem.armorDurability,
+    armorRating:
+      typeof baseItem.armorRating === 'number'
+        ? baseItem.armorRating + extraArmorRating
+        : baseItem.armorRating,
+    armorThreshold:
+      typeof baseItem.armorThreshold === 'number'
+        ? baseItem.armorThreshold + extraArmorThreshold
+        : baseItem.armorThreshold,
+    lightBonus:
+      (baseItem.lightBonus || 0) + extraLight > 0
+        ? Number(((baseItem.lightBonus || 0) + extraLight).toFixed(2))
+        : baseItem.lightBonus,
+  };
+  MODIFIED_HARDWARE_CACHE[nameOrId] = derived;
+  MODIFIED_HARDWARE_CACHE[canonicalCompositeId] = derived;
+  return derived;
 }
 
 /**
- * Resolves the pilot's active Frame Plating, Reactor, and Aux 3/4 stats dynamically from equipped hardware.
- * In classless Project Orion, swapping Frame Plating or a Reactor immediately updates Armor Type,
+ * Resolves the pilot's active Frame Plating, Reactor, Hardware, and Auxiliary stats dynamically from equipped gear.
+ * In classless Project Orion, swapping Frame Plating, a Reactor, or an Auxiliary immediately updates Armor Type,
  * Base Load Capacity, Shield/Armor baseline, and Reactor Family.
  */
 export function resolveEquippedHardwareStats(state: OrionState): {
@@ -131,8 +221,6 @@ export function resolveEquippedHardwareStats(state: OrionState): {
 
   const equippedTorsoItem = findHardwareItemByNameOrId(state.equipmentSlots?.plating);
   const equippedReactorItem = findHardwareItemByNameOrId(state.equipmentSlots?.reactorCore);
-  const equippedAux3Item = findHardwareItemByNameOrId(state.equipmentSlots?.aux3);
-  const equippedAux4Item = findHardwareItemByNameOrId(state.equipmentSlots?.aux4);
   const equippedHeadItem = findHardwareItemByNameOrId(state.equipmentSlots?.head);
   const equippedArmsItem = findHardwareItemByNameOrId(state.equipmentSlots?.arms);
   const equippedLegsItem = findHardwareItemByNameOrId(state.equipmentSlots?.legs);
@@ -163,9 +251,28 @@ export function resolveEquippedHardwareStats(state: OrionState): {
   let hardwareArmorBonus = 0;
   let hardwareLightBonus = 0;
 
-  for (const aux of [equippedAux3Item, equippedAux4Item, equippedHeadItem]) {
-    if (aux?.shieldBonus) hardwareShieldBonus += aux.shieldBonus;
-    if (aux?.armorDurability) hardwareArmorBonus += aux.armorDurability;
+  for (const hw of [
+    equippedReactorItem,
+    equippedHeadItem,
+    equippedArmsItem,
+    equippedLegsItem,
+    equippedSensoryA,
+    equippedSensoryB,
+  ]) {
+    if (hw?.shieldBonus) hardwareShieldBonus += hw.shieldBonus;
+    if (hw?.armorDurability) hardwareArmorBonus += hw.armorDurability;
+  }
+
+  for (const wpnSlotId of [
+    state.equipmentSlots?.slot1,
+    state.equipmentSlots?.slot2,
+    state.equipmentSlots?.slot3,
+  ]) {
+    if (!wpnSlotId) continue;
+    const wDef = getWeaponDefinition(wpnSlotId);
+    if (wDef?.passiveArmorBonus) {
+      hardwareArmorBonus += wDef.passiveArmorBonus;
+    }
   }
 
   for (const hw of [
@@ -176,8 +283,6 @@ export function resolveEquippedHardwareStats(state: OrionState): {
     equippedLegsItem,
     equippedSensoryA,
     equippedSensoryB,
-    equippedAux3Item,
-    equippedAux4Item,
   ]) {
     if (hw?.lightBonus) hardwareLightBonus += hw.lightBonus;
   }
@@ -198,3 +303,4 @@ export function resolveEquippedHardwareStats(state: OrionState): {
     reactorFamily,
   };
 }
+

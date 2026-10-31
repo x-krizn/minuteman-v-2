@@ -236,6 +236,30 @@ export interface OrionState {
   projectiles: OrionProjectile[];
   particles: OrionParticle[];
   bladeTrails?: BladeTrailEffect[];
+  /** Active companion Poe orb state when the pilot chooses to travel with the Poe (`poe_state === 'companion'`) */
+  poeCompanion?: {
+    x: number;
+    y: number;
+    z: number;
+    vx: number;
+    vy: number;
+    hoveringObjective?: boolean;
+    targetX?: number;
+    targetY?: number;
+    objectiveLabel?: string;
+  };
+  /** Saved world position & progression gate state before entering the [-4,0] Training Sandbox Room */
+  preTrainingReturnAnchor?: {
+    room: string;
+    rx: number;
+    ry: number;
+    x: number;
+    y: number;
+    areaId: string;
+    mapId?: string;
+    biomeId?: string;
+    bypassProgressionGates?: boolean;
+  };
 
   // Dynamic Off-Screen Chunk Streaming & Enemy Hibernation (100x90 / 10x10 Chunks)
   activeChunkX?: number;

@@ -24,8 +24,6 @@ import {
   isChunkedExpanseRoom,
   performAuxiliarySwap,
   resolvePlayerInertiaProfile,
-  TUTORIAL_STEP_DESCRIPTORS,
-  TutorialStepId,
 } from '../../systems';
 import { OrionState } from '../../types';
 import { OUTLINED_TEXT } from './HudSkillDeck';
@@ -68,10 +66,6 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
   // Generic World & Sector Metadata via worldSystem
   const worldInfo = getRoomWorldInfo(state);
   const isCheatMode = state.room === '-4,0' || Boolean(state.bypassProgressionGates);
-  const tutorialStepDesc =
-    isCheatMode && state.tutorialActive
-      ? TUTORIAL_STEP_DESCRIPTORS[state.tutorialStep as TutorialStepId]
-      : null;
 
   // Active Weapon & Equipment Slots: Main Hand (Right), Side Hand (Left), and Aux (Back)
   const slot1Id = state.equipmentSlots?.slot1 || state.equippedWeapons[0] || 'gladius_boltcaster';
@@ -331,8 +325,8 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
                     }`}
                   >
                     {fog.isDeepDungeonCleared
-                      ? 'DUNGEON CLEAR · FAST-TRAVEL [D]/[Q]'
-                      : 'ABYSSAL DUNGEON [D]'}
+                      ? 'RUIN SANCTUM CLEARED'
+                      : 'SUNKEN RUIN SANCTUM'}
                   </span>
                 )}
               </div>
@@ -403,7 +397,7 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
           );
         })()}
 
-        {lockedEnemy ? (
+        {lockedEnemy && (
           <button
             type="button"
             onClick={() => cycleTargetLock(state)}
@@ -414,11 +408,7 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
               {lockedEnemy.name || lockedEnemy.type} ({lockedEnemy.frame.integrity} HP)
             </span>
           </button>
-        ) : tutorialStepDesc ? (
-          <div className="mt-0.5 px-1.5 py-0.2 bg-transparent border border-[#818cf8]/60 rounded-xs text-[7px] text-[#c7d2fe] font-bold tracking-wider uppercase">
-            {tutorialStepDesc.title}
-          </div>
-        ) : null}
+        )}
       </section>
 
       {/* RIGHT CLUSTER: Munitions, Salvage & 3-Slot Weapon Readout (Main [R], Side [L], Aux [Back]) */}

@@ -9,6 +9,7 @@ import { TRAIT_REGISTRY } from '../../database/characters';
 import { ENEMY_REGISTRY } from '../../database/enemies';
 import { WEAPON_REGISTRY } from '../../database/equipment/weapons';
 import { ITEM_REGISTRY } from '../../database/items';
+import { isEquipmentUnlocked } from '../../database/progression';
 import { AREA_REGISTRY, LOCAL_ROOM_REGISTRY, REGION_REGISTRY } from '../../database/world';
 import {
   EnemyWikiDefinition,
@@ -83,20 +84,7 @@ export function isWeaponDiscoveredInCodex(state: OrionState, def: WeaponDefiniti
   if (state.discoveredCodex?.weapons?.[def.id]) {
     return true;
   }
-  const eq = state.equipmentSlots;
-  if (eq?.slot1 === def.id || eq?.slot2 === def.id || eq?.slot3 === def.id) {
-    return true;
-  }
-  if ((state.equippedWeapons || []).includes(def.id)) {
-    return true;
-  }
-  if ((eq?.ownedWeaponCounts?.[def.id] || 0) > 0) {
-    return true;
-  }
-  if ((eq?.unlockedEquipment || []).includes(def.id)) {
-    return true;
-  }
-  return false;
+  return isEquipmentUnlocked(state, def.id);
 }
 
 /**

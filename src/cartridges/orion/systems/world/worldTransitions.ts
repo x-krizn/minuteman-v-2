@@ -1323,6 +1323,11 @@ export function transitionViaAetherDoor(
     state.ry = placement.ry;
     state.x = unifiedPos.x;
     state.y = unifiedPos.y;
+    if (state.poeCompanion) {
+      state.poeCompanion.x = state.x - 10;
+      state.poeCompanion.y = state.y - 10;
+      state.poeCompanion.hoveringObjective = false;
+    }
     state.projectiles = [];
     state.pickups = [];
     state.enemies = [];
@@ -1384,6 +1389,11 @@ export function transitionViaAetherDoor(
 
   state.projectiles = [];
   state.pickups = [];
+  if (state.poeCompanion) {
+    state.poeCompanion.x = state.x - 10;
+    state.poeCompanion.y = state.y - 10;
+    state.poeCompanion.hoveringObjective = false;
+  }
 
   syncRoomHierarchyState(state);
 
@@ -1391,36 +1401,6 @@ export function transitionViaAetherDoor(
   spawnDynamicNodeFeatures(rooms, state, targetNode);
 
   soundSystem.playSelect();
-  const info = getRoomWorldInfo(state);
-
-  let toastMsg: string | null = null;
-  if (targetNode.bannerTitle.startsWith('SEALED BY ÆTHER FOG')) {
-    toastMsg = `${targetNode.bannerTitle} · DEPTH ${graph.loopDepth}/${graph.loopMaxDepth}`;
-  } else if (targetNode.nodeType === 'loop' && targetNode.hasFogBoss) {
-    toastMsg = `MAX DEPTH ${graph.loopDepth} · FOG BOSS ENCOUNTER (DEFEAT TO CLEAR FOG)`;
-  } else if (currentNode.nodeType !== 'loop' && targetNode.nodeType === 'loop') {
-    toastMsg = `ENTERING ÆTHER FOG · DEPTH 1/${graph.loopMaxDepth}`;
-  } else if (
-    targetNode.nodeType === 'loop' &&
-    graph.loopDepth >= (graph.loopMaxDepth || 2) &&
-    (currentNode.loopDepth || 0) < (graph.loopMaxDepth || 2)
-  ) {
-    toastMsg = `MAX ÆTHER DEPTH ${graph.loopDepth} · FIND & DEFEAT A BOSS TO ESCAPE`;
-  } else if (escapedLoop) {
-    toastMsg = `RETRACED OUT OF ÆTHER FOG · ${info.roomTitle.toUpperCase()}`;
-  } else if (prevAreaId && state.areaId !== prevAreaId) {
-    toastMsg = info.areaName.toUpperCase();
-  }
-
-  if (toastMsg) {
-    if (ctx) {
-      ctx.say(toastMsg);
-    } else {
-      state.toastText = toastMsg;
-      state.toastTimer = 2.2;
-    }
-  }
-
   notifyOrionStateChange();
   return true;
 }
@@ -1625,6 +1605,11 @@ export function fastTravelToWaystation(
   state.projectiles = [];
   state.pickups = [];
   state.spawnGraceTimer = 3.0;
+  if (state.poeCompanion) {
+    state.poeCompanion.x = state.x - 10;
+    state.poeCompanion.y = state.y - 10;
+    state.poeCompanion.hoveringObjective = false;
+  }
 
   syncRoomHierarchyState(state);
   state.spawnAnchor = {
@@ -1708,6 +1693,11 @@ export function fastTravelViaWaygate(
   state.pickups = [];
   state.flickerTimer = 0.8;
   state.spawnGraceTimer = 3.0;
+  if (state.poeCompanion) {
+    state.poeCompanion.x = state.x - 10;
+    state.poeCompanion.y = state.y - 10;
+    state.poeCompanion.hoveringObjective = false;
+  }
 
   syncRoomHierarchyState(state);
   if (!state.discoveredWaygates?.includes(wg.id)) {
@@ -1803,6 +1793,11 @@ export function rebootAtSpawnAnchor(
   state.z = 0;
   state.vz = 0;
   state.spawnGraceTimer = 3.0;
+  if (state.poeCompanion) {
+    state.poeCompanion.x = state.x - 10;
+    state.poeCompanion.y = state.y - 10;
+    state.poeCompanion.hoveringObjective = false;
+  }
 
   syncRoomHierarchyState(state);
   ctx.say(reasonToast);

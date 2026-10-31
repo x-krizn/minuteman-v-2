@@ -4,9 +4,13 @@
  */
 
 import {
+  CANONICAL_HARDWARE_CATALOG,
+  findHardwareItemByNameOrId,
+} from '../../database/equipment/chassis_hardware';
+import {
   getWeaponDefinition,
-  isTrueWeaponEquipment,
   isTwoHandOnlyWeapon,
+  WEAPON_REGISTRY,
 } from '../../database/equipment/weapons';
 import { getOwnedWeaponCount, isEquipmentUnlocked } from '../../database/progression';
 import { AREA_REGISTRY, REGION_REGISTRY } from '../../database/world';
@@ -26,31 +30,109 @@ export const ENEMY_EQUIPMENT_DROP_POOLS: Record<
   { equipmentIds: string[]; baseChance: number }
 > = {
   bog_crawler: {
-    equipmentIds: ['s2_turbine_khopesh', 's4_whisper_blade', 'tig_edge', 'arc_conductor'],
-    baseChance: 0.14,
+    equipmentIds: [
+      's2_turbine_khopesh',
+      's4_whisper_blade',
+      'tig_edge',
+      'arc_conductor',
+      'utility_ichor_surge',
+      'aux3_pnsy_rockweiler_buckler',
+      'sensory_a_sonar_pulse_transceiver',
+      'sensory_b_inertial_gyro_telemetry',
+      'legs_pnsy_all_terrain_treads',
+      'head_pnsy_field_visor',
+    ],
+    baseChance: 0.18,
   },
   bog_wurm: {
-    equipmentIds: ['ls900_swordspear', 'wz450_sparkstrike', 'cl350_litany', 'grace_edge'],
-    baseChance: 0.28,
+    equipmentIds: [
+      'ls900_swordspear',
+      'wz450_sparkstrike',
+      'cl350_litany',
+      'grace_edge',
+      'utility_arclight_capacitor',
+      'aux3_arc_prismatic_barrier',
+      'aux4_arc_feedback_capacitor',
+      'reactor_arc_mana_core',
+      'plating_arc_conduit_weave',
+      'sensory_a_aether_anomaly_scanner',
+    ],
+    baseChance: 0.35,
   },
   orc_scout: {
-    equipmentIds: ['sv12_viper', 'sv18_serpent', 's6_phantom_edge', 'm300_hasta'],
-    baseChance: 0.2,
+    equipmentIds: [
+      'sv12_viper',
+      'sv18_serpent',
+      's6_phantom_edge',
+      'm300_hasta',
+      'utility_phantom_shroud',
+      'aux3_vx_eclipse_cloak',
+      'aux4_vx_phase_shift',
+      'head_vx_stealth_optics',
+      'arms_vx_whisper_servos',
+      'legs_vx_shadow_striders',
+      'sensory_b_threat_vector_predictor',
+    ],
+    baseChance: 0.22,
   },
   orc_warrior: {
-    equipmentIds: ['b25_brushcutter', 'm350_mauler', 'siegebreaker', 'm450_pilum'],
-    baseChance: 0.28,
+    equipmentIds: [
+      'b25_brushcutter',
+      'm350_mauler',
+      'siegebreaker',
+      'm450_pilum',
+      'utility_siege_brace',
+      'aux3_rad_kinetic_recycling',
+      'aux4_rad_ether_vapor',
+      'plating_rad_juggernaut_carapace',
+      'arms_rad_hydraulic_crushers',
+      'legs_rad_piledriver_anchors',
+      'reactor_rad_ichor_furnace',
+    ],
+    baseChance: 0.3,
   },
   percival_knight: {
-    equipmentIds: ['aegis_charge_buckler', 'hl220_lightburst_lance', 'rs450_radiant_projector', 'tig_edge'],
+    equipmentIds: [
+      'aegis_charge_buckler',
+      'hl220_lightburst_lance',
+      'rs450_radiant_projector',
+      'tig_edge',
+      'utility_aegis_pulse',
+      'aux3_ti_aegis_hardlight',
+      'aux4_ti_radiant_sphere',
+      'plating_ti_paladin_wardplate',
+      'head_ti_halo_crest',
+      'arms_ti_bastion_pauldrons',
+      'reactor_ti_radiant_condenser',
+    ],
     baseChance: 1.0,
   },
   tristan_knight: {
-    equipmentIds: ['sr440_shadowfang', 'sv18_serpent', 's4_whisper_blade', 's6_phantom_edge'],
+    equipmentIds: [
+      'sr440_shadowfang',
+      'sv18_serpent',
+      's4_whisper_blade',
+      's6_phantom_edge',
+      'aux3_vx_eclipse_cloak',
+      'aux4_vx_phase_shift',
+      'plating_vx_nightveil_shroud',
+      'reactor_vx_ether_turbine',
+      'sensory_a_echolocation_array',
+    ],
     baseChance: 1.0,
   },
   bors_knight: {
-    equipmentIds: ['m450_pilum', 'm300_hasta', 'n55_gladius', 's2_turbine_khopesh'],
+    equipmentIds: [
+      'm450_pilum',
+      'm300_hasta',
+      'n55_gladius',
+      's2_turbine_khopesh',
+      'aux4_pnsy_rough_rider_booster',
+      'aux3_rad_kinetic_recycling',
+      'plating_pnsy_ironclad_rig',
+      'arms_pnsy_heavy_actuators',
+      'reactor_pnsy_combat_boiler',
+    ],
     baseChance: 1.0,
   },
   lady_of_the_lake: {
@@ -60,6 +142,12 @@ export const ENEMY_EQUIPMENT_DROP_POOLS: Record<
       'hallowed_scepter',
       'grace_edge',
       'cl500_absolution',
+      'utility_sanctum_font',
+      'aux3_sanc_restoration_field',
+      'aux4_sanc_martyrdom_plating',
+      'plating_sanc_reliquary_vestments',
+      'head_sanc_seraph_crown',
+      'reactor_sanc_chalice_well',
     ],
     baseChance: 1.0,
   },
@@ -74,8 +162,8 @@ export interface ContextualLootQuery {
 }
 
 /**
- * Resolves a contextual weapon or equipment drop across the hierarchy:
- * `Enemy Archetype -> Room Pool -> Area Pool -> Region Pool`.
+ * Resolves a contextual weapon, auxiliary, armor, reactor, or sensor drop across the hierarchy:
+ * `Enemy Archetype -> Room Pool -> Area Pool -> Region Pool -> Universal Catalog`.
  */
 export function resolveContextualEquipmentDrop(
   state: OrionState,
@@ -95,6 +183,8 @@ export function resolveContextualEquipmentDrop(
   const roomPool = meta?.lootPool?.equipmentIds || ROOM_REGISTRY[roomKey]?.lootPool?.equipmentIds || [];
   const areaPool = areaDef?.lootPool?.equipmentIds || [];
   const regionPool = regionDef?.lootPool?.equipmentIds || [];
+  const universalWeaponIds = Object.keys(WEAPON_REGISTRY);
+  const universalHardwareIds = CANONICAL_HARDWARE_CATALOG.map((hw) => hw.id);
 
   const combinedOrderedPool = Array.from(
     new Set([
@@ -102,8 +192,10 @@ export function resolveContextualEquipmentDrop(
       ...roomPool,
       ...areaPool,
       ...regionPool,
+      ...universalWeaponIds,
+      ...universalHardwareIds,
     ])
-  ).filter((id) => Boolean(getWeaponDefinition(id)));
+  ).filter((id) => Boolean(getWeaponDefinition(id) || findHardwareItemByNameOrId(id)));
 
   const firstCopyId = combinedOrderedPool.find((id) => !isEquipmentUnlocked(state, id));
   if (firstCopyId) {
@@ -119,13 +211,15 @@ export function resolveContextualEquipmentDrop(
       ])
     );
     const secondCopyId = secondCopyCandidates.find((id) => {
-      const def = getWeaponDefinition(id);
-      return (
-        def &&
-        isTrueWeaponEquipment(def) &&
-        !isTwoHandOnlyWeapon(def) &&
-        getOwnedWeaponCount(state, id) < 2
-      );
+      const wDef = getWeaponDefinition(id);
+      const hwDef = findHardwareItemByNameOrId(id);
+      if (wDef) {
+        return !isTwoHandOnlyWeapon(wDef) && getOwnedWeaponCount(state, id) < 2;
+      }
+      if (hwDef) {
+        return getOwnedWeaponCount(state, hwDef.id) < 2;
+      }
+      return false;
     });
     if (secondCopyId) {
       return secondCopyId;

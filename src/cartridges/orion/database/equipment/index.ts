@@ -31,6 +31,7 @@ export * from './auxiliaries';
 export * from './chassis_hardware';
 export * from './head';
 export * from './legs';
+export * from './mod_naming';
 export * from './plating';
 export * from './reactors';
 export * from './sensory';

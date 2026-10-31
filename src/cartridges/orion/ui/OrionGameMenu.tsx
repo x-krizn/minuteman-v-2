@@ -559,8 +559,12 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
               }}
               className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#3b82f6] rounded-xs text-[10.5px] font-bold text-left flex items-center justify-between cursor-pointer"
             >
-              <span className="text-[#93c5fd]">⚔ TRAINING</span>
-              <span className="text-[8.5px] text-[#60a5fa]">SANDBOX [-4,0]</span>
+              <span className="text-[#93c5fd]">
+                {activeState?.room === '-4,0' ? '↩ EXIT TRAINING' : '⚔ TRAINING ROOM'}
+              </span>
+              <span className="text-[8.5px] text-[#60a5fa]">
+                {activeState?.room === '-4,0' ? 'RETURN TO FIELD' : 'POD & WAYGATE [-4,0]'}
+              </span>
             </button>
 
             <button

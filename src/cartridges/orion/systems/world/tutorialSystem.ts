@@ -19,6 +19,8 @@ import {
 } from '../../database/equipment/weapons';
 import {
   ACTION_MODIFICATION_CATALOG,
+  CANONICAL_HARDWARE_CATALOG,
+  findHardwareItemByNameOrId,
   GEMSTONE_CATALOG,
   refundInventoryGem,
   unlockEquipmentItem,
@@ -36,7 +38,6 @@ import { OrionCombatContext, OrionState } from '../../types';
 import { spawnEnemyByType, spawnRoomEnemies } from '../entitySystem';
 import {
   addOrionInventoryItem,
-  getTutorialPromptOverride,
   notifyOrionStateChange,
   saveOrionGame,
   setOrionFlag,
@@ -50,14 +51,12 @@ import {
   resolveContextualEquipmentDrop,
 } from './worldPersistence';
 import {
-  enterOffPathFogLoopDungeon,
   fastTravelToWaystation,
   fastTravelViaWaygate,
   resetAetherFogGraph,
   syncRoomHierarchyState,
 } from './worldTransitions';
 import {
-  checkAndUnlockClearedDeepFogDungeon,
   computeChunkFogMetrics,
   fastTravelFromDeepDungeonToSafeSpot,
   hibernateAllActiveExpanseEnemies,
@@ -196,8 +195,6 @@ export function checkWorldInteractivePrompt(
     state.flags.bedivere_ring_choice === 'pending'
   ) {
     state.flags.bedivere_ring_choice = 'left';
-    state.toastText = "LEFT BEDIVERE'S SIGNET RING BEHIND";
-    state.toastTimer = 2.2;
     notifyOrionStateChange();
   }
 
@@ -215,89 +212,50 @@ export function checkWorldInteractivePrompt(
   );
 
   if (nearbyPoe) {
-    candidateKey = `${effectiveRoom}:poe:${state.flags.campfire_unlocked ? 'unlocked' : 'locked'}`;
-    candidateText = !state.flags.campfire_unlocked
-      ? '[A] TALK TO POE (UNLOCK CAMPFIRES)'
-      : state.flags.poe_state !== 'helped'
-        ? '[A] HELP THE POE'
-        : '[A] SPEAK WITH THE POE';
+    candidateKey = `${effectiveRoom}:poe:${state.flags.poe_state || 'unmet'}`;
+    candidateText = '[A] SPEAK';
   } else if ((facingTile === 'L' || currentTile === 'L') && isCheatModeActive(state)) {
     candidateKey = `${effectiveRoom}:lantern:cheat`;
     candidateText =
-      state.flags.poe_state === 'helped'
-        ? '[A] TOGGLE POE LANTERN (CHEAT)'
-        : '[A] LIGHT POE LANTERN (CHEAT)';
+      state.flags.poe_state === 'helped' || state.flags.poe_state === 'companion'
+        ? '[A] TOGGLE LANTERN'
+        : '[A] LIGHT LANTERN';
   } else if (nearbyCalmNpc) {
     candidateKey = `${effectiveRoom}:npc:${nearbyCalmNpc.id}`;
-    candidateText = nearbyCalmNpc.isLoyalist
-      ? '[A] SPEAK WITH LOYALIST'
-      : '[A] TRADE (15 SCRAP)';
+    candidateText = nearbyCalmNpc.isLoyalist ? '[A] SPEAK' : '[A] TRADE';
   } else if (currentTile === 'D' || facingTile === 'D') {
-    if (isChunkedExpanseRoom(state.room)) {
-      checkAndUnlockClearedDeepFogDungeon(rooms, state);
-      const fogMetrics = computeChunkFogMetrics(state);
-      if (fogMetrics.hasDeepDungeon) {
-        candidateKey = `${fogMetrics.chunkKey}:D:${fogMetrics.isDeepDungeonCleared ? 'clear' : 'loop'}`;
-        candidateText = fogMetrics.isDeepDungeonCleared
-          ? '[A] CLAIM DUNGEON REWARD & FAST-TRAVEL TO SAFE PATH'
-          : '[A] ENTER ABYSSAL FOG LOOP DUNGEON (CLEAR FOR FAST-TRAVEL)';
-      } else {
-        candidateKey = `${effectiveRoom}:D`;
-        candidateText = '[A] ENTER DROP-POD CHEAT ROOM';
-      }
-    } else {
-      candidateKey = `${state.room}:D`;
-      candidateText =
-        state.room === '-4,0'
-          ? '[A] EXIT CHEAT ROOM -> DROP-POD CRATER'
-          : '[A] ENTER DROP-POD CHEAT ROOM';
-    }
+    candidateKey = `${state.room}:D`;
+    candidateText =
+      state.room === '-4,0' ? '[A] RETURN TO WORLD' : '[A] ENTER TRAINING ROOM';
   } else if (currentTile === 'A' || facingTile === 'A') {
     const isUnlocked = Boolean(
       state.flags.campfire_unlocked ||
         state.flags.poe_state === 'helped' ||
+        state.flags.poe_state === 'companion' ||
+        state.flags.poe_state === 'declined' ||
         state.bypassProgressionGates
     );
     const isFirstLit = Boolean(state.flags.first_campfire_lit);
     candidateKey = `${effectiveRoom}:A:${isUnlocked ? 'u' : 'l'}:${isFirstLit ? 'lit' : 'unlit'}`;
     if (effectiveRoom === '0,0' && !isUnlocked) {
-      candidateText = '[A] CAMPFIRE UNLIT (SPEAK TO POE)';
+      candidateText = '[A] EXAMINE HEARTH';
     } else if (effectiveRoom === '0,0' && !isFirstLit) {
-      candidateText = '[A] LIGHT FIRST CAMPFIRE';
+      candidateText = '[A] KINDLE HEARTH';
     } else {
-      const wsCount = (state.discoveredWaystations || []).filter(
-        (id) => id !== 'ws_bog_drop_pod'
-      ).length;
-      candidateText =
-        wsCount > 1
-          ? `[A] REST AT CAMPFIRE · TRANSIT (${wsCount} LIT)`
-          : '[A] REST AT CAMPFIRE';
+      candidateText = '[A] REST';
     }
   } else if (currentTile === 'Q' || facingTile === 'Q') {
     candidateKey = `${effectiveRoom}:Q`;
-    if (state.room === '-3,0' || state.room === '-4,0') {
-      candidateText = '[A] ENTER UNIFIED BOG GRID (26×18 CHUNKS)';
-    } else if (state.room === SUNKEN_BOG_EXPANSE_ROOM_ID) {
-      const fogMetrics = computeChunkFogMetrics(state);
-      if (fogMetrics.hasDeepDungeon && fogMetrics.isDeepDungeonCleared) {
-        const safeTitle = state.lastSafeChunkCoord?.title || 'SAFE PATH';
-        candidateText = `[A] FAST-TRAVEL TO ${safeTitle.toUpperCase()}`;
-      } else {
-        candidateText = '[A] WAYGATE TRANSIT (CAMPFIRE / POE LANTERN / EXIT GATE)';
-      }
-    } else {
-      candidateText = '[A] STEP INTO WAYGATE';
-    }
+    candidateText = '[A] WAYGATE';
   } else if (nearScout) {
     candidateKey = `${effectiveRoom}:${scoutKey}:${state.flags.bedivere_ring_choice || 'none'}`;
-    const tutorialOverride = getTutorialPromptOverride(state, 'S');
     if (!state.lootedCaches[scoutKey]) {
-      candidateText = tutorialOverride || '[A] EXAMINE FALLEN KNIGHT';
+      candidateText = '[A] EXAMINE';
     } else if (
       !state.flags.bedivere_ring_choice ||
       state.flags.bedivere_ring_choice === 'pending'
     ) {
-      candidateText = '[A] TAKE SIGNET RING';
+      candidateText = '[A] EXAMINE RING';
     } else {
       candidateText = null;
     }
@@ -315,7 +273,7 @@ export function checkWorldInteractivePrompt(
     const looted = isRoomCacheLooted(state, cx, cy);
     candidateKey = `${state.room}:cache:${cx},${cy}:${looted ? 'empty' : 'full'}`;
     if (!looted) {
-      candidateText = isChest ? '[A] OPEN CHEST' : '[A] SEARCH CACHE';
+      candidateText = isChest ? '[A] OPEN' : '[A] SEARCH';
     } else {
       candidateText = null;
     }
@@ -324,19 +282,19 @@ export function checkWorldInteractivePrompt(
       candidateKey = `cheat_term:${facingTile}`;
       candidateText =
         facingTile === '1'
-          ? `[A] TERMINAL 1: TOGGLE CHEAT MODE (${state.bypassProgressionGates ? 'ON' : 'OFF'})`
+          ? `[A] TERMINAL 1: CHEAT MODE (${state.bypassProgressionGates ? 'ON' : 'OFF'})`
           : facingTile === '2'
-            ? '[A] TERMINAL 2: UNLOCK ALL WEAPONS & MODS'
-            : '[A] TERMINAL 3: GRANT +5 ALL GEMS & +200 SCRAP';
+            ? '[A] TERMINAL 2: UNLOCK ARMORY'
+            : '[A] TERMINAL 3: GRANT GEMS & SCRAP';
     } else {
       const switchKey = `switch:${effectiveRoom}:${facingTile}`;
       candidateKey = switchKey;
-      candidateText = state.lootedCaches[switchKey] ? null : '[A] PULL SWITCH';
+      candidateText = state.lootedCaches[switchKey] ? null : '[A] PULL LEVER';
     }
   } else if (facingTile === '!' || currentTile === '!') {
     if (state.room === '-4,0') {
       candidateKey = 'cheat_term:warp';
-      candidateText = '[A] TERMINAL 4: WARP TO BOG / CAMPFIRE / LANTERN / TOWN';
+      candidateText = '[A] TERMINAL 4: WARP';
     } else {
       const lx = facingTile === '!' ? ax : tx;
       const ly = facingTile === '!' ? ay : ty;
@@ -347,20 +305,18 @@ export function checkWorldInteractivePrompt(
   } else if (facingTile === 'G' || currentTile === 'G') {
     if (state.flags.orc_raid_active) {
       candidateKey = `${effectiveRoom}:gate:raid`;
-      candidateText = 'GATE SEALED';
+      candidateText = 'GATE BARRED';
     } else if (!state.unlockedGates[effectiveRoom] && !state.unlockedGates[state.room]) {
       candidateKey = `${effectiveRoom}:gate`;
       const hasKey = state.inventorySlots.some((s) => s.itemId === 'rusted_gate_key');
       const poeResolved = Boolean(state.flags.bog_exit_revealed);
-      candidateText = hasKey || poeResolved ? '[A] UNSEAL GATE' : 'GATE SEALED';
+      candidateText = hasKey || poeResolved ? '[A] UNSEAL GATE' : '[A] EXAMINE GATE';
     }
   } else if (facingTile === 'M' || currentTile === 'M') {
     if (!state.flags.cathedral_door_open) {
       candidateKey = `${state.room}:cathedral_door`;
       const status = evaluateCathedralDoorStatus(state);
-      candidateText = status.canOpen
-        ? '[A] OPEN DUNGEON DOOR'
-        : 'DUNGEON DOOR SEALED';
+      candidateText = status.canOpen ? '[A] OPEN DOOR' : '[A] EXAMINE SEAL';
     }
   } else if (
     (currentTile === '~' || facingTile === '~') &&
@@ -369,7 +325,7 @@ export function checkWorldInteractivePrompt(
     !state.enemies.some((e) => e.type === 'lady_of_the_lake')
   ) {
     candidateKey = `${effectiveRoom}:lady_of_the_lake`;
-    candidateText = '[A] DISTURB THE BOG WATERS';
+    candidateText = '[A] APPROACH WATER';
   }
 
   if (candidateKey && candidateText) {
@@ -435,13 +391,31 @@ export function performDirectWorldInteraction(
     (e) => e.type === 'bog_poe' && Math.hypot(e.x - state.x, e.y - state.y) < 26
   );
 
-  // Talking / Helping the Poe unlocks Campfire attunement and activates passive Poe Lamp guidance
   if (nearbyPoe) {
-    const wasAlreadyHelped = state.flags.poe_state === 'helped' && Boolean(state.flags.campfire_unlocked);
-    state.flags.poe_state = 'helped';
+    const wasDeclined = state.flags.poe_state === 'declined';
+    if (wasDeclined) {
+      soundSystem.playSelect();
+      ctx.say(
+        state.flags.first_campfire_lit
+          ? 'THE SMALL FLAME WATCHES QUIETLY FROM THE REEDS AS THE HEARTH CRACKLES.'
+          : 'THE SMALL FLAME GESTURES SILENTLY TOWARD THE COLD CHARRED STONES IN THE CLEARING.'
+      );
+      notifyOrionStateChange();
+      return true;
+    }
+    state.flags.poe_state = 'companion';
     state.flags.campfire_unlocked = true;
     state.flags.poe_lantern_gift = true;
     state.flags.bog_exit_revealed = true;
+    state.poeCompanion = {
+      x: nearbyPoe.x,
+      y: nearbyPoe.y,
+      z: 10,
+      vx: 0,
+      vy: 0,
+      hoveringObjective: false,
+    };
+    state.enemies = state.enemies.filter((e) => e.type !== 'bog_poe');
     if (state.level < 2) {
       state.level = 2;
     }
@@ -452,11 +426,7 @@ export function performDirectWorldInteraction(
     syncStateGates(state);
     soundSystem.playPowerup();
     ctx.say(
-      wasAlreadyHelped
-        ? state.flags.first_campfire_lit
-          ? 'POE: "THE HEARTH BURNS WARM, PILOT. FOLLOW THE LANTERN GLOW THROUGH THE MIST."'
-          : 'POE: "KINDLE THE FIRST CAMPFIRE IN THIS CLEARING SO WE MAY BASK IN ITS LIGHT."'
-        : 'SPOKE WITH THE POE · CAMPFIRE ATTUNEMENT & PASSIVE LANTERN GUIDANCE UNLOCKED!'
+      'THE LITTLE FLAME BOBS WARMLY AND DRIFTS TO YOUR SHOULDER, CASTING SPARKS TOWARD THE COLD HEARTH.'
     );
     notifyOrionStateChange();
     return true;
@@ -464,12 +434,20 @@ export function performDirectWorldInteraction(
 
   // Poe Lamp ('L') is only interactable in Cheat Mode
   if ((facingTile === 'L' || currentTile === 'L') && isCheatModeActive(state)) {
-    const nextHelped = state.flags.poe_state !== 'helped';
-    state.flags.poe_state = nextHelped ? 'helped' : 'unmet';
+    const nextHelped = state.flags.poe_state !== 'companion' && state.flags.poe_state !== 'helped';
+    state.flags.poe_state = nextHelped ? 'companion' : 'unmet';
     state.flags.poe_lantern_gift = nextHelped;
     if (nextHelped) {
       state.flags.campfire_unlocked = true;
       state.flags.bog_exit_revealed = true;
+      state.poeCompanion = {
+        x: state.x - 10,
+        y: state.y - 10,
+        z: 10,
+        vx: 0,
+        vy: 0,
+        hoveringObjective: false,
+      };
       if (state.level < 2) {
         state.level = 2;
       }
@@ -477,13 +455,15 @@ export function performDirectWorldInteraction(
       for (const e of state.enemies) {
         if (e.type === 'bog_wurm') e.isSubmerged = false;
       }
+    } else {
+      state.poeCompanion = undefined;
     }
     syncStateGates(state);
     soundSystem.playPowerup();
     ctx.say(
       nextHelped
-        ? 'CHEAT MODE: POE LANTERN LIT · PASSIVE LAMP HELP ACTIVE'
-        : 'CHEAT MODE: POE LANTERN EXTINGUISHED'
+        ? 'COMPANION POE ATTUNED'
+        : 'COMPANION POE DISMISSED'
     );
     notifyOrionStateChange();
     return true;
@@ -501,7 +481,7 @@ export function performDirectWorldInteraction(
         nearbyCalmNpc.npcDisposition = 'feral';
         nearbyCalmNpc.faction = 'hostile';
         soundSystem.playMenuBeep();
-        ctx.say('LOYALIST: "YOU ROBBED BEDIVERE’S CORPSE! DIE, GRAVE ROBBER!"');
+        ctx.say('THE SURVIVOR SPOTS BEDIVERE’S RING IN YOUR IRON GRIP: "YOU ROBBED HIS CORPSE!"');
       } else {
         soundSystem.playSelect();
         if (!state.lootedCaches[`npc_gift:${nearbyCalmNpc.id}`]) {
@@ -510,11 +490,11 @@ export function performDirectWorldInteraction(
           const giftedHeater = unlockEquipmentItem(state, 'heater_shield');
           ctx.say(
             giftedHeater
-              ? 'LOYALIST: "YOU HONORED BEDIVERE. TAKE THIS HEATER SHIELD & DEMANTOID FLASK!"'
-              : 'LOYALIST: "YOU HONORED BEDIVERE. TAKE THIS DEMANTOID FLASK."'
+              ? '"YOU LEFT BEDIVERE’S RING IN PEACE. TAKE THIS SHIELD AND VIAL FOR THE ROAD AHEAD."'
+              : '"YOU LEFT BEDIVERE’S RING IN PEACE. TAKE THIS RESTORATIVE VIAL."'
           );
         } else {
-          ctx.say('LOYALIST: "MAY AVALON GUARD YOUR CHASSIS, PILOT."');
+          ctx.say('"THREE COUNTERWEIGHT LEVERS AND FOUR FALLEN KNIGHTS SEAL THE CATHEDRAL DOORS..."');
         }
       }
     } else {
@@ -528,21 +508,19 @@ export function performDirectWorldInteraction(
           allowSecondCopy: true,
         });
         if (nextGear) {
-          const wasFirstCopy = unlockEquipmentItem(state, nextGear);
+          unlockEquipmentItem(state, nextGear);
           const gName = getWeaponDefinition(nextGear)?.name || nextGear.toUpperCase();
           soundSystem.playPowerup();
           ctx.say(
-            wasFirstCopy
-              ? `TRADED 15 SCRAP: DEMANTOID FLASK + SALVAGED ${gName.toUpperCase()} UNLOCKED!`
-              : `TRADED 15 SCRAP: DEMANTOID FLASK + 2ND COPY OF ${gName.toUpperCase()} (PAIRED STANCE)!`
+            `THE SCAVENGER PRESSES A VIAL AND A SALVAGED ${gName.toUpperCase()} INTO YOUR HEAVY HAND.`
           );
         } else {
           soundSystem.playCoin();
-          ctx.say('TRADED 15 SCRAP FOR DEMANTOID REPAIR FLASK');
+          ctx.say('THE SCAVENGER TRADES A GREEN VIAL FOR A HANDFUL OF TARNISHED SCRAP.');
         }
       } else {
         soundSystem.playMenuBeep();
-        ctx.say('SCAVENGER: "15 SCRAP FOR A DEMANTOID FLASK & SALVAGED HARDPOINT GEAR, PILOT."');
+        ctx.say('"BRING FIFTEEN PIECES OF SCRAP FROM THE MIRE IF YOU WANT SUPPLIES, STRANGER."');
       }
     }
     notifyOrionStateChange();
@@ -550,42 +528,55 @@ export function performDirectWorldInteraction(
   }
 
   if (currentTile === 'D' || facingTile === 'D') {
-    if (isChunkedExpanseRoom(state.room)) {
-      checkAndUnlockClearedDeepFogDungeon(rooms, state);
-      const fogMetrics = computeChunkFogMetrics(state);
-      if (fogMetrics.hasDeepDungeon) {
-        if (!fogMetrics.isDeepDungeonCleared) {
-          return enterOffPathFogLoopDungeon(
-            rooms,
-            state,
-            fogMetrics.chunkKey,
-            fogMetrics.cx,
-            fogMetrics.cy,
-            ctx
-          );
-        }
-        return fastTravelFromDeepDungeonToSafeSpot(rooms, state, ctx);
-      }
-    }
-
     if (state.room === '-4,0') {
-      const craterPos = convertBogRoomPosToUnifiedPx('-3,0', 120, 88, 16, 12);
-      state.room = SUNKEN_BOG_EXPANSE_ROOM_ID;
-      state.rx = -3;
-      state.ry = 0;
-      state.x = craterPos.x;
-      state.y = craterPos.y;
+      const savedAnchor = state.preTrainingReturnAnchor;
+      if (savedAnchor) {
+        state.room = savedAnchor.room;
+        state.rx = savedAnchor.rx;
+        state.ry = savedAnchor.ry;
+        state.x = savedAnchor.x;
+        state.y = savedAnchor.y;
+        state.areaId = savedAnchor.areaId;
+        if (savedAnchor.mapId) state.mapId = savedAnchor.mapId;
+        if (savedAnchor.biomeId) state.biomeId = savedAnchor.biomeId;
+        if (savedAnchor.bypassProgressionGates !== undefined) {
+          state.bypassProgressionGates = savedAnchor.bypassProgressionGates;
+        }
+        state.preTrainingReturnAnchor = undefined;
+      } else {
+        const craterPos = convertBogRoomPosToUnifiedPx('-3,0', 120, 88, 16, 12);
+        state.room = SUNKEN_BOG_EXPANSE_ROOM_ID;
+        state.rx = -3;
+        state.ry = 0;
+        state.x = craterPos.x;
+        state.y = craterPos.y;
+      }
       state.z = 0;
       state.vz = 0;
       state.projectiles = [];
       state.pickups = [];
       syncRoomHierarchyState(state);
-      updateChunkedRoomStreaming(rooms, state, true);
+      syncStateGates(state);
+      if (isChunkedExpanseRoom(state.room)) {
+        updateChunkedRoomStreaming(rooms, state, true);
+      } else {
+        spawnRoomEnemies(rooms, state);
+      }
       soundSystem.playSelect();
-      ctx.say('EXITED DROP-POD CHEAT ROOM -> UNIFIED BOG GRID [-3,0]');
       notifyOrionStateChange();
       return true;
     } else {
+      state.preTrainingReturnAnchor = {
+        room: state.room,
+        rx: state.rx,
+        ry: state.ry,
+        x: state.x,
+        y: state.y,
+        areaId: state.areaId,
+        mapId: state.mapId,
+        biomeId: state.biomeId,
+        bypassProgressionGates: state.bypassProgressionGates,
+      };
       if (isChunkedExpanseRoom(state.room)) {
         hibernateAllActiveExpanseEnemies(state);
       }
@@ -601,7 +592,6 @@ export function performDirectWorldInteraction(
       state.enemies = [];
       syncRoomHierarchyState(state);
       soundSystem.playPowerup();
-      ctx.say('ENTERED DROP-POD CHEAT ROOM · DEV CONSOLES & SATCHEL UNLOCKED');
       notifyOrionStateChange();
       return true;
     }
@@ -611,11 +601,15 @@ export function performDirectWorldInteraction(
     const canUseCampfire = Boolean(
       state.flags.campfire_unlocked ||
         state.flags.poe_state === 'helped' ||
+        state.flags.poe_state === 'companion' ||
+        state.flags.poe_state === 'declined' ||
         state.bypassProgressionGates
     );
     if (effectiveRoom === '0,0' && !canUseCampfire) {
       soundSystem.playMenuBeep();
-      ctx.say('CAMPFIRE COLD — SPEAK TO THE POE TUCKED BEHIND THE NORTHERN TREES FIRST!');
+      ctx.say(
+        'THE CHARRED STONES ARE DAMP AND COLD. A FAINT PALE GLOW TREMBLES BEHIND THE NORTHERN TREES.'
+      );
       notifyOrionStateChange();
       return true;
     }
@@ -674,8 +668,8 @@ export function performDirectWorldInteraction(
     soundSystem.playHeal();
     ctx.say(
       wasFirstCampfireUnlit && effectiveRoom === '0,0'
-        ? 'FIRST CAMPFIRE LIT · POE DRAWN TO FIRELIGHT & EASTERN PATH UNSEALED!'
-        : `RESTED AT ${areaDef.waystation?.name?.toUpperCase() || 'CAMPFIRE'} · SPAWN MOVED`
+        ? 'WARM EMBER LIGHT CATCHES ON THE STONES, PARTING THE EASTERN MIST.'
+        : 'YOU REST BESIDE THE CRACKLING EMBERS AS THE HUM IN YOUR CHEST STEADIES.'
     );
     notifyOrionStateChange();
     return true;
@@ -802,14 +796,16 @@ export function performDirectWorldInteraction(
       }
       syncStateGates(state);
       soundSystem.playPowerup();
-      ctx.say('SALVAGED KHOPESH & BEDIVERE’S LIST');
+      ctx.say(
+        'FROM THE FALLEN GIANT’S GRIP YOU LIFT A CURVED BLADE AND A WATER-STAINED VELLUM LIST OF THREE LOST RELICS.'
+      );
       notifyOrionStateChange();
       return true;
     } else if (state.flags.bedivere_ring_choice === 'pending') {
       state.flags.bedivere_ring_choice = 'taken';
       addOrionInventoryItem(state, 'bedivere_ring', 1);
       soundSystem.playCoin();
-      ctx.say("TOOK BEDIVERE'S SIGNET RING");
+      ctx.say('YOU PRY THE SILVER SIGNET RING FROM THE COLD IRON GAUNTLET.');
       notifyOrionStateChange();
       return true;
     }
@@ -873,25 +869,22 @@ export function performDirectWorldInteraction(
       });
       let gearSuffix = '';
       if (unlockedGearId) {
-        const wasFirstCopy = unlockEquipmentItem(state, unlockedGearId);
-        const gearName = getWeaponDefinition(unlockedGearId)?.name || unlockedGearId;
-        gearSuffix = wasFirstCopy
-          ? ` · ${gearName.toUpperCase()}`
-          : ` · 2ND ${gearName.toUpperCase()} (PAIRED)`;
+        unlockEquipmentItem(state, unlockedGearId);
+        const gearName =
+          getWeaponDefinition(unlockedGearId)?.name ||
+          findHardwareItemByNameOrId(unlockedGearId)?.name ||
+          unlockedGearId;
+        gearSuffix = ` · ${gearName.toUpperCase()}`;
       }
 
       if (Number(state.flags.bedivere_list_items || 0) < 3) {
         state.flags.bedivere_list_items = Number(state.flags.bedivere_list_items || 0) + 1;
         addOrionInventoryItem(state, 'bedivere_relic', 1);
       }
-      const fogBonusTag =
-        fogMetrics && fogMetrics.distFromSetPath > 0
-          ? ` [FOG LOOT ×${fogMetrics.lootMultiplier}]`
-          : '';
       const baseToast = isChest
-        ? `CHEST OPENED: +${earnedScrap} SCRAP & GEMS (${traitGem.toUpperCase()} / ${reactorGem.toUpperCase()})`
-        : cacheDef.toast;
-      ctx.say(`${baseToast}${gearSuffix}${fogBonusTag}`);
+        ? `RELIQUARY OPENED: +${earnedScrap} SCRAP & ${traitGem.toUpperCase()}`
+        : `FOUND +${earnedScrap} SCRAP & SUPPLIES`;
+      ctx.say(`${baseToast}${gearSuffix}`);
       notifyOrionStateChange();
       return true;
     }
@@ -909,8 +902,8 @@ export function performDirectWorldInteraction(
         soundSystem.playPowerup();
         ctx.say(
           state.bypassProgressionGates
-            ? 'CHEAT ROOM MODE ENABLED · DEV UI & GATE BYPASS ACTIVE'
-            : 'CHEAT ROOM MODE SET TO STRICT PLAYER PROGRESSION'
+            ? 'TRAINING ROOM: CHEAT MODE ENABLED'
+            : 'TRAINING ROOM: STRICT PROGRESSION RESTORED'
         );
         notifyOrionStateChange();
         return true;
@@ -919,12 +912,15 @@ export function performDirectWorldInteraction(
         for (const w of Object.values(WEAPON_REGISTRY)) {
           unlockEquipmentItem(state, w.id);
         }
+        for (const hw of CANONICAL_HARDWARE_CATALOG) {
+          unlockEquipmentItem(state, hw.id);
+        }
         if (state.equipmentSlots) {
           state.equipmentSlots.unlockedMods = ACTION_MODIFICATION_CATALOG.map((m) => m.id);
         }
         syncStateGates(state);
         soundSystem.playPowerup();
-        ctx.say('UNLOCKED ALL WEAPONS, SHIELDS & ACTION MODS');
+        ctx.say('UNLOCKED ALL WEAPONS, AUXILIARIES, HARDWARE & ACTION MODS');
         notifyOrionStateChange();
         return true;
       }
@@ -958,7 +954,11 @@ export function performDirectWorldInteraction(
       const curSwitches = Math.min(3, Number(state.flags.dungeon_switches || 0) + 1);
       state.flags.dungeon_switches = curSwitches;
       soundSystem.playPowerup();
-      ctx.say(`SWITCH PULLED (${curSwitches}/3)`);
+      ctx.say(
+        curSwitches >= 3
+          ? 'THE THIRD IRON COUNTERWEIGHT LOCKS IN PLACE; A DEEP RUMBLE ECHOES FROM THE CATHEDRAL.'
+          : 'HEAVY CHAINS GRIND BENEATH THE FLAGSTONES AS THE COUNTERWEIGHT ENGAGES.'
+      );
       notifyOrionStateChange();
       return true;
     }
@@ -967,9 +967,9 @@ export function performDirectWorldInteraction(
   if (facingTile === '!' || currentTile === '!') {
     if (state.room === '-4,0') {
       const warpTargets = [
-        { room: '0,0', x: 128, y: 88, label: 'FIRST CAMPFIRE (3 ROOMS FROM POD)' },
-        { room: '0,-2', x: 128, y: 88, label: 'POE LANTERN SANCTUARY (5 ROOMS FROM POD)' },
-        { room: '3,0', x: 120, y: 96, label: 'MAIN BOG ENTRANCE (6 ROOMS FROM POD)' },
+        { room: '0,0', x: 128, y: 88, label: 'FIRST CAMPFIRE SANCTUARY' },
+        { room: '0,-2', x: 128, y: 88, label: 'POE LANTERN CLEARING' },
+        { room: '3,0', x: 120, y: 96, label: 'MAIN BOG GATEHOUSE' },
         { room: '4,0', x: 72, y: 72, label: 'CAMELOT BORDER TOWN' },
       ];
       const nextIdx = Number(state.flags.cheat_warp_idx || 0) % warpTargets.length;
@@ -1006,7 +1006,7 @@ export function performDirectWorldInteraction(
         spawnRoomEnemies(rooms, state);
       }
       soundSystem.playPowerup();
-      ctx.say(`CHEAT WARP -> ${dest.label}`);
+      ctx.say(`WARPED TO ${dest.label}`);
       notifyOrionStateChange();
       return true;
     }
@@ -1022,8 +1022,8 @@ export function performDirectWorldInteraction(
     soundSystem.playSelect();
     ctx.say(
       nextActive
-        ? 'BARRIERS PHASE-LOCKED OPEN'
-        : 'BARRIERS RESTORED'
+        ? 'THE ANCIENT MECHANISM HUMS AS THE PHASE BARRIERS PART.'
+        : 'THE MECHANISM RELEASES AND THE BARRIERS SNAP SHUT.'
     );
     notifyOrionStateChange();
     return true;
@@ -1032,7 +1032,7 @@ export function performDirectWorldInteraction(
   if (facingTile === 'G' || currentTile === 'G') {
     if (state.flags.orc_raid_active) {
       soundSystem.playMenuBeep();
-      ctx.say('EXIT SEALED UNTIL ORC RAID IS DEALT WITH!');
+      ctx.say('THE IRON BARS TREMBLE UNDER THE CLASH OF STEEL IN THE STREETS.');
       return true;
     }
     if (state.unlockedGates[effectiveRoom] || state.unlockedGates[state.room]) return false;
@@ -1058,12 +1058,12 @@ export function performDirectWorldInteraction(
       }
 
       soundSystem.playPowerup();
-      ctx.say('BOG PERIMETER GATE UNSEALED · WALK EAST INTO CAMELOT BORDER TOWN');
+      ctx.say('THE HEAVY IRON PERIMETER BARS GRIND OPEN TOWARD THE EASTERN CAUSEWAY.');
       notifyOrionStateChange();
       return true;
     } else {
       soundSystem.playMenuBeep();
-      ctx.say('BOG EXIT HIDDEN: DEAL WITH THE POE OR DEFEAT GUARDIAN');
+      ctx.say('THE GATE IS SEALED FAST BY CORRODED TUMBLERS AND PALE LANTERN-RUNES.');
       return true;
     }
   }
@@ -1080,13 +1080,15 @@ export function performDirectWorldInteraction(
       }
       soundSystem.playPowerup();
       ctx.say(
-        `DUNGEON ENTRANCE OPENED (${status.reason}) · CAMELOT WAYGATE KEY ACQUIRED! [DEEP DUNGEON OD-BT-01 SEALED]`
+        'THE ANCIENT CATHEDRAL DOORS PART WITH A LOW STONE GROAN, REVEALING A SANCTUM KEY.'
       );
       notifyOrionStateChange();
       return true;
     } else {
       soundSystem.playMenuBeep();
-      ctx.say(`DUNGEON ENTRANCE SEALED: NEED ${status.reason}`);
+      ctx.say(
+        'THE CATHEDRAL DOORS REMAIN SEALED. RELIEFS OF LEVERS, FALLEN KNIGHTS, AND TOWNSFOLK LINE THE ARCH.'
+      );
       return true;
     }
   }
@@ -1126,21 +1128,30 @@ export function executeWorldInteraction(
   );
   if (nearbyPoe) {
     state.contextMenu = {
-      title: 'POE (LANTERN SPIRIT)',
+      title: 'WANDERING POE SPIRIT',
+      subtitle:
+        'A small pale flame bobs among the reeds, watching your heavy iron silhouette with quiet curiosity.',
       targetType: 'poe',
       targetKey: `${effectiveRoom}:poe`,
       x: nearbyPoe.x,
       y: nearbyPoe.y,
+      entityId: nearbyPoe.id,
       selectedIndex: 0,
       options: [
         {
-          id: 'primary',
-          label: !state.flags.campfire_unlocked
-            ? 'Talk to Poe (Unlock Campfires)'
-            : 'Speak with Poe',
+          id: 'poe_accept',
+          label: 'Accept Companion ("Walk with me")',
         },
-        { id: 'inspect', label: 'Inspect Spirit' },
-        { id: 'leave', label: 'Leave' },
+        {
+          id: 'poe_decline',
+          label: 'Decline ("I will walk alone")',
+        },
+        {
+          id: 'poe_attack',
+          label: 'Strike the Spirit',
+        },
+        { id: 'inspect', label: 'Inspect' },
+        { id: 'leave', label: 'Step Back' },
       ],
     };
     return true;
@@ -1150,7 +1161,7 @@ export function executeWorldInteraction(
     const lx = facingTile === 'L' ? ax : tx;
     const ly = facingTile === 'L' ? ay : ty;
     state.contextMenu = {
-      title: 'POE LANTERN (CHEAT)',
+      title: 'SHRINE LANTERN',
       targetType: 'lantern',
       targetKey: `${effectiveRoom}:L:${lx},${ly}`,
       tx: lx,
@@ -1162,12 +1173,12 @@ export function executeWorldInteraction(
         {
           id: 'primary',
           label:
-            state.flags.poe_state === 'helped'
-              ? 'Extinguish Lantern'
-              : 'Light Lantern (Cheat)',
+            state.flags.poe_state === 'companion' || state.flags.poe_state === 'helped'
+              ? 'Dismiss Companion Poe'
+              : 'Attune Companion Poe',
         },
-        { id: 'inspect', label: 'Inspect Lantern' },
-        { id: 'leave', label: 'Leave' },
+        { id: 'inspect', label: 'Inspect' },
+        { id: 'leave', label: 'Step Back' },
       ],
     };
     return true;
@@ -1181,7 +1192,7 @@ export function executeWorldInteraction(
   );
   if (nearbyCalmNpc) {
     state.contextMenu = {
-      title: nearbyCalmNpc.isLoyalist ? 'AVALON LOYALIST' : 'BOG SCAVENGER',
+      title: nearbyCalmNpc.isLoyalist ? 'BORDER TOWN WATCHER' : 'MIRE SCAVENGER',
       targetType: 'npc',
       targetKey: `${effectiveRoom}:npc:${nearbyCalmNpc.id}`,
       x: nearbyCalmNpc.x,
@@ -1190,12 +1201,10 @@ export function executeWorldInteraction(
       options: [
         {
           id: 'primary',
-          label: nearbyCalmNpc.isLoyalist
-            ? 'Speak with Loyalist'
-            : 'Trade (15 Scrap)',
+          label: nearbyCalmNpc.isLoyalist ? 'Speak' : 'Barter Scrap',
         },
-        { id: 'inspect', label: 'Inspect Citizen' },
-        { id: 'leave', label: 'Leave' },
+        { id: 'inspect', label: 'Inspect' },
+        { id: 'leave', label: 'Step Back' },
       ],
     };
     return true;
@@ -1205,7 +1214,7 @@ export function executeWorldInteraction(
     const dx = facingTile === 'D' ? ax : tx;
     const dy = facingTile === 'D' ? ay : ty;
     state.contextMenu = {
-      title: state.room === '-4,0' ? 'CHEAT BAY EXIT' : 'ORBITAL DROP-POD HATCH',
+      title: state.room === '-4,0' ? 'TRAINING BAY HATCH' : 'DROP-POD HATCH',
       targetType: 'drop_pod',
       targetKey: `${state.room}:D:${dx},${dy}`,
       tx: dx,
@@ -1216,13 +1225,10 @@ export function executeWorldInteraction(
       options: [
         {
           id: 'primary',
-          label:
-            state.room === '-4,0'
-              ? 'Exit to Drop-Pod Crater'
-              : 'Enter Drop-Pod Hatch',
+          label: state.room === '-4,0' ? 'Return to World' : 'Enter Training Room',
         },
-        { id: 'inspect', label: 'Inspect Pod Telemetry' },
-        { id: 'leave', label: 'Leave' },
+        { id: 'inspect', label: 'Inspect' },
+        { id: 'leave', label: 'Step Back' },
       ],
     };
     return true;
@@ -1234,6 +1240,8 @@ export function executeWorldInteraction(
     const canUse = Boolean(
       state.flags.campfire_unlocked ||
         state.flags.poe_state === 'helped' ||
+        state.flags.poe_state === 'companion' ||
+        state.flags.poe_state === 'declined' ||
         state.bypassProgressionGates
     );
     const isLit = Boolean(state.flags.first_campfire_lit);
@@ -1242,27 +1250,27 @@ export function executeWorldInteraction(
         id: 'primary',
         label:
           effectiveRoom === '0,0' && !canUse
-            ? 'Attempt to Light (Locked — Speak to Poe)'
+            ? 'Touch the Cold Stones'
             : effectiveRoom === '0,0' && !isLit
-              ? 'Light First Campfire & Rest'
-              : 'Rest & Attune Spawn',
+              ? 'Kindle the Hearth'
+              : 'Rest by the Fire',
       },
     ];
     if (canUse) {
       options.push({
         id: 'world_map_campfire',
-        label: 'World Map & Fast Travel (Within World)',
+        label: 'Gaze into the Embers (Travel)',
       });
     }
     options.push(
-      { id: 'inspect', label: 'Inspect Campfire' },
-      { id: 'leave', label: 'Leave' }
+      { id: 'inspect', label: 'Inspect' },
+      { id: 'leave', label: 'Step Back' }
     );
     state.contextMenu = {
       title:
         effectiveRoom === '0,0' && !isLit
-          ? 'UNLIT FIRST CAMPFIRE'
-          : 'ÆTHER WAYSTATION CAMPFIRE',
+          ? 'ASHEN STONE RING'
+          : 'WAYSTATION HEARTH',
       targetType: 'campfire',
       targetKey: `${effectiveRoom}:A:${cx},${cy}`,
       tx: cx,
@@ -1290,11 +1298,11 @@ export function executeWorldInteraction(
       options: [
         {
           id: 'world_map_waygate',
-          label: 'World Map & Fast Travel (All Worlds & Local)',
+          label: 'Peer into the Æther (World Map)',
         },
-        { id: 'primary', label: 'Step Into Waygate (Direct Transit)' },
-        { id: 'inspect', label: 'Inspect Waygate' },
-        { id: 'leave', label: 'Leave' },
+        { id: 'primary', label: 'Step Through Conduit' },
+        { id: 'inspect', label: 'Inspect' },
+        { id: 'leave', label: 'Step Back' },
       ],
     };
     return true;
@@ -1310,7 +1318,7 @@ export function executeWorldInteraction(
       state.flags.bedivere_ring_choice === 'pending'
     ) {
       state.contextMenu = {
-        title: "SIR BEDIVERE'S REMAINS",
+        title: 'FALLEN SILVER GIANT',
         targetType: 'scout',
         targetKey: `${effectiveRoom}:S:${sx},${sy}`,
         tx: sx,
@@ -1322,11 +1330,11 @@ export function executeWorldInteraction(
           {
             id: 'primary',
             label: !state.lootedCaches[scoutKey]
-              ? 'Salvage Khopesh & List'
-              : 'Take Signet Ring',
+              ? 'Search the Remains'
+              : 'Take the Signet Ring',
           },
-          { id: 'inspect', label: 'Inspect Fallen Knight' },
-          { id: 'leave', label: 'Leave' },
+          { id: 'inspect', label: 'Inspect' },
+          { id: 'leave', label: 'Step Back' },
         ],
       };
       return true;
@@ -1346,9 +1354,7 @@ export function executeWorldInteraction(
     const isChest = tileChar === 'V';
     if (!isRoomCacheLooted(state, cx, cy)) {
       state.contextMenu = {
-        title: isChest
-          ? `TREASURE CHEST [${cx},${cy}]`
-          : `SCAVENGER CACHE [${cx},${cy}]`,
+        title: isChest ? 'SUNKEN RELIQUARY' : 'MIRE CACHE',
         targetType: isChest ? 'chest' : 'cache',
         targetKey: `${state.room}:cache:${cx},${cy}`,
         tx: cx,
@@ -1359,13 +1365,13 @@ export function executeWorldInteraction(
         options: [
           {
             id: 'primary',
-            label: isChest ? 'Open Chest (Gear & Gems)' : 'Search Cache',
+            label: isChest ? 'Open Reliquary' : 'Search Cache',
           },
           {
             id: 'inspect',
-            label: isChest ? 'Inspect Chest' : 'Inspect Cache',
+            label: 'Inspect',
           },
-          { id: 'leave', label: 'Leave' },
+          { id: 'leave', label: 'Step Back' },
         ],
       };
       return true;
@@ -1388,7 +1394,7 @@ export function executeWorldInteraction(
         ? ay
         : ty;
     state.contextMenu = {
-      title: state.room === '-4,0' ? 'DIAGNOSTIC TERMINAL' : 'ANCIENT MECHANISM',
+      title: state.room === '-4,0' ? 'DIAGNOSTIC TERMINAL' : 'IRON COUNTERWEIGHT',
       targetType: 'switch',
       targetKey: `${state.room}:switch:${sx},${sy}`,
       tx: sx,
@@ -1399,10 +1405,10 @@ export function executeWorldInteraction(
       options: [
         {
           id: 'primary',
-          label: state.room === '-4,0' ? 'Execute Terminal' : 'Pull Switch / Lever',
+          label: state.room === '-4,0' ? 'Activate Terminal' : 'Pull Lever',
         },
-        { id: 'inspect', label: 'Inspect Mechanism' },
-        { id: 'leave', label: 'Leave' },
+        { id: 'inspect', label: 'Inspect' },
+        { id: 'leave', label: 'Step Back' },
       ],
     };
     return true;
@@ -1413,8 +1419,8 @@ export function executeWorldInteraction(
     const gy = facingTile === 'G' || facingTile === 'M' ? ay : ty;
     const isCathedral = facingTile === 'M' || currentTile === 'M';
     state.contextMenu = {
-      title: isCathedral ? 'CATHEDRAL DUNGEON DOOR' : 'PERIMETER GATE',
-      targetType: 'gate',
+      title: isCathedral ? 'CATHEDRAL SEAL' : 'IRON PERIMETER GATE',
+      targetType: isCathedral ? 'cathedral_gate' : 'gate',
       targetKey: `${effectiveRoom}:gate:${gx},${gy}`,
       tx: gx,
       ty: gy,
@@ -1424,10 +1430,10 @@ export function executeWorldInteraction(
       options: [
         {
           id: 'primary',
-          label: isCathedral ? 'Open Dungeon Door' : 'Unseal Perimeter Gate',
+          label: isCathedral ? 'Push the Great Doors' : 'Unbar the Gate',
         },
-        { id: 'inspect', label: 'Inspect Seal' },
-        { id: 'leave', label: 'Leave' },
+        { id: 'inspect', label: 'Inspect' },
+        { id: 'leave', label: 'Step Back' },
       ],
     };
     return true;
@@ -1439,16 +1445,16 @@ export function executeWorldInteraction(
     !state.flags.lady_of_the_lake_defeated
   ) {
     state.contextMenu = {
-      title: 'SHIMMERING BOG WATERS',
+      title: 'STILL SANCTUM WATERS',
       targetType: 'water',
       targetKey: `${effectiveRoom}:lady_of_the_lake`,
       x: state.x,
       y: state.y,
       selectedIndex: 0,
       options: [
-        { id: 'primary', label: 'Disturb the Waters' },
-        { id: 'inspect', label: 'Inspect Ripples' },
-        { id: 'leave', label: 'Leave' },
+        { id: 'primary', label: 'Hold Relics Over the Water' },
+        { id: 'inspect', label: 'Inspect' },
+        { id: 'leave', label: 'Step Back' },
       ],
     };
     return true;
@@ -1475,6 +1481,96 @@ export function executeContextMenuOption(
     soundSystem.playMenuBeep();
     notifyOrionStateChange();
     return false;
+  }
+
+  // Poe Companion Choice Handlers: Accept, Decline, or Attack
+  if (chosen.id === 'poe_accept') {
+    state.flags = state.flags || {};
+    state.flags.poe_state = 'companion';
+    state.flags.poe_lantern_gift = true;
+    state.flags.campfire_unlocked = true;
+    state.flags.bog_exit_revealed = true;
+    state.poeCompanion = {
+      x: menu.x ?? state.x,
+      y: menu.y ?? state.y - 10,
+      z: 10,
+      vx: 0,
+      vy: 0,
+      hoveringObjective: false,
+    };
+    state.enemies = state.enemies.filter((e) => e.type !== 'bog_poe');
+    if (state.hibernatedChunkEnemies) {
+      for (const k of Object.keys(state.hibernatedChunkEnemies)) {
+        state.hibernatedChunkEnemies[k] = state.hibernatedChunkEnemies[k].filter(
+          (e) => e.type !== 'bog_poe'
+        );
+      }
+    }
+    if (state.level < 2) {
+      state.level = 2;
+    }
+    unlockLevel2SecondaryWeapon(state);
+    for (const e of state.enemies) {
+      if (e.type === 'bog_wurm') e.isSubmerged = false;
+    }
+    syncStateGates(state);
+    soundSystem.playPowerup();
+    ctx.say(
+      'THE LITTLE FLAME BOBS EAGERLY AND DRIFTS TO YOUR SHOULDER, ITS WARMTH ANSWERING THE HUM IN YOUR CHEST.'
+    );
+    notifyOrionStateChange();
+    return true;
+  }
+
+  if (chosen.id === 'poe_decline') {
+    state.flags = state.flags || {};
+    state.flags.poe_state = 'declined';
+    state.flags.poe_lantern_gift = false;
+    state.flags.campfire_unlocked = true;
+    state.flags.bog_exit_revealed = true;
+    state.poeCompanion = undefined;
+    if (state.level < 2) {
+      state.level = 2;
+    }
+    unlockLevel2SecondaryWeapon(state);
+    for (const e of state.enemies) {
+      if (e.type === 'bog_wurm') e.isSubmerged = false;
+    }
+    syncStateGates(state);
+    soundSystem.playSelect();
+    ctx.say(
+      'THE SPIRIT DIMS IN QUIET UNDERSTANDING, GESTURING ONCE TOWARD THE COLD HEARTH STONES BEFORE SETTLING BACK INTO THE REEDS.'
+    );
+    notifyOrionStateChange();
+    return true;
+  }
+
+  if (chosen.id === 'poe_attack') {
+    state.flags = state.flags || {};
+    const targetPoe = state.enemies.find(
+      (e) => e.type === 'bog_poe' && (menu.entityId === undefined || e.id === menu.entityId)
+    );
+    if (targetPoe) {
+      targetPoe.frame.integrity = 0;
+      targetPoe.hurt = 0.3;
+    } else {
+      state.flags.poe_state = 'killed';
+      state.flags.campfire_unlocked = true;
+      state.flags.bog_exit_revealed = true;
+      state.poeCompanion = undefined;
+      addOrionInventoryItem(state, 'corrupted_shard', 1);
+      ctx.say(
+        'THE FRAGILE FLAME SHATTERS INTO COLD ASH, LEAVING A CRYSTALLINE SHARD IN THE MIRE.'
+      );
+    }
+    if (state.level < 2) {
+      state.level = 2;
+    }
+    unlockLevel2SecondaryWeapon(state);
+    syncStateGates(state);
+    soundSystem.playExplosion();
+    notifyOrionStateChange();
+    return true;
   }
 
   if (chosen.id === 'world_map_campfire') {
@@ -1531,18 +1627,34 @@ export function executeContextMenuOption(
   if (chosen.id === 'inspect') {
     soundSystem.playSelect();
     const inspectMessages: Record<string, string> = {
-      chest: 'TREASURE CHEST: CONTAINS SALVAGED EQUIPMENT, GEMSTONES & SCRAP (NO REPAIR FLASKS).',
-      cache: 'SCAVENGER CACHE: BURIED FIELD SUPPLIES; BECOMES PASSABLE TERRAIN AFTER LOOTING.',
+      chest:
+        'AN IRON-BOUND RELIQUARY HALF-SWALLOWED BY PEAT AND ROOTS. SOMETHING CRYSTALLINE HUMS FAINTLY INSIDE.',
+      cache:
+        'A WATERLOGGED CANVAS SATCHEL WEDGED BENEATH TANGLED CYPRESS ROOTS AND MOSSY STONE.',
       campfire:
         getEffectiveRoomCoord(state) === '0,0' && !state.flags?.first_campfire_lit
-          ? 'FIRST CAMPFIRE: COLD HEARTH. SPEAK TO THE POE BEHIND THE TREES TO UNLOCK & IGNITE.'
-          : 'ÆTHER WAYSTATION: RESTORES DEFENSES, SAVES ANCHOR & ENABLES WITHIN-WORLD FAST TRAVEL.',
-      poe: 'POE SPIRIT: TUCKED BEHIND THE TREELINE. SPEAKING UNLOCKS CAMPFIRE ATTUNEMENT.',
-      waygate: 'COLOSSAL WAYGATE: ANCIENT AETHER TRANSIT CONDUIT FOR WORLD-TO-WORLD & LOCAL FAST TRAVEL.',
-      scout: "SIR BEDIVERE'S CHASSIS: FALLEN CAMELOT KNIGHT CLUTCHING A KHOPESH & RELIC LIST.",
-      gate: 'SEALED GATEWAY: REQUIRES POE GUIDANCE, KEY OR TRIAL COMPLETION.',
+          ? 'CHARRED FLAGSTONES COLD TO THE TOUCH. FAINT BLUE EMBERS LINGER WHERE THE REED-SPIRIT GAZES.'
+          : 'A STEADY GOLDEN FLAME DANCES OVER THE STONES. STANDING NEAR IT CALMS THE STRANGE HUM DEEP IN YOUR CHEST.',
+      poe:
+        'A TREMBLING WISP OF LIVING ÆTHER. IT WARMS THE HEAVY IRON OF YOUR FINGERS AND GLANCES TOWARD THE ASHEN HEARTH.',
+      waygate:
+        'A TOWERING RING OF ANCIENT STONE THRUMMING WITH LIVING ÆTHER CURRENTS.',
+      scout:
+        'A HULKING SHELL OF RIVEN SILVER PLATE KNEELING IN THE MIRE—SHAPED STRANGELY LIKE YOUR OWN HEAVY LIMBS. VELLUM NOTES MARK THREE RELICS LOST NEAR THE SOUTHERN WATERS.',
+      gate:
+        'TOWERING IRON BARS CHOKED WITH BOG VINES. A CORRODED KEYWAY AND FAINT LANTERN-RUNES MARK THE LOCK.',
+      cathedral_gate:
+        'GREAT CATHEDRAL DOORS CARVED WITH THREE COUNTERWEIGHT LEVERS, FOUR KNIGHTS’ CRESTS, AND THE TOWNSFOLK’S VIGIL.',
+      switch:
+        'A TARNISHED BRASS COUNTERWEIGHT LEVER; HEAVY CHAINS RUN BENEATH THE FLAGSTONES TOWARD THE CATHEDRAL.',
+      water:
+        'THE DARK BOG WATERS SHIMMER WITH SILVER RIPPLES, ANSWERING THE THREE RELICS YOU CARRY.',
+      npc:
+        'A WEATHER-WORN SURVIVOR HUDDLED AGAINST THE MIST, WATCHING YOUR TOWERING IRON SILHOUETTE WITH AWE AND CAUTION.',
+      drop_pod:
+        'THE TRAINING SANDBOX HATCH LEADING BACK TO WHERE YOU STOOD IN THE WORLD.',
     };
-    ctx.say(inspectMessages[menu.targetType] || `${menu.title} — READY FOR INTERACTION.`);
+    ctx.say(inspectMessages[menu.targetType] || `${menu.title} — QUIET IN THE MIST.`);
     notifyOrionStateChange();
     return true;
   }
@@ -1551,5 +1663,91 @@ export function executeContextMenuOption(
     tx: menu.tx,
     ty: menu.ty,
   });
+}
+
+/**
+ * Toggles the pilot into or out of the `[-4,0]` Training Room (which houses the Drop-Pod and Waygate),
+ * preserving and restoring their exact world coordinates and progression gate state when returning.
+ */
+export function toggleTrainingSandboxRoom(
+  rooms: Record<string, string[]>,
+  state: OrionState
+): boolean {
+  if (!state) return false;
+  if (state.room === '-4,0') {
+    const saved = state.preTrainingReturnAnchor;
+    if (saved) {
+      state.room = saved.room;
+      state.rx = saved.rx;
+      state.ry = saved.ry;
+      state.x = saved.x;
+      state.y = saved.y;
+      state.areaId = saved.areaId;
+      if (saved.mapId) state.mapId = saved.mapId;
+      if (saved.biomeId) state.biomeId = saved.biomeId;
+      if (saved.bypassProgressionGates !== undefined) {
+        state.bypassProgressionGates = saved.bypassProgressionGates;
+      }
+      state.preTrainingReturnAnchor = undefined;
+    } else {
+      const startPos = convertBogRoomPosToUnifiedPx('-3,0', 120, 88, 16, 12);
+      state.room = SUNKEN_BOG_EXPANSE_ROOM_ID;
+      state.rx = -3;
+      state.ry = 0;
+      state.x = startPos.x;
+      state.y = startPos.y;
+    }
+    state.z = 0;
+    state.vz = 0;
+    state.vx = 0;
+    state.vy = 0;
+    state.projectiles = [];
+    state.pickups = [];
+    syncRoomHierarchyState(state);
+    syncStateGates(state);
+    if (isChunkedExpanseRoom(state.room)) {
+      updateChunkedRoomStreaming(rooms, state, true);
+    } else {
+      spawnRoomEnemies(rooms, state);
+    }
+    soundSystem.playSelect();
+    notifyOrionStateChange();
+    return false;
+  } else {
+    state.preTrainingReturnAnchor = {
+      room: state.room,
+      rx: state.rx,
+      ry: state.ry,
+      x: state.x,
+      y: state.y,
+      areaId: state.areaId,
+      mapId: state.mapId,
+      biomeId: state.biomeId,
+      bypassProgressionGates: state.bypassProgressionGates,
+    };
+    if (isChunkedExpanseRoom(state.room)) {
+      hibernateAllActiveExpanseEnemies(state);
+    }
+    state.room = '-4,0';
+    state.rx = -4;
+    state.ry = 0;
+    state.x = 96;
+    state.y = 120;
+    state.z = 0;
+    state.vz = 0;
+    state.vx = 0;
+    state.vy = 0;
+    state.projectiles = [];
+    state.pickups = [];
+    state.enemies = [];
+    state.bypassProgressionGates = true;
+    state.hasBoosterKit = true;
+    syncRoomHierarchyState(state);
+    syncStateGates(state);
+    spawnRoomEnemies(rooms, state);
+    soundSystem.playPowerup();
+    notifyOrionStateChange();
+    return true;
+  }
 }
 

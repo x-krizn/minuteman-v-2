@@ -4,6 +4,10 @@
  */
 
 import { OrionActionTemplate, WeaponDefinition } from '../../../types';
+import {
+  formatModifiedEquipmentName,
+  parseEquipmentInstanceId,
+} from '../mod_naming';
 
 export * from './base_sprites';
 export * from './builder';
@@ -38,8 +42,56 @@ for (const [path, mod] of Object.entries(modules)) {
   }
 }
 
+const MODIFIED_WEAPON_CACHE: Record<string, WeaponDefinition> = {};
+
+/**
+ * Resolves a weapon or auxiliary definition by ID, supporting both canonical base IDs
+ * (`long_sword`) and Gem-modified composite instance IDs (`long_sword::titanite+hematite`).
+ */
 export function getWeaponDefinition(id: string): WeaponDefinition | undefined {
-  return WEAPON_REGISTRY[id];
+  if (!id) return undefined;
+  const direct = WEAPON_REGISTRY[id];
+  if (direct) return direct;
+
+  if (MODIFIED_WEAPON_CACHE[id]) {
+    return MODIFIED_WEAPON_CACHE[id];
+  }
+
+  const { baseId, installedGems } = parseEquipmentInstanceId(id);
+  const baseDef = WEAPON_REGISTRY[baseId];
+  if (!baseDef) return undefined;
+  if (installedGems.length === 0) return baseDef;
+
+  let extraShield = 0;
+  let extraArmor = 0;
+  let extraLight = 0;
+  for (const gem of installedGems) {
+    if (gem === 'titanite') extraShield += 15;
+    if (gem === 'moonstone') extraShield += 8;
+    if (gem === 'hematite') extraArmor += 8;
+    if (gem === 'carnelian') extraArmor += 6;
+    if (gem === 'kyanite' || gem === 'charoite') extraLight += 0.25;
+  }
+
+  const derived: WeaponDefinition = {
+    ...baseDef,
+    id,
+    name: formatModifiedEquipmentName(baseDef.name, installedGems),
+    passiveShieldBonus:
+      (baseDef.passiveShieldBonus || 0) + extraShield > 0
+        ? (baseDef.passiveShieldBonus || 0) + extraShield
+        : undefined,
+    passiveArmorBonus:
+      (baseDef.passiveArmorBonus || 0) + extraArmor > 0
+        ? (baseDef.passiveArmorBonus || 0) + extraArmor
+        : undefined,
+    passiveLightBonus:
+      (baseDef.passiveLightBonus || 0) + extraLight > 0
+        ? Number(((baseDef.passiveLightBonus || 0) + extraLight).toFixed(2))
+        : undefined,
+  };
+  MODIFIED_WEAPON_CACHE[id] = derived;
+  return derived;
 }
 
 /**
@@ -74,7 +126,7 @@ export function isTwoHandOnlyWeapon(weaponOrId?: WeaponDefinition | string | nul
   if (!weaponOrId) return false;
   const def = typeof weaponOrId === 'string' ? getWeaponDefinition(weaponOrId) : weaponOrId;
   if (!def) return false;
-  return def.id === 'great_bow';
+  return parseEquipmentInstanceId(def.id).baseId === 'great_bow';
 }
 
 /**

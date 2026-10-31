@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { AetherCardinalDir, AetherNodeType, OrionDir, OrionState } from './types';
+import { AetherCardinalDir, AetherNodeType, OrionDir, OrionState, PilotSkillId } from './types';
 
 // Native retro console viewport dimensions (Integer-scaled LCD screen)
 export const SCREEN_W = 160;
@@ -303,7 +303,87 @@ export function getKeyBorderBranchType(
 }
 
 export function hasPoeLanternGuidance(state: OrionState): boolean {
-  return Boolean(state.flags?.poe_state === 'helped' || state.flags?.poe_lantern_gift);
+  return Boolean(
+    state.flags?.poe_state === 'companion' ||
+      state.flags?.poe_state === 'helped' ||
+      state.flags?.poe_lantern_gift
+  );
+}
+
+const PILOT_SKILL_GEM_COLORS: Record<
+  PilotSkillId,
+  { hexColor: string; coreHexColor: string; skillId: PilotSkillId }
+> = {
+  Warrior: { hexColor: '#ef4444', coreHexColor: '#fca5a5', skillId: 'Warrior' }, // Spinel
+  Marauder: { hexColor: '#f97316', coreHexColor: '#fdba74', skillId: 'Marauder' }, // Carnelian
+  Guardian: { hexColor: '#facc15', coreHexColor: '#fef08a', skillId: 'Guardian' }, // Titanite
+  Cleric: { hexColor: '#22c55e', coreHexColor: '#86efac', skillId: 'Cleric' }, // Demantoid
+  Wizard: { hexColor: '#38bdf8', coreHexColor: '#bae6fd', skillId: 'Wizard' }, // Kyanite
+  Rogue: { hexColor: '#a855f7', coreHexColor: '#d8b4fe', skillId: 'Rogue' }, // Charoite
+};
+
+/**
+ * Resolves the Companion Poe orb's primary & core hex colors based on the pilot's highest Pilot Skill level.
+ * When multiple skills are tied for highest level, falls back to the pilot's starting Trait Line primary gemstone color.
+ */
+export function resolveCompanionPoeColor(state: OrionState): {
+  hexColor: string;
+  coreHexColor: string;
+  skillId: PilotSkillId;
+} {
+  const fallbackTraitSkill: PilotSkillId =
+    state.traitLine && PILOT_SKILL_GEM_COLORS[state.traitLine]
+      ? state.traitLine
+      : 'Warrior';
+  const skills = state.pilotSkills;
+  if (!skills) {
+    return PILOT_SKILL_GEM_COLORS[fallbackTraitSkill];
+  }
+
+  const orderedIds: PilotSkillId[] = [
+    'Warrior',
+    'Marauder',
+    'Guardian',
+    'Cleric',
+    'Wizard',
+    'Rogue',
+  ];
+
+  let maxLevel = -1;
+  for (const id of orderedIds) {
+    const lvl = skills[id]?.level ?? 1;
+    if (lvl > maxLevel) {
+      maxLevel = lvl;
+    }
+  }
+
+  const topAtMaxLevel = orderedIds.filter((id) => (skills[id]?.level ?? 1) === maxLevel);
+  if (topAtMaxLevel.length === 1) {
+    return PILOT_SKILL_GEM_COLORS[topAtMaxLevel[0]];
+  }
+
+  // If tied at max level, check if any tied skill has strictly more invested gems/XP
+  let maxProgressScore = -1;
+  for (const id of topAtMaxLevel) {
+    const score = (skills[id]?.gemsInvested ?? 0) * 100 + (skills[id]?.xp ?? 0);
+    if (score > maxProgressScore) {
+      maxProgressScore = score;
+    }
+  }
+
+  const topAtMaxScore = topAtMaxLevel.filter(
+    (id) => (skills[id]?.gemsInvested ?? 0) * 100 + (skills[id]?.xp ?? 0) === maxProgressScore
+  );
+  if (topAtMaxScore.length === 1 && maxProgressScore > 0) {
+    return PILOT_SKILL_GEM_COLORS[topAtMaxScore[0]];
+  }
+
+  // Tie-breaker: use the pilot's Trait Line primary gemstone color if it's among the tied highest skills
+  if (topAtMaxLevel.includes(fallbackTraitSkill)) {
+    return PILOT_SKILL_GEM_COLORS[fallbackTraitSkill];
+  }
+
+  return PILOT_SKILL_GEM_COLORS[topAtMaxLevel[0] || fallbackTraitSkill];
 }
 
 export function isCheatModeActive(state: OrionState): boolean {
@@ -498,7 +578,7 @@ export interface UnifiedBogRoomPlacement {
  * separated by 1-chunk Set-Path Corridors (`stride = 3` chunks).
  */
 export const UNIFIED_BOG_ROOM_PLACEMENTS: UnifiedBogRoomPlacement[] = [
-  { roomCoord: '-3,0', rx: -3, ry: 0, startCx: 3, startCy: 9, chunksW: 2, chunksH: 2, title: 'Drop-Pod Impact Crater' },
+  { roomCoord: '-3,0', rx: -3, ry: 0, startCx: 3, startCy: 9, chunksW: 2, chunksH: 2, title: 'Mire Awakening Hollow' },
   { roomCoord: '-2,0', rx: -2, ry: 0, startCx: 6, startCy: 9, chunksW: 2, chunksH: 2, title: 'Downed Trees West' },
   { roomCoord: '-1,0', rx: -1, ry: 0, startCx: 9, startCy: 9, chunksW: 2, chunksH: 2, title: 'Downed Trees East' },
   { roomCoord: '0,0', rx: 0, ry: 0, startCx: 12, startCy: 9, chunksW: 2, chunksH: 2, title: 'Bog Outskirts Campfire' },
@@ -525,8 +605,8 @@ export interface SetPathCorridorSpec {
 
 export const SET_PATH_CORRIDOR_CHUNKS: SetPathCorridorSpec[] = [
   // East-West Main Bog Trail Corridors (cy = 9..10)
-  { cx: 5, cy: 9, title: 'Crater Furrow Causeway (North)', orientation: 'H' },
-  { cx: 5, cy: 10, title: 'Crater Furrow Causeway (South)', orientation: 'H' },
+  { cx: 5, cy: 9, title: 'Hollow Mire Causeway (North)', orientation: 'H' },
+  { cx: 5, cy: 10, title: 'Hollow Mire Causeway (South)', orientation: 'H' },
   { cx: 8, cy: 9, title: 'Fallen Timber Bridge (North)', orientation: 'H' },
   { cx: 8, cy: 10, title: 'Fallen Timber Bridge (South)', orientation: 'H' },
   { cx: 11, cy: 9, title: 'Campfire West Approach (North)', orientation: 'H' },

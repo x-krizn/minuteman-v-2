@@ -27,17 +27,29 @@ import {
   findHardwareItemByNameOrId,
   resolveEquippedHardwareStats,
 } from '../equipment/chassis_hardware';
-import { getWeaponDefinition } from '../equipment/weapons';
+import {
+  buildEquipmentInstanceId,
+  formatModifiedEquipmentName,
+  GEM_MOD_PREFIX_BY_ID,
+  isCanonicalGemId,
+  parseEquipmentInstanceId,
+} from '../equipment/mod_naming';
+import { getWeaponDefinition, isAuxiliaryEquipment } from '../equipment/weapons';
 import { getItemDefinition } from '../items';
 import { GEMSTONE_CATALOG, GEMSTONE_REGISTRY, TRAIT_FUNDING_GEMS } from '../items/gemstones';
 import { CANONICAL_FRAME_FEAT_CATALOG } from './canonical_feats';
 
 export {
+  buildEquipmentInstanceId,
   CANONICAL_HARDWARE_CATALOG,
   type CanonicalHardwareItemDefinition,
   CHASSIS_HARDWARE_CATALOG,
   type ChassisHardwareItemDefinition,
   findHardwareItemByNameOrId,
+  formatModifiedEquipmentName,
+  GEM_MOD_PREFIX_BY_ID,
+  isCanonicalGemId,
+  parseEquipmentInstanceId,
   resolveEquippedHardwareStats,
 };
 
@@ -402,7 +414,8 @@ export function getWeaponSubtypeInfo(weaponId: string): {
   equipmentType: 'Weapon' | 'Auxiliary';
   subtype: string;
 } {
-  switch (weaponId) {
+  const { baseId } = parseEquipmentInstanceId(weaponId);
+  switch (baseId) {
     case 'long_sword':
     case 'khopesh':
     case 's2_turbine_khopesh':
@@ -461,14 +474,93 @@ export function getWeaponSubtypeInfo(weaponId: string): {
     case 'heater_shield':
     case 'pavise_shield':
     case 'aegis_charge_buckler':
+    case 'aux3_pnsy_rockweiler_buckler':
       return { equipmentType: 'Auxiliary', subtype: 'Auxiliary · Physical Shield' };
+    case 'aux3_ti_aegis_hardlight':
+    case 'aux4_ti_radiant_sphere':
+    case 'aux3_arc_prismatic_barrier':
+    case 'utility_sanctum_font':
+      return { equipmentType: 'Auxiliary', subtype: 'Auxiliary · Energy / Ward Shield' };
     case 'quiver':
       return { equipmentType: 'Auxiliary', subtype: 'Auxiliary · Quiver' };
     case 'aether_catalyst':
-      return { equipmentType: 'Auxiliary', subtype: 'Auxiliary · Catalyst' };
-    default:
+    case 'utility_ichor_surge':
+    case 'aux4_pnsy_rough_rider_booster':
+    case 'utility_siege_brace':
+    case 'aux3_rad_kinetic_recycling':
+    case 'aux4_rad_ether_vapor':
+    case 'utility_aegis_pulse':
+    case 'utility_phantom_shroud':
+    case 'aux3_vx_eclipse_cloak':
+    case 'aux4_vx_phase_shift':
+    case 'utility_arclight_capacitor':
+    case 'aux4_arc_feedback_capacitor':
+    case 'aux3_sanc_restoration_field':
+    case 'aux4_sanc_martyrdom_plating':
+      return { equipmentType: 'Auxiliary', subtype: 'Auxiliary · Tactical Catalyst' };
+    default: {
+      const wDef = getWeaponDefinition(baseId);
+      if (wDef && isAuxiliaryEquipment(wDef)) {
+        return { equipmentType: 'Auxiliary', subtype: `Auxiliary · ${wDef.weaponClass || 'System'}` };
+      }
       return { equipmentType: 'Weapon', subtype: 'Weapon' };
+    }
   }
+}
+
+/**
+ * Resolves the canonical key for any equipment item (Weapon ID or Hardware ID) while preserving any `::<gems>` suffix.
+ */
+export function normalizeEquipmentInstanceKey(idOrName: string | null | undefined): string {
+  if (!idOrName) return '';
+  const { baseId, installedGems } = parseEquipmentInstanceId(idOrName);
+  const wDef = getWeaponDefinition(baseId);
+  if (wDef) {
+    return buildEquipmentInstanceId(parseEquipmentInstanceId(wDef.id).baseId, installedGems);
+  }
+  const hwDef = findHardwareItemByNameOrId(baseId);
+  if (hwDef) {
+    return buildEquipmentInstanceId(parseEquipmentInstanceId(hwDef.id).baseId, installedGems);
+  }
+  return buildEquipmentInstanceId(baseId, installedGems);
+}
+
+/**
+ * Returns the resolved display name for any equipment ID or name (including Gem-modified `+II` / `+III` variants).
+ */
+export function getEquipmentDisplayName(idOrName: string | null | undefined): string {
+  if (!idOrName) return 'None';
+  const wDef = getWeaponDefinition(idOrName);
+  if (wDef) return wDef.name;
+  const hwDef = findHardwareItemByNameOrId(idOrName);
+  if (hwDef) return hwDef.name;
+  const { baseId, installedGems } = parseEquipmentInstanceId(idOrName);
+  return formatModifiedEquipmentName(baseId.replace(/_/g, ' '), installedGems);
+}
+
+/**
+ * Computes the maximum number of Gem mod slots (`1` to `3`) for any equipment item based on its category / weight class:
+ * - **3 Mod Slots**: Heavy Weapons (`weightClass === 'heavy'`), Frame Plating (`slot === 'plating'`), and Reactor Cores (`slot === 'reactor'`).
+ * - **2 Mod Slots**: Medium Weapons (`weightClass === 'medium'`), all Auxiliaries, Head Optics, Arms Actuators, and Legs Striders.
+ * - **1 Mod Slot**: Light Weapons (`weightClass === 'light'`) and Sensory Arrays (`sensoryA` / `sensoryB`).
+ */
+export function getEquipmentMaxModSlots(idOrName: string | null | undefined): 1 | 2 | 3 {
+  if (!idOrName) return 1;
+  const { baseId } = parseEquipmentInstanceId(idOrName);
+  const wDef = getWeaponDefinition(baseId);
+  if (wDef) {
+    if (isAuxiliaryEquipment(wDef)) return 2;
+    if (wDef.weightClass === 'heavy') return 3;
+    if (wDef.weightClass === 'light') return 1;
+    return 2;
+  }
+  const hwDef = findHardwareItemByNameOrId(baseId);
+  if (hwDef) {
+    if (hwDef.slot === 'plating' || hwDef.slot === 'reactor') return 3;
+    if (hwDef.slot === 'sensoryA' || hwDef.slot === 'sensoryB') return 1;
+    return 2;
+  }
+  return 2;
 }
 
 const DEFAULT_CANONICAL_HARDWARE_BY_KIT: Record<
@@ -481,8 +573,6 @@ const DEFAULT_CANONICAL_HARDWARE_BY_KIT: Record<
     legs: string;
     plating: string;
     reactorCore: string;
-    aux3: string;
-    aux4: string;
   }
 > = {
   Warrior: {
@@ -493,8 +583,6 @@ const DEFAULT_CANONICAL_HARDWARE_BY_KIT: Record<
     legs: 'BWI Gatecrasher Striders',
     plating: 'BWI Bastion Frame Plating',
     reactorCore: 'PNSY Alchemic Turbine Core Mk.IV',
-    aux3: 'PNSY R-11 Rockweiler Buckler',
-    aux4: 'PNSY UF-9 Rough Rider Booster',
   },
   Marauder: {
     head: 'BE Ironveil Command Dome',
@@ -504,8 +592,6 @@ const DEFAULT_CANONICAL_HARDWARE_BY_KIT: Record<
     legs: 'Fire & Ice Outrigger Striders',
     plating: 'Fire & Ice Fortress Frame Plating',
     reactorCore: 'RAD Battleheart Ether Reactor Mk.V',
-    aux3: 'RAD R-22 Bastion Kinetic Recycling',
-    aux4: 'RAD UF-12 Ether Vapor Launcher',
   },
   Guardian: {
     head: 'Aegis Halo Command Dome',
@@ -515,8 +601,6 @@ const DEFAULT_CANONICAL_HARDWARE_BY_KIT: Record<
     legs: 'Dawnforge Stabilizer Striders',
     plating: 'Dawnforge Guardian Frame Plating',
     reactorCore: 'TI Manaheart Reactor Mk.IV',
-    aux3: 'TI Aegis Hard-Light Shield',
-    aux4: 'TI Radiant Sphere Generator',
   },
   Rogue: {
     head: 'VX Veilsight Command Helm',
@@ -526,8 +610,6 @@ const DEFAULT_CANONICAL_HARDWARE_BY_KIT: Record<
     legs: 'Shadowcraft Ghost Striders',
     plating: 'Shadowcraft Recon Frame Plating',
     reactorCore: 'VX Phantom Core Mk.III',
-    aux3: 'VX Eclipse Cloak Generator',
-    aux4: 'VX Phase-Shift Module',
   },
   Wizard: {
     head: 'ARC Omniscient Command Dome',
@@ -537,8 +619,6 @@ const DEFAULT_CANONICAL_HARDWARE_BY_KIT: Record<
     legs: 'Arcanum Anchor Striders',
     plating: 'Arcanum Heavy Projector Frame Plating',
     reactorCore: 'ARC Infinite Well Reactor Mk.VI',
-    aux3: 'ARC Prismatic Barrier',
-    aux4: 'ARC Feedback Loop Capacitor',
   },
   Cleric: {
     head: 'SANC Providence Command Helm',
@@ -548,8 +628,6 @@ const DEFAULT_CANONICAL_HARDWARE_BY_KIT: Record<
     legs: 'Sanctum Steadfast Striders',
     plating: 'Sanctum Support Frame Plating',
     reactorCore: 'SANC Heartwell Reactor Mk.IV',
-    aux3: 'SANC Aegis Restoration Field',
-    aux4: 'SANC Martyrdom Plating',
   },
 };
 
@@ -570,6 +648,17 @@ export function createInitialEquipmentSlots(traitLine: TraitLine = 'Warrior'): O
           : traitLine === 'Rogue'
             ? 'short_spear'
             : 'buckler_shield';
+
+  const starterHardwareIds = [
+    hw.head,
+    hw.arms,
+    hw.legs,
+    hw.plating,
+    hw.reactorCore,
+    hw.sensoryA,
+    hw.sensoryB,
+  ].map((name) => findHardwareItemByNameOrId(name)?.id || name);
+
   const initialCounts: Record<string, number> = { [w1]: 1 };
   if (w2) {
     initialCounts[w2] = (initialCounts[w2] || 0) + 1;
@@ -577,6 +666,10 @@ export function createInitialEquipmentSlots(traitLine: TraitLine = 'Warrior'): O
   if (defaultAuxBack) {
     initialCounts[defaultAuxBack] = Math.max(1, initialCounts[defaultAuxBack] || 1);
   }
+  for (const hwId of starterHardwareIds) {
+    initialCounts[hwId] = 1;
+  }
+
   const hasSide = Boolean(!isBowMain && w2);
   return {
     slot1: w1,
@@ -591,8 +684,8 @@ export function createInitialEquipmentSlots(traitLine: TraitLine = 'Warrior'): O
     reactorCore: hw.reactorCore,
     sensoryA: hw.sensoryA,
     sensoryB: hw.sensoryB,
-    aux3: hw.aux3,
-    aux4: hw.aux4,
+    aux3: null,
+    aux4: null,
     utility: DEFAULT_UTILITY_BY_TRAIT[traitLine] || 'utility_ichor_surge',
 
     weaponSet1: [w1, null],
@@ -614,42 +707,275 @@ export function createInitialEquipmentSlots(traitLine: TraitLine = 'Warrior'): O
     installedMods: {},
     unlockedMods: [],
     unlockedEquipment: Array.from(
-      new Set([w1, ...(w2 ? [w2] : []), ...(defaultAuxBack ? [defaultAuxBack] : []), 'aether_catalyst'])
+      new Set([
+        w1,
+        ...(w2 ? [w2] : []),
+        ...(defaultAuxBack ? [defaultAuxBack] : []),
+        ...starterHardwareIds,
+      ])
     ),
     weaponGemMods: {},
   };
 }
 
 /**
- * Checks whether a weapon, shield, quiver, or catalyst is unlocked/owned by the pilot.
- * When `bypassProgressionGates` is enabled (or tutorial is toggled off in sandbox), all items are available.
+ * Checks whether any equipment item (weapon, auxiliary, armor, reactor, or sensor) is unlocked/owned by the pilot.
+ * When `bypassProgressionGates` is enabled (or in `[-4,0]` Training Room), all items are available.
  */
-export function isEquipmentUnlocked(state: OrionState, weaponId: string): boolean {
-  if (!weaponId) return false;
-  if (state.bypassProgressionGates || !state.tutorialActive || state.room === '-4,0') return true;
-  if (state.equippedWeapons?.includes(weaponId)) return true;
-  if (
-    state.equipmentSlots?.slot1 === weaponId ||
-    state.equipmentSlots?.slot2 === weaponId ||
-    state.equipmentSlots?.slot3 === weaponId
-  )
-    return true;
-  const unlocked = state.equipmentSlots?.unlockedEquipment || [];
-  return unlocked.includes(weaponId);
+export function isEquipmentUnlocked(state: OrionState, itemIdOrName: string): boolean {
+  if (!itemIdOrName) return false;
+  if (state.bypassProgressionGates || state.room === '-4,0') return true;
+
+  const normKey = normalizeEquipmentInstanceKey(itemIdOrName);
+  const { baseId: targetBase } = parseEquipmentInstanceId(normKey);
+  const eq = state.equipmentSlots;
+
+  const equippedRaw = [
+    ...(state.equippedWeapons || []),
+    eq?.slot1,
+    eq?.slot2,
+    eq?.slot3,
+    eq?.head,
+    eq?.arms,
+    eq?.legs,
+    eq?.plating,
+    eq?.reactorCore,
+    eq?.sensoryA,
+    eq?.sensoryB,
+  ].filter(Boolean) as string[];
+
+  for (const eqItem of equippedRaw) {
+    const eqNorm = normalizeEquipmentInstanceKey(eqItem);
+    if (eqNorm === normKey || parseEquipmentInstanceId(eqNorm).baseId === targetBase) {
+      return true;
+    }
+  }
+
+  const unlocked = eq?.unlockedEquipment || [];
+  for (const u of unlocked) {
+    const uNorm = normalizeEquipmentInstanceKey(u);
+    if (uNorm === normKey || parseEquipmentInstanceId(uNorm).baseId === targetBase) {
+      return true;
+    }
+  }
+
+  const counts = eq?.ownedWeaponCounts || {};
+  for (const [k, v] of Object.entries(counts)) {
+    if (typeof v === 'number' && v > 0) {
+      const kNorm = normalizeEquipmentInstanceKey(k);
+      if (kNorm === normKey || parseEquipmentInstanceId(kNorm).baseId === targetBase) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 /**
- * Returns how many separate instances of `weaponId` the pilot owns.
- * Paired Stance (`main: sword1`, `side: sword1` in `1h` grip) requires 2 separate items.
+ * Returns how many copies of a specific equipment instance (`<baseId>` or `<baseId>::<gems>`) the pilot owns.
  */
-export function getOwnedWeaponCount(state: OrionState, weaponId: string): number {
-  if (!weaponId) return 0;
+export function getOwnedWeaponCount(state: OrionState, itemIdOrName: string): number {
+  if (!itemIdOrName) return 0;
   if (state.bypassProgressionGates || state.room === '-4,0') return 2;
+
+  const normKey = normalizeEquipmentInstanceKey(itemIdOrName);
   const counts = state.equipmentSlots?.ownedWeaponCounts || {};
-  if (typeof counts[weaponId] === 'number' && counts[weaponId] > 0) {
-    return counts[weaponId];
+
+  if (typeof counts[normKey] === 'number') {
+    return Math.max(0, counts[normKey]);
   }
-  return isEquipmentUnlocked(state, weaponId) ? 1 : 0;
+  if (typeof counts[itemIdOrName] === 'number') {
+    return Math.max(0, counts[itemIdOrName]);
+  }
+
+  // Check if this exact instance is equipped or in unlockedEquipment
+  const eq = state.equipmentSlots;
+  const equippedRaw = [
+    eq?.slot1,
+    eq?.slot2,
+    eq?.slot3,
+    eq?.head,
+    eq?.arms,
+    eq?.legs,
+    eq?.plating,
+    eq?.reactorCore,
+    eq?.sensoryA,
+    eq?.sensoryB,
+  ].filter(Boolean) as string[];
+
+  const exactEquipped = equippedRaw.some((e) => normalizeEquipmentInstanceKey(e) === normKey);
+  const exactUnlocked = (eq?.unlockedEquipment || []).some(
+    (u) => normalizeEquipmentInstanceKey(u) === normKey
+  );
+  return exactEquipped || exactUnlocked ? 1 : 0;
+}
+
+/**
+ * Returns all distinct owned equipment instance IDs (`baseId` and any `baseId::gem1+gem2` variants)
+ * matching a given base weapon or hardware item.
+ */
+export function getOwnedEquipmentInstances(
+  state: OrionState,
+  baseIdOrName: string
+): string[] {
+  const normBase = parseEquipmentInstanceId(normalizeEquipmentInstanceKey(baseIdOrName)).baseId;
+  if (!normBase) return [];
+
+  const instances = new Set<string>();
+  const eq = state.equipmentSlots;
+  const counts = eq?.ownedWeaponCounts || {};
+
+  for (const [rawKey, count] of Object.entries(counts)) {
+    if (typeof count === 'number' && count > 0) {
+      const kNorm = normalizeEquipmentInstanceKey(rawKey);
+      if (parseEquipmentInstanceId(kNorm).baseId === normBase) {
+        instances.add(kNorm);
+      }
+    }
+  }
+
+  for (const u of eq?.unlockedEquipment || []) {
+    const uNorm = normalizeEquipmentInstanceKey(u);
+    if (
+      parseEquipmentInstanceId(uNorm).baseId === normBase &&
+      getOwnedWeaponCount(state, uNorm) > 0
+    ) {
+      instances.add(uNorm);
+    }
+  }
+
+  for (const eqSlot of [
+    eq?.slot1,
+    eq?.slot2,
+    eq?.slot3,
+    eq?.head,
+    eq?.arms,
+    eq?.legs,
+    eq?.plating,
+    eq?.reactorCore,
+    eq?.sensoryA,
+    eq?.sensoryB,
+  ]) {
+    if (!eqSlot) continue;
+    const sNorm = normalizeEquipmentInstanceKey(eqSlot);
+    if (parseEquipmentInstanceId(sNorm).baseId === normBase) {
+      instances.add(sNorm);
+    }
+  }
+
+  if (instances.size === 0 && (state.bypassProgressionGates || state.room === '-4,0')) {
+    instances.add(normBase);
+  }
+
+  return Array.from(instances);
+}
+
+/**
+ * Installs a Gemstone Mod onto an owned equipment instance (`sourceInstanceId`), consuming 1 copy of the source item
+ * and 1 matching Gemstone from inventory to produce a distinct renamed item copy (`<Prefix> <BaseName> [+II/+III]`).
+ * Automatically updates any loadout slot where the last copy of `sourceInstanceId` was equipped.
+ */
+export function installGemModOnEquipment(
+  state: OrionState,
+  sourceInstanceId: string,
+  gemId: GemId,
+  ctx?: { say: (text: string) => void }
+): string | null {
+  if (!sourceInstanceId || !isCanonicalGemId(gemId)) return null;
+  if (!state.equipmentSlots) {
+    state.equipmentSlots = createInitialEquipmentSlots(state.traitLine);
+  }
+  const eq = state.equipmentSlots;
+  eq.ownedWeaponCounts = eq.ownedWeaponCounts || {};
+  eq.unlockedEquipment = eq.unlockedEquipment || [];
+  eq.unlockedMods = eq.unlockedMods || [];
+
+  const normSource = normalizeEquipmentInstanceKey(sourceInstanceId);
+  const { baseId, installedGems } = parseEquipmentInstanceId(normSource);
+  const maxSlots = getEquipmentMaxModSlots(baseId);
+
+  if (installedGems.length >= maxSlots) {
+    ctx?.say(
+      `MAX MOD SLOTS REACHED (${installedGems.length}/${maxSlots}) ON ${getEquipmentDisplayName(normSource).toUpperCase()}`
+    );
+    return null;
+  }
+
+  const sourceCount = getOwnedWeaponCount(state, normSource);
+  if (sourceCount <= 0 && !state.bypassProgressionGates && state.room !== '-4,0') {
+    ctx?.say(`DO NOT OWN A COPY OF ${getEquipmentDisplayName(normSource).toUpperCase()}`);
+    return null;
+  }
+
+  const gemDef = GEMSTONE_REGISTRY[gemId];
+  if (!state.bypassProgressionGates && state.room !== '-4,0') {
+    if (!consumeInventoryGem(state, gemId, 1)) {
+      ctx?.say(`REQUIRES 1 ${gemDef.name.toUpperCase()} IN SATCHEL TO INSTALL MOD`);
+      return null;
+    }
+  }
+
+  const nextGems: GemId[] = [...installedGems, gemId];
+  const newInstanceId = buildEquipmentInstanceId(baseId, nextGems);
+
+  // Consume 1 copy of sourceInstanceId and add 1 copy of newInstanceId
+  const remainingSource = Math.max(0, (eq.ownedWeaponCounts[normSource] ?? sourceCount) - 1);
+  eq.ownedWeaponCounts[normSource] = remainingSource;
+  if (eq.ownedWeaponCounts[sourceInstanceId] !== undefined && sourceInstanceId !== normSource) {
+    eq.ownedWeaponCounts[sourceInstanceId] = remainingSource;
+  }
+  if (remainingSource <= 0) {
+    eq.unlockedEquipment = eq.unlockedEquipment.filter(
+      (u) => normalizeEquipmentInstanceKey(u) !== normSource
+    );
+  }
+
+  eq.ownedWeaponCounts[newInstanceId] = (eq.ownedWeaponCounts[newInstanceId] || 0) + 1;
+  if (!eq.unlockedEquipment.includes(newInstanceId)) {
+    eq.unlockedEquipment.push(newInstanceId);
+  }
+
+  // Record unlock tag for progression level sync
+  const unlockTag = `wpn_gem:${newInstanceId}`;
+  if (!eq.unlockedMods.includes(unlockTag)) {
+    eq.unlockedMods.push(unlockTag);
+  }
+
+  // If equipped slots reference sourceInstanceId beyond remaining copies, upgrade those slots to newInstanceId
+  let usedSourceCopies = 0;
+  const upgradeSlotIfMatched = (val: string | null | undefined): string | null | undefined => {
+    if (!val) return val;
+    if (normalizeEquipmentInstanceKey(val) === normSource) {
+      usedSourceCopies += 1;
+      if (usedSourceCopies > remainingSource) {
+        return newInstanceId;
+      }
+    }
+    return val;
+  };
+
+  eq.slot1 = upgradeSlotIfMatched(eq.slot1) ?? null;
+  eq.slot2 = upgradeSlotIfMatched(eq.slot2) ?? null;
+  eq.slot3 = upgradeSlotIfMatched(eq.slot3) ?? null;
+  eq.head = upgradeSlotIfMatched(eq.head) ?? null;
+  eq.arms = upgradeSlotIfMatched(eq.arms) ?? null;
+  eq.legs = upgradeSlotIfMatched(eq.legs) ?? null;
+  eq.plating = upgradeSlotIfMatched(eq.plating) ?? null;
+  eq.reactorCore = upgradeSlotIfMatched(eq.reactorCore) ?? null;
+  eq.sensoryA = upgradeSlotIfMatched(eq.sensoryA) ?? null;
+  eq.sensoryB = upgradeSlotIfMatched(eq.sensoryB) ?? null;
+
+  state.equippedWeapons = (state.equippedWeapons || []).map((w) =>
+    normalizeEquipmentInstanceKey(w) === normSource && remainingSource === 0 ? newInstanceId : w
+  );
+
+  const newDisplayName = getEquipmentDisplayName(newInstanceId);
+  ctx?.say(
+    `INSTALLED ${gemDef.name.toUpperCase()} MOD → ${newDisplayName.toUpperCase()} [${nextGems.length}/${maxSlots} MODS]`
+  );
+  syncPostTutorialFrameLevel(state, ctx);
+  return newInstanceId;
 }
 
 /**
@@ -664,20 +990,21 @@ export function acquireAdditionalWeaponCopy(
   if (!state.equipmentSlots) {
     state.equipmentSlots = createInitialEquipmentSlots(state.traitLine);
   }
+  const normKey = normalizeEquipmentInstanceKey(weaponId);
   state.equipmentSlots.ownedWeaponCounts = state.equipmentSlots.ownedWeaponCounts || {};
-  const current = getOwnedWeaponCount(state, weaponId);
+  const current = getOwnedWeaponCount(state, normKey);
   if (current >= 2) {
-    ctx?.say(`ALREADY OWN 2 SEPARATE COPIES OF ${weaponId.replace(/_/g, ' ').toUpperCase()}`);
+    ctx?.say(`ALREADY OWN 2 SEPARATE COPIES OF ${getEquipmentDisplayName(normKey).toUpperCase()}`);
     return false;
   }
-  state.equipmentSlots.ownedWeaponCounts[weaponId] = 2;
-  if (!state.equipmentSlots.unlockedEquipment?.includes(weaponId)) {
+  state.equipmentSlots.ownedWeaponCounts[normKey] = 2;
+  if (!state.equipmentSlots.unlockedEquipment?.includes(normKey)) {
     state.equipmentSlots.unlockedEquipment = [
       ...(state.equipmentSlots.unlockedEquipment || []),
-      weaponId,
+      normKey,
     ];
   }
-  ctx?.say(`ACQUIRED 2ND COPY: ${weaponId.replace(/_/g, ' ').toUpperCase()} (PAIRED STANCE READY)`);
+  ctx?.say(`ACQUIRED 2ND COPY: ${getEquipmentDisplayName(normKey).toUpperCase()} (PAIRED STANCE READY)`);
   return true;
 }
 
@@ -688,7 +1015,7 @@ export function acquireAdditionalWeaponCopy(
  */
 export function getEffectiveMainGrip(state: OrionState): '1h' | '2h' {
   const slot1 = state.equipmentSlots?.slot1 || state.equippedWeapons?.[0] || 'long_sword';
-  if (slot1 === 'great_bow') return '2h';
+  if (parseEquipmentInstanceId(slot1).baseId === 'great_bow') return '2h';
   const slot2 = state.equipmentSlots?.slot2 || null;
   if (!slot2) return '2h';
   if (slot2 === slot1 && getOwnedWeaponCount(state, slot1) < 2) return '2h';
@@ -710,7 +1037,7 @@ export function setMainWeaponGrip(
     state.equipmentSlots = createInitialEquipmentSlots(state.traitLine);
   }
   const slot1 = state.equipmentSlots.slot1 || state.equippedWeapons?.[0] || 'long_sword';
-  if (slot1 === 'great_bow' && grip === '1h') {
+  if (parseEquipmentInstanceId(slot1).baseId === 'great_bow' && grip === '1h') {
     ctx?.say('BOWS ARE DESIGNATED 2-HANDED ONLY');
     return false;
   }
@@ -726,7 +1053,7 @@ export function setMainWeaponGrip(
     state.equipmentSlots.mainGrip = '2h';
     state.equipmentSlots.slot2 = null;
     ctx?.say(
-      `TWO-HANDING POWER STANCE: ${slot1.replace(/_/g, ' ').toUpperCase()} (2H)`
+      `TWO-HANDING POWER STANCE: ${getEquipmentDisplayName(slot1).toUpperCase()} (2H)`
     );
     return true;
   }
@@ -738,7 +1065,7 @@ export function setMainWeaponGrip(
       state.equipmentSlots.slot3 = null;
       state.equipmentSlots.mainGrip = '1h';
       ctx?.say(
-        `ONE-HANDED GRIP: EQUIPPED ${state.equipmentSlots.slot2.replace(/_/g, ' ').toUpperCase()} IN SIDE HAND`
+        `ONE-HANDED GRIP: EQUIPPED ${getEquipmentDisplayName(state.equipmentSlots.slot2).toUpperCase()} IN SIDE HAND`
       );
       return true;
     }
@@ -747,58 +1074,66 @@ export function setMainWeaponGrip(
   }
 
   state.equipmentSlots.mainGrip = '1h';
-  ctx?.say(`ONE-HANDED GRIP: ${slot1.replace(/_/g, ' ').toUpperCase()} (1H)`);
+  ctx?.say(`ONE-HANDED GRIP: ${getEquipmentDisplayName(slot1).toUpperCase()} (1H)`);
   return true;
 }
 
 /**
- * Unlocks a weapon, shield, quiver, or catalyst into `state.equipmentSlots.unlockedEquipment`.
- * If already unlocked, increments `ownedWeaponCounts` up to 2 so Paired Stance can be used.
+ * Unlocks any weapon, auxiliary, armor, reactor, or sensor into `state.equipmentSlots.unlockedEquipment`.
+ * If already unlocked, increments `ownedWeaponCounts` so additional copies can be modified or dual-wielded.
  */
 export function unlockEquipmentItem(
   state: OrionState,
-  weaponId: string,
+  itemIdOrName: string,
   ctx?: { say: (text: string) => void }
 ): boolean {
-  if (!weaponId) return false;
+  if (!itemIdOrName) return false;
   if (!state.equipmentSlots) {
     state.equipmentSlots = createInitialEquipmentSlots(state.traitLine);
   }
+  const normKey = normalizeEquipmentInstanceKey(itemIdOrName);
   state.equipmentSlots.unlockedEquipment = state.equipmentSlots.unlockedEquipment || [
     state.equippedWeapons[0] || 'long_sword',
   ];
   state.equipmentSlots.ownedWeaponCounts = state.equipmentSlots.ownedWeaponCounts || {};
 
-  const wasNew = !state.equipmentSlots.unlockedEquipment.includes(weaponId);
+  const alreadyOwnedCount = getOwnedWeaponCount(state, normKey);
+  const wasNew = !state.equipmentSlots.unlockedEquipment.some(
+    (u) => normalizeEquipmentInstanceKey(u) === normKey
+  );
   if (wasNew) {
-    state.equipmentSlots.unlockedEquipment.push(weaponId);
-    state.equipmentSlots.ownedWeaponCounts[weaponId] = Math.max(
-      1,
-      state.equipmentSlots.ownedWeaponCounts[weaponId] || 1
-    );
+    state.equipmentSlots.unlockedEquipment.push(normKey);
+    state.equipmentSlots.ownedWeaponCounts[normKey] = Math.max(1, alreadyOwnedCount || 1);
   } else {
-    state.equipmentSlots.ownedWeaponCounts[weaponId] = Math.min(
-      2,
-      (state.equipmentSlots.ownedWeaponCounts[weaponId] || 1) + 1
+    state.equipmentSlots.ownedWeaponCounts[normKey] = Math.min(
+      5,
+      (state.equipmentSlots.ownedWeaponCounts[normKey] || 1) + 1
     );
   }
 
+  const wDef = getWeaponDefinition(normKey);
   if (
+    wDef &&
     state.equippedWeapons.length < 2 &&
     (state.level >= 2 || !state.tutorialActive || state.bypassProgressionGates) &&
-    state.equippedWeapons[0] !== weaponId
+    state.equippedWeapons[0] !== normKey
   ) {
-    state.equippedWeapons.push(weaponId);
-    state.equipmentSlots.weaponSet2 = [weaponId, null];
+    state.equippedWeapons.push(normKey);
+    state.equipmentSlots.weaponSet2 = [normKey, null];
     if (!state.equipmentSlots.slot2 && getEffectiveMainGrip(state) !== '2h') {
-      state.equipmentSlots.slot2 = weaponId;
+      state.equipmentSlots.slot2 = normKey;
     } else if (!state.equipmentSlots.slot3) {
-      state.equipmentSlots.slot3 = weaponId;
+      state.equipmentSlots.slot3 = normKey;
     }
   }
 
-  if (wasNew && ctx) {
-    ctx.say(`DISCOVERED GEAR: ${weaponId.replace(/_/g, ' ').toUpperCase()} UNLOCKED IN SATCHEL`);
+  if (ctx) {
+    const label = getEquipmentDisplayName(normKey).toUpperCase();
+    ctx.say(
+      wasNew
+        ? `DISCOVERED GEAR: ${label} UNLOCKED IN SATCHEL`
+        : `SALVAGED EXTRA COPY: ${label} (×${state.equipmentSlots.ownedWeaponCounts[normKey]})`
+    );
   }
   return wasNew;
 }
@@ -846,6 +1181,7 @@ export function unlockLevel2SecondaryWeapon(state: OrionState): string {
 
 export interface WeaponGemCombatModifiers {
   gemId: GemId | null;
+  installedGems?: GemId[];
   damageMult: number;
   lockedOrStaggeredDamageMult: number;
   maxShieldBonus: number;
@@ -875,27 +1211,30 @@ export const WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS: Record<GemId, string> = {
 };
 
 /**
- * Resolves the active Gem modification (`Col 0..8`) for a given weapon/shield/quiver ID.
- * - If explicitly modified in `state.equipmentSlots.weaponGemMods[weaponId]`, uses that Gem.
- * - Otherwise, if an Action Mod is installed for the weapon's category, uses that Action Mod's primary Gem.
- * - Otherwise returns `null` (Base column `0`).
+ * Resolves the ordered list of installed Gemstones on a weapon/auxiliary instance.
  */
-export function getWeaponActiveGemId(
+export function getWeaponInstalledGems(
   state: OrionState,
   weaponId: string
-): GemId | null {
-  const explicit = state.equipmentSlots?.weaponGemMods?.[weaponId];
+): GemId[] {
+  const { baseId, installedGems } = parseEquipmentInstanceId(weaponId);
+  if (installedGems.length > 0) {
+    return installedGems;
+  }
+  const explicit =
+    state.equipmentSlots?.weaponGemMods?.[weaponId] ||
+    state.equipmentSlots?.weaponGemMods?.[baseId];
   if (explicit && explicit in GEMSTONE_REGISTRY) {
-    return explicit;
+    return [explicit];
   }
 
-  const subtypeInfo = getWeaponSubtypeInfo(weaponId);
+  const subtypeInfo = getWeaponSubtypeInfo(baseId);
   const isRanged =
     subtypeInfo.subtype.startsWith('Ranged') ||
-    weaponId === 'gladius_boltcaster' ||
-    weaponId === 'great_bow' ||
-    weaponId === 'quiver' ||
-    weaponId === 'avalon_siege_lance';
+    baseId === 'gladius_boltcaster' ||
+    baseId === 'great_bow' ||
+    baseId === 'quiver' ||
+    baseId === 'avalon_siege_lance';
   const installedModId = isRanged
     ? state.equipmentSlots?.installedMods?.ranged
     : state.equipmentSlots?.installedMods?.melee;
@@ -903,25 +1242,42 @@ export function getWeaponActiveGemId(
     const mod = ACTION_MODIFICATION_CATALOG.find((m) => m.id === installedModId);
     const firstGem = mod?.gemCost?.[0]?.gemId;
     if (firstGem && firstGem in GEMSTONE_REGISTRY) {
-      return firstGem;
+      return [firstGem];
     }
   }
-  return null;
+  return [];
 }
 
 /**
- * Computes the stone-specific combat bonus for a weapon, shield, or quiver modified with a Gemstone (`Cols 0..8`).
+ * Resolves the primary active Gem modification (`Col 0..8`) for a given weapon/shield/quiver ID.
+ * First installed Gem determines the naming convention and visual sprite column.
+ */
+export function getWeaponActiveGemId(
+  state: OrionState,
+  weaponId: string
+): GemId | null {
+  const gems = getWeaponInstalledGems(state, weaponId);
+  return gems[0] || null;
+}
+
+/**
+ * Computes the stone-specific combat bonus for a weapon, shield, or auxiliary modified with 1–3 Gemstones.
  */
 export function getWeaponGemCombatModifiers(
   state: OrionState,
   weaponId?: string
 ): WeaponGemCombatModifiers {
   const targetWpnId =
-    weaponId || state.equippedWeapons[state.activeWeaponIndex] || 'gladius_boltcaster';
-  const gemId = getWeaponActiveGemId(state, targetWpnId);
+    weaponId ||
+    state.equipmentSlots?.slot1 ||
+    state.equippedWeapons[state.activeWeaponIndex] ||
+    'gladius_boltcaster';
+  const installedGems = getWeaponInstalledGems(state, targetWpnId);
+  const gemId = installedGems[0] || null;
 
   const base: WeaponGemCombatModifiers = {
     gemId,
+    installedGems,
     damageMult: 1.0,
     lockedOrStaggeredDamageMult: 1.0,
     maxShieldBonus: 0,
@@ -938,45 +1294,50 @@ export function getWeaponGemCombatModifiers(
     summaryLabel: 'Unmodified Base Equipment (Col 0)',
   };
 
-  if (!gemId) return base;
-  base.summaryLabel = WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS[gemId] || base.summaryLabel;
+  if (installedGems.length === 0) return base;
+  base.summaryLabel = installedGems
+    .map((g) => WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS[g])
+    .filter(Boolean)
+    .join(' · ');
 
-  switch (gemId) {
-    case 'moonstone':
-      base.maxShieldBonus = 8;
-      base.skillCooldownMult = 0.9;
-      break;
-    case 'spinel':
-      base.damageMult = state.heat >= 50 ? 1.22 : 1.15;
-      break;
-    case 'carnelian':
-      base.extraArmorDentOnHit = 4;
-      base.presenceGainOnHit = 15;
-      break;
-    case 'titanite':
-      base.maxShieldBonus = 15;
-      base.shieldRestoreOnSkillHit = 4;
-      break;
-    case 'demantoid':
-      base.skillHeatCostMult = 0.85;
-      base.skillCooldownMult = 0.9;
-      break;
-    case 'kyanite':
-      base.projectileSpeedMult = 1.15;
-      base.skillCooldownMult = 0.88;
-      break;
-    case 'charoite':
-      base.lockedOrStaggeredDamageMult = 1.2;
-      base.moveSpeedMult = 1.08;
-      break;
-    case 'rubellite':
-      base.damageMult = 1.12;
-      base.bonusMaxAmmo = 1;
-      break;
-    case 'hematite':
-      base.heatVentOnBasicHit = 4;
-      base.armorRestoreOnKill = 4;
-      break;
+  for (const g of installedGems) {
+    switch (g) {
+      case 'moonstone':
+        base.maxShieldBonus += 8;
+        base.skillCooldownMult *= 0.9;
+        break;
+      case 'spinel':
+        base.damageMult *= state.heat >= 50 ? 1.22 : 1.15;
+        break;
+      case 'carnelian':
+        base.extraArmorDentOnHit += 4;
+        base.presenceGainOnHit += 15;
+        break;
+      case 'titanite':
+        base.maxShieldBonus += 15;
+        base.shieldRestoreOnSkillHit += 4;
+        break;
+      case 'demantoid':
+        base.skillHeatCostMult *= 0.85;
+        base.skillCooldownMult *= 0.9;
+        break;
+      case 'kyanite':
+        base.projectileSpeedMult *= 1.15;
+        base.skillCooldownMult *= 0.88;
+        break;
+      case 'charoite':
+        base.lockedOrStaggeredDamageMult *= 1.2;
+        base.moveSpeedMult *= 1.08;
+        break;
+      case 'rubellite':
+        base.damageMult *= 1.12;
+        base.bonusMaxAmmo += 1;
+        break;
+      case 'hematite':
+        base.heatVentOnBasicHit += 4;
+        base.armorRestoreOnKill += 4;
+        break;
+    }
   }
 
   return base;
@@ -984,23 +1345,26 @@ export function getWeaponGemCombatModifiers(
 
 /**
  * Resolves the sprite sheet column (`0..8`), Gem-colored blade trail / projectile VFX palette,
- * and stone-specific combat bonus label for any weapon, shield, or quiver (`Rows 4–14`).
+ * and stone-specific combat bonus label for any weapon, shield, or auxiliary.
  */
 export function getWeaponGemVisuals(
   state: OrionState,
   weaponId: string
 ): {
   gemId: GemId | null;
+  installedGems: GemId[];
   colIndex: number;
   color: string;
   coreColor: string;
   label: string;
   bonusDescription: string;
 } {
-  const gemId = getWeaponActiveGemId(state, weaponId);
+  const installedGems = getWeaponInstalledGems(state, weaponId);
+  const gemId = installedGems[0] || null;
   if (!gemId) {
     return {
       gemId: null,
+      installedGems: [],
       colIndex: 0,
       color: '#e2e8f0',
       coreColor: '#ffffff',
@@ -1012,6 +1376,7 @@ export function getWeaponGemVisuals(
   if (!gem) {
     return {
       gemId: null,
+      installedGems: [],
       colIndex: 0,
       color: '#e2e8f0',
       coreColor: '#ffffff',
@@ -1019,20 +1384,32 @@ export function getWeaponGemVisuals(
       bonusDescription: 'Unmodified Base Equipment',
     };
   }
+  const prefix = GEM_MOD_PREFIX_BY_ID[gemId] || gem.name;
+  const suffix =
+    installedGems.length === 2
+      ? ' +II'
+      : installedGems.length === 3
+        ? ' +III'
+        : installedGems.length > 3
+          ? ` +${installedGems.length}`
+          : '';
   return {
     gemId,
+    installedGems,
     colIndex: gem.colIndex,
     color: gem.hexColor,
     coreColor: gem.coreHexColor || gem.hexColor,
-    label: gem.name.toUpperCase(),
-    bonusDescription: WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS[gemId] || '',
+    label: `${prefix.toUpperCase()}${suffix}`,
+    bonusDescription: installedGems
+      .map((g) => WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS[g])
+      .filter(Boolean)
+      .join(' · '),
   };
 }
 
 /**
- * Modifies a weapon, shield, or quiver with a Gem (`Col 0..8`) to shift its sprite column,
- * tint its blade trails / projectiles with that Gem's color, and apply its stone-specific combat bonus.
- * Gated behind Level 6 (`isStandardProgressionUnlocked`) or Sandbox Bypass.
+ * Installs a Gem modification onto an equipment item (delegating to `installGemModOnEquipment` so a distinct
+ * renamed item copy is produced in inventory).
  */
 export function modifyWeaponWithGem(
   state: OrionState,
@@ -1043,47 +1420,12 @@ export function modifyWeaponWithGem(
   if (!state.equipmentSlots) {
     state.equipmentSlots = createInitialEquipmentSlots(state.traitLine);
   }
-  state.equipmentSlots.weaponGemMods = state.equipmentSlots.weaponGemMods || {};
-  state.equipmentSlots.unlockedMods = state.equipmentSlots.unlockedMods || [];
-
   if (gemId === null) {
+    state.equipmentSlots.weaponGemMods = state.equipmentSlots.weaponGemMods || {};
     state.equipmentSlots.weaponGemMods[weaponId] = null;
-    ctx?.say(`${weaponId.replace(/_/g, ' ').toUpperCase()} RESTORED TO BASE (COL 0)`);
     return true;
   }
-
-  if (!isStandardProgressionUnlocked(state)) {
-    ctx?.say(
-      'EQUIPMENT GEM MODIFICATION LOCKED UNTIL LEVEL 6 (BORDER TOWN COMPLETE) OR BYPASS'
-    );
-    return false;
-  }
-
-  const gem = GEMSTONE_REGISTRY[gemId];
-  if (!gem) return false;
-
-  const unlockTag = `wpn_gem:${weaponId}:${gemId}`;
-  const alreadyUnlocked =
-    state.equipmentSlots.unlockedMods.includes(unlockTag) ||
-    Boolean(state.bypassProgressionGates);
-
-  if (!alreadyUnlocked) {
-    if (!consumeInventoryGem(state, gemId, 1)) {
-      ctx?.say(
-        `REQUIRES 1 ${gem.name.toUpperCase()} TO MODIFY EQUIPMENT`
-      );
-      return false;
-    }
-    state.equipmentSlots.unlockedMods.push(unlockTag);
-  }
-
-  state.equipmentSlots.weaponGemMods[weaponId] = gemId;
-  const bonusDesc = WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS[gemId];
-  ctx?.say(
-    `${weaponId.replace(/_/g, ' ').toUpperCase()} → ${gem.name.toUpperCase()} (${bonusDesc.toUpperCase()})`
-  );
-  syncPostTutorialFrameLevel(state, ctx);
-  return true;
+  return Boolean(installGemModOnEquipment(state, weaponId, gemId, ctx));
 }
 
 // ─── GATING CHAIN, GEM TRANSACTIONS & LOAD CAPACITY CALCULATIONS ─────────────

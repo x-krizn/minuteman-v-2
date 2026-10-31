@@ -19,6 +19,8 @@ import {
   GRAVITY,
   JUMP_VELOCITY,
   MUD_SPEED_PENALTY,
+  SCREEN_H,
+  SCREEN_W,
   SUNKEN_BOG_EXPANSE_ROOM_ID,
   TILE_SIZE,
   WALK_SPEED,
@@ -75,6 +77,7 @@ import {
   subscribeOrionStateChange,
 } from './stateStore';
 import {
+  evaluateCathedralDoorStatus,
   executeContextMenuOption,
   executeWorldInteraction,
   rebootAtSpawnAnchor,
@@ -156,6 +159,7 @@ function serializeOrionSaveData(state: OrionState) {
     baseLight: state.baseLight ?? 5,
     enemyBaseLight: state.enemyBaseLight ?? 5,
     exploredTiles: state.exploredTiles || {},
+    preTrainingReturnAnchor: state.preTrainingReturnAnchor,
   };
 }
 
@@ -282,6 +286,21 @@ function applySerializedSaveDataToState(
     data.exploredTiles && typeof data.exploredTiles === 'object'
       ? data.exploredTiles
       : {};
+  state.preTrainingReturnAnchor =
+    data.preTrainingReturnAnchor && typeof data.preTrainingReturnAnchor === 'object'
+      ? data.preTrainingReturnAnchor
+      : undefined;
+  if (state.flags?.poe_state === 'companion') {
+    state.poeCompanion = {
+      x: state.x - 10,
+      y: state.y - 10,
+      z: 8,
+      hoveringObjective: false,
+      pulsePhase: 0,
+    };
+  } else {
+    state.poeCompanion = undefined;
+  }
   state.contextMenu = null;
   if (data.fogGraph && typeof data.fogGraph === 'object') {
     state.fogGraph = data.fogGraph;
@@ -427,8 +446,12 @@ export function createNewPilotGame(
   const fresh = createInitialOrionState(traitLine, cleanName);
   fresh.pilotId = `pilot_${traitLine.toLowerCase()}_${Date.now().toString(36)}`;
   fresh.atTitleMenu = false;
+  fresh.poeCompanion = undefined;
+  fresh.preTrainingReturnAnchor = undefined;
 
   Object.assign(state, fresh);
+  state.poeCompanion = undefined;
+  state.preTrainingReturnAnchor = undefined;
   syncRoomHierarchyState(state);
   const roomsRef = getOrionRoomsRef();
   if (roomsRef) {
@@ -620,8 +643,8 @@ export function createInitialOrionState(
     projectiles: [],
     particles: [],
 
-    toastText: 'M00: THE BOG — DROP-POD REBOOT',
-    toastTimer: 3.5,
+    toastText: null,
+    toastTimer: 0,
     promptText: null,
     flickerTimer: 0,
     useStandardResolutionHud: true,
@@ -1269,7 +1292,7 @@ export function updateTutorialSystem(
     notifyOrionStateChange();
   }
 
-  // Level 2 Fixed Event: Poe Interaction or Fallen Scout salvage
+  // Level 2 Fixed Event: Poe Interaction or Fallen Scout salvage (silent unlock — no HUD popup banner)
   const poeResolved = Boolean(state.flags?.poe_state && state.flags.poe_state !== 'unmet');
   const scoutSalvaged = Boolean(state.flags?.scout_salvaged);
   if ((poeResolved || scoutSalvaged) && state.level < 2) {
@@ -1279,7 +1302,6 @@ export function updateTutorialSystem(
     state.tutorialStep = 'traverse_sinkhole';
     syncStateGates(state);
     soundSystem.playPowerup();
-    ctx.say('LEVEL 2 (POE INTERACTION): SET 1 ACT 2, SET 2 ACT 1, SWAP [Y], LEGS & BELT 3–4');
     notifyOrionStateChange();
   }
 
@@ -1291,7 +1313,6 @@ export function updateTutorialSystem(
     state.tutorialStep = 'marsh_combat_trial';
     syncStateGates(state);
     soundSystem.playPowerup();
-    ctx.say('LEVEL 3 (ENTER BORDER TOWN): SET 1 ACTIONS 3–5, SET 2 ACTION 2 & HEAD SLOT');
     notifyOrionStateChange();
   }
 
@@ -1310,7 +1331,6 @@ export function updateTutorialSystem(
     state.tutorialStep = 'unlock_perimeter_gate';
     syncStateGates(state);
     soundSystem.playPowerup();
-    ctx.say('LEVEL 4 (BORDER TOWN MIDPOINT): GENERATOR SLOT, SET 2 ACTIONS 3–5 & AUX 1–2');
     notifyOrionStateChange();
   }
 
@@ -1324,7 +1344,6 @@ export function updateTutorialSystem(
     state.level = 5;
     syncStateGates(state);
     soundSystem.playPowerup();
-    ctx.say('LEVEL 5 (BORDER TOWN BENCHMARK): ARMS SLOT & AUX SLOTS 3–4 ONLINE');
     notifyOrionStateChange();
   }
 
@@ -1339,8 +1358,140 @@ export function updateTutorialSystem(
     }
     syncStateGates(state);
     soundSystem.playPowerup();
-    ctx.say('LEVEL 6 (BORDER TOWN COMPLETE): UTILITY SLOT (ACTION 6) & GEMSTONE SKILL PROGRESSION UNLOCKED!');
     notifyOrionStateChange();
+  }
+}
+
+/**
+ * Updates the Companion Poe orb physics when `state.flags.poe_state === 'companion'`.
+ * Trails smoothly behind the pilot's shoulder by default, and detaches to hover in a tight
+ * orbit over important active quest objectives when they enter the visible viewport.
+ */
+export function updateCompanionPoe(
+  rooms: Record<string, string[]>,
+  state: OrionState,
+  dt: number
+): void {
+  if (state.flags?.poe_state !== 'companion') {
+    state.poeCompanion = undefined;
+    return;
+  }
+
+  if (!state.poeCompanion) {
+    state.poeCompanion = {
+      x: state.x - 10,
+      y: state.y - 10,
+      z: 8,
+      hoveringObjective: false,
+      pulsePhase: 0,
+    };
+  }
+
+  const comp = state.poeCompanion;
+  comp.pulsePhase = (comp.pulsePhase || 0) + dt * 3.4;
+
+  // Snap companion if it fell too far behind (e.g. after teleporting)
+  if (Math.hypot(comp.x - state.x, comp.y - state.y) > 220) {
+    comp.x = state.x - 10;
+    comp.y = state.y - 10;
+  }
+
+  const roomGrid = rooms[state.room];
+  const effRoom = getEffectiveRoomCoord(state);
+  const camX = state.camX ?? Math.max(0, state.x - SCREEN_W * 0.5);
+  const camY = state.camY ?? Math.max(0, state.y - SCREEN_H * 0.5);
+
+  let bestObjX: number | undefined;
+  let bestObjY: number | undefined;
+  let bestObjDist = Infinity;
+
+  if (roomGrid && roomGrid.length > 0) {
+    const minTx = Math.max(0, Math.floor((camX + 8) / TILE_SIZE));
+    const maxTx = Math.min(
+      (roomGrid[0]?.length || 1) - 1,
+      Math.floor((camX + SCREEN_W - 8) / TILE_SIZE)
+    );
+    const minTy = Math.max(0, Math.floor((camY + 8) / TILE_SIZE));
+    const maxTy = Math.min(
+      roomGrid.length - 1,
+      Math.floor((camY + SCREEN_H - 8) / TILE_SIZE)
+    );
+
+    const canSummonLady =
+      effRoom === '2,1' &&
+      Number(state.flags?.bedivere_list_items || 0) >= 3 &&
+      !state.flags?.lady_of_the_lake_defeated;
+    const isGateSealed =
+      effRoom === '3,0' &&
+      !state.unlockedGates['3,0'] &&
+      !state.unlockedGates[state.room];
+    const canOpenCathedral =
+      !state.flags?.cathedral_door_open && evaluateCathedralDoorStatus(state).canOpen;
+
+    for (let ty = minTy; ty <= maxTy; ty++) {
+      const row = roomGrid[ty];
+      if (!row) continue;
+      for (let tx = minTx; tx <= maxTx; tx++) {
+        const ch = row[tx];
+        if (!ch || ch === '.' || ch === '#' || ch === 'P') continue;
+
+        let isQuestTarget = false;
+        if (ch === 'A' && effRoom === '0,0' && !state.flags?.first_campfire_lit) {
+          isQuestTarget = true;
+        } else if (ch === 'S' && !state.lootedCaches[`scout:${effRoom}`]) {
+          isQuestTarget = true;
+        } else if (ch === '~' && canSummonLady) {
+          isQuestTarget = true;
+        } else if (ch === 'G' && isGateSealed) {
+          isQuestTarget = true;
+        } else if (
+          (ch === '1' || ch === '2' || ch === '3') &&
+          !state.lootedCaches[`switch:${effRoom}:${ch}`]
+        ) {
+          isQuestTarget = true;
+        } else if (ch === 'M' && canOpenCathedral) {
+          isQuestTarget = true;
+        }
+
+        if (isQuestTarget) {
+          const wx = tx * TILE_SIZE + 8;
+          const wy = ty * TILE_SIZE + 8;
+          const d = Math.hypot(wx - state.x, wy - state.y);
+          if (d < bestObjDist) {
+            bestObjDist = d;
+            bestObjX = wx;
+            bestObjY = wy;
+          }
+        }
+      }
+    }
+  }
+
+  const dirInfo = DIR_VECTORS[state.dir] || DIR_VECTORS.S;
+  if (bestObjX !== undefined && bestObjY !== undefined) {
+    comp.hoveringObjective = true;
+    comp.objectiveX = bestObjX;
+    comp.objectiveY = bestObjY;
+    const orbitX = bestObjX + Math.cos(state.t * 3.4) * 8;
+    const orbitY = bestObjY - 4 + Math.sin(state.t * 3.4) * 5;
+    const lerp = Math.min(1, dt * 6.5);
+    comp.x += (orbitX - comp.x) * lerp;
+    comp.y += (orbitY - comp.y) * lerp;
+    comp.z = 11 + Math.sin(state.t * 5.2) * 2.5;
+  } else {
+    comp.hoveringObjective = false;
+    comp.objectiveX = undefined;
+    comp.objectiveY = undefined;
+    const perpX = -dirInfo.dy;
+    const perpY = dirInfo.dx;
+    const trailX =
+      state.x - dirInfo.dx * 11 + perpX * 6 + Math.cos(state.t * 2.3) * 3.5;
+    const trailY =
+      state.y - dirInfo.dy * 11 + perpY * 5 + Math.sin(state.t * 2.3) * 2.5;
+    const lerp = Math.min(1, dt * 5.2);
+    comp.x += (trailX - comp.x) * lerp;
+    comp.y += (trailY - comp.y) * lerp;
+    comp.z = Math.max(6, state.z + 8 + Math.sin(state.t * 3.6) * 1.8);
   }
 }
 
@@ -1749,6 +1900,7 @@ export function updatePlayerSystem(
     }
   }
 
+  updateCompanionPoe(rooms, state, dt);
   updateTutorialSystem(state, combatCtx, dt);
   return true;
 }

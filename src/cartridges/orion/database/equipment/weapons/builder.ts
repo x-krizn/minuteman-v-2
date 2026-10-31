@@ -43,10 +43,12 @@ export interface MagitechWeaponSeed {
   weightClass: WeaponWeightClass;
   skillCount?: number;
   loadoutSlots: string[];
-  equipmentRole: 'ranged' | 'melee' | 'shield';
-  handing?: '1-hand' | '2-hand' | 'off-hand-only';
+  equipmentRole: 'ranged' | 'melee' | 'shield' | 'catalyst' | 'quiver';
+  handing?: '1-hand' | '2-hand' | 'off-hand-only' | 'buff-accessory';
   canBlock?: boolean;
   passiveShieldBonus?: number;
+  passiveArmorBonus?: number;
+  passiveLightBonus?: number;
   bladeTrailColor: string;
   identity: string;
   lore: string;
@@ -70,7 +72,7 @@ export interface MagitechWeaponSeed {
 export function buildMagitechWeapon(seed: MagitechWeaponSeed): WeaponDefinition {
   const strip =
     seed.customStripBase64 ||
-    (seed.equipmentRole === 'shield'
+    (seed.equipmentRole === 'shield' || seed.equipmentRole === 'catalyst'
       ? BUCKLER_SHIELD_STRIP_BASE64
       : seed.equipmentRole === 'melee'
         ? SHOTEL_STRIP_BASE64
@@ -86,7 +88,7 @@ export function buildMagitechWeapon(seed: MagitechWeaponSeed): WeaponDefinition 
   const futurePlanned =
     seed.futureAssetPlanned ||
     `Dedicated custom ${seed.weaponClass} (${seed.name}) sprite strip & hardpoint render planned. Currently using recycled ${
-      seed.equipmentRole === 'shield'
+      seed.equipmentRole === 'shield' || seed.equipmentRole === 'catalyst'
         ? 'buckler shield'
         : seed.equipmentRole === 'melee'
           ? 'blade'
@@ -103,10 +105,18 @@ export function buildMagitechWeapon(seed: MagitechWeaponSeed): WeaponDefinition 
     adaptiveDamageTypes: seed.adaptiveDamageTypes,
     supportPulseOnHit: seed.supportPulseOnHit,
     equipmentRole: seed.equipmentRole,
-    handing: seed.handing || (seed.weightClass === 'heavy' ? '2-hand' : '1-hand'),
+    handing:
+      seed.handing ||
+      (seed.equipmentRole === 'shield' || seed.equipmentRole === 'catalyst'
+        ? 'off-hand-only'
+        : seed.weightClass === 'heavy'
+          ? '2-hand'
+          : '1-hand'),
     weightClass: seed.weightClass,
     canBlock: Boolean(seed.canBlock || seed.equipmentRole === 'melee' || seed.equipmentRole === 'shield'),
     passiveShieldBonus: seed.passiveShieldBonus,
+    passiveArmorBonus: seed.passiveArmorBonus,
+    passiveLightBonus: seed.passiveLightBonus,
     bladeTrailColor: seed.bladeTrailColor,
     description: `${seed.identity}. Canonical ${seed.weaponClass} (${seed.weightClass.toUpperCase()} load, ${seed.loadoutSlots.join(', ')}).`,
     lore: seed.lore,

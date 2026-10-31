@@ -7,6 +7,7 @@ import {
   DIR_VECTORS,
   getVisibleTileBounds,
   PERFECT_BLOCK_WINDOW_SEC,
+  resolveCompanionPoeColor,
   SCREEN_H,
   SCREEN_W,
   TILE_SIZE,
@@ -289,6 +290,86 @@ export function renderDepthSortedEntitiesAndProps(
           g.arc(e.x, ey - 8, e.lastInertiaOutcome === 'none' ? 9 : 11, 0, Math.PI * 2);
           g.stroke();
           g.restore();
+        }
+
+        g.restore();
+      },
+    });
+  }
+
+  if (state.flags?.poe_state === 'companion' && state.poeCompanion) {
+    const comp = state.poeCompanion;
+    renderQueue.push({
+      y: comp.y + 1,
+      draw: () => {
+        const poeStyle = resolveCompanionPoeColor(state);
+        const cz = comp.z || 8;
+        const cy = comp.y - cz * Z_SCALE;
+        const pulse = Math.sin(state.t * (comp.hoveringObjective ? 7.5 : 4.2));
+
+        // Soft shadow on bog ground
+        g.save();
+        g.fillStyle = 'rgba(0, 0, 0, 0.32)';
+        g.beginPath();
+        g.ellipse(comp.x, comp.y + 1, 3.5, 1.8, 0, 0, Math.PI * 2);
+        g.fill();
+
+        // If hovering over an objective, draw a subtle beckoning ring around the objective tile
+        if (
+          comp.hoveringObjective &&
+          comp.objectiveX !== undefined &&
+          comp.objectiveY !== undefined
+        ) {
+          g.save();
+          g.strokeStyle = poeStyle.hexColor;
+          g.globalAlpha = 0.32 + 0.18 * pulse;
+          g.lineWidth = 1;
+          g.beginPath();
+          g.ellipse(
+            comp.objectiveX,
+            comp.objectiveY + 2,
+            7 + pulse * 1.5,
+            3.5 + pulse * 0.7,
+            0,
+            0,
+            Math.PI * 2
+          );
+          g.stroke();
+          g.restore();
+        }
+
+        // Outer translucent gemstone aura
+        const outerR = (comp.hoveringObjective ? 6.2 : 5.0) + pulse * 0.8;
+        g.globalAlpha = comp.hoveringObjective ? 0.38 : 0.28;
+        g.fillStyle = poeStyle.hexColor;
+        g.beginPath();
+        g.arc(comp.x, cy, outerR, 0, Math.PI * 2);
+        g.fill();
+
+        // Mid glowing orb body (matches highest Pilot Skill gemstone color)
+        const midR = (comp.hoveringObjective ? 3.6 : 3.1) + pulse * 0.35;
+        g.globalAlpha = 0.92;
+        g.fillStyle = poeStyle.hexColor;
+        g.beginPath();
+        g.arc(comp.x, cy, midR, 0, Math.PI * 2);
+        g.fill();
+
+        // Bright inner core
+        g.globalAlpha = 1.0;
+        g.fillStyle = poeStyle.coreHexColor;
+        g.beginPath();
+        g.arc(comp.x, cy - 0.3, 1.5, 0, Math.PI * 2);
+        g.fill();
+
+        // Tiny orbiting wisp motes
+        const moteCount = comp.hoveringObjective ? 3 : 2;
+        const moteSpeed = comp.hoveringObjective ? 6.4 : 3.6;
+        for (let i = 0; i < moteCount; i++) {
+          const ang = state.t * moteSpeed + (i * Math.PI * 2) / moteCount;
+          const mx = comp.x + Math.cos(ang) * (outerR + 1.2);
+          const my = cy + Math.sin(ang) * (outerR * 0.65);
+          g.fillStyle = i % 2 === 0 ? poeStyle.coreHexColor : poeStyle.hexColor;
+          g.fillRect(Math.round(mx), Math.round(my), 1.5, 1.5);
         }
 
         g.restore();

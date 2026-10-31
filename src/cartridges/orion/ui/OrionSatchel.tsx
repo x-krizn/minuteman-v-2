@@ -20,6 +20,7 @@ import {
   subscribeOrionStateChange,
 } from '../systems';
 import { FeatSynergyCategory, FeatTier } from '../types';
+import { enterTrainingSandboxRoom } from './hud/HudTitleModal';
 import {
   EditableLoadoutSlot,
   EquipmentInventoryCategory,
@@ -190,11 +191,20 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
           >
             CODEX
           </button>
-          {state.room === '-4,0' && (
-            <span className="px-1.5 py-0.5 bg-[#4c1d95] text-[#f0abfc] border border-[#a855f7] rounded-xs text-[8.5px] font-black shrink-0">
-              TRAINING [-4,0]
-            </span>
-          )}
+          <button
+            onClick={() => {
+              enterTrainingSandboxRoom(state);
+              onResume();
+            }}
+            title="Toggle [-4,0] Training Room (Drop Pod & Waygate Sandbox)"
+            className={`px-2 py-0.5 text-[9.5px] font-bold rounded-xs border transition-colors shrink-0 cursor-pointer ${
+              state.room === '-4,0'
+                ? 'bg-[#4c1d95] hover:bg-[#5b21b6] text-[#f0abfc] border-[#a855f7]'
+                : 'bg-[#0f172a] hover:bg-[#1e293b] text-[#93c5fd] border-[#3b82f6]/70'
+            }`}
+          >
+            {state.room === '-4,0' ? '↩ EXIT TRAINING [-4,0]' : '⚔ TRAINING ROOM [-4,0]'}
+          </button>
         </div>
 
         <button

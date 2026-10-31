@@ -6,12 +6,12 @@
 import React from 'react';
 import { soundSystem } from '../../../../engine/core/soundSystem';
 import { TRAIT_REGISTRY } from '../../database/characters';
-import { getClassUtilityDefinition } from '../../database/equipment';
 import { getItemDefinition } from '../../database/items';
 import {
   computeEffectivePlayerLightTiles,
   computePlayerLightStatBreakdown,
   getEffectiveMainGrip,
+  getEquipmentDisplayName,
 } from '../../database/progression';
 import { getWeaponDefinition } from '../../database/equipment/weapons';
 import {
@@ -484,18 +484,16 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({ state, isChe
               <span>CHASSIS HARDWARE (4)</span>
               <span className="text-[#38bdf8]">ARMOR</span>
             </div>
-            <div className="text-[#94a3b8] truncate mt-0.5">Head · Arms · Frame Plating</div>
+            <div className="text-[#94a3b8] truncate mt-0.5">Head · Arms · Legs · Frame Plating</div>
           </div>
 
           <div className="p-1 bg-[#0f172a] rounded-xs border border-[#1e293b]">
             <div className="flex justify-between font-bold text-[#38bdf8]">
-              <span>UTILITY SLOT (1)</span>
-              <span className={gates.utilitySlotActive ? 'text-[#86efac]' : 'text-[#f59e0b]'}>
-                {gates.utilitySlotActive ? 'ONLINE' : 'LV 6'}
-              </span>
+              <span>REACTOR & SENSORY (3)</span>
+              <span className="text-[#86efac]">MODS 1–3</span>
             </div>
             <div className="text-[#cbd5e1] truncate mt-0.5">
-              {getClassUtilityDefinition(state.equipmentSlots?.utility, state.traitLine).name}
+              {getEquipmentDisplayName(state.equipmentSlots?.reactorCore || state.reactor)}
             </div>
           </div>
 

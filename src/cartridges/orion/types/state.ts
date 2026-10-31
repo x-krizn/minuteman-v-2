@@ -159,7 +159,19 @@ export interface OrionState {
   activeActionId?: string | null;
   activeSkillCooldownKey?: string | null;
   skillTellTimer: number;
+  /** Initial tell duration of the active skill/attack (for normalized multi-frame windup animation) */
+  skillTellMaxTimer?: number;
   skillActionTimer: number;
+  /** Initial active/recovery duration of the active skill/attack (for normalized multi-frame strike/follow-through animation) */
+  skillActionMaxTimer?: number;
+  /** Active player combat flash-frame tint color */
+  flashColor?: string;
+  /** Remaining player combat flash-frame duration in seconds */
+  flashTimer?: number;
+  /** Initial player combat flash-frame duration in seconds */
+  flashMaxTimer?: number;
+  /** Semantic player flash-frame effect kind ('sweet' | 'hit' | 'armor_deflect' | 'armor_shred' | 'shield' | 'shield_break' | 'parry' | 'stagger' | 'ready') */
+  flashKind?: string;
 
   // Assignable L & R Multi-Source Actions & Separate Per-Skill Cooldown/Active/Reload Tracking
   assignedActions: OrionAssignedActions;

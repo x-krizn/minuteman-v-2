@@ -34,14 +34,49 @@ export const bogCrawlerEnemy: EnemyWikiDefinition = {
     { itemId: 'demantoid_flask', chance: 0.35 },
     { itemId: 'rusted_gate_key', chance: 0.25 },
   ],
-  render25D(g, e, _state, ey, isHurt, isWindup) {
+  render25D(g, e, state, ey, isHurt, isWindup) {
+    const maxT = Math.max(0.05, e.stateMaxTimer || this.tellDurationSec);
+    const windupPct = isWindup ? Math.max(0, Math.min(1, 1 - e.stateTimer / maxT)) : 0;
+    const isAttack = e.state === 'attack';
+    const isRecovery = e.state === 'recovery';
+    const ang = e.attackAngle ?? Math.atan2(state.y - e.y, state.x - e.x);
+    const cos = Math.cos(ang);
+    const sin = Math.sin(ang);
+
+    // Multi-frame posture: crouch low & coil back during windup, lunge forward during attack
+    const coilOffset = isWindup ? -2.5 * windupPct : isAttack ? 3.5 : isRecovery ? -1.0 : 0;
+    const crouchY = isWindup ? 1.5 * windupPct : 0;
+    const bx = e.x + cos * coilOffset;
+    const by = ey + sin * coilOffset * 0.5 + crouchY;
+
+    // Segmented carapace body
     g.fillStyle = isHurt ? '#ffffff' : '#334155';
     g.beginPath();
-    g.ellipse(e.x, ey - 5, 7, 5, 0, 0, Math.PI * 2);
+    g.ellipse(bx, by - 5, isWindup ? 8 : 7, isWindup ? 4 : 5, 0, 0, Math.PI * 2);
     g.fill();
-    g.fillStyle = isWindup ? '#ff9b9b' : '#64748b';
-    g.fillRect(e.x - 7, ey - 8, 3, 4);
-    g.fillRect(e.x + 4, ey - 8, 3, 4);
+    g.fillStyle = isHurt ? '#ffffff' : '#475569';
+    g.fillRect(bx - 4, by - 8, 8, 3);
+
+    // Articulated mandibles: spread wide during windup, snap shut on attack
+    const spread = isWindup ? 3 + windupPct * 2.5 : isAttack ? 1.2 : 2.2;
+    const reach = isWindup ? 5 + windupPct * 2 : isAttack ? 8 : 5;
+    const px = -sin;
+    const py = cos;
+    const leftMx = bx + cos * reach + px * spread;
+    const leftMy = by - 5 + sin * reach * 0.6 + py * spread * 0.6;
+    const rightMx = bx + cos * reach - px * spread;
+    const rightMy = by - 5 + sin * reach * 0.6 - py * spread * 0.6;
+
+    g.fillStyle = isWindup ? '#fbbf24' : isAttack ? '#fef08a' : '#94a3b8';
+    g.fillRect(Math.round(leftMx) - 1, Math.round(leftMy) - 2, 3, 3);
+    g.fillRect(Math.round(rightMx) - 1, Math.round(rightMy) - 2, 3, 3);
+
+    // Sweet-spot mandible tip glint right before strike
+    if (isWindup && windupPct > 0.55) {
+      g.fillStyle = '#ffffff';
+      g.fillRect(Math.round(leftMx), Math.round(leftMy) - 1, 2, 2);
+      g.fillRect(Math.round(rightMx), Math.round(rightMy) - 1, 2, 2);
+    }
   },
   update(rooms, state: OrionState, e: EnemyEntity, dt: number) {
     if (e.stun > 0) {
@@ -57,6 +92,7 @@ export const bogCrawlerEnemy: EnemyWikiDefinition = {
       if (e.stateTimer <= 0) {
         e.state = 'attack';
         e.stateTimer = 0.2;
+        e.stateMaxTimer = 0.2;
         e.hasStruckThisAttack = false;
         const ang = e.attackAngle ?? Math.atan2(state.y - e.y, state.x - e.x);
         const ldx = Math.cos(ang);
@@ -88,6 +124,7 @@ export const bogCrawlerEnemy: EnemyWikiDefinition = {
       if (e.stateTimer <= 0) {
         e.state = 'recovery';
         e.stateTimer = 0.4;
+        e.stateMaxTimer = 0.4;
       }
       return;
     }
@@ -109,6 +146,7 @@ export const bogCrawlerEnemy: EnemyWikiDefinition = {
       if (distToPlayer <= 26 && e.attackCd <= 0) {
         e.state = 'windup';
         e.stateTimer = this.tellDurationSec;
+        e.stateMaxTimer = this.tellDurationSec;
         e.attackAngle = Math.atan2(dy, dx);
         e.hasStruckThisAttack = false;
         return;

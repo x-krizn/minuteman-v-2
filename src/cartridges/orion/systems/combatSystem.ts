@@ -16,7 +16,7 @@ import {
 import { OrionCombatContext, OrionState } from '../types';
 import { notifyOrionStateChange } from './playerSystem';
 import { updateBladeTrails } from './renderSystem';
-import { cycleTargetLock } from './combat/combatHelpers';
+import { cycleTargetLock, triggerEntityFlash } from './combat/combatHelpers';
 import { applyDamageToLayers, resolveEnemyMeleeAttacks } from './combat/damageSystem';
 import { executeBasicAttackShot, firePrimarySalvoShot } from './combat/projectileSystem';
 import {
@@ -56,11 +56,6 @@ export function handleCombatInput(
   const weapon = getWeaponDefinition(currentWeaponId);
   if (!weapon) return;
 
-  const isMeleeOrShield =
-    weapon.equipmentRole === 'melee' ||
-    weapon.equipmentRole === 'shield' ||
-    currentWeaponId === 'khopesh';
-
   // 1. Tick primary chain reloading
   if (state.isReloading) {
     const reloadMult = (state.overdriveTimer || 0) > 0 ? 1.6 : 1.0;
@@ -76,7 +71,7 @@ export function handleCombatInput(
         state.skillReloadTimers[s1Key] = 0;
       }
       soundSystem.playSelect();
-      ctx.say(isMeleeOrShield ? 'BLADE STANCE READY' : 'MAGAZINE RELOADED');
+      triggerEntityFlash(state, '#38bdf8', 0.14, 'ready');
       notifyOrionStateChange();
     }
   }
@@ -286,7 +281,6 @@ export function handleCombatInput(
       if (wasDoubleTap && state.lockedTargetId !== null) {
         state.lockedTargetId = null;
         soundSystem.playMenuBeep();
-        ctx.say('TARGET UNLOCKED');
         notifyOrionStateChange();
       } else {
         cycleTargetLock(state, ctx);
@@ -319,6 +313,14 @@ export function updateCombat(
   for (let s = 0; s < state.skillCooldowns.length; s++) {
     if (state.skillCooldowns[s] > 0) {
       state.skillCooldowns[s] = Math.max(0, state.skillCooldowns[s] - dt);
+    }
+  }
+  if (state.flashTimer && state.flashTimer > 0) {
+    state.flashTimer = Math.max(0, state.flashTimer - dt);
+  }
+  for (const e of state.enemies) {
+    if (e.flashTimer && e.flashTimer > 0) {
+      e.flashTimer = Math.max(0, e.flashTimer - dt);
     }
   }
   updateActionTimers(state, dt);

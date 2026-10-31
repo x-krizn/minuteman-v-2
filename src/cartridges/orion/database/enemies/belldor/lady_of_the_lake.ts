@@ -45,16 +45,33 @@ export const ladyOfTheLakeEnemy: EnemyWikiDefinition = {
     ctx.say('THE LADY OF THE LAKE VANQUISHED! · AVALON SIEGE LANCE & RELIC GEMSTONES RECOVERED!');
     notifyOrionStateChange();
   },
-  render25D(g, e, _state, ey, isHurt) {
+  render25D(g, e, state, ey, isHurt, isWindup) {
+    const maxT = Math.max(0.05, e.stateMaxTimer || this.tellDurationSec);
+    const windupPct = isWindup ? Math.max(0, Math.min(1, 1 - e.stateTimer / maxT)) : 0;
+    const riseY = isWindup ? -Math.round(windupPct * 4) : 0;
+
     g.strokeStyle = '#38bdf8';
     g.lineWidth = 1;
     g.beginPath();
-    g.ellipse(e.x, e.y, 12, 5, 0, 0, Math.PI * 2);
+    g.ellipse(e.x, e.y, 12 + windupPct * 3, 5, 0, 0, Math.PI * 2);
     g.stroke();
+
     g.fillStyle = isHurt ? '#ffffff' : '#7e22ce';
-    g.fillRect(e.x - 6, ey - 20, 12, 20);
+    g.fillRect(e.x - 6, ey - 20 + riseY, 12, 20 - riseY);
     g.fillStyle = '#e879f9';
-    g.fillRect(e.x - 4, ey - 18, 8, 10);
+    g.fillRect(e.x - 4, ey - 18 + riseY, 8, 10);
+
+    // 5-orb arcane wave crown materializes during windup
+    if (isWindup) {
+      const orbCount = Math.max(1, Math.ceil(windupPct * 5));
+      for (let i = 0; i < orbCount; i++) {
+        const ang = -Math.PI * 0.8 + (i / 4) * Math.PI * 0.6 + state.t * 2;
+        const ox = e.x + Math.cos(ang) * 9;
+        const oy = ey - 16 + riseY + Math.sin(ang) * 5;
+        g.fillStyle = windupPct > 0.65 ? '#fde047' : '#38bdf8';
+        g.fillRect(Math.round(ox) - 1, Math.round(oy) - 1, 2, 2);
+      }
+    }
   },
   update(rooms, state: OrionState, e: EnemyEntity, dt: number) {
     if (e.stun > 0) {
@@ -72,6 +89,7 @@ export const ladyOfTheLakeEnemy: EnemyWikiDefinition = {
       if (e.stateTimer <= 0) {
         e.state = 'attack';
         e.stateTimer = 0.3;
+        e.stateMaxTimer = 0.3;
         e.hasStruckThisAttack = false;
         const baseAngle = e.attackAngle ?? Math.atan2(dy, dx);
         state.bladeTrails = state.bladeTrails || [];
@@ -153,6 +171,7 @@ export const ladyOfTheLakeEnemy: EnemyWikiDefinition = {
     if (e.attackCd <= 0) {
       e.state = 'windup';
       e.stateTimer = this.tellDurationSec;
+      e.stateMaxTimer = this.tellDurationSec;
       e.attackAngle = Math.atan2(dy, dx);
       e.hasStruckThisAttack = false;
     }

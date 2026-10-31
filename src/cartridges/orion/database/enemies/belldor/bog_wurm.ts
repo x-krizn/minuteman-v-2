@@ -35,7 +35,7 @@ export const bogWurmEnemy: EnemyWikiDefinition = {
     { itemId: 'corrupted_shard', chance: 1.0, count: 1 },
     { itemId: 'bedivere_relic', chance: 1.0, count: 1 },
   ],
-  render25D(g, e, state, ey, isHurt) {
+  render25D(g, e, state, ey, isHurt, isWindup) {
     if (e.isSubmerged) {
       g.strokeStyle = 'rgba(56, 189, 248, 0.35)';
       g.lineWidth = 1;
@@ -44,12 +44,31 @@ export const bogWurmEnemy: EnemyWikiDefinition = {
       g.stroke();
       return true; // Skip standard shadow/bar while submerged
     }
+    const maxT = Math.max(0.05, e.stateMaxTimer || this.tellDurationSec);
+    const windupPct = isWindup ? Math.max(0, Math.min(1, 1 - e.stateTimer / maxT)) : 0;
+    const isAttack = e.state === 'attack';
+    const rearUpY = isWindup ? -4 * windupPct : isAttack ? 2 : 0;
+    const hoodFlare = isWindup ? Math.round(windupPct * 3) : isAttack ? 2 : 0;
+
+    // Lower serpentine coil
+    g.fillStyle = isHurt ? '#ffffff' : '#0369a1';
+    g.beginPath();
+    g.ellipse(e.x, ey - 5, 8, 5, 0, 0, Math.PI * 2);
+    g.fill();
+
+    // Rearing upper body + flared bio-electric hood
     g.fillStyle = isHurt ? '#ffffff' : '#0284c7';
     g.beginPath();
-    g.ellipse(e.x, ey - 9, 8, 10, 0, 0, Math.PI * 2);
+    g.ellipse(e.x, ey - 10 + rearUpY, 6 + hoodFlare, 8, 0, 0, Math.PI * 2);
     g.fill();
-    g.fillStyle = '#38bdf8';
-    g.fillRect(e.x - 4, ey - 15, 8, 4);
+
+    // Glowing ætheric vein nodes along the spine (charge up bottom-to-top during windup)
+    g.fillStyle = isWindup && windupPct > 0.5 ? '#fde047' : '#38bdf8';
+    g.fillRect(e.x - 4 - hoodFlare, ey - 15 + rearUpY, 8 + hoodFlare * 2, 4);
+    if (isWindup || isAttack) {
+      g.fillStyle = '#e0f2fe';
+      g.fillRect(e.x - 2, ey - 17 + rearUpY, 4, 2);
+    }
   },
   update(rooms, state: OrionState, e: EnemyEntity, dt: number) {
     const tx = Math.floor(e.x / TILE_SIZE);
@@ -82,6 +101,7 @@ export const bogWurmEnemy: EnemyWikiDefinition = {
       if (e.stateTimer <= 0) {
         e.state = 'attack';
         e.stateTimer = 0.25;
+        e.stateMaxTimer = 0.25;
         e.hasStruckThisAttack = false;
         const ang = e.attackAngle ?? Math.atan2(dy, dx);
         stepEnemyWithCollision(rooms, state, e, Math.cos(ang) * 18, Math.sin(ang) * 18);
@@ -126,6 +146,7 @@ export const bogWurmEnemy: EnemyWikiDefinition = {
       if (e.stateTimer <= 0) {
         e.state = 'recovery';
         e.stateTimer = 0.5;
+        e.stateMaxTimer = 0.5;
       }
       return;
     }
@@ -222,6 +243,7 @@ export const bogWurmEnemy: EnemyWikiDefinition = {
       e.isSubmerged = false;
       e.state = 'windup';
       e.stateTimer = this.tellDurationSec;
+      e.stateMaxTimer = this.tellDurationSec;
       e.attackAngle = Math.atan2(dy, dx);
       e.hasStruckThisAttack = false;
       return;

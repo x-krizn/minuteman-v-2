@@ -179,100 +179,6 @@ export function renderDepthSortedEntitiesAndProps(
         g.ellipse(e.x, e.y + 1, shadowR, shadowR * 0.5, 0, 0, Math.PI * 2);
         g.fill();
 
-        if (isWindup) {
-          const tellAng = e.attackAngle ?? Math.atan2(state.y - e.y, state.x - e.x);
-          const tCos = Math.cos(tellAng);
-          const tSin = Math.sin(tellAng);
-          const tPx = -tSin;
-          const tPy = tCos;
-          const tellColor = e.emissiveColor || '#ffd27d';
-
-          g.save();
-          g.strokeStyle = tellColor;
-          g.fillStyle = tellColor;
-          g.lineWidth = 1.3;
-
-          if (e.type === 'bors_knight' && e.enraged) {
-            const len = 38;
-            const hw = 11;
-            g.globalAlpha = 0.22;
-            g.beginPath();
-            g.moveTo(e.x + tPx * hw, e.y + tPy * hw);
-            g.lineTo(e.x + tCos * len + tPx * hw, e.y + tSin * len + tPy * hw);
-            g.lineTo(e.x + tCos * (len + 6), e.y + tSin * (len + 6));
-            g.lineTo(e.x + tCos * len - tPx * hw, e.y + tSin * len - tPy * hw);
-            g.lineTo(e.x - tPx * hw, e.y - tPy * hw);
-            g.closePath();
-            g.fill();
-            g.globalAlpha = 0.85;
-            g.stroke();
-          } else if (e.type === 'bors_knight') {
-            const ix = e.x + tCos * 14;
-            const iy = e.y + tSin * 14;
-            g.globalAlpha = 0.2;
-            g.beginPath();
-            g.ellipse(ix, iy, 19, 13, 0, 0, Math.PI * 2);
-            g.fill();
-            g.globalAlpha = 0.85;
-            g.stroke();
-          } else if (e.type === 'percival_knight') {
-            const r = 28;
-            const span = Math.PI * 0.72;
-            g.globalAlpha = 0.2;
-            g.beginPath();
-            g.moveTo(e.x, e.y);
-            g.arc(e.x, e.y, r, tellAng - span * 0.5, tellAng + span * 0.5);
-            g.closePath();
-            g.fill();
-            g.globalAlpha = 0.85;
-            g.stroke();
-          } else if (e.type === 'tristan_knight') {
-            g.globalAlpha = 0.75;
-            for (const off of [-0.18, 0, 0.18]) {
-              const a = tellAng + off;
-              g.beginPath();
-              g.moveTo(e.x + Math.cos(a) * 6, ey - 6 + Math.sin(a) * 6);
-              g.lineTo(e.x + Math.cos(a) * 48, ey - 6 + Math.sin(a) * 48);
-              g.stroke();
-            }
-          } else if (e.type === 'orc_scout') {
-            g.globalAlpha = 0.75;
-            g.beginPath();
-            g.moveTo(e.x + tCos * 6, ey - 6 + tSin * 6);
-            g.lineTo(e.x + tCos * 52, ey - 6 + tSin * 52);
-            g.stroke();
-          } else if (e.type === 'lady_of_the_lake') {
-            g.globalAlpha = 0.65;
-            for (const off of [-0.45, -0.22, 0, 0.22, 0.45]) {
-              const a = tellAng + off;
-              g.beginPath();
-              g.moveTo(e.x + Math.cos(a) * 8, e.y + Math.sin(a) * 8);
-              g.lineTo(e.x + Math.cos(a) * 42, e.y + Math.sin(a) * 42);
-              g.stroke();
-            }
-            g.beginPath();
-            g.ellipse(e.x, e.y, 26, 16, 0, 0, Math.PI * 2);
-            g.stroke();
-          } else {
-            const r = e.type === 'bog_wurm' ? 26 : 23;
-            const span =
-              e.type === 'bog_crawler'
-                ? Math.PI * 0.55
-                : e.type === 'orc_warrior'
-                  ? Math.PI * 0.8
-                  : Math.PI * 0.7;
-            g.globalAlpha = 0.18;
-            g.beginPath();
-            g.moveTo(e.x, e.y);
-            g.arc(e.x, e.y, r, tellAng - span * 0.5, tellAng + span * 0.5);
-            g.closePath();
-            g.fill();
-            g.globalAlpha = 0.82;
-            g.stroke();
-          }
-          g.restore();
-        }
-
         const drewEnemySprite = drawBase64Sprite(g, def?.sprite, e.x, ey, state.t, {
           dir: e.dir,
           stateName: e.state,
@@ -287,6 +193,38 @@ export function renderDepthSortedEntitiesAndProps(
             g.fillStyle = isHurt ? '#ffffff' : e.emissiveColor || '#64748b';
             g.fillRect(e.x - 5, ey - 14, 10, 14);
           }
+        }
+
+        // Fighting-Game / Souls Silhouette Flash-Frame Overlay on Enemy
+        if ((e.flashTimer || 0) > 0) {
+          const flashColor = e.flashColor || '#ffffff';
+          const flashKind = e.flashKind || 'hit';
+          const flashMax = Math.max(0.05, e.flashMaxTimer || 0.12);
+          const flashRatio = Math.max(0, Math.min(1, (e.flashTimer || 0) / flashMax));
+          const isStrobeWhite =
+            (flashKind === 'sweet' || flashKind === 'stagger' || flashKind === 'shield_break') &&
+            flashRatio > 0.55;
+
+          g.save();
+          g.globalAlpha = Math.min(0.88, 0.4 + flashRatio * 0.5);
+          g.fillStyle = isStrobeWhite ? '#ffffff' : flashColor;
+          g.fillRect(e.x - 5, ey - 15, 10, 13);
+
+          // Sweet-spot critical cross-flare or shield-break burst
+          if (flashKind === 'sweet') {
+            g.fillStyle = '#ffffff';
+            g.fillRect(e.x - 9, ey - 9, 18, 2);
+            g.fillRect(e.x - 1, ey - 17, 2, 16);
+            g.fillStyle = '#fde047';
+            g.fillRect(e.x - 6, ey - 12, 12, 6);
+          } else if (flashKind === 'shield' || flashKind === 'shield_break') {
+            g.strokeStyle = flashColor;
+            g.lineWidth = 1.4;
+            g.beginPath();
+            g.arc(e.x, ey - 8, 9, 0, Math.PI * 2);
+            g.stroke();
+          }
+          g.restore();
         }
 
         if (visFactor >= 0.45 || isHurt || state.lockedTargetId === e.id) {

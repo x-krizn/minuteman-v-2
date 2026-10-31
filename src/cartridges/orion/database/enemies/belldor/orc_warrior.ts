@@ -65,13 +65,31 @@ export const orcWarriorEnemy: EnemyWikiDefinition = {
     { itemId: 'trade_coin', chance: 1.0, count: 8 },
     { itemId: 'orc_war_paint', chance: 0.35 },
   ],
-  render25D(g, e, _state, ey, isHurt) {
+  render25D(g, e, _state, ey, isHurt, isWindup) {
+    const maxT = Math.max(0.05, e.stateMaxTimer || this.tellDurationSec);
+    const windupPct = isWindup ? Math.max(0, Math.min(1, 1 - e.stateTimer / maxT)) : 0;
+    const isAttack = e.state === 'attack';
+    const braceCrouch = isWindup ? 1 : 0;
+
+    // Heavy armored torso
     g.fillStyle = isHurt ? '#ffffff' : '#7c2d12';
-    g.fillRect(e.x - 7, ey - 16, 14, 16);
+    g.fillRect(e.x - 7, ey - 16 + braceCrouch, 14, 16 - braceCrouch);
     g.fillStyle = '#ea580c';
-    g.fillRect(e.x - 5, ey - 14, 10, 8);
+    g.fillRect(e.x - 5, ey - 14 + braceCrouch, 10, 8);
+
+    // Left-hand heavy boarding shield (tucked wide during windup to expose overhead chop)
+    const shieldOffsetX = isWindup ? -10 : -9;
     g.fillStyle = '#fdba74';
-    g.fillRect(e.x - 9, ey - 13, 4, 11);
+    g.fillRect(e.x + shieldOffsetX, ey - 13 + braceCrouch, 4, 11);
+
+    // Right-hand boarding axe (raised high overhead during windup, slammed down during attack)
+    const axeY = isWindup
+      ? ey - 16 - Math.round(windupPct * 6)
+      : isAttack
+        ? ey - 6
+        : ey - 12;
+    g.fillStyle = isWindup && windupPct > 0.55 ? '#fde047' : '#cbd5e1';
+    g.fillRect(e.x + 6, axeY, 4, 5);
   },
   update(rooms, state: OrionState, e: EnemyEntity, dt: number) {
     if (e.stun > 0) {
@@ -90,6 +108,7 @@ export const orcWarriorEnemy: EnemyWikiDefinition = {
       if (e.stateTimer <= 0) {
         e.state = 'attack';
         e.stateTimer = 0.24;
+        e.stateMaxTimer = 0.24;
         e.hasStruckThisAttack = false;
         const ang = e.attackAngle ?? Math.atan2(dy, dx);
         stepEnemyWithCollision(rooms, state, e, Math.cos(ang) * 15, Math.sin(ang) * 15);
@@ -138,9 +157,30 @@ export const orcWarriorEnemy: EnemyWikiDefinition = {
     if (dist <= 26 && e.attackCd <= 0) {
       e.state = 'windup';
       e.stateTimer = this.tellDurationSec;
+      e.stateMaxTimer = this.tellDurationSec;
       e.attackAngle = Math.atan2(dy, dx);
       e.hasStruckThisAttack = false;
       return;
+    }
+
+    // Lore behavior: Orc Warrior intercepts the line between a wounded Orc Scout and the player
+    const woundedScout = state.enemies.find(
+      (ally) =>
+        ally.type === 'orc_scout' &&
+        ally.frame.integrity > 0 &&
+        ally.frame.integrity < ally.frame.maxIntegrity * 0.7 &&
+        Math.hypot(ally.x - e.x, ally.y - e.y) < 95
+    );
+    let moveDx = dx / dist;
+    let moveDy = dy / dist;
+    if (woundedScout && dist > 28) {
+      const screenX = (woundedScout.x + state.x) * 0.5;
+      const screenY = (woundedScout.y + state.y) * 0.5;
+      const sdx = screenX - e.x;
+      const sdy = screenY - e.y;
+      const sDist = Math.hypot(sdx, sdy) || 1;
+      moveDx = (moveDx * 0.65 + (sdx / sDist) * 0.35);
+      moveDy = (moveDy * 0.65 + (sdy / sDist) * 0.35);
     }
 
     if (dist > 16) {
@@ -148,8 +188,8 @@ export const orcWarriorEnemy: EnemyWikiDefinition = {
         rooms,
         state,
         e,
-        (dx / dist) * e.speed * dt,
-        (dy / dist) * e.speed * dt
+        moveDx * e.speed * dt,
+        moveDy * e.speed * dt
       );
     }
   },

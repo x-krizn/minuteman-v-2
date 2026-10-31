@@ -46,14 +46,16 @@ import {
 } from '../inertiaSystem';
 import { getActiveRoomBounds, notifyOrionStateChange } from '../playerSystem';
 import {
+  evaluatePositionalHitQuality,
   getCombatAimVector,
   getLockedTarget,
   isTargetInDirectionalArc,
   isTargetInImpactZone,
   isTargetInThrustCorridor,
   normalizeAngleDiff,
+  triggerEntityFlash,
 } from './combatHelpers';
-import { PERFECT_BLOCK_WINDOW_SEC } from './damageSystem';
+import { DamageLayerOptions, PERFECT_BLOCK_WINDOW_SEC } from './damageSystem';
 
 // ─── 1. ASSIGNABLE [L] & [R] MULTI-SOURCE ACTIONS ────────────────────────────
 
@@ -192,7 +194,8 @@ export function executeActionPayload(
     frame: FrameState,
     rawDamage: number,
     damageType: DamageType,
-    spawnParticles?: (count: number, color: string, label: string) => void
+    spawnParticles?: (count: number, color: string, label: string) => void,
+    options?: DamageLayerOptions
   ) => void
 ): void {
   const desc = getResolvedActionDescriptor(state, actionId);
@@ -302,9 +305,20 @@ export function executeActionPayload(
     dmgType: DamageType,
     stunSec: number = 0.35,
     knockbackDist: number = 0,
-    extraArmorDent: number = 0
+    extraArmorDent: number = 0,
+    maxReach: number = 34
   ) => {
     e.hurt = 0.22;
+    const hitEval = evaluatePositionalHitQuality(
+      currentWeaponId,
+      state.x,
+      state.y,
+      aimAngle,
+      maxReach,
+      e.x,
+      e.y,
+      false
+    );
     const totalArmorDent = extraArmorDent + gemCombatMods.extraArmorDentOnHit;
     if (totalArmorDent > 0 && e.armor.durability > 0) {
       e.armor.durability = Math.max(0, e.armor.durability - totalArmorDent);
@@ -323,9 +337,12 @@ export function executeActionPayload(
       impDx,
       impDy
     );
-    const scaleMult = Math.max(0.75, Math.min(1.6, stunSec / 0.45 + Math.abs(knockbackDist) * 0.03));
+    const scaleMult = Math.max(
+      0.75,
+      Math.min(1.6, stunSec / 0.45 + Math.abs(knockbackDist) * 0.03)
+    );
     const impulseJ = computeMeleeImpulse(
-      weaponInertiaSpec.attackWeight * scaleMult,
+      weaponInertiaSpec.attackWeight * scaleMult * (hitEval.quality === 'sweet' ? 1.2 : 1.0),
       weaponInertiaSpec.attackSpeed,
       playerInertiaProf.totalBaseWeight,
       attackerMu,
@@ -347,19 +364,25 @@ export function executeActionPayload(
       (e.knockbackVy || 0) + impDy * pullSign * inertiaRes.displacementSpeedPx;
     e.lastInertiaOutcome = inertiaRes.outcome;
     e.lastInertiaOutcomeTimer = 0.6;
-    state.hitstopTimer = Math.max(state.hitstopTimer || 0, inertiaRes.hitstopSec);
+    state.hitstopTimer = Math.max(
+      state.hitstopTimer || 0,
+      inertiaRes.hitstopSec + hitEval.extraHitstopSec
+    );
 
     if (inertiaRes.outcome === 'none') {
-      ctx.spawnParticles(e.x, e.y, e.z + 10, 3, '#94a3b8', 'BRACED');
+      triggerEntityFlash(e, '#94a3b8', 0.08, 'armor_deflect');
+      ctx.spawnParticles(e.x, e.y, e.z + 10, 3, '#94a3b8', '');
     } else {
       e.stun = Math.max(e.stun, inertiaRes.recoverySec);
       if (inertiaRes.outcome === 'stagger' || inertiaRes.outcome === 'knockback') {
         if (e.state === 'windup') {
           e.state = 'stagger';
           e.stateTimer = inertiaRes.recoverySec;
+          e.stateMaxTimer = inertiaRes.recoverySec;
         }
         const outFmt = formatInertiaOutcomeLabel(inertiaRes.outcome);
-        ctx.spawnParticles(e.x, e.y, e.z + 12, 5, outFmt.color, outFmt.label);
+        triggerEntityFlash(e, '#ffffff', 0.16, 'stagger');
+        ctx.spawnParticles(e.x, e.y, e.z + 12, 5, outFmt.color, '');
       }
     }
     if (!skillHitGrantedBonus) {
@@ -404,10 +427,22 @@ export function executeActionPayload(
       e.shields,
       e.armor,
       e.frame,
-      Math.round(computeEnemyDamage(baseDmg, e.faction, e, resolvedDmgType) * adaptiveBonusMult),
+      Math.round(
+        computeEnemyDamage(baseDmg, e.faction, e, resolvedDmgType) *
+          adaptiveBonusMult *
+          hitEval.damageMult
+      ),
       resolvedDmgType,
-      (count, color, label) => ctx.spawnParticles(e.x, e.y, e.z + 8, count, color, label)
+      (count, color) => ctx.spawnParticles(e.x, e.y, e.z + 8, count, color, ''),
+      {
+        armorBypassRatio: hitEval.armorBypassRatio,
+        hitQuality: hitEval.quality,
+        onFlash: (color, dur, kind) => triggerEntityFlash(e, color, dur, kind),
+      }
     );
+    if (hitEval.quality === 'sweet') {
+      soundSystem.playPowerup();
+    }
     soundSystem.playHit();
   };
 
@@ -2574,7 +2609,7 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
 
 export function triggerTacticalReload(
   state: OrionState,
-  ctx: OrionCombatContext,
+  _ctx: OrionCombatContext,
   targetSlots: Array<1 | 2 | 3 | 4 | 5> = [1]
 ): boolean {
   const skills = getResolvedCombatSkills(state);
@@ -2600,7 +2635,7 @@ export function triggerTacticalReload(
         state.blockingWeaponId = null;
       }
       soundSystem.playPowerup();
-      ctx.say(`${sk.shortLabel} RELOADING (${reloadDur.toFixed(1)}s)`);
+      triggerEntityFlash(state, '#38bdf8', 0.12, 'ready');
       notifyOrionStateChange();
       return true;
     }
@@ -2617,13 +2652,7 @@ export function triggerTacticalReload(
   const weapon = getWeaponDefinition(currentWeaponId);
   if (!weapon) return false;
 
-  const isMeleeOrShield =
-    weapon.equipmentRole === 'melee' ||
-    weapon.equipmentRole === 'shield' ||
-    currentWeaponId === 'khopesh';
-
   if (state.ammo >= state.maxAmmo && !state.isReloading) {
-    ctx.say(isMeleeOrShield ? 'STANCE READY (FULL)' : 'MAGAZINE FULL');
     return false;
   }
 
@@ -2640,7 +2669,7 @@ export function triggerTacticalReload(
   state.skillReloadTimers[s1Key] = reloadDur;
 
   soundSystem.playPowerup();
-  ctx.say(isMeleeOrShield ? 'RECOVERING STANCE (RELOAD)' : 'TACTICAL RELOAD');
+  triggerEntityFlash(state, '#38bdf8', 0.12, 'ready');
   notifyOrionStateChange();
   return true;
 }
@@ -2684,6 +2713,7 @@ export function startHoldingBlock(
     state.blockingWeaponId = blockWpnId;
 
     soundSystem.playSword();
+    triggerEntityFlash(state, '#38bdf8', 0.12, 'shield');
     state.bladeTrails = state.bladeTrails || [];
     state.bladeTrails.push({
       x: state.x,
@@ -2706,7 +2736,7 @@ export function startHoldingBlock(
       state.z + 8,
       6,
       '#38bdf8',
-      'GUARD'
+      ''
     );
     notifyOrionStateChange();
   }
@@ -2748,22 +2778,18 @@ export function activateResolvedCombatSkill(
 
   if (!skill || !skill.available) {
     soundSystem.playMenuBeep();
-    ctx.say(skill?.unavailableReason || `SKILL ${skillIndex} UNAVAILABLE`);
     notifyOrionStateChange();
     return false;
   }
 
   if ((skill.activeRemaining || 0) > 0) {
     soundSystem.playMenuBeep();
-    ctx.say(`${skill.shortLabel} ACTIVE (${skill.activeRemaining!.toFixed(1)}s)`);
     notifyOrionStateChange();
     return false;
   }
 
   if (skill.currentCooldown > 0) {
     soundSystem.playMenuBeep();
-    const stateLabel = skill.isReloading ? 'RELOADING' : 'ON COOLDOWN';
-    ctx.say(`${skill.shortLabel} ${stateLabel} (${skill.currentCooldown.toFixed(1)}s)`);
     notifyOrionStateChange();
     return false;
   }
@@ -2774,7 +2800,6 @@ export function activateResolvedCombatSkill(
     const itemDef = getItemDefinition(itemId);
     if (invIdx < 0 || !itemDef) {
       soundSystem.playMenuBeep();
-      ctx.say(`${skill.name} DEPLETED`);
       notifyOrionStateChange();
       return false;
     }
@@ -2789,13 +2814,14 @@ export function activateResolvedCombatSkill(
       }
       state.actionCooldowns = state.actionCooldowns || {};
       state.actionCooldowns[skill.cooldownKey] = skill.cooldownSec || 2.5;
+      triggerEntityFlash(state, itemDef.iconColor || '#fbbf24', 0.14, 'ready');
       ctx.spawnParticles(
         state.x,
         state.y,
         state.z + 8,
         10,
         itemDef.iconColor || '#fbbf24',
-        itemDef.name.toUpperCase()
+        ''
       );
       notifyOrionStateChange();
       return true;
@@ -2852,7 +2878,9 @@ export function activateResolvedCombatSkill(
   state.activeActionId = skill.id;
   state.activeSkillCooldownKey = skill.cooldownKey;
   state.skillTellTimer = Math.max(0.05, desc.tellDurationSec);
+  state.skillTellMaxTimer = state.skillTellTimer;
   state.skillActionTimer = Math.max(0.15, desc.actionDurationSec);
+  state.skillActionMaxTimer = state.skillActionTimer;
 
   soundSystem.playCharge();
   notifyOrionStateChange();

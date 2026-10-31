@@ -42,7 +42,7 @@ export function getLockedTarget(state: OrionState): EnemyEntity | null {
 
 export function cycleTargetLock(
   state: OrionState,
-  ctx?: OrionCombatContext
+  _ctx?: OrionCombatContext
 ): EnemyEntity | null {
   const candidates = state.enemies
     .filter((e) => isTargetableEnemy(e, state))
@@ -57,9 +57,6 @@ export function cycleTargetLock(
   if (candidates.length === 0) {
     state.lockedTargetId = null;
     soundSystem.playMenuBeep();
-    if (ctx) {
-      ctx.say('NO HOSTILE TARGETS IN SENSOR RANGE');
-    }
     notifyOrionStateChange();
     return null;
   }
@@ -68,10 +65,6 @@ export function cycleTargetLock(
     const first = candidates[0];
     state.lockedTargetId = first.id;
     soundSystem.playSelect();
-    if (ctx) {
-      const label = (first.name || first.type || 'HOSTILE').toUpperCase();
-      ctx.say(`TARGET LOCKED: ${label}`);
-    }
     notifyOrionStateChange();
     return first;
   }
@@ -81,10 +74,6 @@ export function cycleTargetLock(
     const first = candidates[0];
     state.lockedTargetId = first.id;
     soundSystem.playSelect();
-    if (ctx) {
-      const label = (first.name || first.type || 'HOSTILE').toUpperCase();
-      ctx.say(`TARGET LOCKED: ${label}`);
-    }
     notifyOrionStateChange();
     return first;
   }
@@ -93,18 +82,11 @@ export function cycleTargetLock(
     const next = candidates[currentIdx + 1];
     state.lockedTargetId = next.id;
     soundSystem.playSelect();
-    if (ctx) {
-      const label = (next.name || next.type || 'HOSTILE').toUpperCase();
-      ctx.say(`TARGET LOCKED: ${label}`);
-    }
     notifyOrionStateChange();
     return next;
   } else {
     state.lockedTargetId = null;
     soundSystem.playMenuBeep();
-    if (ctx) {
-      ctx.say('TARGET LOCK DISENGAGED');
-    }
     notifyOrionStateChange();
     return null;
   }
@@ -151,6 +133,180 @@ export function normalizeAngleDiff(a: number, b: number): number {
   while (diff > Math.PI) diff -= Math.PI * 2;
   while (diff < -Math.PI) diff += Math.PI * 2;
   return diff;
+}
+
+/**
+ * Triggers a fighting-game / Souls-style silhouette flash frame on an entity or player state.
+ */
+export function triggerEntityFlash(
+  target: {
+    flashColor?: string;
+    flashTimer?: number;
+    flashMaxTimer?: number;
+    flashKind?: string;
+  },
+  color: string,
+  durationSec: number,
+  kind: string = 'hit'
+): void {
+  // Prioritize sweet-spot crits, shield breaks, and parries over weaker glances
+  const isHighPriority =
+    kind === 'sweet' || kind === 'parry' || kind === 'shield_break' || kind === 'stagger';
+  if ((target.flashTimer || 0) > 0.04 && !isHighPriority && target.flashKind === 'sweet') {
+    return;
+  }
+  target.flashColor = color;
+  target.flashTimer = durationSec;
+  target.flashMaxTimer = durationSec;
+  target.flashKind = kind;
+}
+
+export type PositionalHitQuality = 'sweet' | 'normal' | 'sour';
+
+export interface PositionalHitEvaluation {
+  quality: PositionalHitQuality;
+  damageMult: number;
+  armorBypassRatio: number;
+  extraHitstopSec: number;
+}
+
+/**
+ * Evaluates positional accuracy ("sweet-spot" vs "sour-spot") for a melee strike or projectile impact.
+ * Critical hits are a spatial accuracy variable rather than a random chance variable:
+ * - Spear / Lance tip (`0.68 <= rNorm <= 1.05` & tight centerline): `1.35x` damage, `+40%` armor bypass.
+ * - Hammer / Mace / Axe head (`0.60 <= rNorm <= 0.98`): `1.35x` damage, `+40%` armor bypass.
+ * - Sword / Blade upper cutting sweet-spot (`0.54 <= rNorm <= 0.92` & centered arc): `1.30x` damage, `+35%` armor bypass.
+ * - Haft / hilt / sour-spot (`rNorm < 0.42`): `0.72x` glancing damage, `-35%` armor bypass (enemy armor is 35% more effective).
+ */
+export function evaluatePositionalHitQuality(
+  weaponId: string,
+  ox: number,
+  oy: number,
+  aimAngle: number,
+  maxReach: number,
+  tx: number,
+  ty: number,
+  isRanged: boolean = false
+): PositionalHitEvaluation {
+  const dist = Math.hypot(tx - ox, ty - oy);
+
+  if (isRanged) {
+    // Ranged projectiles: dead-center impact (`dist <= 5.5px` from bolt core) is a sweet-spot critical
+    if (dist <= 5.5) {
+      return {
+        quality: 'sweet',
+        damageMult: 1.3,
+        armorBypassRatio: 0.35,
+        extraHitstopSec: 0.035,
+      };
+    }
+    if (dist >= 11.5) {
+      return {
+        quality: 'sour',
+        damageMult: 0.78,
+        armorBypassRatio: -0.25,
+        extraHitstopSec: 0,
+      };
+    }
+    return {
+      quality: 'normal',
+      damageMult: 1.0,
+      armorBypassRatio: 0,
+      extraHitstopSec: 0,
+    };
+  }
+
+  const rNorm = dist / Math.max(12, maxReach);
+  const targetAng = Math.atan2(ty - oy, tx - ox);
+  const angDiff = Math.abs(normalizeAngleDiff(targetAng, aimAngle));
+
+  const isSpearOrLance =
+    weaponId === 'short_spear' ||
+    weaponId === 'ls900_swordspear' ||
+    weaponId === 'avalon_siege_lance' ||
+    weaponId === 'hl220_lightburst_lance';
+  const isHammerMaceOrAxe =
+    weaponId === 'mace' ||
+    weaponId === 'wz200_manacore_staff' ||
+    weaponId === 'hallowed_scepter' ||
+    weaponId === 'hand_axe' ||
+    weaponId === 'siegebreaker';
+
+  if (isSpearOrLance) {
+    // Spear / Lance: tipper sweet-spot at outer 68%..105% reach near thrust centerline; shaft sour-spot inside 45%
+    if (rNorm >= 0.68 && rNorm <= 1.06 && angDiff <= 0.34) {
+      return {
+        quality: 'sweet',
+        damageMult: 1.35,
+        armorBypassRatio: 0.4,
+        extraHitstopSec: 0.045,
+      };
+    }
+    if (rNorm < 0.45) {
+      return {
+        quality: 'sour',
+        damageMult: 0.72,
+        armorBypassRatio: -0.35,
+        extraHitstopSec: 0,
+      };
+    }
+    return {
+      quality: 'normal',
+      damageMult: 1.0,
+      armorBypassRatio: 0,
+      extraHitstopSec: 0,
+    };
+  }
+
+  if (isHammerMaceOrAxe) {
+    // Hammer / Mace / Axe: heavy head sweet-spot at 60%..98% reach; handle/haft sour-spot inside 42%
+    if (rNorm >= 0.6 && rNorm <= 1.0 && angDiff <= 0.48) {
+      return {
+        quality: 'sweet',
+        damageMult: 1.35,
+        armorBypassRatio: 0.4,
+        extraHitstopSec: 0.045,
+      };
+    }
+    if (rNorm < 0.42) {
+      return {
+        quality: 'sour',
+        damageMult: 0.72,
+        armorBypassRatio: -0.35,
+        extraHitstopSec: 0,
+      };
+    }
+    return {
+      quality: 'normal',
+      damageMult: 1.0,
+      armorBypassRatio: 0,
+      extraHitstopSec: 0,
+    };
+  }
+
+  // Swords / Blades / Daggers / Shields: upper-blade cutting sweet-spot at 55%..92% reach near center of swing
+  if (rNorm >= 0.55 && rNorm <= 0.94 && angDiff <= 0.36) {
+    return {
+      quality: 'sweet',
+      damageMult: 1.3,
+      armorBypassRatio: 0.35,
+      extraHitstopSec: 0.04,
+    };
+  }
+  if (rNorm < 0.36) {
+    return {
+      quality: 'sour',
+      damageMult: 0.78,
+      armorBypassRatio: -0.25,
+      extraHitstopSec: 0,
+    };
+  }
+  return {
+    quality: 'normal',
+    damageMult: 1.0,
+    armorBypassRatio: 0,
+    extraHitstopSec: 0,
+  };
 }
 
 /**

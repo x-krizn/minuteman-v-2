@@ -1237,34 +1237,82 @@ export function drawPlayerWeaponMounts25D(
   const mainPass: 'behindBody' | 'inFrontOfBody' =
     isNorth || isWest ? 'behindBody' : 'inFrontOfBody';
   if (mainId && mainPass === pass) {
-    const isAttacking = Boolean(
-      options?.isAttacking ?? (state.activeSkillSlot !== null && state.skillActionTimer > 0)
+    const isWindingUp = Boolean(
+      state.activeSkillSlot !== null && (state.skillTellTimer || 0) > 0
     );
+    const isAttacking = Boolean(
+      options?.isAttacking ??
+        (state.activeSkillSlot !== null &&
+          (state.skillTellTimer || 0) <= 0 &&
+          (state.skillActionTimer || 0) > 0)
+    );
+    const windupMax = Math.max(0.05, state.skillTellMaxTimer || 0.14);
+    const windupPct = isWindingUp
+      ? Math.max(0, Math.min(1, 1 - (state.skillTellTimer || 0) / windupMax))
+      : 0;
+    const actionMax = Math.max(0.08, state.skillActionMaxTimer || 0.22);
+    const actionElapsedPct = isAttacking
+      ? Math.max(0, Math.min(1, 1 - (state.skillActionTimer || 0) / actionMax))
+      : 0;
+    const isFollowThrough = isAttacking && actionElapsedPct > 0.6;
+    const recoveryLerp = isFollowThrough ? 1 - (actionElapsedPct - 0.6) / 0.4 : 1.0;
+
     const mainDef = getWeaponDefinition(mainId);
     const mainIsMelee = mainDef?.equipmentRole === 'melee';
     const mainIsBolter = mainDef?.equipmentRole === 'ranged' && mainId !== 'great_bow';
-    const isSpearOrLance = mainId === 'short_spear' || mainId === 'avalon_siege_lance';
-    const isMace = mainId === 'mace';
+    const isSpearOrLance =
+      mainId === 'short_spear' ||
+      mainId === 'ls900_swordspear' ||
+      mainId === 'avalon_siege_lance' ||
+      mainId === 'hl220_lightburst_lance';
+    const isMaceOrHammer =
+      mainId === 'mace' ||
+      mainId === 'wz200_manacore_staff' ||
+      mainId === 'hallowed_scepter' ||
+      mainId === 'hand_axe' ||
+      mainId === 'siegebreaker';
     const isShield = mainDef?.equipmentRole === 'shield';
     const isRanged = mainDef?.equipmentRole === 'ranged' || mainDef?.equipmentRole === 'quiver';
+    const swingParity = state.ammo % 2 === 0 ? 1 : -1;
 
-    const thrustOffset = isAttacking
-      ? isSpearOrLance
-        ? 4.5
-        : isShield
-          ? 3.5
-          : isRanged
-            ? -1.5
-            : 2.5
-      : 0;
-    const swingRot = isAttacking
-      ? isSpearOrLance || isShield || isRanged
-        ? 0
-        : isMace
-          ? 0.65
-          : (state.ammo % 2 === 0 ? 1 : -1) * 0.55
-      : 0;
-    const slamDropY = isAttacking && isMace ? 2.5 : 0;
+    // 3-Phase Multi-Frame Keyframes:
+    // Phase 1 (Windup): Pull weapon back / raise overhead
+    // Phase 2 (Active Strike, 0..60%): Full forward extension / cleave arc
+    // Phase 3 (Follow-Through, 60..100%): Smooth return to neutral locked-in hardpoint
+    let thrustOffset = 0;
+    let swingRot = 0;
+    let slamDropY = 0;
+
+    if (isWindingUp) {
+      if (isSpearOrLance) {
+        thrustOffset = -2.5 * windupPct;
+      } else if (isMaceOrHammer) {
+        swingRot = -0.62 * windupPct;
+        slamDropY = -2.0 * windupPct;
+      } else if (isShield) {
+        thrustOffset = -1.5 * windupPct;
+      } else if (isRanged) {
+        thrustOffset = 1.0 * windupPct;
+      } else {
+        swingRot = -swingParity * 0.48 * windupPct;
+        thrustOffset = -1.2 * windupPct;
+      }
+    } else if (isAttacking) {
+      if (isSpearOrLance) {
+        thrustOffset = 5.5 * recoveryLerp;
+      } else if (isMaceOrHammer) {
+        swingRot = 0.72 * recoveryLerp;
+        slamDropY = 2.8 * recoveryLerp;
+        thrustOffset = 2.0 * recoveryLerp;
+      } else if (isShield) {
+        thrustOffset = 4.0 * recoveryLerp;
+      } else if (isRanged) {
+        thrustOffset = -2.0 * recoveryLerp;
+      } else {
+        swingRot = swingParity * 0.62 * recoveryLerp;
+        thrustOffset = 3.0 * recoveryLerp;
+      }
+    }
 
     const baseRx = isEast
       ? cx + 2.5
@@ -1316,6 +1364,14 @@ export function drawPlayerWeaponMounts25D(
       baseMainRot + swingRot,
       cardinalDir
     );
+
+    // Subtle 2px windup glint at the weapon head/tip on final windup frames
+    if (isWindingUp && windupPct > 0.55) {
+      g.save();
+      g.fillStyle = '#fde047';
+      g.fillRect(Math.round(rx) - 1, Math.round(ry) - 4, 2, 2);
+      g.restore();
+    }
   }
 }
 
@@ -1340,12 +1396,26 @@ export function drawCompositePlayerMech(
   const isCriticalBlink =
     state.frame?.state === 'Critical' && Math.floor(timeSec * 8) % 2 === 0;
 
+  const isWindingUp =
+    !options?.hideWeaponMounts &&
+    state.activeSkillSlot !== null &&
+    (state.skillTellTimer || 0) > 0;
+  const isStriking =
+    !options?.hideWeaponMounts &&
+    state.activeSkillSlot !== null &&
+    (state.skillTellTimer || 0) <= 0 &&
+    (state.skillActionTimer || 0) > 0;
+
   const activeFrameCol: 0 | 1 | 2 | 3 =
     options?.overrideFrame !== undefined
       ? options.overrideFrame
       : state.isBoosterDashing || state.isContinuousBoosting
         ? 3
-        : (state.glideFrame ?? 0);
+        : isWindingUp
+          ? 1
+          : isStriking
+            ? 2
+            : (state.glideFrame ?? 0);
 
   const platingSlice = resolvePartLayerSlice(
     'plating',
@@ -1357,8 +1427,9 @@ export function drawCompositePlayerMech(
   const armsSlice = resolvePartLayerSlice('arms', armsDef, cardinalDir, activeFrameCol, false);
   const headSlice = resolvePartLayerSlice('head', headDef, cardinalDir, activeFrameCol, false);
 
+  const postureShiftY = isWindingUp ? 1 : 0;
   const cx = Math.round(x);
-  const cy = Math.round(py);
+  const cy = Math.round(py) + postureShiftY;
 
   g.save();
   g.imageSmoothingEnabled = false;
@@ -1462,6 +1533,33 @@ export function drawCompositePlayerMech(
   // Pass 3: Front-of-body weapon mounts (e.g., Main [Right] & Side [Left] when facing South, or Aux [Back] when facing North)
   if (!options?.hideWeaponMounts) {
     drawPlayerWeaponMounts25D(g, state, cx, cy, cardinalDir, timeSec, 'inFrontOfBody', options);
+  }
+
+  // Pass 4: Fighting-Game / Souls Silhouette Flash-Frame Overlay
+  if (!options?.hideWeaponMounts && (state.flashTimer || 0) > 0) {
+    const flashColor = state.flashColor || '#ffffff';
+    const flashKind = state.flashKind || 'hit';
+    const flashMax = Math.max(0.05, state.flashMaxTimer || 0.12);
+    const flashRatio = Math.max(0, Math.min(1, (state.flashTimer || 0) / flashMax));
+    const isStrobeWhite =
+      (flashKind === 'sweet' || flashKind === 'parry' || flashKind === 'stagger') &&
+      flashRatio > 0.55;
+
+    g.save();
+    g.globalAlpha = Math.min(0.85, 0.35 + flashRatio * 0.5);
+    g.strokeStyle = isStrobeWhite ? '#ffffff' : flashColor;
+    g.lineWidth = 1.2;
+    g.strokeRect(cx - 6, cy - 15, 12, 14);
+    if (flashKind === 'parry' || flashKind === 'sweet') {
+      g.fillStyle = '#ffffff';
+      g.fillRect(cx - 7, cy - 9, 14, 2);
+      g.fillRect(cx - 1, cy - 15, 2, 14);
+    } else if (flashKind === 'ready' || flashKind === 'shield') {
+      g.fillStyle = flashColor;
+      g.globalAlpha = flashRatio * 0.45;
+      g.fillRect(cx - 5, cy - 14, 10, 12);
+    }
+    g.restore();
   }
 
   g.restore();

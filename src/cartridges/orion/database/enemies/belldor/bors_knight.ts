@@ -69,11 +69,39 @@ export const borsKnightEnemy: EnemyWikiDefinition = {
   onDeath(state, e, ctx) {
     handleGrailKnightDefeat(state, e, ctx);
   },
-  render25D(g, e, _state, ey, isHurt) {
-    g.fillStyle = isHurt ? '#ffffff' : '#312e81';
-    g.fillRect(e.x - 8, ey - 20, 16, 20);
-    g.fillStyle = (e.hitsLanded || 0) > 0 ? '#f43f5e' : '#b8a4ff';
-    g.fillRect(e.x - 6, ey - 18, 12, 12);
+  render25D(g, e, state, ey, isHurt, isWindup) {
+    const maxT = Math.max(0.05, e.stateMaxTimer || this.tellDurationSec);
+    const windupPct = isWindup ? Math.max(0, Math.min(1, 1 - e.stateTimer / maxT)) : 0;
+    const isAttack = e.state === 'attack';
+    const crouchY = isWindup && e.enraged ? Math.round(windupPct * 3) : 0;
+
+    // Berserk Striker heavy chassis
+    g.fillStyle = isHurt ? '#ffffff' : e.enraged ? '#450a0a' : '#312e81';
+    g.fillRect(e.x - 8, ey - 20 + crouchY, 16, 20 - crouchY);
+    g.fillStyle = e.enraged ? '#ef4444' : (e.hitsLanded || 0) > 0 ? '#f43f5e' : '#b8a4ff';
+    g.fillRect(e.x - 6, ey - 18 + crouchY, 12, 12);
+
+    // Weapon posture:
+    // - Normal windup: raises heavy maul overhead
+    // - Enraged windup: coils execution lance low behind hip with crimson tip glint
+    const ang = e.attackAngle ?? Math.atan2(state.y - e.y, state.x - e.x);
+    const cos = Math.cos(ang);
+    const sin = Math.sin(ang);
+    if (e.enraged) {
+      const thrustExtend = isWindup ? -4 * windupPct : isAttack ? 8 : 2;
+      const wx = e.x + cos * (6 + thrustExtend);
+      const wy = ey - 10 + crouchY + sin * (4 + thrustExtend * 0.5);
+      g.fillStyle = isWindup && windupPct > 0.5 ? '#fde047' : '#fca5a5';
+      g.fillRect(Math.round(wx) - 2, Math.round(wy) - 2, 5, 4);
+    } else {
+      const maulY = isWindup
+        ? ey - 22 - Math.round(windupPct * 6)
+        : isAttack
+          ? ey - 6
+          : ey - 15;
+      g.fillStyle = isWindup && windupPct > 0.5 ? '#fde047' : '#d8b4fe';
+      g.fillRect(e.x + 6, maulY, 5, 6);
+    }
   },
   update(rooms, state: OrionState, e: EnemyEntity, dt: number) {
     if (e.stun > 0) {
@@ -86,8 +114,42 @@ export const borsKnightEnemy: EnemyWikiDefinition = {
       e.enraged = true;
       e.speed = 33;
       e.emissiveColor = '#ef4444';
-      state.toastText = 'SIR BORS ENRAGED — WATCH FOR KILLING LUNGE!';
-      state.toastTimer = 2.2;
+      e.flashColor = '#ef4444';
+      e.flashTimer = 0.24;
+      e.flashMaxTimer = 0.24;
+      e.flashKind = 'stagger';
+      for (let i = 0; i < 10; i++) {
+        state.particles.push({
+          x: e.x + (Math.random() - 0.5) * 10,
+          y: e.y + (Math.random() - 0.5) * 8,
+          z: 8,
+          vx: (Math.random() - 0.5) * 24,
+          vy: (Math.random() - 0.5) * 24,
+          vz: 16,
+          life: 0.35,
+          maxLife: 0.35,
+          color: '#ef4444',
+          size: 3,
+          fade: true,
+        });
+      }
+    }
+
+    // Continuous crimson reactor steam while enraged
+    if (e.enraged && Math.random() < 0.22) {
+      state.particles.push({
+        x: e.x + (Math.random() - 0.5) * 8,
+        y: e.y + (Math.random() - 0.5) * 6,
+        z: 10,
+        vx: 0,
+        vy: -10,
+        vz: 12,
+        life: 0.22,
+        maxLife: 0.22,
+        color: '#f87171',
+        size: 2,
+        fade: true,
+      });
     }
 
     const dx = state.x - e.x;
@@ -99,6 +161,7 @@ export const borsKnightEnemy: EnemyWikiDefinition = {
       if (e.stateTimer <= 0) {
         e.state = 'attack';
         e.stateTimer = 0.25;
+        e.stateMaxTimer = 0.25;
         e.hasStruckThisAttack = false;
         const ang = e.attackAngle ?? Math.atan2(dy, dx);
         const lungeDist = e.enraged ? 26 : 14;
@@ -169,6 +232,7 @@ export const borsKnightEnemy: EnemyWikiDefinition = {
     if (dist <= (e.enraged ? 44 : 32) && e.attackCd <= 0) {
       e.state = 'windup';
       e.stateTimer = this.tellDurationSec;
+      e.stateMaxTimer = this.tellDurationSec;
       e.attackAngle = Math.atan2(dy, dx);
       e.hasStruckThisAttack = false;
       return;

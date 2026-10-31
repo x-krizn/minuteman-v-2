@@ -58,11 +58,34 @@ export const orcScoutEnemy: EnemyWikiDefinition = {
   lootTable: [
     { itemId: 'demantoid_flask', chance: 0.45 },
   ],
-  render25D(g, e, _state, ey, isHurt) {
+  render25D(g, e, state, ey, isHurt, isWindup) {
+    const maxT = Math.max(0.05, e.stateMaxTimer || this.tellDurationSec);
+    const windupPct = isWindup ? Math.max(0, Math.min(1, 1 - e.stateTimer / maxT)) : 0;
+    const kneelDrop = isWindup ? 2 : 0;
+    const isHealing =
+      !isWindup && e.state !== 'attack' && e.frame.integrity < e.frame.maxIntegrity * 0.6;
+
+    // Scout body (drops to one knee when drawing bow)
     g.fillStyle = isHurt ? '#ffffff' : '#c2410c';
-    g.fillRect(e.x - 4, ey - 13, 8, 13);
+    g.fillRect(e.x - 4, ey - 13 + kneelDrop, 8, 13 - kneelDrop);
+
+    const ang = e.attackAngle ?? Math.atan2(state.y - e.y, state.x - e.x);
+    const cos = Math.cos(ang);
+    const sin = Math.sin(ang);
+    const bowX = e.x + cos * (isWindup ? 5 + windupPct * 2 : 4);
+    const bowY = ey - 8 + kneelDrop + sin * 3;
+
+    // Bow stave + taut nocked arrow during windup
     g.fillStyle = '#fed7aa';
-    g.fillRect(e.x + 3, ey - 10, 4, 3);
+    g.fillRect(Math.round(bowX) - 1, Math.round(bowY) - 3, 3, 6);
+    if (isWindup) {
+      g.fillStyle = windupPct > 0.6 ? '#fde047' : '#fb923c';
+      g.fillRect(Math.round(bowX + cos * 3) - 1, Math.round(bowY + sin * 2) - 1, 3, 2);
+    } else if (isHealing) {
+      // Contextual self-mend flask held to chest
+      g.fillStyle = '#4ade80';
+      g.fillRect(e.x - 2, ey - 10, 3, 3);
+    }
   },
   update(rooms, state: OrionState, e: EnemyEntity, dt: number) {
     if (e.stun > 0) {
@@ -80,7 +103,8 @@ export const orcScoutEnemy: EnemyWikiDefinition = {
       e.stateTimer -= dt;
       if (e.stateTimer <= 0) {
         e.state = 'attack';
-        e.stateTimer = 0.15;
+        e.stateTimer = 0.18;
+        e.stateMaxTimer = 0.18;
         const ang = e.attackAngle ?? Math.atan2(dy, dx);
         const ldx = Math.cos(ang);
         const ldy = Math.sin(ang);
@@ -135,7 +159,7 @@ export const orcScoutEnemy: EnemyWikiDefinition = {
 
     e.dir = getDirFromVector(dx, dy);
 
-    // Slip away to heal when hurt (<60% HP)
+    // Slip away to heal when hurt (<60% HP) with contextual green mend sparks
     const isHurtRetreating = e.frame.integrity < e.frame.maxIntegrity * 0.6;
     if (isHurtRetreating && dist < 75) {
       stepEnemyWithCollision(
@@ -146,6 +170,21 @@ export const orcScoutEnemy: EnemyWikiDefinition = {
         -(dy / dist) * e.speed * 1.1 * dt
       );
       e.frame.integrity = Math.min(e.frame.maxIntegrity, e.frame.integrity + 7 * dt);
+      if (Math.random() < 0.25) {
+        state.particles.push({
+          x: e.x + (Math.random() - 0.5) * 6,
+          y: e.y + (Math.random() - 0.5) * 4,
+          z: 6,
+          vx: 0,
+          vy: -8,
+          vz: 10,
+          life: 0.25,
+          maxLife: 0.25,
+          color: '#4ade80',
+          size: 2,
+          fade: true,
+        });
+      }
       return;
     }
 
@@ -170,6 +209,7 @@ export const orcScoutEnemy: EnemyWikiDefinition = {
     if (dist <= 96 && e.attackCd <= 0) {
       e.state = 'windup';
       e.stateTimer = this.tellDurationSec;
+      e.stateMaxTimer = this.tellDurationSec;
       e.attackAngle = Math.atan2(dy, dx);
     }
   },

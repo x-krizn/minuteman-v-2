@@ -27,19 +27,21 @@ import {
 } from '../inertiaSystem';
 import { isSolidAt, notifyOrionStateChange } from '../playerSystem';
 import {
+  evaluatePositionalHitQuality,
   getCombatAimVector,
   getLockedTarget,
   isTargetInDirectionalArc,
   isTargetInImpactZone,
   isTargetInThrustCorridor,
   normalizeAngleDiff,
+  triggerEntityFlash,
 } from './combatHelpers';
 import { applyDamageToLayers, PERFECT_BLOCK_WINDOW_SEC } from './damageSystem';
 import { getSkillCooldownKey } from './skillExecution';
 
 export function firePrimarySalvoShot(
   state: OrionState,
-  ctx: OrionCombatContext,
+  _ctx: OrionCombatContext,
   _isAuto: boolean
 ): boolean {
   const currentWeaponId =
@@ -63,7 +65,6 @@ export function firePrimarySalvoShot(
     state.skillReloadTimers = state.skillReloadTimers || {};
     state.skillReloadTimers[s1Key] = reloadDur;
     soundSystem.playMenuBeep();
-    ctx.say(isMeleeOrShield ? 'RECOVERING STANCE...' : 'RELOADING...');
     notifyOrionStateChange();
     return false;
   }
@@ -77,6 +78,7 @@ export function firePrimarySalvoShot(
   state.activeActionId = null;
   state.activeSkillCooldownKey = s1Key;
   state.skillTellTimer = Math.max(0.04, skill0.tellDurationSec * tellMult);
+  state.skillTellMaxTimer = state.skillTellTimer;
   const perShotAction = isMeleeOrShield
     ? Math.max(
         0.18,
@@ -87,6 +89,7 @@ export function firePrimarySalvoShot(
         weapon.chainDurationSec / Math.max(1, weapon.shotsPerChain) - skill0.tellDurationSec
       );
   state.skillActionTimer = perShotAction;
+  state.skillActionMaxTimer = perShotAction;
   return true;
 }
 
@@ -164,9 +167,20 @@ export function executeBasicAttackShot(
       stunSec: number = 0.22,
       knockbackDist: number = 0,
       extraArmorDent: number = 0,
-      shieldBypassRatio: number = 0
+      shieldBypassRatio: number = 0,
+      maxReach: number = 28
     ) => {
       e.hurt = 0.2;
+      const hitEval = evaluatePositionalHitQuality(
+        currentWeaponId,
+        state.x,
+        state.y,
+        aimAngle,
+        maxReach,
+        e.x,
+        e.y,
+        false
+      );
       const totalDent = extraArmorDent + gemCombatMods.extraArmorDentOnHit;
       if (totalDent > 0 && e.armor.durability > 0) {
         e.armor.durability = Math.max(0, e.armor.durability - totalDent);
@@ -181,7 +195,9 @@ export function executeBasicAttackShot(
 
       const attackerMu = computeMomentumFraction(state.vx, state.vy, impDx, impDy);
       const impulseJ = computeMeleeImpulse(
-        basicWeaponSpec.attackWeight * (1 + knockbackDist * 0.04),
+        basicWeaponSpec.attackWeight *
+          (1 + knockbackDist * 0.04) *
+          (hitEval.quality === 'sweet' ? 1.2 : 1.0),
         basicWeaponSpec.attackSpeed,
         playerBasicProf.totalBaseWeight,
         attackerMu,
@@ -200,10 +216,14 @@ export function executeBasicAttackShot(
       e.knockbackVy = (e.knockbackVy || 0) + impDy * inertiaRes.displacementSpeedPx;
       e.lastInertiaOutcome = inertiaRes.outcome;
       e.lastInertiaOutcomeTimer = 0.55;
-      state.hitstopTimer = Math.max(state.hitstopTimer || 0, inertiaRes.hitstopSec);
+      state.hitstopTimer = Math.max(
+        state.hitstopTimer || 0,
+        inertiaRes.hitstopSec + hitEval.extraHitstopSec
+      );
 
       if (inertiaRes.outcome === 'none') {
-        ctx.spawnParticles(e.x, e.y, e.z + 10, 3, '#94a3b8', 'BRACED');
+        triggerEntityFlash(e, '#94a3b8', 0.08, 'armor_deflect');
+        ctx.spawnParticles(e.x, e.y, e.z + 10, 3, '#94a3b8', '');
       } else {
         e.stun = Math.max(e.stun, inertiaRes.recoverySec, stunSec * 0.5);
         if (
@@ -212,8 +232,10 @@ export function executeBasicAttackShot(
         ) {
           e.state = 'stagger';
           e.stateTimer = inertiaRes.recoverySec;
+          e.stateMaxTimer = inertiaRes.recoverySec;
           const outFmt = formatInertiaOutcomeLabel(inertiaRes.outcome);
-          ctx.spawnParticles(e.x, e.y, e.z + 12, 5, outFmt.color, outFmt.label);
+          triggerEntityFlash(e, '#ffffff', 0.16, 'stagger');
+          ctx.spawnParticles(e.x, e.y, e.z + 12, 5, outFmt.color, '');
         }
       }
       if (!basicHitGrantedBonus) {
@@ -269,18 +291,39 @@ export function executeBasicAttackShot(
         }
       }
       const effDamage = Math.round(
-        shotDmg * oathMult * opticMult * charoiteMult * adaptiveMult * execMult * backstabMult
+        shotDmg *
+          hitEval.damageMult *
+          oathMult *
+          opticMult *
+          charoiteMult *
+          adaptiveMult *
+          execMult *
+          backstabMult
       );
       const resolvedDmgType = weapon?.adaptiveDamageTypes
         ? e.shields.capacity > 0
           ? weapon.adaptiveDamageTypes[0]
           : weapon.adaptiveDamageTypes[1]
         : action.damageType;
+      const layerOpts = {
+        armorBypassRatio: hitEval.armorBypassRatio,
+        hitQuality: hitEval.quality,
+        onFlash: (color: string, dur: number, kind: string) =>
+          triggerEntityFlash(e, color, dur, kind),
+      };
       if (shieldBypassRatio > 0 && e.shields.capacity > 0) {
         const bypassed = Math.max(1, Math.round(effDamage * shieldBypassRatio));
         const normalPortion = Math.max(0, effDamage - bypassed);
         if (normalPortion > 0) {
-          applyDamageToLayers(e.shields, e.armor, e.frame, normalPortion, resolvedDmgType);
+          applyDamageToLayers(
+            e.shields,
+            e.armor,
+            e.frame,
+            normalPortion,
+            resolvedDmgType,
+            undefined,
+            layerOpts
+          );
         }
         const savedShield = e.shields.capacity;
         e.shields.capacity = 0;
@@ -290,7 +333,8 @@ export function executeBasicAttackShot(
           e.frame,
           bypassed,
           resolvedDmgType,
-          (count, color, label) => ctx.spawnParticles(e.x, e.y, e.z + 8, count, color, label)
+          (count, color) => ctx.spawnParticles(e.x, e.y, e.z + 8, count, color, ''),
+          layerOpts
         );
         e.shields.capacity = savedShield;
       } else {
@@ -300,8 +344,12 @@ export function executeBasicAttackShot(
           e.frame,
           effDamage,
           resolvedDmgType,
-          (count, color, label) => ctx.spawnParticles(e.x, e.y, e.z + 8, count, color, label)
+          (count, color) => ctx.spawnParticles(e.x, e.y, e.z + 8, count, color, ''),
+          layerOpts
         );
+      }
+      if (hitEval.quality === 'sweet') {
+        soundSystem.playPowerup();
       }
       soundSystem.playHit();
     };
@@ -329,7 +377,7 @@ export function executeBasicAttackShot(
       for (const e of state.enemies) {
         if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
         if (isTargetInThrustCorridor(state.x, state.y, aimAngle, 40, 12, e.x, e.y)) {
-          resolveMeleeHit(e, 0.22, 3);
+          resolveMeleeHit(e, 0.22, 3, 0, 0, 40);
         }
       }
       ctx.spawnParticles(
@@ -363,7 +411,7 @@ export function executeBasicAttackShot(
       for (const e of state.enemies) {
         if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
         if (isTargetInThrustCorridor(state.x, state.y, aimAngle, 38, 13, e.x, e.y)) {
-          resolveMeleeHit(e, 0.35, 8);
+          resolveMeleeHit(e, 0.35, 8, 0, 0, 38);
         }
       }
       state.projectiles.push({
@@ -407,7 +455,7 @@ export function executeBasicAttackShot(
       for (const e of state.enemies) {
         if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
         if (isTargetInImpactZone(state.x, state.y, aimAngle, 16, 20, e.x, e.y)) {
-          resolveMeleeHit(e, 0.34, 5, 4);
+          resolveMeleeHit(e, 0.34, 5, 4, 0, 26);
         }
       }
       if (
@@ -474,7 +522,9 @@ export function executeBasicAttackShot(
             e,
             isSiegebreaker ? 0.35 : 0.25,
             isSiegebreaker ? 6 : 4,
-            isSiegebreaker ? 5 : 2
+            isSiegebreaker ? 5 : 2,
+            0,
+            isSiegebreaker ? 30 : 25
           );
         }
       }
@@ -528,7 +578,7 @@ export function executeBasicAttackShot(
             e.y
           )
         ) {
-          resolveMeleeHit(e, 0.38, currentWeaponId === 'pavise_shield' ? 10 : 7, 2);
+          resolveMeleeHit(e, 0.38, currentWeaponId === 'pavise_shield' ? 10 : 7, 2, 0, bashRadius + 4);
         }
       }
       ctx.spawnParticles(
@@ -581,7 +631,7 @@ export function executeBasicAttackShot(
             currentWeaponId === 's6_phantom_edge'
               ? 0.25
               : 0;
-          resolveMeleeHit(e, 0.22, isLongBlade ? 4 : 2, 0, bypassShieldRatio);
+          resolveMeleeHit(e, 0.22, isLongBlade ? 4 : 2, 0, bypassShieldRatio, slashRadius + 4);
         }
       }
       ctx.spawnParticles(
@@ -761,6 +811,16 @@ export function updateProjectiles(
         if (dist < 14 && Math.abs(e.z - p.z) < 14) {
           hit = true;
           e.hurt = 0.2;
+          const hitEval = evaluatePositionalHitQuality(
+            'ranged_projectile',
+            p.x,
+            p.y,
+            Math.atan2(p.vy, p.vx),
+            14,
+            e.x,
+            e.y,
+            true
+          );
 
           // Resolve Ranged Inertia (`J_ranged = projectile_weight × projectile_speed`, NO shooter weight term — §2.6, §4, §9.6)
           const projSpeed = p.projectileSpeed || Math.hypot(p.vx, p.vy) || 185;
@@ -788,10 +848,14 @@ export function updateProjectiles(
           e.knockbackVy = (e.knockbackVy || 0) + impDy * inertiaRes.displacementSpeedPx;
           e.lastInertiaOutcome = inertiaRes.outcome;
           e.lastInertiaOutcomeTimer = 0.55;
-          state.hitstopTimer = Math.max(state.hitstopTimer || 0, inertiaRes.hitstopSec);
+          state.hitstopTimer = Math.max(
+            state.hitstopTimer || 0,
+            inertiaRes.hitstopSec + hitEval.extraHitstopSec
+          );
 
           if (inertiaRes.outcome === 'none') {
-            ctx.spawnParticles(e.x, e.y, e.z + 10, 3, '#94a3b8', 'BRACED');
+            triggerEntityFlash(e, '#94a3b8', 0.08, 'armor_deflect');
+            ctx.spawnParticles(e.x, e.y, e.z + 10, 3, '#94a3b8', '');
           } else {
             e.stun = Math.max(e.stun, inertiaRes.recoverySec);
             if (
@@ -800,8 +864,10 @@ export function updateProjectiles(
             ) {
               e.state = 'stagger';
               e.stateTimer = inertiaRes.recoverySec;
+              e.stateMaxTimer = inertiaRes.recoverySec;
               const outFmt = formatInertiaOutcomeLabel(inertiaRes.outcome);
-              ctx.spawnParticles(e.x, e.y, e.z + 12, 5, outFmt.color, outFmt.label);
+              triggerEntityFlash(e, '#ffffff', 0.16, 'stagger');
+              ctx.spawnParticles(e.x, e.y, e.z + 12, 5, outFmt.color, '');
             }
           }
 
@@ -818,7 +884,9 @@ export function updateProjectiles(
             state.equippedFeats.some((f) => ['assassinate', 'executioners_gambit'].includes(f)) &&
             e.frame.integrity <= e.frame.maxIntegrity * 0.4;
           const execMult = hasAssassinate ? 1.2 : 1.0;
-          const effDamage = Math.round(p.damage * oathMult * opticMult * beamMult * execMult);
+          const effDamage = Math.round(
+            p.damage * hitEval.damageMult * oathMult * opticMult * beamMult * execMult
+          );
 
           applyDamageToLayers(
             e.shields,
@@ -826,9 +894,17 @@ export function updateProjectiles(
             e.frame,
             effDamage,
             p.damageType,
-            (count, color, label) => ctx.spawnParticles(e.x, e.y, e.z + 8, count, color, label)
+            (count, color) => ctx.spawnParticles(e.x, e.y, e.z + 8, count, color, ''),
+            {
+              armorBypassRatio: hitEval.armorBypassRatio,
+              hitQuality: hitEval.quality,
+              onFlash: (color, dur, kind) => triggerEntityFlash(e, color, dur, kind),
+            }
           );
 
+          if (hitEval.quality === 'sweet') {
+            soundSystem.playPowerup();
+          }
           soundSystem.playHit();
 
           if (p.onImpact) {
@@ -852,19 +928,22 @@ export function updateProjectiles(
 
         if (isPerfectBlock) {
           soundSystem.playPowerup();
+          triggerEntityFlash(state, '#fde047', 0.16, 'parry');
+          state.hitstopTimer = Math.max(state.hitstopTimer || 0, 0.05);
           state.shields.capacity = Math.min(
             state.shields.maxCapacity,
             state.shields.capacity + 10
           );
           state.heat = Math.max(0, state.heat - 8);
-          ctx.spawnParticles(state.x, state.y, state.z + 10, 8, '#38bdf8', 'PERFECT BLOCK!');
+          ctx.spawnParticles(state.x, state.y, state.z + 10, 8, '#fde047', '');
         } else {
           soundSystem.playHit();
           const finalProjDamage = isGuarding
             ? Math.max(1, Math.round(p.damage * 0.35))
             : p.damage;
           if (isGuarding) {
-            ctx.spawnParticles(state.x, state.y, state.z + 8, 4, '#38bdf8', 'BLOCKED');
+            triggerEntityFlash(state, '#38bdf8', 0.1, 'shield');
+            ctx.spawnParticles(state.x, state.y, state.z + 8, 4, '#38bdf8', '');
           } else {
             const projSpeed = p.projectileSpeed || Math.hypot(p.vx, p.vy) || 155;
             const projWeight = p.projectileWeight ?? 22;
@@ -889,7 +968,8 @@ export function updateProjectiles(
             state.hitstopTimer = Math.max(state.hitstopTimer || 0, inertiaRes.hitstopSec);
 
             if (inertiaRes.outcome === 'none') {
-              ctx.spawnParticles(state.x, state.y, state.z + 10, 3, '#94a3b8', 'BRACED');
+              triggerEntityFlash(state, '#94a3b8', 0.08, 'armor_deflect');
+              ctx.spawnParticles(state.x, state.y, state.z + 10, 3, '#94a3b8', '');
             } else if (inertiaRes.outcome === 'flinch') {
               state.staggerRecoveryTimer = Math.max(
                 state.staggerRecoveryTimer || 0,
@@ -912,7 +992,8 @@ export function updateProjectiles(
                 state.activeActionId = null;
               }
               const outFmt = formatInertiaOutcomeLabel(inertiaRes.outcome);
-              ctx.spawnParticles(state.x, state.y, state.z + 12, 5, outFmt.color, outFmt.label);
+              triggerEntityFlash(state, '#ffffff', 0.16, 'stagger');
+              ctx.spawnParticles(state.x, state.y, state.z + 12, 5, outFmt.color, '');
             }
           }
           applyDamageToLayers(
@@ -921,8 +1002,11 @@ export function updateProjectiles(
             state.frame,
             finalProjDamage,
             p.damageType,
-            (count, color, label) =>
-              ctx.spawnParticles(state.x, state.y, state.z + 8, count, color, label)
+            (count, color) =>
+              ctx.spawnParticles(state.x, state.y, state.z + 8, count, color, ''),
+            {
+              onFlash: (color, dur, kind) => triggerEntityFlash(state, color, dur, kind),
+            }
           );
         }
 

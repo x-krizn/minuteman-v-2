@@ -44,17 +44,29 @@ export const townNpcEntity: EnemyWikiDefinition = {
         : `Town Scavenger (${disp.toUpperCase()})`,
     };
   },
-  render25D(g, e, _state, ey, isHurt) {
+  render25D(g, e, state, ey, isHurt, isWindup) {
+    const maxT = Math.max(0.05, e.stateMaxTimer || this.tellDurationSec);
+    const windupPct = isWindup ? Math.max(0, Math.min(1, 1 - e.stateTimer / maxT)) : 0;
+    const isAggravated = e.npcDisposition === 'linger' && (e.lingerTimer || 0) > 0.3;
+    const jitterX = isAggravated ? Math.round(Math.sin(state.t * 32) * 1.2) : 0;
+
     const dispColor =
       e.npcDisposition === 'feral'
         ? '#dc2626'
         : e.npcDisposition === 'linger'
-        ? '#d97706'
-        : '#475569';
+          ? '#d97706'
+          : '#475569';
     g.fillStyle = isHurt ? '#ffffff' : dispColor;
-    g.fillRect(e.x - 4, ey - 13, 8, 13);
+    g.fillRect(e.x - 4 + jitterX, ey - 13, 8, 13);
     g.fillStyle = e.isLoyalist ? '#93c5fd' : '#cbd5e1';
-    g.fillRect(e.x - 3, ey - 15, 6, 3);
+    g.fillRect(e.x - 3 + jitterX, ey - 15, 6, 3);
+
+    // Raised weapon posture during feral windup or attack
+    if (e.npcDisposition === 'feral') {
+      const armY = isWindup ? ey - 14 - Math.round(windupPct * 4) : ey - 10;
+      g.fillStyle = isWindup && windupPct > 0.55 ? '#fde047' : '#e2e8f0';
+      g.fillRect(e.x + 4 + jitterX, armY, 3, 5);
+    }
   },
   update(rooms, state: OrionState, e: EnemyEntity, dt: number) {
     if (e.stun > 0) {
@@ -80,17 +92,38 @@ export const townNpcEntity: EnemyWikiDefinition = {
       e.npcDisposition = 'feral';
       e.faction = 'hostile';
       e.name = 'Loyalist Avenger (Hostile)';
+      e.flashColor = '#ef4444';
+      e.flashTimer = 0.2;
+      e.flashMaxTimer = 0.2;
+      e.flashKind = 'stagger';
     }
 
     if (e.npcDisposition === 'linger') {
       if (dist < 38) {
         e.lingerTimer = (e.lingerTimer || 0) + dt;
+        if (Math.random() < 0.25) {
+          state.particles.push({
+            x: e.x + (Math.random() - 0.5) * 6,
+            y: e.y + (Math.random() - 0.5) * 4,
+            z: 8,
+            vx: 0,
+            vy: -6,
+            vz: 10,
+            life: 0.22,
+            maxLife: 0.22,
+            color: '#c084fc',
+            size: 2,
+            fade: true,
+          });
+        }
         if (e.lingerTimer >= 2.5) {
           e.npcDisposition = 'feral';
           e.faction = 'hostile';
           e.name = 'Feral Grail-Sick Citizen';
-          state.toastText = 'GRAIL SICKNESS FLARED — CITIZEN TURNED FERAL!';
-          state.toastTimer = 2.2;
+          e.flashColor = '#ef4444';
+          e.flashTimer = 0.22;
+          e.flashMaxTimer = 0.22;
+          e.flashKind = 'stagger';
         }
       } else {
         e.lingerTimer = Math.max(0, (e.lingerTimer || 0) - dt * 0.5);
@@ -103,6 +136,7 @@ export const townNpcEntity: EnemyWikiDefinition = {
         if (e.stateTimer <= 0) {
           e.state = 'attack';
           e.stateTimer = 0.2;
+          e.stateMaxTimer = 0.2;
           e.hasStruckThisAttack = false;
           const ang = e.attackAngle ?? Math.atan2(dy, dx);
           stepEnemyWithCollision(rooms, state, e, Math.cos(ang) * 10, Math.sin(ang) * 10);
@@ -140,6 +174,7 @@ export const townNpcEntity: EnemyWikiDefinition = {
       if (dist <= 24 && e.attackCd <= 0) {
         e.state = 'windup';
         e.stateTimer = this.tellDurationSec;
+        e.stateMaxTimer = this.tellDurationSec;
         e.attackAngle = Math.atan2(dy, dx);
         e.hasStruckThisAttack = false;
         return;

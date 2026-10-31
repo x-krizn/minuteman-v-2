@@ -68,11 +68,29 @@ export const tristanKnightEnemy: EnemyWikiDefinition = {
   onDeath(state, e, ctx) {
     handleGrailKnightDefeat(state, e, ctx);
   },
-  render25D(g, e, _state, ey, isHurt) {
+  render25D(g, e, state, ey, isHurt, isWindup) {
+    const maxT = Math.max(0.05, e.stateMaxTimer || this.tellDurationSec);
+    const windupPct = isWindup ? Math.max(0, Math.min(1, 1 - e.stateTimer / maxT)) : 0;
+    const kneelDrop = isWindup ? 2 : 0;
+
     g.fillStyle = isHurt ? '#ffffff' : '#065f46';
-    g.fillRect(e.x - 5, ey - 17, 10, 17);
+    g.fillRect(e.x - 5, ey - 17 + kneelDrop, 10, 17 - kneelDrop);
+
+    const ang = e.attackAngle ?? Math.atan2(state.y - e.y, state.x - e.x);
+    const cos = Math.cos(ang);
+    const sin = Math.sin(ang);
+    const bowX = e.x + cos * (isWindup ? 6 + windupPct * 2 : 5);
+    const bowY = ey - 10 + kneelDrop + sin * 4;
+
+    // Greatbow limbs + 3-arrow spread nock glint during windup
     g.fillStyle = '#6ee7b7';
-    g.fillRect(e.x + 4, ey - 13, 4, 7);
+    g.fillRect(Math.round(bowX) - 1, Math.round(bowY) - 4, 3, 8);
+    if (isWindup) {
+      g.fillStyle = windupPct > 0.65 ? '#fde047' : '#4ade80';
+      g.fillRect(Math.round(bowX + cos * 3) - 1, Math.round(bowY + sin * 3) - 3, 2, 2);
+      g.fillRect(Math.round(bowX + cos * 4) - 1, Math.round(bowY + sin * 3) - 1, 2, 2);
+      g.fillRect(Math.round(bowX + cos * 3) - 1, Math.round(bowY + sin * 3) + 1, 2, 2);
+    }
   },
   update(rooms, state: OrionState, e: EnemyEntity, dt: number) {
     if (e.stun > 0) {
@@ -90,6 +108,7 @@ export const tristanKnightEnemy: EnemyWikiDefinition = {
       if (e.stateTimer <= 0) {
         e.state = 'attack';
         e.stateTimer = 0.2;
+        e.stateMaxTimer = 0.2;
         const baseAngle = e.attackAngle ?? Math.atan2(dy, dx);
         state.bladeTrails = state.bladeTrails || [];
         state.bladeTrails.push({
@@ -169,6 +188,7 @@ export const tristanKnightEnemy: EnemyWikiDefinition = {
     if (e.attackCd <= 0) {
       e.state = 'windup';
       e.stateTimer = this.tellDurationSec;
+      e.stateMaxTimer = this.tellDurationSec;
       e.attackAngle = Math.atan2(dy, dx);
     }
   },

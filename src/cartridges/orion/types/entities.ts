@@ -38,6 +38,16 @@ export interface EnemyEntity {
   t: number;
   state: 'idle' | 'patrol' | 'windup' | 'attack' | 'recovery' | 'stagger';
   stateTimer: number;
+  /** Initial duration of the active enemy state (used for normalized multi-frame animation progress) */
+  stateMaxTimer?: number;
+  /** Active combat flash-frame tint color */
+  flashColor?: string;
+  /** Remaining combat flash-frame timer in seconds */
+  flashTimer?: number;
+  /** Initial combat flash-frame duration in seconds */
+  flashMaxTimer?: number;
+  /** Semantic flash-frame effect kind ('sweet' | 'hit' | 'armor_deflect' | 'armor_shred' | 'shield' | 'shield_break' | 'parry' | 'stagger' | 'ready') */
+  flashKind?: string;
   attackCd: number;
   tellRadius?: number;
   isFlying?: boolean;

@@ -24,9 +24,20 @@ import {
   isTargetInDirectionalArc,
   isTargetInImpactZone,
   isTargetInThrustCorridor,
+  PositionalHitQuality,
+  triggerEntityFlash,
 } from './combatHelpers';
 
 export const PERFECT_BLOCK_WINDOW_SEC = 0.25;
+
+export interface DamageLayerOptions {
+  /** Positional accuracy armor bypass ratio (+0.40 on sweet-spot crit, -0.35 on sour-spot glance) */
+  armorBypassRatio?: number;
+  /** Positional accuracy hit quality ('sweet' | 'normal' | 'sour') */
+  hitQuality?: PositionalHitQuality;
+  /** Optional callback to trigger a sprite silhouette flash frame on the defender */
+  onFlash?: (color: string, durationSec: number, kind: string) => void;
+}
 
 // [ORION-ANCHOR: COMBAT-DEFENSE-MATH]
 /**
@@ -39,12 +50,15 @@ export function applyDamageToLayers(
   frame: FrameState,
   rawDamage: number,
   damageType: DamageType,
-  spawnParticles?: (count: number, color: string, label: string) => void
+  spawnParticles?: (count: number, color: string, label: string) => void,
+  options?: DamageLayerOptions
 ): { absorbedByShield: number; stoppedByArmor: boolean; frameDamage: number } {
   let remaining = Math.max(1, rawDamage);
   let absorbedByShield = 0;
   let stoppedByArmor = false;
   let frameDamage = 0;
+  const hitQuality = options?.hitQuality || 'normal';
+  const armorBypassRatio = options?.armorBypassRatio || 0;
 
   // 1. SHIELD LAYER (Pulse & Beam disrupt shields; Wave partially bleeds through shields; Pierce is resisted by full shields)
   if (shields.capacity > 0) {
@@ -76,11 +90,9 @@ export function applyDamageToLayers(
       remaining = waveBleed;
       shields.rechargeDelay = damageType === 'Pulse' ? 4.0 : 3.0;
       if (remaining === 0) {
-        spawnParticles?.(
-          4,
-          damageType === 'Pulse' ? '#38bdf8' : '#77c7ff',
-          damageType === 'Pulse' ? 'PULSE DISRUPT' : 'SHIELD ABSORB'
-        );
+        const shieldColor = damageType === 'Pulse' ? '#38bdf8' : '#77c7ff';
+        spawnParticles?.(5, shieldColor, '');
+        options?.onFlash?.('#38bdf8', 0.1, 'shield');
         return { absorbedByShield, stoppedByArmor: false, frameDamage: 0 };
       }
     } else {
@@ -93,7 +105,8 @@ export function applyDamageToLayers(
       shields.capacity = 0;
       shields.overloaded = true;
       shields.overloadTimer = damageType === 'Pulse' ? 5.0 : 4.0;
-      spawnParticles?.(8, '#77c7ff', 'SHIELD BROKEN!');
+      spawnParticles?.(10, '#c084fc', '');
+      options?.onFlash?.('#c084fc', 0.18, 'shield_break');
     }
   }
 
@@ -114,6 +127,9 @@ export function applyDamageToLayers(
       durShredMult *= 1.25;
     } else if (armorType === 'Hardened' && (damageType === 'Pierce' || damageType === 'Pulse')) {
       durShredMult *= 0.8;
+    }
+    if (hitQuality === 'sweet') {
+      durShredMult *= 1.25;
     }
 
     const durabilityLoss = Math.min(
@@ -159,21 +175,23 @@ export function applyDamageToLayers(
       ratingMult *= 1.15;
     }
 
-    const effThreshold = armor.threshold * durRatio * thresholdMult;
-    const effRating = armor.rating * durRatio * ratingMult;
+    // Apply Positional Accuracy ("Sweet-Spot" bypass vs "Sour-Spot" glance)
+    const positionalArmorScale = Math.max(0.25, 1 - armorBypassRatio);
+    const effThreshold = armor.threshold * durRatio * thresholdMult * positionalArmorScale;
+    const effRating = armor.rating * durRatio * ratingMult * positionalArmorScale;
 
     if (remaining < effThreshold) {
       stoppedByArmor = true;
-      spawnParticles?.(5, '#ffd27d', 'ARMOR DEFLECT');
+      spawnParticles?.(6, '#fbbf24', '');
+      options?.onFlash?.('#fbbf24', 0.1, 'armor_deflect');
       return { absorbedByShield, stoppedByArmor: true, frameDamage: 0 };
     }
 
     remaining = Math.max(1, remaining - effRating);
-    spawnParticles?.(
-      5,
-      '#ffd27d',
-      damageType === 'Blast' ? 'ARMOR SHREDDED' : 'ARMOR PIERCED'
-    );
+    spawnParticles?.(5, hitQuality === 'sweet' ? '#fde047' : '#ffd27d', '');
+    if (hitQuality !== 'sweet') {
+      options?.onFlash?.('#fef08a', 0.1, 'armor_shred');
+    }
   }
 
   // 3. FRAME INTEGRITY LAYER
@@ -183,13 +201,28 @@ export function applyDamageToLayers(
 
     if (frame.integrity <= 0) {
       frame.state = 'Defeated';
-      spawnParticles?.(12, '#ff9b9b', 'FRAME DESTROYED');
+      spawnParticles?.(12, '#ff9b9b', '');
+      options?.onFlash?.('#ffffff', 0.2, 'stagger');
+    } else if (hitQuality === 'sweet') {
+      if (frame.integrity <= 40) {
+        frame.state = 'Critical';
+      } else {
+        frame.state = 'Operational';
+      }
+      spawnParticles?.(9, '#fde047', '');
+      options?.onFlash?.('#fde047', 0.16, 'sweet');
     } else if (frame.integrity <= 40) {
       frame.state = 'Critical';
-      spawnParticles?.(8, '#ff9b9b', `CRITICAL! -${frameDamage}`);
+      spawnParticles?.(8, '#ff9b9b', '');
+      options?.onFlash?.('#f87171', 0.13, 'hit');
     } else {
       frame.state = 'Operational';
-      spawnParticles?.(6, '#8dd7ad', `-${frameDamage} FRAME`);
+      spawnParticles?.(6, hitQuality === 'sour' ? '#fbbf24' : '#f87171', '');
+      options?.onFlash?.(
+        hitQuality === 'sour' ? '#fbbf24' : '#f87171',
+        0.1,
+        hitQuality === 'sour' ? 'armor_deflect' : 'hit'
+      );
     }
   }
 
@@ -270,6 +303,12 @@ export function resolveEnemyMeleeAttacks(
           if (isPerfectBlock) {
             // 0.25s Perfect Block: 0 damage taken, heavy parry stagger, shield restore & heat vent!
             e.stun = Math.max(e.stun, isShieldBlock ? 1.85 : 1.55);
+            e.state = 'stagger';
+            e.stateTimer = isShieldBlock ? 1.85 : 1.55;
+            e.stateMaxTimer = e.stateTimer;
+            triggerEntityFlash(e, '#ffffff', 0.2, 'stagger');
+            triggerEntityFlash(state, '#fde047', 0.18, 'parry');
+            state.hitstopTimer = Math.max(state.hitstopTimer || 0, 0.06);
             state.shields.overloaded = false;
             state.shields.capacity = Math.min(
               state.shields.maxCapacity,
@@ -278,14 +317,7 @@ export function resolveEnemyMeleeAttacks(
             state.heat = Math.max(0, state.heat - 14);
             soundSystem.playPowerup();
             soundSystem.playSword();
-            ctx.spawnParticles(
-              state.x,
-              state.y,
-              state.z + 10,
-              12,
-              '#facc15',
-              'PERFECT BLOCK!'
-            );
+            ctx.spawnParticles(state.x, state.y, state.z + 10, 12, '#fde047', '');
             continue;
           }
 
@@ -294,22 +326,20 @@ export function resolveEnemyMeleeAttacks(
             Math.round(hitDamage * (isShieldBlock ? 0.15 : 0.28))
           );
           e.stun = Math.max(e.stun, isShieldBlock ? 0.95 : 0.7);
+          triggerEntityFlash(state, '#38bdf8', 0.12, 'shield');
           soundSystem.playSword();
-          ctx.spawnParticles(
-            state.x,
-            state.y,
-            state.z + 8,
-            7,
-            '#38bdf8',
-            'BLOCKED'
-          );
+          ctx.spawnParticles(state.x, state.y, state.z + 8, 7, '#38bdf8', '');
           if (blockedDamage > 0) {
             applyDamageToLayers(
               state.shields,
               state.armor,
               state.frame,
               blockedDamage,
-              e.damageType
+              e.damageType,
+              undefined,
+              {
+                onFlash: (color, dur, kind) => triggerEntityFlash(state, color, dur, kind),
+              }
             );
           }
           continue;
@@ -359,7 +389,8 @@ export function resolveEnemyMeleeAttacks(
 
         if (inertiaRes.outcome === 'none') {
           // Charging heavy / high-stability frame shrugged off the hit inside k1·S deadband!
-          ctx.spawnParticles(state.x, state.y, state.z + 12, 4, '#94a3b8', 'BRACED (CHARGE)');
+          triggerEntityFlash(state, '#94a3b8', 0.09, 'armor_deflect');
+          ctx.spawnParticles(state.x, state.y, state.z + 12, 4, '#94a3b8', '');
         } else if (inertiaRes.outcome === 'flinch') {
           state.staggerRecoveryTimer = Math.max(
             state.staggerRecoveryTimer || 0,
@@ -368,7 +399,8 @@ export function resolveEnemyMeleeAttacks(
           state.isContinuousBoosting = false;
           state.isBoosterDashing = false;
           const outFmt = formatInertiaOutcomeLabel('flinch');
-          ctx.spawnParticles(state.x, state.y, state.z + 12, 4, outFmt.color, outFmt.label);
+          triggerEntityFlash(state, outFmt.color, 0.12, 'hit');
+          ctx.spawnParticles(state.x, state.y, state.z + 12, 4, outFmt.color, '');
         } else {
           // Stagger or Knockback (e.g. Sir Bors big slow hit breaking a charge!)
           state.staggerRecoveryTimer = Math.max(
@@ -385,7 +417,8 @@ export function resolveEnemyMeleeAttacks(
             state.activeActionId = null;
           }
           const outFmt = formatInertiaOutcomeLabel(inertiaRes.outcome);
-          ctx.spawnParticles(state.x, state.y, state.z + 12, 6, outFmt.color, outFmt.label);
+          triggerEntityFlash(state, '#ffffff', 0.18, 'stagger');
+          ctx.spawnParticles(state.x, state.y, state.z + 12, 6, outFmt.color, '');
         }
 
         soundSystem.playHit();
@@ -395,7 +428,10 @@ export function resolveEnemyMeleeAttacks(
           state.frame,
           hitDamage,
           e.damageType,
-          (count, color, label) => ctx.spawnParticles(state.x, state.y, state.z + 8, count, color, label)
+          (count, color) => ctx.spawnParticles(state.x, state.y, state.z + 8, count, color, ''),
+          {
+            onFlash: (color, dur, kind) => triggerEntityFlash(state, color, dur, kind),
+          }
         );
       }
     }

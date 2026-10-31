@@ -37,7 +37,7 @@ export interface OrionGameMenuProps {
   connectedGamepads?: string[];
 }
 
-type MenuSubView = 'main' | 'new_pilot' | 'load_roster' | 'world_map' | 'controls';
+type MenuSubView = 'main' | 'new_pilot' | 'load_roster' | 'world_map' | 'controls' | 'code_wiki';
 
 /**
  * Renders the `[START]` pause menu for Project Orion, providing pilot roster save/load,
@@ -506,6 +506,34 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
             </div>
           </div>
         </div>
+      ) : subView === 'code_wiki' ? (
+        /* Subview 5: Live Orion Code Wiki (/wiki/index.html + index.json) */
+        <div className="flex-1 min-h-0 flex flex-col space-y-1.5 overflow-hidden">
+          <div className="flex items-center justify-between pb-1 border-b border-[#334155]">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-[#50fa7b] text-[10.5px]">
+                ORION CODE WIKI
+              </span>
+              <span className="text-[9px] text-[#94a3b8] font-mono">
+                /wiki/index.html
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                soundSystem.playMenuBeep();
+                setSubView('main');
+              }}
+              className="text-[10px] underline text-[#94a3b8] hover:text-white cursor-pointer"
+            >
+              ← Back to Menu
+            </button>
+          </div>
+          <iframe
+            src="./wiki/index.html"
+            title="Orion Code Wiki"
+            className="w-full flex-1 min-h-0 rounded-xs border border-[#2a3730] bg-[#0f1512]"
+          />
+        </div>
       ) : (
         /* Main Menu Grid */
         <div className="flex-1 flex flex-col justify-between overflow-y-auto pr-0.5">
@@ -571,6 +599,17 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
             >
               <span>⚙ OPTIONS & CONTROLS</span>
               <span className="text-[8.5px] text-[#facc15]">GUIDE →</span>
+            </button>
+
+            <button
+              onClick={() => {
+                soundSystem.playSelect();
+                setSubView('code_wiki');
+              }}
+              className="col-span-2 py-1.5 px-2 bg-[#16201a] hover:bg-[#1e2e24] border border-[#50fa7b]/50 rounded-xs text-[10.5px] font-bold text-left flex items-center justify-between cursor-pointer"
+            >
+              <span className="text-[#50fa7b]">📖 ORION CODE WIKI</span>
+              <span className="text-[8.5px] text-[#9aa8a0]">ANCHORS · FILES · DOCS · HEALTH →</span>
             </button>
           </div>
 

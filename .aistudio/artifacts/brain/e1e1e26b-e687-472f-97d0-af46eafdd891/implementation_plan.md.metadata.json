@@ -1,6 +1,6 @@
 {
-  "summary":  "Implementation plan for HUD & combat text decluttering, Souls/fighting-game flash frame feedback, positional sweet-spot accuracy critical hits, smooth radial dark-to-light illumination, and lore-contextual multi-frame enemy & player skill animations.",
-  "updatedAt":  "2026-10-31T09:46:59.802611340Z",
+  "summary":  "Implementation plan to integrate the Orion Code Wiki indexer and static wiki viewer into the build/dev pipeline, resolve any ORION-ANCHOR drift with strict validation, serve the wiki at /wiki/, and add an in-app Code Wiki viewer inside the Orion Start menu.",
+  "updatedAt":  "2026-10-31T11:33:00.200983681Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

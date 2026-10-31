@@ -85,8 +85,8 @@ export function drawOrionGame(
   // 4B. LAYER 3.5: Aether Fog Threshold Environmental Tells & Poe Lantern Resonance
   drawAetherFogWayfindingTells(g, state, room, camX, camY);
 
-  // 5. LAYER 4: Biome Atmospheric Weather Pass
-  drawBiomeWeatherLayer(g, activeBiome, state);
+  // 5. LAYER 4: Biome Atmospheric Weather & Cursed-Bog Miasma/Spore Pass
+  drawBiomeWeatherLayer(g, activeBiome, state, room);
 
   // 6. LAYER 5: Dynamic Light Sources, Radial Bloom, Ambient Vignette & Desync Glitch Pass
   drawDynamicLightingAndBloomPass(g, room, activeBiome, state, camX, camY);

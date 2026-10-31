@@ -158,8 +158,8 @@ export function renderDepthSortedEntitiesAndProps(
             ? Math.max(rawVis, 0.85)
             : rawVis;
 
-        // Entities outside active light or occluded behind walls/trees are hidden
-        if (visFactor < 0.24) {
+        // Entities outside active light or occluded behind walls/trees are hidden in the abyss
+        if (visFactor < 0.14) {
           return;
         }
 
@@ -170,7 +170,7 @@ export function renderDepthSortedEntitiesAndProps(
 
         g.save();
         if (visFactor < 0.95) {
-          g.globalAlpha = Math.max(0.28, Math.min(1, 0.2 + visFactor * 0.85));
+          g.globalAlpha = Math.max(0.18, Math.min(1, 0.1 + visFactor * 0.9));
         }
 
         const shadowR = Math.max(3, 8 * (1 - e.z / 60));

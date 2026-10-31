@@ -1,127 +1,86 @@
-# Project Orion — Combat Flash Frames, Positional Accuracy Crits, Smooth Lighting & Contextual Animations
+# Project Orion — Live Code Wiki & Strict Anchor Indexer Integration
 
-This plan transitions Project Orion's combat readability, lighting atmosphere, and enemy/player telegraphing away from floating text labels and geometric overlays toward visceral fighting-game/Souls-inspired visual flash frames, spatial weapon sweet-spots, smooth radial illumination, and multi-frame physical posture animations.
-
----
+Turn the Orion Code Wiki into a live, self-updating knowledge base and codebase health monitor that runs automatically during development and production builds, enforces zero anchor drift between source code and documentation, serves at `/wiki/`, and is directly browsable inside the in-game `[START]` menu.
 
 ## User Review & Critical Decisions
 
 > [!IMPORTANT]
-> All four core design choices from Phase 1 have been locked into this plan:
+> All architectural and workflow decisions below were confirmed during interactive clarification:
 
-- **Confirmed Decision 1 — Zero Floating Combat Text & Flash-Frame Feedback**: Remove all floating combat text labels (`SHIELD ABSORB`, `ARMOR DEFLECT`, `-14 FRAME`, `BRACED`, `STAGGER`, `MAGAZINE RELOADED`, `BLADE STANCE READY`, etc.) and repetitive combat HUD toast chatter. Replace them with unmistakable color-coded sprite flash frames, hitstop freeze frames, and directional spark bursts.
-- **Confirmed Decision 2 — Positional Accuracy ("Sweet-Spot") Critical Hits**: Replace RNG critical rolls with spatial accuracy mechanics based on where the weapon strikes the target (e.g., the tip of a spear/lance, the head of a mace/hammer/axe, the upper cutting sweet-spot of a sword, or the center-line sweet range of a bolt/arrow). Sweet-spot hits grant bonus damage (`1.35x`), heightened armor penetration (ignoring an extra `40%` of Armor Threshold and Rating), a signature white-gold flash frame, and extended hitstop.
-- **Confirmed Decision 3 — Simple Smooth Dark-to-Light Gradient**: Replace the blocky 4x4 sub-tile raycast fog grid and dashed perimeter polygons with a cohesive, smooth radial dark-to-light gradient falloff centered on the player and active world light sources (campfires, Poe lanterns, glowing projectiles, and spirits).
-- **Confirmed Decision 4 — Remove Ground Cones & Use Multi-Frame Contextual Animations**: Remove the geometric ground telegraph cones/rings under enemies and replace them with multi-frame physical posture animations (`windup_coiling -> windup_apex -> strike_lunge -> recovery_settle`) for both enemies and the player, paired with lore-driven AI behaviors.
+- **Confirmed Decision 1 (Dual Access — `/wiki/` + In-App Start Menu Viewer)**: Serve the standalone Orion Code Wiki at `/wiki/` (`index.html` + `index.json`) and provide a dedicated **Code Wiki** sub-view inside the in-game `[START]` pause menu so developers and players can inspect anchors, file exports, markdown docs, and codebase health directly on the console screen.
+- **Confirmed Decision 2 (Automated Dev/Build Indexing + `npm run wiki`)**: Run the zero-dependency indexer automatically on `dev` and `build`, and expose a dedicated `npm run wiki` script for on-demand regeneration.
+- **Confirmed Decision 3 (Zero Anchor Drift + `--strict` Enforcement)**: Audit and reconcile any `ORION-ANCHOR` drift between TypeScript source files and markdown documentation now, and enable `--strict` mode in build/CI so future drift fails the build.
 
 ---
 
 ## 1. Overview & Core Concept
 
-- **What It Does**:
-  1. **Decluttered HUD & Flash-Frame Combat Language**: Frees the 160x144 viewport from floating text strings and redundant status banners so every hit, block, armor deflection, shield break, and sweet-spot critical is read directly from the sprites, hitstop cadence, and flash frames.
-  2. **Spatial Weapon Mastery (Tipper / Sweet-Spot Crits)**: Rewards spacing and footwork—pilots who maintain optimal distance for their equipped weapon's geometry land devastating sweet-spot strikes that punch through heavy armor, while crowded sour-spot hits glance off plating.
-  3. **Atmospheric Radial Lighting**: Renders darkness as a clean, organic vignette that smoothly transitions from full clarity around light sources into deep marsh shadow.
-  4. **Contextual Enemy & Player Physicality**: Conveys enemy intent and lore through body language—Bog Crawlers skittering low before pouncing, Bog Wurms churning mud ripples before erupting, Orc Scouts kiting to draw bows, Orc Warriors beating shields before cleaving, and Grail Knights (Percival, Tristan, Bors) assuming distinct martial stances.
+- **What It Does**: Indexes every TypeScript module, exported symbol, JSDoc block, `[ORION-ANCHOR: ...]` tag, markdown documentation page, and `CODE_RULES.md` health metric across Project Orion into a structured `index.json` dataset and interactive Wiki interface.
+- **Target Audience / Persona**: The project author, contributors, and AI coding agents maintaining Project Orion's architecture and knowledge graph.
+- **Key Value**: Eliminates documentation drift and makes the entire Orion knowledge graph (`anchors`, `files`, `docs`, and `health` telemetry) searchable in real time both as a standalone web wiki and inside the game's pause menu.
 
 ---
 
 ## 2. User Experience & Visual Design
 
-### A. Fighting-Game / Souls Flash-Frame Palette
-Instead of text strings, entities flash with distinct 2–4 frame full-silhouette color overlays and directional spark geometry:
-
-| Combat Event | Sprite Flash Color | Duration & Hitstop | Visual Particle / Posture Cue |
-| :--- | :--- | :--- | :--- |
-| **Sweet-Spot Accuracy Crit** | Pure White → Solar Gold (`#ffffff` → `#fde047`) | `140ms` flash + `+45ms` hitstop | Cross-shaped gold/white impact flare + heavy knockback |
-| **Standard Frame Hit** | Crisp White → Crimson (`#ffffff` → `#f87171`) | `95ms` flash + standard hitstop | Directional ember sparks along strike vector |
-| **Armor Deflect / Sour-Spot Glance** | Brass Amber (`#fbbf24`) | `80ms` flash + `0ms` hitstop | Dull metallic ricochet sparks bouncing back toward attacker |
-| **Armor Shred / Pierce** | Bright Gold (`#fef08a`) | `100ms` flash | Sundered plating shards falling to ground (`vz > 0`) |
-| **Shield Absorb** | Electric Cyan (`#38bdf8`) | `85ms` hexagonal rim flash | Expanding cyan ripple ring around shield perimeter |
-| **Shield Overload / Break** | Strobe Cyan → Violet (`#7dd3fc` → `#c084fc`) | `180ms` strobe + `55ms` hitstop | Shattered energy lattice burst |
-| **Perfect Guard / Parry** | Radiant Gold (`#fde047`) | `120ms` player flash + `60ms` hitstop | Twin shockwave ring + attacker staggered backward |
-| **Stagger / Guard Break** | Rapid White/Amber Strobe | During stagger window | Hunched/tilted posture + overhead kinetic spark |
-
-### B.HUD & Viewport Decluttering
-- **Particle Labels**: Suppress combat text labels on particles; reserve world-space text strictly for interactive object prompts (`[A] LIGHT CAMPFIRE`, `[A] SPEAK`) and major milestone banners (e.g., boss defeat / area discovery).
-- **Routine Combat Toasts Removed**: Actions like reloading, stance recovery, target lock cycling, and minor blocks no longer spawn HUD toast banners (`state.toastText`). Instead:
-  - Reloading & Stance Recovery are shown via the existing top-right ammo pips and a subtle 1-frame cyan/gold glint on the Mech's weapon hardpoint when ready.
-  - Target Lock is shown purely by the crisp reticle on the locked enemy.
-
-### C. Smooth Dark-to-Light Illumination
-- **Offscreen Darkness Mask**: Uses a clean composited darkness layer (`destination-out` radial gradients) over the viewport:
-  - **Player Light Radius**: Derived directly from the player's effective Light stat (`computeEffectivePlayerLightTiles(state) * 16px`), creating a warm, feathered radial gradient from `0%` darkness at the center to `100%` ambient darkness at the outer edge.
-  - **World Light Sources**: Campfires, lit Poe Lanterns, spirit wisps, and glowing projectiles carve smooth secondary radial light pools into the same darkness mask and add soft additive bloom.
-  - **No Artificial Grid Lines**: Eliminates the 4x4 sub-tile slate-gray patchwork and removes the dashed yellow/red raycast debug rings around the player and enemies.
+- **Key User Flows**:
+  1. **Standalone Web Wiki (`/wiki/index.html`)**: Opening `/wiki/` (or `/wiki/index.html`) in the browser loads the clean, fast, zero-dependency Orion Code Wiki with instant search across **Anchors**, **Files**, **Docs**, and **Health** metrics, complete with commit SHA metadata and GitHub source deep-links.
+  2. **In-Game `[START]` Menu Code Wiki Viewer**: Pressing `START` during gameplay and selecting **CODE WIKI** opens an integrated terminal-styled viewer powered by the same live `index.json` payload—allowing instant filtering across all four tabs (`ANCHORS`, `FILES`, `DOCS`, `HEALTH`), collapsible export/JSDoc inspection, full Markdown document reading, and a quick-switch toggle to view the standalone `/wiki/index.html` page.
+  3. **Automated Build & Strict Drift Gate**: Running `npm run wiki` or `npm run build` scans the Orion cartridge, verifies that every `ORION-ANCHOR` in code matches the markdown documentation (`inCodeNotDocs = 0`, `inDocsNotCode = 0`), and writes the fresh index for both local preview and GitHub Pages deployment.
+- **Visual Identity & Theme**:
+  - *Standalone Wiki*: Clean light/dark adaptive documentation theme (`#0f1512` dark surface, `#50fa7b` emerald accent, `ui-monospace` code blocks) from the provided wiki template.
+  - *In-Menu Console Viewer*: Matches the Orion `[START]` menu tactical slate aesthetic (`#0f172a` / `#1e293b` panels, `#50fa7b` emerald and `#38bdf8` cyan accents, compact monospace tables) tailored to fit cleanly within the handheld console screen.
 
 ---
 
 ## 3. Key Product Decisions & Trade-Offs
 
-- **Decision 1 — Spatial Sweet-Spot Math Over RNG Crits**
-  - *Chosen Approach*: Evaluate each hit's normalized radial distance `rNorm = dist / maxReach` and angular alignment `angleDelta` against the weapon's archetype sweet-spot band:
-    - **Spears & Lances (`short_spear`, `avalon_siege_lance`)**: Tipper sweet-spot at `0.72 <= rNorm <= 1.00`; shaft sour-spot at `rNorm < 0.45` (`0.75x` damage, `+35%` enemy armor effectiveness).
-    - **Hammers, Maces & Axes (`mace`, `black_iron_warhammer`, `bearded_axe`, `halberd`)**: Heavy head sweet-spot at `0.65 <= rNorm <= 0.95`; handle sour-spot at `rNorm < 0.42` (`0.70x` damage).
-    - **Swords & Blades (`camelot_long_sword`, `shotel`, `khopesh`, `greatsword`)**: Upper-blade sweet-spot at `0.55 <= rNorm <= 0.88` within `±18°` of center aim.
-    - **Ranged Weapons (`gladius_boltcaster`, `great_bow`, `repeater_crossbow`)**: Center-line alignment sweet-spot when projectile impacts within `3.5px` of target center at optimal medium range (`38%–85%` of max range).
-  - *Why*: Makes spacing, movement inertia, and weapon choice deeply physical and skill-based without random luck.
-
-- **Decision 2 — Multi-Frame Procedural & Sprite Posture Keyframes**
-  - *Chosen Approach*: Expand both player skill execution and enemy `windup -> attack -> recovery` states into multi-stage keyframe progressions (`tellProgress ∈ [0..1]`, `attackProgress ∈ [0..1]`, `recoveryProgress ∈ [0..1]`) that drive weapon hardpoint windup angles, body lean/bob, shield raise, and lunge extension.
-  - *Why*: Lets players read an enemy's exact attack timing and type (sweep, thrust, overhead slam, shield bash, or bow draw) purely from the enemy's silhouette and weapon motion—just like Souls or fighting games—without needing painted ground cones.
+- **Decision 1: Dual Output to Static Public Assets & Production Dist**
+  - *Chosen Approach*: Configure the indexer script to populate the static public wiki folder prior to Vite dev/build and also emit directly to the production build output folder with `--strict` enabled.
+  - *Why*: Generating into the static public directory makes `/wiki/index.json` and `/wiki/index.html` immediately fetchable at `/wiki/` in the Vite dev server (and inside the AI Studio preview iframe without `window.open`), while also bundling cleanly into the GitHub Pages deployment artifact.
+- **Decision 2: Native Console Sub-View + Standalone Page Parity**
+  - *Chosen Approach*: Feed the live `/wiki/index.json` into the `[START]` menu's Code Wiki sub-view with the same four tabs (`anchors`, `files`, `docs`, `health`) and instant search, plus a mode toggle to preview the raw standalone HTML wiki inside the viewport.
+  - *Why*: Avoids `window.open` (which is blocked in sandboxed preview iframes) while giving full access to both the console-fitted viewer and the exact standalone HTML wiki page.
 
 ---
 
-## 4. Technical Architecture & Data Strategy
+## 4. Technical Architecture & Data Strategy *(Technical Reference)*
 
-### A. System Architecture Diagram
+- **Architecture & Component Diagram**:
 
 ```
-┌────────────────────────────────────────────────────────────────────────────┐
-│                        COMBAT & RENDERING PIPELINE                         │
-└───────────────────────────────────┬────────────────────────────────────────┘
-                                    │
-        ┌───────────────────────────┼───────────────────────────┐
-        ▼                           ▼                           ▼
-┌──────────────────────┐  ┌──────────────────────┐  ┌────────────────────────┐
-│ POSITIONAL ACCURACY  │  │  CONTEXTUAL POSTURE  │  │  SMOOTH RADIAL LIGHT   │
-│    SWEET-SPOT ENGINE │  │   & AI STATE ENGINE  │  │   & FLASH COMPOSITOR   │
-├──────────────────────┤  ├──────────────────────┤  ├────────────────────────┤
-│ • Evaluates rNorm &  │  │ • Player 3-Phase     │  │ • Offscreen Darkness   │
-│   angleDelta per hit │  │   Skill Keyframes:   │  │   Canvas with Smooth   │
-│ • Returns HitQuality:│  │   Windup -> Strike   │  │   destination-out      │
-│   'sweet' | 'normal' │  │   -> Follow-Through  │  │   Radial Cutouts       │
-│   | 'sour'           │  │ • Lore-Driven Enemy  │  │ • Entity Flash State:  │
-│ • Applies 1.35x Dmg  │  │   Behaviors & Multi- │  │   flashColor,          │
-│   & 40% Armor Bypass │  │   Frame Windup/Lunge │  │   flashTimer,          │
-│   on 'sweet' hits    │  │   Postures (No Cones)│  │   flashKind            │
-└──────────┬───────────┘  └──────────┬───────────┘  └───────────┬────────────┘
-           │                         │                          │
-           └─────────────────────────┼──────────────────────────┘
-                                     ▼
-           ┌────────────────────────────────────────────────────┐
-           │      DECLUTTERED COCKPIT VIEWPORT & FLASH FX       │
-           │  • Zero Floating Combat Text / Zero Ground Cones   │
-           │  • Color-Coded Silhouette Flashes & Hitstop        │
-           │  • Weapon Readiness Glint on Reload / Stance Ready │
-           └────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────────┐
+│                   Orion Source & Markdown Knowledge Graph                 │
+│     (TypeScript Exports, JSDoc Headers, ORION-ANCHOR Tags, Docs/*.md)     │
+└─────────────────────────────────────┬─────────────────────────────────────┘
+                                      │
+                                      ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│                    Zero-Dependency Wiki Indexer Script                    │
+│  • Scans exports, JSDoc blocks, line counts, and CODE_RULES health stats  │
+│  • Cross-checks code ORION-ANCHOR IDs against Markdown doc references     │
+│  • Enforces --strict zero-drift check on build                            │
+└───────────────────┬───────────────────────────────────┬───────────────────┘
+                    │                                   │
+                    ▼                                   ▼
+┌───────────────────────────────────────┐   ┌───────────────────────────────┐
+│     Standalone Orion Code Wiki        │   │   In-Game [START] Menu Wiki   │
+│         (/wiki/index.html)            │   │       Sub-View Overlay        │
+│ • Instant search bar                  │   │ • Fetches live /wiki/index.json│
+│ • Tabs: Anchors | Files | Docs | Health│  │ • Tabs: Anchors | Files |     │
+│ • Safe DOM Markdown & table renderer  │   │   Docs | Health | Standalone  │
+└───────────────────────────────────────┘   └───────────────────────────────┘
 ```
 
-### B. Lore-Accurate Contextual Enemy Behaviors & Multi-Frame Animations
-1. **Bog Crawler (`bog_crawler`)**:
-   - *Lore Behavior*: Stalks from mud tiles with a low skittering gait; when within range, compresses its carapace downward across 3 windup frames (mandibles spreading wide and legs tucking) before springing airborne (`z > 0`) in a rapid pounce and settling into a brief grounded recovery.
-2. **Bog Wurm (`bog_wurm`)**:
-   - *Lore Behavior*: Lurks submerged beneath mire tiles, emitting concentric mud ripples as it tracks vibrations; surfaces with a multi-frame coiling rise (`z` rising from `-12` to `0`, segments swaying back) before whipping forward or spitting corrosive bile.
-3. **Orc Scout (`orc_scout`)**:
-   - *Lore Behavior*: Skirmishes at range—backpedals or strafes laterally when the pilot closes in, plants one knee during a 3-frame bow-draw animation (bowstring pulling taut with a visible arrow nocked along `attackAngle`), and releases a high-velocity shaft.
-4. **Orc Warrior (`orc_warrior`)**:
-   - *Lore Behavior*: Advances aggressively behind a raised scrap-buckler; winds up by hauling its heavy cleaver high overhead across 3 distinct frames (body leaning back, cleaver glinting at the apex) before stepping into a heavy downward cleave that leaves the cleaver embedded briefly during recovery.
-5. **Camelot Grail Knights (`percival_knight`, `tristan_knight`, `bors_knight`)**:
-   - *Sir Percival (Guardian)*: Raises his tower shield into a locked phalanx guard when below 60% HP or when allies are nearby; winds up by bracing his shield low and crouching before driving forward in a multi-frame shield-ram charge.
-   - *Sir Tristan (Duelist/Ranger)*: Dashes laterally to flank the pilot while Percival holds the front; executes a 3-frame fencing lunge or triple-bolt volley with a flourish recovery.
-   - *Sir Bors (Marauder)*: Slowly stalks with heavy inertia; winds up a 4-frame two-handed overhead execution slam that visibly shakes the ground on impact.
-6. **Player Multi-Frame Skill Animations**:
-   - Player weapon hardpoint rendering (`drawPlayerWeaponMounts25D` & `drawCompositePlayerMech`) now interpolates through 3 distinct phases during any skill or basic attack:
-     - **Windup (`skillTellTimer > 0`)**: Coils the active weapon backward (e.g., pulling a spear back, raising a mace/sword overhead, or bracing a shield/boltcaster) while leaning the chassis by `1px`.
-     - **Active Strike (`skillActionTimer` first 60%)**: Snaps the weapon through its full swing arc or forward thrust extension with a bright weapon-edge flash.
-     - **Follow-Through / Recovery (`skillActionTimer` final 40%)**: Settles the weapon smoothly back to its neutral cardinal hardpoint coordinate.
+- **Data Model & State (`index.json`)**:
+  - `meta`: `{ repo, sha, date, root }`
+  - `stats`: `{ sourceFiles, jsdocBlocks, filesWithoutJsdoc, filesOver1000Lines, anchors, anyCasts, tsSuppressions, todoFixme, networkCalls, addEventListener, removeEventListener, setTimeout, clearTimeout, requestAnimationFrame, cancelAnimationFrame }`
+  - `drift`: `{ inCodeNotDocs: string[], inDocsNotCode: string[] }`
+  - `anchors`: `Array<{ id, path, line }>`
+  - `files`: `Array<{ path, lines, jsdoc, exports: Array<{ kind, name, line, doc }> }>`
+  - `docs`: `Array<{ path, title, text }>`
+- **Interactive Component & State Mapping**:
+  - **Search Input**: Filters `anchors` (by ID or path), `files` (by path or exported symbol name), and `docs` (by title, path, or full markdown body) in real time.
+  - **Tab Switcher (`anchors` | `files` | `docs` | `health`)**: Switches active view and resets any open document reader state.
+  - **Docs Reader**: Clicking any markdown document title renders its headings, code fences, tables, and bullet lists with a `← docs` back button.
+  - **Health & Drift Audit**: Displays all 15 `CODE_RULES.md` health counters and highlights anchor sync status (`No anchor drift.`).

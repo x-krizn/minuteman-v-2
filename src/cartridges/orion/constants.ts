@@ -156,20 +156,9 @@ export function getRoomDoorwayCenterPx(
 
 // 2.5D Depth & Perspective Parameters
 export const Z_SCALE = 1.0;
-export const SHADOW_SCALE = 0.85;
 
 // Canonical Combat Laws & Metrics (LOCKED from Project Orion Wiki)
-export const FRAME_INTEGRITY_BASE = 200; // Static Level 1 to 20
-export const CRITICAL_FRAME_THRESHOLD = 40; // <= 20% integrity triggers Critical state
-export const BASE_COMBAT_UNIT_BCU = 54; // 1 full auto-attack chain of reference weapon
 export const PERFECT_BLOCK_WINDOW_SEC = 0.25; // 0.25s perfect block window on held block
-
-// Reference Weapon: Gladius Boltcaster
-export const GLADIUS_SHOTS_PER_CHAIN = 9;
-export const GLADIUS_DAMAGE_PER_SHOT = 6;
-export const GLADIUS_CHAIN_DURATION = 1.5; // seconds
-export const GLADIUS_RELOAD_TIME = 3.15; // 9 * 0.35s
-export const GLADIUS_FULL_CYCLE = 4.65; // 1.5s chain + 3.15s reload
 
 // Global Rules
 export const WEAPON_SWAP_COOLDOWN = 5.0; // 5 seconds globally
@@ -190,7 +179,6 @@ export const COLOR_ARMOR = '#ffd27d'; // Amber / Gold
 export const COLOR_FRAME = '#8dd7ad'; // Emerald green
 export const COLOR_CRITICAL = '#ff9b9b'; // Crimson
 export const COLOR_HEAT = '#f97316'; // Orange
-export const COLOR_ENERGY = '#a855f7'; // Purple
 
 // Direction Vectors
 export const DIR_VECTORS: Record<OrionDir, { dx: number; dy: number; angle: number }> = {

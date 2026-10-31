@@ -32,6 +32,7 @@ import {
   OrionState,
   PilotSkillId,
 } from '../../types';
+import { ORION_HEX_BLUEPRINT_BASE64 } from '../hud/titleMenuAssets';
 import { SpriteCanvasIcon } from './SatchelCanvases';
 
 interface SatchelFeatsTabProps {
@@ -409,7 +410,7 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({ state, setToas
               CANONICAL 18-NODE 6-FINGER HEXAGONAL FEAT TREE BLUEPRINT
             </div>
             <img
-              src="/assets/aistudio/Untitled_11-09-2025_04-32-55_8cfb2b22.png"
+              src={ORION_HEX_BLUEPRINT_BASE64}
               alt="18-Node 6-Finger Hexagonal Feat Grid Blueprint"
               className="max-h-56 w-auto rounded border border-[#1e293b] bg-white/95 p-1"
             />

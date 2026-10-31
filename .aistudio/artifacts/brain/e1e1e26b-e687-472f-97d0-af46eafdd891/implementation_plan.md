@@ -1,86 +1,84 @@
-# Project Orion — Live Code Wiki & Strict Anchor Indexer Integration
+# Project Orion — Codebase & Repository Cleanup Plan
 
-Turn the Orion Code Wiki into a live, self-updating knowledge base and codebase health monitor that runs automatically during development and production builds, enforces zero anchor drift between source code and documentation, serves at `/wiki/`, and is directly browsable inside the in-game `[START]` menu.
+A targeted repository, dependency, and codebase hygiene pass that removes temporary uploaded assets, updates root documentation and configuration for Project Orion, prunes unused npm dependencies, eliminates dead functions and unused types without altering the existing module structure, and synchronizes all `[ORION-ANCHOR]` tags with the Code Wiki index.
 
 ## User Review & Critical Decisions
 
 > [!IMPORTANT]
-> All architectural and workflow decisions below were confirmed during interactive clarification:
+> All cleanup boundaries below reflect your confirmed choices from Phase 1.
 
-- **Confirmed Decision 1 (Dual Access — `/wiki/` + In-App Start Menu Viewer)**: Serve the standalone Orion Code Wiki at `/wiki/` (`index.html` + `index.json`) and provide a dedicated **Code Wiki** sub-view inside the in-game `[START]` pause menu so developers and players can inspect anchors, file exports, markdown docs, and codebase health directly on the console screen.
-- **Confirmed Decision 2 (Automated Dev/Build Indexing + `npm run wiki`)**: Run the zero-dependency indexer automatically on `dev` and `build`, and expose a dedicated `npm run wiki` script for on-demand regeneration.
-- **Confirmed Decision 3 (Zero Anchor Drift + `--strict` Enforcement)**: Audit and reconcile any `ORION-ANCHOR` drift between TypeScript source files and markdown documentation now, and enable `--strict` mode in build/CI so future drift fails the build.
+- **Repository & Root Hygiene**:
+  - Remove temporary uploaded files and screenshots inside `public/assets/aistudio/` (since menu and feat blueprint artwork are now self-contained in `titleMenuAssets.ts` and the `u00` cosmos is rendered procedurally by `AetherCosmosCanvas.tsx`).
+  - Remove the temporary root `COMMIT_SUMMARY.md` file and modernize `README.md`, `.gitignore`, and `package.json` metadata to accurately document Project Orion, the Minuteman handheld engine, and the Orion Code Wiki workflow.
+  - Prune unused npm packages (`express`, `@types/express`, `dotenv`, `@google/genai`, `motion`) that are not imported anywhere in the client application.
+- **Preserve Existing File Layout**:
+  - Keep the current file and directory layout in `src/cartridges/orion/` intact—no disruptive file splitting—focusing strictly on removing dead code, unused exports, and duplicate helpers.
+- **Code Quality & Documentation Sync**:
+  - Audit `src/cartridges/orion/` for dead functions, unused types, and redundant helpers, while preserving every active `[ORION-ANCHOR]` tag and JSDoc contract.
+  - Run `scripts/build-index.mjs --strict` to verify 100% anchor alignment and regenerate `public/wiki/wiki-index.json`.
 
 ---
 
 ## 1. Overview & Core Concept
 
-- **What It Does**: Indexes every TypeScript module, exported symbol, JSDoc block, `[ORION-ANCHOR: ...]` tag, markdown documentation page, and `CODE_RULES.md` health metric across Project Orion into a structured `index.json` dataset and interactive Wiki interface.
-- **Target Audience / Persona**: The project author, contributors, and AI coding agents maintaining Project Orion's architecture and knowledge graph.
-- **Key Value**: Eliminates documentation drift and makes the entire Orion knowledge graph (`anchors`, `files`, `docs`, and `health` telemetry) searchable in real time both as a standalone web wiki and inside the game's pause menu.
+- **What It Does**: Cleans the repository root, static assets directory, dependency tree, and TypeScript modules so the repository is lean, fast to install and deploy on GitHub Pages, and accurately documented.
+- **Target Audience / Persona**: Developers and contributors cloning, building, or browsing Project Orion and its interactive Code Wiki on GitHub.
+- **Key Value**: Eliminates multi-megabyte orphaned screenshot/upload clutter in `public/assets/aistudio/`, shrinks `node_modules` install overhead by removing unused server/animation packages, replaces outdated README documentation with accurate Project Orion & Code Wiki documentation, and guarantees zero dead exports or broken wiki anchors.
 
 ---
 
 ## 2. User Experience & Visual Design
 
 - **Key User Flows**:
-  1. **Standalone Web Wiki (`/wiki/index.html`)**: Opening `/wiki/` (or `/wiki/index.html`) in the browser loads the clean, fast, zero-dependency Orion Code Wiki with instant search across **Anchors**, **Files**, **Docs**, and **Health** metrics, complete with commit SHA metadata and GitHub source deep-links.
-  2. **In-Game `[START]` Menu Code Wiki Viewer**: Pressing `START` during gameplay and selecting **CODE WIKI** opens an integrated terminal-styled viewer powered by the same live `index.json` payload—allowing instant filtering across all four tabs (`ANCHORS`, `FILES`, `DOCS`, `HEALTH`), collapsible export/JSDoc inspection, full Markdown document reading, and a quick-switch toggle to view the standalone `/wiki/index.html` page.
-  3. **Automated Build & Strict Drift Gate**: Running `npm run wiki` or `npm run build` scans the Orion cartridge, verifies that every `ORION-ANCHOR` in code matches the markdown documentation (`inCodeNotDocs = 0`, `inDocsNotCode = 0`), and writes the fresh index for both local preview and GitHub Pages deployment.
+  - **Repository & GitHub Pages Visitors**: Cloning or viewing the repo on GitHub presents a comprehensive **Project Orion & Minuteman Engine** `README.md` covering controls, architecture, the in-game Pilot Codex (`SHIFT` -> `CODEX`), the standalone Code Wiki (`/wiki/` & `npm run wiki`), and GitHub Pages deployment.
+  - **In-App Experience**: Zero visual regressions—the title screen, Pilot Satchel, Hex Feat Tree, Living Æther Cosmic World Map, Discovery-Gated Pilot Codex, and in-app Code Wiki viewer continue functioning identically with self-contained assets.
 - **Visual Identity & Theme**:
-  - *Standalone Wiki*: Clean light/dark adaptive documentation theme (`#0f1512` dark surface, `#50fa7b` emerald accent, `ui-monospace` code blocks) from the provided wiki template.
-  - *In-Menu Console Viewer*: Matches the Orion `[START]` menu tactical slate aesthetic (`#0f172a` / `#1e293b` panels, `#50fa7b` emerald and `#38bdf8` cyan accents, compact monospace tables) tailored to fit cleanly within the handheld console screen.
+  - Retains the existing Project Orion dark retro-industrial handheld aesthetic and oppressive cursed-bog lighting without layout changes.
 
 ---
 
 ## 3. Key Product Decisions & Trade-Offs
 
-- **Decision 1: Dual Output to Static Public Assets & Production Dist**
-  - *Chosen Approach*: Configure the indexer script to populate the static public wiki folder prior to Vite dev/build and also emit directly to the production build output folder with `--strict` enabled.
-  - *Why*: Generating into the static public directory makes `/wiki/index.json` and `/wiki/index.html` immediately fetchable at `/wiki/` in the Vite dev server (and inside the AI Studio preview iframe without `window.open`), while also bundling cleanly into the GitHub Pages deployment artifact.
-- **Decision 2: Native Console Sub-View + Standalone Page Parity**
-  - *Chosen Approach*: Feed the live `/wiki/index.json` into the `[START]` menu's Code Wiki sub-view with the same four tabs (`anchors`, `files`, `docs`, `health`) and instant search, plus a mode toggle to preview the raw standalone HTML wiki inside the viewport.
-  - *Why*: Avoids `window.open` (which is blocked in sandboxed preview iframes) while giving full access to both the console-fitted viewer and the exact standalone HTML wiki page.
+- **Decision 1: Delete `public/assets/aistudio/` Temporary Attachments**
+  - *Chosen Approach*: Remove all 14 temporary uploaded files (screenshots, duplicate `.md`/`.mjs`/`.html` attachments, and superseded PNGs) from `public/assets/aistudio/`.
+  - *Why*: All required menu graphics (`LOGO1`, `menu-example-001`, and the Hex Feat blueprint) are embedded as self-contained Base64 data URIs in `titleMenuAssets.ts`, the world map is rendered live on HTML5 Canvas via `AetherCosmosCanvas.tsx`, and the wiki generator lives at `scripts/build-index.mjs` + `scripts/wiki/index.html`. Removing `public/assets/aistudio/` prevents shipping megabytes of raw Chrome screenshots in every production `dist/` build.
+- **Decision 2: Prune Unused Runtime & Dev Dependencies**
+  - *Chosen Approach*: Remove `express`, `@types/express`, `dotenv`, `@google/genai`, and `motion` from `package.json`, and rename the package from `"react-example"` to `"project-orion"`.
+  - *Why*: The application is a pure client-side Vite + React 19 SPA with a zero-dependency Node `.mjs` wiki indexer. None of those packages are imported anywhere in `src/` or `scripts/`.
+- **Decision 3: Conservative Dead-Code Pruning Without File Splitting**
+  - *Chosen Approach*: Keep all current module boundaries intact and only remove unreferenced internal helpers, dead exports, and duplicate utility functions.
+  - *Why*: Preserves git blame history, import paths, and `[ORION-ANCHOR]` stability while eliminating dead code.
 
 ---
 
 ## 4. Technical Architecture & Data Strategy *(Technical Reference)*
 
-- **Architecture & Component Diagram**:
-
-```
-┌───────────────────────────────────────────────────────────────────────────┐
-│                   Orion Source & Markdown Knowledge Graph                 │
-│     (TypeScript Exports, JSDoc Headers, ORION-ANCHOR Tags, Docs/*.md)     │
-└─────────────────────────────────────┬─────────────────────────────────────┘
-                                      │
-                                      ▼
-┌───────────────────────────────────────────────────────────────────────────┐
-│                    Zero-Dependency Wiki Indexer Script                    │
-│  • Scans exports, JSDoc blocks, line counts, and CODE_RULES health stats  │
-│  • Cross-checks code ORION-ANCHOR IDs against Markdown doc references     │
-│  • Enforces --strict zero-drift check on build                            │
-└───────────────────┬───────────────────────────────────┬───────────────────┘
-                    │                                   │
-                    ▼                                   ▼
-┌───────────────────────────────────────┐   ┌───────────────────────────────┐
-│     Standalone Orion Code Wiki        │   │   In-Game [START] Menu Wiki   │
-│         (/wiki/index.html)            │   │       Sub-View Overlay        │
-│ • Instant search bar                  │   │ • Fetches live /wiki/index.json│
-│ • Tabs: Anchors | Files | Docs | Health│  │ • Tabs: Anchors | Files |     │
-│ • Safe DOM Markdown & table renderer  │   │   Docs | Health | Standalone  │
-└───────────────────────────────────────┘   └───────────────────────────────┘
+```text
+┌──────────────────────────────────────────────────────────────────────────┐
+│                     REPOSITORY & BUILD PIPELINE                          │
+├──────────────────────────────────────────────────────────────────────────┤
+│  package.json ("project-orion")                                          │
+│   ├─ npm run wiki  ──► scripts/build-index.mjs --out public/wiki --strict│
+│   ├─ npm run dev   ──► build-index.mjs + vite --port=3000                │
+│   ├─ npm run build ──► build-index (public) + vite build + (dist/wiki)   │
+│   └─ npm run lint  ──► tsc --noEmit (strict + noUnusedLocals/Parameters) │
+└───────────────────────────────────┬──────────────────────────────────────┘
+                                    │
+                                    ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                        CLEANED WORKSPACE LAYOUT                          │
+├──────────────────────────────────────────────────────────────────────────┤
+│  /README.md             (Updated for Project Orion, Controls & Wiki)     │
+│  /.gitignore            (Updated for build artifacts & local caches)     │
+│  /scripts/              (build-index.mjs + wiki/index.html template)     │
+│  /public/wiki/          (Generated wiki-index.json + viewer)             │
+│  /src/engine/           (Minuteman virtual console core & Web Audio)     │
+│  /src/cartridges/orion/ (Orion systems, database, types, UI & docs)      │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Data Model & State (`index.json`)**:
-  - `meta`: `{ repo, sha, date, root }`
-  - `stats`: `{ sourceFiles, jsdocBlocks, filesWithoutJsdoc, filesOver1000Lines, anchors, anyCasts, tsSuppressions, todoFixme, networkCalls, addEventListener, removeEventListener, setTimeout, clearTimeout, requestAnimationFrame, cancelAnimationFrame }`
-  - `drift`: `{ inCodeNotDocs: string[], inDocsNotCode: string[] }`
-  - `anchors`: `Array<{ id, path, line }>`
-  - `files`: `Array<{ path, lines, jsdoc, exports: Array<{ kind, name, line, doc }> }>`
-  - `docs`: `Array<{ path, title, text }>`
-- **Interactive Component & State Mapping**:
-  - **Search Input**: Filters `anchors` (by ID or path), `files` (by path or exported symbol name), and `docs` (by title, path, or full markdown body) in real time.
-  - **Tab Switcher (`anchors` | `files` | `docs` | `health`)**: Switches active view and resets any open document reader state.
-  - **Docs Reader**: Clicking any markdown document title renders its headings, code fences, tables, and bullet lists with a `← docs` back button.
-  - **Health & Drift Audit**: Displays all 15 `CODE_RULES.md` health counters and highlights anchor sync status (`No anchor drift.`).
+- **Cleanup & Verification Sequence**:
+  1. Remove all temporary files in `public/assets/aistudio/` and delete `COMMIT_SUMMARY.md`.
+  2. Update `package.json` (prune unused packages `express`, `@types/express`, `dotenv`, `@google/genai`, `motion`; set package name to `"project-orion"`), update `.gitignore`, and rewrite `README.md` for Project Orion.
+  3. Audit `src/` for unused exports, dead functions, and unused type definitions, removing any unreferenced code while keeping all active symbols and `[ORION-ANCHOR]` tags intact.
+  4. Regenerate the Code Wiki (`node scripts/build-index.mjs --out public/wiki --strict`) and run `lint_applet` + `compile_applet` to verify zero TypeScript, Vite, or anchor errors.

@@ -1,6 +1,6 @@
 {
-  "summary":  "Implementation plan to integrate the Orion Code Wiki indexer and static wiki viewer into the build/dev pipeline, resolve any ORION-ANCHOR drift with strict validation, serve the wiki at /wiki/, and add an in-app Code Wiki viewer inside the Orion Start menu.",
-  "updatedAt":  "2026-10-31T11:33:00.200983681Z",
+  "summary":  "Implementation plan for cleaning up the Project Orion codebase and repository: removing temporary public/assets/aistudio uploads and screenshots, updating root files (COMMIT_SUMMARY.md, README.md, .gitignore, package.json), pruning unused npm dependencies (express, dotenv, @google/genai, motion), auditing and removing dead functions/unused types/duplicate helpers while preserving the current file layout, and syncing all [ORION-ANCHOR] tags and regenerating the public/wiki index.",
+  "updatedAt":  "2026-10-31T13:06:20.179597840Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

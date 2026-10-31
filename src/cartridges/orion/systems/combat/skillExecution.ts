@@ -163,14 +163,6 @@ export function assignTriggerAction(
   notifyOrionStateChange();
 }
 
-export function resetTriggerActionsToDefault(state: OrionState): void {
-  state.assignedActions = {
-    L: 'weapon_skill_1',
-    R: 'weapon_skill_2',
-  };
-  notifyOrionStateChange();
-}
-
 export function getActionCooldown(state: OrionState, actionId: string): number {
   const desc = getResolvedActionDescriptor(state, actionId);
   if (desc.sourceCategory === 'weapon' && desc.weaponSkillSlot) {
@@ -1903,82 +1895,6 @@ export function executeActionPayload(
       notifyOrionStateChange();
     }
   }
-}
-
-export function activateUtilityOrBeltSlot(
-  state: OrionState,
-  actionId: string
-): boolean {
-  const status = isActionUnlocked(state, actionId);
-  const ctx: OrionCombatContext = {
-    state,
-    sound: soundSystem,
-    spawnParticles: (x, y, z, count, color, label) => {
-      for (let i = 0; i < count; i++) {
-        const a = Math.random() * Math.PI * 2;
-        const sp = 14 + Math.random() * 28;
-        state.particles.push({
-          x,
-          y,
-          z,
-          vx: Math.cos(a) * sp,
-          vy: Math.sin(a) * sp,
-          vz: 15 + Math.random() * 25,
-          life: 0.35 + Math.random() * 0.25,
-          maxLife: 0.6,
-          color,
-          size: 2,
-          label: i === 0 ? label : undefined,
-          fade: true,
-        });
-      }
-    },
-    say: (text: string) => {
-      state.toastText = text;
-      state.toastTimer = 2.6;
-    },
-  };
-
-  if (!status.unlocked) {
-    soundSystem.playMenuBeep();
-    ctx.say(status.reason);
-    notifyOrionStateChange();
-    return false;
-  }
-
-  const desc = getResolvedActionDescriptor(state, actionId);
-  const cd = getActionCooldown(state, actionId);
-  if (cd > 0) {
-    soundSystem.playMenuBeep();
-    ctx.say(`${desc.shortLabel} COOLDOWN (${cd.toFixed(1)}S)`);
-    notifyOrionStateChange();
-    return false;
-  }
-
-  if (desc.sourceCategory === 'belt' && typeof desc.beltSlotIndex === 'number') {
-    const itemId = state.equipmentSlots?.belt?.[desc.beltSlotIndex];
-    const invSlot = itemId
-      ? state.inventorySlots.find((s) => s.itemId === itemId)
-      : undefined;
-    if (!itemId || !invSlot || invSlot.count <= 0) {
-      soundSystem.playMenuBeep();
-      ctx.say(`BELT SLOT ${desc.beltSlotIndex + 1} EMPTY`);
-      notifyOrionStateChange();
-      return false;
-    }
-  }
-
-  state.actionCooldowns = state.actionCooldowns || {};
-  state.actionCooldowns[actionId] = desc.cooldownSec;
-  if (desc.heatCost > 0) {
-    state.heat = Math.min(state.maxHeat, state.heat + desc.heatCost);
-  } else if (desc.heatCost < 0) {
-    state.heat = Math.max(0, state.heat + desc.heatCost);
-  }
-
-  executeActionPayload(state, ctx, actionId, () => undefined);
-  notifyOrionStateChange();
-  return true;
 }
 
 export function updateActionTimers(state: OrionState, dt: number): void {

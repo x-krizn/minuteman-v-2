@@ -70,17 +70,6 @@ import {
 
 let corrosionParticleTimer = 0;
 
-export function isDesyncWallSolid(state: OrionState): boolean {
-  if (state.flags?.[`desync_lock:${state.room}`]) {
-    return false;
-  }
-  const biome = getBiomeDefinition(state.biomeId);
-  const loopDepth = state.fogGraph?.loopDepth || 0;
-  const depthPeriodMult = Math.max(0.45, 1 - loopDepth * 0.12);
-  const period = Math.max(0.85, (biome.tileRules?.desyncPeriodSec || 3.5) * depthPeriodMult);
-  return Math.floor(state.t / period) % 2 === 0;
-}
-
 export function updateEnvironmentalHazards(
   rooms: Record<string, string[]>,
   state: OrionState,
@@ -137,77 +126,6 @@ export function updateEnvironmentalHazards(
   if (spawnedCorrosionParticle) {
     corrosionParticleTimer = 0.75;
   }
-}
-
-export function triggerOrcRaid(state: OrionState, ctx?: OrionCombatContext): void {
-  state.flags = state.flags || {};
-  state.flags.orc_raid_active = true;
-  state.flickerTimer = 1.0;
-
-  const { widthPx, heightPx } = getRoomDimensions(ORION_TUTORIAL_ROOMS[state.room]);
-
-  let npcCount = 0;
-  for (const e of state.enemies) {
-    if (e.type === 'town_npc') {
-      e.npcDisposition = 'feral';
-      e.faction = 'npc';
-      npcCount++;
-    }
-  }
-
-  if (npcCount === 0) {
-    spawnEnemyByType(state, 'town_npc', Math.round(widthPx * 0.34), Math.round(heightPx * 0.42), {
-      npcDisposition: 'feral',
-      faction: 'npc',
-      name: 'Panicked Town Citizen',
-    });
-    spawnEnemyByType(state, 'town_npc', Math.round(widthPx * 0.66), Math.round(heightPx * 0.62), {
-      npcDisposition: 'feral',
-      faction: 'npc',
-      name: 'Panicked Town Merchant',
-    });
-  }
-
-  spawnEnemyByType(state, 'orc_warrior', Math.round(widthPx * 0.25), 36);
-  spawnEnemyByType(state, 'orc_scout', Math.round(widthPx * 0.75), 36);
-
-  soundSystem.playExplosion();
-  const msg = 'WAR HORN! ORC RAID — BOG EXIT SEALED & NPCS FERAL!';
-  if (ctx) {
-    ctx.say(msg);
-  } else {
-    state.toastText = msg;
-    state.toastTimer = 3.0;
-  }
-  notifyOrionStateChange();
-}
-
-export function triggerThreeKnightsTrial(state: OrionState, ctx?: OrionCombatContext): void {
-  state.flags = state.flags || {};
-  state.flags.knights_pulled_together = true;
-
-  const { widthPx, heightPx } = getRoomDimensions(ORION_TUTORIAL_ROOMS[state.room]);
-
-  state.enemies = state.enemies.filter(
-    (e) =>
-      e.type !== 'percival_knight' &&
-      e.type !== 'tristan_knight' &&
-      e.type !== 'bors_knight'
-  );
-
-  spawnEnemyByType(state, 'percival_knight', Math.round(widthPx * 0.28), Math.round(heightPx * 0.34));
-  spawnEnemyByType(state, 'tristan_knight', Math.round(widthPx * 0.72), Math.round(heightPx * 0.34));
-  spawnEnemyByType(state, 'bors_knight', Math.round(widthPx * 0.5), Math.round(heightPx * 0.26));
-
-  soundSystem.playCharge();
-  const msg = 'THE THREE KNIGHTS ENGAGED AT ONCE — KNIGHT’S OATH TRIAL!';
-  if (ctx) {
-    ctx.say(msg);
-  } else {
-    state.toastText = msg;
-    state.toastTimer = 3.0;
-  }
-  notifyOrionStateChange();
 }
 
 export function awakenLadyOfTheLake(state: OrionState, ctx?: OrionCombatContext): boolean {

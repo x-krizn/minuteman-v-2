@@ -1,107 +1,75 @@
-# Minuteman: Modular Virtual Handheld Console & Metroid-Souls Engine
+# Project Orion & Minuteman Virtual Handheld Engine
 
-An ultra-responsive retro handheld virtual console featuring decoupled engine systems, authentic tactile virtual controls, and a complete hybrid **Metroid-Souls** action slice with fighting-game-grade combat.
+**Project Orion** is a tactical 2.5D top-down mech-fantasy action RPG running on the **Minuteman** modular virtual handheld console engine. Set across the fractured worlds of `u00` orbiting the chthonic singularity **Sin**, pilots navigate oppressive, mist-choked biomes, attune Æther Waystations and Colossal Waygates, customize multi-layer chassis loadouts (`Shields → Armor → Frame`), and master weight-and-stability impulse physics.
 
 ---
 
-## 🎮 Combat Controls
+## 🎮 Controls (Project Orion)
 
-| Button | Touch / Pad | Keyboard Key | Action & Fighting Game Details |
+| Input | Handheld Pad | Keyboard Key | Tactical Action |
 | :--- | :--- | :--- | :--- |
-| **Move** | D-Pad Stick | `WASD` / `Arrow Keys` | Analog/digital 8-way navigation, crouching, and aiming. |
-| **A** | Face Button A | `Z` / `Space` | **Jump**: Tap for short hops, hold for full height. Double-jump in air once unlocked. |
-| **B** | Face Button B | `X` / `Shift` | **Dash / Sprint**: Tap for invulnerable dash burst (1 SP). Hold while moving to sprint at 1.5× speed. |
-| **X** | Face Button X | `C` / `J` | **Attack / Charge**: Neutral stab, Forward step slash, Overhead anti-air (`Up+X`), and Downward low poke (`Down+X`). Hold to charge for heavy guard-breaking cleave. In air: Pogo bounce off enemies with `Down+X`! |
-| **Y** | Face Button Y | `V` / `K` | **Block / Timed Parry**: Tap right before an attack to **Parry** (1.0s stagger stun, zero damage). Hold to Guard with stamina chip. |
-| **L** | Left Trigger | `Q` / `U` | **Slot 1 Skill/Item**: Consumes its respective resource pool (e.g., Flask charges for healing). |
-| **R** | Right Trigger | `E` / `I` | **Slot 2 Skill/Item**: Consumes its respective resource pool (e.g., Energy for Firebolt). |
-| **START** | Pill Button | `Enter` | **Game Menu**: Pauses game and opens menu offering Settings (Audio, CRT), Save Game, Load Game, Checkpoint, and Exit. |
-| **SHIFT** | Pill Button | `Tab` / `Backspace` | **Satchel / Inventory**: Opens equipment screen (assign L & R slots), character attributes, and Wandering Merchant. |
+| **Move / Aim** | 8-Way D-Pad / Stick | `WASD` / `Arrow Keys` | 8-directional Magic-Current glide movement and directional facing. |
+| **A** | Face Button A | `Z` / `Space` | **Interact / Jump**: Context interaction at Campfires, Waygates, Caches, and NPCs; vertical jump when clear. |
+| **B** | Face Button B | `X` / `Shift` | **Booster Dash / Continuous Boost**: Tap for a high-impulse directional dash; hold to sustain continuous boost (generates reactor heat). |
+| **X** | Face Button X | `C` / `J` | **Skill 1 / Skill 2**: Tap for primary weapon salvo/combo (`ac1`); hold for primary weapon special (`ac2`). Double-tap for tactical reload. |
+| **Y** | Face Button Y | `V` / `K` | **Skill 3 / Skill 4 (Block)**: Tap for heavy tactical skill (`ac3`); hold to raise directional guard (`ac4`, `0.25s` perfect block window). |
+| **R** | Right Trigger | `E` / `I` | **Skill 5 / Utility**: Tap to trigger paired/off-hand/utility skill (`ac5`). |
+| **L** | Left Trigger | `Q` / `U` | **Auxiliary Swap / Target Lock**: Tap to cycle target lock (`SELECT` also cycles lock); hold to swap auxiliary/side loadout. |
+| **SHIFT** | Pill Button | `Tab` / `Backspace` | **Pilot Satchel**: Opens **Mech Status**, **Loadout**, **Inventory**, **Hex Feat Tree**, **Cosmic World Map (`u00`)**, and **Pilot Codex**. |
+| **START** | Pill Button | `Enter` | **System Menu**: Opens game settings, HUD mode toggle, save/load, **Pilot Codex**, and the **Orion Code Wiki**. |
 
 ---
 
-## 🎒 Modular Architecture
-
-The engine has been decoupled into single-responsibility, performant modules:
+## 🧭 Key Systems & Architecture
 
 ```text
 src/
-├── types/
-│   ├── input.ts              # Controller state, stick vectors, edge detection
-│   ├── cartridge.ts          # Cartridge contract, surface, and sprite strip specs
-│   ├── shell.ts              # System shell screens and menus
-│   └── knight.ts             # Metroid-Souls state, entity, and combat types
 ├── engine/
-│   ├── input/
-│   │   ├── gamepadStore.ts   # Normalized analog stick math & digital thresholds
-│   │   ├── inputReader.ts    # Frame edge transitions (held, pressed)
-│   │   ├── keyboardMapper.ts # Desktop keyboard event synchronization
-│   │   └── haptics.ts        # Mobile haptic feedback wrapper
-│   └── core/
-│       ├── assetLoader.ts    # High-performance sprite sheet slicing & caching
-│       ├── registry.ts       # Cartridge registry and error log
-│       ├── cartridgeRunner.ts# Lifecycle manager, isolation, and START+SELECT exit
-│       ├── frameLoop.ts      # RAF animation loop with delta-time clamping & FPS
-│       ├── soundSystem.ts    # 8-bit Web Audio chiptune synthesizer
-│       └── shellStateMachine.ts # Console OS state machine (splash, menu, how-to, debug)
+│   ├── core/                 # Frame loop, cartridge runner, Web Audio chiptune synthesizer
+│   └── input/                # Normalized stick vectors, edge detection, keyboard & haptics
 ├── cartridges/
-│   ├── templateCartridge.ts  # Minimal analog stick test cartridge
-│   ├── walkTestCartridge.ts  # 3-frame animated knight walking cartridge
-│   ├── knight/               # The Metroid-Souls game slice
-│   │   ├── constants.ts      # Physics, dimensions, tile sizes, sword data
-│   │   ├── levels.ts         # Tutorial rooms and safe room definitions
-│   │   ├── proceduralFloor.ts# DFS procedural maze floor generator with shafts
-│   │   ├── physics.ts        # Collision grid detection and sub-pixel stepping
-│   │   ├── combat.ts         # Fighting game combat: Directionals, pogo, parry, charge
-│   │   ├── skills.ts         # Assignable skills, spells, and projectile systems
-│   │   ├── stateStore.ts     # Inventory state & wandering merchant store
-│   │   ├── enemies.ts        # Patrol crawlers, shield sentries, and flying wisps
-│   │   ├── pickups.ts        # Coins, keys, flask charges, and stat gems
-│   │   ├── renderer.ts       # Pixelated layered renderer, HUD, and damage numbers
-│   │   └── knightCartridge.ts# Unified Cartridge implementation
-│   └── index.ts              # Cartridge registration bootstrap
-└── components/
-    ├── gamepad/              # Virtual D-Pad, tactile action buttons, pill buttons
-    ├── screen/               # Integer-scaled canvas, retro green LCD viewport, CRT scanlines
-    └── shell/                # Console bezel, inventory modal, and debugger overlay
+│   ├── orion/                # Project Orion cartridge
+│   │   ├── constants.ts      # Viewport metrics, physics constants, Aether routing helpers
+│   │   ├── types/            # Domain schemas (combat, equipment, entities, world, state)
+│   │   ├── database/         # Canonical weapons, mods, gems, hex feats, u00 worlds & tiles
+│   │   ├── systems/          # Player glide, inertia physics, combat, chunk streaming, renderer
+│   │   ├── ui/               # HUD overlays, Pilot Satchel tabs, Living Aether Cosmos, Codex
+│   │   └── docs/             # Markdown documentation linked via [ORION-ANCHOR] tags
+│   └── knight/               # Bonus Metroid-Souls side-scrolling action cartridge
+└── components/               # Virtual handheld shell, integer-scaled canvas & tactile controls
 ```
+
+### Highlights
+- **3-Layer Defense & Classical Impulse Inertia (`systems/inertiaSystem.ts`)**:
+  - Damage cascades through **Shields** (regenerating energy barrier), **Armor** (physical mitigation + durability), and **Frame Integrity** (`200` base).
+  - Hits resolve via classical momentum transfer (`Δv = J / m_eff`) against defender **Weight (`m`)**, directional charge (`μ`), and **Stability (`S`)** across four outcome bands (`none`, `flinch`, `stagger`, `knockback`).
+- **Oppressive Cursed-Bog Lighting (`systems/render/effectsRenderer.ts`)**:
+  - Multi-stop cold bog penumbra, radial shadow cones cast behind trees and ruins, drifting ground miasma ribbons, and suspended spore motes illuminated within the player's lantern cone.
+- **Living Æther Cosmic World Map (`ui/satchel/AetherCosmosCanvas.tsx`)**:
+  - Real-time procedural canvas simulation of the `u00` universe: **Sin** churns at the central gravitational vortex while Major (`1–8`), Minor (`1–7`), and Unstable/Drift worlds orbit along swirling Æther currents.
+- **Discovery-Gated Pilot Codex (`ui/satchel/SatchelCodexTab.tsx`)**:
+  - In-game field encyclopedia that reveals lore, stats, and schematics only as worlds, areas, weapons, chassis mods, gemstones, feats, and enemies are discovered during play.
+- **Orion Code Wiki (`scripts/build-index.mjs` & `/wiki/`)**:
+  - Zero-dependency AST/regex indexer that cross-references every source file, export, JSDoc block, and `// [ORION-ANCHOR: <ID>]` tag against `src/cartridges/orion/docs/*.md`.
+  - Accessible standalone at `/wiki/` or directly inside the Start Menu via **📖 Code Wiki**.
 
 ---
 
-## 🚀 GitHub Pages Deployment
-
-This repository includes an automated GitHub Actions workflow (`.github/workflows/deploy.yml`).
-
-### Setup in 2 steps:
-1. Push this codebase to your GitHub repository on `main` or `master`.
-2. In your GitHub repository:
-   - Navigate to **Settings** > **Pages**.
-   - Under **Build and deployment** > **Source**, change the dropdown from *"Deploy from a branch"* to **"GitHub Actions"**.
-
-### Troubleshooting Common GitHub Actions Failures:
-1. **"Deployment failed with status 404" or "Resource not accessible by integration"**:
-   - Go to **Settings** > **Pages** and confirm that **Source** is set to **"GitHub Actions"** (NOT *"Deploy from a branch"*).
-   - Go to **Settings** > **Actions** > **General** > scroll down to **Workflow permissions** > select **"Read and write permissions"** and click Save.
-2. **"Dependencies lock file is not found" or "ERESOLVE could not resolve dependency"**:
-   - Resolved! A generated `package-lock.json` and `.npmrc` with `legacy-peer-deps=true` are now included in the repository.
-   - The workflow runs `npm install --legacy-peer-deps` to ensure reliable builds across all Node environments.
-
-GitHub Actions will automatically run the build and host your game at:
-```
-https://<username>.github.io/<repository-name>/
-```
-
----
-
-## 💻 Local Development
+## 💻 Local Development & Scripts
 
 ```bash
 # Install dependencies
 npm install
 
-# Run local development server
+# Start development server (regenerates public/wiki index automatically)
 npm run dev
 
-# Build production bundle
+# Regenerate and strictly validate the Orion Code Wiki index & [ORION-ANCHOR] tags
+npm run wiki
+
+# Type-check the codebase
+npm run lint
+
+# Build production bundle (verifies strict wiki anchors and outputs dist/ + dist/wiki/)
 npm run build
 ```

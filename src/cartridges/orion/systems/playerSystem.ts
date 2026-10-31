@@ -891,15 +891,6 @@ export function syncStateGates(state: OrionState): OrionCapabilityGates {
   return gates;
 }
 
-export function getOrionFlag<T extends boolean | number | string>(
-  state: OrionState,
-  key: string,
-  fallback: T
-): T {
-  const val = state.flags?.[key];
-  return (val !== undefined ? val : fallback) as T;
-}
-
 export function setOrionFlag(
   state: OrionState,
   key: string,
@@ -916,16 +907,6 @@ export function setOrionFlag(
 export function setTutorialStateActive(state: OrionState, active: boolean): void {
   state.tutorialActive = active;
   if (!active) {
-    unlockLevel2SecondaryWeapon(state);
-    state.hasBoosterKit = true;
-  }
-  syncStateGates(state);
-  notifyOrionStateChange();
-}
-
-export function setBypassProgressionGates(state: OrionState, bypass: boolean): void {
-  state.bypassProgressionGates = bypass;
-  if (bypass) {
     unlockLevel2SecondaryWeapon(state);
     state.hasBoosterKit = true;
   }

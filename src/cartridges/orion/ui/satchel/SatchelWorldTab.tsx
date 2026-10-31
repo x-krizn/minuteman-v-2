@@ -38,6 +38,7 @@ import {
   UniverseWorldTier,
   WorldMapAccessMode,
 } from '../../types';
+import { AetherCosmosCanvas } from './AetherCosmosCanvas';
 
 /**
  * Props for `SatchelWorldTab` (`u00` Cosmic World Map & Fast Travel panel).
@@ -358,169 +359,37 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
                   ? 'bg-[#7f1d1d] text-[#fecaca] border-[#f87171]'
                   : 'bg-[#130f24] text-[#cbd5e1] border-[#3b2154] hover:border-[#a855f7]'
               }`}
-              title="Toggle map-v0 coordinate reference diagram overlay"
+              title="Toggle canonical alignment rings & reference coordinate labels"
             >
-              {showCoordOverlay ? '▣ COORD GRID: ON' : '▢ COORD GRID'}
+              {showCoordOverlay ? '▣ ALIGNMENT: ON' : '▢ ALIGNMENT'}
             </button>
           </div>
 
-          {/* Interactive Square Cosmic Orb Viewport */}
-          <div className="relative w-full max-w-[230px] aspect-square bg-[#05030a] rounded-xs border border-[#4c1d95]/60 overflow-hidden shadow-inner">
-            {/* Base Cosmic Orb Artwork */}
-            <img
-              src="/assets/aistudio/worldMap_77ef03c9.png"
-              alt="u00 Universe Cosmic World Map Orb"
-              className="absolute inset-0 w-full h-full object-contain pointer-events-none [image-rendering:pixelated]"
-            />
-
-            {/* Optional Coordinate Reference Overlay (map-v0_84bf584d.png) */}
-            {showCoordOverlay && (
-              <img
-                src="/assets/aistudio/map-v0_84bf584d.png"
-                alt="u00 World Map Coordinate Reference"
-                className="absolute inset-0 w-full h-full object-contain pointer-events-none opacity-65 mix-blend-screen [image-rendering:pixelated]"
-              />
-            )}
-
-            {/* Interactive SVG Coordinate Nodes (Large 1-8 Major, Medium 1-7 Minor, Small Squares Unstable/Drift) */}
-            <svg
-              viewBox="0 0 100 100"
-              className="absolute inset-0 w-full h-full"
-              aria-label="Interactive Cosmic World Map Nodes"
-            >
-              {U00_UNIVERSE_CATALOG.filter(
-                (w) => tierFilter === 'all' || w.tier === tierFilter
-              ).map((world) => {
-                const isSelected = world.id === selectedWorld.id;
-                const isCurrent = world.id === currentWorldDef.id;
-                const { xPct, yPct, mapCode, nodeSize } = world.mapCoord;
-
-                const allNodes = [
-                  { xPct, yPct, mapCode, nodeSize, isPrimary: true, label: world.name },
-                  ...(world.driftCoords || []).map((dc) => ({
-                    ...dc,
-                    isPrimary: false,
-                    label: dc.label || `${world.name} Drift`,
-                  })),
-                ];
-
-                return (
-                  <g
-                    key={world.id}
-                    onClick={() => {
-                      soundSystem.playSelect();
-                      setSelectedWorldId(world.id);
-                    }}
-                    className="cursor-pointer group"
-                  >
-                    {allNodes.map((n, idx) => {
-                      const strokeColor = isSelected
-                        ? '#facc15'
-                        : isCurrent
-                          ? '#22d3ee'
-                          : n.nodeSize === 'major'
-                            ? '#c084fc'
-                            : n.nodeSize === 'minor'
-                              ? '#38bdf8'
-                              : '#f87171';
-
-                      const fillColor = isSelected
-                        ? 'rgba(250, 204, 21, 0.32)'
-                        : isCurrent
-                          ? 'rgba(34, 211, 238, 0.25)'
-                          : 'rgba(15, 10, 28, 0.82)';
-
-                      return (
-                        <g key={`${world.id}-${idx}`}>
-                          {/* Current World Pulsing Ring */}
-                          {isCurrent && n.isPrimary && (
-                            <circle
-                              cx={n.xPct}
-                              cy={n.yPct}
-                              r={n.nodeSize === 'major' ? 7.2 : 5.2}
-                              fill="none"
-                              stroke="#22d3ee"
-                              strokeWidth="0.7"
-                              strokeDasharray="1.5 1"
-                            />
-                          )}
-
-                          {/* Node Geometry: Large Circle (Major), Medium Circle (Minor), Small Square (Unstable/Drift) */}
-                          {n.nodeSize === 'major' ? (
-                            <circle
-                              cx={n.xPct}
-                              cy={n.yPct}
-                              r={5.2}
-                              fill={fillColor}
-                              stroke={strokeColor}
-                              strokeWidth={isSelected ? 1.2 : 0.75}
-                            />
-                          ) : n.nodeSize === 'minor' ? (
-                            <circle
-                              cx={n.xPct}
-                              cy={n.yPct}
-                              r={3.4}
-                              fill={fillColor}
-                              stroke={strokeColor}
-                              strokeWidth={isSelected ? 1.1 : 0.65}
-                            />
-                          ) : (
-                            <rect
-                              x={n.xPct - 2.1}
-                              y={n.yPct - 2.1}
-                              width={4.2}
-                              height={4.2}
-                              fill={fillColor}
-                              stroke={strokeColor}
-                              strokeWidth={isSelected ? 1.0 : 0.6}
-                            />
-                          )}
-
-                          {/* Coordinate Number Label */}
-                          <text
-                            x={n.xPct}
-                            y={
-                              n.nodeSize === 'major'
-                                ? n.yPct + 1.4
-                                : n.nodeSize === 'minor'
-                                  ? n.yPct + 1.1
-                                  : n.yPct + 0.9
-                            }
-                            textAnchor="middle"
-                            fontSize={
-                              n.nodeSize === 'major'
-                                ? '4.1'
-                                : n.nodeSize === 'minor'
-                                  ? '3.1'
-                                  : '2.4'
-                            }
-                            fontWeight="bold"
-                            fill={isSelected ? '#fef08a' : isCurrent ? '#67e8f9' : '#f8fafc'}
-                          >
-                            {n.mapCode}
-                          </text>
-                        </g>
-                      );
-                    })}
-                  </g>
-                );
-              })}
-            </svg>
-          </div>
+          {/* Interactive Living Æther Cosmic Viewport */}
+          <AetherCosmosCanvas
+            selectedWorldId={selectedWorld.id}
+            currentWorldId={currentWorldDef.id}
+            tierFilter={tierFilter}
+            showAlignmentGrid={showCoordOverlay}
+            onSelectWorld={(id) => {
+              soundSystem.playSelect();
+              setSelectedWorldId(id);
+            }}
+          />
 
           {/* Orb Legend */}
           <div className="w-full text-[7.5px] text-[#cbd5e1] flex items-center justify-between px-1">
             <span className="flex items-center gap-1">
               <span className="inline-block w-2 h-2 rounded-full border border-[#c084fc] bg-[#1e1b4b]" />
-              Major (1-8)
+              Major Worlds
             </span>
             <span className="flex items-center gap-1">
               <span className="inline-block w-1.5 h-1.5 rounded-full border border-[#38bdf8] bg-[#0f172a]" />
-              Minor (1-7)
+              Minor Worlds
             </span>
             <span className="flex items-center gap-1">
-              <span className="inline-block w-1.5 h-1.5 border border-[#f87171] bg-[#1f1224]" />
-              Unstable/Drift
+              <span className="inline-block w-1.5 h-1.5 border border-[#f87171] bg-[#1f1224] rotate-45" />
+              Æther Drift
             </span>
           </div>
         </div>

@@ -27,6 +27,7 @@ import {
   syncStateGates,
 } from '../../systems';
 import { OrionState } from '../../types';
+import { ORION_LOGO_BASE64, ORION_MENU_BG_BASE64 } from './titleMenuAssets';
 
 /**
  * Subview identifier for the Project Orion Title Menu (`'root'` main stack, `'new'` pilot bonding,
@@ -127,7 +128,7 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
     const canvas = bgCanvasRef.current;
     if (!canvas) return;
     const img = new Image();
-    img.src = '/assets/aistudio/menu-example-001_6511d310.png';
+    img.src = ORION_MENU_BG_BASE64;
     img.onload = () => {
       const w = img.naturalWidth || 690;
       const h = img.naturalHeight || 294;
@@ -142,7 +143,7 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
       const data = imgData.data;
 
       // Clean the baked left-edge logo (x: 0%..20%, y: 4%..42%) so it never clips when cropped to 10:9,
-      // replacing it with the seamless dithered sky band so our standalone LOGO1_7ff3d8b5.png renders cleanly.
+      // replacing it with the seamless dithered sky band so our standalone ORION_LOGO_BASE64 renders cleanly.
       const logoClearXEnd = Math.floor(w * 0.20);
       const logoClearYEnd = Math.floor(h * 0.42);
       const skyPatchX = Math.floor(w * 0.195);
@@ -239,7 +240,7 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
           {/* Top Bar: Left Project Orion Pixel Logo + Right Quick Resume Strip */}
           <div className="flex items-start justify-between gap-2">
             <img
-              src="/assets/aistudio/LOGO1_7ff3d8b5.png"
+              src={ORION_LOGO_BASE64}
               alt="Project Orion"
               className="w-24 sm:w-28 md:w-32 h-auto object-contain pointer-events-none [image-rendering:pixelated] drop-shadow-[0_2px_0_rgba(18,11,24,0.85)]"
             />

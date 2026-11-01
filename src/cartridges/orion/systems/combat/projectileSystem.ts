@@ -11,6 +11,7 @@ import {
   computeInterfaceFeatModifiers,
   getWeaponGemCombatModifiers,
   getWeaponGemVisuals,
+  resolveEquippedHardwareStats,
 } from '../../database/progression';
 import { OrionCombatContext, OrionState } from '../../types';
 import {
@@ -71,7 +72,10 @@ export function firePrimarySalvoShot(
 
   const installedRangedModId = state.equipmentSlots?.installedMods?.ranged;
   const rangedMod = ACTION_MODIFICATION_CATALOG.find((m) => m.id === installedRangedModId);
-  const tellMult = !isMeleeOrShield ? (rangedMod?.modifiers.tellDurationMult ?? 1.0) : 1.0;
+  const hwStats = resolveEquippedHardwareStats(state);
+  const tellMult =
+    (!isMeleeOrShield ? (rangedMod?.modifiers.tellDurationMult ?? 1.0) : 1.0) *
+    hwStats.tellDurationMult;
 
   const skill0 = weapon.moveset[0];
   state.activeSkillSlot = 0;
@@ -145,7 +149,8 @@ export function executeBasicAttackShot(
     const opticMult = (state.opticMarkTimer || 0) > 0 ? 1.25 : 1.0;
     const hasKnightsOath = state.equippedFeats.includes('knights_oath');
     const playerBasicProf = resolvePlayerInertiaProfile(state);
-    const basicWeaponSpec = resolveWeaponAttackInertiaSpec(currentWeaponId, 0);
+    const basicWeaponSpec = resolveWeaponAttackInertiaSpec(currentWeaponId, 0, state);
+    const hwStats = resolveEquippedHardwareStats(state);
 
     // Apply Melee Attack Recoil / Movement Restriction (§2.3, §7)
     const meleeRecoilRes = resolveRecoil({
@@ -268,7 +273,9 @@ export function executeBasicAttackShot(
       }
       const oathMult = hasKnightsOath && e.faction === 'camelot' ? 1.1 : 1.0;
       const isLockedOrStaggered = e.id === state.lockedTargetId || e.stun > 0;
-      const charoiteMult = isLockedOrStaggered ? gemCombatMods.lockedOrStaggeredDamageMult : 1.0;
+      const charoiteMult = isLockedOrStaggered
+        ? gemCombatMods.lockedOrStaggeredDamageMult * hwStats.staggerDamageMult
+        : 1.0;
       const adaptiveMult = weapon?.adaptiveDamageTypes ? 1.12 : 1.0;
       const hasAssassinate =
         (state.equippedFeats || []).some((f) =>
@@ -646,8 +653,11 @@ export function executeBasicAttackShot(
     }
   } else {
     // Ranged Basic Shot
-    const accMult = (loadPenalty?.accuracyMult ?? 1.0) * featMods.accuracyMult;
-    const spreadRad = accMult < 1.0 ? (Math.random() - 0.5) * 0.22 : 0;
+    const hwStats = resolveEquippedHardwareStats(state);
+    const accMult =
+      (loadPenalty?.accuracyMult ?? 1.0) * featMods.accuracyMult * hwStats.accuracyMult;
+    const spreadRad =
+      accMult < 1.0 ? (Math.random() - 0.5) * 0.22 * Math.max(0.25, 2.0 - accMult) : 0;
     const baseAngle = Math.atan2(aim.dy, aim.dx) + spreadRad;
 
     const installedRangedModId = state.equipmentSlots?.installedMods?.ranged;
@@ -702,9 +712,11 @@ export function executeBasicAttackShot(
       : action.damageType;
     const adaptiveShotDmg = weapon?.adaptiveDamageTypes ? Math.round(shotDmg * 1.12) : shotDmg;
     const baseProjSpeed =
-      (currentWeaponId === 'great_bow' ? 210 : 185) * gemCombatMods.projectileSpeedMult;
+      (currentWeaponId === 'great_bow' ? 210 : 185) *
+      gemCombatMods.projectileSpeedMult *
+      Math.max(0.85, Math.min(1.25, hwStats.accuracyMult));
     const rangedPlayerProf = resolvePlayerInertiaProfile(state);
-    const rangedWeaponSpec = resolveWeaponAttackInertiaSpec(currentWeaponId, 0);
+    const rangedWeaponSpec = resolveWeaponAttackInertiaSpec(currentWeaponId, 0, state);
     const recoilJ = computeRangedImpulse(rangedWeaponSpec.projectileWeight, baseProjSpeed);
     const recoilRes = resolveRecoil({
       recoilImpulseJ: recoilJ,

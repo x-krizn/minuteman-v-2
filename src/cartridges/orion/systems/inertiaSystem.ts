@@ -42,7 +42,10 @@ import { getWeaponDefinition } from '../database/equipment/weapons';
 import {
   ACTION_MODIFICATION_CATALOG,
   computeEffectiveLoadCapacity,
+  computePlayerLoadMetrics,
   findHardwareItemByNameOrId,
+  getWeaponGemCombatModifiers,
+  resolveEquippedHardwareStats,
 } from '../database/progression';
 import {
   AttackCommitmentClass,
@@ -386,7 +389,7 @@ export function resolvePlayerInertiaProfile(state: OrionState): ActorInertiaProf
     'gladius_boltcaster';
   const activeWeapon = getWeaponDefinition(activeWeaponId);
   const weaponWeightClass: WeaponWeightClass = activeWeapon?.weightClass || 'medium';
-  const weaponMass =
+  let weaponMass =
     activeWeapon?.baseAttackWeight ??
     INERTIA_CONSTANTS.WEAPON_WEIGHT_BY_CLASS[weaponWeightClass] ??
     35;
@@ -442,12 +445,15 @@ export function resolvePlayerInertiaProfile(state: OrionState): ActorInertiaProf
     }
   }
 
-  // Check auxiliary/legs hardware for gyro/stabilizer keywords
+  // Aggregate stability and servo strike mass from equipped chassis hardware & sub-modules
+  const hwStats = resolveEquippedHardwareStats(state);
+  stabilityFlat += hwStats.stabilityBonus;
+  weaponMass += hwStats.attackMassBonus;
+
   const aux3Item = findHardwareItemByNameOrId(state.equipmentSlots?.aux3);
   const aux4Item = findHardwareItemByNameOrId(state.equipmentSlots?.aux4);
-  const legsItem = findHardwareItemByNameOrId(state.equipmentSlots?.legs);
-  for (const hw of [aux3Item, aux4Item, legsItem]) {
-    if (!hw) continue;
+  for (const hw of [aux3Item, aux4Item]) {
+    if (!hw || hw.stabilityBonus !== undefined) continue;
     const descLower = `${hw.name} ${hw.subtype} ${hw.description}`.toLowerCase();
     if (
       descLower.includes('gyro') ||
@@ -459,8 +465,13 @@ export function resolvePlayerInertiaProfile(state: OrionState): ActorInertiaProf
     }
   }
 
+  // Literal physical mass from equipped hardware, sub-mods, and weapon gem mods
+  const loadMetrics = computePlayerLoadMetrics(state);
+  const hardwareAndModMassDelta = Math.max(-24, loadMetrics.equippedWeight - 52);
+
   const totalBaseWeight = Math.round(
-    (baseFrameMass + weaponMass * 0.45 + offhandMass + weightFlat) * weightMult
+    (baseFrameMass + weaponMass * 0.45 + offhandMass + hardwareAndModMassDelta + weightFlat) *
+      weightMult
   );
   const armorRating = state.armor?.rating ?? 8;
   const stability = computeStability(totalBaseWeight, armorRating, {
@@ -506,7 +517,8 @@ export interface WeaponAttackInertiaSpec {
  */
 export function resolveWeaponAttackInertiaSpec(
   weaponId: string,
-  slot: number = 0
+  slot: number = 0,
+  state?: OrionState
 ): WeaponAttackInertiaSpec {
   const baseWeaponId = parseEquipmentInstanceId(weaponId).baseId;
   const weapon = getWeaponDefinition(weaponId);
@@ -517,11 +529,14 @@ export function resolveWeaponAttackInertiaSpec(
     weapon?.equipmentRole === 'shield' ||
     baseWeaponId === 'khopesh';
 
+  const servoMassBonus =
+    state && isMelee ? resolveEquippedHardwareStats(state).attackMassBonus : 0;
+
   const baseAttackWeight =
-    action?.attackWeight ??
-    weapon?.baseAttackWeight ??
-    INERTIA_CONSTANTS.WEAPON_WEIGHT_BY_CLASS[weightClass] ??
-    35;
+    (action?.attackWeight ??
+      weapon?.baseAttackWeight ??
+      INERTIA_CONSTANTS.WEAPON_WEIGHT_BY_CLASS[weightClass] ??
+      35) + servoMassBonus;
 
   // Slot 0 = auto chain, Slot 1 = primary lunge/strike, Slot 2 = heavy slam/shockwave, Slot 4 = finisher
   const slotWeightMult =
@@ -578,14 +593,22 @@ export function resolveWeaponAttackInertiaSpec(
   const projectileSpeed =
     weightClass === 'heavy' ? 235 : weightClass === 'medium' ? 195 : 180;
 
+  const gemMods = getWeaponGemCombatModifiers(undefined, weaponId);
+
   return {
-    attackWeight: Math.round(baseAttackWeight * slotWeightMult),
+    attackWeight: Math.max(
+      10,
+      Math.round((baseAttackWeight + gemMods.attackWeightDelta) * slotWeightMult)
+    ),
     attackSpeed: Math.round(baseSpeed * slotSpeedMult),
     commitment,
-    projectileWeight: Math.round(
-      projectileWeight * (slot >= 1 ? 1.25 : 1.0)
+    projectileWeight: Math.max(
+      8,
+      Math.round(
+        (projectileWeight + gemMods.projectileWeightDelta) * (slot >= 1 ? 1.25 : 1.0)
+      )
     ),
-    projectileSpeed,
+    projectileSpeed: Math.round(projectileSpeed * gemMods.projectileSpeedMult),
     isMelee,
   };
 }

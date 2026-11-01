@@ -1263,7 +1263,6 @@ export function transitionViaAetherDoor(
 ): boolean {
   const graph = ensureAetherFogGraph(state);
   const currentNode = getActiveAetherNode(state);
-  const prevAreaId = state.areaId;
   const prevRoomGrid = rooms[state.room];
   const departureDoor = getRoomDoorwayCenterPx(prevRoomGrid, dir);
 

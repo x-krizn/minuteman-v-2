@@ -41,6 +41,8 @@ export const ENEMY_EQUIPMENT_DROP_POOLS: Record<
       'sensory_b_inertial_gyro_telemetry',
       'legs_pnsy_all_terrain_treads',
       'head_pnsy_field_visor',
+      'head_s07_visor',
+      'arms_s07_gauntlets',
     ],
     baseChance: 0.18,
   },

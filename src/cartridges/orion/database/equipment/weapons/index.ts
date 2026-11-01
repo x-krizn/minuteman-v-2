@@ -62,14 +62,16 @@ export function getWeaponDefinition(id: string): WeaponDefinition | undefined {
   if (!baseDef) return undefined;
   if (installedGems.length === 0) return baseDef;
 
+  const allowsArmorBonus =
+    baseDef.equipmentRole === 'shield' || baseDef.id.includes('martyrdom_plating');
   let extraShield = 0;
   let extraArmor = 0;
   let extraLight = 0;
   for (const gem of installedGems) {
     if (gem === 'titanite') extraShield += 15;
     if (gem === 'moonstone') extraShield += 8;
-    if (gem === 'hematite') extraArmor += 8;
-    if (gem === 'carnelian') extraArmor += 6;
+    if (allowsArmorBonus && gem === 'hematite') extraArmor += 8;
+    if (allowsArmorBonus && gem === 'carnelian') extraArmor += 6;
     if (gem === 'kyanite' || gem === 'charoite') extraLight += 0.25;
   }
 
@@ -82,7 +84,7 @@ export function getWeaponDefinition(id: string): WeaponDefinition | undefined {
         ? (baseDef.passiveShieldBonus || 0) + extraShield
         : undefined,
     passiveArmorBonus:
-      (baseDef.passiveArmorBonus || 0) + extraArmor > 0
+      allowsArmorBonus && (baseDef.passiveArmorBonus || 0) + extraArmor > 0
         ? (baseDef.passiveArmorBonus || 0) + extraArmor
         : undefined,
     passiveLightBonus:

@@ -1072,7 +1072,7 @@ function spawnChunkInitialEnemies(
  * When cleared, unlocks fast-travel back to the player's last safe Set-Path spot and places a Waygate (`Q`).
  */
 export function checkAndUnlockClearedDeepFogDungeon(
-  rooms: Record<string, string[]>,
+  _rooms: Record<string, string[]>,
   state: OrionState,
   cx?: number,
   cy?: number

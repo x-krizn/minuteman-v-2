@@ -34,6 +34,7 @@ import {
   computeUnlockedFeatTiers,
   createInitialEquipmentSlots,
   createInitialPilotSkills,
+  createStarterFeatLoadout,
   createStarterGemPouch,
   GEMSTONE_REGISTRY,
   getLevelBand,
@@ -41,6 +42,7 @@ import {
   isStandardProgressionUnlocked,
   normalizePilotSkills,
   resolveEquippedHardwareStats,
+  STARTER_FEAT_LOADOUT_BY_KIT,
   syncPostTutorialFrameLevel,
   unlockLevel2SecondaryWeapon,
 } from '../database/progression';
@@ -182,15 +184,36 @@ function applySerializedSaveDataToState(
   if (data.assignedActions && typeof data.assignedActions === 'object') {
     state.assignedActions = { ...state.assignedActions, ...data.assignedActions };
   }
-  if (Array.isArray(data.equippedFeats)) {
+  if (Array.isArray(data.equippedFeats) && data.equippedFeats.length > 0) {
     state.equippedFeats = data.equippedFeats;
+  } else {
+    const starterFeats = createStarterFeatLoadout(state.traitLine);
+    state.equippedFeats = starterFeats.equippedFeats;
+    state.socketedFeatGems = {
+      ...starterFeats.socketedFeatGems,
+      ...(data.socketedFeatGems || {}),
+    };
   }
-  if (data.socketedFeatGems && typeof data.socketedFeatGems === 'object') {
+  if (data.socketedFeatGems && typeof data.socketedFeatGems === 'object' && Object.keys(data.socketedFeatGems).length > 0) {
     state.socketedFeatGems = data.socketedFeatGems;
   } else {
-    state.socketedFeatGems = state.socketedFeatGems || {};
+    const starterFeats = createStarterFeatLoadout(state.traitLine);
+    state.socketedFeatGems = {
+      ...starterFeats.socketedFeatGems,
+      ...(state.socketedFeatGems || {}),
+    };
   }
-  state.pilotSkills = normalizePilotSkills(data.pilotSkills ?? state.pilotSkills);
+  state.pilotSkills = normalizePilotSkills(
+    data.pilotSkills ?? state.pilotSkills,
+    state.traitLine
+  );
+  if (state.pilotSkills[state.traitLine] && state.pilotSkills[state.traitLine].level < 2) {
+    state.pilotSkills[state.traitLine].level = 2;
+    state.pilotSkills[state.traitLine].gemsInvested = Math.max(
+      1,
+      state.pilotSkills[state.traitLine].gemsInvested || 0
+    );
+  }
   if (data.equipmentSlots && typeof data.equipmentSlots === 'object') {
     state.equipmentSlots = {
       ...createInitialEquipmentSlots(state.traitLine),
@@ -473,6 +496,7 @@ export function createInitialOrionState(
       : ['gladius_boltcaster', 'khopesh'];
   const primaryWeaponDef = getWeaponDefinition(startingWeapons[0]);
   const startPos = convertBogRoomPosToUnifiedPx('-3,0', 120, 88, 16, 12);
+  const starterFeats = createStarterFeatLoadout(traitLine);
   return {
     pilotId: `pilot_${traitLine.toLowerCase()}_${pilotName
       .trim()
@@ -596,9 +620,9 @@ export function createInitialOrionState(
       { itemId: 'kyanite_flask', count: 1 },
       ...createStarterGemPouch(traitLine),
     ]),
-    equippedFeats: [],
-    socketedFeatGems: {},
-    pilotSkills: createInitialPilotSkills(),
+    equippedFeats: starterFeats.equippedFeats,
+    socketedFeatGems: starterFeats.socketedFeatGems,
+    pilotSkills: createInitialPilotSkills(traitLine),
     equipmentSlots: createInitialEquipmentSlots(traitLine),
     presence: 100,
 
@@ -704,7 +728,11 @@ export function computeCapabilityGates(state: OrionState): OrionCapabilityGates 
   const defensiveSlots = auxSlotsUnlocked;
 
   const unlockedFeatTiers = computeUnlockedFeatTiers(state.pilotSkills, bypass);
-  const featSlots = unlockedFeatTiers.length;
+  const featSlots = Math.max(
+    2,
+    unlockedFeatTiers.length * 2,
+    (state.equippedFeats || []).length
+  );
 
   const presenceActive = lvl >= 11 || bypass;
   const coreSystemActive = lvl >= 17 || bypass;
@@ -720,7 +748,7 @@ export function computeCapabilityGates(state: OrionState): OrionCapabilityGates 
     'gladius_boltcaster';
   const activeWeapon = getWeaponDefinition(currentWeaponId);
   const activeWeaponWeight = activeWeapon?.weightClass || 'medium';
-  const loadPenalty = computeLoadPenalty(effectiveLoadCapacity, activeWeaponWeight);
+  const loadPenalty = computeLoadPenalty(effectiveLoadCapacity, activeWeaponWeight, state);
 
   return {
     levelBand,
@@ -755,10 +783,17 @@ export function computeCapabilityGates(state: OrionState): OrionCapabilityGates 
 
 export function syncStateGates(state: OrionState): OrionCapabilityGates {
   if (!state.pilotSkills) {
-    state.pilotSkills = createInitialPilotSkills();
+    state.pilotSkills = createInitialPilotSkills(state.traitLine);
   }
   if (!state.equipmentSlots) {
     state.equipmentSlots = createInitialEquipmentSlots(state.traitLine);
+  }
+  const defaultSlots = createInitialEquipmentSlots(state.traitLine);
+  if (!state.equipmentSlots.headOptics) {
+    state.equipmentSlots.headOptics = defaultSlots.headOptics;
+  }
+  if (!state.equipmentSlots.armActuators) {
+    state.equipmentSlots.armActuators = defaultSlots.armActuators;
   }
   state.equipmentSlots.unlockedEquipment = state.equipmentSlots.unlockedEquipment || [];
   for (const eqId of state.equippedWeapons || []) {
@@ -947,8 +982,45 @@ export function applyTraitLineProfile(state: OrionState, traitLine: TraitLine): 
   const prevUnlockedEquip = state.equipmentSlots?.unlockedEquipment || [];
   const prevBelt = state.equipmentSlots?.belt;
 
+  const prevTrait = state.traitLine;
   state.traitLine = profile.id;
   state.reactor = profile.reactor;
+
+  // Ensure the new kit's 2 Tier I starter Feats, pre-socketed gems, and Lv 2 primary Pilot Skill are active
+  const prevStarterIds = new Set<string>(
+    Object.values(STARTER_FEAT_LOADOUT_BY_KIT).flat()
+  );
+  const customFeats = (state.equippedFeats || []).filter((id) => !prevStarterIds.has(id));
+  const nextStarterFeats = createStarterFeatLoadout(profile.id);
+  state.equippedFeats = Array.from(
+    new Set([...nextStarterFeats.equippedFeats, ...customFeats])
+  );
+  const nextSocketed: Record<string, any> = { ...nextStarterFeats.socketedFeatGems };
+  for (const customId of customFeats) {
+    if (state.socketedFeatGems?.[customId]) {
+      nextSocketed[customId] = state.socketedFeatGems[customId];
+    }
+  }
+  state.socketedFeatGems = nextSocketed;
+
+  state.pilotSkills = normalizePilotSkills(state.pilotSkills, profile.id);
+  if (
+    prevTrait !== profile.id &&
+    state.pilotSkills[prevTrait] &&
+    state.pilotSkills[prevTrait].level === 2 &&
+    (state.pilotSkills[prevTrait].gemsInvested || 0) <= 1
+  ) {
+    state.pilotSkills[prevTrait].level = 1;
+    state.pilotSkills[prevTrait].gemsInvested = 0;
+  }
+  if (state.pilotSkills[profile.id] && state.pilotSkills[profile.id].level < 2) {
+    state.pilotSkills[profile.id].level = 2;
+    state.pilotSkills[profile.id].gemsInvested = Math.max(
+      1,
+      state.pilotSkills[profile.id].gemsInvested || 0
+    );
+  }
+
   const hasSet2 =
     state.level >= 2 || !state.tutorialActive || Boolean(state.bypassProgressionGates);
   if (profile.startingWeapons && profile.startingWeapons.length >= 2) {
@@ -1279,7 +1351,7 @@ export function getTutorialPromptOverride(
 
 export function updateTutorialSystem(
   state: OrionState,
-  ctx: OrionCombatContext,
+  _ctx: OrionCombatContext,
   _dt: number
 ): void {
   if (!state.tutorialActive) return;
@@ -1388,6 +1460,7 @@ export function updateCompanionPoe(
   }
 
   const comp = state.poeCompanion;
+  if (!comp) return;
   comp.pulsePhase = (comp.pulsePhase || 0) + dt * 3.4;
 
   // Snap companion if it fell too far behind (e.g. after teleporting)
@@ -1594,10 +1667,12 @@ export function updatePlayerSystem(
 
   // §3.5 Critical Frame State (LOCKED): <= 40 HP (<= 20%) imposes -30% movement speed
   const criticalSpeedMult = state.frame.integrity <= 40 ? 0.7 : 1.0;
+  const hwStats = resolveEquippedHardwareStats(state);
   const totalMobilityMult =
     gates.loadPenalty.mobilityMult *
     featMods.moveSpeedMult *
     gemCombatMods.moveSpeedMult *
+    hwStats.moveSpeedMult *
     criticalSpeedMult *
     recoilMult *
     staggerMult;

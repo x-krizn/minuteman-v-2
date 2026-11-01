@@ -101,14 +101,68 @@ export interface FrameFeatDefinition {
   };
 }
 
+export type WeaponComponentSlotId =
+  | 'hilt'
+  | 'grip'
+  | 'blade'
+  | 'head'
+  | 'tip'
+  | 'focus'
+  | 'catalyst'
+  | 'actuator'
+  | 'sight';
+
+export type StaticSubModSlotId =
+  | 'optics'
+  | 'sensoryA'
+  | 'sensoryB'
+  | 'actuators'
+  | 'structure'
+  | 'integration'
+  | 'reactor'
+  | 'legs'
+  | 'mobility';
+
+export type ModPartOrigin = 'crafted' | 'looted';
+export type LoadBracket = 'light' | 'medium' | 'heavy' | 'overloaded';
+
+export interface WeaponComponentPartDefinition {
+  id: string;
+  name: string;
+  componentSlot: WeaponComponentSlotId;
+  origin: ModPartOrigin;
+  /** Crafted parts can have at most 1 gem slot (0 | 1); looted standalone parts may have 1..3 gem slots */
+  maxGemSlots: 0 | 1 | 2 | 3;
+  /** Variable gem cost when origin === 'crafted' (empty for looted standalone parts) */
+  gemCost: Array<{ gemId: GemId; count: number }>;
+  /** Primary gemstone affiliation driving the <Prefix> <Base Name> [+II/+III] convention */
+  primaryGemId: GemId;
+  gainDescription: string;
+  drawbackDescription: string;
+  /** Zero-sum physical weight delta affecting both Equip Load and Inertia Mass */
+  weightDelta: number;
+  attackWeightDelta?: number;
+  projectileWeightDelta?: number;
+}
+
 export interface ActionModificationDefinition {
   id: string;
   name: string;
   targetCategory: 'ranged' | 'melee' | 'mobility' | 'all';
+  /** Canonical static mod slot category: Structure (Arms Mod 2), Integration (Arms Mod 3), or Mobility Kit (Frame Mod 3) */
+  slotCategory?: 'structure' | 'integration' | 'mobility';
+  /** Whether this mod part is crafted from gems (<=1 gem slot) or looted standalone (1..3 gem slots) */
+  origin?: ModPartOrigin;
+  /** Maximum additional gem slots on this mod component (0..1 for crafted, 1..3 for looted standalone) */
+  maxGemSlots?: 0 | 1 | 2 | 3;
   gainDescription: string;
   drawbackDescription: string;
-  /** 1-2 Gem cost permanently spent to generate this mod (mod is retained, gems are not) */
+  /** Variable Gem cost permanently spent to craft this mod (empty for looted standalone mod parts) */
   gemCost: Array<{ gemId: GemId; count: number }>;
+  /** Physical equip & inertia weight delta (+heavier / -lighter) */
+  weightDelta?: number;
+  /** Frame load capacity delta granted by Frame Mod 3 (Mobility Kit) */
+  capacityDelta?: number;
   modifiers: {
     extraProjectiles?: number;
     tellDurationMult?: number;
@@ -144,9 +198,16 @@ export interface OrionEquipmentSlots {
   mainGrip?: WeaponGripMode;
   /** Tracks how many separate instances of each weapon ID the pilot owns (Paired stance requires 2 separate items). */
   ownedWeaponCounts?: Record<string, number>;
-  /** Mech Hardware & Tactical Systems */
+  /**
+   * Static Equipment Slots & Sub-Mods:
+   * - Head: Armor = Dome Plate (`head`), Mod 1 = Optics (`headOptics`), Mod 2 = Sensory A (`sensoryA`), Mod 3 = Sensory B (`sensoryB`)
+   * - Arms: Armor = Aperture Plate (`arms`), Mod 1 = Actuators (`armActuators`), Mod 2 = Structure (`installedMods.melee`), Mod 3 = Integration (`installedMods.ranged`)
+   * - Frame: Armor = Frame Plating (`plating`), Mod 1 = Reactor Core (`reactorCore`), Mod 2 = Leg Actuators (`legs`), Mod 3 = Mobility Kit (`installedMods.mobility`)
+   */
   head: string | null;
+  headOptics?: string | null;
   arms: string | null;
+  armActuators?: string | null;
   plating: string | null;
   utility: string | null;
   legs?: string | null;
@@ -169,6 +230,8 @@ export interface OrionEquipmentSlots {
     generator: string;
   };
   installedMods: Record<string, string>;
+  /** Tracks named component parts installed on weapon instances (`weaponInstanceId -> { [componentSlot]: partId }`) */
+  installedWeaponComponents?: Record<string, Record<string, string>>;
   unlockedMods?: string[];
   unlockedEquipment?: string[];
   weaponGemMods?: Record<string, GemId | null>;
@@ -177,6 +240,10 @@ export interface OrionEquipmentSlots {
 export interface LoadPenaltySummary {
   frameLoad: FrameLoadCapacity;
   weaponWeight: WeaponWeightClass;
+  equippedWeight?: number;
+  maxCapacity?: number;
+  loadPct?: number;
+  loadBracket?: LoadBracket;
   mobilityMult: number;
   heatMult: number;
   swapTimeMult: number;

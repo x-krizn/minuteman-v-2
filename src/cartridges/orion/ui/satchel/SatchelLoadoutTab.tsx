@@ -12,11 +12,19 @@ import {
   getResolvedActionDescriptor,
   parseEquipmentInstanceId,
 } from '../../database/equipment';
-import { findHardwareItemByNameOrId } from '../../database/equipment/chassis_hardware';
+import {
+  CanonicalHardwareItemDefinition,
+  findHardwareItemByNameOrId,
+  getHardwareBaseWeight,
+  getHardwareCapacityBonus,
+  getHardwareGemBonusDescription,
+} from '../../database/equipment/chassis_hardware';
 import { getItemDefinition } from '../../database/items';
 import {
   ACTION_MODIFICATION_CATALOG,
   CHASSIS_HARDWARE_CATALOG,
+  computePlayerLoadMetrics,
+  consumeInventoryGem,
   GEMSTONE_CATALOG,
   GEMSTONE_REGISTRY,
   generateEquipmentModWithGems,
@@ -26,12 +34,18 @@ import {
   getInventoryGemCount,
   getOwnedEquipmentInstances,
   getOwnedWeaponCount,
+  getWeaponComponentSlots,
+  getWeaponGemCombatModifiers,
   getWeaponGemVisuals,
+  getWeaponInstanceEquipWeight,
   getWeaponSubtypeInfo,
   installGemModOnEquipment,
   isEquipmentUnlocked,
   refundInventoryGem,
   setMainWeaponGrip,
+  WEAPON_COMPONENT_PART_CATALOG,
+  WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS,
+  WEAPON_GEM_WEIGHT_DELTA,
 } from '../../database/progression';
 import {
   getWeaponDefinition,
@@ -40,6 +54,7 @@ import {
   isTwoHandOnlyWeapon,
   WEAPON_REGISTRY,
 } from '../../database/equipment/weapons';
+import { GemId, OrionState, WeaponDefinition } from '../../types';
 import {
   addOrionInventoryItem,
   ASSIGNABLE_ACTION_CATALOG,
@@ -54,13 +69,336 @@ import {
   resolvePlayerSpriteParts,
   syncStateGates,
 } from '../../systems';
-import { GemId, OrionState } from '../../types';
 import {
   CompositeMechPreviewCanvas,
   EditableLoadoutSlot,
   EquipmentInventoryCategory,
   SpriteCanvasIcon,
 } from './SatchelCanvases';
+
+/**
+ * Renders structured numeric stats, damage/armor values, types, increases, and decreases for any Weapon or Auxiliary.
+ */
+const WeaponStatReadout: React.FC<{
+  w: WeaponDefinition;
+  instanceId: string;
+  state: OrionState;
+  compact?: boolean;
+}> = ({ w, instanceId, state, compact = false }) => {
+  const totalWt = getWeaponInstanceEquipWeight(instanceId, state);
+  const gemMods = getWeaponGemCombatModifiers(state, instanceId);
+  const effectiveDmg = Math.round(w.damagePerShot * gemMods.damageMult);
+  const effectiveChain = Math.max(1, w.shotsPerChain + gemMods.bonusMaxAmmo);
+  const primaryAction = w.moveset?.[0];
+  const primaryFamily = primaryAction?.damageFamily || 'Kinetic';
+  const primaryRange = primaryAction?.range ?? 64;
+  const handingLabel =
+    w.handing === '2-hand'
+      ? '2H ONLY'
+      : w.handing === 'off-hand-only' || w.handing === 'buff-accessory'
+        ? 'OFF-HAND AUX'
+        : '1H / 2H';
+
+  const incBadges: string[] = [];
+  const decBadges: string[] = [];
+
+  if (w.passiveShieldBonus) {
+    if (w.passiveShieldBonus > 0) incBadges.push(`+${w.passiveShieldBonus} SHD`);
+    else decBadges.push(`${w.passiveShieldBonus} SHD`);
+  }
+  if (
+    w.passiveArmorBonus &&
+    (w.equipmentRole === 'shield' || w.id.includes('martyrdom_plating'))
+  ) {
+    if (w.passiveArmorBonus > 0) incBadges.push(`+${w.passiveArmorBonus} ARM DUR`);
+    else decBadges.push(`${w.passiveArmorBonus} ARM DUR`);
+  }
+  if (w.passiveLightBonus) {
+    if (w.passiveLightBonus > 0) incBadges.push(`+${w.passiveLightBonus} LGT`);
+    else decBadges.push(`${w.passiveLightBonus} LGT`);
+  }
+  if (w.canBlock) {
+    incBadges.push('BLOCK GUARD');
+  }
+  if (w.supportPulseOnHit) {
+    const p = w.supportPulseOnHit;
+    const pulseParts: string[] = [];
+    if (p.shieldRestore) pulseParts.push(`+${p.shieldRestore} SHD`);
+    if (p.armorRestore) pulseParts.push(`+${p.armorRestore} ARM`);
+    if (p.heatVent) pulseParts.push(`-${p.heatVent} HEAT`);
+    if (pulseParts.length > 0) incBadges.push(`ON HIT: ${pulseParts.join('/')}`);
+  }
+
+  // Mod / Gem increases & decreases
+  if (gemMods.damageMult !== 1) {
+    const pct = Math.round((gemMods.damageMult - 1) * 100);
+    if (pct > 0) incBadges.push(`+${pct}% DMG`);
+    else decBadges.push(`${pct}% DMG`);
+  }
+  if (gemMods.lockedOrStaggeredDamageMult !== 1) {
+    const pct = Math.round((gemMods.lockedOrStaggeredDamageMult - 1) * 100);
+    if (pct > 0) incBadges.push(`+${pct}% STG DMG`);
+    else decBadges.push(`${pct}% STG DMG`);
+  }
+  if (gemMods.maxShieldBonus !== 0) {
+    if (gemMods.maxShieldBonus > 0) incBadges.push(`+${gemMods.maxShieldBonus} MAX SHD`);
+    else decBadges.push(`${gemMods.maxShieldBonus} MAX SHD`);
+  }
+  if (gemMods.skillCooldownMult !== 1) {
+    const pct = Math.round((gemMods.skillCooldownMult - 1) * 100);
+    // Lower cooldown is an improvement
+    if (pct < 0) incBadges.push(`${pct}% CD`);
+    else decBadges.push(`+${pct}% CD`);
+  }
+  if (gemMods.skillHeatCostMult !== 1) {
+    const pct = Math.round((gemMods.skillHeatCostMult - 1) * 100);
+    // Lower heat cost is an improvement
+    if (pct < 0) incBadges.push(`${pct}% HEAT COST`);
+    else decBadges.push(`+${pct}% HEAT COST`);
+  }
+  if (gemMods.projectileSpeedMult !== 1) {
+    const pct = Math.round((gemMods.projectileSpeedMult - 1) * 100);
+    if (pct > 0) incBadges.push(`+${pct}% PROJ VEL`);
+    else decBadges.push(`${pct}% PROJ VEL`);
+  }
+  if (gemMods.moveSpeedMult !== 1) {
+    const pct = Math.round((gemMods.moveSpeedMult - 1) * 100);
+    if (pct > 0) incBadges.push(`+${pct}% MOVE SPD`);
+    else decBadges.push(`${pct}% MOVE SPD`);
+  }
+  if (gemMods.bonusMaxAmmo !== 0) {
+    if (gemMods.bonusMaxAmmo > 0) incBadges.push(`+${gemMods.bonusMaxAmmo} CHAIN`);
+    else decBadges.push(`${gemMods.bonusMaxAmmo} CHAIN`);
+  }
+  if (gemMods.extraArmorDentOnHit > 0) {
+    incBadges.push(`+${gemMods.extraArmorDentOnHit} ARM SHRED`);
+  }
+  if (gemMods.shieldRestoreOnSkillHit > 0) {
+    incBadges.push(`+${gemMods.shieldRestoreOnSkillHit} SHD ON SKILL`);
+  }
+  if (gemMods.heatVentOnBasicHit > 0) {
+    incBadges.push(`-${gemMods.heatVentOnBasicHit} HEAT ON HIT`);
+  }
+  if (gemMods.armorRestoreOnKill > 0) {
+    incBadges.push(`+${gemMods.armorRestoreOnKill} ARM ON KILL`);
+  }
+  if (gemMods.attackWeightDelta !== 0) {
+    if (gemMods.attackWeightDelta > 0) incBadges.push(`+${gemMods.attackWeightDelta} ATK MASS`);
+    else decBadges.push(`${gemMods.attackWeightDelta} ATK MASS`);
+  }
+  if (gemMods.presenceGainOnHit !== 0) {
+    incBadges.push(`+${gemMods.presenceGainOnHit} PRESENCE ON HIT`);
+  }
+  if (gemMods.weightDelta !== 0) {
+    if (gemMods.weightDelta < 0) incBadges.push(`${gemMods.weightDelta} WT MOD`);
+    else decBadges.push(`+${gemMods.weightDelta} WT MOD`);
+  }
+
+  return (
+    <div className="mt-1 space-y-0.5 text-[7px]">
+      <div className="flex flex-wrap items-center gap-1">
+        <span className="px-1 py-0.2 rounded-[2px] bg-[#1e293b] text-[#ffd27d] font-bold">
+          {totalWt} WT ({(w.weightClass || 'medium').toUpperCase()})
+        </span>
+        <span className="px-1 py-0.2 rounded-[2px] bg-[#0f172a] text-[#cbd5e1] border border-[#334155]">
+          {handingLabel}
+        </span>
+        <span className="px-1 py-0.2 rounded-[2px] bg-[#172554] text-[#7dd3fc] font-bold">
+          {effectiveDmg > 0 ? `${effectiveDmg} DMG × ${effectiveChain} CHAIN` : 'SUPPORT / GUARD'}
+        </span>
+        <span className="px-1 py-0.2 rounded-[2px] bg-[#0f172a] text-[#38bdf8] border border-[#1e3a8a]">
+          {w.primaryDamageType.toUpperCase()} · {primaryFamily.toUpperCase()}
+        </span>
+        {w.adaptiveDamageTypes && w.adaptiveDamageTypes.length > 1 && (
+          <span className="px-1 py-0.2 rounded-[2px] bg-[#311042] text-[#e879f9] border border-[#a21caf]/50">
+            ADAPTIVE [{w.adaptiveDamageTypes.join('/')}]
+          </span>
+        )}
+        <span className="px-1 py-0.2 rounded-[2px] bg-[#0f172a] text-[#94a3b8]">
+          {w.reloadDurationSec}s RLD · {primaryRange}px RNG
+        </span>
+      </div>
+
+      {(incBadges.length > 0 || decBadges.length > 0) && (
+        <div className="flex flex-wrap items-center gap-1">
+          {incBadges.map((b, i) => (
+            <span
+              key={`inc-${i}`}
+              className="px-1 py-0.1 rounded-[2px] bg-[#052e16]/80 text-[#86efac] border border-[#22c55e]/40 font-semibold"
+            >
+              {b}
+            </span>
+          ))}
+          {decBadges.map((b, i) => (
+            <span
+              key={`dec-${i}`}
+              className="px-1 py-0.1 rounded-[2px] bg-[#450a0a]/80 text-[#fca5a5] border border-[#ef4444]/40 font-semibold"
+            >
+              {b}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {!compact && w.moveset && w.moveset.length > 0 && (
+        <div className="text-[6.5px] text-[#94a3b8] leading-tight pt-0.5 border-t border-[#1e293b]/70">
+          <span className="text-[#cbd5e1] font-bold">MOVESET: </span>
+          {w.moveset
+            .map(
+              (s) =>
+                `[S${s.slot} ${s.name}: ${s.damage > 0 ? `${s.damage} ${s.damageType}` : s.damageType} · ${s.cooldownSec}s CD · ${s.heatCost}H]`
+            )
+            .join(' · ')}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
+ * Renders structured numeric stats, armor values, capacity, increases, and decreases for any Chassis Hardware piece.
+ */
+const HardwareStatReadout: React.FC<{
+  hw: CanonicalHardwareItemDefinition;
+  maxGemSlots?: number;
+}> = ({ hw, maxGemSlots }) => {
+  const hwWeight = getHardwareBaseWeight(hw);
+  const hwCap = getHardwareCapacityBonus(hw);
+  const isExteriorArmor =
+    hw.slot === 'plating' || hw.slot === 'head' || hw.slot === 'arms';
+
+  const basePlatingCap =
+    hw.slot === 'plating'
+      ? hw.baseLoadCapacity === 'superheavy'
+        ? 140
+        : hw.baseLoadCapacity === 'heavy'
+          ? 112
+          : hw.baseLoadCapacity === 'light'
+            ? 84
+            : 90
+      : 0;
+
+  const incBadges: string[] = [];
+  const decBadges: string[] = [];
+
+  if (basePlatingCap > 0) {
+    incBadges.push(`${basePlatingCap} BASE CAP`);
+  }
+  if (hwCap > 0) {
+    incBadges.push(`+${hwCap} CAP`);
+  } else if (hwCap < 0) {
+    decBadges.push(`${hwCap} CAP`);
+  }
+
+  if (hw.shieldBonus) {
+    if (hw.shieldBonus > 0) incBadges.push(`+${hw.shieldBonus} SHD`);
+    else decBadges.push(`${hw.shieldBonus} SHD`);
+  }
+  if (hw.lightBonus) {
+    if (hw.lightBonus > 0) incBadges.push(`+${hw.lightBonus} LGT`);
+    else decBadges.push(`${hw.lightBonus} LGT`);
+  }
+  if (hw.stabilityBonus) {
+    if (hw.stabilityBonus > 0) incBadges.push(`+${hw.stabilityBonus} STB`);
+    else decBadges.push(`${hw.stabilityBonus} STB`);
+  }
+  if (hw.attackMassBonus) {
+    if (hw.attackMassBonus > 0) incBadges.push(`+${hw.attackMassBonus} ATK MASS`);
+    else decBadges.push(`${hw.attackMassBonus} ATK MASS`);
+  }
+  if (hw.tellDurationMult && hw.tellDurationMult !== 1) {
+    const pct = Math.round((hw.tellDurationMult - 1) * 100);
+    // Lower windup tell duration is faster attack startup (increase in speed)
+    if (pct < 0) incBadges.push(`${pct}% WINDUP`);
+    else decBadges.push(`+${pct}% WINDUP`);
+  }
+  if (hw.moveSpeedMult && hw.moveSpeedMult !== 1) {
+    const pct = Math.round((hw.moveSpeedMult - 1) * 100);
+    if (pct > 0) incBadges.push(`+${pct}% MOVE SPD`);
+    else decBadges.push(`${pct}% MOVE SPD`);
+  }
+  if (hw.heatVentMult && hw.heatVentMult !== 1) {
+    const pct = Math.round((hw.heatVentMult - 1) * 100);
+    if (pct > 0) incBadges.push(`+${pct}% HEAT VENT`);
+    else decBadges.push(`${pct}% HEAT VENT`);
+  }
+  if (hw.accuracyMult && hw.accuracyMult !== 1) {
+    const pct = Math.round((hw.accuracyMult - 1) * 100);
+    if (pct > 0) incBadges.push(`+${pct}% ACCURACY`);
+    else decBadges.push(`${pct}% ACCURACY`);
+  }
+  if (hw.staggerDamageMult && hw.staggerDamageMult !== 1) {
+    const pct = Math.round((hw.staggerDamageMult - 1) * 100);
+    if (pct > 0) incBadges.push(`+${pct}% STG DMG`);
+    else decBadges.push(`${pct}% STG DMG`);
+  }
+  if (hw.cooldownMult && hw.cooldownMult !== 1) {
+    const pct = Math.round((hw.cooldownMult - 1) * 100);
+    // Negative cooldownMult delta reduces cooldowns (positive gain)
+    if (pct < 0) incBadges.push(`${pct}% SKILL CD`);
+    else decBadges.push(`+${pct}% SKILL CD`);
+  }
+
+  return (
+    <div className="mt-1 space-y-0.5 text-[7px]">
+      <div className="flex flex-wrap items-center gap-1">
+        <span className="px-1 py-0.2 rounded-[2px] bg-[#1e293b] text-[#ffd27d] font-bold">
+          {hwWeight} WT
+        </span>
+        {isExteriorArmor ? (
+          <>
+            <span className="px-1 py-0.2 rounded-[2px] bg-[#172554] text-[#7dd3fc] font-bold">
+              {(hw.armorType || 'Medium').toUpperCase()} ARMOR
+            </span>
+            <span className="px-1 py-0.2 rounded-[2px] bg-[#0f172a] text-[#38bdf8] border border-[#1e3a8a] font-semibold">
+              +{hw.armorDurability ?? 0} DUR · +{hw.armorRating ?? 0} RTG · +{hw.armorThreshold ?? 0} THR
+            </span>
+          </>
+        ) : (
+          <span className="px-1 py-0.2 rounded-[2px] bg-[#0f172a] text-[#94a3b8] border border-[#334155]">
+            INTERNAL MODULE (0 ARMOR)
+          </span>
+        )}
+        {hw.reactorFamily && (
+          <span className="px-1 py-0.2 rounded-[2px] bg-[#311042] text-[#e879f9] border border-[#a21caf]/50 font-bold">
+            {hw.reactorFamily.toUpperCase()} CORE
+          </span>
+        )}
+        {maxGemSlots !== undefined && (
+          <span className="px-1 py-0.2 rounded-[2px] bg-[#0f172a] text-[#cbd5e1]">
+            {hw.origin === 'crafted' ? `CRAFTED (${maxGemSlots}G MAX)` : `LOOTED (${maxGemSlots}G)`}
+          </span>
+        )}
+      </div>
+
+      {(incBadges.length > 0 || decBadges.length > 0) && (
+        <div className="flex flex-wrap items-center gap-1">
+          {incBadges.map((b, i) => (
+            <span
+              key={`hw-inc-${i}`}
+              className="px-1 py-0.1 rounded-[2px] bg-[#052e16]/80 text-[#86efac] border border-[#22c55e]/40 font-semibold"
+            >
+              {b}
+            </span>
+          ))}
+          {decBadges.map((b, i) => (
+            <span
+              key={`hw-dec-${i}`}
+              className="px-1 py-0.1 rounded-[2px] bg-[#450a0a]/80 text-[#fca5a5] border border-[#ef4444]/40 font-semibold"
+            >
+              {b}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <div className="text-[7px] text-[#86efac]">+ {hw.description}</div>
+      {hw.drawbackDescription && (
+        <div className="text-[6.8px] text-[#f87171]">− {hw.drawbackDescription}</div>
+      )}
+    </div>
+  );
+};
 
 /**
  * Inline Gem Mod synthesis panel for any Weapon, Auxiliary, Armor, Reactor, or Sensor instance.
@@ -74,22 +412,47 @@ const EquipmentGemModInstaller: React.FC<{
   isCheatMode: boolean;
 }> = ({ state, instanceId, baseName, isCheatMode }) => {
   const [open, setOpen] = useState(false);
-  const { installedGems } = parseEquipmentInstanceId(instanceId);
+  const { baseId, installedGems } = parseEquipmentInstanceId(instanceId);
   const maxSlots = getEquipmentMaxModSlots(instanceId);
   const remainingSlots = Math.max(0, maxSlots - installedGems.length);
 
+  const isWeaponOrAux = Boolean(getWeaponDefinition(baseId));
+  const hwDef = !isWeaponOrAux ? findHardwareItemByNameOrId(baseId) : undefined;
+  const anatomicalSlots = isWeaponOrAux ? getWeaponComponentSlots(baseId) : [];
+  const nextComponentSlot = isWeaponOrAux
+    ? anatomicalSlots[installedGems.length] || anatomicalSlots[0] || 'grip'
+    : undefined;
+  const installedCompMap = state.equipmentSlots?.installedWeaponComponents?.[instanceId] || {};
+
   if (maxSlots <= 0) return null;
+
+  const matchingComponentParts = nextComponentSlot
+    ? WEAPON_COMPONENT_PART_CATALOG.filter((part) => part.componentSlot === nextComponentSlot)
+    : [];
 
   return (
     <div className="mt-1 pt-1 border-t border-[#1e293b]/80 space-y-1">
       <div className="flex flex-wrap items-center justify-between gap-1 text-[7px]">
         <div className="flex items-center gap-1 flex-wrap">
           <span className="text-[#94a3b8] font-bold">
-            MOD SLOTS [{installedGems.length}/{maxSlots}]:
+            {isWeaponOrAux
+              ? `COMPONENT SLOTS [${installedGems.length}/${maxSlots}]:`
+              : `${hwDef?.origin === 'crafted' ? 'CRAFTED (MAX 1 GEM)' : 'GEM SLOTS'} [${installedGems.length}/${maxSlots}]:`}
           </span>
           {Array.from({ length: maxSlots }).map((_, idx) => {
             const gId = installedGems[idx];
             const gDef = gId ? GEMSTONE_REGISTRY[gId] : undefined;
+            const slotLabel = isWeaponOrAux
+              ? (anatomicalSlots[idx] || `slot_${idx + 1}`).toUpperCase()
+              : `GEM ${idx + 1}`;
+            const compPartId =
+              isWeaponOrAux && anatomicalSlots[idx]
+                ? installedCompMap[anatomicalSlots[idx]]
+                : undefined;
+            const compPart = compPartId
+              ? WEAPON_COMPONENT_PART_CATALOG.find((p) => p.id === compPartId)
+              : undefined;
+
             return (
               <span
                 key={idx}
@@ -99,7 +462,12 @@ const EquipmentGemModInstaller: React.FC<{
                     : 'bg-[#090d14] border-[#334155] text-[#64748b]'
                 }`}
               >
-                {gDef ? `${idx === 0 ? `${GEM_MOD_PREFIX_BY_ID[gId]} · ` : ''}${gDef.name}` : 'EMPTY'}
+                {slotLabel}:{' '}
+                {compPart
+                  ? `${compPart.name} (${gDef?.name || 'Gem'})`
+                  : gDef
+                    ? `${idx === 0 ? `${GEM_MOD_PREFIX_BY_ID[gId]} · ` : ''}${gDef.name}`
+                    : 'EMPTY'}
               </span>
             );
           })}
@@ -117,80 +485,202 @@ const EquipmentGemModInstaller: React.FC<{
                 : 'bg-[#3b0764]/80 hover:bg-[#581c87] text-[#e9d5ff] border-[#c084fc]/60'
             }`}
           >
-            {open ? '✕ CANCEL MOD' : `+ INSTALL MOD (${remainingSlots} LEFT)`}
+            {open
+              ? '✕ CANCEL MOD'
+              : isWeaponOrAux && nextComponentSlot
+                ? `+ MOD [${nextComponentSlot.toUpperCase()}] (${remainingSlots} LEFT)`
+                : `+ INSTALL GEM (${remainingSlots} LEFT)`}
           </button>
         ) : (
-          <span className="text-[#4ade80] font-bold">MAX MODS INSTALLED</span>
+          <span className="text-[#4ade80] font-bold">MAX SLOTS FILLED</span>
         )}
       </div>
 
       {open && remainingSlots > 0 && (
-        <div className="p-1.5 bg-[#05070a] rounded-xs border border-[#c084fc]/50 space-y-1">
-          <div className="text-[7px] text-[#cbd5e1]">
-            Select a Gemstone to install on <strong className="text-[#ffd27d]">{ getEquipmentDisplayName(instanceId) }</strong> (consumes 1 copy + 1 Gem → produces distinct renamed item in inventory):
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-1">
-            {GEMSTONE_CATALOG.map((gem) => {
-              const have = getInventoryGemCount(state, gem.id);
-              const canInstall = have > 0 || isCheatMode;
-              const previewName = formatModifiedEquipmentName(baseName, [
-                ...installedGems,
-                gem.id,
-              ]);
-              return (
-                <button
-                  key={gem.id}
-                  type="button"
-                  disabled={!canInstall}
-                  onClick={() => {
-                    if (have <= 0 && isCheatMode) {
-                      refundInventoryGem(state, gem.id as GemId, 1);
-                    }
-                    const newId = installGemModOnEquipment(
-                      state,
-                      instanceId,
-                      gem.id as GemId,
-                      {
-                        say: (txt) => {
-                          state.toastText = txt;
-                          state.toastTimer = 2.8;
-                        },
-                      }
-                    );
-                    if (newId) {
-                      soundSystem.playPowerup();
-                      setOpen(false);
-                      syncStateGates(state);
-                      notifyOrionStateChange();
-                    } else {
-                      soundSystem.playMenuBeep();
-                    }
-                  }}
-                  className={`p-1 rounded-xs border text-left transition-colors ${
-                    canInstall
-                      ? 'bg-[#0f172a] hover:bg-[#1e293b] border-[#38bdf8]/50 cursor-pointer'
-                      : 'bg-[#090d14] border-[#1e293b] opacity-45 cursor-not-allowed'
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="inline-flex items-center gap-1 font-bold text-[7.5px] text-[#f8fafc]">
-                      <SpriteCanvasIcon base64={gem.iconBase64} sizeClass="w-3 h-3" />
-                      {gem.name} ({GEM_MOD_PREFIX_BY_ID[gem.id]})
-                    </span>
-                    <span
-                      className={`text-[7px] font-bold ${
-                        have > 0 ? 'text-[#4ade80]' : 'text-[#94a3b8]'
+        <div className="p-1.5 bg-[#05070a] rounded-xs border border-[#c084fc]/50 space-y-1.5">
+          {/* Option A: Named Weapon Component Parts (Crafted vs Looted Standalone) */}
+          {isWeaponOrAux && nextComponentSlot && matchingComponentParts.length > 0 && (
+            <div className="space-y-1">
+              <div className="text-[7px] font-bold text-[#38bdf8]">
+                1. INSTALL [{nextComponentSlot.toUpperCase()}] COMPONENT MOD PART (CRAFTED = MAX 1 GEM SLOT · LOOTED = 2 GEM SLOTS):
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                {matchingComponentParts.map((part) => {
+                  const primaryGem = part.gemCost[0]?.gemId || 'carnelian';
+                  const canAfford =
+                    isCheatMode ||
+                    part.gemCost.every((c) => getInventoryGemCount(state, c.gemId) >= c.count);
+                  const costLabel =
+                    part.gemCost.length > 0
+                      ? part.gemCost
+                          .map(
+                            (c) =>
+                              `${c.count} ${GEMSTONE_REGISTRY[c.gemId]?.name || c.gemId} (${getInventoryGemCount(state, c.gemId)})`
+                          )
+                          .join(' + ')
+                      : `Looted Part (1 Gem Synth)`;
+                  const previewName = formatModifiedEquipmentName(baseName, [
+                    ...installedGems,
+                    primaryGem,
+                  ]);
+
+                  return (
+                    <button
+                      key={part.id}
+                      type="button"
+                      disabled={!canAfford}
+                      onClick={() => {
+                        if (part.gemCost.length > 0) {
+                          // Consume extra gems beyond the 1 consumed by installGemModOnEquipment
+                          for (let i = 0; i < part.gemCost.length; i++) {
+                            const req = part.gemCost[i];
+                            const extraCount = i === 0 ? Math.max(0, req.count - 1) : req.count;
+                            if (extraCount > 0 && !isCheatMode) {
+                              consumeInventoryGem(state, req.gemId, extraCount);
+                            }
+                          }
+                          if (
+                            getInventoryGemCount(state, primaryGem) <= 0 &&
+                            isCheatMode
+                          ) {
+                            refundInventoryGem(state, primaryGem, 1);
+                          }
+                        } else if (
+                          getInventoryGemCount(state, primaryGem) <= 0 &&
+                          isCheatMode
+                        ) {
+                          refundInventoryGem(state, primaryGem, 1);
+                        }
+                        const newId = installGemModOnEquipment(
+                          state,
+                          instanceId,
+                          primaryGem,
+                          {
+                            say: (txt) => {
+                              state.toastText = txt;
+                              state.toastTimer = 2.8;
+                            },
+                          },
+                          {
+                            slotName: nextComponentSlot,
+                            partDef: part,
+                          }
+                        );
+                        if (newId) {
+                          soundSystem.playPowerup();
+                          setOpen(false);
+                          syncStateGates(state);
+                          notifyOrionStateChange();
+                        } else {
+                          soundSystem.playMenuBeep();
+                        }
+                      }}
+                      className={`p-1 rounded-xs border text-left transition-colors ${
+                        canAfford
+                          ? 'bg-[#0f172a] hover:bg-[#1e293b] border-[#c084fc]/50 cursor-pointer'
+                          : 'bg-[#090d14] border-[#1e293b] opacity-45 cursor-not-allowed'
                       }`}
                     >
-                      ×{have}
-                    </span>
-                  </div>
-                  <div className="text-[7px] text-[#ffd27d] font-bold truncate mt-0.5">
-                    → {previewName}
-                  </div>
-                </button>
-              );
-            })}
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="font-bold text-[7.5px] text-[#e9d5ff] truncate">
+                          {part.name} [{part.origin.toUpperCase()} · {part.maxGemSlots}G]
+                        </span>
+                        <span className="text-[6.5px] text-[#fbbf24] font-bold shrink-0">
+                          {part.weightDelta >= 0 ? `+${part.weightDelta}` : part.weightDelta} WT
+                        </span>
+                      </div>
+                      <div className="text-[6.5px] text-[#86efac] truncate">
+                        + {part.gainDescription}
+                      </div>
+                      <div className="text-[6.5px] text-[#f87171] truncate">
+                        − {part.drawbackDescription}
+                      </div>
+                      <div className="flex items-center justify-between text-[6.5px] text-[#ffd27d] mt-0.5">
+                        <span className="truncate">→ {previewName}</span>
+                        <span className="text-[#94a3b8] shrink-0">{costLabel}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Option B: Direct Gemstone Socket Installation (Zero-Sum Gain/Drawback + WT Delta) */}
+          <div className="space-y-1">
+            <div className="text-[7px] text-[#cbd5e1] font-bold">
+              {isWeaponOrAux && nextComponentSlot
+                ? `2. OR SOCKET DIRECT GEMSTONE INTO [${nextComponentSlot.toUpperCase()}] (ZERO-SUM STAT + WEIGHT TRADE-OFF):`
+                : `SOCKET GEMSTONE ON ${getEquipmentDisplayName(instanceId).toUpperCase()} (ZERO-SUM STAT + WEIGHT TRADE-OFF):`}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-1">
+              {GEMSTONE_CATALOG.map((gem) => {
+                const have = getInventoryGemCount(state, gem.id);
+                const canInstall = have > 0 || isCheatMode;
+                const previewName = formatModifiedEquipmentName(baseName, [
+                  ...installedGems,
+                  gem.id,
+                ]);
+                const wtDelta = WEAPON_GEM_WEIGHT_DELTA[gem.id] ?? 1;
+                return (
+                  <button
+                    key={gem.id}
+                    type="button"
+                    disabled={!canInstall}
+                    onClick={() => {
+                      if (have <= 0 && isCheatMode) {
+                        refundInventoryGem(state, gem.id as GemId, 1);
+                      }
+                      const newId = installGemModOnEquipment(
+                        state,
+                        instanceId,
+                        gem.id as GemId,
+                        {
+                          say: (txt) => {
+                            state.toastText = txt;
+                            state.toastTimer = 2.8;
+                          },
+                        },
+                        nextComponentSlot
+                          ? { slotName: nextComponentSlot }
+                          : undefined
+                      );
+                      if (newId) {
+                        soundSystem.playPowerup();
+                        setOpen(false);
+                        syncStateGates(state);
+                        notifyOrionStateChange();
+                      } else {
+                        soundSystem.playMenuBeep();
+                      }
+                    }}
+                    className={`p-1 rounded-xs border text-left transition-colors ${
+                      canInstall
+                        ? 'bg-[#0f172a] hover:bg-[#1e293b] border-[#38bdf8]/50 cursor-pointer'
+                        : 'bg-[#090d14] border-[#1e293b] opacity-45 cursor-not-allowed'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="inline-flex items-center gap-1 font-bold text-[7.5px] text-[#f8fafc]">
+                        <SpriteCanvasIcon base64={gem.iconBase64} sizeClass="w-3 h-3" />
+                        {gem.name} ({GEM_MOD_PREFIX_BY_ID[gem.id]})
+                      </span>
+                      <span className="text-[6.5px] font-bold text-[#fbbf24]">
+                        {wtDelta >= 0 ? `+${wtDelta}` : wtDelta} WT · ×{have}
+                      </span>
+                    </div>
+                    <div className="text-[6.5px] text-[#94a3b8] truncate">
+                      {!isWeaponOrAux && hwDef
+                        ? getHardwareGemBonusDescription(hwDef.slot, gem.id)
+                        : WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS[gem.id]}
+                    </div>
+                    <div className="text-[7px] text-[#ffd27d] font-bold truncate mt-0.5">
+                      → {previewName}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
@@ -243,10 +733,14 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
 
   const currentHeadName =
     state.equipmentSlots?.head || `${trait.frameModel || 'Mark-IV'} Sensor Visor`;
+  const currentOpticsName =
+    state.equipmentSlots?.headOptics || 'BWI Scout Monocular';
   const currentSensoryAName = state.equipmentSlots?.sensoryA || 'Federated T7 Sensor Array';
   const currentSensoryBName = state.equipmentSlots?.sensoryB || 'Federated EchoPulse Scanner';
   const currentArmsName =
     state.equipmentSlots?.arms || `${trait.frameModel || 'Mark-IV'} Actuator Vambraces`;
+  const currentActuatorsName =
+    state.equipmentSlots?.armActuators || 'BWI Stabilized Gauntlets';
   const currentLegsName = state.equipmentSlots?.legs || 'BWI Strider Leg Assembly';
   const currentPlatingName =
     state.equipmentSlots?.plating ||
@@ -270,6 +764,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
     state,
     state.assignedActions?.R || 'weapon_skill_2'
   );
+  const loadMetrics = computePlayerLoadMetrics(state);
 
   return (
     <div className="flex-1 overflow-y-auto space-y-2 pr-0.5 text-[10px]">
@@ -346,12 +841,59 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
           </div>
         </div>
 
+        {/* Load Limit Bar (0-30% Light | 31-65% Medium | 66-100% Heavy | >100% Overloaded) */}
+        <div className="p-1.5 bg-[#06090e] rounded-xs border border-[#1e293b] space-y-1">
+          <div className="flex flex-wrap items-center justify-between gap-1 text-[8px]">
+            <span className="font-bold text-[#ffd27d]">
+              LOAD LIMIT: {loadMetrics.equippedWeight} / {loadMetrics.maxCapacity} WT (
+              {loadMetrics.loadPct}%)
+            </span>
+            <span
+              className={`px-1.5 py-0.2 rounded-xs font-black text-[7.5px] ${
+                loadMetrics.loadBracket === 'light'
+                  ? 'bg-[#064e3b] text-[#6ee7b7]'
+                  : loadMetrics.loadBracket === 'medium'
+                    ? 'bg-[#172554] text-[#7dd3fc]'
+                    : loadMetrics.loadBracket === 'heavy'
+                      ? 'bg-[#451a03] text-[#fcd34d]'
+                      : 'bg-[#7f1d1d] text-[#fca5a5] animate-pulse'
+              }`}
+            >
+              {loadMetrics.loadBracket.toUpperCase()} (0–30% LIGHT · 31–65% MED · 66–100% HVY ·
+              100%&lt; OVERLOAD)
+            </span>
+          </div>
+          <svg
+            viewBox="0 0 100 3"
+            preserveAspectRatio="none"
+            className="w-full h-1.5 rounded-xs bg-[#1e293b] overflow-hidden"
+          >
+            <rect
+              x="0"
+              y="0"
+              width={Math.max(0, Math.min(100, loadMetrics.loadPct))}
+              height="3"
+              fill={
+                loadMetrics.loadBracket === 'light'
+                  ? '#34d399'
+                  : loadMetrics.loadBracket === 'medium'
+                    ? '#38bdf8'
+                    : loadMetrics.loadBracket === 'heavy'
+                      ? '#fbbf24'
+                      : '#f87171'
+              }
+            />
+            <line x1="30" y1="0" x2="30" y2="3" stroke="#090d14" strokeWidth="0.7" />
+            <line x1="65" y1="0" x2="65" y2="3" stroke="#090d14" strokeWidth="0.7" />
+          </svg>
+        </div>
+
         <div className="text-[8px] text-[#cbd5e1]">
           {activeStance.description} ·{' '}
           <span className="text-[#94a3b8]">
             {!slot2Id
               ? 'No Side Hand equipped → Main Hand is automatically 2H.'
-              : 'Click any slot or EDIT LOADOUT to change equipped items or install Gem Mods.'}
+              : 'Click any slot or EDIT LOADOUT to change equipped items or install Component/Gem Mods.'}
           </span>
         </div>
 
@@ -602,14 +1144,15 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                         </div>
                         <div className="text-[7px] text-[#94a3b8] truncate">
                           {wDef && subtypeInfo
-                            ? `${subtypeInfo.subtype} · Copies: ×${ownedCopies}`
+                            ? `${subtypeInfo.subtype} · ×${ownedCopies} · [${getWeaponComponentSlots(wId).join(' / ').toUpperCase()}]`
                             : itemDef
-                              ? `Consumable · Skill 5 when in Side`
+                              ? `Consumable · 0 WT · Skill 5 when in Side · ${itemDef.description}`
                               : sInfo.sub}
                         </div>
                       </div>
                     </div>
                   </div>
+                  {wDef && <WeaponStatReadout w={wDef} instanceId={wId} state={state} compact />}
                   {wDef && baseWDef && (
                     <EquipmentGemModInstaller
                       state={state}
@@ -625,117 +1168,258 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
         </div>
       </div>
 
-      {/* 3. Chassis Hardware, Reactor, Action Mods & Trigger Bindings */}
-      <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">
-        <div className="text-[9px] font-bold text-[#94a3b8]">
-          CHASSIS HARDWARE · REACTOR CORE · SENSORY ARRAYS · ACTION MODS · TRIGGERS
+      {/* 3. Static Equipment Slots & Sub-Mods (Head, Arms, Frame Assemblies) + Triggers */}
+      <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-1">
+          <span className="text-[9px] font-bold text-[#ffd27d]">
+            STATIC EQUIPMENT ASSEMBLIES (HEAD · ARMS · FRAME — ARMOR + 3 SUB-MODS EACH)
+          </span>
+          <button
+            onClick={() => openSlotEditor('bind_l')}
+            className="px-1.5 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] border border-[#38bdf8]/60 rounded-xs text-[7.5px] font-bold text-[#7dd3fc] cursor-pointer"
+          >
+            TRIGGERS [L: {boundLDesc.shortLabel} · R: {boundRDesc.shortLabel}]
+          </button>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[8px]">
-          {(
-            [
-              {
-                slot: 'head' as EditableLoadoutSlot,
-                label: 'HEAD OPTICS',
-                val: getEquipmentDisplayName(currentHeadName),
-                sub: 'Hardware · Optics (2 Mod Slots)',
-              },
-              {
-                slot: 'sensoryA' as EditableLoadoutSlot,
-                label: 'SENSORY A',
-                val: getEquipmentDisplayName(currentSensoryAName),
-                sub: 'Hardware · Field Monitor (1 Mod Slot)',
-              },
-              {
-                slot: 'sensoryB' as EditableLoadoutSlot,
-                label: 'SENSORY B',
-                val: getEquipmentDisplayName(currentSensoryBName),
-                sub: 'Hardware · Threat Scanner (1 Mod Slot)',
-              },
-              {
-                slot: 'arms' as EditableLoadoutSlot,
-                label: 'ARMS ACTUATORS',
-                val: getEquipmentDisplayName(currentArmsName),
-                sub: 'Hardware · Arm Assembly (2 Mod Slots)',
-              },
-              {
-                slot: 'legs' as EditableLoadoutSlot,
-                label: 'LEGS ACTUATORS',
-                val: getEquipmentDisplayName(currentLegsName),
-                sub: 'Hardware · Leg Assembly (2 Mod Slots)',
-              },
-              {
-                slot: 'plating' as EditableLoadoutSlot,
-                label: 'FRAME PLATING',
-                val: getEquipmentDisplayName(currentPlatingName),
-                sub: `Hardware · ${state.armor.type} (3 Mod Slots)`,
-              },
-              {
-                slot: 'reactor' as EditableLoadoutSlot,
-                label: 'REACTOR CORE',
-                val: getEquipmentDisplayName(currentReactorName),
-                sub: 'Core System · Generator (3 Mod Slots)',
-              },
-              {
-                slot: 'mod_ranged' as EditableLoadoutSlot,
-                label: 'RANGED MOD',
-                val: installedRangedMod?.name || 'None Installed',
-                sub: 'Action Mod · Ranged',
-              },
-              {
-                slot: 'mod_melee' as EditableLoadoutSlot,
-                label: 'MELEE MOD',
-                val: installedMeleeMod?.name || 'None Installed',
-                sub: 'Action Mod · Melee',
-              },
-              {
-                slot: 'mod_mobility' as EditableLoadoutSlot,
-                label: 'MOBILITY MOD',
-                val: installedMobilityMod?.name || 'None Installed',
-                sub: 'Action Mod · Mobility',
-              },
-              {
-                slot: 'bind_l' as EditableLoadoutSlot,
-                label: 'TRIGGERS [L / R]',
-                val: `L: ${boundLDesc.shortLabel} · R: ${boundRDesc.shortLabel}`,
-                sub: 'Multi-Source Action Bindings',
-              },
-            ] as const
-          ).map((card) => {
-            const activeEdit =
-              isEditingLoadout &&
-              (editingSlot === card.slot || (card.slot === 'bind_l' && editingSlot === 'bind_r'));
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 text-[8px]">
+          {(() => {
+            const formatHwDomainSummary = (
+              hw: CanonicalHardwareItemDefinition | undefined,
+              fallbackRole: string
+            ): string => {
+              if (!hw) return fallbackRole;
+              const wt = getHardwareBaseWeight(hw);
+              const parts: string[] = [`${wt} WT`];
+              const isExteriorPlating =
+                hw.slot === 'plating' || hw.slot === 'head' || hw.slot === 'arms';
+              if (isExteriorPlating && hw.armorDurability) {
+                parts.push(`+${hw.armorDurability} DUR`);
+              }
+              if (isExteriorPlating && hw.armorRating) {
+                parts.push(`${hw.armorRating} RTG`);
+              }
+              if (isExteriorPlating && hw.armorThreshold) {
+                parts.push(`${hw.armorThreshold} THR`);
+              }
+              const cap = getHardwareCapacityBonus(hw);
+              if (cap !== 0) {
+                parts.push(`${cap > 0 ? `+${cap}` : cap} CAP`);
+              }
+              if (hw.shieldBonus) {
+                parts.push(`${hw.shieldBonus > 0 ? `+${hw.shieldBonus}` : hw.shieldBonus} SHD`);
+              }
+              if (hw.lightBonus) {
+                parts.push(`${hw.lightBonus > 0 ? `+${hw.lightBonus}` : hw.lightBonus} LGT`);
+              }
+              if (hw.attackMassBonus) {
+                parts.push(`+${hw.attackMassBonus} MASS`);
+              }
+              if (hw.tellDurationMult && hw.tellDurationMult !== 1) {
+                const pct = Math.round((hw.tellDurationMult - 1) * 100);
+                parts.push(`${pct > 0 ? `+${pct}` : pct}% WINDUP`);
+              }
+              if (hw.stabilityBonus) {
+                parts.push(`${hw.stabilityBonus > 0 ? `+${hw.stabilityBonus}` : hw.stabilityBonus} STB`);
+              }
+              if (hw.moveSpeedMult && hw.moveSpeedMult !== 1) {
+                const pct = Math.round((hw.moveSpeedMult - 1) * 100);
+                parts.push(`${pct > 0 ? `+${pct}` : pct}% SPD`);
+              }
+              if (hw.heatVentMult && hw.heatVentMult !== 1) {
+                const pct = Math.round((hw.heatVentMult - 1) * 100);
+                parts.push(`${pct > 0 ? `+${pct}` : pct}% VENT`);
+              }
+              if (hw.accuracyMult && hw.accuracyMult !== 1) {
+                const pct = Math.round((hw.accuracyMult - 1) * 100);
+                parts.push(`${pct > 0 ? `+${pct}` : pct}% ACC`);
+              }
+              if (hw.staggerDamageMult && hw.staggerDamageMult !== 1) {
+                const pct = Math.round((hw.staggerDamageMult - 1) * 100);
+                parts.push(`${pct > 0 ? `+${pct}` : pct}% STG`);
+              }
+              if (hw.cooldownMult && hw.cooldownMult !== 1) {
+                const pct = Math.round((hw.cooldownMult - 1) * 100);
+                parts.push(`${pct > 0 ? `+${pct}` : pct}% CD`);
+              }
+              return parts.length > 1 ? parts.join(' · ') : `${wt} WT · ${fallbackRole}`;
+            };
+
             return (
-              <div
-                key={card.slot}
-                className={`p-1.5 rounded-xs border flex flex-col justify-between gap-0.5 ${
-                  activeEdit
-                    ? 'bg-[#172554]/80 border-[#facc15]'
-                    : 'bg-[#0f172a] border-[#1e293b]'
-                }`}
-              >
-                <div className="flex items-center justify-between gap-1">
-                  <span className="font-bold text-[7.5px] text-[#38bdf8] truncate">
-                    {card.label}
-                  </span>
-                  <button
-                    onClick={() => {
-                      if (activeEdit) setIsEditingLoadout(false);
-                      else openSlotEditor(card.slot);
-                    }}
-                    className={`px-1 py-0.2 rounded-xs text-[6.5px] font-bold border cursor-pointer shrink-0 ${
+              [
+                {
+                  assemblyTitle: '> HEAD ASSEMBLY',
+                  accent: 'text-[#38bdf8]',
+                  rows: [
+                    {
+                      slot: 'head' as EditableLoadoutSlot,
+                      roleLabel: 'ARMOR = DOME PLATE',
+                      val: getEquipmentDisplayName(currentHeadName),
+                      sub: formatHwDomainSummary(
+                        findHardwareItemByNameOrId(currentHeadName),
+                        'Exterior Dome Armor'
+                      ),
+                    },
+                    {
+                      slot: 'optics' as EditableLoadoutSlot,
+                      roleLabel: 'MOD 1 = OPTICS',
+                      val: getEquipmentDisplayName(currentOpticsName),
+                      sub: formatHwDomainSummary(
+                        findHardwareItemByNameOrId(currentOpticsName),
+                        'Target & Light Optics'
+                      ),
+                    },
+                    {
+                      slot: 'sensoryA' as EditableLoadoutSlot,
+                      roleLabel: 'MOD 2 = SENSORY A',
+                      val: getEquipmentDisplayName(currentSensoryAName),
+                      sub: formatHwDomainSummary(
+                        findHardwareItemByNameOrId(currentSensoryAName),
+                        'Field Transceiver'
+                      ),
+                    },
+                    {
+                      slot: 'sensoryB' as EditableLoadoutSlot,
+                      roleLabel: 'MOD 3 = SENSORY B',
+                      val: getEquipmentDisplayName(currentSensoryBName),
+                      sub: formatHwDomainSummary(
+                        findHardwareItemByNameOrId(currentSensoryBName),
+                        'Threat & Gyro Telemetry'
+                      ),
+                    },
+                  ],
+                },
+                {
+                  assemblyTitle: '> ARMS ASSEMBLY',
+                  accent: 'text-[#ffd27d]',
+                  rows: [
+                    {
+                      slot: 'arms' as EditableLoadoutSlot,
+                      roleLabel: 'ARMOR = APERTURE PLATE',
+                      val: getEquipmentDisplayName(currentArmsName),
+                      sub: formatHwDomainSummary(
+                        findHardwareItemByNameOrId(currentArmsName),
+                        'Exterior Arm Plating'
+                      ),
+                    },
+                    {
+                      slot: 'actuators' as EditableLoadoutSlot,
+                      roleLabel: 'MOD 1 = ACTUATORS',
+                      val: getEquipmentDisplayName(currentActuatorsName),
+                      sub: formatHwDomainSummary(
+                        findHardwareItemByNameOrId(currentActuatorsName),
+                        'Internal Servo Actuators'
+                      ),
+                    },
+                    {
+                      slot: 'mod_melee' as EditableLoadoutSlot,
+                      roleLabel: 'MOD 2 = STRUCTURE (MELEE)',
+                      val: installedMeleeMod?.name || 'None Installed',
+                      sub: installedMeleeMod
+                        ? `${installedMeleeMod.weightDelta ?? 0} WT · ${installedMeleeMod.origin?.toUpperCase() || 'CRAFTED'}`
+                        : 'Replaces Melee Mod · 0 WT',
+                    },
+                    {
+                      slot: 'mod_ranged' as EditableLoadoutSlot,
+                      roleLabel: 'MOD 3 = INTEGRATION (RANGED)',
+                      val: installedRangedMod?.name || 'None Installed',
+                      sub: installedRangedMod
+                        ? `${installedRangedMod.weightDelta ?? 0} WT · ${installedRangedMod.origin?.toUpperCase() || 'CRAFTED'}`
+                        : 'Replaces Ranged Mod · 0 WT',
+                    },
+                  ],
+                },
+                {
+                  assemblyTitle: '> FRAME ASSEMBLY',
+                  accent: 'text-[#8dd7ad]',
+                  rows: [
+                    {
+                      slot: 'plating' as EditableLoadoutSlot,
+                      roleLabel: 'ARMOR = FRAME PLATING',
+                      val: getEquipmentDisplayName(currentPlatingName),
+                      sub: formatHwDomainSummary(
+                        findHardwareItemByNameOrId(currentPlatingName),
+                        'Exterior Frame Plating'
+                      ),
+                    },
+                    {
+                      slot: 'reactor' as EditableLoadoutSlot,
+                      roleLabel: 'MOD 1 = REACTOR CORE',
+                      val: getEquipmentDisplayName(currentReactorName),
+                      sub: formatHwDomainSummary(
+                        findHardwareItemByNameOrId(currentReactorName),
+                        'Reactor Output & Venting'
+                      ),
+                    },
+                    {
+                      slot: 'legs' as EditableLoadoutSlot,
+                      roleLabel: 'MOD 2 = LEG ACTUATORS',
+                      val: getEquipmentDisplayName(currentLegsName),
+                      sub: formatHwDomainSummary(
+                        findHardwareItemByNameOrId(currentLegsName),
+                        'Locomotion & Load Servos'
+                      ),
+                    },
+                    {
+                      slot: 'mod_mobility' as EditableLoadoutSlot,
+                      roleLabel: 'MOD 3 = MOBILITY KIT',
+                      val: installedMobilityMod?.name || 'None Installed',
+                      sub: installedMobilityMod
+                        ? `${installedMobilityMod.weightDelta ?? 0} WT · ${
+                            (installedMobilityMod.capacityDelta ?? 0) >= 0
+                              ? `+${installedMobilityMod.capacityDelta ?? 0}`
+                              : installedMobilityMod.capacityDelta
+                          } CAP`
+                        : 'Replaces Mobility Mod · +0 CAP',
+                    },
+                  ],
+                },
+              ] as const
+            );
+          })().map((group) => (
+            <div
+              key={group.assemblyTitle}
+              className="p-1.5 bg-[#0b111e] rounded-xs border border-[#1e293b] space-y-1"
+            >
+              <div className={`font-black text-[8.5px] ${group.accent} border-b border-[#1e293b] pb-0.5`}>
+                {group.assemblyTitle}
+              </div>
+              {group.rows.map((card) => {
+                const activeEdit = isEditingLoadout && editingSlot === card.slot;
+                return (
+                  <div
+                    key={card.slot}
+                    className={`p-1 rounded-xs border flex flex-col justify-between gap-0.5 ${
                       activeEdit
-                        ? 'bg-[#facc15] text-[#05070a] border-[#fde047]'
-                        : 'bg-[#1e293b] hover:bg-[#334155] text-[#cbd5e1] border-[#475569]'
+                        ? 'bg-[#172554]/80 border-[#facc15]'
+                        : 'bg-[#090d14] border-[#1e293b]'
                     }`}
                   >
-                    {activeEdit ? 'EDITING' : 'EDIT'}
-                  </button>
-                </div>
-                <div className="font-bold text-[#ffd27d] truncate text-[8.5px]">{card.val}</div>
-                <div className="text-[7px] text-[#94a3b8] truncate">{card.sub}</div>
-              </div>
-            );
-          })}
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="font-bold text-[7px] text-[#94a3b8] truncate">
+                        {card.roleLabel}
+                      </span>
+                      <button
+                        onClick={() => {
+                          if (activeEdit) setIsEditingLoadout(false);
+                          else openSlotEditor(card.slot);
+                        }}
+                        className={`px-1 py-0.2 rounded-xs text-[6.5px] font-bold border cursor-pointer shrink-0 ${
+                          activeEdit
+                            ? 'bg-[#facc15] text-[#05070a] border-[#fde047]'
+                            : 'bg-[#1e293b] hover:bg-[#334155] text-[#cbd5e1] border-[#475569]'
+                        }`}
+                      >
+                        {activeEdit ? 'EDITING' : 'EDIT'}
+                      </button>
+                    </div>
+                    <div className="font-bold text-[#ffd27d] truncate text-[8px]">{card.val}</div>
+                    <div className="text-[6.5px] text-[#64748b] truncate">{card.sub}</div>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
         </div>
       </div>
 
@@ -764,16 +1448,18 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                 { id: 'slot1', label: 'Main Hand' },
                 { id: 'slot2', label: 'Side Hand' },
                 { id: 'slot3', label: 'Auxiliary' },
-                { id: 'head', label: 'Head Optics' },
-                { id: 'sensoryA', label: 'Sensory A' },
-                { id: 'sensoryB', label: 'Sensory B' },
-                { id: 'arms', label: 'Arms Actuators' },
-                { id: 'legs', label: 'Legs Actuators' },
-                { id: 'plating', label: 'Frame Plating' },
-                { id: 'reactor', label: 'Reactor Core' },
-                { id: 'mod_ranged', label: 'Ranged Mod' },
-                { id: 'mod_melee', label: 'Melee Mod' },
-                { id: 'mod_mobility', label: 'Mobility Mod' },
+                { id: 'head', label: 'Head: Dome Plate' },
+                { id: 'optics', label: 'Head Mod 1: Optics' },
+                { id: 'sensoryA', label: 'Head Mod 2: Sensory A' },
+                { id: 'sensoryB', label: 'Head Mod 3: Sensory B' },
+                { id: 'arms', label: 'Arms: Aperture Plate' },
+                { id: 'actuators', label: 'Arms Mod 1: Actuators' },
+                { id: 'mod_melee', label: 'Arms Mod 2: Structure' },
+                { id: 'mod_ranged', label: 'Arms Mod 3: Integration' },
+                { id: 'plating', label: 'Frame: Frame Plating' },
+                { id: 'reactor', label: 'Frame Mod 1: Reactor Core' },
+                { id: 'legs', label: 'Frame Mod 2: Leg Actuators' },
+                { id: 'mod_mobility', label: 'Frame Mod 3: Mobility Kit' },
                 { id: 'bind_l', label: 'Bindings [L/R]' },
               ] as Array<{ id: EditableLoadoutSlot; label: string }>
             ).map((sTab) => (
@@ -926,7 +1612,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                                     )}
                                   </div>
                                   <div className="text-[7px] text-[#94a3b8] truncate">
-                                    {stInfo.subtype} · {(candidate.weightClass || 'medium').toUpperCase()}
+                                    {stInfo.subtype} · [{getWeaponComponentSlots(instanceId).join(' / ').toUpperCase()}]
                                   </div>
                                 </div>
                               </div>
@@ -991,6 +1677,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                                 </button>
                               </div>
                             </div>
+                            <WeaponStatReadout w={candidate} instanceId={instanceId} state={state} />
                             <EquipmentGemModInstaller
                               state={state}
                               instanceId={instanceId}
@@ -1021,10 +1708,13 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                             >
                               <div className="min-w-0">
                                 <div className="text-[8.5px] font-bold text-[#86efac] truncate">
-                                  {itmDef.name} (×{invSlot.count})
+                                  {itmDef.name} (×{invSlot.count}) · 0 WT
                                 </div>
-                                <div className="text-[7px] text-[#94a3b8] truncate">
-                                  Consumable · Occupies Skill 5 when in Side Hand
+                                <div className="text-[7px] text-[#cbd5e1]">
+                                  {itmDef.description}
+                                </div>
+                                <div className="text-[6.5px] text-[#94a3b8]">
+                                  Consumable · Occupies Skill 5 when in Side Hand · Buy {itmDef.buyPrice || 0}g / Sell {itmDef.sellPrice || 0}g
                                 </div>
                               </div>
                               <button
@@ -1059,11 +1749,13 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
               );
             })()}
 
-          {/* B. Editing Chassis Hardware (Drop-Gated Outside Starting Loadout, With Mod Synthesis) */}
+          {/* B. Editing Static Equipment Armor & Sub-Module Hardware (Dome Plate, Optics, Sensory A/B, Aperture Plate, Actuators, Frame Plating, Reactor Core, Leg Actuators) */}
           {(editingSlot === 'head' ||
+            editingSlot === 'optics' ||
             editingSlot === 'sensoryA' ||
             editingSlot === 'sensoryB' ||
             editingSlot === 'arms' ||
+            editingSlot === 'actuators' ||
             editingSlot === 'legs' ||
             editingSlot === 'plating' ||
             editingSlot === 'reactor') && (
@@ -1073,21 +1765,30 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                 const curVal =
                   editingSlot === 'head'
                     ? currentHeadName
-                    : editingSlot === 'sensoryA'
-                      ? currentSensoryAName
-                      : editingSlot === 'sensoryB'
-                        ? currentSensoryBName
-                        : editingSlot === 'arms'
-                          ? currentArmsName
-                          : editingSlot === 'legs'
-                            ? currentLegsName
-                            : editingSlot === 'plating'
-                              ? currentPlatingName
-                              : currentReactorName;
+                    : editingSlot === 'optics'
+                      ? currentOpticsName
+                      : editingSlot === 'sensoryA'
+                        ? currentSensoryAName
+                        : editingSlot === 'sensoryB'
+                          ? currentSensoryBName
+                          : editingSlot === 'arms'
+                            ? currentArmsName
+                            : editingSlot === 'actuators'
+                              ? currentActuatorsName
+                              : editingSlot === 'legs'
+                                ? currentLegsName
+                                : editingSlot === 'plating'
+                                  ? currentPlatingName
+                                  : currentReactorName;
                 const curHw = findHardwareItemByNameOrId(curVal);
                 const isEquippedBase =
                   curHw && parseEquipmentInstanceId(curHw.id).baseId === h.id;
-                return isCheatMode || isEquipmentUnlocked(state, h.id) || Boolean(isEquippedBase);
+                return (
+                  isCheatMode ||
+                  h.origin === 'crafted' ||
+                  isEquipmentUnlocked(state, h.id) ||
+                  Boolean(isEquippedBase)
+                );
               })
                 .flatMap((baseHw) => {
                   const instances = getOwnedEquipmentInstances(state, baseHw.id);
@@ -1098,20 +1799,28 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                   const hw = findHardwareItemByNameOrId(instanceId) || baseHw;
                   const { installedGems } = parseEquipmentInstanceId(instanceId);
                   const count = getOwnedWeaponCount(state, instanceId);
+                  const isUnlocked =
+                    isCheatMode ||
+                    isEquipmentUnlocked(state, baseHw.id) ||
+                    count > 0;
                   const curVal =
                     editingSlot === 'head'
                       ? currentHeadName
-                      : editingSlot === 'sensoryA'
-                        ? currentSensoryAName
-                        : editingSlot === 'sensoryB'
-                          ? currentSensoryBName
-                          : editingSlot === 'arms'
-                            ? currentArmsName
-                            : editingSlot === 'legs'
-                              ? currentLegsName
-                              : editingSlot === 'plating'
-                                ? currentPlatingName
-                                : currentReactorName;
+                      : editingSlot === 'optics'
+                        ? currentOpticsName
+                        : editingSlot === 'sensoryA'
+                          ? currentSensoryAName
+                          : editingSlot === 'sensoryB'
+                            ? currentSensoryBName
+                            : editingSlot === 'arms'
+                              ? currentArmsName
+                              : editingSlot === 'actuators'
+                                ? currentActuatorsName
+                                : editingSlot === 'legs'
+                                  ? currentLegsName
+                                  : editingSlot === 'plating'
+                                    ? currentPlatingName
+                                    : currentReactorName;
                   const curResolved = findHardwareItemByNameOrId(curVal);
                   const isEquipped =
                     curVal === instanceId ||
@@ -1119,6 +1828,18 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                     curResolved?.id === hw.id ||
                     (installedGems.length === 0 &&
                       Boolean(baseHw.legacyNames?.includes(curVal)));
+
+                  const maxGemSlots = getEquipmentMaxModSlots(instanceId);
+                  const craftCost = baseHw.gemCost || [];
+                  const craftCostLabel = craftCost
+                    .map(
+                      (c) =>
+                        `${c.count} ${GEMSTONE_REGISTRY[c.gemId]?.name || c.gemId} (${getInventoryGemCount(state, c.gemId)})`
+                    )
+                    .join(' + ');
+                  const canCraft =
+                    isCheatMode ||
+                    craftCost.every((c) => getInventoryGemCount(state, c.gemId) >= c.count);
 
                   return (
                     <div
@@ -1132,61 +1853,94 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                       <div>
                         <div className="font-bold text-[8.5px] text-[#ffd27d] flex items-center justify-between gap-1">
                           <span>
-                            {hw.name} (×{count})
+                            {hw.name} {isUnlocked ? `(×${Math.max(1, count)})` : '[CRAFTABLE]'}
                           </span>
-                          {hw.isPlaceholderAsset && (
-                            <span
-                              className="text-[6px] px-1 py-0.2 bg-[#334155]/60 text-[#fbbf24] border border-[#fbbf24]/40 rounded-[2px]"
-                              title={
-                                hw.futureAssetPlanned ||
-                                'Placeholder visual asset: dedicated sprite planned'
-                              }
-                            >
-                              PLCH
-                            </span>
-                          )}
+                          <span className="text-[6.5px] px-1 py-0.2 rounded-[2px] bg-[#1e293b] text-[#7dd3fc]">
+                            {hw.slot.toUpperCase()} · {hw.subtype}
+                          </span>
                         </div>
-                        <div className="text-[7px] text-[#38bdf8]">{hw.subtype}</div>
-                        <div className="text-[7.5px] text-[#94a3b8] mt-0.5">{hw.description}</div>
+                        <HardwareStatReadout hw={hw} maxGemSlots={maxGemSlots} />
                       </div>
-                      <button
-                        onClick={() => {
-                          if (!state.equipmentSlots) return;
-                          soundSystem.playSelect();
-                          const storeValue =
-                            installedGems.length > 0 ? instanceId : baseHw.name;
-                          if (editingSlot === 'reactor') {
-                            state.equipmentSlots.reactorCore = storeValue;
-                          } else {
-                            state.equipmentSlots[editingSlot] = storeValue;
-                          }
-                          if (editingSlot === 'plating' && hw.armorType) {
-                            state.armor.type = hw.armorType;
-                          }
-                          syncStateGates(state);
-                          notifyOrionStateChange();
-                        }}
-                        className={`w-full py-0.5 rounded-xs text-[7.5px] font-bold border cursor-pointer ${
-                          isEquipped
-                            ? 'bg-[#38bdf8] text-[#05070a] border-[#7dd3fc]'
-                            : 'bg-[#1e293b] hover:bg-[#334155] text-[#e2e8f0] border-[#475569]'
-                        }`}
-                      >
-                        {isEquipped ? 'EQUIPPED' : 'EQUIP HARDWARE'}
-                      </button>
-                      <EquipmentGemModInstaller
-                        state={state}
-                        instanceId={instanceId}
-                        baseName={baseHw.name}
-                        isCheatMode={isCheatMode}
-                      />
+                      {isUnlocked ? (
+                        <button
+                          onClick={() => {
+                            if (!state.equipmentSlots) return;
+                            soundSystem.playSelect();
+                            const storeValue =
+                              installedGems.length > 0 ? instanceId : baseHw.name;
+                            if (editingSlot === 'reactor') {
+                              state.equipmentSlots.reactorCore = storeValue;
+                            } else if (editingSlot === 'optics') {
+                              state.equipmentSlots.headOptics = storeValue;
+                            } else if (editingSlot === 'actuators') {
+                              state.equipmentSlots.armActuators = storeValue;
+                            } else {
+                              state.equipmentSlots[editingSlot] = storeValue;
+                            }
+                            if (editingSlot === 'plating' && hw.armorType) {
+                              state.armor.type = hw.armorType;
+                            }
+                            syncStateGates(state);
+                            notifyOrionStateChange();
+                          }}
+                          className={`w-full py-0.5 rounded-xs text-[7.5px] font-bold border cursor-pointer ${
+                            isEquipped
+                              ? 'bg-[#38bdf8] text-[#05070a] border-[#7dd3fc]'
+                              : 'bg-[#1e293b] hover:bg-[#334155] text-[#e2e8f0] border-[#475569]'
+                          }`}
+                        >
+                          {isEquipped ? 'EQUIPPED' : 'EQUIP HARDWARE'}
+                        </button>
+                      ) : (
+                        <button
+                          disabled={!canCraft}
+                          onClick={() => {
+                            if (!state.equipmentSlots) return;
+                            if (!isCheatMode) {
+                              for (const req of craftCost) {
+                                consumeInventoryGem(state, req.gemId, req.count);
+                              }
+                            }
+                            state.equipmentSlots.unlockedEquipment =
+                              state.equipmentSlots.unlockedEquipment || [];
+                            state.equipmentSlots.unlockedEquipment.push(baseHw.id);
+                            if (editingSlot === 'reactor') {
+                              state.equipmentSlots.reactorCore = baseHw.name;
+                            } else if (editingSlot === 'optics') {
+                              state.equipmentSlots.headOptics = baseHw.name;
+                            } else if (editingSlot === 'actuators') {
+                              state.equipmentSlots.armActuators = baseHw.name;
+                            } else {
+                              state.equipmentSlots[editingSlot] = baseHw.name;
+                            }
+                            soundSystem.playPowerup();
+                            syncStateGates(state);
+                            notifyOrionStateChange();
+                          }}
+                          className={`w-full py-0.5 rounded-xs text-[7.5px] font-bold border ${
+                            canCraft
+                              ? 'bg-[#4c1d95] hover:bg-[#5b21b6] text-white border-[#a855f7] cursor-pointer'
+                              : 'bg-[#090d14] text-[#64748b] border-[#1e293b] cursor-not-allowed'
+                          }`}
+                        >
+                          ◆ CRAFT &amp; EQUIP ({craftCostLabel || '1 Gem'})
+                        </button>
+                      )}
+                      {isUnlocked && (
+                        <EquipmentGemModInstaller
+                          state={state}
+                          instanceId={instanceId}
+                          baseName={baseHw.name}
+                          isCheatMode={isCheatMode}
+                        />
+                      )}
                     </div>
                   );
                 })}
             </div>
           )}
 
-          {/* C. Editing Action Modifications */}
+          {/* C. Editing Sub-Mods: Structure (Arms Mod 2), Integration (Arms Mod 3), Mobility Kit (Frame Mod 3) */}
           {(editingSlot === 'mod_ranged' ||
             editingSlot === 'mod_melee' ||
             editingSlot === 'mod_mobility') &&
@@ -1197,6 +1951,12 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                   : editingSlot === 'mod_melee'
                     ? 'melee'
                     : 'mobility';
+              const slotRoleLabel =
+                targetCat === 'melee'
+                  ? 'ARMS MOD 2 · STRUCTURE'
+                  : targetCat === 'ranged'
+                    ? 'ARMS MOD 3 · INTEGRATION'
+                    : 'FRAME MOD 3 · MOBILITY KIT';
               return (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                   {ACTION_MODIFICATION_CATALOG.filter(
@@ -1206,16 +1966,21 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                   ).map((mod) => {
                     const unlockedMods = state.equipmentSlots?.unlockedMods || [];
                     const isGenerated =
-                      unlockedMods.includes(mod.id) || Boolean(state.bypassProgressionGates);
+                      unlockedMods.includes(mod.id) ||
+                      Boolean(state.bypassProgressionGates) ||
+                      isCheatMode;
                     const isInstalled =
                       state.equipmentSlots?.installedMods?.[targetCat] === mod.id;
-                    const costText = mod.gemCost
-                      .map((c) => {
-                        const g = GEMSTONE_REGISTRY[c.gemId];
-                        const have = getInventoryGemCount(state, c.gemId);
-                        return `${c.count} ${g?.name || c.gemId} (${have})`;
-                      })
-                      .join(' + ');
+                    const costText =
+                      mod.gemCost.length > 0
+                        ? mod.gemCost
+                            .map((c) => {
+                              const g = GEMSTONE_REGISTRY[c.gemId];
+                              const have = getInventoryGemCount(state, c.gemId);
+                              return `${c.count} ${g?.name || c.gemId} (${have})`;
+                            })
+                            .join(' + ')
+                        : 'Looted Standalone Module';
 
                     return (
                       <div
@@ -1227,9 +1992,20 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                         }`}
                       >
                         <div>
-                          <div className="font-bold text-[8.5px] text-[#e2e8f0]">
-                            {mod.name} [{mod.targetCategory.toUpperCase()}]
+                          <div className="font-bold text-[8.5px] text-[#e2e8f0] flex items-center justify-between gap-1">
+                            <span>{mod.name}</span>
+                            <span className="text-[6.5px] px-1 py-0.2 rounded-[2px] bg-[#1e293b] text-[#c084fc]">
+                              {(mod.origin || 'crafted').toUpperCase()} · {mod.maxGemSlots ?? 1}G ·{' '}
+                              {(mod.weightDelta ?? 0) >= 0
+                                ? `+${mod.weightDelta ?? 0}`
+                                : mod.weightDelta}{' '}
+                              WT
+                              {mod.capacityDelta
+                                ? ` · ${mod.capacityDelta > 0 ? `+${mod.capacityDelta}` : mod.capacityDelta} CAP`
+                                : ''}
+                            </span>
                           </div>
+                          <div className="text-[6.5px] text-[#38bdf8]">{slotRoleLabel}</div>
                           <div className="text-[7.5px] text-[#86efac]">+ {mod.gainDescription}</div>
                           <div className="text-[7.5px] text-[#f87171]">
                             − {mod.drawbackDescription}
@@ -1251,6 +2027,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                                 } else {
                                   state.equipmentSlots.installedMods[targetCat] = mod.id;
                                 }
+                                syncStateGates(state);
                                 notifyOrionStateChange();
                               }}
                               className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#c084fc] rounded-xs text-[7.5px] font-bold text-[#e9d5ff] cursor-pointer"
@@ -1273,6 +2050,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                                       state.equipmentSlots.installedMods || {};
                                     state.equipmentSlots.installedMods[targetCat] = mod.id;
                                   }
+                                  syncStateGates(state);
                                 } else {
                                   soundSystem.playMenuBeep();
                                 }
@@ -1280,7 +2058,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                               }}
                               className="px-2 py-0.5 bg-[#4c1d95] hover:bg-[#5b21b6] border border-[#a855f7] rounded-xs text-[7.5px] font-bold text-white cursor-pointer"
                             >
-                              ◆ GENERATE & INSTALL
+                              ◆ CRAFT &amp; INSTALL
                             </button>
                           )}
                         </div>
@@ -1400,9 +2178,11 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
     hardware: [
       'ALL',
       'head',
+      'optics',
       'sensoryA',
       'sensoryB',
       'arms',
+      'actuators',
       'legs',
       'plating',
       'reactor',
@@ -1571,7 +2351,7 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
                             {w.name} <span className="text-[#94a3b8]">×{copies}</span>
                           </div>
                           <div className="text-[7.5px] text-[#7dd3fc] truncate">
-                            {stInfo.subtype} · {(w.weightClass || 'medium').toUpperCase()}
+                            {stInfo.subtype} · [{getWeaponComponentSlots(instanceId).join(' / ').toUpperCase()}]
                             {inMain ? ' · [MAIN]' : ''}
                             {inSide ? ' · [SIDE]' : ''}
                             {inAux ? ' · [AUX]' : ''}
@@ -1585,6 +2365,7 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
                         EDIT IN LOADOUT
                       </button>
                     </div>
+                    <WeaponStatReadout w={w} instanceId={instanceId} state={state} />
                     <EquipmentGemModInstaller
                       state={state}
                       instanceId={instanceId}
@@ -1618,6 +2399,7 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
                 .map(({ baseHw, instanceId }) => {
                   const hw = findHardwareItemByNameOrId(instanceId) || baseHw;
                   const count = getOwnedWeaponCount(state, instanceId);
+                  const maxGemSlots = getEquipmentMaxModSlots(instanceId);
                   const editTargetSlot: EditableLoadoutSlot =
                     baseHw.slot === 'aux3' || baseHw.slot === 'aux4' ? 'slot3' : baseHw.slot;
                   return (
@@ -1654,6 +2436,7 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
                           EDIT IN LOADOUT
                         </button>
                       </div>
+                      <HardwareStatReadout hw={hw} maxGemSlots={maxGemSlots} />
                       <EquipmentGemModInstaller
                         state={state}
                         instanceId={instanceId}
@@ -1675,28 +2458,39 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
               }).map((m) => (
                 <div
                   key={m.id}
-                  className="p-1.5 bg-[#090d14] rounded-xs border border-[#1e293b] flex items-center justify-between gap-2"
+                  className="p-1.5 bg-[#090d14] rounded-xs border border-[#1e293b] flex flex-col justify-between gap-1"
                 >
-                  <div className="min-w-0">
-                    <div className="font-bold text-[8.5px] text-[#c084fc] truncate">{m.name}</div>
-                    <div className="text-[7px] text-[#94a3b8] truncate">
-                      Action Mod · {m.targetCategory.toUpperCase()}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-bold text-[8.5px] text-[#c084fc] truncate">{m.name}</div>
+                      <div className="text-[7px] text-[#94a3b8] truncate">
+                        Action Mod · {m.targetCategory.toUpperCase()} ·{' '}
+                        {(m.weightDelta ?? 0) >= 0 ? `+${m.weightDelta ?? 0}` : m.weightDelta} WT
+                        {m.capacityDelta
+                          ? ` · ${m.capacityDelta > 0 ? `+${m.capacityDelta}` : m.capacityDelta} CAP`
+                          : ''}{' '}
+                        · {(m.origin || 'crafted').toUpperCase()} ({m.maxGemSlots ?? 1}G MAX)
+                      </div>
                     </div>
+                    <button
+                      onClick={() =>
+                        openSlotEditor(
+                          m.targetCategory === 'melee'
+                            ? 'mod_melee'
+                            : m.targetCategory === 'mobility'
+                              ? 'mod_mobility'
+                              : 'mod_ranged'
+                        )
+                      }
+                      className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#c084fc] border border-[#c084fc]/50 rounded-xs text-[7.5px] font-bold cursor-pointer shrink-0"
+                    >
+                      EDIT IN LOADOUT
+                    </button>
                   </div>
-                  <button
-                    onClick={() =>
-                      openSlotEditor(
-                        m.targetCategory === 'melee'
-                          ? 'mod_melee'
-                          : m.targetCategory === 'mobility'
-                            ? 'mod_mobility'
-                            : 'mod_ranged'
-                      )
-                    }
-                    className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#c084fc] border border-[#c084fc]/50 rounded-xs text-[7.5px] font-bold cursor-pointer shrink-0"
-                  >
-                    EDIT IN LOADOUT
-                  </button>
+                  <div className="text-[7px] text-[#86efac]">+ {m.gainDescription}</div>
+                  {m.drawbackDescription && (
+                    <div className="text-[6.8px] text-[#f87171]">− {m.drawbackDescription}</div>
+                  )}
                 </div>
               ))}
           </div>
@@ -1747,11 +2541,37 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
                         )}
                         <span>{def.name}</span>
                         <span className="text-[#94a3b8]">×{slot.count}</span>
-                        <span className="text-[8px] text-[#94a3b8]">
-                          · {isGem ? 'gemstone' : def.category}
+                        <span className="text-[7.5px] px-1 py-0.2 rounded-[2px] bg-[#1e293b] text-[#7dd3fc]">
+                          0 WT · {(isGem ? 'gemstone' : def.category).toUpperCase()}
                         </span>
+                        {def.lightBonus !== undefined && def.lightBonus !== 0 && (
+                          <span
+                            className={`text-[7.5px] px-1 py-0.2 rounded-[2px] font-semibold ${
+                              def.lightBonus > 0
+                                ? 'bg-[#052e16]/80 text-[#86efac] border border-[#22c55e]/40'
+                                : 'bg-[#450a0a]/80 text-[#fca5a5] border border-[#ef4444]/40'
+                            }`}
+                          >
+                            {def.lightBonus > 0 ? `+${def.lightBonus}` : def.lightBonus} LGT
+                          </span>
+                        )}
+                        {(def.buyPrice || def.sellPrice) ? (
+                          <span className="text-[7.5px] text-[#94a3b8]">
+                            · Buy {def.buyPrice || 0}g / Sell {def.sellPrice || 0}g
+                          </span>
+                        ) : null}
                       </div>
-                      <div className="text-[8.5px] text-[#94a3b8]">{def.description}</div>
+                      <div className="text-[8px] text-[#cbd5e1]">{def.description}</div>
+                      {isGem && GEMSTONE_REGISTRY[slot.itemId as GemId] && (
+                        <div className="text-[7px] text-[#86efac]">
+                          + WPN MOD ({GEM_MOD_PREFIX_BY_ID[slot.itemId as GemId]}):{' '}
+                          {WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS[slot.itemId as GemId]} ·{' '}
+                          {WEAPON_GEM_WEIGHT_DELTA[slot.itemId as GemId] >= 0
+                            ? `+${WEAPON_GEM_WEIGHT_DELTA[slot.itemId as GemId]}`
+                            : WEAPON_GEM_WEIGHT_DELTA[slot.itemId as GemId]}{' '}
+                          WT
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-1 shrink-0 ml-2">
                       {isGem && (

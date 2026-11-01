@@ -1,6 +1,6 @@
 {
-  "summary":  "Implementation plan for removing the Bog Waygate and Drop Pod (relocating them to the Training Room), reframing the opening narrative around an amnesiac awakening in the Bog, adding the Poe Companion decision and dynamic skill-colored trailing/objective-hovering orb, replacing explicit quest flags/pop-ups with diegetic context clues, and randomizing cache scattering.",
-  "updatedAt":  "2026-10-31T21:06:37.062918714Z",
+  "summary":  "Implementation plan to make all equipment and gemstone stat gains physically intuitive by restricting Armor stats strictly to exterior plating and shields, mapping every internal sub-module slot to its mechanical domain, and adapting gemstone modifications to the host slot's physical function.",
+  "updatedAt":  "2026-11-01T13:54:37.777503942Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

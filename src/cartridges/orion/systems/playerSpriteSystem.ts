@@ -13,6 +13,7 @@ import {
 import { getWeaponDefinition } from '../database/equipment/weapons';
 import { getItemDefinition } from '../database/items';
 import {
+  computePlayerLoadMetrics,
   getEffectiveMainGrip,
   getWeaponGemVisuals,
 } from '../database/progression';
@@ -190,27 +191,19 @@ const GLIDE_CADENCE_STEPS: Array<{ frame: 0 | 1 | 2 | 3; durationSec: number }> 
 export function computePlayerWeightRecoveryProfile(
   state: OrionState
 ): PlayerWeightRecoveryProfile {
-  const { framePlatingDef } = resolvePlayerSpriteParts(state);
-  const loadCap =
-    state.gates?.effectiveLoadCapacity || framePlatingDef.baseLoadCapacity || 'medium';
+  const loadMetrics = computePlayerLoadMetrics(state);
+  const bracket = state.gates?.loadPenalty?.loadBracket || loadMetrics.loadBracket;
 
-  const activeWeaponId =
-    state.equipmentSlots?.slot1 ||
-    state.equippedWeapons?.[state.activeWeaponIndex || 0] ||
-    'gladius_boltcaster';
-  const weaponDef = getWeaponDefinition(activeWeaponId);
-  const weaponWeight =
-    state.gates?.activeWeaponWeight || weaponDef?.weightClass || 'medium';
-
-  const frameScore =
-    loadCap === 'superheavy' ? 2.4 : loadCap === 'heavy' ? 1.6 : loadCap === 'medium' ? 0.8 : 0;
-  const weaponScore =
-    weaponWeight === 'heavy' ? 1.2 : weaponWeight === 'medium' ? 0.5 : 0;
-  const overloadBonus =
-    (state.gates?.loadPenalty?.mobilityMult ?? 1) < 1 ? 1.0 : 0;
-
-  const rawTier = Math.round(frameScore + weaponScore + overloadBonus);
-  const weightTier = Math.max(0, Math.min(4, rawTier)) as 0 | 1 | 2 | 3 | 4;
+  const weightTier: 0 | 1 | 2 | 3 | 4 =
+    bracket === 'overloaded'
+      ? 4
+      : bracket === 'heavy'
+        ? loadMetrics.loadPct >= 85
+          ? 3
+          : 2
+        : bracket === 'medium'
+          ? 1
+          : 0;
 
   switch (weightTier) {
     case 0:

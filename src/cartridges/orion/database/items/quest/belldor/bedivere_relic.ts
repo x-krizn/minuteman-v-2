@@ -15,10 +15,11 @@ export const bedivereRelicItem: ItemWikiDefinition = {
   name: 'Grail Amulet (Bedivere List Relic)',
   category: 'key',
   description:
-    'An ancient golden amulet matching one of the numbered entries on Bedivere’s scroll.',
+    '0 WT Sacred Relic Artifact · Grants +3 Passive Light Resonance & progresses Bedivere Scroll Ritual (1/3 per relic).',
   lore: 'Makes no sense on its own, yet hums faintly when brought near the waters of the Bog.',
   buyPrice: 0,
   sellPrice: 0,
+  lightBonus: 3,
   iconColor: '#facc15',
   iconSprite: {
     base64: AMULET_ICON_BASE64,

@@ -13,10 +13,12 @@ export const bedivereRingItem: ItemWikiDefinition = {
   id: 'bedivere_ring',
   name: "Bedivere's Signet Ring",
   category: 'key',
-  description: 'Silver signet ring bearing a scarred falcon emblem.',
+  description:
+    '0 WT Key Signet Artifact · Grants +2 Passive Light Resonance & unlocks Camelot Vanguard Dialogue Gates.',
   lore: 'Carried by the fallen Camelot scout in the bog. Proof of duty and key narrative artifact.',
   buyPrice: 0,
   sellPrice: 0,
+  lightBonus: 2,
   iconColor: '#e2e8f0',
   iconSprite: {
     base64: RING_ICON_BASE64,

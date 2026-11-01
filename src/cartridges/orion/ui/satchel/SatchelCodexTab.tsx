@@ -7,12 +7,22 @@ import React, { useMemo, useState } from 'react';
 import { soundSystem } from '../../../../engine/core/soundSystem';
 import { TRAIT_REGISTRY } from '../../database/characters';
 import { ENEMY_REGISTRY } from '../../database/enemies';
+import { GEM_MOD_PREFIX_BY_ID } from '../../database/equipment';
+import { getHardwareGemBonusDescription } from '../../database/equipment/chassis_hardware';
 import { WEAPON_REGISTRY } from '../../database/equipment/weapons';
 import { ITEM_REGISTRY } from '../../database/items';
-import { isEquipmentUnlocked } from '../../database/progression';
+import {
+  GEMSTONE_REGISTRY,
+  getWeaponComponentSlots,
+  getWeaponInstanceEquipWeight,
+  isEquipmentUnlocked,
+  WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS,
+  WEAPON_GEM_WEIGHT_DELTA,
+} from '../../database/progression';
 import { AREA_REGISTRY, LOCAL_ROOM_REGISTRY, REGION_REGISTRY } from '../../database/world';
 import {
   EnemyWikiDefinition,
+  GemId,
   ItemWikiDefinition,
   OrionState,
   RoomDefinition,
@@ -451,6 +461,11 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
           ) : (
             discoveredWeapons.items.map((w) => {
               const isExpanded = selectedId === w.id;
+              const wt = getWeaponInstanceEquipWeight(w.id, state);
+              const compSlots = getWeaponComponentSlots(w.id).join(' / ').toUpperCase();
+              const primaryAction = w.moveset?.[0];
+              const primaryFamily = primaryAction?.damageFamily || 'Kinetic';
+              const primaryRange = primaryAction?.range ?? 64;
               return (
                 <div
                   key={w.id}
@@ -460,7 +475,7 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                   }}
                   className="p-2 bg-[#0f172a]/90 hover:bg-[#1e293b]/90 border border-[#334155] rounded-xs cursor-pointer transition-colors"
                 >
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       {w.iconSprite?.base64 && (
                         <SpriteCanvasIcon
@@ -475,13 +490,71 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                           {w.name}
                         </span>
                         <span className="ml-2 text-[8.5px] text-[#94a3b8]">
-                          {w.weaponClass || w.class} · {(w.weightClass || 'medium').toUpperCase()} · {w.handing || '1-hand'}
+                          {w.weaponClass || w.class} · {wt} WT ({(w.weightClass || 'medium').toUpperCase()}) · {w.handing || '1-hand'} · [{compSlots}]
                         </span>
                       </div>
                     </div>
-                    <span className="text-[8.5px] text-[#4ade80]">
-                      {w.damagePerShot} {w.primaryDamageType} · {w.shotsPerChain}x CHAIN
+                    <span className="text-[8.5px] text-[#4ade80] font-bold">
+                      {w.damagePerShot > 0
+                        ? `${w.damagePerShot} ${w.primaryDamageType} (${primaryFamily}) · ${w.shotsPerChain}× CHAIN`
+                        : `SUPPORT / GUARD (${w.primaryDamageType} · ${primaryFamily})`}
                     </span>
+                  </div>
+
+                  <div className="mt-1 flex flex-wrap items-center gap-1 text-[7.5px]">
+                    <span className="px-1 py-0.2 rounded-[2px] bg-[#090d14] text-[#94a3b8] border border-[#1e293b]">
+                      {w.reloadDurationSec}s RLD · {primaryRange}px RNG
+                    </span>
+                    {w.adaptiveDamageTypes && w.adaptiveDamageTypes.length > 1 && (
+                      <span className="px-1 py-0.2 rounded-[2px] bg-[#311042] text-[#e879f9] border border-[#a21caf]/50">
+                        ADAPTIVE [{w.adaptiveDamageTypes.join('/')}]
+                      </span>
+                    )}
+                    {w.canBlock && (
+                      <span className="px-1 py-0.2 rounded-[2px] bg-[#052e16]/80 text-[#86efac] border border-[#22c55e]/40">
+                        BLOCK GUARD
+                      </span>
+                    )}
+                    {w.passiveShieldBonus ? (
+                      <span className="px-1 py-0.2 rounded-[2px] bg-[#052e16]/80 text-[#86efac] border border-[#22c55e]/40">
+                        +{w.passiveShieldBonus} SHD
+                      </span>
+                    ) : null}
+                    {w.passiveArmorBonus &&
+                    (w.equipmentRole === 'shield' || w.id.includes('martyrdom_plating')) ? (
+                      <span className="px-1 py-0.2 rounded-[2px] bg-[#052e16]/80 text-[#86efac] border border-[#22c55e]/40">
+                        +{w.passiveArmorBonus} ARM DUR
+                      </span>
+                    ) : null}
+                    {w.passiveLightBonus ? (
+                      <span
+                        className={`px-1 py-0.2 rounded-[2px] ${
+                          w.passiveLightBonus > 0
+                            ? 'bg-[#052e16]/80 text-[#86efac] border border-[#22c55e]/40'
+                            : 'bg-[#450a0a]/80 text-[#fca5a5] border border-[#ef4444]/40'
+                        }`}
+                      >
+                        {w.passiveLightBonus > 0 ? `+${w.passiveLightBonus}` : w.passiveLightBonus} LGT
+                      </span>
+                    ) : null}
+                    {w.supportPulseOnHit && (
+                      <span className="px-1 py-0.2 rounded-[2px] bg-[#172554] text-[#7dd3fc] border border-[#38bdf8]/40">
+                        ON HIT:{' '}
+                        {[
+                          w.supportPulseOnHit.shieldRestore
+                            ? `+${w.supportPulseOnHit.shieldRestore} SHD`
+                            : '',
+                          w.supportPulseOnHit.armorRestore
+                            ? `+${w.supportPulseOnHit.armorRestore} ARM`
+                            : '',
+                          w.supportPulseOnHit.heatVent
+                            ? `-${w.supportPulseOnHit.heatVent} HEAT`
+                            : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' / ')}
+                      </span>
+                    )}
                   </div>
 
                   <p className="mt-1 text-[#cbd5e1] text-[9.5px] leading-snug">
@@ -497,13 +570,14 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                         {w.moveset.map((act, idx) => (
                           <div
                             key={`${act.name}-${idx}`}
-                            className="px-1.5 py-0.5 bg-[#090d14] border border-[#1e293b] rounded-xs flex items-center justify-between text-[8.5px]"
+                            className="px-1.5 py-0.5 bg-[#090d14] border border-[#1e293b] rounded-xs flex flex-wrap items-center justify-between gap-1 text-[8.5px]"
                           >
                             <span className="text-[#38bdf8] font-bold">
                               S{idx + 1}: {act.name}
                             </span>
                             <span className="text-[#94a3b8]">
-                              {act.damage} {act.damageType} · CD {act.cooldownSec}s
+                              {act.damage > 0 ? `${act.damage} DMG · ` : ''}
+                              {act.damageType} ({act.damageFamily}) · CD {act.cooldownSec}s · {act.heatCost} Heat · {act.range}px RNG
                             </span>
                           </div>
                         ))}
@@ -524,6 +598,7 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
           ) : (
             discoveredItems.items.map((item) => {
               const isExpanded = selectedId === item.id;
+              const isGem = item.id in GEMSTONE_REGISTRY;
               return (
                 <div
                   key={item.id}
@@ -533,7 +608,7 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                   }}
                   className="p-2 bg-[#0f172a]/90 hover:bg-[#1e293b]/90 border border-[#334155] rounded-xs cursor-pointer transition-colors"
                 >
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       {item.iconSprite?.base64 ? (
                         <SpriteCanvasIcon
@@ -553,19 +628,37 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                           {item.name}
                         </span>
                         <span className="ml-2 text-[8.5px] uppercase text-[#94a3b8]">
-                          {item.category}
-                          {item.lightBonus ? ` · +${item.lightBonus} LIGHT` : ''}
+                          0 WT · {isGem ? 'GEMSTONE' : item.category}
+                          {item.lightBonus
+                            ? ` · ${item.lightBonus > 0 ? `+${item.lightBonus}` : item.lightBonus} LIGHT`
+                            : ''}
                         </span>
                       </div>
                     </div>
                     <span className="text-[8.5px] text-[#ffd27d]">
-                      VAL {item.sellPrice}c
+                      BUY {item.buyPrice || 0}g · SELL {item.sellPrice || 0}g
                     </span>
                   </div>
 
                   <p className="mt-1 text-[#cbd5e1] text-[9.5px] leading-snug">
                     {item.description}
                   </p>
+
+                  {isGem && (
+                    <div className="mt-1 space-y-0.5 text-[8px]">
+                      <div className="text-[#86efac]">
+                        + WEAPON MOD ({GEM_MOD_PREFIX_BY_ID[item.id as GemId]}):{' '}
+                        {WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS[item.id as GemId]} (
+                        {WEAPON_GEM_WEIGHT_DELTA[item.id as GemId] >= 0
+                          ? `+${WEAPON_GEM_WEIGHT_DELTA[item.id as GemId]}`
+                          : WEAPON_GEM_WEIGHT_DELTA[item.id as GemId]}{' '}
+                        WT)
+                      </div>
+                      <div className="text-[#7dd3fc]">
+                        + EXTERIOR ARMOR MOD: {getHardwareGemBonusDescription('plating', item.id as GemId)}
+                      </div>
+                    </div>
+                  )}
 
                   {isExpanded && (
                     <div className="mt-1.5 pt-1.5 border-t border-[#334155]/80 text-[#fde68a] italic text-[9.5px] leading-snug">

@@ -24,6 +24,7 @@ import {
   getWeaponGemCombatModifiers,
   getWeaponGemVisuals,
   parseEquipmentInstanceId,
+  resolveEquippedHardwareStats,
 } from '../../database/progression';
 import {
   ArmorState,
@@ -221,6 +222,8 @@ export function executeActionPayload(
   const hasKnightsOath = state.equippedFeats.includes('knights_oath');
   const equippedFeats = state.equippedFeats || [];
 
+  const hwStats = resolveEquippedHardwareStats(state);
+
   const computeEnemyDamage = (
     baseDmg: number,
     faction?: string,
@@ -231,7 +234,7 @@ export function executeActionPayload(
     const isLockedOrStaggered =
       target && (target.id === state.lockedTargetId || target.stun > 0);
     const charoiteMult = isLockedOrStaggered
-      ? gemCombatMods.lockedOrStaggeredDamageMult
+      ? gemCombatMods.lockedOrStaggeredDamageMult * hwStats.staggerDamageMult
       : 1.0;
     const hasBeamFocus =
       dmgType === 'Beam' &&
@@ -264,7 +267,11 @@ export function executeActionPayload(
 
   const playerInertiaProf = resolvePlayerInertiaProfile(state);
   const activeSlotNum = desc.weaponSkillSlot || 1;
-  const weaponInertiaSpec = resolveWeaponAttackInertiaSpec(currentWeaponId, activeSlotNum);
+  const weaponInertiaSpec = resolveWeaponAttackInertiaSpec(
+    currentWeaponId,
+    activeSlotNum,
+    state
+  );
 
   // Apply Weapon / Attack Recoil (§7 of `inertia-v0.md`: J_recoil / m_shooter_frame, no μ bonus)
   if (desc.sourceCategory === 'weapon') {
@@ -2782,7 +2789,9 @@ export function activateResolvedCombatSkill(
     state.heat = Math.max(0, state.heat + rawHeat);
   }
 
-  const cdScale = featMods.cooldownMult * gemCombatMods.skillCooldownMult;
+  const hwStats = resolveEquippedHardwareStats(state);
+  const cdScale =
+    featMods.cooldownMult * gemCombatMods.skillCooldownMult * hwStats.cooldownMult;
   const finalCd = (skill.cooldownSec ?? desc.cooldownSec ?? 4.0) * cdScale;
 
   state.actionCooldowns = state.actionCooldowns || {};
@@ -2816,7 +2825,7 @@ export function activateResolvedCombatSkill(
 
   state.activeActionId = skill.id;
   state.activeSkillCooldownKey = skill.cooldownKey;
-  state.skillTellTimer = Math.max(0.05, desc.tellDurationSec);
+  state.skillTellTimer = Math.max(0.04, desc.tellDurationSec * hwStats.tellDurationMult);
   state.skillTellMaxTimer = state.skillTellTimer;
   state.skillActionTimer = Math.max(0.15, desc.actionDurationSec);
   state.skillActionMaxTimer = state.skillActionTimer;

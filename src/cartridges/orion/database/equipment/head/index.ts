@@ -23,13 +23,13 @@ import { CanonicalHardwareItemDefinition } from '../chassis_hardware';
 export * from './sprites';
 
 export const CANONICAL_HEAD_OPTICS: CanonicalHardwareItemDefinition[] = [
-  // ─── SET 0: Crystal Dynamics G341 Murmillio ───────────────────────────────
+  // ─── SET 0: Crystal Dynamics G341 Murmillio (Dome Plate) ──────────────────
   {
     id: 'head_cd_g341_murmillio',
     name: 'Crystal Dynamics G341 Murmillio',
     slot: 'head',
-    canonicalSlotLabel: 'Head / Optics',
-    subtype: 'Head Helm · Alchemic Optic Core',
+    canonicalSlotLabel: 'Dome Plate',
+    subtype: 'Dome Plate · Alchemic Visor Shell',
     setIndex: 0,
     setId: 'set_01_bastion',
     partSprite: {
@@ -45,17 +45,29 @@ export const CANONICAL_HEAD_OPTICS: CanonicalHardwareItemDefinition[] = [
       crestColor: '#fa4b4b',
       crestStyle: 'murmillio',
     },
+    armorType: 'Reactive',
+    armorDurability: 20,
+    armorRating: 1,
+    armorThreshold: 1,
+    shieldBonus: 6,
+    heatVentMult: 1.04,
+    accuracyMult: 0.98,
+    weight: 10,
+    origin: 'looted',
+    maxGemSlots: 2,
+    drawbackDescription: '+10 WT Slit-Visor Dome Mass & -2% Lock Range',
     linkedActionId: 'mod_head_optic_scan',
-    description: 'Reinforced helm, alchemic optic core, heat-dispersing vents (Set 01).',
+    description:
+      'Reinforced Dome Plate with alchemic visor shell and heat-dispersing vents (+20 Dur, +1 RTG, +1 THR, +6 Shield, +4% Venting / 10 WT, -2% Lock Acc).',
     isPlaceholderAsset: false,
   },
-  // ─── SET 1: BE Ironveil Command Dome ──────────────────────────────────────
+  // ─── SET 1: BE Ironveil Command Dome (Dome Plate) ─────────────────────────
   {
     id: 'head_be_ironveil_dome',
     name: 'BE Ironveil Command Dome',
     slot: 'head',
-    canonicalSlotLabel: 'Head / Optics',
-    subtype: 'Command Dome · Interference Dampener',
+    canonicalSlotLabel: 'Dome Plate',
+    subtype: 'Dome Plate · Interference Dampener',
     setIndex: 1,
     setId: 'set_02_fortress',
     partSprite: {
@@ -71,18 +83,29 @@ export const CANONICAL_HEAD_OPTICS: CanonicalHardwareItemDefinition[] = [
       crestColor: '#ffffff',
       crestStyle: 'ironveil',
     },
+    armorType: 'Hardened',
+    armorDurability: 24,
+    armorRating: 2,
+    armorThreshold: 1,
     shieldBonus: 8,
+    stabilityBonus: 6,
+    cooldownMult: 1.03,
+    weight: 14,
+    origin: 'looted',
+    maxGemSlots: 2,
+    drawbackDescription: '+14 WT Heavy Command Dome Mass & +3% Cooldowns',
     linkedActionId: 'mod_head_optic_scan',
-    description: 'Layered shielding, interference dampeners (Set 02).',
+    description:
+      'Heavy layered Dome Plate with interference dampeners (+24 Dur, +2 RTG, +1 THR, +8 Shield, +6 Stability / 14 WT, +3% CD).',
     isPlaceholderAsset: false,
   },
-  // ─── SET 2: Aegis Halo Command Dome ───────────────────────────────────────
+  // ─── SET 2: Aegis Halo Command Dome (Dome Plate) ──────────────────────────
   {
     id: 'head_aegis_halo_dome',
     name: 'Aegis Halo Command Dome',
     slot: 'head',
-    canonicalSlotLabel: 'Head / Optics',
-    subtype: 'Command Dome · Shield Uplink',
+    canonicalSlotLabel: 'Dome Plate',
+    subtype: 'Dome Plate · Shield Uplink',
     setIndex: 2,
     setId: 'set_03_dawnforge',
     partSprite: {
@@ -98,18 +121,29 @@ export const CANONICAL_HEAD_OPTICS: CanonicalHardwareItemDefinition[] = [
       crestColor: '#fa9e32',
       crestStyle: 'aegis',
     },
+    armorType: 'Layered',
+    armorDurability: 18,
+    armorRating: 2,
+    armorThreshold: 1,
     shieldBonus: 12,
+    stabilityBonus: 4,
+    heatVentMult: 0.97,
+    weight: 12,
+    origin: 'looted',
+    maxGemSlots: 2,
+    drawbackDescription: '+12 WT Barrier Conduit Mass & -3% Heat Venting',
     linkedActionId: 'mod_head_optic_scan',
-    description: 'Mana-channeling conduits, tactical shield uplink (Set 03).',
+    description:
+      'Mana-channeling Dome Plate with tactical shield uplink (+18 Dur, +2 RTG, +1 THR, +12 Shield, +4 Stability / 12 WT, -3% Venting).',
     isPlaceholderAsset: false,
   },
-  // ─── SET 3: VX Veilsight Command Helm ─────────────────────────────────────
+  // ─── SET 3: VX Veilsight Command Helm (Dome Plate) ────────────────────────
   {
     id: 'head_vx_veilsight_helm',
     name: 'VX Veilsight Command Helm',
     slot: 'head',
-    canonicalSlotLabel: 'Head / Optics',
-    subtype: 'Command Helm · Low-Light & Thermal',
+    canonicalSlotLabel: 'Dome Plate',
+    subtype: 'Dome Plate · Low-Light & Thermal',
     setIndex: 3,
     setId: 'set_04_shadowcraft',
     partSprite: {
@@ -125,17 +159,30 @@ export const CANONICAL_HEAD_OPTICS: CanonicalHardwareItemDefinition[] = [
       crestColor: '#faef3f',
       crestStyle: 'veilsight',
     },
+    armorType: 'Ablative',
+    armorDurability: 10,
+    armorRating: 1,
+    armorThreshold: 0,
+    shieldBonus: 4,
+    lightBonus: 0.5,
+    accuracyMult: 1.05,
+    stabilityBonus: -3,
+    weight: 7,
+    origin: 'looted',
+    maxGemSlots: 2,
+    drawbackDescription: 'Thin +10 Dur Shell (0 THR) & -3 Poise Stability (7 WT)',
     linkedActionId: 'mod_head_optic_scan',
-    description: 'Low-light optics, thermal dampening (Set 04).',
+    description:
+      'Ultralight Dome Plate with low-light optics and thermal dampening (+10 Dur, +1 RTG, +4 Shield, +0.5 Light, +5% Acc / 7 WT, -3 Stability).',
     isPlaceholderAsset: false,
   },
-  // ─── SET 4: ARC Omniscient Command Dome ───────────────────────────────────
+  // ─── SET 4: ARC Omniscient Command Dome (Dome Plate) ──────────────────────
   {
     id: 'head_arc_omniscient_dome',
     name: 'ARC Omniscient Command Dome',
     slot: 'head',
-    canonicalSlotLabel: 'Head / Optics',
-    subtype: 'Command Dome · Artillery & Signature Optics',
+    canonicalSlotLabel: 'Dome Plate',
+    subtype: 'Dome Plate · Artillery & Signature Lattice',
     setIndex: 4,
     setId: 'set_05_arcanum',
     partSprite: {
@@ -151,17 +198,30 @@ export const CANONICAL_HEAD_OPTICS: CanonicalHardwareItemDefinition[] = [
       crestColor: '#32e132',
       crestStyle: 'omniscient',
     },
+    armorType: 'Layered',
+    armorDurability: 14,
+    armorRating: 1,
+    armorThreshold: 1,
+    shieldBonus: 10,
+    lightBonus: 0.5,
+    accuracyMult: 1.06,
+    stabilityBonus: -3,
+    weight: 11,
+    origin: 'looted',
+    maxGemSlots: 2,
+    drawbackDescription: '+11 WT Crystal Lattice Mass & -3 Poise Stability',
     linkedActionId: 'mod_head_optic_scan',
-    description: 'Crystal lattice, long-range energy signature tracking (Set 05).',
+    description:
+      'Crystal lattice Dome Plate for long-range energy signature tracking (+14 Dur, +1 RTG, +1 THR, +10 Shield, +0.5 Light, +6% Acc / 11 WT, -3 Stability).',
     isPlaceholderAsset: false,
   },
-  // ─── SET 5: SANC Providence Command Helm ──────────────────────────────────
+  // ─── SET 5: SANC Providence Command Helm (Dome Plate) ─────────────────────
   {
     id: 'head_sanc_providence_helm',
     name: 'SANC Providence Command Helm',
     slot: 'head',
-    canonicalSlotLabel: 'Head / Optics',
-    subtype: 'Command Helm · Triage & Threat HUD',
+    canonicalSlotLabel: 'Dome Plate',
+    subtype: 'Dome Plate · Triage & Threat HUD',
     setIndex: 5,
     setId: 'set_06_sanctum',
     partSprite: {
@@ -177,17 +237,29 @@ export const CANONICAL_HEAD_OPTICS: CanonicalHardwareItemDefinition[] = [
       crestColor: '#7d8cc8',
       crestStyle: 'providence',
     },
+    armorType: 'Reactive',
+    armorDurability: 16,
+    armorRating: 1,
+    armorThreshold: 1,
+    shieldBonus: 10,
+    cooldownMult: 0.96,
+    tellDurationMult: 1.03,
+    weight: 10,
+    origin: 'looted',
+    maxGemSlots: 2,
+    drawbackDescription: '+10 WT Reliquary Dome Mass & +3% Windup',
     linkedActionId: 'mod_head_optic_scan',
-    description: 'Ally status HUD, priority threat assessment (Set 06).',
+    description:
+      'Consecrated Dome Plate with ally status HUD and threat assessment (+16 Dur, +1 RTG, +1 THR, +10 Shield, -4% CD / 10 WT, +3% Windup).',
     isPlaceholderAsset: false,
   },
-  // ─── SET 6: Crystal Dynamics EmberSight Suite ─────────────────────────────
+  // ─── SET 6: Crystal Dynamics EmberSight Suite (Head Mod 1 = Optics) ───────
   {
     id: 'optics_embersight',
     name: 'Crystal Dynamics EmberSight Suite',
-    slot: 'head',
+    slot: 'optics',
     canonicalSlotLabel: 'Optics',
-    subtype: 'Optics · Fast Acquisition',
+    subtype: 'Head Mod 1 · Fast Acquisition Optics',
     setIndex: 6,
     setId: 'set_07_blastplate',
     partSprite: {
@@ -203,17 +275,26 @@ export const CANONICAL_HEAD_OPTICS: CanonicalHardwareItemDefinition[] = [
       crestColor: '#9659fa',
       crestStyle: 'murmillio',
     },
+    lightBonus: 0.5,
+    accuracyMult: 1.08,
+    staggerDamageMult: 1.06,
+    heatVentMult: 0.97,
+    weight: 4,
+    origin: 'looted',
+    maxGemSlots: 2,
+    drawbackDescription: '+4 WT Optic Servo Draw & -3% Heat Venting',
     linkedActionId: 'mod_head_optic_scan',
-    description: 'Mid-short range targeting, fast acquisition (Set 07).',
+    description:
+      'Head Mod 1 (Optics): Mid-short range targeting & fast lock acquisition (+0.5 Light, +8% Lock Accuracy, +6% Stagger Dmg / +4 WT, -3% Venting).',
     isPlaceholderAsset: false,
   },
-  // ─── SET 7: BE Foresight Targeting Array ──────────────────────────────────
+  // ─── SET 7: BE Foresight Targeting Array (Head Mod 1 = Optics) ────────────
   {
     id: 'optics_be_foresight',
     name: 'BE Foresight Targeting Array',
-    slot: 'head',
+    slot: 'optics',
     canonicalSlotLabel: 'Optics',
-    subtype: 'Optics · Artillery & Missile Tracking',
+    subtype: 'Head Mod 1 · Artillery & Missile Tracking',
     setIndex: 7,
     setId: 'set_08_siegebreaker',
     partSprite: {
@@ -229,17 +310,26 @@ export const CANONICAL_HEAD_OPTICS: CanonicalHardwareItemDefinition[] = [
       crestColor: '#e14b96',
       crestStyle: 'ironveil',
     },
+    lightBonus: 1.0,
+    accuracyMult: 1.14,
+    staggerDamageMult: 1.08,
+    tellDurationMult: 1.04,
+    weight: 7,
+    origin: 'looted',
+    maxGemSlots: 2,
+    drawbackDescription: '+7 WT Heavy Rangefinder Housing & +4% Windup',
     linkedActionId: 'mod_head_optic_scan',
-    description: 'Long-range, missile tracking (Artillery optics · Set 08).',
+    description:
+      'Head Mod 1 (Optics): Long-range artillery & missile tracking optics (+1.0 Light, +14% Lock Accuracy, +8% Stagger Dmg / +7 WT, +4% Windup).',
     isPlaceholderAsset: false,
   },
-  // ─── SET 8: Aegis Radiant Targeting Array ─────────────────────────────────
+  // ─── SET 8: Aegis Radiant Targeting Array (Head Mod 1 = Optics) ───────────
   {
     id: 'optics_aegis_radiant',
     name: 'Aegis Radiant Targeting Array',
-    slot: 'head',
+    slot: 'optics',
     canonicalSlotLabel: 'Optics',
-    subtype: 'Optics · Shield & Cleave Precision',
+    subtype: 'Head Mod 1 · Shield & Cleave Precision',
     setIndex: 8,
     setId: 'set_09_radiant',
     partSprite: {
@@ -255,17 +345,27 @@ export const CANONICAL_HEAD_OPTICS: CanonicalHardwareItemDefinition[] = [
       crestColor: '#afaf7d',
       crestStyle: 'aegis',
     },
+    shieldBonus: 8,
+    lightBonus: 0.5,
+    accuracyMult: 1.06,
+    cooldownMult: 0.95,
+    heatVentMult: 0.97,
+    weight: 5,
+    origin: 'looted',
+    maxGemSlots: 2,
+    drawbackDescription: '+5 WT Prism Lens Assembly & -3% Heat Venting',
     linkedActionId: 'mod_head_optic_scan',
-    description: 'Shield projection and cleave precision (Set 09).',
+    description:
+      'Head Mod 1 (Optics): Hard-light shield uplink and cleave precision optics (+8 Shield, +0.5 Light, +6% Accuracy, -5% Cooldowns / +5 WT, -3% Venting).',
     isPlaceholderAsset: false,
   },
-  // ─── SET 9: Veilsight Targeting Suite ─────────────────────────────────────
+  // ─── SET 9: Veilsight Targeting Suite (Head Mod 1 = Optics) ───────────────
   {
     id: 'optics_veilsight',
     name: 'Veilsight Targeting Suite',
-    slot: 'head',
+    slot: 'optics',
     canonicalSlotLabel: 'Optics',
-    subtype: 'Optics · Critical Point Identification',
+    subtype: 'Head Mod 1 · Critical Point Identification',
     setIndex: 9,
     setId: 'set_10_whisperblade',
     partSprite: {
@@ -281,17 +381,26 @@ export const CANONICAL_HEAD_OPTICS: CanonicalHardwareItemDefinition[] = [
       crestColor: '#89bc96',
       crestStyle: 'veilsight',
     },
+    lightBonus: 1.0,
+    staggerDamageMult: 1.12,
+    accuracyMult: 1.08,
+    stabilityBonus: -3,
+    weight: 2,
+    origin: 'looted',
+    maxGemSlots: 2,
+    drawbackDescription: '-3 Poise Stability for Ultralight 2 WT Lens Housing',
     linkedActionId: 'mod_head_optic_scan',
-    description: 'Low-light optics, thermal masking, critical point identification (Set 10).',
+    description:
+      'Head Mod 1 (Optics): Low-light thermal masking & weak-point identification (+1.0 Light, +12% Stagger/Marked Dmg, +8% Accuracy / +2 WT, -3 Stability).',
     isPlaceholderAsset: false,
   },
-  // ─── SET 10: ARC Omniscient Array ─────────────────────────────────────────
+  // ─── SET 10: ARC Omniscient Array (Head Mod 1 = Optics) ───────────────────
   {
     id: 'optics_arc_omniscient',
     name: 'ARC Omniscient Array',
-    slot: 'head',
+    slot: 'optics',
     canonicalSlotLabel: 'Optics',
-    subtype: 'Optics · Artillery & Beam Focusing',
+    subtype: 'Head Mod 1 · Artillery & Beam Focusing',
     setIndex: 10,
     setId: 'set_11_conduit',
     partSprite: {
@@ -307,17 +416,27 @@ export const CANONICAL_HEAD_OPTICS: CanonicalHardwareItemDefinition[] = [
       crestColor: '#e1bc7d',
       crestStyle: 'omniscient',
     },
+    shieldBonus: 6,
+    lightBonus: 1.0,
+    accuracyMult: 1.12,
+    staggerDamageMult: 1.08,
+    heatVentMult: 0.96,
+    weight: 6,
+    origin: 'looted',
+    maxGemSlots: 3,
+    drawbackDescription: '+6 WT Multi-Lens Collimator & -4% Heat Venting',
     linkedActionId: 'mod_head_optic_scan',
-    description: 'Long-range, energy signature tracking, beam focusing (Artillery optics · Set 11).',
+    description:
+      'Head Mod 1 (Optics): Long-range beam focusing & signature tracking (+1.0 Light, +12% Accuracy, +8% Stagger Dmg, +6 Shield / +6 WT, -4% Venting · 3 Gem Slots).',
     isPlaceholderAsset: false,
   },
-  // ─── SET 11: SANC Providence Scanner ──────────────────────────────────────
+  // ─── SET 11: SANC Providence Scanner (Head Mod 1 = Optics) ────────────────
   {
     id: 'optics_sanc_providence',
     name: 'SANC Providence Scanner',
-    slot: 'head',
+    slot: 'optics',
     canonicalSlotLabel: 'Optics',
-    subtype: 'Optics · Priority Threat Identification',
+    subtype: 'Head Mod 1 · Priority Threat Identification',
     setIndex: 11,
     setId: 'set_12_reliquary',
     partSprite: {
@@ -333,18 +452,72 @@ export const CANONICAL_HEAD_OPTICS: CanonicalHardwareItemDefinition[] = [
       crestColor: '#646464',
       crestStyle: 'providence',
     },
+    shieldBonus: 8,
+    lightBonus: 0.5,
+    cooldownMult: 0.92,
+    accuracyMult: 1.06,
+    staggerDamageMult: 0.96,
+    weight: 5,
+    origin: 'looted',
+    maxGemSlots: 2,
+    drawbackDescription: '+5 WT Reliquary Scanner Array & -4% Stagger Dmg',
     linkedActionId: 'mod_head_optic_scan',
-    description: 'Ally status monitoring, priority threat identification (Set 12).',
+    description:
+      'Head Mod 1 (Optics): Ally triage monitoring & priority threat scanner (+8 Shield, -8% Cooldowns, +6% Accuracy, +0.5 Light / +5 WT, -4% Stagger Dmg).',
     isPlaceholderAsset: false,
   },
-  // ─── CAMELOT KNIGHT SET: Camelot Knight Greathelm ─────────────────────────
+  // ─── CRAFTED OPTICS MOD PARTS (Head Mod 1 · Max 1 Gem Slot) ───────────────
+  {
+    id: 'optics_crafted_kyanite_pinpoint',
+    name: 'Synthesized Arclight Pinpoint Lens',
+    slot: 'optics',
+    canonicalSlotLabel: 'Optics',
+    subtype: 'Crafted Optics Mod · Max 1 Gem Slot',
+    lightBonus: 1.0,
+    accuracyMult: 1.12,
+    staggerDamageMult: 1.08,
+    shieldBonus: 4,
+    heatVentMult: 0.96,
+    weight: 5,
+    origin: 'crafted',
+    maxGemSlots: 1,
+    gemCost: [
+      { gemId: 'kyanite', count: 1 },
+      { gemId: 'rubellite', count: 1 },
+    ],
+    drawbackDescription: '+5 WT Optic Condenser Mass & -4% Heat Venting (Crafted: Max 1 Gem Slot)',
+    linkedActionId: 'mod_head_optic_scan',
+    description:
+      'Gem-crafted Optics sub-module: +1.0 Light Radius, +12% Lock Accuracy, +8% Stagger Dmg & +4 Shield, drawing +5 WT & -4% Venting.',
+    isPlaceholderAsset: true,
+  },
+  {
+    id: 'optics_crafted_charoite_nightglass',
+    name: 'Synthesized Phantom Nightglass',
+    slot: 'optics',
+    canonicalSlotLabel: 'Optics',
+    subtype: 'Crafted Optics Mod · Max 1 Gem Slot',
+    lightBonus: 0.5,
+    staggerDamageMult: 1.1,
+    stabilityBonus: -4,
+    weight: 1,
+    origin: 'crafted',
+    maxGemSlots: 1,
+    gemCost: [{ gemId: 'charoite', count: 1 }],
+    drawbackDescription: '-4 Gyro Stability for Ultralight 1 WT Lens Housing (Crafted: Max 1 Gem Slot)',
+    linkedActionId: 'mod_head_optic_scan',
+    description:
+      'Featherweight gem-crafted Optics sub-module: +0.5 Light & +10% Stagger/Marked Dmg at only 1 WT, trading -4 Stability.',
+    isPlaceholderAsset: true,
+  },
+  // ─── CAMELOT KNIGHT SET: Camelot Knight Greathelm (Dome Plate) ────────────
   {
     id: 'head_camelot_knight',
     name: 'Camelot Knight Greathelm',
     legacyNames: ['Camelot Knight Helm', 'Camelot Knight Head'],
     slot: 'head',
-    canonicalSlotLabel: 'Head / Optics',
-    subtype: 'Command Helm · Chivalric Visor Array',
+    canonicalSlotLabel: 'Dome Plate',
+    subtype: 'Dome Plate · Chivalric Visor Array',
     setIndex: 12,
     setId: 'set_camelot_knight',
     partSprite: {
@@ -360,9 +533,21 @@ export const CANONICAL_HEAD_OPTICS: CanonicalHardwareItemDefinition[] = [
       crestColor: '#ffffff',
       crestStyle: 'aegis',
     },
+    armorType: 'Hardened',
+    armorDurability: 22,
+    armorRating: 2,
+    armorThreshold: 1,
     shieldBonus: 10,
+    stabilityBonus: 6,
+    accuracyMult: 1.04,
+    heatVentMult: 0.96,
+    weight: 13,
+    origin: 'looted',
+    maxGemSlots: 3,
+    drawbackDescription: '+13 WT Chivalric Greathelm Mass & -4% Heat Venting',
     linkedActionId: 'mod_head_optic_scan',
-    description: 'Visored silver-steel knightly greathelm with precision duel-targeting optics (Camelot Knight Set).',
+    description:
+      'Visored silver-steel knightly Dome Plate with precision duel-targeting optics (+22 Dur, +2 RTG, +1 THR, +10 Shield, +6 Stability, +4% Acc / 13 WT, -4% Venting · 3 Gem Slots).',
     isPlaceholderAsset: false,
   },
 ];
@@ -377,7 +562,7 @@ function isHeadDefinition(val: unknown): val is CanonicalHardwareItemDefinition 
     val !== null &&
     'id' in val &&
     'slot' in val &&
-    (val as { slot?: unknown }).slot === 'head'
+    ((val as { slot?: unknown }).slot === 'head' || (val as { slot?: unknown }).slot === 'optics')
   );
 }
 

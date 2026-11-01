@@ -12,6 +12,7 @@ import { getWeaponDefinition } from '../database/equipment/weapons';
 import {
   computeInterfaceFeatModifiers,
   getWeaponGemVisuals,
+  resolveEquippedHardwareStats,
 } from '../database/progression';
 import { OrionCombatContext, OrionState } from '../types';
 import { notifyOrionStateChange } from './playerSystem';
@@ -345,7 +346,11 @@ export function updateCombat(
   }
 
   if (state.heat > 0 && !state.isContinuousBoosting) {
-    state.heat = Math.max(0, state.heat - 12 * featMods.heatVentMult * dt);
+    const hwStats = resolveEquippedHardwareStats(state);
+    state.heat = Math.max(
+      0,
+      state.heat - 12 * featMods.heatVentMult * hwStats.heatVentMult * dt
+    );
   }
 
   if (state.activeSkillSlot !== null || state.activeActionId) {

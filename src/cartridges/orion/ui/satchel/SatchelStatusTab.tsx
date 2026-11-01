@@ -10,6 +10,7 @@ import { getItemDefinition } from '../../database/items';
 import {
   computeEffectivePlayerLightTiles,
   computePlayerLightStatBreakdown,
+  computePlayerLoadMetrics,
   getEffectiveMainGrip,
   getEquipmentDisplayName,
 } from '../../database/progression';
@@ -44,7 +45,6 @@ export interface SatchelStatusTabProps {
 export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({ state, isCheatMode }) => {
   const gates = syncStateGates(state);
   const currentWeaponId = state.equippedWeapons[state.activeWeaponIndex] || 'gladius_boltcaster';
-  const currentWeapon = getWeaponDefinition(currentWeaponId);
   const trait = TRAIT_REGISTRY[state.traitLine] || TRAIT_REGISTRY.Warrior;
 
   const inertiaProf = resolvePlayerInertiaProfile(state);
@@ -54,6 +54,7 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({ state, isChe
   const lightBreakdown = computePlayerLightStatBreakdown(state);
   const baseEnemyLight = state.enemyBaseLight ?? 5;
   const lanternLit = hasPoeLanternGuidance(state);
+  const loadMetrics = computePlayerLoadMetrics(state);
 
   return (
     <div className="flex-1 overflow-y-auto space-y-2 pr-0.5 text-[10px]">
@@ -280,44 +281,112 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({ state, isChe
         <div className="text-[9.5px] text-[#cbd5e1]">{trait.identity}</div>
       </div>
 
-      {/* §3.4 Frame Load Capacity vs. Weapon Weight Penalty & §3.5 Critical State */}
-      <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1">
-        <div className="flex items-center justify-between">
+      {/* §3.4 Percentage Load Limit Matrix (0-30% Light, 31-65% Medium, 66-100% Heavy, >100% Overloaded) */}
+      <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">
+        <div className="flex flex-wrap items-center justify-between gap-1">
           <span className="font-bold text-[#ffd27d] text-[10px]">
-            FRAME LOAD CAPACITY & WEAPON WEIGHT MATRIX (§3.4):
+            EQUIP LOAD LIMIT &amp; WEIGHT CAPACITY (FRAME MODS + FEATS):
           </span>
           <span
             className={`px-1.5 py-0.5 rounded-xs font-bold text-[8px] ${
-              gates.loadPenalty.label.startsWith('OPTIMAL') ||
-              gates.loadPenalty.label.startsWith('HEAVY CHASSIS')
+              loadMetrics.loadBracket === 'light'
                 ? 'bg-[#064e3b] text-[#6ee7b7]'
-                : 'bg-[#451a03] text-[#fcd34d]'
+                : loadMetrics.loadBracket === 'medium'
+                  ? 'bg-[#172554] text-[#7dd3fc]'
+                  : loadMetrics.loadBracket === 'heavy'
+                    ? 'bg-[#451a03] text-[#fcd34d]'
+                    : 'bg-[#7f1d1d] text-[#fca5a5] animate-pulse'
             }`}
           >
-            {gates.loadPenalty.label}
+            {loadMetrics.equippedWeight} / {loadMetrics.maxCapacity} WT ({loadMetrics.loadPct}% ·{' '}
+            {loadMetrics.loadBracket.toUpperCase()})
           </span>
         </div>
+
+        {/* Percentage Load Bar with 30% / 65% / 100% Bracket Ticks */}
+        <div className="space-y-0.5">
+          <svg
+            viewBox="0 0 100 5"
+            preserveAspectRatio="none"
+            className="w-full h-2 rounded-xs bg-[#1e293b] overflow-hidden"
+          >
+            <rect
+              x="0"
+              y="0"
+              width={Math.max(0, Math.min(100, loadMetrics.loadPct))}
+              height="5"
+              fill={
+                loadMetrics.loadBracket === 'light'
+                  ? '#34d399'
+                  : loadMetrics.loadBracket === 'medium'
+                    ? '#38bdf8'
+                    : loadMetrics.loadBracket === 'heavy'
+                      ? '#fbbf24'
+                      : '#f87171'
+              }
+            />
+            <line x1="30" y1="0" x2="30" y2="5" stroke="#090d14" strokeWidth="0.8" />
+            <line x1="65" y1="0" x2="65" y2="5" stroke="#090d14" strokeWidth="0.8" />
+          </svg>
+          <div className="grid grid-cols-4 text-[7.5px] font-bold text-center">
+            <span
+              className={
+                loadMetrics.loadBracket === 'light' ? 'text-[#6ee7b7]' : 'text-[#64748b]'
+              }
+            >
+              0–30% LIGHT
+            </span>
+            <span
+              className={
+                loadMetrics.loadBracket === 'medium' ? 'text-[#7dd3fc]' : 'text-[#64748b]'
+              }
+            >
+              31–65% MEDIUM
+            </span>
+            <span
+              className={
+                loadMetrics.loadBracket === 'heavy' ? 'text-[#fcd34d]' : 'text-[#64748b]'
+              }
+            >
+              66–100% HEAVY
+            </span>
+            <span
+              className={
+                loadMetrics.loadBracket === 'overloaded' ? 'text-[#f87171]' : 'text-[#64748b]'
+              }
+            >
+              100%&lt; OVERLOADED
+            </span>
+          </div>
+        </div>
+
         <div className="grid grid-cols-3 gap-1 text-[8.5px]">
           <div className="p-1 bg-[#0f172a] rounded-xs border border-[#1e293b]">
-            <div className="text-[#94a3b8] text-[7.5px]">BASE → EFFECTIVE LOAD</div>
-            <div className="font-bold text-[#38bdf8] uppercase">
-              {trait.weightClass || 'medium'} → {gates.effectiveLoadCapacity}
+            <div className="text-[#94a3b8] text-[7.5px]">EQUIPPED WEIGHT BREAKDOWN</div>
+            <div className="font-bold text-[#38bdf8]">
+              HW{' '}
+              {loadMetrics.breakdown.headWeight +
+                loadMetrics.breakdown.armsWeight +
+                loadMetrics.breakdown.frameWeight}{' '}
+              + WPN {loadMetrics.breakdown.weaponsWeight} = {loadMetrics.equippedWeight} WT
             </div>
           </div>
           <div className="p-1 bg-[#0f172a] rounded-xs border border-[#1e293b]">
-            <div className="text-[#94a3b8] text-[7.5px]">ACTIVE WEAPON WEIGHT</div>
-            <div className="font-bold text-[#ffd27d] uppercase">
-              {currentWeapon?.name} ({gates.activeWeaponWeight})
+            <div className="text-[#94a3b8] text-[7.5px]">MAX CAPACITY (FRAME + FEATS)</div>
+            <div className="font-bold text-[#ffd27d]">
+              {loadMetrics.maxCapacity} WT CAP ({gates.effectiveLoadCapacity.toUpperCase()})
             </div>
           </div>
           <div className="p-1 bg-[#0f172a] rounded-xs border border-[#1e293b]">
-            <div className="text-[#94a3b8] text-[7.5px]">CRITICAL STATE (≤40 HP)</div>
+            <div className="text-[#94a3b8] text-[7.5px]">LOAD EFFECT &amp; CRITICAL STATE</div>
             <div
-              className={`font-bold ${
-                state.frame.integrity <= 40 ? 'text-[#f87171]' : 'text-[#86efac]'
+              className={`font-bold truncate ${
+                state.frame.integrity <= 40 || loadMetrics.loadBracket === 'overloaded'
+                  ? 'text-[#f87171]'
+                  : 'text-[#86efac]'
               }`}
             >
-              {state.frame.integrity <= 40 ? '-30% SPD & 15% MISFIRE' : 'NOMINAL (>20% HP)'}
+              {gates.loadPenalty.label}
             </div>
           </div>
         </div>

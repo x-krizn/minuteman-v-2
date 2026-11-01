@@ -241,9 +241,12 @@ export interface OrionState {
     x: number;
     y: number;
     z: number;
-    vx: number;
-    vy: number;
+    vx?: number;
+    vy?: number;
     hoveringObjective?: boolean;
+    objectiveX?: number;
+    objectiveY?: number;
+    pulsePhase?: number;
     targetX?: number;
     targetY?: number;
     objectiveLabel?: string;

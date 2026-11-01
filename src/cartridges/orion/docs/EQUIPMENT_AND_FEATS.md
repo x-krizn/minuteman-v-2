@@ -34,16 +34,27 @@
 | Hallowed Scepter | Cleric | Hybrid Staff | Wave / Impact | Medium | — | Weapon 4 | Melee + ranged healing pulses |
 | Grace Edge | Cleric | Consecrated Blade | Pierce | Light | — | Aux 1 | Healing pulse on critical hit |
 
-## 2. ARMOR / CORE FRAMES
+## 2. ARMOR / CORE FRAMES & HARDWARE DOMAIN RULES
 
-| Name | Trait Line | Type | Identity |
-|---|---|---|---|
-| BWI Bastion Coreplate | Warrior | Physical / Reactive | Heavy frontal, turbine shielding |
-| Fire & Ice Fortress Coreplate | Marauder | Physical / Hardened | Super-heavy frontal, outrigging stabilizers |
-| Dawnforge Guardian Coreplate | Guardian | Physical / Layered | Heavy, stabilizer anchors, shield emitters |
-| Shadowcraft Recon Coreplate | Rogue | Physical / Ablative | Lightweight, emission dampeners |
-| Arcanum Heavy Projector Coreplate | Wizard | Physical / Layered | Reinforced, crystal lattice, beam stabilizers |
-| Sanctum Support Coreplate | Cleric | Physical / Reactive | Balanced, distributed buffer systems |
+### 2A. Physical Domain Separation, Load Brackets & Gem Socket Laws (`LOCKED`)
+- **Exterior Armor vs. Internal Hardware**: Only **Dome Plates** (`slot: 'head'`), **Aperture Plates** (`slot: 'arms'`), **Frame Platings** (`slot: 'plating'`), and physical/ward **Shields** grant Armor (`armorDurability`, `armorRating`, `armorThreshold`). Internal sub-modules (**Optics**, **Sensory A/B**, **Actuators**, **Reactor Core**, **Leg Actuators**) never grant armor values; they strictly modify their mechanical domains (`lightBonus`, `accuracyMult`, `staggerDamageMult`, `tellDurationMult`, `attackMassBonus`, `stabilityBonus`, `heatVentMult`, `cooldownMult`, `moveSpeedMult`, `capacityBonus`).
+- **Slot-Adaptive Gemstones**: Socketing a Gemstone into exterior armor modifies physical mitigation/durability/shielding, whereas socketing the same Gemstone into an internal sub-module adapts its bonus to that slot's physical function.
+- **Crafted vs. Looted Mod Parts**: Mod parts crafted from Gemstones (`origin: 'crafted'`) have variable gem costs and at most `1` additional gem slot (`maxGemSlots <= 1`). Looted or standalone components (`origin: 'looted'`) have `1–3` gem slots (`maxGemSlots: 1..3`).
+- **Zero-Sum Trade-Off Law**: Every stat increase carries a paired negative draw on another stat or equip weight (`drawbackDescription`).
+- **Percentage Load Limit Brackets**: Total weight capacity is defined by Frame Plating base capacity (`84..140 WT`), Frame sub-mods (Reactor Core + Leg Actuators + Mobility Kit), and System Feats (`+22 WT` per step):
+  - `0–30%` = **Light** (`+8%` Mobility, `-10%` Heat, `-10%` Swap Time) — *Rogue starts at `29%`*
+  - `31–65%` = **Medium** (`1.0×` baseline) — *Warrior (`55%`), Cleric (`54%`), Dawnforge Guardian (`59%`), and Wizard (`54%`) start in Medium*
+  - `66–100%` = **Heavy** (`-10%` Mobility, `+12%` Heat, `+18%` Swap Time) — *Marauder starts at `81%`*
+  - `>100%` = **Overloaded** (`-35%` Mobility, `+35%` Heat, `+45%` Swap Time, stealth broken)
+
+| Name | Trait Line | Type | Base Capacity | Weight | Armor (DUR / RTG / THR) | Shield | Identity & Trade-Off |
+|---|---|---|---|---|---|---|---|
+| BWI Bastion Frame Plating | Warrior | Physical / Reactive | Medium (`90 WT`) | `15 WT` | `135 / 11 / 7` | `+55` | Heavy frontal turbine shielding (`+4%` Venting, `+6` Stability / `-2%` Speed) |
+| Fire & Ice Fortress Frame Plating | Marauder | Physical / Hardened | Heavy (`112 WT`) | `32 WT` | `205 / 15 / 11` | `+35` | Super-heavy frontal outrigging stabilizers (`+18` Stability / `-6%` Speed) |
+| Dawnforge Guardian Frame Plating | Guardian | Physical / Layered | Medium (`90 WT`) | `17 WT` | `170 / 13 / 9` | `+75` | Stabilizer anchors & shield emitters (`+12` Stability / `-3%` Speed) |
+| Shadowcraft Recon Frame Plating | Rogue | Physical / Ablative | Light (`84 WT`) | `7 WT` | `95 / 6 / 4` | `+40` | Ultralight emission dampeners (`+6%` Speed, `+0.5` Light / `-8` Stability) |
+| Arcanum Heavy Projector Frame Plating | Wizard | Physical / Layered | Medium (`90 WT`) | `15 WT` | `120 / 8 / 6` | `+95` | Reinforced crystal lattice (`-6%` Cooldowns, `+0.5` Light / `-4` Stability) |
+| Sanctum Support Frame Plating | Cleric | Physical / Reactive | Medium (`90 WT`) | `15 WT` | `145 / 10 / 7` | `+70` | Distributed buffer systems (`+6%` Venting, `-4%` Cooldowns / `-2%` Speed) |
 
 ## 3. CORE SYSTEMS (GENERATORS / REACTORS)
 

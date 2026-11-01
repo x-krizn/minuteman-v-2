@@ -995,7 +995,9 @@ export function applyTraitLineProfile(state: OrionState, traitLine: TraitLine): 
   state.equippedFeats = Array.from(
     new Set([...nextStarterFeats.equippedFeats, ...customFeats])
   );
-  const nextSocketed: Record<string, any> = { ...nextStarterFeats.socketedFeatGems };
+  const nextSocketed: NonNullable<OrionState['socketedFeatGems']> = {
+    ...nextStarterFeats.socketedFeatGems,
+  };
   for (const customId of customFeats) {
     if (state.socketedFeatGems?.[customId]) {
       nextSocketed[customId] = state.socketedFeatGems[customId];

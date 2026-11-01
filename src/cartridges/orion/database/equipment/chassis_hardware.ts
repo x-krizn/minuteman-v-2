@@ -62,7 +62,24 @@ export interface CanonicalHardwareItemDefinition {
   /** 4-frame (64x16px, 16x16px per frame) aligned sprite strip configuration for head, arms, or frame plating */
   partSprite?: MechPartSpriteStripConfig;
   /** Procedural/fallback palette and geometry theme for the 4-frame 16x16 part strip */
-  spriteTheme?: Record<string, any>;
+  spriteTheme?: {
+    armColor?: string;
+    cuffColor?: string;
+    shoulderColor?: string;
+    shoulderStyle?: string;
+    armWidth?: number;
+    helmColor?: string;
+    visorColor?: string;
+    crestColor?: string;
+    crestStyle?: string;
+    baseArmorColor?: string;
+    trimColor?: string;
+    reactorGlowColor?: string;
+    legColor?: string;
+    chassisWidth?: number;
+    chassisHeight?: number;
+    torsoStyle?: string;
+  };
   armorType?: 'Ablative' | 'Reactive' | 'Hardened' | 'Layered';
   baseLoadCapacity?: FrameLoadCapacity;
   armorThreshold?: number;

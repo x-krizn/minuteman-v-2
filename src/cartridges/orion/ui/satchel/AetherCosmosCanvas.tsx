@@ -670,11 +670,19 @@ export const AetherCosmosCanvas: React.FC<AetherCosmosCanvasProps> = ({
         }
       }
 
-      rafId = window.requestAnimationFrame(renderFrame);
+      scheduleNextFrame();
     };
 
-    rafId = window.requestAnimationFrame(renderFrame);
+    const scheduleNextFrame = () => {
+      if (!cancelled) {
+        rafId = window.requestAnimationFrame(renderFrame);
+      }
+    };
+
+    let cancelled = false;
+    scheduleNextFrame();
     return () => {
+      cancelled = true;
       if (rafId !== null) {
         window.cancelAnimationFrame(rafId);
       }

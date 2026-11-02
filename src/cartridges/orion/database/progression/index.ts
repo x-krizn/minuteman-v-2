@@ -40,6 +40,7 @@ import {
   GEM_MOD_PREFIX_BY_ID,
   isCanonicalGemId,
   parseEquipmentInstanceId,
+  usesCustomSuffixBySemantics,
 } from '../equipment/mod_naming';
 import { getWeaponDefinition, isAuxiliaryEquipment } from '../equipment/weapons';
 import { getItemDefinition } from '../items';
@@ -62,6 +63,7 @@ export {
   isCanonicalGemId,
   parseEquipmentInstanceId,
   resolveEquippedHardwareStats,
+  usesCustomSuffixBySemantics,
 };
 
 export { GEMSTONE_CATALOG, GEMSTONE_REGISTRY, TRAIT_FUNDING_GEMS };
@@ -1134,16 +1136,17 @@ export function getWeaponSubtypeInfo(weaponId: string): {
  */
 export function normalizeEquipmentInstanceKey(idOrName: string | null | undefined): string {
   if (!idOrName) return '';
-  const { baseId, installedGems } = parseEquipmentInstanceId(idOrName);
+  const { baseId, installedGems, slotGems } = parseEquipmentInstanceId(idOrName);
+  const effectiveSlots = slotGems.length > 0 ? slotGems : installedGems;
   const wDef = getWeaponDefinition(baseId);
   if (wDef) {
-    return buildEquipmentInstanceId(parseEquipmentInstanceId(wDef.id).baseId, installedGems);
+    return buildEquipmentInstanceId(parseEquipmentInstanceId(wDef.id).baseId, effectiveSlots);
   }
   const hwDef = findHardwareItemByNameOrId(baseId);
   if (hwDef) {
-    return buildEquipmentInstanceId(parseEquipmentInstanceId(hwDef.id).baseId, installedGems);
+    return buildEquipmentInstanceId(parseEquipmentInstanceId(hwDef.id).baseId, effectiveSlots);
   }
-  return buildEquipmentInstanceId(baseId, installedGems);
+  return buildEquipmentInstanceId(baseId, effectiveSlots);
 }
 
 /**
@@ -1521,9 +1524,10 @@ export function getOwnedEquipmentInstances(
 }
 
 /**
- * Installs a Gemstone Mod or Component Mod onto an owned equipment instance (`sourceInstanceId`),
- * consuming 1 copy of the source item and the required Gemstone(s) from inventory to produce a
- * distinct renamed item copy (`<Prefix> <BaseName> [+II/+III]`).
+ * Installs a Gemstone Mod or Component Mod onto an owned equipment instance (`sourceInstanceId`)
+ * in ANY anatomical slot order (`slotIndex: 0 | 1 | 2` or `slotName`), consuming 1 copy of the
+ * source item and the required Gemstone(s) from inventory to produce a distinct renamed `Custom`
+ * item copy (`Custom <BaseName> [+II/+III]` or `<BaseName> Custom [+II/+III]`).
  * Automatically updates any loadout slot where the last copy of `sourceInstanceId` was equipped.
  */
 export function installGemModOnEquipment(
@@ -1532,6 +1536,7 @@ export function installGemModOnEquipment(
   gemId: GemId,
   ctx?: { say: (text: string) => void },
   componentMeta?: {
+    slotIndex?: number;
     slotName?: WeaponComponentSlotId;
     partDef?: WeaponComponentPartDefinition;
   }
@@ -1547,10 +1552,34 @@ export function installGemModOnEquipment(
   eq.installedWeaponComponents = eq.installedWeaponComponents || {};
 
   const normSource = normalizeEquipmentInstanceKey(sourceInstanceId);
-  const { baseId, installedGems } = parseEquipmentInstanceId(normSource);
+  const { baseId, installedGems, slotGems } = parseEquipmentInstanceId(normSource);
   const maxSlots = getEquipmentMaxModSlots(baseId);
+  const weaponSlots = getWeaponComponentSlots(baseId);
 
-  if (installedGems.length >= maxSlots) {
+  // Resolve target slot index (0..maxSlots-1) in any order
+  let targetSlotIdx = -1;
+  if (
+    typeof componentMeta?.slotIndex === 'number' &&
+    componentMeta.slotIndex >= 0 &&
+    componentMeta.slotIndex < maxSlots
+  ) {
+    targetSlotIdx = componentMeta.slotIndex;
+  } else if (componentMeta?.slotName) {
+    const foundIdx = weaponSlots.indexOf(componentMeta.slotName);
+    if (foundIdx >= 0 && foundIdx < maxSlots) {
+      targetSlotIdx = foundIdx;
+    }
+  }
+  if (targetSlotIdx < 0) {
+    for (let i = 0; i < maxSlots; i++) {
+      if (!slotGems[i]) {
+        targetSlotIdx = i;
+        break;
+      }
+    }
+  }
+
+  if (targetSlotIdx < 0) {
     ctx?.say(
       `MAX MOD SLOTS REACHED (${installedGems.length}/${maxSlots}) ON ${getEquipmentDisplayName(normSource).toUpperCase()}`
     );
@@ -1570,7 +1599,9 @@ export function installGemModOnEquipment(
       for (const req of partDef.gemCost) {
         if (getInventoryGemCount(state, req.gemId) < req.count) {
           const rGem = GEMSTONE_REGISTRY[req.gemId];
-          ctx?.say(`REQUIRES ${req.count} ${rGem?.name.toUpperCase() || req.gemId} TO CRAFT ${partDef.name.toUpperCase()}`);
+          ctx?.say(
+            `REQUIRES ${req.count} ${rGem?.name.toUpperCase() || req.gemId} TO CRAFT ${partDef.name.toUpperCase()}`
+          );
           return null;
         }
       }
@@ -1579,31 +1610,146 @@ export function installGemModOnEquipment(
       }
     } else if (!partDef) {
       if (!consumeInventoryGem(state, gemId, 1)) {
-        ctx?.say(`REQUIRES 1 ${gemDef.name.toUpperCase()} IN SATCHEL TO INSTALL MOD`);
+        ctx?.say(`REQUIRES 1 ${gemDef.name.toUpperCase()} IN INVENTORY TO INSTALL MOD`);
         return null;
       }
     }
   }
 
-  const nextGems: GemId[] = [...installedGems, gemId];
-  const newInstanceId = buildEquipmentInstanceId(baseId, nextGems);
+  const nextSlotGems: Array<GemId | null> = Array.from(
+    { length: maxSlots },
+    (_, idx) => slotGems[idx] || null
+  );
+  nextSlotGems[targetSlotIdx] = gemId;
+  const newInstanceId = buildEquipmentInstanceId(baseId, nextSlotGems);
+  const nextValidGems = nextSlotGems.filter((g): g is GemId => isCanonicalGemId(g));
 
   // Preserve and update per-component slot records onto the new instance ID
   const prevCompMap = eq.installedWeaponComponents[normSource] || {};
-  const weaponSlots = getWeaponComponentSlots(baseId);
   const resolvedSlotName =
-    componentMeta?.slotName || weaponSlots[installedGems.length] || weaponSlots[0];
+    componentMeta?.slotName || weaponSlots[targetSlotIdx] || weaponSlots[0];
   eq.installedWeaponComponents[newInstanceId] = {
     ...prevCompMap,
     [resolvedSlotName]: partDef ? partDef.id : `gem_${gemId}`,
   };
 
   // Consume 1 copy of sourceInstanceId and add 1 copy of newInstanceId
+  if (newInstanceId !== normSource) {
+    const remainingSource = Math.max(0, (eq.ownedWeaponCounts[normSource] ?? sourceCount) - 1);
+    eq.ownedWeaponCounts[normSource] = remainingSource;
+    if (eq.ownedWeaponCounts[sourceInstanceId] !== undefined && sourceInstanceId !== normSource) {
+      eq.ownedWeaponCounts[sourceInstanceId] = remainingSource;
+    }
+    if (remainingSource <= 0) {
+      eq.unlockedEquipment = eq.unlockedEquipment.filter(
+        (u) => normalizeEquipmentInstanceKey(u) !== normSource
+      );
+    }
+
+    eq.ownedWeaponCounts[newInstanceId] = (eq.ownedWeaponCounts[newInstanceId] || 0) + 1;
+    if (!eq.unlockedEquipment.includes(newInstanceId)) {
+      eq.unlockedEquipment.push(newInstanceId);
+    }
+
+    // If equipped slots reference sourceInstanceId beyond remaining copies, upgrade those slots to newInstanceId
+    let usedSourceCopies = 0;
+    const upgradeSlotIfMatched = (val: string | null | undefined): string | null | undefined => {
+      if (!val) return val;
+      if (normalizeEquipmentInstanceKey(val) === normSource) {
+        usedSourceCopies += 1;
+        if (usedSourceCopies > remainingSource) {
+          return newInstanceId;
+        }
+      }
+      return val;
+    };
+
+    eq.slot1 = upgradeSlotIfMatched(eq.slot1) ?? null;
+    eq.slot2 = upgradeSlotIfMatched(eq.slot2) ?? null;
+    eq.slot3 = upgradeSlotIfMatched(eq.slot3) ?? null;
+    eq.head = upgradeSlotIfMatched(eq.head) ?? null;
+    eq.headOptics = upgradeSlotIfMatched(eq.headOptics) ?? null;
+    eq.arms = upgradeSlotIfMatched(eq.arms) ?? null;
+    eq.armActuators = upgradeSlotIfMatched(eq.armActuators) ?? null;
+    eq.legs = upgradeSlotIfMatched(eq.legs) ?? null;
+    eq.plating = upgradeSlotIfMatched(eq.plating) ?? null;
+    eq.reactorCore = upgradeSlotIfMatched(eq.reactorCore) ?? null;
+    eq.sensoryA = upgradeSlotIfMatched(eq.sensoryA) ?? null;
+    eq.sensoryB = upgradeSlotIfMatched(eq.sensoryB) ?? null;
+
+    state.equippedWeapons = (state.equippedWeapons || []).map((w) =>
+      normalizeEquipmentInstanceKey(w) === normSource && remainingSource === 0 ? newInstanceId : w
+    );
+  }
+
+  // Record unlock tag for progression level sync
+  const unlockTag = `wpn_gem:${newInstanceId}`;
+  if (!eq.unlockedMods.includes(unlockTag)) {
+    eq.unlockedMods.push(unlockTag);
+  }
+
+  const newDisplayName = getEquipmentDisplayName(newInstanceId);
+  const slotTag = ` [SLOT ${targetSlotIdx + 1}: ${resolvedSlotName.toUpperCase()}]`;
+  const modLabel = partDef ? partDef.name.toUpperCase() : `${gemDef.name.toUpperCase()} MOD`;
+  ctx?.say(
+    `INSTALLED ${modLabel}${slotTag} → ${newDisplayName.toUpperCase()} [${nextValidGems.length}/${maxSlots} SLOTS]`
+  );
+  syncPostTutorialFrameLevel(state, ctx);
+  return newInstanceId;
+}
+
+/**
+ * Removes/unsockets a modification or Gemstone from a specific slot index (`0`, `1`, or `2`)
+ * on an equipment instance in the Armory, updating the item instance in inventory and equipped slots.
+ */
+export function removeGemModFromEquipment(
+  state: OrionState,
+  sourceInstanceId: string,
+  slotIndex: number,
+  ctx?: { say: (text: string) => void }
+): string | null {
+  if (!sourceInstanceId) return null;
+  if (!state.equipmentSlots) {
+    state.equipmentSlots = createInitialEquipmentSlots(state.traitLine);
+  }
+  const eq = state.equipmentSlots;
+  eq.ownedWeaponCounts = eq.ownedWeaponCounts || {};
+  eq.unlockedEquipment = eq.unlockedEquipment || [];
+  eq.installedWeaponComponents = eq.installedWeaponComponents || {};
+
+  const normSource = normalizeEquipmentInstanceKey(sourceInstanceId);
+  const { baseId, slotGems } = parseEquipmentInstanceId(normSource);
+  const maxSlots = getEquipmentMaxModSlots(baseId);
+  if (slotIndex < 0 || slotIndex >= maxSlots || !slotGems[slotIndex]) {
+    return null;
+  }
+
+  const removedGem = slotGems[slotIndex];
+  const nextSlotGems: Array<GemId | null> = Array.from(
+    { length: maxSlots },
+    (_, idx) => (idx === slotIndex ? null : slotGems[idx] || null)
+  );
+  const newInstanceId = buildEquipmentInstanceId(baseId, nextSlotGems);
+
+  const weaponSlots = getWeaponComponentSlots(baseId);
+  const targetSlotName = weaponSlots[slotIndex];
+  const prevCompMap = { ...(eq.installedWeaponComponents[normSource] || {}) };
+  const removedCompId = targetSlotName ? prevCompMap[targetSlotName] : undefined;
+  if (targetSlotName) {
+    delete prevCompMap[targetSlotName];
+  }
+  if (Object.keys(prevCompMap).length > 0) {
+    eq.installedWeaponComponents[newInstanceId] = prevCompMap;
+  }
+
+  // If a raw gem was socketed directly (not a crafted part), refund 1 gem to inventory
+  if (removedGem && (!removedCompId || removedCompId.startsWith('gem_'))) {
+    refundInventoryGem(state, removedGem, 1);
+  }
+
+  const sourceCount = getOwnedWeaponCount(state, normSource);
   const remainingSource = Math.max(0, (eq.ownedWeaponCounts[normSource] ?? sourceCount) - 1);
   eq.ownedWeaponCounts[normSource] = remainingSource;
-  if (eq.ownedWeaponCounts[sourceInstanceId] !== undefined && sourceInstanceId !== normSource) {
-    eq.ownedWeaponCounts[sourceInstanceId] = remainingSource;
-  }
   if (remainingSource <= 0) {
     eq.unlockedEquipment = eq.unlockedEquipment.filter(
       (u) => normalizeEquipmentInstanceKey(u) !== normSource
@@ -1615,15 +1761,8 @@ export function installGemModOnEquipment(
     eq.unlockedEquipment.push(newInstanceId);
   }
 
-  // Record unlock tag for progression level sync
-  const unlockTag = `wpn_gem:${newInstanceId}`;
-  if (!eq.unlockedMods.includes(unlockTag)) {
-    eq.unlockedMods.push(unlockTag);
-  }
-
-  // If equipped slots reference sourceInstanceId beyond remaining copies, upgrade those slots to newInstanceId
   let usedSourceCopies = 0;
-  const upgradeSlotIfMatched = (val: string | null | undefined): string | null | undefined => {
+  const downgradeSlotIfMatched = (val: string | null | undefined): string | null | undefined => {
     if (!val) return val;
     if (normalizeEquipmentInstanceKey(val) === normSource) {
       usedSourceCopies += 1;
@@ -1634,30 +1773,27 @@ export function installGemModOnEquipment(
     return val;
   };
 
-  eq.slot1 = upgradeSlotIfMatched(eq.slot1) ?? null;
-  eq.slot2 = upgradeSlotIfMatched(eq.slot2) ?? null;
-  eq.slot3 = upgradeSlotIfMatched(eq.slot3) ?? null;
-  eq.head = upgradeSlotIfMatched(eq.head) ?? null;
-  eq.headOptics = upgradeSlotIfMatched(eq.headOptics) ?? null;
-  eq.arms = upgradeSlotIfMatched(eq.arms) ?? null;
-  eq.armActuators = upgradeSlotIfMatched(eq.armActuators) ?? null;
-  eq.legs = upgradeSlotIfMatched(eq.legs) ?? null;
-  eq.plating = upgradeSlotIfMatched(eq.plating) ?? null;
-  eq.reactorCore = upgradeSlotIfMatched(eq.reactorCore) ?? null;
-  eq.sensoryA = upgradeSlotIfMatched(eq.sensoryA) ?? null;
-  eq.sensoryB = upgradeSlotIfMatched(eq.sensoryB) ?? null;
+  eq.slot1 = downgradeSlotIfMatched(eq.slot1) ?? null;
+  eq.slot2 = downgradeSlotIfMatched(eq.slot2) ?? null;
+  eq.slot3 = downgradeSlotIfMatched(eq.slot3) ?? null;
+  eq.head = downgradeSlotIfMatched(eq.head) ?? null;
+  eq.headOptics = downgradeSlotIfMatched(eq.headOptics) ?? null;
+  eq.arms = downgradeSlotIfMatched(eq.arms) ?? null;
+  eq.armActuators = downgradeSlotIfMatched(eq.armActuators) ?? null;
+  eq.legs = downgradeSlotIfMatched(eq.legs) ?? null;
+  eq.plating = downgradeSlotIfMatched(eq.plating) ?? null;
+  eq.reactorCore = downgradeSlotIfMatched(eq.reactorCore) ?? null;
+  eq.sensoryA = downgradeSlotIfMatched(eq.sensoryA) ?? null;
+  eq.sensoryB = downgradeSlotIfMatched(eq.sensoryB) ?? null;
 
   state.equippedWeapons = (state.equippedWeapons || []).map((w) =>
     normalizeEquipmentInstanceKey(w) === normSource && remainingSource === 0 ? newInstanceId : w
   );
 
   const newDisplayName = getEquipmentDisplayName(newInstanceId);
-  const slotTag = componentMeta?.slotName ? ` [${componentMeta.slotName.toUpperCase()}]` : '';
-  const modLabel = partDef ? partDef.name.toUpperCase() : `${gemDef.name.toUpperCase()} MOD`;
   ctx?.say(
-    `INSTALLED ${modLabel}${slotTag} → ${newDisplayName.toUpperCase()} [${nextGems.length}/${maxSlots} SLOTS]`
+    `REMOVED SLOT ${slotIndex + 1} MOD → ${newDisplayName.toUpperCase()}`
   );
-  syncPostTutorialFrameLevel(state, ctx);
   return newInstanceId;
 }
 
@@ -2107,7 +2243,6 @@ export function getWeaponGemVisuals(
       bonusDescription: 'Unmodified Base Equipment',
     };
   }
-  const prefix = GEM_MOD_PREFIX_BY_ID[gemId] || gem.name;
   const suffix =
     installedGems.length === 2
       ? ' +II'
@@ -2122,7 +2257,7 @@ export function getWeaponGemVisuals(
     colIndex: gem.colIndex,
     color: gem.hexColor,
     coreColor: gem.coreHexColor || gem.hexColor,
-    label: `${prefix.toUpperCase()}${suffix}`,
+    label: `CUSTOM${suffix} (${gem.name.toUpperCase()})`,
     bonusDescription: installedGems
       .map((g) => WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS[g])
       .filter(Boolean)

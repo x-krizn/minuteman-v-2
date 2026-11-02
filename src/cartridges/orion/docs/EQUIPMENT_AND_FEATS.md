@@ -36,8 +36,14 @@
 
 ## 2. ARMOR / CORE FRAMES & HARDWARE DOMAIN RULES
 
-### 2A. Physical Domain Separation, Load Brackets & Gem Socket Laws (`LOCKED`)
+### 2A. Physical Domain Separation, Load Brackets, Armory Workbench & Gem Socket Laws (`LOCKED`)
 - **Exterior Armor vs. Internal Hardware**: Only **Dome Plates** (`slot: 'head'`), **Aperture Plates** (`slot: 'arms'`), **Frame Platings** (`slot: 'plating'`), and physical/ward **Shields** grant Armor (`armorDurability`, `armorRating`, `armorThreshold`). Internal sub-modules (**Optics**, **Sensory A/B**, **Actuators**, **Reactor Core**, **Leg Actuators**) never grant armor values; they strictly modify their mechanical domains (`lightBonus`, `accuracyMult`, `staggerDamageMult`, `tellDurationMult`, `attackMassBonus`, `stabilityBonus`, `heatVentMult`, `cooldownMult`, `moveSpeedMult`, `capacityBonus`).
+- **Mech Doll `LOADOUT` vs. `ARMORY` Workbench**:
+  - **`LOADOUT`**: Displays a central interactive **Mech Doll** surrounded by selectable anatomical hardpoint nodes (`Head Dome`, `Frame Plating`, `Arm Assembly`, `Leg Striders`, `Main Hand`, `Side Hand`, `Auxiliary Back Mount`, and `[L]`/`[R]` Trigger Binds) with a 4-action Slot Context Menu (`Equip / Swap`, `Unequip`, `Stance / Grip Toggle`, and `Modify in Armory`) and `128×128` technical schematics.
+  - **`ARMORY`**: Houses all equipment modification systems—**Weapon Component Parts**, **Weapon Gem Sockets**, **Internal Sub-Modules**, **Hardware Gem Sockets**, and **Action Modifications** (`Structure / Melee`, `Integration / Ranged`, `Mobility Kit`).
+- **Non-Sequential Modification Slot Order & Semantic `Custom` Naming**:
+  - Modifications and Gemstones can be installed, replaced, or removed in **any slot order** (`Slot 1`, `Slot 2`, or `Slot 3`) using positional slot encoding (`<baseId>::<slot1>+<slot2>+<slot3>` with `'none'` placeholders).
+  - Modified items use semantic **`Custom`** placement (`formatModifiedEquipmentName`): **`Custom <BaseName>`** for standard weapon and armor nouns (e.g., `Custom Camelot Longsword`, `Custom Heater Shield`) and **`<BaseName> Custom`** for alphanumeric model designations and manufacturer-coded hardware (e.g., `N-55 Gladius Custom`, `BWI Bastion Frame Plating Custom`), followed by **`+II`** or **`+III`** when 2 or 3 slots are populated.
 - **Slot-Adaptive Gemstones**: Socketing a Gemstone into exterior armor modifies physical mitigation/durability/shielding, whereas socketing the same Gemstone into an internal sub-module adapts its bonus to that slot's physical function.
 - **Crafted vs. Looted Mod Parts**: Mod parts crafted from Gemstones (`origin: 'crafted'`) have variable gem costs and at most `1` additional gem slot (`maxGemSlots <= 1`). Looted or standalone components (`origin: 'looted'`) have `1–3` gem slots (`maxGemSlots: 1..3`).
 - **Zero-Sum Trade-Off Law**: Every stat increase carries a paired negative draw on another stat or equip weight (`drawbackDescription`).

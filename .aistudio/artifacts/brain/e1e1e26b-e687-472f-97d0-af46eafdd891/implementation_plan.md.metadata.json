@@ -1,6 +1,6 @@
 {
-  "summary":  "Implementation plan to make all equipment and gemstone stat gains physically intuitive by restricting Armor stats strictly to exterior plating and shields, mapping every internal sub-module slot to its mechanical domain, and adapting gemstone modifications to the host slot's physical function.",
-  "updatedAt":  "2026-11-01T13:54:37.777503942Z",
+  "summary":  "Implementation plan for the Orion Satchel menu overhaul: renaming Satchel to Inventory and Skills & Gems to Skills & Feats, introducing the new Armory modification menu with any-order slot installation and semantic Custom naming, and redesigning the Loadout screen as a central high-resolution Mech Doll with anatomical slot nodes, context menus, and high-resolution equipment artwork.",
+  "updatedAt":  "2026-11-02T09:43:40.737194922Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

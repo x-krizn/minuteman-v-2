@@ -56,57 +56,112 @@ export function isCanonicalGemId(val: string | null | undefined): val is GemId {
 }
 
 /**
- * Parses any equipment identifier (`<baseId>` or `<baseId>::<gem1>+<gem2>`) into its base item ID
- * and ordered array of installed Gemstone mods.
+ * Determines whether an equipment base name should receive `"Custom"` as a suffix
+ * (`<BaseName> Custom`) rather than a prefix (`Custom <BaseName>`) based on semantics:
+ * - Alphanumeric model designations (`N-55 Gladius`, `M-300 Hasta`, `WZ-800 Arclight Cannon`, `S-2 Turbine Khopesh`, `G341 Murmillio`)
+ * - Manufacturer/faction-coded hardware titles (`BWI ...`, `PNSY ...`, `VX ...`, `ARC ...`, `SANC ...`, `TI ...`, `RAD ...`, `NDS ...`, `BE ...`)
+ * - Equipment with explicit mark designations (`Mk.III`, `Mk.IV`, `Mk.V`, `Mk.VI`)
+ */
+export function usesCustomSuffixBySemantics(baseName: string): boolean {
+  const trimmed = baseName.trim();
+  if (!trimmed) return false;
+  if (/^[A-Z]{1,4}-?\d+/i.test(trimmed)) return true;
+  if (
+    /^(BWI|PNSY|BE|NDS|RAD|TI|VX|ARC|SANC|Crystal Dynamics|Fire & Ice|Federated)\b/i.test(
+      trimmed
+    )
+  ) {
+    return true;
+  }
+  if (/\bMk\.[IVX0-9]+/i.test(trimmed)) return true;
+  return false;
+}
+
+/**
+ * Parses any equipment identifier (`<baseId>`, `<baseId>::<gem1>+<gem2>`, or sparse `<baseId>::none+<gem2>`)
+ * into its base item ID, dense array of installed Gemstone mods, and positional `slotGems` array (`GemId | null`).
  */
 export function parseEquipmentInstanceId(rawId: string | null | undefined): {
   baseId: string;
   installedGems: GemId[];
+  slotGems: Array<GemId | null>;
 } {
   if (!rawId) {
-    return { baseId: '', installedGems: [] };
+    return { baseId: '', installedGems: [], slotGems: [] };
   }
   const sepIdx = rawId.indexOf('::');
   if (sepIdx < 0) {
-    return { baseId: rawId.trim(), installedGems: [] };
+    return { baseId: rawId.trim(), installedGems: [], slotGems: [] };
   }
   const baseId = rawId.slice(0, sepIdx).trim();
   const gemPart = rawId.slice(sepIdx + 2).trim();
-  const installedGems = gemPart
+  const rawSlotGems: Array<GemId | null> = gemPart
     .split('+')
     .map((g) => g.trim().toLowerCase())
-    .filter(isCanonicalGemId);
-  return { baseId, installedGems };
+    .map((token) => (isCanonicalGemId(token) ? token : null));
+
+  let lastValidIdx = -1;
+  for (let i = rawSlotGems.length - 1; i >= 0; i--) {
+    if (rawSlotGems[i] !== null) {
+      lastValidIdx = i;
+      break;
+    }
+  }
+  const slotGems = lastValidIdx >= 0 ? rawSlotGems.slice(0, lastValidIdx + 1) : [];
+  const installedGems = slotGems.filter((g): g is GemId => isCanonicalGemId(g));
+  return { baseId, installedGems, slotGems };
 }
 
 /**
- * Constructs a deterministic composite equipment instance ID from a base item ID and installed Gemstones.
+ * Constructs a deterministic composite equipment instance ID from a base item ID and
+ * either a dense array of `GemId`s or a positional slot array (`Array<GemId | null | undefined>`).
+ * Preserves `'none'` slot placeholders when later slots are populated before earlier slots.
  */
 export function buildEquipmentInstanceId(
   baseId: string,
-  installedGems: GemId[]
+  installedGemsOrSlots: ReadonlyArray<GemId | null | undefined>
 ): string {
   const cleanBase = parseEquipmentInstanceId(baseId).baseId;
-  const validGems = installedGems.filter(isCanonicalGemId);
-  if (validGems.length === 0) return cleanBase;
-  return `${cleanBase}::${validGems.join('+')}`;
+  let lastValidIdx = -1;
+  for (let i = installedGemsOrSlots.length - 1; i >= 0; i--) {
+    if (isCanonicalGemId(installedGemsOrSlots[i])) {
+      lastValidIdx = i;
+      break;
+    }
+  }
+  if (lastValidIdx < 0) return cleanBase;
+  const serializedSlots: string[] = [];
+  for (let i = 0; i <= lastValidIdx; i++) {
+    const g = installedGemsOrSlots[i];
+    serializedSlots.push(isCanonicalGemId(g) ? g : 'none');
+  }
+  return `${cleanBase}::${serializedSlots.join('+')}`;
 }
 
 /**
- * Formats an equipment item's display name from its base name and ordered array of installed Gemstones.
- * - 1st mod sets the prefix (`<Prefix> <BaseName>`, e.g. `Assault Camelot Longsword`).
- * - 2nd+ mods preserve the 1st prefix and append a Roman numeral count (`+II`, `+III`, e.g. `Aegis Camelot Longsword +II`).
+ * Formats an equipment item's display name from its base name and installed Gemstones/Mods:
+ * - Uses semantic `"Custom"` placement:
+ *   - Model designations & coded titles (`N-55 Gladius`, `BWI Bastion Frame Plating`) -> `<BaseName> Custom`
+ *   - Standard weapon/armor nouns (`Camelot Longsword`, `Heater Shield`) -> `Custom <BaseName>`
+ * - 2nd+ mods append a Roman numeral tier count (`+II`, `+III`, e.g. `Custom Camelot Longsword +II` or `N-55 Gladius Custom +II`).
  */
 export function formatModifiedEquipmentName(
   baseName: string,
-  installedGems: GemId[]
+  installedGems: ReadonlyArray<GemId | null | undefined>
 ): string {
-  const validGems = installedGems.filter(isCanonicalGemId);
+  const validGems = installedGems.filter((g): g is GemId => isCanonicalGemId(g));
   if (validGems.length === 0) return baseName;
-  const prefix = GEM_MOD_PREFIX_BY_ID[validGems[0]] || 'Modified';
-  const suffix =
+  const tierSuffix =
     validGems.length >= 2
       ? ` ${ROMAN_NUMERAL_BY_COUNT[validGems.length] || `+${validGems.length}`}`
       : '';
-  return `${prefix} ${baseName}${suffix}`;
+  const cleanBase = baseName
+    .replace(/^Custom\s+/i, '')
+    .replace(/\s+Custom(?:\s+\+[IVX0-9]+)?$/i, '')
+    .trim();
+  if (usesCustomSuffixBySemantics(cleanBase)) {
+    return `${cleanBase} Custom${tierSuffix}`;
+  }
+  return `Custom ${cleanBase}${tierSuffix}`;
 }
+

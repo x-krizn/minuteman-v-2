@@ -19,6 +19,10 @@ import { CANONICAL_REACTORS } from './reactors';
 import { CANONICAL_SENSORY_ARRAYS } from './sensory';
 import { getWeaponDefinition } from './weapons';
 
+/**
+ * Sprite strip and directional atlas configuration for a mech hardware piece (`64x16` 4-frame strip,
+ * `64x64` 4-direction part sheet, or `192x768` 3-column master armor sheet).
+ */
 export interface MechPartSpriteStripConfig {
   /** Optional Base64 PNG sprite sheet or strip (64x16 strip, 64x64 4-dir part sheet, or 192x768 master armor sheet) */
   base64?: string;
@@ -36,6 +40,10 @@ export interface MechPartSpriteStripConfig {
   cellHeight?: number;
 }
 
+/**
+ * Canonical schema for any exterior armor plate (`head`, `arms`, `plating`) or internal chassis sub-module
+ * (`optics`, `sensoryA`, `sensoryB`, `actuators`, `reactor`, `legs`, `aux3`, `aux4`).
+ */
 export interface CanonicalHardwareItemDefinition {
   id: string;
   name: string;
@@ -279,7 +287,10 @@ export const CANONICAL_HARDWARE_CATALOG: CanonicalHardwareItemDefinition[] = [
 
 export { CANONICAL_FRAME_PLATING };
 
+/** Type alias for a canonical chassis hardware or sub-module item definition. */
 export type ChassisHardwareItemDefinition = CanonicalHardwareItemDefinition;
+
+/** Master registry of all canonical exterior armor pieces, internal sub-modules, and crafted hardware parts. */
 export const CHASSIS_HARDWARE_CATALOG: ChassisHardwareItemDefinition[] = CANONICAL_HARDWARE_CATALOG;
 
 const MODIFIED_HARDWARE_CACHE: Record<string, CanonicalHardwareItemDefinition> = {};
@@ -525,7 +536,7 @@ export function findHardwareItemByNameOrId(
     return MODIFIED_HARDWARE_CACHE[nameOrId];
   }
 
-  const { baseId, installedGems } = parseEquipmentInstanceId(nameOrId);
+  const { baseId, installedGems, slotGems } = parseEquipmentInstanceId(nameOrId);
   const norm = baseId.trim().toLowerCase();
   const baseItem = CANONICAL_HARDWARE_CATALOG.find(
     (item) =>
@@ -868,7 +879,10 @@ export function findHardwareItemByNameOrId(
 
   const baseWeight = getHardwareBaseWeight(baseItem);
   const baseCap = getHardwareCapacityBonus(baseItem);
-  const canonicalCompositeId = buildEquipmentInstanceId(baseItem.id, installedGems);
+  const canonicalCompositeId = buildEquipmentInstanceId(
+    baseItem.id,
+    slotGems.length > 0 ? slotGems : installedGems
+  );
   const derived: CanonicalHardwareItemDefinition = {
     ...baseItem,
     id: canonicalCompositeId,

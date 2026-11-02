@@ -102,9 +102,9 @@ src/cartridges/orion/
 │
 └── ui/                           # React HUD, Satchel & Menu overlays
     ├── OrionHud.tsx              # HUD orchestrator
-    ├── OrionSatchel.tsx          # Satchel menu orchestrator
+    ├── OrionSatchel.tsx          # 7-tab Tactical Menu orchestrator (MECH STATUS, LOADOUT, ARMORY, INVENTORY, SKILLS & FEATS, WORLD MAP, CODEX)
     ├── hud/                      # Modular HUD subcomponents (HudTitleModal, HudDefenseBars, HudSkillDeck)
-    └── satchel/                  # Modular Satchel subcomponents (SatchelCanvases, SatchelStatusTab, SatchelLoadoutTab, SatchelFeatsTab, SatchelWorldTab)
+    └── satchel/                  # Modular Satchel subcomponents (SatchelCanvases, SatchelStatusTab, SatchelLoadoutTab, SatchelArmoryTab, SatchelFeatsTab, SatchelWorldTab, SatchelCodexTab)
 ```
 
 ---
@@ -176,4 +176,4 @@ Project Orion uses a **weight-vs-weight classical mechanics Inertia & Stability 
 - **Stability (`S`)**: Derived from frame weight + armor + leg stabilizers + feats; controls the shrug-off deadband (`k1·S`) and hit recovery speed (`Δv_eff / (k2·S)`).
 - **Melee vs. Ranged Impulse (`J`)**: Melee impulse combines attack weight + attacker body weight × `μ_attacker` × commitment factor; Ranged impulse is strictly `projectile_weight × projectile_speed` (independent of shooter weight).
 - **Ranged Recoil (`§7`)**: Uses the exact same impulse equation (`Δv_recoil = J_recoil / m_shooter_frame`) with deadband `k1·S`, so heavier and more stable frames suffer less movement restriction while firing heavy weapons.
-- **No HUD Clutter by Default**: Inertia and Stability numbers are never shown on the default HUD; full physics telemetry is available in the `MECH STATUS` Satchel tab, and live HUD readouts only appear when the **Inertial Gyro-Telemetry Array** equipment mod is installed in Sensory B.
+- **No HUD Clutter by Default**: Inertia and Stability numbers are never shown on the default HUD; full physics telemetry is available in the `MECH STATUS` Satchel tab, and live HUD readouts only appear when the **Inertial Gyro-Telemetry Array** equipment mod is installed in Sensory B (configured in `ARMORY`).

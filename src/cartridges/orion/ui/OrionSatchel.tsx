@@ -26,6 +26,7 @@ import {
   EquipmentInventoryCategory,
   SpriteCanvasIcon,
 } from './satchel/SatchelCanvases';
+import { SatchelArmoryTab } from './satchel/SatchelArmoryTab';
 import { SatchelCodexTab } from './satchel/SatchelCodexTab';
 import { SatchelFeatsTab } from './satchel/SatchelFeatsTab';
 import { SatchelInventoryTab, SatchelLoadoutTab } from './satchel/SatchelLoadoutTab';
@@ -41,17 +42,19 @@ export interface OrionSatchelProps {
 }
 
 /**
- * Renders the 6-tab Pilot Satchel (`MECH STATUS`, `LOADOUT & STANCE`, `3-LAYER BUILD`,
- * `INVENTORY`, `WORLD MAP`, and `CODEX`). Supports both HUD modes and mutates `state: OrionState`
- * through its child tab components when equipping hardware, socketing feats, or using items.
+ * Renders the 7-tab Pilot Tactical Menu (`MECH STATUS`, `LOADOUT`, `ARMORY`,
+ * `INVENTORY`, `SKILLS & FEATS`, `WORLD MAP`, and `CODEX`). Supports both HUD modes and mutates `state: OrionState`
+ * through its child tab components when equipping hardware, installing modifications, socketing feats, or using items.
  */
 export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
   const [tab, setTab] = useState<
-    'status' | 'weapons' | 'inventory' | 'world' | 'progression' | 'codex'
+    'status' | 'weapons' | 'armory' | 'inventory' | 'world' | 'progression' | 'codex'
   >('status');
   const [isEditingLoadout, setIsEditingLoadout] = useState(false);
   const [editingSlot, setEditingSlot] = useState<EditableLoadoutSlot>('slot1');
   const [loadoutSubtypeFilter, setLoadoutSubtypeFilter] = useState<string>('ALL');
+  const [armoryFocusSlot, setArmoryFocusSlot] = useState<EditableLoadoutSlot | null>('slot1');
+  const [armoryFocusItemId, setArmoryFocusItemId] = useState<string | null>(null);
   const [invCategory, setInvCategory] = useState<EquipmentInventoryCategory>('all');
   const [invSubtype, setInvSubtype] = useState<string>('ALL');
   const [featTierFilter, setFeatTierFilter] = useState<'ALL' | FeatTier>('ALL');
@@ -64,6 +67,13 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
     setIsEditingLoadout(true);
     setEditingSlot(slot);
     setLoadoutSubtypeFilter('ALL');
+  };
+
+  const openInArmory = (slot?: EditableLoadoutSlot, itemId?: string) => {
+    soundSystem.playSelect();
+    if (slot) setArmoryFocusSlot(slot);
+    setArmoryFocusItemId(itemId || null);
+    setTab('armory');
   };
 
   useEffect(() => {
@@ -142,6 +152,19 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
           <button
             onClick={() => {
               soundSystem.playMenuBeep();
+              setTab('armory');
+            }}
+            className={`px-2 py-0.5 text-[10px] font-bold rounded-xs transition-colors shrink-0 ${
+              tab === 'armory'
+                ? 'bg-[#fb923c] text-[#05070a]'
+                : 'bg-[#0f172a] text-[#94a3b8] hover:bg-[#1e293b]'
+            }`}
+          >
+            ARMORY
+          </button>
+          <button
+            onClick={() => {
+              soundSystem.playMenuBeep();
               setTab('inventory');
             }}
             className={`px-2 py-0.5 text-[10px] font-bold rounded-xs transition-colors shrink-0 ${
@@ -150,7 +173,20 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                 : 'bg-[#0f172a] text-[#94a3b8] hover:bg-[#1e293b]'
             }`}
           >
-            SATCHEL
+            INVENTORY
+          </button>
+          <button
+            onClick={() => {
+              soundSystem.playMenuBeep();
+              setTab('progression');
+            }}
+            className={`px-2 py-0.5 text-[10px] font-bold rounded-xs transition-colors shrink-0 ${
+              tab === 'progression'
+                ? 'bg-[#c084fc] text-[#05070a]'
+                : 'bg-[#0f172a] text-[#94a3b8] hover:bg-[#1e293b]'
+            }`}
+          >
+            {isCheatMode ? 'CHEAT & FEATS' : 'SKILLS & FEATS'}
           </button>
           <button
             onClick={() => {
@@ -164,19 +200,6 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
             }`}
           >
             {isCheatMode ? 'WORLD MAP & DEV' : 'WORLD MAP'}
-          </button>
-          <button
-            onClick={() => {
-              soundSystem.playMenuBeep();
-              setTab('progression');
-            }}
-            className={`px-2 py-0.5 text-[10px] font-bold rounded-xs transition-colors shrink-0 ${
-              tab === 'progression'
-                ? 'bg-[#c084fc] text-[#05070a]'
-                : 'bg-[#0f172a] text-[#94a3b8] hover:bg-[#1e293b]'
-            }`}
-          >
-            {isCheatMode ? 'CHEAT & GEMS' : 'SKILLS & GEMS'}
           </button>
           <button
             onClick={() => {
@@ -259,6 +282,17 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
           setLoadoutSubtypeFilter={setLoadoutSubtypeFilter}
           openSlotEditor={openSlotEditor}
           onOpenInventoryTab={() => setTab('inventory')}
+          onOpenArmory={openInArmory}
+        />
+      )}
+
+      {tab === 'armory' && (
+        <SatchelArmoryTab
+          state={state}
+          isCheatMode={isCheatMode}
+          initialFocusSlot={armoryFocusSlot}
+          initialFocusItemId={armoryFocusItemId}
+          onReturnToLoadout={() => setTab('weapons')}
         />
       )}
 
@@ -272,6 +306,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
           setInvSubtype={setInvSubtype}
           openSlotEditor={openSlotEditor}
           onOpenProgressionTab={() => setTab('progression')}
+          onOpenArmory={openInArmory}
           handleUseItem={handleUseItem}
         />
       )}
@@ -301,3 +336,4 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
     </div>
   );
 };
+

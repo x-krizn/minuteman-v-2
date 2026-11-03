@@ -209,12 +209,18 @@ export default function App() {
             input.pressed.down = false;
             input.pressed.left = false;
             input.pressed.right = false;
+            input.held.up = false;
+            input.held.down = false;
+            input.held.left = false;
+            input.held.right = false;
+            input.held.a = false;
             input.held.b = false;
+            input.held.x = false;
+            input.held.y = false;
+            input.held.l = false;
+            input.held.r = false;
             input.pressed.start = false;
             input.pressed.select = false;
-            if (currentMenu !== 'none') {
-              return;
-            }
           }
         }
 

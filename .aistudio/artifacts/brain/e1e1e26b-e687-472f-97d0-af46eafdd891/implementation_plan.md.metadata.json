@@ -1,6 +1,6 @@
 {
-  "summary":  "Implementation plan for the Orion Satchel menu overhaul: renaming Satchel to Inventory and Skills & Gems to Skills & Feats, introducing the new Armory modification menu with any-order slot installation and semantic Custom naming, and redesigning the Loadout screen as a central high-resolution Mech Doll with anatomical slot nodes, context menus, and high-resolution equipment artwork.",
-  "updatedAt":  "2026-11-02T09:43:40.737194922Z",
-  "requestFeedback":  true,
-  "userFacing":  true
+  "summary": "Implementation plan to fix the pitch-black screen in Project Orion when starting a new game or loading a pilot after the universal menu input update. Covers fixing the frame-loop draw freeze in App.tsx when universal menus are open, preventing composite shadow cones from painting over the player's light pool in effectsRenderer.ts, and ensuring synchronous chunk generation in playerSystem.ts.",
+  "updatedAt": "2026-11-03T10:05:29.382593710Z",
+  "requestFeedback": true,
+  "userFacing": true
 }

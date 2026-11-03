@@ -79,12 +79,14 @@ import {
   subscribeOrionStateChange,
 } from './stateStore';
 import {
+  ensureExpanseGridAllocated,
   evaluateCathedralDoorStatus,
   executeContextMenuOption,
   executeWorldInteraction,
   rebootAtSpawnAnchor,
   rehydrateAetherFogRooms,
   syncRoomHierarchyState,
+  updateChunkedRoomStreaming,
 } from './worldSystem';
 
 // ─── 1. REACTIVE STATE STORE & PERSISTENCE ───────────────────────────────────
@@ -282,7 +284,16 @@ function applySerializedSaveDataToState(
     state.x = unifiedPos.x;
     state.y = unifiedPos.y;
   }
+  state.camX = undefined;
+  state.camY = undefined;
+  state.camRoomId = undefined;
+  state.activeChunkX = undefined;
+  state.activeChunkY = undefined;
   state.generatedChunks = {};
+  const loadedRoomsRef = getOrionRoomsRef();
+  if (loadedRoomsRef) {
+    ensureExpanseGridAllocated(loadedRoomsRef, SUNKEN_BOG_EXPANSE_ROOM_ID, true);
+  }
   state.hibernatedChunkEnemies =
     data.hibernatedChunkEnemies && typeof data.hibernatedChunkEnemies === 'object'
       ? data.hibernatedChunkEnemies
@@ -475,9 +486,17 @@ export function createNewPilotGame(
   Object.assign(state, fresh);
   state.poeCompanion = undefined;
   state.preTrainingReturnAnchor = undefined;
+  state.camX = undefined;
+  state.camY = undefined;
+  state.camRoomId = undefined;
+  state.activeChunkX = undefined;
+  state.activeChunkY = undefined;
+  state.generatedChunks = {};
   syncRoomHierarchyState(state);
   const roomsRef = getOrionRoomsRef();
   if (roomsRef) {
+    ensureExpanseGridAllocated(roomsRef, SUNKEN_BOG_EXPANSE_ROOM_ID, true);
+    updateChunkedRoomStreaming(roomsRef, state, true);
     spawnRoomEnemies(roomsRef, state);
   }
   syncStateGates(state);

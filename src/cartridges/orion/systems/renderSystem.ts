@@ -3,7 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { getRoomDimensions, SCREEN_H, SCREEN_W } from '../constants';
+import {
+  getChunkCoordsFromPx,
+  getRoomDimensions,
+  isChunkedExpanseRoom,
+  makeChunkPersistenceKey,
+  SCREEN_H,
+  SCREEN_W,
+} from '../constants';
 import { getBiomeDefinition } from '../database/world';
 import { OrionState } from '../types';
 import {
@@ -19,6 +26,7 @@ import {
   drawCanonicalHud,
   drawOutlinedCanvasText,
 } from './renderHudAndFogTells';
+import { updateChunkedRoomStreaming } from './worldSystem';
 
 export * from './render/spriteAtlasCache';
 export * from './render/worldRenderer';
@@ -35,6 +43,14 @@ export function drawOrionGame(
 ): void {
   g.fillStyle = '#090d14';
   g.fillRect(0, 0, SCREEN_W, SCREEN_H);
+
+  if (isChunkedExpanseRoom(state.room)) {
+    const { cx, cy } = getChunkCoordsFromPx(state.x, state.y);
+    const chunkKey = makeChunkPersistenceKey(state.room, cx, cy);
+    if (!state.generatedChunks?.[chunkKey] || !rooms[state.room]) {
+      updateChunkedRoomStreaming(rooms, state, true);
+    }
+  }
 
   const room = rooms[state.room];
   const { widthPx, heightPx } = getRoomDimensions(room);

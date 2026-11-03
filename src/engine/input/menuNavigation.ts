@@ -106,6 +106,14 @@ export class UniversalMenuNavigator {
       document.querySelectorAll('[data-gamepad-focus="true"]').forEach(el => {
         el.removeAttribute('data-gamepad-focus');
       });
+      const activeEl = document.activeElement as HTMLElement | null;
+      if (activeEl && activeEl !== document.body && activeEl.closest('#screen-viewport')) {
+        try {
+          activeEl.blur();
+        } catch {
+          // Ignore blur errors
+        }
+      }
     }
   }
 

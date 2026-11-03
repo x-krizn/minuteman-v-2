@@ -71,7 +71,7 @@ export const room20DeepBogMaze: RoomDefinition = {
     safetyTier: 'hazard',
     ambientDarkness: 0.62,
     cornerShadowIntensity: 0.82,
-    playerVisionRadiusPx: 54,
+    playerVisionRadiusPx: 80,
     ambientTintColor: '#a855f7',
   },
   lootPool: {
@@ -116,7 +116,7 @@ export const room21LadyOfTheLakeArena: RoomDefinition = {
     safetyTier: 'abyss',
     ambientDarkness: 0.66,
     cornerShadowIntensity: 0.86,
-    playerVisionRadiusPx: 56,
+    playerVisionRadiusPx: 80,
     ambientTintColor: '#22d3ee',
   },
   lootPool: {
@@ -177,7 +177,7 @@ export const room3Neg1BogLoopHollow: RoomDefinition = {
     safetyTier: 'hazard',
     ambientDarkness: 0.58,
     cornerShadowIntensity: 0.78,
-    playerVisionRadiusPx: 58,
+    playerVisionRadiusPx: 80,
   },
   lootPool: {
     equipmentIds: ['m300_hasta', 'sv12_viper', 's4_whisper_blade', 'cl350_litany'],
@@ -225,7 +225,7 @@ export const room30BogExitPerimeter: RoomDefinition = {
     safetyTier: 'hazard',
     ambientDarkness: 0.56,
     cornerShadowIntensity: 0.76,
-    playerVisionRadiusPx: 60,
+    playerVisionRadiusPx: 80,
   },
   lootPool: {
     equipmentIds: [

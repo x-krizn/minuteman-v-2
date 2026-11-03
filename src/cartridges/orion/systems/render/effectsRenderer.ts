@@ -727,11 +727,11 @@ export function resolveRoomLightingProfile(
     ? Math.min(0.97, Math.max(baseCornerShadow, 0.90 + loopDepth * 0.025))
     : baseCornerShadow;
 
-  // Tight personal halo (2.5 to 3.5 tiles = 40px to 56px at base Light = 5)
+  // Base vision = 5 tiles (5 * TILE_SIZE = 80px at base Light = 5)
   const playerLightTiles = computeEffectivePlayerLightTiles(state);
   const baseLightStatPx = Math.max(
-    playerLightTiles * 8.8,
-    safetyTier === 'sanctuary' ? 48 : 42
+    playerLightTiles * TILE_SIZE,
+    safetyTier === 'sanctuary' ? 84 : 80
   );
 
   const fogPenaltyPx =
@@ -741,7 +741,7 @@ export function resolveRoomLightingProfile(
         ? loopDepth * 4
         : 0;
 
-  const effectiveVisionRadiusPx = Math.max(30, baseLightStatPx - fogPenaltyPx);
+  const effectiveVisionRadiusPx = Math.max(48, baseLightStatPx - fogPenaltyPx);
   const hasLantern = hasPoeLanternGuidance(state);
 
   const staticLightAnchors: Array<{ x: number; y: number; radius: number; color: string }> = [];
@@ -1032,7 +1032,7 @@ export function getPointVisibilityFactor(
   const effPlayerR = visionR * directionalBonus;
 
   let bestVis = 0;
-  // Steep multi-stop visibility matching the tight 2.5-3.5 tile halo and steep falloff
+  // Steep multi-stop visibility matching the 5-tile (80px) base vision halo and steep falloff
   if (distToPlayer <= effPlayerR * 0.24) {
     bestVis = playerLos;
   } else if (distToPlayer <= effPlayerR * 0.56) {
@@ -1389,9 +1389,9 @@ export function drawDynamicLightingAndBloomPass(
     }
 
     const playerLightY = state.y - state.z * Z_SCALE - 6;
-    // Tight 2.5 to 3.5 tile personal halo (40px to 56px at base Light = 5)
+    // Base 5-tile personal halo (80px at base Light = 5)
     const playerOuterR = Math.max(
-      36,
+      48,
       roomLighting.effectiveVisionRadiusPx * 1.04 * radiusBreathMult
     );
     const dirInfo = DIR_VECTORS[state.dir] || DIR_VECTORS.S;
@@ -1459,7 +1459,7 @@ export function drawDynamicLightingAndBloomPass(
       g.restore();
     }
 
-    // PASS 2: Pitch-Black Abyss (92%-97% Dark) with Tight 2.5-3.5 Tile Halo & Steep Falloff
+    // PASS 2: Pitch-Black Abyss (92%-97% Dark) with 5-Tile Base Halo (80px) & Steep Falloff
     const overlay = getDarknessOverlayContext();
     const effectiveDarkness = Math.min(
       0.97,

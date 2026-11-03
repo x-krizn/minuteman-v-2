@@ -177,67 +177,67 @@ export function getRoomDoorwayCenterPx(
 }
 
 /**
- * Vertical 2.5D projection factor (`0.5` `px` per `z` unit) converting elevation `z` into screen-space `Y` offset.
+ * Vertical 2.5D projection factor (`1.0` `px` per `z` unit) converting elevation `z` into screen-space `Y` offset.
  */
 export const Z_SCALE = 1.0;
 
 /**
- * Duration in seconds (`0.18` `s`) after raising a shield during which incoming hits trigger a Perfect Block (`mechanics-v1.md §5`).
+ * Duration in seconds (`0.25` `s`) after raising a shield during which incoming hits trigger a Perfect Block (`mechanics-v1.md §5`).
  */
 export const PERFECT_BLOCK_WINDOW_SEC = 0.25; // 0.25s perfect block window on held block
 
 /**
- * Cooldown in seconds (`0.25` `s`) enforced between auxiliary weapon swaps.
+ * Cooldown in seconds (`5.0` `s`) enforced between auxiliary weapon swaps.
  */
 export const WEAPON_SWAP_COOLDOWN = 5.0; // 5 seconds globally
 /**
- * Active impulse duration in seconds (`0.16` `s`) of a booster evade dash.
+ * Active impulse duration in seconds (`0.22` `s`) of a booster evade dash.
  */
 export const BOOSTER_DASH_DURATION = 0.22;
 /**
- * Recovery cooldown in seconds (`0.42` `s`) between consecutive booster dashes.
+ * Recovery cooldown in seconds (`0.45` `s`) between consecutive booster dashes.
  */
 export const BOOSTER_DASH_COOLDOWN = 0.45;
 /**
- * Reactor heat generated (`18` heat units) when triggering a booster dash.
+ * Reactor heat generated (`20` heat units) when triggering a booster dash.
  */
 export const BOOSTER_HEAT_COST = 20;
 
 /**
- * Base mech ground movement speed (`64` `px/s`, or `4` `tiles/s`).
+ * Base mech ground movement speed (`56` `px/s`, or `3.5` `tiles/s`).
  */
 export const WALK_SPEED = 56;
 /**
- * Movement speed multiplier (`0.62`) applied when wading through mire or mud terrain tiles.
+ * Movement speed multiplier (`0.65`) applied when wading through mire or mud terrain tiles.
  */
 export const MUD_SPEED_PENALTY = 0.65; // Walking in deep bog mud
 /**
- * Peak ground velocity (`155` `px/s`) applied during an active booster dash.
+ * Peak ground velocity (`150` `px/s`) applied during an active booster dash.
  */
 export const BOOSTER_SPEED = 150;
 /**
- * Initial vertical jump impulse (`135` `px/s` along the `z` axis).
+ * Initial vertical jump impulse (`175` `px/s` along the `z` axis).
  */
 export const JUMP_VELOCITY = 175;
 /**
- * Downward vertical acceleration (`380` `px/s²` along the `z` axis) applied while airborne.
+ * Downward vertical acceleration (`560` `px/s²` along the `z` axis) applied while airborne.
  */
 export const GRAVITY = 560;
 
 /**
- * Canonical HUD and telemetry hex color (`#38bdf8`) for Defense Layer 1 (Shields).
+ * Canonical HUD and telemetry hex color (`#77c7ff`) for Defense Layer 1 (Shields).
  */
 export const COLOR_SHIELD = '#77c7ff'; // Cyan / Blue
 /**
- * Canonical HUD and telemetry hex color (`#facc15`) for Defense Layer 2 (Armor).
+ * Canonical HUD and telemetry hex color (`#ffd27d`) for Defense Layer 2 (Armor).
  */
 export const COLOR_ARMOR = '#ffd27d'; // Amber / Gold
 /**
- * Canonical HUD and telemetry hex color (`#4ade80`) for Defense Layer 3 (Frame Integrity).
+ * Canonical HUD and telemetry hex color (`#8dd7ad`) for Defense Layer 3 (Frame Integrity).
  */
 export const COLOR_FRAME = '#8dd7ad'; // Emerald green
 /**
- * Canonical HUD and telemetry hex color (`#ef4444`) for Critical Frame state (`<= 40` HP).
+ * Canonical HUD and telemetry hex color (`#ff9b9b`) for Critical Frame state (`<= 40` HP).
  */
 export const COLOR_CRITICAL = '#ff9b9b'; // Crimson
 /**
@@ -661,24 +661,24 @@ export const CHUNK_W_PX = CHUNK_COLS * TILE_SIZE; // 160 px
 export const CHUNK_H_PX = CHUNK_ROWS * TILE_SIZE; // 144 px
 
 /**
- * Horizontal chunk count (`15` chunks) across the Unified Sunken Bog Expanse (`2400` `px` total width).
+ * Horizontal chunk count (`26` chunks) across the Unified Sunken Bog Expanse (`4160` `px` total width).
  */
 export const EXPANSE_CHUNKS_X = 26; // 260 tiles wide (4,160 px)
 /**
- * Vertical chunk count (`11` chunks) across the Unified Sunken Bog Expanse (`1584` `px` total height).
+ * Vertical chunk count (`18` chunks) across the Unified Sunken Bog Expanse (`2592` `px` total height).
  */
 export const EXPANSE_CHUNKS_Y = 18; // 162 tiles tall (2,592 px)
 /**
- * Total tile columns (`150` `tiles`) across the Unified Sunken Bog Expanse.
+ * Total tile columns (`260` `tiles`) across the Unified Sunken Bog Expanse.
  */
 export const EXPANSE_TOTAL_COLS = EXPANSE_CHUNKS_X * CHUNK_COLS; // 260
 /**
- * Total tile rows (`99` `tiles`) across the Unified Sunken Bog Expanse.
+ * Total tile rows (`162` `tiles`) across the Unified Sunken Bog Expanse.
  */
 export const EXPANSE_TOTAL_ROWS = EXPANSE_CHUNKS_Y * CHUNK_ROWS; // 162
 
 /**
- * Canonical room identifier (`'0,0'`) for the unified `15x11`-chunk Sunken Bog Expanse.
+ * Canonical room identifier (`'-3,-1'`) for the unified `26x18`-chunk Sunken Bog Expanse.
  */
 export const SUNKEN_BOG_EXPANSE_ROOM_ID = '-3,-1';
 
@@ -956,7 +956,7 @@ function hashChunk2D(seed: number, cx: number, cy: number, salt: number = 0): nu
 }
 
 /**
- * Returns `true` if `roomId` uses the continuous `15x11` chunk-streaming expanse architecture.
+ * Returns `true` if `roomId` uses the continuous `26x18` chunk-streaming expanse architecture.
  */
 export function isChunkedExpanseRoom(roomId: string | undefined): boolean {
   if (!roomId) return false;
@@ -964,7 +964,7 @@ export function isChunkedExpanseRoom(roomId: string | undefined): boolean {
 }
 
 /**
- * Converts world pixel coordinates `(x, y)` in `px` into clamped chunk indices `{ cx, cy }` (`0..14`, `0..10`).
+ * Converts world pixel coordinates `(x, y)` in `px` into clamped chunk indices `{ cx, cy }` (`0..25`, `0..17`).
  */
 export function getChunkCoordsFromPx(
   x: number,

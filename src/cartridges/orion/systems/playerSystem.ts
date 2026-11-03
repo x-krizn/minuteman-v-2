@@ -311,11 +311,13 @@ function applySerializedSaveDataToState(
       ? data.clearedDeepFogDungeons
       : {};
   state.baseLight =
-    typeof data.baseLight === 'number' ? data.baseLight : state.baseLight ?? 5;
+    typeof data.baseLight === 'number' && data.baseLight >= 5
+      ? data.baseLight
+      : Math.max(5, state.baseLight ?? 5);
   state.enemyBaseLight =
-    typeof data.enemyBaseLight === 'number'
+    typeof data.enemyBaseLight === 'number' && data.enemyBaseLight >= 5
       ? data.enemyBaseLight
-      : state.enemyBaseLight ?? 5;
+      : Math.max(5, state.enemyBaseLight ?? 5);
   state.exploredTiles =
     data.exploredTiles && typeof data.exploredTiles === 'object'
       ? data.exploredTiles

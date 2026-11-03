@@ -95,7 +95,7 @@ export function canEnemyDetectPlayer(
     1,
     e.visionRadiusTiles ?? state.enemyBaseLight ?? 5
   );
-  const visionRadiusPx = visionTiles * 14;
+  const visionRadiusPx = visionTiles * TILE_SIZE;
   const rawRadius =
     e.isFogBoss || state.flags?.knights_pulled_together
       ? Math.max(visionRadiusPx, baseAggroRadiusPx ?? visionRadiusPx)

@@ -549,10 +549,15 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
     return (
       <div
         key={config.slot}
+        role="button"
+        tabIndex={0}
+        data-menu-focusable="true"
         onClick={() => {
           soundSystem.playSelect();
           setContextMenuSlot(config.slot);
         }}
+        onFocus={() => setHoveredSlot(config.slot)}
+        onBlur={() => setHoveredSlot(null)}
         onMouseEnter={() => setHoveredSlot(config.slot)}
         onMouseLeave={() => setHoveredSlot(null)}
         className={`p-1.5 rounded-xs border transition-all cursor-pointer flex items-center gap-2 ${
@@ -609,13 +614,17 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
     if (isTriggerSlot) {
       const side: 'L' | 'R' = editingSlot === 'bind_l' ? 'L' : 'R';
       return (
-        <div className="p-2.5 bg-[#090d14] rounded-xs border border-[#fde047] space-y-2">
+        <div
+          data-menu-scope="true"
+          className="p-2.5 bg-[#090d14] rounded-xs border border-[#fde047] space-y-2"
+        >
           <div className="flex items-center justify-between border-b border-[#1e293b] pb-1.5">
             <span className="text-[10px] font-bold text-[#fde047]">
               ASSIGN {side === 'L' ? 'LEFT TRIGGER [J / LMB]' : 'RIGHT TRIGGER [K / RMB]'} COMBAT ACTION
             </span>
             <button
               type="button"
+              data-menu-back="true"
               onClick={() => setIsEditingLoadout(false)}
               className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#e2e8f0] rounded-xs text-[8px] font-bold cursor-pointer"
             >
@@ -736,7 +745,10 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
       };
 
       return (
-        <div className="p-2.5 bg-[#090d14] rounded-xs border border-[#fde047] space-y-2">
+        <div
+          data-menu-scope="true"
+          className="p-2.5 bg-[#090d14] rounded-xs border border-[#fde047] space-y-2"
+        >
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#1e293b] pb-1.5">
             <div>
               <div className="text-[10px] font-bold text-[#fde047]">
@@ -748,7 +760,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                     : 'AUXILIARY [BACK]'}
               </div>
               <div className="text-[7.5px] text-[#94a3b8]">
-                Hover or click any weapon/auxiliary to inspect its high-resolution schematic.
+                Hover, focus, or click any weapon/auxiliary to inspect its high-resolution schematic.
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -776,6 +788,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
               )}
               <button
                 type="button"
+                data-menu-back="true"
                 onClick={() => setIsEditingLoadout(false)}
                 className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#e2e8f0] rounded-xs text-[8px] font-bold cursor-pointer"
               >
@@ -887,6 +900,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                   </div>
                   <button
                     type="button"
+                    onFocus={() => setPreviewCandidateId(instanceId)}
                     onClick={() => handleEquipWeaponInSlot(instanceId)}
                     className={`px-2 py-1 rounded-xs text-[7.5px] font-bold border cursor-pointer shrink-0 ${
                       isEquippedHere
@@ -978,13 +992,17 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
     };
 
     return (
-      <div className="p-2.5 bg-[#090d14] rounded-xs border border-[#fde047] space-y-2">
+      <div
+        data-menu-scope="true"
+        className="p-2.5 bg-[#090d14] rounded-xs border border-[#fde047] space-y-2"
+      >
         <div className="flex items-center justify-between border-b border-[#1e293b] pb-1.5">
           <span className="text-[10px] font-bold text-[#fde047]">
             SELECT CHASSIS HARDWARE FOR [{hwSlotKey.toUpperCase()}]
           </span>
           <button
             type="button"
+            data-menu-back="true"
             onClick={() => setIsEditingLoadout(false)}
             className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#e2e8f0] rounded-xs text-[8px] font-bold cursor-pointer"
           >
@@ -1058,6 +1076,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                 </div>
                 <button
                   type="button"
+                  onFocus={() => setPreviewCandidateId(instanceId)}
                   onClick={() => handleEquipHardwareInSlot(instanceId)}
                   className={`px-2 py-1 rounded-xs text-[7.5px] font-bold border cursor-pointer shrink-0 ${
                     isEquippedHere
@@ -1429,6 +1448,9 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
             {/* Trigger Bindings Node Pair */}
             <div className="grid grid-cols-2 gap-1.5">
               <div
+                role="button"
+                tabIndex={0}
+                data-menu-focusable="true"
                 onClick={() => {
                   soundSystem.playSelect();
                   setContextMenuSlot('bind_l');
@@ -1448,6 +1470,9 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                 </div>
               </div>
               <div
+                role="button"
+                tabIndex={0}
+                data-menu-focusable="true"
                 onClick={() => {
                   soundSystem.playSelect();
                   setContextMenuSlot('bind_r');

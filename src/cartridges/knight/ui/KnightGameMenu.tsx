@@ -62,7 +62,10 @@ export const KnightGameMenu: React.FC<KnightGameMenuProps> = ({
   };
 
   return (
-    <div className="absolute inset-0 z-20 bg-[#0a180a]/92 backdrop-blur-xs flex flex-col p-2.5 sm:p-3 overflow-hidden text-[#9ad482] font-mono select-none">
+    <div
+      data-universal-menu="true"
+      className="absolute inset-0 z-20 bg-[#0a180a]/92 backdrop-blur-xs flex flex-col p-2.5 sm:p-3 overflow-hidden text-[#9ad482] font-mono select-none"
+    >
       {/* Top Header Bar */}
       <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-[#306028]">
         <div className="flex items-center gap-1.5 font-bold text-xs sm:text-sm text-[#50fa7b] tracking-wider">
@@ -100,6 +103,7 @@ export const KnightGameMenu: React.FC<KnightGameMenuProps> = ({
           <div className="flex items-center justify-between pb-1 border-b border-[#244820]">
             <span className="font-bold text-[#50fa7b]">COMBAT & CONTROLS GUIDE</span>
             <button
+              data-menu-back="true"
               onClick={() => {
                 soundSystem.playSelect();
                 setShowControls(false);

@@ -79,6 +79,7 @@ export const OrionHud: React.FC = () => {
     const isCheatMode = state.room === '-4,0' || Boolean(state.bypassProgressionGates);
     return (
       <aside
+        data-universal-menu="true"
         aria-label="Cosmic World Map & Fast Travel Modal"
         className="absolute inset-0 z-40 pointer-events-auto bg-[#05070a]/95 backdrop-blur-xs flex flex-col p-2.5 sm:p-3 overflow-hidden select-none font-mono text-[#e2e8f0]"
       >
@@ -90,6 +91,7 @@ export const OrionHud: React.FC = () => {
           </div>
           <button
             type="button"
+            data-menu-back="true"
             onClick={() => {
               state.worldMapModalMode = 'none';
               soundSystem.playMenuBeep();

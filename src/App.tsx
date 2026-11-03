@@ -18,6 +18,7 @@ import {
   formatGamepadName,
   hardwareGamepad,
 } from './engine/input/hardwareGamepad';
+import { universalMenuNavigator } from './engine/input/menuNavigation';
 import { ShellScreen } from './types/shell';
 import { CartridgeMenuMode } from './types/cartridge';
 import {
@@ -182,18 +183,38 @@ export default function App() {
             }
           }
 
-          // B button while menu is open: Close and resume game without leaking B into gameplay
-          if (!isTypingInInput && input.pressed.b && currentMenu !== 'none') {
+          // Step universal menu navigator for any active menu overlay (Satchel, Start Menu, Title Menu, World Map Modal)
+          const menuNavResult = universalMenuNavigator.step(input, dtSeconds);
+
+          // B button while in-game menu is open: Close root menu only if [B] did not step back from a nested subview
+          if (
+            !isTypingInInput &&
+            currentMenu !== 'none' &&
+            (menuNavResult.shouldCloseRootMenu || (!menuNavResult.isMenuActive && input.pressed.b))
+          ) {
             menuConsumedInput = true;
             updateInGameMenu('none');
+          } else if (menuNavResult.isMenuActive && menuNavResult.handledInput) {
+            menuConsumedInput = true;
           }
 
-          if (menuConsumedInput) {
+          if (menuConsumedInput || menuNavResult.isMenuActive) {
+            input.pressed.a = false;
             input.pressed.b = false;
+            input.pressed.x = false;
+            input.pressed.y = false;
+            input.pressed.l = false;
+            input.pressed.r = false;
+            input.pressed.up = false;
+            input.pressed.down = false;
+            input.pressed.left = false;
+            input.pressed.right = false;
             input.held.b = false;
             input.pressed.start = false;
             input.pressed.select = false;
-            return;
+            if (currentMenu !== 'none') {
+              return;
+            }
           }
         }
 
@@ -211,6 +232,7 @@ export default function App() {
 
     return () => {
       cleanupKeyboard();
+      universalMenuNavigator.dispose();
       frameLoop.stop();
       cartridgeRunner.stopCart();
     };

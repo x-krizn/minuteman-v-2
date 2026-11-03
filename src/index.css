@@ -56,3 +56,12 @@ body {
   background-size: 100% 2px, 3px 100%;
   pointer-events: none;
 }
+
+/* Universal menu focus ring for Keyboard, Physical Gamepad, and Virtual Handheld Controls */
+[data-gamepad-focus="true"] {
+  outline: 2px solid #fde047 !important;
+  outline-offset: 1px;
+  box-shadow: 0 0 0 2px rgba(2, 6, 23, 0.92), 0 0 10px rgba(250, 204, 21, 0.55) !important;
+  z-index: 5;
+}
+

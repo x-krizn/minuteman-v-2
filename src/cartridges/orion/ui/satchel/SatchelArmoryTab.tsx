@@ -413,6 +413,9 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
             return (
               <div
                 key={`mod-slot-${idx}`}
+                role="button"
+                tabIndex={0}
+                data-menu-focusable="true"
                 onClick={() => {
                   soundSystem.playSelect();
                   setSelectedModSlotIndex(idx);

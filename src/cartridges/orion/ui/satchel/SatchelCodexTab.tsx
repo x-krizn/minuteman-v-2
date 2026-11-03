@@ -395,6 +395,9 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
               return (
                 <div
                   key={enemy.type}
+                  role="button"
+                  tabIndex={0}
+                  data-menu-focusable="true"
                   onClick={() => {
                     soundSystem.playSelect();
                     setSelectedId(isExpanded ? null : enemy.type);
@@ -469,6 +472,9 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
               return (
                 <div
                   key={w.id}
+                  role="button"
+                  tabIndex={0}
+                  data-menu-focusable="true"
                   onClick={() => {
                     soundSystem.playSelect();
                     setSelectedId(isExpanded ? null : w.id);
@@ -602,6 +608,9 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
               return (
                 <div
                   key={item.id}
+                  role="button"
+                  tabIndex={0}
+                  data-menu-focusable="true"
                   onClick={() => {
                     soundSystem.playSelect();
                     setSelectedId(isExpanded ? null : item.id);
@@ -681,6 +690,9 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
               return (
                 <div
                   key={entry.id}
+                  role="button"
+                  tabIndex={0}
+                  data-menu-focusable="true"
                   onClick={() => {
                     soundSystem.playSelect();
                     setSelectedId(isExpanded ? null : entry.id);

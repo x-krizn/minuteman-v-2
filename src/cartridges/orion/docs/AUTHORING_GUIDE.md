@@ -100,9 +100,10 @@ src/cartridges/orion/
 │   ├── inertiaSystem.ts          # [ORION-ANCHOR: INERTIA-PHYSICS-ENGINE] Inertia v0.1 physics & stability engine
 │   └── entitySystem.ts           # [ORION-ANCHOR: ENTITY-SPAWN-ROOM] Enemy spawning/AI, pickups & particles
 │
-└── ui/                           # React HUD, Satchel & Menu overlays
-    ├── OrionHud.tsx              # HUD orchestrator
-    ├── OrionSatchel.tsx          # 7-tab Tactical Menu orchestrator (MECH STATUS, LOADOUT, ARMORY, INVENTORY, SKILLS & FEATS, WORLD MAP, CODEX)
+└── ui/                           # React HUD, Satchel & Menu overlays (operable via Keyboard, Gamepad, Virtual Controls & Mouse/Touch via UniversalMenuNavigator)
+    ├── OrionHud.tsx              # HUD orchestrator & Cosmic World Map modal
+    ├── OrionGameMenu.tsx         # [START] Pause Menu & Roster/Options subviews
+    ├── OrionSatchel.tsx          # 7-tab Tactical Menu orchestrator (MECH STATUS, LOADOUT, ARMORY, INVENTORY, SKILLS & FEATS, WORLD MAP, CODEX; [L]/[R] tab cycling)
     ├── hud/                      # Modular HUD subcomponents (HudTitleModal, HudDefenseBars, HudSkillDeck)
     └── satchel/                  # Modular Satchel subcomponents (SatchelCanvases, SatchelStatusTab, SatchelLoadoutTab, SatchelArmoryTab, SatchelFeatsTab, SatchelWorldTab, SatchelCodexTab)
 ```

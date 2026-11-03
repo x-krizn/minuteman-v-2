@@ -189,6 +189,7 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
 
   return (
     <aside
+      data-universal-menu="true"
       aria-label="Project Orion Main Menu"
       className="absolute inset-0 z-40 pointer-events-auto bg-[#120b18] flex flex-col justify-between select-none font-mono text-[#e2e8f0] overflow-hidden"
     >
@@ -237,6 +238,7 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
               {state.t > 0.5 && (
                 <button
                   type="button"
+                  data-menu-back="true"
                   onClick={() => {
                     soundSystem.playMenuBeep();
                     state.atTitleMenu = false;
@@ -263,6 +265,14 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
                 <button
                   key={item.id}
                   type="button"
+                  data-menu-autofocus={idx === cursorIndex ? 'true' : undefined}
+                  onFocus={() => {
+                    if (state.titleMenuCursor !== idx) {
+                      state.titleMenuCursor = idx;
+                      soundSystem.playMenuBeep();
+                      forceRerender();
+                    }
+                  }}
                   onMouseEnter={() => {
                     if (state.titleMenuCursor !== idx) {
                       state.titleMenuCursor = idx;
@@ -307,6 +317,7 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
             <div className="flex items-center gap-2">
               <button
                 type="button"
+                data-menu-back="true"
                 onClick={() => {
                   soundSystem.playMenuBeep();
                   setSubView('root');

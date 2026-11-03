@@ -119,11 +119,18 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
   const totalRetainedGems = Object.values(retainedMap).reduce((a, b) => a + b, 0);
 
   return (
-    <div className="absolute inset-0 z-20 bg-[#05070a]/95 backdrop-blur-xs flex flex-col p-2.5 overflow-hidden text-[#e2e8f0] font-mono select-none">
+    <div
+      data-universal-menu="true"
+      className="absolute inset-0 z-20 bg-[#05070a]/95 backdrop-blur-xs flex flex-col p-2.5 overflow-hidden text-[#e2e8f0] font-mono select-none"
+    >
       {/* Top Header & Tabs */}
       <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-[#1e293b]">
-        <div className="flex items-center gap-1.5 overflow-x-auto">
+        <div data-menu-tabs="true" className="flex items-center gap-1.5 overflow-x-auto">
+          <span className="text-[8px] font-bold text-[#64748b] px-1 py-0.5 border border-[#1e293b] rounded-xs shrink-0">
+            [L/R]
+          </span>
           <button
+            data-tab-active={tab === 'status' ? 'true' : 'false'}
             onClick={() => {
               soundSystem.playMenuBeep();
               setTab('status');
@@ -137,6 +144,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
             MECH STATUS
           </button>
           <button
+            data-tab-active={tab === 'weapons' ? 'true' : 'false'}
             onClick={() => {
               soundSystem.playMenuBeep();
               setTab('weapons');
@@ -150,6 +158,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
             LOADOUT
           </button>
           <button
+            data-tab-active={tab === 'armory' ? 'true' : 'false'}
             onClick={() => {
               soundSystem.playMenuBeep();
               setTab('armory');
@@ -163,6 +172,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
             ARMORY
           </button>
           <button
+            data-tab-active={tab === 'inventory' ? 'true' : 'false'}
             onClick={() => {
               soundSystem.playMenuBeep();
               setTab('inventory');
@@ -176,6 +186,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
             INVENTORY
           </button>
           <button
+            data-tab-active={tab === 'progression' ? 'true' : 'false'}
             onClick={() => {
               soundSystem.playMenuBeep();
               setTab('progression');
@@ -189,6 +200,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
             {isCheatMode ? 'CHEAT & FEATS' : 'SKILLS & FEATS'}
           </button>
           <button
+            data-tab-active={tab === 'world' ? 'true' : 'false'}
             onClick={() => {
               soundSystem.playMenuBeep();
               setTab('world');
@@ -202,6 +214,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
             {isCheatMode ? 'WORLD MAP & DEV' : 'WORLD MAP'}
           </button>
           <button
+            data-tab-active={tab === 'codex' ? 'true' : 'false'}
             onClick={() => {
               soundSystem.playMenuBeep();
               setTab('codex');

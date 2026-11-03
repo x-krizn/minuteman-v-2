@@ -557,6 +557,31 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({ state, setToas
 
             {/* Selected Hex Node Inspector */}
             <div className="lg:col-span-5 rounded border border-[#1e293b] bg-[#070b12] p-3 space-y-2">
+              <div className="flex items-center justify-between gap-1.5 pb-1 border-b border-[#1e293b]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    soundSystem.playMenuBeep();
+                    setSelectedHexNodeIdx((prev) => (prev + 17) % 18);
+                  }}
+                  className="px-2 py-0.5 rounded bg-[#0f172a] hover:bg-[#1e293b] border border-[#334155] text-[8.5px] font-bold text-[#38bdf8] cursor-pointer"
+                >
+                  ◀ PREV NODE
+                </button>
+                <span className="text-[8.5px] font-bold text-[#94a3b8]">
+                  HEX NODE {selectedHexNodeIdx + 1} / 18
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    soundSystem.playMenuBeep();
+                    setSelectedHexNodeIdx((prev) => (prev + 1) % 18);
+                  }}
+                  className="px-2 py-0.5 rounded bg-[#0f172a] hover:bg-[#1e293b] border border-[#334155] text-[8.5px] font-bold text-[#38bdf8] cursor-pointer"
+                >
+                  NEXT NODE ▶
+                </button>
+              </div>
               {activeHexAssignment && activeHexAssignment.feat ? (
                 <>
                   <div className="flex items-center justify-between gap-2">
@@ -662,6 +687,9 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({ state, setToas
             return (
               <div
                 key={skill.id}
+                role="button"
+                tabIndex={0}
+                data-menu-focusable="true"
                 onClick={() =>
                   setSelectedSkillFilter(isSelected ? 'ALL' : skill.id)
                 }

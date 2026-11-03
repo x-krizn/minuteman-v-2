@@ -71,7 +71,10 @@ export const KnightSatchel: React.FC<KnightSatchelProps> = ({ onClose }) => {
   const currentBiome = getBiomeDefinition(st?.currentAreaId || 'crypt');
 
   return (
-    <div className="absolute inset-0 z-20 bg-[#0a180a]/94 backdrop-blur-xs flex flex-col p-2 sm:p-2.5 overflow-hidden text-[#9ad482] font-mono select-none">
+    <div
+      data-universal-menu="true"
+      className="absolute inset-0 z-20 bg-[#0a180a]/94 backdrop-blur-xs flex flex-col p-2 sm:p-2.5 overflow-hidden text-[#9ad482] font-mono select-none"
+    >
       {/* Top Header Bar */}
       <div className="flex items-center justify-between pb-1 border-b border-[#306028]">
         <div className="flex items-center gap-1.5 font-bold text-xs sm:text-sm text-[#50fa7b]">
@@ -115,8 +118,12 @@ export const KnightSatchel: React.FC<KnightSatchelProps> = ({ onClose }) => {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-[#244820] mb-1.5 bg-[#0e1c0e] rounded-xs overflow-x-auto scrollbar-none">
+      <div
+        data-menu-tabs="true"
+        className="flex border-b border-[#244820] mb-1.5 bg-[#0e1c0e] rounded-xs overflow-x-auto scrollbar-none"
+      >
         <button
+          data-tab-active={activeTab === 'loadout' ? 'true' : 'false'}
           onClick={() => setActiveTab('loadout')}
           className={`px-2 py-1 text-[10px] font-bold uppercase transition-colors shrink-0 ${
             activeTab === 'loadout'
@@ -127,6 +134,7 @@ export const KnightSatchel: React.FC<KnightSatchelProps> = ({ onClose }) => {
           1. GEAR
         </button>
         <button
+          data-tab-active={activeTab === 'progression' ? 'true' : 'false'}
           onClick={() => setActiveTab('progression')}
           className={`px-2 py-1 text-[10px] font-bold uppercase transition-colors shrink-0 ${
             activeTab === 'progression'
@@ -137,6 +145,7 @@ export const KnightSatchel: React.FC<KnightSatchelProps> = ({ onClose }) => {
           2. SKILL TREE
         </button>
         <button
+          data-tab-active={activeTab === 'inventory' ? 'true' : 'false'}
           onClick={() => setActiveTab('inventory')}
           className={`px-2 py-1 text-[10px] font-bold uppercase transition-colors shrink-0 ${
             activeTab === 'inventory'
@@ -147,6 +156,7 @@ export const KnightSatchel: React.FC<KnightSatchelProps> = ({ onClose }) => {
           3. SATCHEL
         </button>
         <button
+          data-tab-active={activeTab === 'skills' ? 'true' : 'false'}
           onClick={() => setActiveTab('skills')}
           className={`px-2 py-1 text-[10px] font-bold uppercase transition-colors shrink-0 ${
             activeTab === 'skills'
@@ -157,6 +167,7 @@ export const KnightSatchel: React.FC<KnightSatchelProps> = ({ onClose }) => {
           4. ABILITIES (L/R)
         </button>
         <button
+          data-tab-active={activeTab === 'stats' ? 'true' : 'false'}
           onClick={() => setActiveTab('stats')}
           className={`px-2 py-1 text-[10px] font-bold uppercase transition-colors shrink-0 ${
             activeTab === 'stats'
@@ -167,6 +178,7 @@ export const KnightSatchel: React.FC<KnightSatchelProps> = ({ onClose }) => {
           5. STATS
         </button>
         <button
+          data-tab-active={activeTab === 'merchant' ? 'true' : 'false'}
           onClick={() => setActiveTab('merchant')}
           className={`px-2 py-1 text-[10px] font-bold uppercase transition-colors shrink-0 ${
             activeTab === 'merchant'

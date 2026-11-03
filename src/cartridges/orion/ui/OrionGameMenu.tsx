@@ -174,7 +174,10 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
   const utilityDef = getClassUtilityDefinition(undefined, selectedTrait);
 
   return (
-    <div className="absolute inset-0 z-20 bg-[#05070a]/95 backdrop-blur-xs flex flex-col p-2.5 sm:p-3 overflow-hidden text-[#e2e8f0] font-mono select-none">
+    <div
+      data-universal-menu="true"
+      className="absolute inset-0 z-20 bg-[#05070a]/95 backdrop-blur-xs flex flex-col p-2.5 sm:p-3 overflow-hidden text-[#e2e8f0] font-mono select-none"
+    >
       {/* Top Header */}
       <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-[#1e293b]">
         <div className="flex items-center gap-1.5 font-bold text-xs sm:text-sm text-[#ffd27d] tracking-wider">
@@ -215,6 +218,7 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
               §2.4 NEW GAME — PILOT & FRAME BONDING (LEVEL 1 START)
             </span>
             <button
+              data-menu-back="true"
               onClick={() => {
                 soundSystem.playMenuBeep();
                 setSubView('main');
@@ -342,6 +346,7 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
               §2.4 LOAD GAME — SAVED PILOT CHARACTER ROSTER ({roster.length})
             </span>
             <button
+              data-menu-back="true"
               onClick={() => {
                 soundSystem.playMenuBeep();
                 setSubView('main');
@@ -443,6 +448,7 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
               COSMIC WORLD MAP (MENU CARTOGRAPHY VIEW)
             </span>
             <button
+              data-menu-back="true"
               onClick={() => {
                 soundSystem.playMenuBeep();
                 setSubView('main');
@@ -465,6 +471,7 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
           <div className="flex items-center justify-between pb-1 border-b border-[#334155]">
             <span className="font-bold text-[#facc15]">2.5D MECH CONTROLS & COMBAT LAWS</span>
             <button
+              data-menu-back="true"
               onClick={() => setSubView('main')}
               className="text-[10px] underline text-[#94a3b8] hover:text-white"
             >
@@ -515,6 +522,7 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
               PILOT FIELD CODEX (DISCOVERED ARCHIVES)
             </span>
             <button
+              data-menu-back="true"
               onClick={() => {
                 soundSystem.playMenuBeep();
                 setSubView('main');

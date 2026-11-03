@@ -5,6 +5,9 @@
 
 import { ProgressionNodeEntry } from '../../types';
 
+/**
+ * Canonical database definition for `airAttackNode` (`Air Attack`, id `'air_attack'`, slot `'offense'`) — Execute airborne slashes during jumps..
+ */
 export const airAttackNode: ProgressionNodeEntry = {
   id: 'air_attack',
   name: 'Air Attack',

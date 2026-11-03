@@ -5,6 +5,9 @@
 
 import { TileDefinition } from '../../../types';
 
+/**
+ * Canonical database definition for `pylonPillarTile` (`Ruined Pylon`, id `'pylon_pillar'`, ASCII token `'P'`).
+ */
 export const pylonPillarTile: TileDefinition = {
   id: 'pylon_pillar',
   char: 'P',

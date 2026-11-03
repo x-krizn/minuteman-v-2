@@ -11,6 +11,9 @@ import {
 } from '../../../systems/enemyHelpers';
 import { EnemyEntity, EnemyWikiDefinition, OrionState } from '../../../types';
 
+/**
+ * Canonical database definition for `bogCrawlerEnemy` (`Bog Crawler`, id `'bog_crawler'`) — An aggressive armored arthropod dwelling in the deep mud of M00..
+ */
 export const bogCrawlerEnemy: EnemyWikiDefinition = {
   type: 'bog_crawler',
   name: 'Bog Crawler',

@@ -5,6 +5,9 @@
 
 import { ItemWikiDefinition } from '../../../types';
 
+/**
+ * Canonical database definition for `rubyItem` (`Red Ruby`, id `'ruby'`, ASCII token `'H'`, slot `'gem'`) — +1 Maximum Health (HP).
+ */
 export const rubyItem: ItemWikiDefinition = {
   // 1. Identity & Metadata
   id: 'ruby',

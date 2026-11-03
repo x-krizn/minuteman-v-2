@@ -8,6 +8,9 @@ import { buildMagitechWeapon } from './builder';
 
 // ─── CLERIC / SANCTUM LINEAGE MAGITECH WEAPONS ──────────────────────────────
 
+/**
+ * Canonical database definition for `cl700SanctifierWeapon` (`CL-700 Sanctifier`, id `'cl700_sanctifier'`, load `'medium'`) — Adaptive damage type per target.
+ */
 export const cl700SanctifierWeapon = buildMagitechWeapon({
   id: 'cl700_sanctifier',
   name: 'CL-700 Sanctifier',
@@ -37,6 +40,9 @@ export const cl700SanctifierWeapon = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `cl500AbsolutionWeapon` (`CL-500 Absolution`, id `'cl500_absolution'`, load `'medium'`) — Area purification, ally buff on sustained fire.
+ */
 export const cl500AbsolutionWeapon = buildMagitechWeapon({
   id: 'cl500_absolution',
   name: 'CL-500 Absolution',
@@ -66,6 +72,9 @@ export const cl500AbsolutionWeapon = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `cl350LitanyWeapon` (`CL-350 Litany`, id `'cl350_litany'`, load `'medium'`) — Ally buff application on hit.
+ */
 export const cl350LitanyWeapon = buildMagitechWeapon({
   id: 'cl350_litany',
   name: 'CL-350 Litany',
@@ -95,6 +104,9 @@ export const cl350LitanyWeapon = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `hallowedScepterWeapon` (`Hallowed Scepter`, id `'hallowed_scepter'`, load `'medium'`) — Melee + ranged healing pulses.
+ */
 export const hallowedScepterWeapon = buildMagitechWeapon({
   id: 'hallowed_scepter',
   name: 'Hallowed Scepter',
@@ -126,6 +138,9 @@ export const hallowedScepterWeapon = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `graceEdgeWeapon` (`Grace Edge`, id `'grace_edge'`, load `'light'`) — Healing pulse on critical hit.
+ */
 export const graceEdgeWeapon = buildMagitechWeapon({
   id: 'grace_edge',
   name: 'Grace Edge',
@@ -159,6 +174,9 @@ export const graceEdgeWeapon = buildMagitechWeapon({
 
 // ─── CLERIC / SANCTUM AUXILIARIES (Migrated from Utility, Aux 3 & Aux 4) ────
 
+/**
+ * Canonical database definition for `utilitySanctumFontAuxiliary` (`SANC Radiant Ward Projector`, id `'utility_sanctum_font'`, load `'medium'`) — Deployable barrier absorbs status effects and damage (+20 Shield, +16 Armor).
+ */
 export const utilitySanctumFontAuxiliary = buildMagitechWeapon({
   id: 'utility_sanctum_font',
   name: 'SANC Radiant Ward Projector',
@@ -191,6 +209,9 @@ export const utilitySanctumFontAuxiliary = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `aux3SancRestorationFieldAuxiliary` (`SANC Aegis Restoration Field`, id `'aux3_sanc_restoration_field'`, load `'medium'`) — Area-effect shield and armor repair field (+22 Shield, active Armor mend).
+ */
 export const aux3SancRestorationFieldAuxiliary = buildMagitechWeapon({
   id: 'aux3_sanc_restoration_field',
   name: 'SANC Aegis Restoration Field',
@@ -221,6 +242,9 @@ export const aux3SancRestorationFieldAuxiliary = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `aux4SancMartyrdomPlatingAuxiliary` (`SANC Martyrdom Plating`, id `'aux4_sanc_martyrdom_plating'`, load `'medium'`) — Reactive armor redirects damage into counter-waves (+24 Armor, +10 Shield).
+ */
 export const aux4SancMartyrdomPlatingAuxiliary = buildMagitechWeapon({
   id: 'aux4_sanc_martyrdom_plating',
   name: 'SANC Martyrdom Plating',

@@ -28,6 +28,9 @@ import {
   toggleAppFullscreen,
 } from './utils/fullscreen';
 
+/**
+ * Root React application component mounting the handheld console shell, `ScreenViewport` (`160x144` `px`), and `VirtualGamepad`.
+ */
 export default function App() {
   const [screen, setScreen] = useState<ShellScreen>('splash');
   const [activeCartridgeName, setActiveCartridgeName] = useState<string | undefined>(undefined);
@@ -148,6 +151,9 @@ export default function App() {
           const activeTag =
             typeof document !== 'undefined' ? document.activeElement?.tagName : undefined;
           const isTypingInInput = activeTag === 'INPUT' || activeTag === 'TEXTAREA';
+          const isTitleModalOpen =
+            typeof document !== 'undefined' &&
+            Boolean(document.querySelector('[aria-label="Project Orion Main Menu"]'));
           let menuConsumedInput = false;
 
           // Emergency escape hatch: hold START + SHIFT together
@@ -163,28 +169,54 @@ export default function App() {
             return;
           }
 
-          // START button: Game Menu
-          if (!isTypingInInput && input.pressed.start && !input.held.select) {
-            menuConsumedInput = true;
-            if (currentMenu === 'game-menu') {
+          if (isTitleModalOpen) {
+            // While on the Title Menu, never open the in-game pause/satchel overlay on START/SELECT.
+            // Pressing START (Enter on PC) acts as Confirm [A] on the Title Menu.
+            if (currentMenu !== 'none') {
               updateInGameMenu('none');
-            } else {
-              updateInGameMenu('game-menu');
             }
-          }
+            if (!isTypingInInput && input.pressed.start && !input.held.select) {
+              input.pressed.a = true;
+              input.pressed.start = false;
+            }
+            if (!isTypingInInput && input.pressed.select && !input.held.start) {
+              input.pressed.select = false;
+            }
+          } else {
+            // START button: Game Menu
+            if (!isTypingInInput && input.pressed.start && !input.held.select) {
+              menuConsumedInput = true;
+              if (currentMenu === 'game-menu') {
+                updateInGameMenu('none');
+              } else {
+                updateInGameMenu('game-menu');
+              }
+            }
 
-          // SHIFT (Select) button: Inventory / Character screen
-          if (!isTypingInInput && input.pressed.select && !input.held.start) {
-            menuConsumedInput = true;
-            if (currentMenu === 'inventory') {
-              updateInGameMenu('none');
-            } else {
-              updateInGameMenu('inventory');
+            // SHIFT (Select) button: Inventory / Character screen
+            if (!isTypingInInput && input.pressed.select && !input.held.start) {
+              menuConsumedInput = true;
+              if (currentMenu === 'inventory') {
+                updateInGameMenu('none');
+              } else {
+                updateInGameMenu('inventory');
+              }
             }
           }
 
           // Step universal menu navigator for any active menu overlay (Satchel, Start Menu, Title Menu, World Map Modal)
-          const menuNavResult = universalMenuNavigator.step(input, dtSeconds);
+          let menuNavResult = {
+            isMenuActive: false,
+            handledInput: false,
+            shouldCloseRootMenu: false,
+          };
+          try {
+            menuNavResult = universalMenuNavigator.step(input, dtSeconds);
+          } catch (navErr) {
+            registry.logError(
+              `MENU_NAV: ${navErr instanceof Error ? navErr.message : String(navErr)}`
+            );
+          }
 
           // B button while in-game menu is open: Close root menu only if [B] did not step back from a nested subview
           if (

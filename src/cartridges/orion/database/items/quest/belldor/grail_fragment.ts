@@ -5,6 +5,9 @@
 
 import { ItemWikiDefinition } from '../../../../types';
 
+/**
+ * Canonical database definition for `grailFragmentItem` (`Grail Fragment`, id `'grail_fragment'`, slot `'key'`) — Resonant shard carried by Percival, Tristan, and Bors. Three fragments force open the Cathedral Dungeon Door..
+ */
 export const grailFragmentItem: ItemWikiDefinition = {
   id: 'grail_fragment',
   name: 'Grail Fragment',

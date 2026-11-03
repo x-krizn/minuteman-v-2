@@ -5,6 +5,9 @@
 
 import { ItemWikiDefinition } from '../../../types';
 
+/**
+ * Canonical database definition for `topazItem` (`Topaz Gem`, id `'topaz'`, ASCII token `'Y'`, slot `'gem'`) — +1 Maximum Stamina (SP).
+ */
 export const topazItem: ItemWikiDefinition = {
   // 1. Identity & Metadata
   id: 'topaz',

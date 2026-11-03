@@ -11,6 +11,9 @@ import {
 } from '../../../systems/enemyHelpers';
 import { EnemyEntity, EnemyWikiDefinition, OrionState } from '../../../types';
 
+/**
+ * Canonical database definition for `townNpcEntity` (`Border Town Survivor`, id `'town_npc'`) — A citizen of the contested settlement suffering from Grail Sickness..
+ */
 export const townNpcEntity: EnemyWikiDefinition = {
   type: 'town_npc',
   name: 'Border Town Survivor',

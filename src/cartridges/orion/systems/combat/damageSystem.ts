@@ -28,8 +28,14 @@ import {
   triggerEntityFlash,
 } from './combatHelpers';
 
+/**
+ * Duration in seconds (`0.18` `s`) after raising a shield during which incoming hits trigger a Perfect Block (`mechanics-v1.md §5`).
+ */
 export const PERFECT_BLOCK_WINDOW_SEC = 0.25;
 
+/**
+ * Type contract for `DamageLayerOptions` (damage layer options) in `damageSystem.ts`.
+ */
 export interface DamageLayerOptions {
   /** Positional accuracy armor bypass ratio (+0.40 on sweet-spot crit, -0.35 on sour-spot glance) */
   armorBypassRatio?: number;

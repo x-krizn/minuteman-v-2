@@ -114,7 +114,7 @@
 
 ---
 
-## 9. VERIFIED BASELINE (Updated 2026-11-02)
+## 9. VERIFIED BASELINE (Updated 2026-11-03)
 
 *DERIVED — re-check after major refactors.*
 
@@ -122,14 +122,15 @@
 |---|---|
 | `.ts` / `.tsx` files under `src/cartridges/orion` | 160 |
 | License header on every file | Yes (160 of 160) |
+| JSDoc blocks across `src/cartridges/orion` | 1,599 (1,095 / 1,095 exported symbols documented) |
 | Files with no JSDoc at all | 0 |
 | `// [ORION-ANCHOR: …]` anchors in code | 23 |
 | `any`, `@ts-ignore`, `@ts-expect-error`, `TODO`, `FIXME` | 0 |
 | Network calls (`fetch`, XHR, WebSocket, `http(s)://` in code) | 0 |
 | `addEventListener` / `removeEventListener` | 0 / 0 |
 | `setTimeout` / `clearTimeout` | Paired via tracked timer refs & unmount cleanup (`ui/OrionGameMenu.tsx`) |
-| `requestAnimationFrame` / `cancelAnimationFrame` | 3 / 3 (`ui/OrionHud.tsx`, `ui/satchel/SatchelCanvases.tsx`, `ui/satchel/AetherCosmosCanvas.tsx`) |
-| Files over 1,000 lines | 15 (largest: `database/progression/index.ts`, 3,630) |
+| `requestAnimationFrame` / `cancelAnimationFrame` | 4 / 4 (`ui/OrionHud.tsx`, `ui/satchel/SatchelCanvases.tsx`, `ui/satchel/AetherCosmosCanvas.tsx`) |
+| Files over 1,000 lines | 17 (largest: `database/progression/index.ts`, 3,661) |
 | Docs anchors missing from code | None (`0`) |
 | Code anchors missing from docs | None (`0`) |
 

@@ -5,6 +5,9 @@
 
 import { CanonicalHardwareItemDefinition } from '../chassis_hardware';
 
+/**
+ * Canonical database definition for `CANONICAL_REACTORS` (`PNSY Alchemic Turbine Core Mk.IV`, id `'reactor_pnsy_turbine_mk4'`, slot `'reactor'`) — Magitech alchemic turbine engine (+24 Load Cap, +12% Heat Venting, -4% Cooldowns / 8 WT, -3 Stability)..
+ */
 export const CANONICAL_REACTORS: CanonicalHardwareItemDefinition[] = [
   {
     id: 'reactor_pnsy_turbine_mk4',

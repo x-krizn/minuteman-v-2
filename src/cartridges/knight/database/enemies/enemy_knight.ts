@@ -7,6 +7,9 @@ import { EnemyWikiDefinition } from '../../types';
 import { solidAt } from '../../physics';
 import { COLS, TILE_SIZE } from '../../constants';
 
+/**
+ * Canonical database definition for `enemyKnightDef` (`Corrupted Knight`, id `'enemy_knight'`) — A fallen guardian automaton that mirrors the Proto Knight. Capable of raising its buckler to block incoming st....
+ */
 export const enemyKnightDef: EnemyWikiDefinition = {
   type: 'enemy_knight',
   name: 'Corrupted Knight',

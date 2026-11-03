@@ -5,6 +5,9 @@
 
 import { MapDefinition, RoomDefinition } from '../../../../../types';
 
+/**
+ * Canonical database definition for `mapBorderTownMarket` (`Outer Perimeter & Market District`, id `'map_border_town_market'`, coord `"4,1"`, scope `'local'`) — Outer Perimeter (spawn from M00 The Bog) and the Market District central hub where buildings flicker between i....
+ */
 export const mapBorderTownMarket: MapDefinition = {
   id: 'map_border_town_market',
   name: 'Outer Perimeter & Market District',
@@ -38,6 +41,9 @@ export const mapBorderTownMarket: MapDefinition = {
   ],
 };
 
+/**
+ * Canonical database definition for `room40BorderTownMarket` (`Outer Perimeter & Market District`, id `'room_4_0_border_town_market'`, coord `"4,0"`, scope `'local'`).
+ */
 export const room40BorderTownMarket: RoomDefinition = {
   id: 'room_4_0_border_town_market',
   scope: 'local',

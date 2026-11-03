@@ -69,6 +69,9 @@ import {
 
 let corrosionParticleTimer = 0;
 
+/**
+ * Executes `updateEnvironmentalHazards` (update environmental hazards) in `tutorialSystem.ts`. Mutates `state: OrionState`.
+ */
 export function updateEnvironmentalHazards(
   rooms: Record<string, string[]>,
   state: OrionState,
@@ -127,6 +130,9 @@ export function updateEnvironmentalHazards(
   }
 }
 
+/**
+ * Executes `awakenLadyOfTheLake` (awaken lady of the lake) in `tutorialSystem.ts`. Mutates `state: OrionState`.
+ */
 export function awakenLadyOfTheLake(state: OrionState, ctx?: OrionCombatContext): boolean {
   state.flags = state.flags || {};
   const existing = state.enemies.some((e) => e.type === 'lady_of_the_lake');
@@ -160,6 +166,9 @@ export function awakenLadyOfTheLake(state: OrionState, ctx?: OrionCombatContext)
   return true;
 }
 
+/**
+ * Executes `checkWorldInteractivePrompt` (check world interactive prompt) in `tutorialSystem.ts`.
+ */
 export function checkWorldInteractivePrompt(
   rooms: Record<string, string[]>,
   state: OrionState
@@ -361,6 +370,9 @@ const HEALTH_CONSUMABLE_IDS = new Set([
   'kyanite_flask',
 ]);
 
+/**
+ * Executes `performDirectWorldInteraction` (perform direct world interaction) in `tutorialSystem.ts`. Mutates `state: OrionState`.
+ */
 export function performDirectWorldInteraction(
   rooms: Record<string, string[]>,
   state: OrionState,
@@ -1104,6 +1116,9 @@ export function performDirectWorldInteraction(
   return false;
 }
 
+/**
+ * Executes `executeWorldInteraction` (execute world interaction) in `tutorialSystem.ts`. Mutates `state: OrionState`.
+ */
 export function executeWorldInteraction(
   rooms: Record<string, string[]>,
   state: OrionState,
@@ -1463,6 +1478,9 @@ export function executeWorldInteraction(
   return false;
 }
 
+/**
+ * Executes `executeContextMenuOption` (execute context menu option) in `tutorialSystem.ts`. Mutates `state: OrionState`.
+ */
 export function executeContextMenuOption(
   rooms: Record<string, string[]>,
   state: OrionState,
@@ -1674,9 +1692,12 @@ export function toggleTrainingSandboxRoom(
   state: OrionState
 ): boolean {
   if (!state) return false;
+  if (!rooms['-4,0'] && ORION_TUTORIAL_ROOMS['-4,0']) {
+    rooms['-4,0'] = ORION_TUTORIAL_ROOMS['-4,0'];
+  }
   if (state.room === '-4,0') {
     const saved = state.preTrainingReturnAnchor;
-    if (saved) {
+    if (saved && saved.room !== '-4,0') {
       state.room = saved.room;
       state.rx = saved.rx;
       state.ry = saved.ry;
@@ -1696,13 +1717,19 @@ export function toggleTrainingSandboxRoom(
       state.ry = 0;
       state.x = startPos.x;
       state.y = startPos.y;
+      state.preTrainingReturnAnchor = undefined;
     }
     state.z = 0;
     state.vz = 0;
     state.vx = 0;
     state.vy = 0;
+    state.camX = undefined;
+    state.camY = undefined;
+    state.camRoomId = undefined;
+    state.contextMenu = null;
     state.projectiles = [];
     state.pickups = [];
+    state.spawnGraceTimer = 3.0;
     syncRoomHierarchyState(state);
     syncStateGates(state);
     if (isChunkedExpanseRoom(state.room)) {
@@ -1737,11 +1764,16 @@ export function toggleTrainingSandboxRoom(
     state.vz = 0;
     state.vx = 0;
     state.vy = 0;
+    state.camX = undefined;
+    state.camY = undefined;
+    state.camRoomId = undefined;
+    state.contextMenu = null;
     state.projectiles = [];
     state.pickups = [];
     state.enemies = [];
     state.bypassProgressionGates = true;
     state.hasBoosterKit = true;
+    state.spawnGraceTimer = 3.0;
     syncRoomHierarchyState(state);
     syncStateGates(state);
     spawnRoomEnemies(rooms, state);

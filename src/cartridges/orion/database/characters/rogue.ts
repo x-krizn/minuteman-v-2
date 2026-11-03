@@ -5,6 +5,9 @@
 
 import { TraitLineWikiDefinition } from '../../types';
 
+/**
+ * Canonical database definition for `rogueTrait` (`Phantom Recon Kit`, id `'Rogue'`, load `'light'`) — Shadowcraft Recon Coreplate & VX Phantom Core Mk.III (Light Load) — low-emission stealth & high-mobility burst....
+ */
 export const rogueTrait: TraitLineWikiDefinition = {
   id: 'Rogue',
   name: 'Phantom Recon Kit',

@@ -5,6 +5,9 @@
 
 import { BiomeDefinition } from '../../../types';
 
+/**
+ * Canonical database definition for `cryptBiome` (`Forgotten Crypt`, id `'crypt'`) — Cold, subterranean stone labyrinth lined with silent tombs and restless echoes..
+ */
 export const cryptBiome: BiomeDefinition = {
   id: 'crypt',
   name: 'Forgotten Crypt',

@@ -5,6 +5,9 @@
 
 import { ProgressionNodeEntry } from '../../types';
 
+/**
+ * Canonical database definition for `airDashNode` (`Air Dash`, id `'air_dash'`, slot `'movement'`) — Propel forward horizontally while airborne following a double jump..
+ */
 export const airDashNode: ProgressionNodeEntry = {
   id: 'air_dash',
   name: 'Air Dash',

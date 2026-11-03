@@ -5,6 +5,9 @@
 
 import { ItemWikiDefinition } from '../../../types';
 
+/**
+ * Canonical database definition for `boosterKitItem` (`Basic Booster Kit`, id `'booster_kit'`, slot `'equipment'`) — 0 WT Passive Thruster Rig · Enables [B] Evasive Dash (0.18s Vector Burst, 1.4s CD, +8 Heat Draw)..
+ */
 export const boosterKitItem: ItemWikiDefinition = {
   id: 'booster_kit',
   name: 'Basic Booster Kit',

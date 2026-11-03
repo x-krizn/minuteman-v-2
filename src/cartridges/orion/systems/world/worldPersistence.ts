@@ -25,6 +25,9 @@ import { ORION_ROOM_METADATA, ROOM_REGISTRY } from './roomLoader';
 export { getCanonicalRoomPersistenceKey, isRoomCacheLooted, markRoomCacheLooted };
 
 // [ORION-ANCHOR: CONTEXTUAL-LOOT-TABLES]
+/**
+ * Exported const `ENEMY_EQUIPMENT_DROP_POOLS` (enemy equipment drop pools) in `worldPersistence.ts`.
+ */
 export const ENEMY_EQUIPMENT_DROP_POOLS: Record<
   string,
   { equipmentIds: string[]; baseChance: number }
@@ -155,6 +158,9 @@ export const ENEMY_EQUIPMENT_DROP_POOLS: Record<
   },
 };
 
+/**
+ * Type contract for `ContextualLootQuery` (contextual loot query) in `worldPersistence.ts`.
+ */
 export interface ContextualLootQuery {
   enemyType?: string;
   roomCoord?: string;
@@ -231,6 +237,9 @@ export function resolveContextualEquipmentDrop(
   return undefined;
 }
 
+/**
+ * Executes `resolveContextualGemPool` (resolve contextual gem pool) in `worldPersistence.ts`.
+ */
 export function resolveContextualGemPool(
   state: OrionState,
   enemyType?: string
@@ -263,6 +272,9 @@ export function resolveContextualGemPool(
   return ['moonstone', 'rubellite', 'hematite', 'spinel'];
 }
 
+/**
+ * Executes `evaluateCathedralDoorStatus` (evaluate cathedral door status) in `worldPersistence.ts`.
+ */
 export function evaluateCathedralDoorStatus(state: OrionState): {
   canOpen: boolean;
   reason: string;

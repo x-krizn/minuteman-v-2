@@ -228,6 +228,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
             CODEX
           </button>
           <button
+            data-menu-secondary="true"
             onClick={() => {
               enterTrainingSandboxRoom(state);
               onResume();

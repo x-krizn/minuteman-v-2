@@ -169,7 +169,7 @@ function serializeOrionSaveData(state: OrionState) {
 
 function applySerializedSaveDataToState(
   state: OrionState,
-  data: Record<string, any>
+  data: Partial<ReturnType<typeof serializeOrionSaveData>>
 ): void {
   state.pilotId = data.pilotId ?? state.pilotId;
   state.pilotName = data.pilotName ?? state.pilotName;
@@ -345,6 +345,9 @@ function applySerializedSaveDataToState(
   }
 }
 
+/**
+ * Executes `loadPilotRoster` (load pilot roster) in `playerSystem.ts`.
+ */
 export function loadPilotRoster(): OrionSavedPilotEntry[] {
   try {
     const raw = localStorage.getItem(ORION_PILOT_ROSTER_KEY);
@@ -381,6 +384,9 @@ export function loadPilotRoster(): OrionSavedPilotEntry[] {
   }
 }
 
+/**
+ * Executes `saveOrionGame` (save orion game) in `playerSystem.ts`. Mutates `state: OrionState`.
+ */
 export function saveOrionGame(state: OrionState): boolean {
   try {
     const saveData = serializeOrionSaveData(state);
@@ -414,6 +420,9 @@ export function saveOrionGame(state: OrionState): boolean {
   }
 }
 
+/**
+ * Executes `loadOrionGame` (load orion game) in `playerSystem.ts`.
+ */
 export function loadOrionGame(state: OrionState): boolean {
   try {
     const raw = localStorage.getItem(ORION_ACTIVE_SAVE_KEY);
@@ -434,6 +443,9 @@ export function loadOrionGame(state: OrionState): boolean {
   }
 }
 
+/**
+ * Executes `loadPilotFromRoster` (load pilot from roster) in `playerSystem.ts`.
+ */
 export function loadPilotFromRoster(state: OrionState, pilotId: string): boolean {
   try {
     const roster = loadPilotRoster();
@@ -456,6 +468,9 @@ export function loadPilotFromRoster(state: OrionState, pilotId: string): boolean
   }
 }
 
+/**
+ * Executes `deletePilotFromRoster` (delete pilot from roster) in `playerSystem.ts`.
+ */
 export function deletePilotFromRoster(pilotId: string): OrionSavedPilotEntry[] {
   try {
     const roster = loadPilotRoster().filter((r) => r.pilotId !== pilotId);
@@ -504,6 +519,9 @@ export function createNewPilotGame(
   notifyOrionStateChange();
 }
 
+/**
+ * Executes `createInitialOrionState` (create initial orion state) in `playerSystem.ts`.
+ */
 export function createInitialOrionState(
   traitLine: TraitLine = 'Warrior',
   pilotName: string = 'Pilot Vane'
@@ -699,6 +717,9 @@ export function createInitialOrionState(
 
 // ─── 2. CAPABILITY GATES, FLAGS & TRAIT LINE PROFILES ────────────────────────
 
+/**
+ * Executes `computeCapabilityGates` (compute capability gates) in `playerSystem.ts`.
+ */
 export function computeCapabilityGates(state: OrionState): OrionCapabilityGates {
   const bypass = Boolean(state.bypassProgressionGates);
   const lvl = bypass ? 20 : Math.max(1, state.level);
@@ -800,6 +821,9 @@ export function computeCapabilityGates(state: OrionState): OrionCapabilityGates 
   };
 }
 
+/**
+ * Executes `syncStateGates` (sync state gates) in `playerSystem.ts`. Mutates `state: OrionState`.
+ */
 export function syncStateGates(state: OrionState): OrionCapabilityGates {
   if (!state.pilotSkills) {
     state.pilotSkills = createInitialPilotSkills(state.traitLine);
@@ -968,6 +992,9 @@ export function syncStateGates(state: OrionState): OrionCapabilityGates {
   return gates;
 }
 
+/**
+ * Executes `setOrionFlag` (set orion flag) in `playerSystem.ts`. Mutates `state: OrionState`.
+ */
 export function setOrionFlag(
   state: OrionState,
   key: string,
@@ -981,6 +1008,9 @@ export function setOrionFlag(
   notifyOrionStateChange();
 }
 
+/**
+ * Executes `setTutorialStateActive` (set tutorial state active) in `playerSystem.ts`. Mutates `state: OrionState`.
+ */
 export function setTutorialStateActive(state: OrionState, active: boolean): void {
   state.tutorialActive = active;
   if (!active) {
@@ -991,6 +1021,9 @@ export function setTutorialStateActive(state: OrionState, active: boolean): void
   notifyOrionStateChange();
 }
 
+/**
+ * Executes `applyTraitLineProfile` (apply trait line profile) in `playerSystem.ts`. Mutates `state: OrionState`.
+ */
 export function applyTraitLineProfile(state: OrionState, traitLine: TraitLine): void {
   const profile = TRAIT_REGISTRY[traitLine];
   if (!profile) return;
@@ -1088,6 +1121,9 @@ export function applyTraitLineProfile(state: OrionState, traitLine: TraitLine): 
 
 // ─── 3. 2.5D ELEVATION & COLLISION PHYSICS ───────────────────────────────────
 
+/**
+ * Executes `isSolidAt` (is solid at) in `playerSystem.ts`.
+ */
 export function isSolidAt(
   rooms: Record<string, string[]>,
   state: OrionState,
@@ -1160,6 +1196,9 @@ export function isSolidAt(
   return z < edgeTile.blocksHeight * 12;
 }
 
+/**
+ * Executes `moveEntityX` (move entity x) in `playerSystem.ts`. Mutates `state: OrionState`.
+ */
 export function moveEntityX(
   rooms: Record<string, string[]>,
   state: OrionState,
@@ -1197,6 +1236,9 @@ export function moveEntityX(
   return targetX;
 }
 
+/**
+ * Executes `moveEntityY` (move entity y) in `playerSystem.ts`. Mutates `state: OrionState`.
+ */
 export function moveEntityY(
   rooms: Record<string, string[]>,
   state: OrionState,
@@ -1234,6 +1276,9 @@ export function moveEntityY(
   return targetY;
 }
 
+/**
+ * Executes `updateElevationPhysics` (update elevation physics) in `playerSystem.ts`. Mutates `state: OrionState`.
+ */
 export function updateElevationPhysics(
   rooms: Record<string, string[]>,
   state: OrionState,
@@ -1300,6 +1345,9 @@ export function updateElevationPhysics(
 
 // ─── 4. TUTORIAL ONBOARDING PROGRESSION (§5 LEVEL SEQUENCE 1–6) ──────────────
 
+/**
+ * Type contract for `TutorialStepId` (tutorial step id) in `playerSystem.ts`.
+ */
 export type TutorialStepId =
   | 'drop_pod_boot'
   | 'locate_fallen_scout'
@@ -1308,6 +1356,9 @@ export type TutorialStepId =
   | 'unlock_perimeter_gate'
   | 'tutorial_complete';
 
+/**
+ * Type contract for `TutorialStepDescriptor` (tutorial step descriptor) in `playerSystem.ts`.
+ */
 export interface TutorialStepDescriptor {
   id: TutorialStepId;
   title: string;
@@ -1315,6 +1366,9 @@ export interface TutorialStepDescriptor {
   targetLevel: number;
 }
 
+/**
+ * Canonical database definition for `TUTORIAL_STEP_DESCRIPTORS` (`LV 1 (ENTER BOG): SET 1 ACTION 1, BASIC DASH [B], BELT 1–2, TORSO`, id `'drop_pod_boot'`).
+ */
 export const TUTORIAL_STEP_DESCRIPTORS: Record<TutorialStepId, TutorialStepDescriptor> = {
   drop_pod_boot: {
     id: 'drop_pod_boot',
@@ -1354,6 +1408,9 @@ export const TUTORIAL_STEP_DESCRIPTORS: Record<TutorialStepId, TutorialStepDescr
   },
 };
 
+/**
+ * Executes `getTutorialPromptOverride` (get tutorial prompt override) in `playerSystem.ts`.
+ */
 export function getTutorialPromptOverride(
   state: OrionState,
   tileChar: string
@@ -1370,6 +1427,9 @@ export function getTutorialPromptOverride(
   return null;
 }
 
+/**
+ * Executes `updateTutorialSystem` (update tutorial system) in `playerSystem.ts`. Mutates `state: OrionState`.
+ */
 export function updateTutorialSystem(
   state: OrionState,
   _ctx: OrionCombatContext,

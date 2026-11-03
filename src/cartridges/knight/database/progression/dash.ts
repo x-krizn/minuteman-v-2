@@ -5,6 +5,9 @@
 
 import { ProgressionNodeEntry } from '../../types';
 
+/**
+ * Canonical database definition for `dashNode` (`Dash`, id `'dash'`, slot `'movement'`) — Quick ground dash granting brief evasion and rapid repositioning..
+ */
 export const dashNode: ProgressionNodeEntry = {
   id: 'dash',
   name: 'Dash',

@@ -5,6 +5,9 @@
 
 import { KnightState, TileDefinition } from '../../../types';
 
+/**
+ * Canonical database definition for `gateTile` (`Locked Iron Gate`, id `'gate'`, ASCII token `'L'`, slot `'interactive'`) — Heavy dungeon portcullis locked until unlocked with a key..
+ */
 export const gateTile: TileDefinition = {
   id: 'gate',
   symbol: 'L',

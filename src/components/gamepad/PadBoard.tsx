@@ -14,6 +14,9 @@ interface PadBoardProps {
   state: GamepadButtons;
 }
 
+/**
+ * Renders the lower handheld controller faceplate housing the `DPad`, `ActionButtons`, and `SystemButtons`.
+ */
 export const PadBoard: React.FC<PadBoardProps> = ({ scale, state }) => {
   const s = scale;
 

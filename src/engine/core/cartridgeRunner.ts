@@ -8,6 +8,9 @@ import { GameInput } from '../../types/input';
 import { loadCartridgeAssets } from './assetLoader';
 import { registry } from './registry';
 
+/**
+ * Manages the lifecycle (`init`, `update`, `render`, error recovery, and menu mode transitions) of the currently active `Cartridge`.
+ */
 export class CartridgeRunner {
   private activeCart: Cartridge | null = null;
   private isReady = false;
@@ -182,4 +185,7 @@ export class CartridgeRunner {
   }
 }
 
+/**
+ * Shared singleton instance of `CartridgeRunner` driving the active cartridge inside the handheld shell.
+ */
 export const cartridgeRunner = new CartridgeRunner();

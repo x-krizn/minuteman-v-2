@@ -5,6 +5,9 @@
 
 import { MapDefinition, RoomDefinition } from '../../../../../types';
 
+/**
+ * Canonical database definition for `mapCamelotWaygateDepths` (`Deep Dungeon & Camelot Interior Waygate`, id `'map_camelot_waygate_depths'`, coord `"6,-1"`, scope `'local'`) — Deep Dungeon (OD-BT-01) and Camelot Interior Waygate threshold. Currently UNDEFINED in zone docs and sealed in....
+ */
 export const mapCamelotWaygateDepths: MapDefinition = {
   id: 'map_camelot_waygate_depths',
   name: 'Deep Dungeon & Camelot Interior Waygate',
@@ -49,6 +52,9 @@ export const mapCamelotWaygateDepths: MapDefinition = {
   ],
 };
 
+/**
+ * Canonical database definition for `room60WaygateSanctum` (`Deep Dungeon & Camelot Interior (Sealed)`, id `'room_6_0_waygate_sanctum'`, coord `"6,0"`, scope `'local'`).
+ */
 export const room60WaygateSanctum: RoomDefinition = {
   id: 'room_6_0_waygate_sanctum',
   scope: 'local',

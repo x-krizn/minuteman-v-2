@@ -79,6 +79,9 @@ export {
 };
 export type { ChunkFogMetrics, UnifiedBogRoomPlacement };
 
+/**
+ * Type contract for `ChunkEnemySpawnSpec` (chunk enemy spawn spec) in `chunkStreamingSystem.ts`.
+ */
 export interface ChunkEnemySpawnSpec {
   type: string;
   localTileX: number;
@@ -89,6 +92,9 @@ export interface ChunkEnemySpawnSpec {
   isDungeonGuardian?: boolean;
 }
 
+/**
+ * Type contract for `ChunkBlueprint` (chunk blueprint) in `chunkStreamingSystem.ts`.
+ */
 export interface ChunkBlueprint {
   title: string;
   isLandmark: boolean;
@@ -336,6 +342,9 @@ function buildSetPathCorridorChunk10x9(
 
 // ─── 1. OFF-PATH WILDERNESS LANDMARK CHUNKS (10×9 TILES EACH) ────────────────
 
+/**
+ * Canonical database definition for `AUTHORED_LANDMARK_CHUNKS` (`Reliquary Mire Wurm`, id `'bog_wurm'`).
+ */
 export const AUTHORED_LANDMARK_CHUNKS: Record<string, ChunkBlueprint> = {
   // Drowned Reliquary Shrine at Chunk (2, 3) (Off-Path Landmark)
   '2,3': {
@@ -606,6 +615,9 @@ function finalizeChunkGridBorders(
   return matrix.map((r) => r.join(''));
 }
 
+/**
+ * Executes `resolveChunkBlueprint` (resolve chunk blueprint) in `chunkStreamingSystem.ts`.
+ */
 export function resolveChunkBlueprint(
   seed: number,
   cx: number,
@@ -827,6 +839,9 @@ export function resolveChunkBlueprint(
   };
 }
 
+/**
+ * Executes `getActiveChunkLandmarkLabel` (get active chunk landmark label) in `chunkStreamingSystem.ts`.
+ */
 export function getActiveChunkLandmarkLabel(state: OrionState): string | null {
   if (!isChunkedExpanseRoom(state.room)) return null;
   const { cx, cy } = getChunkCoordsFromPx(state.x, state.y);

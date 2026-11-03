@@ -30,6 +30,9 @@ function isPoeInFirstCampfireZone(state: OrionState, px: number, py: number): bo
   return false;
 }
 
+/**
+ * Canonical database definition for `bogPoeEntity` (`Poe (Lantern Spirit)`, id `'bog_poe'`) — A small floating lantern-spirit that manifests where the æther is thick..
+ */
 export const bogPoeEntity: EnemyWikiDefinition = {
   type: 'bog_poe',
   name: 'Poe (Lantern Spirit)',

@@ -5,6 +5,9 @@
 
 import { SkillDef } from '../../types';
 
+/**
+ * Canonical database definition for `fireballSkill` (`FIREBOLT`, id `'fireball'`) — Launch piercing magical fire bolt..
+ */
 export const fireballSkill: SkillDef = {
   id: 'fireball',
   name: 'FIREBOLT',

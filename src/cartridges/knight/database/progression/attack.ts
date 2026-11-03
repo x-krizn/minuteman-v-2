@@ -5,6 +5,9 @@
 
 import { ProgressionNodeEntry } from '../../types';
 
+/**
+ * Canonical database definition for `attackNode` (`Basic Attack`, id `'attack'`, slot `'offense'`) — Standard melee strike with equipped weapon..
+ */
 export const attackNode: ProgressionNodeEntry = {
   id: 'attack',
   name: 'Basic Attack',

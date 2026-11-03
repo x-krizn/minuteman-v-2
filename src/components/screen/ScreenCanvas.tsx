@@ -13,6 +13,9 @@ interface ScreenCanvasProps {
   height?: number;
 }
 
+/**
+ * Mounts and integer-scales the `160x144` `px` HTML5 `<canvas>` surface for active cartridge rendering.
+ */
 export const ScreenCanvas: React.FC<ScreenCanvasProps> = ({
   hidden,
   width = 160,

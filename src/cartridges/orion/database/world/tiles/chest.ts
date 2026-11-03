@@ -6,8 +6,11 @@
 import { TILE_SIZE } from '../../../constants';
 import { drawBase64Sprite } from '../../../systems/render/spriteAtlasCache';
 import { TileDefinition } from '../../../types';
-import { DOODADS_01_BASE64, DOODAD_CELLS, isRoomCacheLooted } from './doodads_atlas';
+import { DOODAD_CELLS, DOODADS_01_BASE64, isRoomCacheLooted } from './doodads_atlas';
 
+/**
+ * Canonical database definition for `chestTile` (`Treasure Chest`, id `'chest'`, ASCII token `'V'`).
+ */
 export const chestTile: TileDefinition = {
   id: 'chest',
   char: 'V',

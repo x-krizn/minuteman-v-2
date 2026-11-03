@@ -3,6 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * Web Audio API procedural synthesizer generating retro chiptune SFX (`jump`, `hit`, `slash`, `coin`, `menu`, `heal`) with zero external audio assets.
+ */
 export class SoundSystem {
   private static instance: SoundSystem;
   private ctx: AudioContext | null = null;
@@ -119,6 +122,10 @@ export class SoundSystem {
     this.playTone(160, 90, 0.1, 'square', 0.07);
   }
 
+  public playShieldBlock(): void {
+    this.playBlock();
+  }
+
   public playCharge(): void {
     this.playTone(220, 660, 0.2, 'sine', 0.04);
   }
@@ -152,4 +159,7 @@ export class SoundSystem {
   }
 }
 
+/**
+ * Shared singleton instance of `SoundSystem`.
+ */
 export const soundSystem = SoundSystem.getInstance();

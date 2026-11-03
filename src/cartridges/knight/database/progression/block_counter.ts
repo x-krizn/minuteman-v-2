@@ -5,6 +5,9 @@
 
 import { ProgressionNodeEntry } from '../../types';
 
+/**
+ * Canonical database definition for `blockCounterNode` (`Block Counter`, id `'block_counter'`, slot `'defense'`) — Riposte immediately after soaking an impact with your guard..
+ */
 export const blockCounterNode: ProgressionNodeEntry = {
   id: 'block_counter',
   name: 'Block Counter',

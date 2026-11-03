@@ -38,6 +38,9 @@ const DEFAULT_TILE_TYPES: Record<string, string> = {
 
 // ─── GLOBAL BIOMES ───────────────────────────────────────────────────────────
 
+/**
+ * Canonical database definition for `globalAetherCavernsBiome` (`Ætheric Drift Caverns (Global)`, id `'global_aether_caverns'`, scope `'global'`) — Crystalline inter-world drift caverns saturated with luminous æther currents and high-corrosion pools..
+ */
 export const globalAetherCavernsBiome: BiomeDefinition = {
   id: 'global_aether_caverns',
   name: 'Ætheric Drift Caverns (Global)',
@@ -70,6 +73,9 @@ export const globalAetherCavernsBiome: BiomeDefinition = {
   lightColor: '#22d3ee',
 };
 
+/**
+ * Canonical database definition for `globalDesyncRuinsBiome` (`Desynchronized Stone Ruins (Global)`, id `'global_desync_ruins'`, scope `'global'`) — Procedural ruined masonry biome with rapid temporal wall phasing and ancient stone flagstones..
+ */
 export const globalDesyncRuinsBiome: BiomeDefinition = {
   id: 'global_desync_ruins',
   name: 'Desynchronized Stone Ruins (Global)',
@@ -102,6 +108,9 @@ export const globalDesyncRuinsBiome: BiomeDefinition = {
   lightColor: '#cbd5e1',
 };
 
+/**
+ * Canonical database definition for `globalToxicWetlandsBiome` (`Toxic MarshWilds (Global)`, id `'global_toxic_wetlands'`, scope `'global'`) — Procedural marshland biome supplying corrosive bog water, mud drag rules, and overgrown pylon assets to global....
+ */
 export const globalToxicWetlandsBiome: BiomeDefinition = {
   id: 'global_toxic_wetlands',
   name: 'Toxic MarshWilds (Global)',
@@ -136,6 +145,9 @@ export const globalToxicWetlandsBiome: BiomeDefinition = {
 
 // ─── GLOBAL REGIONS & AREAS ──────────────────────────────────────────────────
 
+/**
+ * Canonical database definition for `globalAetherSeaExpanseRegion` (`The Æther Drift & Shattered Wilds (Global)`, id `'global_aether_sea_expanse'`, scope `'global'`) — Global procedural macro-region spanning the drifting wildlands and calcified mineral bridges between the Shatt....
+ */
 export const globalAetherSeaExpanseRegion: RegionDefinition = {
   id: 'global_aether_sea_expanse',
   name: 'The Æther Drift & Shattered Wilds (Global)',
@@ -158,6 +170,9 @@ export const globalAetherSeaExpanseRegion: RegionDefinition = {
   ],
 };
 
+/**
+ * Canonical database definition for `globalAetherDriftCorridorArea` (`Æther Drift Corridor (Global)`, id `'global_aether_drift_corridor_area'`, scope `'global'`) — Global procedural conduit area linking waygate sanctums and adjacent worlds via crystalline root-bridges..
+ */
 export const globalAetherDriftCorridorArea: AreaWikiDefinition = {
   id: 'global_aether_drift_corridor_area',
   name: 'Æther Drift Corridor (Global)',
@@ -178,6 +193,9 @@ export const globalAetherDriftCorridorArea: AreaWikiDefinition = {
   exitAnchor: { room: '7,1', x: 80, y: 72 },
 };
 
+/**
+ * Canonical database definition for `globalShatteredWildsArea` (`Shattered Wilds (Global)`, id `'global_shattered_wilds_area'`, coord `"6,-1"`, scope `'global'`) — Global procedural wildlands area assembled from global wetland and desynchronized ruins maps to bridge bespoke....
+ */
 export const globalShatteredWildsArea: AreaWikiDefinition = {
   id: 'global_shattered_wilds_area',
   name: 'Shattered Wilds (Global)',
@@ -200,6 +218,9 @@ export const globalShatteredWildsArea: AreaWikiDefinition = {
 
 // ─── GLOBAL MAPS & ROOM TEMPLATES ────────────────────────────────────────────
 
+/**
+ * Canonical database definition for `globalAetherDriftBridgeMap` (`Procedural Æther Drift Span`, id `'global_aether_drift_bridge_map'`, coord `"6,-1"`, scope `'global'`) — Global procedural conduit map linking subterranean waygate sanctums and inter-world frontiers on foot..
+ */
 export const globalAetherDriftBridgeMap: MapDefinition = {
   id: 'global_aether_drift_bridge_map',
   name: 'Procedural Æther Drift Span',
@@ -229,6 +250,9 @@ export const globalAetherDriftBridgeMap: MapDefinition = {
   connectedMapIds: ['map_camelot_waygate_depths', 'map_tyrranus_gatehead'],
 };
 
+/**
+ * Canonical database definition for `globalDesyncOutskirtsMap` (`Procedural Desync Outskirts`, id `'global_desync_outskirts_map'`, coord `"4,1"`, scope `'global'`) — Global procedural ruins map assembled from phasing stone arcade and colonnade rooms around Border Town..
+ */
 export const globalDesyncOutskirtsMap: MapDefinition = {
   id: 'global_desync_outskirts_map',
   name: 'Procedural Desync Outskirts',
@@ -269,6 +293,9 @@ export const globalDesyncOutskirtsMap: MapDefinition = {
   ],
 };
 
+/**
+ * Canonical database definition for `globalWetlandExpanseMap` (`Procedural Wetland Expanse`, id `'global_wetland_expanse_map'`, coord `"0,1"`, scope `'global'`) — Global procedural marshland map assembled from reusable wetland and sinkhole rooms to bridge bog sectors on fo....
+ */
 export const globalWetlandExpanseMap: MapDefinition = {
   id: 'global_wetland_expanse_map',
   name: 'Procedural Wetland Expanse',
@@ -305,6 +332,9 @@ export const globalWetlandExpanseMap: MapDefinition = {
   connectedMapIds: ['map_bog_drop_zone', 'map_deep_bog_maze', 'map_orc_siege_camp'],
 };
 
+/**
+ * Canonical database definition for `globalAetherConduitHallRoom` (`Ætheric Tuning Conduit`, id `'global_aether_conduit_hall'`, coord `"global:aether_conduit_hall"`, scope `'global'`, safety tier `'hazard'`).
+ */
 export const globalAetherConduitHallRoom: RoomDefinition = {
   id: 'global_aether_conduit_hall',
   scope: 'global',
@@ -339,6 +369,9 @@ export const globalAetherConduitHallRoom: RoomDefinition = {
   ],
 };
 
+/**
+ * Canonical database definition for `globalMarshCrossingRoom` (`Wetland Crossing`, id `'global_marsh_crossing'`, coord `"global:marsh_crossing"`, scope `'global'`, safety tier `'hazard'`).
+ */
 export const globalMarshCrossingRoom: RoomDefinition = {
   id: 'global_marsh_crossing',
   scope: 'global',
@@ -373,6 +406,9 @@ export const globalMarshCrossingRoom: RoomDefinition = {
   ],
 };
 
+/**
+ * Canonical database definition for `globalOrcOutpostCorridorRoom` (`Siege Trench Approach`, id `'global_orc_outpost_corridor'`, coord `"global:orc_outpost_corridor"`, scope `'global'`, safety tier `'hazard'`).
+ */
 export const globalOrcOutpostCorridorRoom: RoomDefinition = {
   id: 'global_orc_outpost_corridor',
   scope: 'global',
@@ -409,6 +445,9 @@ export const globalOrcOutpostCorridorRoom: RoomDefinition = {
   ],
 };
 
+/**
+ * Canonical database definition for `globalPillarSanctuaryRoom` (`Collapsed Colonnade`, id `'global_pillar_sanctuary'`, coord `"global:pillar_sanctuary"`, scope `'global'`, safety tier `'trail'`).
+ */
 export const globalPillarSanctuaryRoom: RoomDefinition = {
   id: 'global_pillar_sanctuary',
   scope: 'global',
@@ -443,6 +482,9 @@ export const globalPillarSanctuaryRoom: RoomDefinition = {
   ],
 };
 
+/**
+ * Canonical database definition for `globalRuinedArcadeRoom` (`Desynchronized Arcade`, id `'global_ruined_arcade'`, coord `"global:ruined_arcade"`, scope `'global'`, safety tier `'hazard'`).
+ */
 export const globalRuinedArcadeRoom: RoomDefinition = {
   id: 'global_ruined_arcade',
   scope: 'global',
@@ -477,6 +519,9 @@ export const globalRuinedArcadeRoom: RoomDefinition = {
   ],
 };
 
+/**
+ * Canonical database definition for `globalSinkholeBridgeRoom` (`Abyssal Causeway`, id `'global_sinkhole_bridge'`, coord `"global:sinkhole_bridge"`, scope `'global'`, safety tier `'abyss'`).
+ */
 export const globalSinkholeBridgeRoom: RoomDefinition = {
   id: 'global_sinkhole_bridge',
   scope: 'global',

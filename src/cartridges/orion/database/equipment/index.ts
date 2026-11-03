@@ -61,6 +61,9 @@ for (const [path, mod] of Object.entries(modules)) {
   }
 }
 
+/**
+ * Exported const `ASSIGNABLE_ACTION_CATALOG` (assignable action catalog) in `index.ts`.
+ */
 export const ASSIGNABLE_ACTION_CATALOG: OrionActionTemplate[] = discoveredActions.sort(
   (a, b) => (a.sortOrder ?? 99) - (b.sortOrder ?? 99)
 );

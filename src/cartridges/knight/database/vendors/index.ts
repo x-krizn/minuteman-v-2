@@ -5,6 +5,9 @@
 
 import { getMerchantCatalog, VendorItemEntry } from './wandering_merchant';
 
+/**
+ * Exported const `VENDOR_ITEMS` (vendor items) in `index.ts`.
+ */
 export const VENDOR_ITEMS: VendorItemEntry[] = getMerchantCatalog();
 
 export * from './wandering_merchant';

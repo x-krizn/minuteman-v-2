@@ -6,6 +6,9 @@
 import { TILE_SIZE } from '../../../constants';
 import { TileDefinition } from '../../../types';
 
+/**
+ * Canonical database definition for `sinkholeTile` (`Abyssal Sinkhole`, id `'chasm'`, ASCII token `'_'`).
+ */
 export const sinkholeTile: TileDefinition = {
   id: 'chasm',
   char: '_',

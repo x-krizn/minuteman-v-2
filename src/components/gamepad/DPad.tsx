@@ -18,6 +18,9 @@ interface DPadProps {
   state: GamepadButtons;
 }
 
+/**
+ * Renders the 8-way directional cross D-Pad with touch and pointer vector tracking for the virtual controller.
+ */
 export const DPad: React.FC<DPadProps> = ({ scale, state }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const activePointerId = useRef<number | null>(null);

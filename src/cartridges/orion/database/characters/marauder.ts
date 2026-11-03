@@ -5,6 +5,9 @@
 
 import { TraitLineWikiDefinition } from '../../types';
 
+/**
+ * Canonical database definition for `marauderTrait` (`Fortress Siege Kit`, id `'Marauder'`, load `'heavy'`) — Fire & Ice Fortress Coreplate & RAD Battleheart Reactor Mk.V (Heavy Load) — heavy ordnance & hardened armor ki....
+ */
 export const marauderTrait: TraitLineWikiDefinition = {
   id: 'Marauder',
   name: 'Fortress Siege Kit',

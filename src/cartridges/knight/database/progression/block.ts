@@ -5,6 +5,9 @@
 
 import { ProgressionNodeEntry } from '../../types';
 
+/**
+ * Canonical database definition for `blockNode` (`Block`, id `'block'`, slot `'defense'`) — Raise weapon or shield to mitigate incoming physical trauma..
+ */
 export const blockNode: ProgressionNodeEntry = {
   id: 'block',
   name: 'Block',

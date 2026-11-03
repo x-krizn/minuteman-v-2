@@ -5,6 +5,9 @@
 
 import { MapDefinition, RoomDefinition } from '../../../../../types';
 
+/**
+ * Canonical database definition for `mapBogDropZone` (`Mire Awakening Trail, First Campfire & Poe Branch`, id `'map_bog_drop_zone'`, coord `"0,1"`, scope `'local'`) — Multi-screen opening trail of M00 The Bog: Mire Awakening Hollow (-3,0) -> 2-part Maze of Downed Trees (-2,0 &....
+ */
 export const mapBogDropZone: MapDefinition = {
   id: 'map_bog_drop_zone',
   name: 'Mire Awakening Trail, First Campfire & Poe Branch',
@@ -43,6 +46,9 @@ export const mapBogDropZone: MapDefinition = {
   ],
 };
 
+/**
+ * Canonical database definition for `roomCheatPodBay` (`Training Room (Sandbox Bay)`, id `'room_neg4_0_cheat_pod_bay'`, coord `"-4,0"`, scope `'local'`, safety tier `'sanctuary'`).
+ */
 export const roomCheatPodBay: RoomDefinition = {
   id: 'room_neg4_0_cheat_pod_bay',
   scope: 'local',
@@ -86,6 +92,9 @@ export const roomCheatPodBay: RoomDefinition = {
   },
 };
 
+/**
+ * Canonical database definition for `roomDropPodCrater` (`Mire Awakening Hollow`, id `'room_neg3_0_drop_pod_crater'`, coord `"-3,0"`, scope `'local'`, safety tier `'sanctuary'`).
+ */
 export const roomDropPodCrater: RoomDefinition = {
   id: 'room_neg3_0_drop_pod_crater',
   scope: 'local',
@@ -127,6 +136,9 @@ export const roomDropPodCrater: RoomDefinition = {
   ],
 };
 
+/**
+ * Canonical database definition for `roomDownedTreesWest` (`Downed Trees West`, id `'room_neg2_0_downed_trees_west'`, coord `"-2,0"`, scope `'local'`, safety tier `'trail'`).
+ */
 export const roomDownedTreesWest: RoomDefinition = {
   id: 'room_neg2_0_downed_trees_west',
   scope: 'local',
@@ -172,6 +184,9 @@ export const roomDownedTreesWest: RoomDefinition = {
   },
 };
 
+/**
+ * Canonical database definition for `roomDownedTreesEast` (`Downed Trees East`, id `'room_neg1_0_downed_trees_east'`, coord `"-1,0"`, scope `'local'`, safety tier `'trail'`).
+ */
 export const roomDownedTreesEast: RoomDefinition = {
   id: 'room_neg1_0_downed_trees_east',
   scope: 'local',
@@ -207,6 +222,9 @@ export const roomDownedTreesEast: RoomDefinition = {
   ],
 };
 
+/**
+ * Canonical database definition for `room00DropPodCrater` (`Bog Outskirts Campfire`, id `'room_0_0_first_campfire'`, coord `"0,0"`, scope `'local'`, safety tier `'sanctuary'`).
+ */
 export const room00DropPodCrater: RoomDefinition = {
   id: 'room_0_0_first_campfire',
   scope: 'local',
@@ -253,6 +271,9 @@ export const room00DropPodCrater: RoomDefinition = {
   },
 };
 
+/**
+ * Canonical database definition for `room0Neg1RuinBranch` (`Overgrown Ruin Approach`, id `'room_0_neg1_ruin_branch'`, coord `"0,-1"`, scope `'local'`, safety tier `'hazard'`).
+ */
 export const room0Neg1RuinBranch: RoomDefinition = {
   id: 'room_0_neg1_ruin_branch',
   scope: 'local',
@@ -289,6 +310,9 @@ export const room0Neg1RuinBranch: RoomDefinition = {
   ],
 };
 
+/**
+ * Canonical database definition for `room0Neg2PoeLanternSanctuary` (`Poe Lantern Clearing`, id `'room_0_neg2_poe_lantern_sanctuary'`, coord `"0,-2"`, scope `'local'`, safety tier `'sanctuary'`).
+ */
 export const room0Neg2PoeLanternSanctuary: RoomDefinition = {
   id: 'room_0_neg2_poe_lantern_sanctuary',
   scope: 'local',
@@ -335,6 +359,9 @@ export const room0Neg2PoeLanternSanctuary: RoomDefinition = {
   },
 };
 
+/**
+ * Canonical database definition for `room10SunkenPylonTrail` (`Temple Ruins & Bedivere's Corpse`, id `'room_1_0_sunken_pylon_trail'`, coord `"1,0"`, scope `'local'`, safety tier `'hazard'`).
+ */
 export const room10SunkenPylonTrail: RoomDefinition = {
   id: 'room_1_0_sunken_pylon_trail',
   scope: 'local',

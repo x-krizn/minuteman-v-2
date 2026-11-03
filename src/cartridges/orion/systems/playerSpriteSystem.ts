@@ -23,6 +23,9 @@ import {
   getOutlinedSpriteCanvas,
 } from './render/spriteAtlasCache';
 
+/**
+ * Type contract for `ResolvedPlayerSpriteParts` (resolved player sprite parts) in `playerSpriteSystem.ts`.
+ */
 export interface ResolvedPlayerSpriteParts {
   /** Optional set index (0..11 for baseline sets, undefined for standalone pieces without a full set) */
   framePlatingSetIndex?: number;
@@ -153,6 +156,9 @@ export function resolvePlayerSpriteParts(state: OrionState): ResolvedPlayerSprit
 // - Frame 4 (0-based Col 3): Active Boost surge ('boost'); returns directly to Frame 3 (Col 2) when boost ends
 // - Frames 3 -> 2 -> 1 (Cols 2 -> 1 -> 0): Weight-scaled Wind-Down recovery ('winddown') when movement stops
 
+/**
+ * Type contract for `PlayerWeightRecoveryProfile` (player weight recovery profile) in `playerSpriteSystem.ts`.
+ */
 export interface PlayerWeightRecoveryProfile {
   /** 0 = Feather/Light, 1 = Medium, 2 = Heavy, 3 = Superheavy, 4 = Overloaded */
   weightTier: 0 | 1 | 2 | 3 | 4;
@@ -417,6 +423,9 @@ const decodedBase64ImageCache = new Map<string, HTMLImageElement>();
 const bakedPartStripCache = new Map<string, HTMLCanvasElement>();
 const spriteLoadListeners = new Set<() => void>();
 
+/**
+ * Executes `subscribeToMechSpriteLoad` (subscribe to mech sprite load) in `playerSpriteSystem.ts`.
+ */
 export function subscribeToMechSpriteLoad(listener: () => void): () => void {
   spriteLoadListeners.add(listener);
   return () => {
@@ -841,6 +850,9 @@ function resolvePartLayerSlice(
   };
 }
 
+/**
+ * Type contract for `DrawCompositePlayerOptions` (draw composite player options) in `playerSpriteSystem.ts`.
+ */
 export interface DrawCompositePlayerOptions {
   dir?: OrionDir;
   /** Explicit 0-based frame column override (`0` = Frame 1 Idle, `1` = Frame 2, `2` = Frame 3 Glide, `3` = Frame 4 Boost) */

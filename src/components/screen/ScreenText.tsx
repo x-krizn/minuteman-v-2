@@ -12,6 +12,9 @@ interface ScreenTextProps {
   onLineClick?: (index: number) => void;
 }
 
+/**
+ * Renders the monochrome retro shell text grid used by the system boot menu and cartridge selector.
+ */
 export const ScreenText: React.FC<ScreenTextProps> = ({
   title,
   lines,

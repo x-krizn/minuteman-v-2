@@ -26,8 +26,14 @@ for (const [path, mod] of Object.entries(roomModules)) {
   }
 }
 
+/**
+ * Exported const `RECYCLED_ROOMS` (recycled rooms) in `index.ts`.
+ */
 export const RECYCLED_ROOMS = recycledRooms;
 
+/**
+ * Executes `getRandomRecycledRoom` (get random recycled room) in `index.ts`.
+ */
 export function getRandomRecycledRoom(): RoomDefinition | undefined {
   if (!recycledRooms.length) return undefined;
   return recycledRooms[Math.floor(Math.random() * recycledRooms.length)];

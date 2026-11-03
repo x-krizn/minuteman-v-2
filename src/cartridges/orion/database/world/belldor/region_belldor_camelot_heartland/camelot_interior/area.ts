@@ -5,6 +5,9 @@
 
 import { AreaWikiDefinition } from '../../../../../types';
 
+/**
+ * Canonical database definition for `camelotInteriorArea` (`CAMELOT INTERIOR`, id `'camelot_interior'`, scope `'local'`) — Next major zone of Belldor accessed via the Camelot Waygate beneath the Deep Dungeon (OD-BT-01). Currently UND....
+ */
 export const camelotInteriorArea: AreaWikiDefinition = {
   id: 'camelot_interior',
   name: 'CAMELOT INTERIOR',

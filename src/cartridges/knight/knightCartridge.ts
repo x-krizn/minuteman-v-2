@@ -37,7 +37,7 @@ import {
   TILES_PNG,
 } from './constants';
 import { updateEnemies } from './enemies';
-import { TUTORIAL_GREEN, TUTORIAL_ROOMS, buildFloor } from './database/world';
+import { buildFloor, TUTORIAL_GREEN, TUTORIAL_ROOMS } from './database/world';
 import { moveX, moveY } from './physics';
 import { updatePickups } from './pickups';
 import { drawKnightGame } from './renderer';
@@ -56,6 +56,9 @@ import { getEnemyDefinition } from './database/enemies';
 import { SKILL_REGISTRY } from './database/skills';
 import { protoKnightCharacter } from './database/characters';
 
+/**
+ * Instantiates the Knight cartridge (`160x144` `px` 2D action platformer) and binds its frame loop and React overlay.
+ */
 export function createKnightCartridge(): Cartridge {
   const rooms: Record<string, string[]> = {};
   const greenRooms: Record<string, number> = {};

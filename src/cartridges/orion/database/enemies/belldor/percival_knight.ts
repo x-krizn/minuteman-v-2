@@ -41,6 +41,9 @@ function handleGrailKnightDefeat(
   notifyOrionStateChange();
 }
 
+/**
+ * Canonical database definition for `percivalKnightEnemy` (`Sir Percival (Grail Knight)`, id `'percival_knight'`) — A defensive Guardian anchor with a directional shield wall and closing charge..
+ */
 export const percivalKnightEnemy: EnemyWikiDefinition = {
   type: 'percival_knight',
   name: 'Sir Percival (Grail Knight)',

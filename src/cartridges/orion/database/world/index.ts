@@ -5,8 +5,8 @@
 
 import { registerBase64Atlas } from '../../systems/render/spriteAtlasCache';
 import {
-  BasicFourTilesInput,
   bakeBiomeClusterTileset,
+  BasicFourTilesInput,
 } from '../../systems/render/worldRenderer';
 import {
   AreaWikiDefinition,
@@ -39,30 +39,90 @@ import {
   resolveEnemyTypeForChar,
 } from '../enemies';
 
+/**
+ * Exported const `GLOBAL_REGION_REGISTRY` (global region registry) in `index.ts`.
+ */
 export const GLOBAL_REGION_REGISTRY: Record<string, RegionDefinition> = {};
+/**
+ * Exported const `LOCAL_REGION_REGISTRY` (local region registry) in `index.ts`.
+ */
 export const LOCAL_REGION_REGISTRY: Record<string, RegionDefinition> = {};
+/**
+ * Exported const `REGION_REGISTRY` (region registry) in `index.ts`.
+ */
 export const REGION_REGISTRY: Record<string, RegionDefinition> = {};
+/**
+ * Exported const `WAYGATE_REGISTRY` (waygate registry) in `index.ts`.
+ */
 export const WAYGATE_REGISTRY: Record<string, WaygateNode> = {};
 
+/**
+ * Exported const `GLOBAL_AREA_REGISTRY` (global area registry) in `index.ts`.
+ */
 export const GLOBAL_AREA_REGISTRY: Record<string, AreaWikiDefinition> = {};
+/**
+ * Exported const `LOCAL_AREA_REGISTRY` (local area registry) in `index.ts`.
+ */
 export const LOCAL_AREA_REGISTRY: Record<string, AreaWikiDefinition> = {};
+/**
+ * Exported const `AREA_REGISTRY` (area registry) in `index.ts`.
+ */
 export const AREA_REGISTRY: Record<string, AreaWikiDefinition> = {};
+/**
+ * Exported const `WAYSTATION_REGISTRY` (waystation registry) in `index.ts`.
+ */
 export const WAYSTATION_REGISTRY: Record<string, WaystationNode> = {};
 
+/**
+ * Exported const `GLOBAL_MAP_REGISTRY` (global map registry) in `index.ts`.
+ */
 export const GLOBAL_MAP_REGISTRY: Record<string, MapDefinition> = {};
+/**
+ * Exported const `LOCAL_MAP_REGISTRY` (local map registry) in `index.ts`.
+ */
 export const LOCAL_MAP_REGISTRY: Record<string, MapDefinition> = {};
+/**
+ * Exported const `MAP_REGISTRY` (map registry) in `index.ts`.
+ */
 export const MAP_REGISTRY: Record<string, MapDefinition> = {};
 
+/**
+ * Exported const `GLOBAL_ROOM_REGISTRY` (global room registry) in `index.ts`.
+ */
 export const GLOBAL_ROOM_REGISTRY: Record<string, RoomDefinition> = {};
+/**
+ * Exported const `LOCAL_ROOM_REGISTRY` (local room registry) in `index.ts`.
+ */
 export const LOCAL_ROOM_REGISTRY: Record<string, RoomDefinition> = {};
+/**
+ * Exported const `LOCAL_ROOM_BY_ID_REGISTRY` (local room by id registry) in `index.ts`.
+ */
 export const LOCAL_ROOM_BY_ID_REGISTRY: Record<string, RoomDefinition> = {};
 
+/**
+ * Exported const `GLOBAL_BIOME_REGISTRY` (global biome registry) in `index.ts`.
+ */
 export const GLOBAL_BIOME_REGISTRY: Record<string, BiomeDefinition> = {};
+/**
+ * Exported const `LOCAL_BIOME_REGISTRY` (local biome registry) in `index.ts`.
+ */
 export const LOCAL_BIOME_REGISTRY: Record<string, BiomeDefinition> = {};
+/**
+ * Exported const `BIOME_REGISTRY` (biome registry) in `index.ts`.
+ */
 export const BIOME_REGISTRY: Record<string, BiomeDefinition> = {};
 
+/**
+ * Exported const `TILE_REGISTRY` (tile registry) in `index.ts`.
+ */
 export const TILE_REGISTRY: Record<string, TileDefinition> = {};
+/**
+ * Exported const `TILE_BY_ID_REGISTRY` (tile by id registry) in `index.ts`.
+ */
 export const TILE_BY_ID_REGISTRY: Record<string, TileDefinition> = {};
+/**
+ * Exported const `TILE_CHAR_COLLISIONS` (tile char collisions) in `index.ts`.
+ */
 export const TILE_CHAR_COLLISIONS: string[] = [];
 
 // [ORION-ANCHOR: WORLD-GLOB-REGISTRY]
@@ -220,6 +280,9 @@ bakeBiomeClusterTileset(embeddedBaseTiles, embeddedModes);
 registerBogTilesetAtlases();
 registerBase64Atlas(DOODADS_01_ATLAS_ID, DOODADS_01_BASE64, 16, 16);
 
+/**
+ * Executes `getRegionDefinition` (get region definition) in `index.ts`.
+ */
 export function getRegionDefinition(regionId?: string): RegionDefinition {
   if (regionId && REGION_REGISTRY[regionId]) {
     return REGION_REGISTRY[regionId];
@@ -227,6 +290,9 @@ export function getRegionDefinition(regionId?: string): RegionDefinition {
   return regionBelldorOutskirts;
 }
 
+/**
+ * Executes `getAreaDefinition` (get area definition) in `index.ts`.
+ */
 export function getAreaDefinition(areaId?: string): AreaWikiDefinition {
   if (areaId && AREA_REGISTRY[areaId]) {
     return AREA_REGISTRY[areaId];
@@ -234,6 +300,9 @@ export function getAreaDefinition(areaId?: string): AreaWikiDefinition {
   return m00TheBogArea;
 }
 
+/**
+ * Executes `getMapDefinition` (get map definition) in `index.ts`.
+ */
 export function getMapDefinition(mapId?: string): MapDefinition | undefined {
   if (mapId && MAP_REGISTRY[mapId]) {
     return MAP_REGISTRY[mapId];
@@ -241,6 +310,9 @@ export function getMapDefinition(mapId?: string): MapDefinition | undefined {
   return MAP_REGISTRY.map_bog_drop_zone;
 }
 
+/**
+ * Executes `getBiomeDefinition` (get biome definition) in `index.ts`.
+ */
 export function getBiomeDefinition(biomeId?: string): BiomeDefinition {
   if (biomeId && BIOME_REGISTRY[biomeId]) {
     return BIOME_REGISTRY[biomeId];
@@ -249,6 +321,9 @@ export function getBiomeDefinition(biomeId?: string): BiomeDefinition {
 }
 
 // [ORION-ANCHOR: ASCII-CHAR-REGISTRY]
+/**
+ * Executes `getTileDefinition` (get tile definition) in `index.ts`.
+ */
 export function getTileDefinition(char: string, biomeId?: string): TileDefinition {
   if (biomeId) {
     const biome = getBiomeDefinition(biomeId);
@@ -274,6 +349,9 @@ export function resolveRoomEnemyTypeAtChar(char: string, biomeId?: string): stri
   return resolveEnemyTypeForChar(char);
 }
 
+/**
+ * Type contract for `AsciiRegistryEntry` (ascii registry entry) in `index.ts`.
+ */
 export interface AsciiRegistryEntry {
   char: string;
   category: 'tile' | 'enemy';

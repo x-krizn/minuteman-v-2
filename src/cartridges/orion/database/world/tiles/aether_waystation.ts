@@ -7,8 +7,11 @@ import { getEffectiveRoomCoord, TILE_SIZE } from '../../../constants';
 import { drawBase64Sprite } from '../../../systems/render/spriteAtlasCache';
 import { TileDefinition } from '../../../types';
 import { getAreaDefinition } from '../index';
-import { DOODADS_01_BASE64, DOODAD_CELLS } from './doodads_atlas';
+import { DOODAD_CELLS, DOODADS_01_BASE64 } from './doodads_atlas';
 
+/**
+ * Canonical database definition for `aetherWaystationTile` (`Æther Waystation Campfire (Area Fast Travel Anchor)`, id `'aether_waystation'`, ASCII token `'A'`).
+ */
 export const aetherWaystationTile: TileDefinition = {
   id: 'aether_waystation',
   char: 'A',

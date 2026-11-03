@@ -5,6 +5,9 @@
 
 import { TraitLineWikiDefinition } from '../../types';
 
+/**
+ * Canonical database definition for `wizardTrait` (`Arclight Artillery Kit`, id `'Wizard'`, load `'medium'`) — Arcanum Heavy Projector Coreplate & ARC Infinite Well Reactor Mk.VI (Medium Load) — crystal-lattice beam & wav....
+ */
 export const wizardTrait: TraitLineWikiDefinition = {
   id: 'Wizard',
   name: 'Arclight Artillery Kit',

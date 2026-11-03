@@ -11,6 +11,9 @@ import { enemyBox, overlap, solidAt } from './physics';
 import { spawnParticles } from './particles';
 import { defeatEnemy } from './enemies';
 
+/**
+ * Executes `castSkill` (cast skill) in `skills.ts`.
+ */
 export function castSkill(
   state: KnightState,
   skillId: SkillId,
@@ -67,6 +70,9 @@ export function castSkill(
   return true;
 }
 
+/**
+ * Executes `updateProjectiles` (update projectiles) in `skills.ts`.
+ */
 export function updateProjectiles(
   rooms: Record<string, string[]>,
   state: KnightState,

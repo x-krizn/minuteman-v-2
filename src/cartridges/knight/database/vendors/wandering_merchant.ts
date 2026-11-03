@@ -3,9 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { StatType } from '../../types';
+import { ItemWikiDefinition, StatType } from '../../types';
 import { ALL_ITEMS, ITEM_REGISTRY } from '../items';
 
+/**
+ * Catalog entry representing a purchasable item in the Knight Satchel merchant tab.
+ */
 export interface VendorItemEntry {
   id: string;
   name: string;
@@ -15,8 +18,14 @@ export interface VendorItemEntry {
   stat?: StatType;
 }
 
+/**
+ * Alias for `VendorItemEntry` consumed by the Knight Satchel merchant UI.
+ */
 export type VendorItem = VendorItemEntry;
 
+/**
+ * Wiki definition describing an NPC merchant's greeting dialogue and default item IDs.
+ */
 export interface VendorWikiDefinition {
   id: string;
   name: string;
@@ -25,6 +34,9 @@ export interface VendorWikiDefinition {
   wares: string[]; // item IDs
 }
 
+/**
+ * Canonical definition for Aldous (`wandering_merchant`), the sanctuary relic vendor.
+ */
 export const wanderingMerchant: VendorWikiDefinition = {
   id: 'wandering_merchant',
   name: 'Aldous',
@@ -43,13 +55,13 @@ export const wanderingMerchant: VendorWikiDefinition = {
 };
 
 /**
- * Builds the VendorItem list for the in-game Satchel UI dynamically from the item wiki database!
+ * Builds the `VendorItemEntry` catalog for the in-game Satchel UI from `ITEM_REGISTRY`.
  */
 export function getMerchantCatalog(): VendorItemEntry[] {
   const result: VendorItemEntry[] = [];
   const added = new Set<string>();
 
-  const processItem = (item: any) => {
+  const processItem = (item: ItemWikiDefinition | undefined) => {
     if (!item || added.has(item.id)) return;
     added.add(item.id);
 
@@ -60,7 +72,7 @@ export function getMerchantCatalog(): VendorItemEntry[] {
     result.push({
       id: item.id,
       name: item.name,
-      description: item.description,
+      description: item.description || '',
       cost: item.cost ?? 25,
       type,
       stat: item.stat,

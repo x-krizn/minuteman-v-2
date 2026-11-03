@@ -28,8 +28,14 @@ for (const [path, mod] of Object.entries(itemModules)) {
   }
 }
 
+/**
+ * Exported const `ALL_ITEMS` (all items) in `index.ts`.
+ */
 export const ALL_ITEMS: ItemWikiDefinition[] = Array.from(itemMap.values());
 
+/**
+ * Exported const `ITEM_REGISTRY` (item registry) in `index.ts`.
+ */
 export const ITEM_REGISTRY: Record<string, ItemWikiDefinition> = ALL_ITEMS.reduce(
   (acc, item) => {
     acc[item.id] = item;
@@ -38,6 +44,9 @@ export const ITEM_REGISTRY: Record<string, ItemWikiDefinition> = ALL_ITEMS.reduc
   {} as Record<string, ItemWikiDefinition>
 );
 
+/**
+ * Exported const `ITEM_BY_SYMBOL` (item by symbol) in `index.ts`.
+ */
 export const ITEM_BY_SYMBOL: Record<string, ItemWikiDefinition> = ALL_ITEMS.reduce(
   (acc, item) => {
     if (item.symbol) {
@@ -56,6 +65,9 @@ export const ITEM_BY_SYMBOL: Record<string, ItemWikiDefinition> = ALL_ITEMS.redu
   {} as Record<string, ItemWikiDefinition>
 );
 
+/**
+ * Executes `getItemDefinition` (get item definition) in `index.ts`.
+ */
 export function getItemDefinition(idOrSymbol: string): ItemWikiDefinition | undefined {
   return ITEM_REGISTRY[idOrSymbol] || ITEM_BY_SYMBOL[idOrSymbol];
 }

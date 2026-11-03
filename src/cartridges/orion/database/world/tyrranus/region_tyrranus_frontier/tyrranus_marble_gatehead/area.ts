@@ -5,6 +5,9 @@
 
 import { AreaWikiDefinition } from '../../../../../types';
 
+/**
+ * Canonical database definition for `tyrranusMarbleGateheadArea` (`Tyrranus — Imperial Gatehead`, id `'tyrranus_marble_gatehead'`, scope `'local'`) — Non-canon Greco-Roman world of Tyrranus (#2 Major World in u00 Universe). Zone documentation is currently UNDE....
+ */
 export const tyrranusMarbleGateheadArea: AreaWikiDefinition = {
   id: 'tyrranus_marble_gatehead',
   name: 'Tyrranus — Imperial Gatehead',

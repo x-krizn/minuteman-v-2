@@ -6,6 +6,9 @@
 import { TileDefinition } from '../../../types';
 import { isRoomCacheLooted } from './doodads_atlas';
 
+/**
+ * Canonical database definition for `cacheTile` (`Scavenger Cache`, id `'cache'`, ASCII token `'C'`).
+ */
 export const cacheTile: TileDefinition = {
   id: 'cache',
   char: 'C',

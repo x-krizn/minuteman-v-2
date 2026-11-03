@@ -3,6 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * Manages the `requestAnimationFrame` game loop, clamping frame deltas (`maxDeltaMs = 100` `ms`) and tracking live `fps`.
+ */
 export class FrameLoop {
   private running = false;
   private lastTime = 0;
@@ -63,4 +66,7 @@ export class FrameLoop {
   }
 }
 
+/**
+ * Shared singleton instance of `FrameLoop` driving per-frame updates across the console.
+ */
 export const frameLoop = new FrameLoop();

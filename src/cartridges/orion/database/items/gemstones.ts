@@ -11,20 +11,44 @@ import { GemDefinition, GemId, ItemWikiDefinition, TraitLine } from '../../types
  */
 export const GEM_MOONSTONE_BASE64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAARElEQVR42t3MoREAMAxC0UybnZg2vQjuEDXgWhTmv6q/B2B2cUzARhgrYCE3YH8M8NtAd49iFrBxDDCOAUWiWJE4fmcH0UqLQt77KKQAAAAASUVORK5CYII=';
+/**
+ * Embedded Base64 PNG pixel-art sprite payload or atlas lookup entry for `GEM_SPINEL_BASE64`.
+ */
 export const GEM_SPINEL_BASE64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAQ0lEQVR42mNgGN7gPwPDfxAgXzPUAJINgWtGMoAkQ7AaABYm1wAom2QDViEbRKoBqygxYBWlBiAbQpZmZEPI1jx0AACS2W6S+Xqc/wAAAABJRU5ErkJggg==';
+/**
+ * Embedded Base64 PNG pixel-art sprite payload or atlas lookup entry for `GEM_CARNELIAN_BASE64`.
+ */
 export const GEM_CARNELIAN_BASE64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAQ0lEQVR42mNgGN7g/xmG/yBAvmaoASQbAteMZABJhmA14AwDBQZA2aQbMBPJIJINmEmJATMpNADFEHI0oxhCruahAwALZY7YDVNp6gAAAABJRU5ErkJggg==';
+/**
+ * Embedded Base64 PNG pixel-art sprite payload or atlas lookup entry for `GEM_TITANITE_BASE64`.
+ */
 export const GEM_TITANITE_BASE64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAR0lEQVR42t3MoREAMAxC0czUNTp2topJL4I7RA24FoX5L+LvVe2e2TEAGUHMgITcgPk2gC8DmasZk4CJbQCxDTBixYzY8Ts7OuadkC+jP88AAAAASUVORK5CYII=';
+/**
+ * Embedded Base64 PNG pixel-art sprite payload or atlas lookup entry for `GEM_DEMANTOID_BASE64`.
+ */
 export const GEM_DEMANTOID_BASE64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAR0lEQVR42t3MoREAMAxC0UyXSTJdR6xJL4I7RA24FoX5L+Lv1a6e2TEAGUHMgITcgPk2gC8DubIZk4CJbQCxDTBixYzY8Ts73yWKWP+gy+YAAAAASUVORK5CYII=';
+/**
+ * Embedded Base64 PNG pixel-art sprite payload or atlas lookup entry for `GEM_KYANITE_BASE64`.
+ */
 export const GEM_KYANITE_BASE64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAR0lEQVR42t3MoREAMAxC0cyZNbJaV6tOL4I7RA24FoX5L+LvVe2e2TEAGUHMgITcgPk2gC8DmasZk4CJbQCxDTBixYzY8Ts7PuWPCDxfBNMAAAAASUVORK5CYII=';
+/**
+ * Embedded Base64 PNG pixel-art sprite payload or atlas lookup entry for `GEM_CHAROITE_BASE64`.
+ */
 export const GEM_CHAROITE_BASE64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAASElEQVR42mNgGN6gNWjmfxAgWzPMAJINgWlGNoAkQ7AZAGKTbQCMTbIBAZpp/5ENI8kAkGayDYBpJtsAZEPI0oxsCNmahw4AAP0Nfa0c7YVgAAAAAElFTkSuQmCC';
+/**
+ * Embedded Base64 PNG pixel-art sprite payload or atlas lookup entry for `GEM_RUBELLITE_BASE64`.
+ */
 export const GEM_RUBELLITE_BASE64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAASElEQVR42mNgGN5gd+CU/yBAtmaYASQbAtOMbABJhmAzAMQm2wAYm2QDWi0z/yMbRpIBIM1kGwDTTLYByIaQpRnZELI1Dx0AAAtZhdUJ0y4wAAAAAElFTkSuQmCC';
+/**
+ * Embedded Base64 PNG pixel-art sprite payload or atlas lookup entry for `GEM_HEMATITE_BASE64`.
+ */
 export const GEM_HEMATITE_BASE64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAARUlEQVR42t3MoREAMAxC0cySFdh/tvQiuEPUgGtRmP+q/h6A2cUxARthrICF3ID9McBvA909ilnAxjHAOAYUiWJF4vidHb3PYDqLk2r0AAAAAElFTkSuQmCC';
 
@@ -168,6 +192,9 @@ export const GEMSTONE_CATALOG: GemDefinition[] = [
   },
 ];
 
+/**
+ * Exported const `GEMSTONE_REGISTRY` (gemstone registry) in `gemstones.ts`.
+ */
 export const GEMSTONE_REGISTRY: Record<GemId, GemDefinition> = GEMSTONE_CATALOG.reduce(
   (acc, gem) => {
     acc[gem.id] = gem;
@@ -176,6 +203,9 @@ export const GEMSTONE_REGISTRY: Record<GemId, GemDefinition> = GEMSTONE_CATALOG.
   {} as Record<GemId, GemDefinition>
 );
 
+/**
+ * Exported const `TRAIT_FUNDING_GEMS` (trait funding gems) in `gemstones.ts`.
+ */
 export const TRAIT_FUNDING_GEMS: Record<TraitLine, [GemId, GemId]> = {
   Warrior: ['spinel', 'hematite'],
   Marauder: ['carnelian', 'hematite'],
@@ -204,12 +234,39 @@ function makeGemItemDefinition(gem: GemDefinition): ItemWikiDefinition {
   };
 }
 
+/**
+ * Exported const `moonstoneItem` (moonstone item) in `gemstones.ts`.
+ */
 export const moonstoneItem = makeGemItemDefinition(GEMSTONE_REGISTRY.moonstone);
+/**
+ * Exported const `spinelItem` (spinel item) in `gemstones.ts`.
+ */
 export const spinelItem = makeGemItemDefinition(GEMSTONE_REGISTRY.spinel);
+/**
+ * Exported const `carnelianItem` (carnelian item) in `gemstones.ts`.
+ */
 export const carnelianItem = makeGemItemDefinition(GEMSTONE_REGISTRY.carnelian);
+/**
+ * Exported const `titaniteItem` (titanite item) in `gemstones.ts`.
+ */
 export const titaniteItem = makeGemItemDefinition(GEMSTONE_REGISTRY.titanite);
+/**
+ * Exported const `demantoidItem` (demantoid item) in `gemstones.ts`.
+ */
 export const demantoidItem = makeGemItemDefinition(GEMSTONE_REGISTRY.demantoid);
+/**
+ * Exported const `kyaniteItem` (kyanite item) in `gemstones.ts`.
+ */
 export const kyaniteItem = makeGemItemDefinition(GEMSTONE_REGISTRY.kyanite);
+/**
+ * Exported const `charoiteItem` (charoite item) in `gemstones.ts`.
+ */
 export const charoiteItem = makeGemItemDefinition(GEMSTONE_REGISTRY.charoite);
+/**
+ * Exported const `rubelliteItem` (rubellite item) in `gemstones.ts`.
+ */
 export const rubelliteItem = makeGemItemDefinition(GEMSTONE_REGISTRY.rubellite);
+/**
+ * Exported const `hematiteItem` (hematite item) in `gemstones.ts`.
+ */
 export const hematiteItem = makeGemItemDefinition(GEMSTONE_REGISTRY.hematite);

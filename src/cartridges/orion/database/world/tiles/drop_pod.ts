@@ -5,6 +5,9 @@
 
 import { TileDefinition } from '../../../types';
 
+/**
+ * Canonical database definition for `dropPodTile` (`Drop-Pod Crater (Spawn Anchor)`, id `'drop_pod'`, ASCII token `'D'`).
+ */
 export const dropPodTile: TileDefinition = {
   id: 'drop_pod',
   char: 'D',

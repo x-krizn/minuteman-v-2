@@ -9,6 +9,9 @@ import { ItemWikiDefinition } from '../../../../types';
 export const LOCK_ICON_BASE64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAQUlEQVR42mNgGNTgzJkz/0GYbM3Y2PQx4D8OQLRmmN/RMVGGIBsA4oLwwBkAM2SIG0BRLJBlAAgYGxv/x4ZpkuEAQPcHbsucEFUAAAAASUVORK5CYII=';
 
+/**
+ * Canonical database definition for `sanctumLockItem` (`Sanctum Padlock Seal`, id `'sanctum_lock'`, slot `'key'`) — Heavy iron padlock warding sealed Camelot garrison vaults and dungeon gates..
+ */
 export const sanctumLockItem: ItemWikiDefinition = {
   id: 'sanctum_lock',
   name: 'Sanctum Padlock Seal',

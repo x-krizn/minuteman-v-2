@@ -44,6 +44,9 @@ import {
 
 // ─── 1. 2.5D PARTICLES ───────────────────────────────────────────────────────
 
+/**
+ * Spawns `count` visual combat or environmental particles at `(x, y)` in `px` with optional floating text. Mutates `state: OrionState`.
+ */
 export function spawnParticles(
   state: OrionState,
   x: number,
@@ -73,6 +76,9 @@ export function spawnParticles(
   }
 }
 
+/**
+ * Advances all active `OrionParticle` positions and lifetimes by `dt` seconds and removes expired particles. Mutates `state: OrionState`.
+ */
 export function updateParticles(state: OrionState, dt: number): void {
   for (let i = state.particles.length - 1; i >= 0; i--) {
     const p = state.particles[i];
@@ -92,6 +98,9 @@ export function updateParticles(state: OrionState, dt: number): void {
 
 let nextEnemyId = 1;
 
+/**
+ * Instantiates an `EnemyEntity` of archetype `type` at world coordinates `(x, y)` in `px` using `ENEMY_REGISTRY`.
+ */
 export function spawnEnemyByType(
   state: OrionState,
   type: string,
@@ -162,6 +171,9 @@ export function spawnEnemyByType(
 }
 
 // [ORION-ANCHOR: ENTITY-SPAWN-ROOM]
+/**
+ * Populates `state.enemies` and `state.picks` from the ASCII tokens in `rooms[state.room]` when entering a room. Mutates `state: OrionState`.
+ */
 export function spawnRoomEnemies(
   rooms: Record<string, string[]>,
   state: OrionState
@@ -248,6 +260,9 @@ export function spawnRoomEnemies(
   }
 }
 
+/**
+ * Executes per-frame AI behavior, telegraph windups, movement, and defeat hooks for all active enemies in `state.enemies`. Mutates `state: OrionState`.
+ */
 export function updateEnemies(
   rooms: Record<string, string[]>,
   state: OrionState,
@@ -560,6 +575,9 @@ export { updateProjectiles } from './combat/projectileSystem';
 
 // ─── 4. LOOT PICKUPS ─────────────────────────────────────────────────────────
 
+/**
+ * Checks proximity collection and magnet pull for world `PickupEntity` drops in `state.picks`. Mutates `state: OrionState`.
+ */
 export function updatePickups(
   state: OrionState,
   ctx: OrionExecutionContext,

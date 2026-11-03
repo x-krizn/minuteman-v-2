@@ -11,6 +11,9 @@ import { buildMagitechWeapon } from './builder';
 
 // ─── WIZARD / ARCANUM LINEAGE MAGITECH WEAPONS ──────────────────────────────
 
+/**
+ * Canonical database definition for `wz800ArclightCannonWeapon` (`WZ-800 Arclight Cannon`, id `'wz800_arclight_cannon'`, load `'heavy'`) — Long-range, sustained fire.
+ */
 export const wz800ArclightCannonWeapon = buildMagitechWeapon({
   id: 'wz800_arclight_cannon',
   name: 'WZ-800 Arclight Cannon',
@@ -39,6 +42,9 @@ export const wz800ArclightCannonWeapon = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `wz650PrismLanceWeapon` (`WZ-650 Prism Lance`, id `'wz650_prism_lance'`, load `'medium'`) — Focusing crystal, variable intensity.
+ */
 export const wz650PrismLanceWeapon = buildMagitechWeapon({
   id: 'wz650_prism_lance',
   name: 'WZ-650 Prism Lance',
@@ -67,6 +73,9 @@ export const wz650PrismLanceWeapon = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `wz450SparkstrikeWeapon` (`WZ-450 Sparkstrike`, id `'wz450_sparkstrike'`, load `'medium'`) — Rapid burst, close-range defense.
+ */
 export const wz450SparkstrikeWeapon = buildMagitechWeapon({
   id: 'wz450_sparkstrike',
   name: 'WZ-450 Sparkstrike',
@@ -95,6 +104,9 @@ export const wz450SparkstrikeWeapon = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `wz200ManacoreStaffWeapon` (`WZ-200 Manacore Staff`, id `'wz200_manacore_staff'`, load `'heavy'`) — AoE discharge, area denial.
+ */
 export const wz200ManacoreStaffWeapon = buildMagitechWeapon({
   id: 'wz200_manacore_staff',
   name: 'WZ-200 Manacore Staff',
@@ -124,6 +136,9 @@ export const wz200ManacoreStaffWeapon = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `arcConductorWeapon` (`ARC Conductor`, id `'arc_conductor'`, load `'light'`) — Emergency sidearm.
+ */
 export const arcConductorWeapon = buildMagitechWeapon({
   id: 'arc_conductor',
   name: 'ARC Conductor',
@@ -152,6 +167,9 @@ export const arcConductorWeapon = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `aetherCatalystWeapon` (`Sanctum Æther Catalyst`, id `'aether_catalyst'`, load `'light'`) — Resonant Grail-lattice catalyst auxiliary that channels reactor energy into Skill 4 & Skill 5 harmonic waves..
+ */
 export const aetherCatalystWeapon: WeaponDefinition = {
   id: 'aether_catalyst',
   name: 'Sanctum Æther Catalyst',
@@ -264,6 +282,9 @@ export const aetherCatalystWeapon: WeaponDefinition = {
 
 // ─── WIZARD / ARCANUM AUXILIARIES (Migrated from Utility, Aux 3 & Aux 4) ────
 
+/**
+ * Canonical database definition for `utilityArclightCapacitorAuxiliary` (`ARC Rift Anchor`, id `'utility_arclight_capacitor'`, load `'medium'`) — Short-range phase anchor & capacitor siphon (+18 Shield).
+ */
 export const utilityArclightCapacitorAuxiliary = buildMagitechWeapon({
   id: 'utility_arclight_capacitor',
   name: 'ARC Rift Anchor',
@@ -294,6 +315,9 @@ export const utilityArclightCapacitorAuxiliary = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `aux3ArcPrismaticBarrierAuxiliary` (`ARC Prismatic Barrier`, id `'aux3_arc_prismatic_barrier'`, load `'medium'`) — Refracts incoming beams (+22 Shield).
+ */
 export const aux3ArcPrismaticBarrierAuxiliary = buildMagitechWeapon({
   id: 'aux3_arc_prismatic_barrier',
   name: 'ARC Prismatic Barrier',
@@ -325,6 +349,9 @@ export const aux3ArcPrismaticBarrierAuxiliary = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `aux4ArcFeedbackCapacitorAuxiliary` (`ARC Feedback Loop Capacitor`, id `'aux4_arc_feedback_capacitor'`, load `'medium'`) — Absorbs energy attacks, stores for counter-discharge (+18 Shield).
+ */
 export const aux4ArcFeedbackCapacitorAuxiliary = buildMagitechWeapon({
   id: 'aux4_arc_feedback_capacitor',
   name: 'ARC Feedback Loop Capacitor',

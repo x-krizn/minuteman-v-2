@@ -10,6 +10,7 @@ import {
   getOrionRoomsRef,
   getOrionStateRef,
   spawnParticles,
+  subscribeOrionStateChange,
 } from '../systems';
 import { HudDefenseBars } from './hud/HudDefenseBars';
 import {
@@ -37,6 +38,11 @@ export const OrionHud: React.FC = () => {
     let animId = 0;
     let cancelled = false;
     let lastTime = 0;
+    const unsubState = subscribeOrionStateChange(() => {
+      if (!cancelled) {
+        setTick((prev) => (prev + 1) % 10000);
+      }
+    });
     const scheduleNextFrame = () => {
       if (!cancelled) {
         animId = requestAnimationFrame(loop);
@@ -53,6 +59,7 @@ export const OrionHud: React.FC = () => {
     scheduleNextFrame();
     return () => {
       cancelled = true;
+      unsubState();
       cancelAnimationFrame(animId);
     };
   }, []);
@@ -69,6 +76,7 @@ export const OrionHud: React.FC = () => {
         titleTab={titleTab}
         setTitleTab={setTitleTab}
         setShowPilotModal={setShowPilotModal}
+        canResumeCockpit={showPilotModal}
         forceRerender={() => setTick((t) => t + 1)}
       />
     );
@@ -148,6 +156,7 @@ export const OrionHud: React.FC = () => {
       {contextMenu && contextMenu.options.length > 0 && (
         <div
           role="dialog"
+          data-universal-menu="true"
           aria-label={contextMenu.title}
           className="pointer-events-auto absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-40 min-w-[180px] sm:min-w-[215px] max-w-[88%] bg-[#090d16]/95 border border-[#38bdf8]/80 rounded-xs p-2 shadow-lg flex flex-col gap-1"
         >
@@ -157,6 +166,7 @@ export const OrionHud: React.FC = () => {
             </span>
             <button
               type="button"
+              data-menu-back="true"
               onClick={() => {
                 state.contextMenu = null;
                 soundSystem.playMenuBeep();
@@ -175,6 +185,13 @@ export const OrionHud: React.FC = () => {
                 <button
                   key={opt.id}
                   type="button"
+                  data-menu-autofocus={isSelected ? 'true' : undefined}
+                  onFocus={() => {
+                    if (contextMenu.selectedIndex !== idx) {
+                      contextMenu.selectedIndex = idx;
+                      setTick((t) => t + 1);
+                    }
+                  }}
                   onMouseEnter={() => {
                     contextMenu.selectedIndex = idx;
                     setTick((t) => t + 1);

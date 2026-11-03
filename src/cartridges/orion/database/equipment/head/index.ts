@@ -22,6 +22,9 @@ import { CanonicalHardwareItemDefinition } from '../chassis_hardware';
 
 export * from './sprites';
 
+/**
+ * Canonical database definition for `CANONICAL_HEAD_OPTICS` (`Crystal Dynamics G341 Murmillio`, id `'head_cd_g341_murmillio'`, slot `'head'`).
+ */
 export const CANONICAL_HEAD_OPTICS: CanonicalHardwareItemDefinition[] = [
   // ─── SET 0: Crystal Dynamics G341 Murmillio (Dome Plate) ──────────────────
   {

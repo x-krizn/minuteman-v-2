@@ -5,6 +5,9 @@
 
 import { ProgressionNodeEntry } from '../../types';
 
+/**
+ * Canonical database definition for `counterAttackNode` (`Parry Counter Attack`, id `'counter_attack'`, slot `'offense'`) — Unleash a lethal critical execution blow following a successful frame-perfect parry..
+ */
 export const counterAttackNode: ProgressionNodeEntry = {
   id: 'counter_attack',
   name: 'Parry Counter Attack',

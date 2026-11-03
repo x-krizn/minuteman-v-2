@@ -71,6 +71,9 @@ export {
 // [ORION-ANCHOR: AETHER-FOG-TOPOLOGY]
 // ─── AETHER FOG 5-NODE GRAPH ENGINE & WORLD TRANSITIONS ──────────────────────
 
+/**
+ * Executes `getMaxAetherFogDepth` (get max aether fog depth) in `worldTransitions.ts`.
+ */
 export function getMaxAetherFogDepth(state: OrionState): number {
   return Math.max(2, (state.level || 1) + 1);
 }
@@ -101,6 +104,9 @@ function stepMapCoords(
   }
 }
 
+/**
+ * Executes `ensureAetherFogGraph` (ensure aether fog graph) in `worldTransitions.ts`. Mutates `state: OrionState`.
+ */
 export function ensureAetherFogGraph(state: OrionState): AetherFogGraphState {
   if (!state.fogGraph || !state.fogGraph.nodes) {
     const nodes: Record<string, AetherGraphNode> = {};
@@ -178,11 +184,17 @@ export function ensureAetherFogGraph(state: OrionState): AetherFogGraphState {
   return state.fogGraph;
 }
 
+/**
+ * Executes `getActiveAetherNode` (get active aether node) in `worldTransitions.ts`.
+ */
 export function getActiveAetherNode(state: OrionState): AetherGraphNode {
   const graph = ensureAetherFogGraph(state);
   return graph.nodes[state.room] || graph.nodes['-3,0'] || graph.nodes['0,0'];
 }
 
+/**
+ * Executes `rehydrateAetherFogRooms` (rehydrate aether fog rooms) in `worldTransitions.ts`. Mutates `state: OrionState`.
+ */
 export function rehydrateAetherFogRooms(
   rooms: Record<string, string[]>,
   state: OrionState
@@ -215,6 +227,9 @@ export function rehydrateAetherFogRooms(
   }
 }
 
+/**
+ * Executes `resetAetherFogGraph` (reset aether fog graph) in `worldTransitions.ts`. Mutates `state: OrionState`.
+ */
 export function resetAetherFogGraph(
   rooms: Record<string, string[]>,
   state: OrionState,
@@ -463,6 +478,9 @@ function createDynamicAetherNode(
   return newNode;
 }
 
+/**
+ * Descriptor for a cardinal doorway transition, including target coordinate, safety tier, and whether it enters Æther Fog.
+ */
 export interface DoorwayAetherTransitionInfo {
   dir: AetherCardinalDir;
   currentDepth: number;
@@ -475,6 +493,9 @@ export interface DoorwayAetherTransitionInfo {
   isRetrace: boolean;
 }
 
+/**
+ * Executes `getDoorwayAetherTransitionInfo` (get doorway aether transition info) in `worldTransitions.ts`.
+ */
 export function getDoorwayAetherTransitionInfo(
   state: OrionState,
   dir: AetherCardinalDir
@@ -1135,6 +1156,9 @@ export function enterOffPathFogLoopDungeon(
   return true;
 }
 
+/**
+ * Executes `clearAetherFogOnBossDefeat` (clear aether fog on boss defeat) in `worldTransitions.ts`. Mutates `state: OrionState`.
+ */
 export function clearAetherFogOnBossDefeat(
   rooms: Record<string, string[]>,
   state: OrionState,
@@ -1255,6 +1279,9 @@ export function clearAetherFogOnBossDefeat(
 }
 
 // [ORION-ANCHOR: ROOM-TRANSITION-GATE]
+/**
+ * Executes `transitionViaAetherDoor` (transition via aether door) in `worldTransitions.ts`. Mutates `state: OrionState`.
+ */
 export function transitionViaAetherDoor(
   rooms: Record<string, string[]>,
   state: OrionState,
@@ -1404,6 +1431,9 @@ export function transitionViaAetherDoor(
   return true;
 }
 
+/**
+ * Executes `syncRoomHierarchyState` (sync room hierarchy state) in `worldTransitions.ts`. Mutates `state: OrionState`.
+ */
 export function syncRoomHierarchyState(state: OrionState): void {
   ensureAetherFogGraph(state);
   const effRoom = getEffectiveRoomCoord(state);
@@ -1453,6 +1483,9 @@ function stripParentAreaDesignator(raw: string): string {
     .trim();
 }
 
+/**
+ * Executes `getRoomWorldInfo` (get room world info) in `worldTransitions.ts`.
+ */
 export function getRoomWorldInfo(state: OrionState): {
   roomTitle: string;
   roomScope: 'global' | 'local';
@@ -1526,6 +1559,9 @@ export function getRoomWorldInfo(state: OrionState): {
 }
 
 // [ORION-ANCHOR: WAYSTATION-WAYGATE-TRAVEL]
+/**
+ * Executes `fastTravelToWaystation` (fast travel to waystation) in `worldTransitions.ts`. Mutates `state: OrionState`.
+ */
 export function fastTravelToWaystation(
   rooms: Record<string, string[]>,
   state: OrionState,
@@ -1640,6 +1676,9 @@ export function fastTravelToWaystation(
   return true;
 }
 
+/**
+ * Executes `fastTravelViaWaygate` (fast travel via waygate) in `worldTransitions.ts`. Mutates `state: OrionState`.
+ */
 export function fastTravelViaWaygate(
   rooms: Record<string, string[]>,
   state: OrionState,
@@ -1715,6 +1754,9 @@ export function fastTravelViaWaygate(
   return true;
 }
 
+/**
+ * Executes `rebootAtSpawnAnchor` (reboot at spawn anchor) in `worldTransitions.ts`. Mutates `state: OrionState`.
+ */
 export function rebootAtSpawnAnchor(
   rooms: Record<string, string[]>,
   state: OrionState,
@@ -1809,6 +1851,9 @@ export function rebootAtSpawnAnchor(
   notifyOrionStateChange();
 }
 
+/**
+ * Executes `handleWorldRoomTransition` (handle world room transition) in `worldTransitions.ts`. Mutates `state: OrionState`.
+ */
 export function handleWorldRoomTransition(
   rooms: Record<string, string[]>,
   state: OrionState,

@@ -7,6 +7,9 @@ import { ButtonKey, GameInput, GamepadButtons } from '../../types/input';
 import { gamepadStore } from './gamepadStore';
 import { hardwareGamepad } from './hardwareGamepad';
 
+/**
+ * Samples `gamepadStore` once per frame to compute edge-triggered `justPressed` and `justReleased` button states in `GameInput`.
+ */
 export class InputReader {
   private prevHeld: Partial<GamepadButtons> = {};
 
@@ -63,4 +66,7 @@ export class InputReader {
   }
 }
 
+/**
+ * Shared singleton instance of `InputReader`.
+ */
 export const inputReader = new InputReader();

@@ -5,6 +5,9 @@
 
 import { ItemWikiDefinition } from '../../../types';
 
+/**
+ * Canonical database definition for `amberItem` (`Amber Crystal`, id `'amber'`, ASCII token `'O'`, slot `'shard'`) — +1 Max SP Stamina Boost.
+ */
 export const amberItem: ItemWikiDefinition = {
   // 1. Identity & Metadata
   id: 'amber',

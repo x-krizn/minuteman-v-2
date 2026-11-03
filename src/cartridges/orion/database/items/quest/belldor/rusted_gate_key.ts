@@ -10,6 +10,9 @@ import { ItemWikiDefinition } from '../../../../types';
 export const KEY_ICON_BASE64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAASElEQVR42mNgGAVw8P8Mw39kTLrmmWiYWENgmjHEiTWEkAGEMGEDkLyEThPtBZg8uhjEBTj8istg7OGAzb8zSY1KtGgcQVkAALBtofhivRQWAAAAAElFTkSuQmCC';
 
+/**
+ * Canonical database definition for `rustedGateKeyItem` (`Rusted Gate Key`, id `'rusted_gate_key'`, slot `'key'`) — Heavy iron key stamped with the Camelot border insignia..
+ */
 export const rustedGateKeyItem: ItemWikiDefinition = {
   id: 'rusted_gate_key',
   name: 'Rusted Gate Key',

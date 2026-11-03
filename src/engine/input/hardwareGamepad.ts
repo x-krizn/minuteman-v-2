@@ -27,11 +27,17 @@ const STANDARD_BUTTON_MAP: Record<number, ButtonKey> = {
 const STICK_DEADZONE = 0.18;
 const TRIGGER_THRESHOLD = 0.35;
 
+/**
+ * Connection event payload emitted when a physical W3C gamepad connects or disconnects.
+ */
 export interface GamepadNotification {
   type: 'connected' | 'disconnected';
   name: string;
 }
 
+/**
+ * Formats a raw browser `Gamepad.id` string into a clean human-readable controller label.
+ */
 export function formatGamepadName(rawId: string): string {
   if (!rawId) return 'Gamepad Controller';
   if (/Xbox/i.test(rawId)) return 'Xbox Controller';
@@ -42,6 +48,10 @@ export function formatGamepadName(rawId: string): string {
   return rawId.replace(/\s*\([^)]*\)/g, '').trim() || 'Gamepad Controller';
 }
 
+/**
+ * Singleton manager that polls physical W3C Gamepad API devices each frame,
+ * normalizes axes (`STICK_DEADZONE = 0.18`) and buttons into `gamepadStore`, and dispatches rumble effects.
+ */
 export class HardwareGamepadManager {
   private static instance: HardwareGamepadManager;
   private prevHardwareButtons: Set<ButtonKey> = new Set();
@@ -54,6 +64,17 @@ export class HardwareGamepadManager {
       window.addEventListener('gamepadconnected', this.handleConnected);
       window.addEventListener('gamepaddisconnected', this.handleDisconnected);
     }
+  }
+
+  /**
+   * Unregisters window `gamepadconnected` and `gamepaddisconnected` event listeners and clears subscribers.
+   */
+  public destroy(): void {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('gamepadconnected', this.handleConnected);
+      window.removeEventListener('gamepaddisconnected', this.handleDisconnected);
+    }
+    this.listeners.clear();
   }
 
   public static getInstance(): HardwareGamepadManager {
@@ -287,4 +308,7 @@ export class HardwareGamepadManager {
   }
 }
 
+/**
+ * Shared singleton instance of `HardwareGamepadManager` used by the engine input loop.
+ */
 export const hardwareGamepad = HardwareGamepadManager.getInstance();

@@ -8,6 +8,9 @@ import { MapDefinition, RoomDefinition } from '../../../../../types';
 const INITIAL_EXPANSE_ROW = '#'.repeat(260);
 const INITIAL_EXPANSE_GRID: string[] = Array.from({ length: 162 }, () => INITIAL_EXPANSE_ROW);
 
+/**
+ * Canonical database definition for `mapBogChunkedExpanse` (`Unified Bog Grid (26x18 Seamless Room-Node & Fog Sector)`, id `'map_bog_chunked_expanse'`, coord `"-3,-1"`, scope `'local'`) — Unified 260x162 tile (26x18 screen chunks, 4,160x2,592 px) seamless Bog sector where all authored M00 The Bog ....
+ */
 export const mapBogChunkedExpanse: MapDefinition = {
   id: 'map_bog_chunked_expanse',
   name: 'Unified Bog Grid (26x18 Seamless Room-Node & Fog Sector)',
@@ -32,6 +35,9 @@ export const mapBogChunkedExpanse: MapDefinition = {
   ],
 };
 
+/**
+ * Canonical database definition for `roomSunkenBogExpanse` (`M00 The Bog (Unified Grid)`, id `'room_neg3_neg1_sunken_bog_expanse'`, coord `"-3,-1"`, scope `'local'`, safety tier `'trail'`).
+ */
 export const roomSunkenBogExpanse: RoomDefinition = {
   id: 'room_neg3_neg1_sunken_bog_expanse',
   scope: 'local',

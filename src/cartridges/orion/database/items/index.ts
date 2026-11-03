@@ -8,6 +8,9 @@ import { ItemWikiDefinition } from '../../types';
 // Auto-discover all item entity modules in this directory (including subfolders) via Vite import.meta.glob
 const modules = import.meta.glob<Record<string, unknown>>('./**/*.ts', { eager: true });
 
+/**
+ * Exported const `ITEM_REGISTRY` (item registry) in `index.ts`.
+ */
 export const ITEM_REGISTRY: Record<string, ItemWikiDefinition> = {};
 
 function isItemWikiDefinition(val: unknown): val is ItemWikiDefinition {
@@ -29,6 +32,9 @@ for (const [path, mod] of Object.entries(modules)) {
   }
 }
 
+/**
+ * Executes `getItemDefinition` (get item definition) in `index.ts`.
+ */
 export function getItemDefinition(id: string): ItemWikiDefinition | undefined {
   return ITEM_REGISTRY[id];
 }

@@ -9,6 +9,9 @@ import { ItemWikiDefinition } from '../../../../types';
 export const SCROLL_ICON_BASE64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAeklEQVR42sWSXQrAIAyDeyfv5J16p97JEbeMsL1EYSxQ1EK+/mDE76qqgXNc4ttWZk6TApCzAa210Xt/QZa6+AZScUbG+jgw6m6WupmAjHuZWxACnhCCLBj3oRCMqGFDIJqQY9g7YXXctQMbou0rxAbwy29Vf0IQaj4ACtj8atVzIzMAAAAASUVORK5CYII=';
 
+/**
+ * Canonical database definition for `bedivereListItem` (`Bedivere's Numbered List`, id `'bedivere_list'`, slot `'key'`) — A numbered scroll of seemingly nonsensical items scattered across more than one zone..
+ */
 export const bedivereListItem: ItemWikiDefinition = {
   id: 'bedivere_list',
   name: "Bedivere's Numbered List",

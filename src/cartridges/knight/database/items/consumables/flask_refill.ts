@@ -5,6 +5,9 @@
 
 import { ItemWikiDefinition } from '../../../types';
 
+/**
+ * Canonical database definition for `flaskRefillItem` (`Elixir Draft`, id `'flask_refill'`, slot `'potion'`) — Refill all Flask charges.
+ */
 export const flaskRefillItem: ItemWikiDefinition = {
   // 1. Identity & Metadata
   id: 'flask_refill',

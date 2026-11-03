@@ -7,6 +7,9 @@ import { Base64SpriteConfig, OrionDir } from '../../types';
 
 // ─── 1. BASE64 ASSET LOADER & 1PX SILHOUETTE CACHE ───────────────────────────
 
+/**
+ * Type contract for `Base64AtlasDefinition` (base64 atlas definition) in `spriteAtlasCache.ts`.
+ */
 export interface Base64AtlasDefinition {
   id: string;
   name?: string;
@@ -17,8 +20,14 @@ export interface Base64AtlasDefinition {
   canvas?: HTMLCanvasElement;
 }
 
+/**
+ * Type contract for `CachedSpriteSource` (cached sprite source) in `spriteAtlasCache.ts`.
+ */
 export type CachedSpriteSource = HTMLImageElement | HTMLCanvasElement;
 
+/**
+ * Exported const `BASE64_ATLAS_REGISTRY` (base64 atlas registry) in `spriteAtlasCache.ts`.
+ */
 export const BASE64_ATLAS_REGISTRY: Record<string, Base64AtlasDefinition> = {};
 
 const IMAGE_CACHE = new Map<string, CachedSpriteSource>();
@@ -40,6 +49,9 @@ function getSourceDimensions(src: CachedSpriteSource): {
   };
 }
 
+/**
+ * Executes `registerCanvasAtlas` (register canvas atlas) in `spriteAtlasCache.ts`.
+ */
 export function registerCanvasAtlas(
   id: string,
   canvas: HTMLCanvasElement,
@@ -58,6 +70,9 @@ export function registerCanvasAtlas(
   IMAGE_CACHE.set(id, canvas);
 }
 
+/**
+ * Executes `registerBase64Atlas` (register base64 atlas) in `spriteAtlasCache.ts`.
+ */
 export function registerBase64Atlas(
   id: string,
   base64: string,
@@ -73,6 +88,9 @@ export function registerBase64Atlas(
   getBase64Image(id);
 }
 
+/**
+ * Executes `normalizeBase64DataUri` (normalize base64 data uri) in `spriteAtlasCache.ts`.
+ */
 export function normalizeBase64DataUri(base64OrKey: string): string {
   const trimmed = base64OrKey.trim();
   if (!trimmed) return '';
@@ -85,6 +103,9 @@ export function normalizeBase64DataUri(base64OrKey: string): string {
   return `data:image/png;base64,${raw}`;
 }
 
+/**
+ * Executes `getBase64Image` (get base64 image) in `spriteAtlasCache.ts`.
+ */
 export function getBase64Image(base64OrKey: string): CachedSpriteSource | null {
   if (!base64OrKey) return null;
 
@@ -122,6 +143,9 @@ export function getBase64Image(base64OrKey: string): CachedSpriteSource | null {
   return dims.ready ? img : null;
 }
 
+/**
+ * Executes `getOutlinedSpriteCanvas` (get outlined sprite canvas) in `spriteAtlasCache.ts`.
+ */
 export function getOutlinedSpriteCanvas(
   sourceKey: string,
   src: CachedSpriteSource,
@@ -167,6 +191,9 @@ export function getOutlinedSpriteCanvas(
   return canvas;
 }
 
+/**
+ * Type contract for `DrawBase64SpriteOptions` (draw base64 sprite options) in `spriteAtlasCache.ts`.
+ */
 export interface DrawBase64SpriteOptions {
   dir?: OrionDir;
   stateName?: string;
@@ -216,6 +243,9 @@ export function getEastDirectionalTransform(dir: OrionDir = 'E'): {
   }
 }
 
+/**
+ * Executes `drawBase64Sprite` (draw base64 sprite) in `spriteAtlasCache.ts`.
+ */
 export function drawBase64Sprite(
   g: CanvasRenderingContext2D,
   config: Base64SpriteConfig | undefined,

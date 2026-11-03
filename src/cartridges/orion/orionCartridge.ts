@@ -30,6 +30,7 @@ import {
   spawnRoomEnemies,
   syncRoomHierarchyState,
   syncStateGates,
+  toggleTrainingSandboxRoom,
   updateChunkedRoomStreaming,
   updateCombat,
   updateEnemies,
@@ -42,6 +43,9 @@ import {
 import { OrionCombatContext, OrionState } from './types';
 import { OrionGameMenu, OrionHud, OrionSatchel } from './ui';
 
+/**
+ * Instantiates the Project Orion cartridge (`160x144` `px` 2.5D tactical mech action RPG) and binds its frame loop and React overlay.
+ */
 export function createOrionCartridge(): Cartridge {
   const rooms: Record<string, string[]> = { ...ORION_TUTORIAL_ROOMS };
   const state: OrionState = createInitialOrionState();
@@ -116,7 +120,6 @@ export function createOrionCartridge(): Cartridge {
       if (currentMenuMode !== 'none') return;
 
       const dt = Math.min(0.05, dtSeconds);
-      state.t += dt;
 
       // While on the boot Main Menu, handle navigation across Root Menu ('New', 'Load', 'Training', 'Options') and Subviews
       if (state.atTitleMenu) {
@@ -149,29 +152,14 @@ export function createOrionCartridge(): Cartridge {
                 state.titleMenuSubView = 'load';
                 soundSystem.playSelect();
               } else if (cursor === 2) {
-                state.room = '-4,0';
-                state.rx = -4;
-                state.ry = 0;
-                state.x = 96;
-                state.y = 120;
-                state.z = 0;
-                state.vz = 0;
-                state.vx = 0;
-                state.vy = 0;
-                state.projectiles = [];
-                state.pickups = [];
-                state.enemies = [];
-                state.bypassProgressionGates = true;
-                state.hasBoosterKit = true;
                 state.atTitleMenu = false;
                 state.titleMenuSubView = 'root';
-                state.spawnGraceTimer = 3.0;
-                syncRoomHierarchyState(state);
-                syncStateGates(state);
-                spawnRoomEnemies(rooms, state);
+                if (state.room === '-4,0') {
+                  state.room = '-3,0';
+                }
+                toggleTrainingSandboxRoom(rooms, state);
                 state.toastText = 'TRAINING SANDBOX [-4,0] · ALL TERMINALS & SATCHEL UNLOCKED';
                 state.toastTimer = 3.0;
-                soundSystem.playPowerup();
               } else if (cursor === 3) {
                 state.titleMenuOptionCursor = 0;
                 state.titleMenuSubView = 'options';
@@ -261,6 +249,8 @@ export function createOrionCartridge(): Cartridge {
         }
         return;
       }
+
+      state.t += dt;
 
       if ((state.spawnGraceTimer || 0) > 0) {
         state.spawnGraceTimer = Math.max(0, (state.spawnGraceTimer || 0) - dt);

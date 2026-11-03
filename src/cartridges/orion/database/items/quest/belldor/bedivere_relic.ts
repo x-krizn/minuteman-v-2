@@ -10,6 +10,9 @@ import { ItemWikiDefinition } from '../../../../types';
 export const AMULET_ICON_BASE64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAV0lEQVR42mNgoAf4f4bhPwyTp3kmEibVEJgBuPi0MwDubzTFRHkD2d8YcqQYgFUOnwHI0QVTiK4Yp+HYNCJHHa4wwfQ3Gg139kwCoY/LBWQnWZI1D10AABP+t+JoVpTmAAAAAElFTkSuQmCC';
 
+/**
+ * Canonical database definition for `bedivereRelicItem` (`Grail Amulet (Bedivere List Relic)`, id `'bedivere_relic'`, slot `'key'`) — 0 WT Sacred Relic Artifact · Grants +3 Passive Light Resonance & progresses Bedivere Scroll Ritual (1/3 per re....
+ */
 export const bedivereRelicItem: ItemWikiDefinition = {
   id: 'bedivere_relic',
   name: 'Grail Amulet (Bedivere List Relic)',

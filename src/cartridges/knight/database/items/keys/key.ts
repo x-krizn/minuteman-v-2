@@ -5,6 +5,9 @@
 
 import { ItemWikiDefinition } from '../../../types';
 
+/**
+ * Canonical database definition for `keyItem` (`Dungeon Key`, id `'key'`, ASCII token `'K'`, slot `'key'`) — Unlocks the fortified exit door of the floor..
+ */
 export const keyItem: ItemWikiDefinition = {
   // 1. Identity & Metadata
   id: 'key',

@@ -171,6 +171,9 @@ function getHexPolygonPoints(cx: number, cy: number, radius: number): string {
   return pts.join(' ');
 }
 
+/**
+ * Renders the interactive 97-node Frame Feat Constellation & Gemstone Socket tab inside the Pilot Satchel (`[SHIFT]`). Supports the React overlay HUD.
+ */
 export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({ state, setToast }) => {
   const [, setTick] = useState(0);
   const [selectedSkillFilter, setSelectedSkillFilter] = useState<PilotSkillId | 'ALL'>('ALL');

@@ -118,8 +118,9 @@ export class UniversalMenuNavigator {
   }
 
   /**
-   * Sets the active focused element, scrolling it into view if needed and invoking `.focus()`
-   * for non-text-input elements so `onFocus` preview handlers trigger immediately.
+   * Sets the active focused element, scrolling it into view if needed and dispatching a synthetic
+   * `focus` event (without moving native `document.activeElement`) so `onFocus` preview handlers
+   * trigger while preventing browser native Space/Enter key activation from double-clicking buttons.
    */
   private setFocus(el: HTMLElement | null, scrollIntoView = true): void {
     if (this.currentFocusedEl && this.currentFocusedEl !== el) {
@@ -135,9 +136,18 @@ export class UniversalMenuNavigator {
     const tag = el.tagName.toLowerCase();
     if (tag !== 'input' && tag !== 'textarea' && tag !== 'select') {
       try {
-        el.focus({ preventScroll: true });
+        if (
+          typeof document !== 'undefined' &&
+          document.activeElement instanceof HTMLElement &&
+          document.activeElement !== document.body &&
+          document.activeElement.closest('#screen-viewport')
+        ) {
+          document.activeElement.blur();
+        }
+        el.dispatchEvent(new FocusEvent('focus', { bubbles: false }));
+        el.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
       } catch {
-        // Ignore SVG or non-standard focus errors
+        // Ignore focus dispatch errors
       }
     }
   }
@@ -168,14 +178,17 @@ export class UniversalMenuNavigator {
   /**
    * Picks the default initial focus element inside a menu scope.
    */
-  private pickInitialFocus(scope: HTMLElement, candidates: HTMLElement[]): HTMLElement | null {
+  private pickInitialFocus(_scope: HTMLElement, candidates: HTMLElement[]): HTMLElement | null {
     if (candidates.length === 0) return null;
-    const preferred = scope.querySelector<HTMLElement>('[data-menu-autofocus="true"]');
-    if (preferred && candidates.includes(preferred)) return preferred;
+    const preferred = candidates.find(el => el.getAttribute('data-menu-autofocus') === 'true');
+    if (preferred) return preferred;
 
-    // Prefer the first non-back, non-tab content interactive element if available
+    // Prefer the first non-back, non-tab, non-header-shortcut content interactive element if available
     const contentEl = candidates.find(
-      el => !el.closest('[data-menu-tabs="true"]') && el.getAttribute('data-menu-back') !== 'true'
+      el =>
+        !el.closest('[data-menu-tabs="true"]') &&
+        el.getAttribute('data-menu-back') !== 'true' &&
+        el.getAttribute('data-menu-secondary') !== 'true'
     );
     return contentEl ?? candidates[0];
   }
@@ -249,9 +262,9 @@ export class UniversalMenuNavigator {
     const tabBar = rootMenu.querySelector<HTMLElement>('[data-menu-tabs="true"]');
     if (!tabBar || !isElementVisible(tabBar)) return false;
 
-    const tabs = Array.from(tabBar.querySelectorAll<HTMLElement>('button:not(:disabled), [role="tab"]:not([aria-disabled="true"])')).filter(
-      isElementVisible
-    );
+    const tabs = Array.from(
+      tabBar.querySelectorAll<HTMLElement>('[data-tab-active]:not(:disabled), [role="tab"]:not([aria-disabled="true"])')
+    ).filter(isElementVisible);
     if (tabs.length < 2) return false;
 
     let activeIndex = tabs.findIndex(
@@ -403,8 +416,10 @@ export class UniversalMenuNavigator {
           selectEl.selectedIndex = (selectEl.selectedIndex + 1) % selectEl.options.length;
           selectEl.dispatchEvent(new Event('change', { bubbles: true }));
         }
-      } else {
+      } else if (typeof el.click === 'function') {
         el.click();
+      } else {
+        el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
       }
       handledInput = true;
     }
@@ -424,7 +439,11 @@ export class UniversalMenuNavigator {
           activeScope.querySelector<HTMLElement>('[data-menu-back="true"]') ??
           rootMenu.querySelector<HTMLElement>('[data-menu-back="true"]');
         if (backBtn && isElementVisible(backBtn)) {
-          backBtn.click();
+          if (typeof backBtn.click === 'function') {
+            backBtn.click();
+          } else {
+            backBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+          }
           handledInput = true;
         } else {
           shouldCloseRootMenu = true;

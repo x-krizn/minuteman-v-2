@@ -5,6 +5,9 @@
 
 import { TileDefinition } from '../../../types';
 
+/**
+ * Canonical database definition for `platformTile` (`Wooden Platform`, id `'platform'`, ASCII token `'_'`, slot `'terrain'`) — Elevated wooden scaffolding allowing jumping through from underneath..
+ */
 export const platformTile: TileDefinition = {
   id: 'platform',
   symbol: '_',

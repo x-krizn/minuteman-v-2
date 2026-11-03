@@ -5,6 +5,9 @@
 
 import { ItemWikiDefinition, OrionExecutionContext, OrionState } from '../../../../types';
 
+/**
+ * Canonical database definition for `orcWarPaintItem` (`Orc War Paint`, id `'orc_war_paint'`, slot `'consumable'`) — Applies ceremonial ochre pigment: +15% Weapon Damage Overdrive & +10% Stagger Impact for 8.0s (+10 Presence Th....
+ */
 export const orcWarPaintItem: ItemWikiDefinition = {
   id: 'orc_war_paint',
   name: 'Orc War Paint',

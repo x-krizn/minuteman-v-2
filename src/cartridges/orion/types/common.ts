@@ -3,23 +3,38 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// 8-way directional navigation
+/**
+ * 8-way directional navigation.
+ */
 export type OrionDir = 'N' | 'NE' | 'E' | 'SE' | 'S' | 'SW' | 'W' | 'NW';
 
-// Six Canonical Trait Lines
+/**
+ * Six Canonical Trait Lines.
+ */
 export type TraitLine = 'Warrior' | 'Marauder' | 'Guardian' | 'Rogue' | 'Wizard' | 'Cleric';
 
-// Reactor Families
+/**
+ * Reactor Families.
+ */
 export type ReactorFamily = 'Ichor' | 'Mana' | 'Ether';
 
-// Damage Taxonomy (LOCKED: Kinetic & Energy families)
+/**
+ * Damage Taxonomy (LOCKED: Kinetic & Energy families).
+ */
 export type DamageFamily = 'Kinetic' | 'Energy';
+/**
+ * Type contract for `DamageType` (damage type) in `common.ts`.
+ */
 export type DamageType = 'Pierce' | 'Impact' | 'Blast' | 'Beam' | 'Pulse' | 'Wave';
 
-// Armor Taxonomy
+/**
+ * Armor Taxonomy.
+ */
 export type ArmorType = 'Ablative' | 'Reactive' | 'Hardened' | 'Layered';
 
-// Defense Layer 1: Shields
+/**
+ * Defense Layer 1: Shields.
+ */
 export interface ShieldState {
   type: 'energy' | 'physical';
   capacity: number;
@@ -29,7 +44,9 @@ export interface ShieldState {
   rechargeDelay: number;
 }
 
-// Defense Layer 2: Armor (Threshold, Rating, Degrading Durability)
+/**
+ * Defense Layer 2: Armor (Threshold, Rating, Degrading Durability).
+ */
 export interface ArmorState {
   type: ArmorType;
   threshold: number; // Hits below threshold stopped completely
@@ -38,20 +55,27 @@ export interface ArmorState {
   maxDurability: number; // Base durability
 }
 
-// Defense Layer 3: Frame Integrity (Static 200 HP)
+/**
+ * Defense Layer 3: Frame Integrity (Static 200 HP).
+ */
 export interface FrameState {
   integrity: number; // 200 base
   maxIntegrity: number; // 200 base (Static stats law)
   state: 'Operational' | 'Critical' | 'Defeated'; // <= 20% (40 HP) is Critical
 }
 
-// Loot drop entry
+/**
+ * Loot drop entry.
+ */
 export interface LootEntry {
   itemId: string;
   chance: number;
   count?: number;
 }
 
+/**
+ * Type contract for `WorldScope` (world scope) in `common.ts`.
+ */
 export type WorldScope = 'global' | 'local';
 
 /**
@@ -95,6 +119,9 @@ export interface Base64SpriteConfig {
   orientFromEast?: boolean;
 }
 
+/**
+ * Type contract for `LightSourceConfig` (light source config) in `common.ts`.
+ */
 export interface LightSourceConfig {
   color: string;
   radius: number;
@@ -103,6 +130,15 @@ export interface LightSourceConfig {
   offsetY?: number;
 }
 
+/**
+ * Type contract for `FrameLoadCapacity` (frame load capacity) in `common.ts`.
+ */
 export type FrameLoadCapacity = 'light' | 'medium' | 'heavy' | 'superheavy';
+/**
+ * Type contract for `WeaponWeightClass` (weapon weight class) in `common.ts`.
+ */
 export type WeaponWeightClass = 'light' | 'medium' | 'heavy';
+/**
+ * Type contract for `LevelBand` (level band) in `common.ts`.
+ */
 export type LevelBand = 'Lesson' | 'Challenge' | 'Expression';

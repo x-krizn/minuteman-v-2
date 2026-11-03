@@ -5,6 +5,9 @@
 
 import { RegionDefinition } from '../../../../types';
 
+/**
+ * Canonical database definition for `regionBelldorCamelotHeartland` (`Belldor — Camelot Border Town & Interior`, id `'region_belldor_camelot_heartland'`, scope `'local'`) — The contested gateway settlement of Camelot Border Town (border-town-v1.md, LOCKED) and the sealed Deep Dungeo....
+ */
 export const regionBelldorCamelotHeartland: RegionDefinition = {
   id: 'region_belldor_camelot_heartland',
   name: 'Belldor — Camelot Border Town & Interior',

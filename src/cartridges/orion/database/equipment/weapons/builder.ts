@@ -15,10 +15,16 @@ import {
   SHOTEL_STRIP_BASE64,
 } from './base_sprites';
 
+/**
+ * Executes `getDamageFamily` (get damage family) in `builder.ts`.
+ */
 export function getDamageFamily(dt: DamageType): DamageFamily {
   return dt === 'Beam' || dt === 'Pulse' || dt === 'Wave' ? 'Energy' : 'Kinetic';
 }
 
+/**
+ * Type contract for `MagitechWeaponSkillSeed` (magitech weapon skill seed) in `builder.ts`.
+ */
 export interface MagitechWeaponSkillSeed {
   name: string;
   desc: string;
@@ -29,6 +35,9 @@ export interface MagitechWeaponSkillSeed {
   isBlock?: boolean;
 }
 
+/**
+ * Type contract for `MagitechWeaponSeed` (magitech weapon seed) in `builder.ts`.
+ */
 export interface MagitechWeaponSeed {
   id: string;
   name: string;
@@ -69,6 +78,9 @@ export interface MagitechWeaponSeed {
   ];
 }
 
+/**
+ * Executes `buildMagitechWeapon` (build magitech weapon) in `builder.ts`.
+ */
 export function buildMagitechWeapon(seed: MagitechWeaponSeed): WeaponDefinition {
   const strip =
     seed.customStripBase64 ||

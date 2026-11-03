@@ -7,6 +7,9 @@ import React from 'react';
 import { ScreenCanvas } from './ScreenCanvas';
 import { ScreenText } from './ScreenText';
 
+/**
+ * Props contract for `ScreenViewport`, specifying integer display `scale`, shell state, and cartridge overlay children.
+ */
 export interface ScreenViewportProps {
   isCartridgeRunning: boolean;
   isLoading: boolean;
@@ -22,6 +25,9 @@ export interface ScreenViewportProps {
   children?: React.ReactNode;
 }
 
+/**
+ * Renders the recessed LCD bezel (`160x144` `px` native resolution) and composites the canvas surface with React HUD/menu overlays.
+ */
 export const ScreenViewport: React.FC<ScreenViewportProps> = ({
   isCartridgeRunning,
   isLoading,

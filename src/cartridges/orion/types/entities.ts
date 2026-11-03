@@ -17,7 +17,9 @@ import {
 import { InertiaOutcomeBand, OrionCombatContext } from './combat';
 import type { OrionState } from './state';
 
-// Enemy / NPC / Spirit Entity
+/**
+ * Enemy / NPC / Spirit Entity.
+ */
 export interface EnemyEntity {
   id: number;
   type: string;
@@ -91,7 +93,9 @@ export interface EnemyEntity {
   visionRadiusTiles?: number;
 }
 
-// Enemy Wiki Definition (Self-Contained Entity Module Contract)
+/**
+ * Enemy Wiki Definition (Self-Contained Entity Module Contract).
+ */
 export interface EnemyWikiDefinition {
   type: string;
   name: string;
@@ -160,7 +164,9 @@ export interface EnemyWikiDefinition {
   ) => void;
 }
 
-// Pickups
+/**
+ * Type contract for `PickupEntity` (pickup entity) in `entities.ts`.
+ */
 export interface PickupEntity {
   id: number;
   x: number;

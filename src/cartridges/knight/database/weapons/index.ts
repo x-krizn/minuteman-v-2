@@ -27,8 +27,14 @@ for (const [path, mod] of Object.entries(weaponModules)) {
   }
 }
 
+/**
+ * Exported const `ALL_WEAPONS` (all weapons) in `index.ts`.
+ */
 export const ALL_WEAPONS: WeaponDefinition[] = collectedWeapons;
 
+/**
+ * Exported const `WEAPON_REGISTRY` (weapon registry) in `index.ts`.
+ */
 export const WEAPON_REGISTRY: Record<string, WeaponDefinition> = ALL_WEAPONS.reduce(
   (acc, w) => {
     acc[w.id] = w;
@@ -37,6 +43,9 @@ export const WEAPON_REGISTRY: Record<string, WeaponDefinition> = ALL_WEAPONS.red
   {} as Record<string, WeaponDefinition>
 );
 
+/**
+ * Executes `getWeaponDefinition` (get weapon definition) in `index.ts`.
+ */
 export function getWeaponDefinition(id?: string): WeaponDefinition {
   return (id && WEAPON_REGISTRY[id]) || WEAPON_REGISTRY['short_sword'] || ALL_WEAPONS[0];
 }

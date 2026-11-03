@@ -13,6 +13,9 @@ import {
 import { notifyOrionStateChange } from '../../../systems/stateStore';
 import { EnemyEntity, EnemyWikiDefinition, OrionState } from '../../../types';
 
+/**
+ * Canonical database definition for `ladyOfTheLakeEnemy` (`The Lady of the Lake`, id `'lady_of_the_lake'`) — Something half machine and half serpent, an old name twisted by the æther..
+ */
 export const ladyOfTheLakeEnemy: EnemyWikiDefinition = {
   type: 'lady_of_the_lake',
   name: 'The Lady of the Lake',

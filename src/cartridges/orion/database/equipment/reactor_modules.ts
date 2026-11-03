@@ -5,6 +5,9 @@
 
 import { OrionActionDescriptor } from '../../types';
 
+/**
+ * Canonical database definition for `reactorThermalVentAction` (`Thermal Vent Purge`, id `'reactor_thermal_vent'`) — Opens emergency radiator baffles to immediately purge -45 Reactor Heat while scorching adjacent hostiles for 1....
+ */
 export const reactorThermalVentAction: OrionActionDescriptor = {
   id: 'reactor_thermal_vent',
   name: 'Thermal Vent Purge',
@@ -25,6 +28,9 @@ export const reactorThermalVentAction: OrionActionDescriptor = {
   range: 34,
 };
 
+/**
+ * Canonical database definition for `reactorOverdriveAction` (`Reactor Overdrive`, id `'reactor_overdrive'`) — Surges reactor output (+20 Heat) to grant +30% weapon and skill damage and rapid reload recovery for 6.0s..
+ */
 export const reactorOverdriveAction: OrionActionDescriptor = {
   id: 'reactor_overdrive',
   name: 'Reactor Overdrive',
@@ -45,6 +51,9 @@ export const reactorOverdriveAction: OrionActionDescriptor = {
   range: 0,
 };
 
+/**
+ * Canonical database definition for `reactorAegisPulseAction` (`Aegis Barrier Pulse`, id `'reactor_aegis_pulse'`) — Channels reactor energy (+18 Heat) into Layer 1 Shields, restoring +35 Shield Capacity and clearing Shield Ove....
+ */
 export const reactorAegisPulseAction: OrionActionDescriptor = {
   id: 'reactor_aegis_pulse',
   name: 'Aegis Barrier Pulse',

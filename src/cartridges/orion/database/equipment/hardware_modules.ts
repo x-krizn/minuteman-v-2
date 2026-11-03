@@ -5,6 +5,9 @@
 
 import { OrionActionDescriptor } from '../../types';
 
+/**
+ * Canonical database definition for `modHeadOpticScanAction` (`Optic Target Painter`, id `'mod_head_optic_scan'`) — Sweeps the sector with targeting telemetry, revealing submerged threats and increasing damage taken by enemies....
+ */
 export const modHeadOpticScanAction: OrionActionDescriptor = {
   id: 'mod_head_optic_scan',
   name: 'Optic Target Painter',
@@ -25,6 +28,9 @@ export const modHeadOpticScanAction: OrionActionDescriptor = {
   range: 120,
 };
 
+/**
+ * Canonical database definition for `modTorsoReactiveBurstAction` (`Ablative Reactive Burst`, id `'mod_torso_reactive_burst'`) — Detonates reactive counter-plates to restore +22 Armor Durability and stagger nearby attackers with an Impact ....
+ */
 export const modTorsoReactiveBurstAction: OrionActionDescriptor = {
   id: 'mod_torso_reactive_burst',
   name: 'Ablative Reactive Burst',
@@ -45,6 +51,9 @@ export const modTorsoReactiveBurstAction: OrionActionDescriptor = {
   range: 36,
 };
 
+/**
+ * Canonical database definition for `modArmsShockGrappleAction` (`Arc Tether Shot`, id `'mod_arms_shock_grapple'`) — Fires a high-velocity electromagnetic tether bolt that deals 20 Pulse damage, overloads Energy Shields, and st....
+ */
 export const modArmsShockGrappleAction: OrionActionDescriptor = {
   id: 'mod_arms_shock_grapple',
   name: 'Arc Tether Shot',
@@ -65,6 +74,9 @@ export const modArmsShockGrappleAction: OrionActionDescriptor = {
   range: 95,
 };
 
+/**
+ * Canonical database definition for `modLegsSeismicStompAction` (`Seismic Thruster Slam`, id `'mod_legs_seismic_stomp'`) — Vector-pulses leg thrusters into the ground, dealing 22 Impact damage and stunning enemies within 38px..
+ */
 export const modLegsSeismicStompAction: OrionActionDescriptor = {
   id: 'mod_legs_seismic_stomp',
   name: 'Seismic Thruster Slam',

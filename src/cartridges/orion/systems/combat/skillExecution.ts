@@ -61,6 +61,9 @@ import { DamageLayerOptions, PERFECT_BLOCK_WINDOW_SEC } from './damageSystem';
 
 // ─── 1. ASSIGNABLE [L] & [R] MULTI-SOURCE ACTIONS ────────────────────────────
 
+/**
+ * Executes `isActionUnlocked` (is action unlocked) in `skillExecution.ts`.
+ */
 export function isActionUnlocked(
   state: OrionState,
   actionId: string
@@ -152,6 +155,9 @@ export function isActionUnlocked(
   return { unlocked: true, reason: 'READY' };
 }
 
+/**
+ * Executes `assignTriggerAction` (assign trigger action) in `skillExecution.ts`. Mutates `state: OrionState`.
+ */
 export function assignTriggerAction(
   state: OrionState,
   trigger: 'L' | 'R',
@@ -165,6 +171,9 @@ export function assignTriggerAction(
   notifyOrionStateChange();
 }
 
+/**
+ * Executes `getActionCooldown` (get action cooldown) in `skillExecution.ts`.
+ */
 export function getActionCooldown(state: OrionState, actionId: string): number {
   const desc = getResolvedActionDescriptor(state, actionId);
   if (desc.sourceCategory === 'weapon' && desc.weaponSkillSlot) {
@@ -178,6 +187,9 @@ export function getActionCooldown(state: OrionState, actionId: string): number {
 }
 
 // [ORION-ANCHOR: COMBAT-ACTION-PAYLOAD]
+/**
+ * Executes `executeActionPayload` (execute action payload) in `skillExecution.ts`. Mutates `state: OrionState`.
+ */
 export function executeActionPayload(
   state: OrionState,
   ctx: OrionCombatContext,
@@ -1927,6 +1939,9 @@ export function executeActionPayload(
   }
 }
 
+/**
+ * Executes `updateActionTimers` (update action timers) in `skillExecution.ts`. Mutates `state: OrionState`.
+ */
 export function updateActionTimers(state: OrionState, dt: number): void {
   const reloadMult = (state.overdriveTimer || 0) > 0 ? 1.6 : 1.0;
 
@@ -1989,6 +2004,9 @@ export function updateActionTimers(state: OrionState, dt: number): void {
 
 // ─── 2. WEAPON STANCE, AUXILIARY SWAPS & RESOLVED SKILL SLOTS ────────────────
 
+/**
+ * Type contract for `ActiveWeaponStanceSummary` (active weapon stance summary) in `skillExecution.ts`.
+ */
 export interface ActiveWeaponStanceSummary {
   stance: WeaponStanceType;
   grip: '1h' | '2h';
@@ -2004,6 +2022,9 @@ export interface ActiveWeaponStanceSummary {
   };
 }
 
+/**
+ * Executes `getActiveWeaponStance` (get active weapon stance) in `skillExecution.ts`.
+ */
 export function getActiveWeaponStance(state: OrionState): ActiveWeaponStanceSummary {
   const slot1Id =
     state.equipmentSlots?.slot1 || state.equippedWeapons[0] || 'gladius_boltcaster';
@@ -2131,6 +2152,9 @@ export function getActiveWeaponStance(state: OrionState): ActiveWeaponStanceSumm
   };
 }
 
+/**
+ * Executes `performAuxiliarySwap` (perform auxiliary swap) in `skillExecution.ts`. Mutates `state: OrionState`.
+ */
 export function performAuxiliarySwap(
   state: OrionState,
   ctx?: { say: (text: string) => void },
@@ -2221,6 +2245,9 @@ export function performAuxiliarySwap(
   return true;
 }
 
+/**
+ * Type contract for `ResolvedCombatSkill` (resolved combat skill) in `skillExecution.ts`.
+ */
 export interface ResolvedCombatSkill {
   id: string;
   cooldownKey: string;
@@ -2250,6 +2277,9 @@ export interface ResolvedCombatSkill {
   unavailableReason?: string;
 }
 
+/**
+ * Type contract for `ResolvedCombatSkills` (resolved combat skills) in `skillExecution.ts`.
+ */
 export interface ResolvedCombatSkills {
   skill1: ResolvedCombatSkill | null;
   skill2: ResolvedCombatSkill | null;
@@ -2258,6 +2288,9 @@ export interface ResolvedCombatSkills {
   skill5: ResolvedCombatSkill | null;
 }
 
+/**
+ * Executes `getSkillCooldownKey` (get skill cooldown key) in `skillExecution.ts`.
+ */
 export function getSkillCooldownKey(
   weaponOrItemId: string,
   movesetSlot?: number,
@@ -2269,6 +2302,9 @@ export function getSkillCooldownKey(
   return `${instancePrefix}:${weaponOrItemId}:s${movesetSlot}`;
 }
 
+/**
+ * Executes `getResolvedCombatSkills` (get resolved combat skills) in `skillExecution.ts`.
+ */
 export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills {
   const slot1Id =
     state.equipmentSlots?.slot1 || state.equippedWeapons[0] || 'gladius_boltcaster';
@@ -2553,6 +2589,9 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
   return { skill1, skill2, skill3, skill4, skill5 };
 }
 
+/**
+ * Executes `triggerTacticalReload` (trigger tactical reload) in `skillExecution.ts`. Mutates `state: OrionState`.
+ */
 export function triggerTacticalReload(
   state: OrionState,
   _ctx: OrionCombatContext,
@@ -2620,6 +2659,9 @@ export function triggerTacticalReload(
   return true;
 }
 
+/**
+ * Executes `startHoldingBlock` (start holding block) in `skillExecution.ts`. Mutates `state: OrionState`.
+ */
 export function startHoldingBlock(
   state: OrionState,
   ctx?: OrionCombatContext,
@@ -2689,6 +2731,9 @@ export function startHoldingBlock(
   return true;
 }
 
+/**
+ * Executes `releaseHeldBlock` (release held block) in `skillExecution.ts`. Mutates `state: OrionState`.
+ */
 export function releaseHeldBlock(state: OrionState): void {
   if (state.isHoldingBlock || (state.blockTimer || 0) > 0) {
     state.isHoldingBlock = false;
@@ -2699,6 +2744,9 @@ export function releaseHeldBlock(state: OrionState): void {
   }
 }
 
+/**
+ * Executes `activateResolvedCombatSkill` (activate resolved combat skill) in `skillExecution.ts`. Mutates `state: OrionState`.
+ */
 export function activateResolvedCombatSkill(
   state: OrionState,
   ctx: OrionCombatContext,

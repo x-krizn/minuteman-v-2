@@ -5,6 +5,9 @@
 
 import { RegionDefinition } from '../../../../types';
 
+/**
+ * Canonical database definition for `regionTyrranusFrontier` (`Tyrranus — Imperial Waygate Frontier`, id `'region_tyrranus_frontier'`, scope `'local'`) — The marble frontier of Tyrranus where classical legions hold the other side of the Camelot Waygate alignment..
+ */
 export const regionTyrranusFrontier: RegionDefinition = {
   id: 'region_tyrranus_frontier',
   name: 'Tyrranus — Imperial Waygate Frontier',

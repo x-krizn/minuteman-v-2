@@ -8,6 +8,9 @@ import { drawBase64Sprite } from '../../../systems/render/spriteAtlasCache';
 import { TileDefinition } from '../../../types';
 import { bogTiles_14_11, bogTiles_15_10, bogTiles_15_11, bogTiles_15_12 } from './bog_tileset_atlas';
 
+/**
+ * Canonical database definition for `cathedralDoorTile` (`Cathedral Dungeon Door (3-Way Gate)`, id `'cathedral_door'`, ASCII token `'M'`).
+ */
 export const cathedralDoorTile: TileDefinition = {
   id: 'cathedral_door',
   char: 'M',

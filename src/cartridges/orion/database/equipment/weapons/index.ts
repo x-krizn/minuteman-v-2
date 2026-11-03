@@ -21,6 +21,9 @@ export * from './cleric_weapons';
 // Auto-discover all weapon entity modules in this directory (including subfolders) via Vite import.meta.glob
 const modules = import.meta.glob<Record<string, unknown>>('./**/*.ts', { eager: true });
 
+/**
+ * Exported const `WEAPON_REGISTRY` (weapon registry) in `index.ts`.
+ */
 export const WEAPON_REGISTRY: Record<string, WeaponDefinition> = {};
 
 function isWeaponDefinition(val: unknown): val is WeaponDefinition {

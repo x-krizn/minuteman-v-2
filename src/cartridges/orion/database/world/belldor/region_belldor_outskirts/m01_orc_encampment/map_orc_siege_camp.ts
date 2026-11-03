@@ -5,6 +5,9 @@
 
 import { MapDefinition, RoomDefinition } from '../../../../../types';
 
+/**
+ * Canonical database definition for `mapOrcSiegeCamp` (`M01 Orc Encampment Map`, id `'map_orc_siege_camp'`, coord `"3,1"`, scope `'local'`) — M01 Orc Encampment sector (UNDEFINED in mapping-v0.md). Sealed behind an Aether Fog boundary during active tra....
+ */
 export const mapOrcSiegeCamp: MapDefinition = {
   id: 'map_orc_siege_camp',
   name: 'M01 Orc Encampment Map',
@@ -29,6 +32,9 @@ export const mapOrcSiegeCamp: MapDefinition = {
   ],
 };
 
+/**
+ * Canonical database definition for `room31OrcEncampmentSiege` (`M01 Orc Encampment (Sealed)`, id `'room_3_1_orc_encampment_siege'`, coord `"3,1"`, scope `'local'`).
+ */
 export const room31OrcEncampmentSiege: RoomDefinition = {
   id: 'room_3_1_orc_encampment_siege',
   scope: 'local',

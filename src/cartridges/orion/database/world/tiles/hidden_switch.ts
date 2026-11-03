@@ -51,6 +51,9 @@ const baseSwitchProps = {
   bakedFrontColor: '#166534',
 };
 
+/**
+ * Canonical database definition for `hiddenSwitch1Tile` (`Hidden Grail Switch`, id `'hidden_switch_1'`, ASCII token `'1'`).
+ */
 export const hiddenSwitch1Tile: TileDefinition = {
   ...baseSwitchProps,
   id: 'hidden_switch_1',
@@ -61,6 +64,9 @@ export const hiddenSwitch1Tile: TileDefinition = {
   },
 };
 
+/**
+ * Canonical database definition for `hiddenSwitch2Tile` (`Cathedral Altar Switch`, id `'hidden_switch_2'`, ASCII token `'2'`).
+ */
 export const hiddenSwitch2Tile: TileDefinition = {
   ...baseSwitchProps,
   id: 'hidden_switch_2',
@@ -71,6 +77,9 @@ export const hiddenSwitch2Tile: TileDefinition = {
   },
 };
 
+/**
+ * Canonical database definition for `hiddenSwitch3Tile` (`Barracks Armory Switch`, id `'hidden_switch_3'`, ASCII token `'3'`).
+ */
 export const hiddenSwitch3Tile: TileDefinition = {
   ...baseSwitchProps,
   id: 'hidden_switch_3',
@@ -81,6 +90,9 @@ export const hiddenSwitch3Tile: TileDefinition = {
   },
 };
 
+/**
+ * Canonical database definition for `toggleLeverTile` (`Æther Phase Toggle Lever`, id `'toggle_switch'`, ASCII token `'!'`).
+ */
 export const toggleLeverTile: TileDefinition = {
   ...baseSwitchProps,
   id: 'toggle_switch',

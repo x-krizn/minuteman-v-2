@@ -6,6 +6,9 @@
 import { KnightState } from '../../../types';
 import { getRandomRecycledRoom } from '../rooms/recycled';
 
+/**
+ * Type contract for `RoomOpenings` (room openings) in `proceduralFloor.ts`.
+ */
 export interface RoomOpenings {
   N: boolean;
   S: boolean;
@@ -13,6 +16,9 @@ export interface RoomOpenings {
   W: boolean;
 }
 
+/**
+ * Exported const `DIRS` (dirs) in `proceduralFloor.ts`.
+ */
 export const DIRS: Record<'N' | 'S' | 'E' | 'W', [number, number, 'N' | 'S' | 'E' | 'W']> = {
   N: [0, -1, 'S'],
   S: [0, 1, 'N'],
@@ -20,6 +26,9 @@ export const DIRS: Record<'N' | 'S' | 'E' | 'W', [number, number, 'N' | 'S' | 'E
   W: [-1, 0, 'E'],
 };
 
+/**
+ * Executes `floorSize` (floor size) in `proceduralFloor.ts`.
+ */
 export function floorSize(cleared: number): { cols: number; rows: number } {
   return {
     cols: Math.min(10, 3 + cleared),
@@ -31,12 +40,18 @@ function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+/**
+ * Executes `withTile` (with tile) in `proceduralFloor.ts`.
+ */
 export function withTile(room: string[], r: number, c: number, ch: string): string[] {
   return room.map((row, y) =>
     y === r ? row.slice(0, c) + ch + row.slice(c + 1) : row
   );
 }
 
+/**
+ * Executes `makeCell` (make cell) in `proceduralFloor.ts`.
+ */
 export function makeCell(m: RoomOpenings, decor: number): string[] {
   // If no vertical openings, occasionally sample from the stock of recycled static rooms!
   if (!m.N && !m.S && Math.random() < 0.25) {
@@ -87,6 +102,9 @@ export function makeCell(m: RoomOpenings, decor: number): string[] {
   return g.map((row) => row.join(''));
 }
 
+/**
+ * Executes `buildFloor` (build floor) in `proceduralFloor.ts`.
+ */
 export function buildFloor(
   state: KnightState,
   roomsMap: Record<string, string[]>,

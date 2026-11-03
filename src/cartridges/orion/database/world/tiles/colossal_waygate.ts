@@ -6,8 +6,11 @@
 import { TILE_SIZE } from '../../../constants';
 import { drawBase64Sprite } from '../../../systems/render/spriteAtlasCache';
 import { TileDefinition } from '../../../types';
-import { DOODADS_01_BASE64, DOODAD_CELLS } from './doodads_atlas';
+import { DOODAD_CELLS, DOODADS_01_BASE64 } from './doodads_atlas';
 
+/**
+ * Canonical database definition for `colossalWaygateTile` (`Colossal Waygate (Inter-World Signature Archway)`, id `'colossal_waygate'`, ASCII token `'Q'`).
+ */
 export const colossalWaygateTile: TileDefinition = {
   id: 'colossal_waygate',
   char: 'Q',

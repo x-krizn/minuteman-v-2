@@ -3,6 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * Returns `true` when the document is currently in browser fullscreen mode (including WebKit/Moz vendor prefixes).
+ */
 export function isAppFullscreen(): boolean {
   if (typeof document === 'undefined') return false;
   return Boolean(
@@ -13,6 +16,9 @@ export function isAppFullscreen(): boolean {
   );
 }
 
+/**
+ * Requests browser fullscreen mode on `target` (or `document.documentElement`) and returns `true` on success.
+ */
 export async function requestAppFullscreen(
   target: HTMLElement = document.documentElement
 ): Promise<boolean> {
@@ -42,6 +48,9 @@ export async function requestAppFullscreen(
   return false;
 }
 
+/**
+ * Exits browser fullscreen mode if active and returns `true` on success.
+ */
 export async function exitAppFullscreen(): Promise<boolean> {
   try {
     if (document.exitFullscreen) {
@@ -61,6 +70,9 @@ export async function exitAppFullscreen(): Promise<boolean> {
   return false;
 }
 
+/**
+ * Toggles browser fullscreen mode on or off and returns the resulting fullscreen state.
+ */
 export async function toggleAppFullscreen(
   target: HTMLElement = document.documentElement
 ): Promise<boolean> {
@@ -72,6 +84,9 @@ export async function toggleAppFullscreen(
   }
 }
 
+/**
+ * Subscribes `callback` to browser `fullscreenchange` events and returns an unsubscribe cleanup function.
+ */
 export function subscribeFullscreenChange(callback: (isFullscreen: boolean) => void): () => void {
   if (typeof document === 'undefined') return () => {};
 

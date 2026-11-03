@@ -5,6 +5,9 @@
 
 import { BiomeDefinition } from '../../../types';
 
+/**
+ * Canonical database definition for `verdantRuinsBiome` (`Verdant Ruins`, id `'verdant_ruins'`) — Ancient stone halls reclaimed by bioluminescent moss and deep roots..
+ */
 export const verdantRuinsBiome: BiomeDefinition = {
   id: 'verdant_ruins',
   name: 'Verdant Ruins',

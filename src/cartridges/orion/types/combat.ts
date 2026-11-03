@@ -12,6 +12,9 @@ import {
 } from './common';
 import type { OrionState } from './state';
 
+/**
+ * Type contract for `ActionEffectStyle` (action effect style) in `combat.ts`.
+ */
 export type ActionEffectStyle =
   | 'slash'
   | 'chop'
@@ -23,6 +26,9 @@ export type ActionEffectStyle =
   | 'claw_bite'
   | 'volley';
 
+/**
+ * Type contract for `BladeTrailEffect` (blade trail effect) in `combat.ts`.
+ */
 export interface BladeTrailEffect {
   x: number;
   y: number;
@@ -53,8 +59,14 @@ export interface BladeTrailEffect {
  * - Inertia never alters damage dealt or taken (BCU invariant)
  */
 export type InertiaOutcomeBand = 'none' | 'flinch' | 'stagger' | 'knockback';
+/**
+ * Type contract for `AttackCommitmentClass` (attack commitment class) in `combat.ts`.
+ */
 export type AttackCommitmentClass = 'poke' | 'slash' | 'heavy';
 
+/**
+ * Type contract for `InertiaModifiers` (inertia modifiers) in `combat.ts`.
+ */
 export interface InertiaModifiers {
   weightFlat?: number;
   weightMult?: number;
@@ -62,7 +74,9 @@ export interface InertiaModifiers {
   stabilityMult?: number;
 }
 
-// Moveset Action (One atomic unit of a 5-action moveset)
+/**
+ * Moveset Action (One atomic unit of a 5-action moveset).
+ */
 export interface ActionDefinition {
   slot: 0 | 1 | 2 | 3 | 4; // Skill 0 = Auto-attack, Skills 1-4 = Active abilities
   name: string;
@@ -94,7 +108,9 @@ export interface ActionDefinition {
   execute?: (state: OrionState, ctx: OrionCombatContext) => void;
 }
 
-// Projectiles
+/**
+ * Projectiles.
+ */
 export interface OrionProjectile {
   x: number;
   y: number;
@@ -117,7 +133,9 @@ export interface OrionProjectile {
   onImpact?: (x: number, y: number, z: number, state: OrionState) => void;
 }
 
-// Particles
+/**
+ * Type contract for `OrionParticle` (orion particle) in `combat.ts`.
+ */
 export interface OrionParticle {
   x: number;
   y: number;
@@ -133,7 +151,9 @@ export interface OrionParticle {
   fade?: boolean;
 }
 
-// Contexts
+/**
+ * Type contract for `OrionCombatContext` (orion combat context) in `combat.ts`.
+ */
 export interface OrionCombatContext {
   state: OrionState;
   sound: SoundSystem;
@@ -148,11 +168,17 @@ export interface OrionCombatContext {
   say: (text: string) => void;
 }
 
+/**
+ * Type contract for `OrionExecutionContext` (orion execution context) in `combat.ts`.
+ */
 export interface OrionExecutionContext {
   say: (text: string) => void;
   sound: SoundSystem;
 }
 
+/**
+ * Type contract for `OrionActionSourceCategory` (orion action source category) in `combat.ts`.
+ */
 export type OrionActionSourceCategory =
   | 'weapon'
   | 'hardware'
@@ -160,6 +186,9 @@ export type OrionActionSourceCategory =
   | 'utility'
   | 'belt';
 
+/**
+ * Type contract for `OrionActionTemplate` (orion action template) in `combat.ts`.
+ */
 export interface OrionActionTemplate {
   id: string;
   name: string;
@@ -190,6 +219,9 @@ export interface OrionActionTemplate {
   iconSprite?: Base64SpriteConfig;
 }
 
+/**
+ * Type contract for `OrionActionDescriptor` (orion action descriptor) in `combat.ts`.
+ */
 export interface OrionActionDescriptor extends OrionActionTemplate {
   tellDurationSec: number;
   actionDurationSec: number;
@@ -201,6 +233,9 @@ export interface OrionActionDescriptor extends OrionActionTemplate {
   range: number;
 }
 
+/**
+ * Type contract for `OrionAssignedActions` (orion assigned actions) in `combat.ts`.
+ */
 export interface OrionAssignedActions {
   L: string; // Default: 'weapon_skill_1'
   R: string; // Default: 'weapon_skill_2'

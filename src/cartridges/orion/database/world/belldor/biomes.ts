@@ -30,6 +30,9 @@ const DEFAULT_TILE_TYPES: Record<string, string> = {
   Q: 'colossal_waygate',
 };
 
+/**
+ * Canonical database definition for `belldorBogBiome` (`M00 Belldor Toxic Marshes`, id `'belldor_bog'`, scope `'local'`) — Deep toxic marshlands littered with orbital impact debris, ruined monastery pylons, and armor-eating bog water....
+ */
 export const belldorBogBiome: BiomeDefinition = {
   id: 'belldor_bog',
   name: 'M00 Belldor Toxic Marshes',
@@ -48,20 +51,31 @@ export const belldorBogBiome: BiomeDefinition = {
     aetherMistDensity: 0.5,
   },
   tileAssets: {
-    groundPrimary: '#253243',
-    groundSecondary: '#1f2a38',
-    mudColor: '#17202a',
-    waterColor: '#17202a',
-    waterRippleColor: '#22303f',
-    pylonTop: '#475569',
-    pylonFront: '#1e293b',
-    pylonTrim: '#64748b',
-    shadow: 'rgba(0, 0, 0, 0.4)',
-    lightColor: '#77c7ff',
+    groundPrimary: '#141d24',
+    groundSecondary: '#11181f',
+    mudColor: '#0f1716',
+    waterColor: '#0b0e18',
+    waterRippleColor: '#1f3430',
+    pylonTop: '#33414d',
+    pylonFront: '#151c24',
+    pylonTrim: '#475563',
+    shadow: 'rgba(2, 3, 10, 0.62)',
+    lightColor: '#5694b8',
   },
-  lightColor: '#77c7ff',
+  lightColor: '#5694b8',
+  postProcess: {
+    ambientDarkness: 0.94,
+    bloomIntensity: 0.36,
+    weather: 'rain',
+    weatherIntensity: 0.65,
+    liquidReflection: true,
+    scanlines: false,
+  },
 };
 
+/**
+ * Canonical database definition for `orcSiegeEncampmentBiome` (`Novarin Orc Siegeworks`, id `'orc_siege_encampment'`, scope `'local'`) — Scorched forward siege trenches and ash-choked mud plains fortified by Novarin Orc Warlords..
+ */
 export const orcSiegeEncampmentBiome: BiomeDefinition = {
   id: 'orc_siege_encampment',
   name: 'Novarin Orc Siegeworks',
@@ -80,20 +94,31 @@ export const orcSiegeEncampmentBiome: BiomeDefinition = {
     aetherMistDensity: 0.3,
   },
   tileAssets: {
-    groundPrimary: '#2f2926',
-    groundSecondary: '#26211e',
-    mudColor: '#1c1816',
-    waterColor: '#291d18',
-    waterRippleColor: '#452c20',
-    pylonTop: '#57534e',
-    pylonFront: '#292524',
-    pylonTrim: '#78716c',
-    shadow: 'rgba(0, 0, 0, 0.45)',
-    lightColor: '#f97316',
+    groundPrimary: '#1c191a',
+    groundSecondary: '#151314',
+    mudColor: '#110f10',
+    waterColor: '#140f12',
+    waterRippleColor: '#2d201c',
+    pylonTop: '#3f3d3e',
+    pylonFront: '#1c1a1b',
+    pylonTrim: '#575354',
+    shadow: 'rgba(2, 3, 10, 0.65)',
+    lightColor: '#d97706',
   },
-  lightColor: '#f97316',
+  lightColor: '#d97706',
+  postProcess: {
+    ambientDarkness: 0.95,
+    bloomIntensity: 0.38,
+    weather: 'ash',
+    weatherIntensity: 0.7,
+    liquidReflection: true,
+    scanlines: false,
+  },
 };
 
+/**
+ * Canonical database definition for `camelotBorderTownBiome` (`Camelot Border Town Desync`, id `'camelot_border_town'`, scope `'local'`) — Half-ruined border settlement trapped in a temporal desynchronization loop between intact stone and shattered ....
+ */
 export const camelotBorderTownBiome: BiomeDefinition = {
   id: 'camelot_border_town',
   name: 'Camelot Border Town Desync',
@@ -112,20 +137,31 @@ export const camelotBorderTownBiome: BiomeDefinition = {
     aetherMistDensity: 0.35,
   },
   tileAssets: {
-    groundPrimary: '#2c3340',
-    groundSecondary: '#252b36',
-    mudColor: '#1e242d',
-    waterColor: '#1f2937',
-    waterRippleColor: '#374151',
-    pylonTop: '#64748b',
-    pylonFront: '#334155',
-    pylonTrim: '#94a3b8',
-    shadow: 'rgba(0, 0, 0, 0.45)',
-    lightColor: '#f59e0b',
+    groundPrimary: '#1a2029',
+    groundSecondary: '#141921',
+    mudColor: '#10141b',
+    waterColor: '#0e131d',
+    waterRippleColor: '#242f3d',
+    pylonTop: '#475569',
+    pylonFront: '#1e2631',
+    pylonTrim: '#64748b',
+    shadow: 'rgba(2, 3, 10, 0.64)',
+    lightColor: '#d97706',
   },
-  lightColor: '#f59e0b',
+  lightColor: '#d97706',
+  postProcess: {
+    ambientDarkness: 0.95,
+    bloomIntensity: 0.36,
+    weather: 'aether_mist',
+    weatherIntensity: 0.65,
+    liquidReflection: true,
+    scanlines: false,
+  },
 };
 
+/**
+ * Canonical database definition for `camelotWaygateSanctumBiome` (`Camelot Subterranean Waygate Vault`, id `'camelot_waygate_sanctum'`, scope `'local'`) — Ancient subterranean sanctum housing a Colossal Waygate that reads the pilot’s ætheric signature across the Se....
+ */
 export const camelotWaygateSanctumBiome: BiomeDefinition = {
   id: 'camelot_waygate_sanctum',
   name: 'Camelot Subterranean Waygate Vault',
@@ -144,16 +180,24 @@ export const camelotWaygateSanctumBiome: BiomeDefinition = {
     aetherMistDensity: 0.75,
   },
   tileAssets: {
-    groundPrimary: '#1b2436',
-    groundSecondary: '#151c2b',
-    mudColor: '#0f172a',
-    waterColor: '#0c4a6e',
-    waterRippleColor: '#38bdf8',
-    pylonTop: '#38bdf8',
-    pylonFront: '#1e293b',
-    pylonTrim: '#7dd3fc',
-    shadow: 'rgba(0, 0, 0, 0.5)',
+    groundPrimary: '#111624',
+    groundSecondary: '#0c101b',
+    mudColor: '#080b14',
+    waterColor: '#091e2e',
+    waterRippleColor: '#1e5b7a',
+    pylonTop: '#2b6cb0',
+    pylonFront: '#121926',
+    pylonTrim: '#4a8bb8',
+    shadow: 'rgba(2, 3, 10, 0.68)',
     lightColor: '#38bdf8',
   },
   lightColor: '#38bdf8',
+  postProcess: {
+    ambientDarkness: 0.96,
+    bloomIntensity: 0.4,
+    weather: 'aether_mist',
+    weatherIntensity: 0.75,
+    liquidReflection: true,
+    scanlines: false,
+  },
 };

@@ -7,6 +7,9 @@ import { addOrionInventoryItem } from '../../../../systems/stateStore';
 import { ItemWikiDefinition } from '../../../../types';
 import { KEY_ICON_BASE64 } from './rusted_gate_key';
 
+/**
+ * Canonical database definition for `dungeonKeyItem` (`Camelot Waygate Key`, id `'dungeon_key'`, slot `'key'`) — Ancient Grail-stamped sanctum key recovered at the Cathedral Dungeon Entrance..
+ */
 export const dungeonKeyItem: ItemWikiDefinition = {
   id: 'dungeon_key',
   name: 'Camelot Waygate Key',

@@ -29,6 +29,9 @@ export interface ClassUtilityItemDefinition {
   grantsOpticMarkSec?: number;
 }
 
+/**
+ * Canonical database definition for `CLASS_UTILITY_CATALOG` (`PNSY D-0g Repair Drone`, id `'utility_ichor_surge'`) — Bay-launched autonomous repair drone (Action 6): Restores +35 Layer 2 Armor Durability, +15 Shield Capacity, a....
+ */
 export const CLASS_UTILITY_CATALOG: ClassUtilityItemDefinition[] = [
   {
     id: 'utility_ichor_surge',
@@ -143,11 +146,17 @@ export const CLASS_UTILITY_CATALOG: ClassUtilityItemDefinition[] = [
   },
 ];
 
+/**
+ * Executes `getDefaultClassUtilityId` (get default class utility id) in `utility_and_belt_modules.ts`.
+ */
 export function getDefaultClassUtilityId(traitLine: TraitLine): string {
   const found = CLASS_UTILITY_CATALOG.find((u) => u.traitLine === traitLine);
   return found ? found.id : 'utility_ichor_surge';
 }
 
+/**
+ * Executes `getClassUtilityDefinition` (get class utility definition) in `utility_and_belt_modules.ts`.
+ */
 export function getClassUtilityDefinition(
   utilityId: string | null | undefined,
   fallbackTrait?: TraitLine
@@ -210,6 +219,9 @@ export const beltSlot1Action: OrionActionDescriptor = {
   range: 0,
 };
 
+/**
+ * Canonical database definition for `beltSlot2Action` (`Belt Slot 2 [Action 8]`, id `'belt_slot_2'`) — Triggers the tactical consumable slotted in Belt Slot 2 (unlocked at Level 1)..
+ */
 export const beltSlot2Action: OrionActionDescriptor = {
   id: 'belt_slot_2',
   name: 'Belt Slot 2 [Action 8]',
@@ -231,6 +243,9 @@ export const beltSlot2Action: OrionActionDescriptor = {
   range: 0,
 };
 
+/**
+ * Canonical database definition for `beltSlot3Action` (`Belt Slot 3 [Action 9]`, id `'belt_slot_3'`) — Triggers the tactical consumable slotted in Belt Slot 3 (unlocked at Level 5: Border Town Benchmark)..
+ */
 export const beltSlot3Action: OrionActionDescriptor = {
   id: 'belt_slot_3',
   name: 'Belt Slot 3 [Action 9]',
@@ -252,6 +267,9 @@ export const beltSlot3Action: OrionActionDescriptor = {
   range: 0,
 };
 
+/**
+ * Canonical database definition for `beltSlot4Action` (`Belt Slot 4 [Action 10]`, id `'belt_slot_4'`) — Triggers the tactical consumable slotted in Belt Slot 4 (unlocked at Level 12)..
+ */
 export const beltSlot4Action: OrionActionDescriptor = {
   id: 'belt_slot_4',
   name: 'Belt Slot 4 [Action 10]',

@@ -6,6 +6,9 @@
 import { CharacterDefinition } from '../../types';
 import { PROTO_KNIGHT_PNG } from '../../assets/sprites';
 
+/**
+ * Canonical database definition for `protoKnightCharacter` (`Proto Knight`, id `'proto_knight'`, slot `'player'`) — The standard-issue royal combat automaton awakened deep within the forgotten crypt..
+ */
 export const protoKnightCharacter: CharacterDefinition = {
   id: 'proto_knight',
   name: 'Proto Knight',

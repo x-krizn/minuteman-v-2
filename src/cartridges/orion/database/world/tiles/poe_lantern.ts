@@ -6,8 +6,11 @@
 import { TILE_SIZE } from '../../../constants';
 import { drawBase64Sprite } from '../../../systems/render/spriteAtlasCache';
 import { TileDefinition } from '../../../types';
-import { DOODADS_01_BASE64, DOODAD_CELLS } from './doodads_atlas';
+import { DOODAD_CELLS, DOODADS_01_BASE64 } from './doodads_atlas';
 
+/**
+ * Canonical database definition for `poeLanternTile` (`Poe Lantern Anchor`, id `'poe_lantern'`, ASCII token `'L'`).
+ */
 export const poeLanternTile: TileDefinition = {
   id: 'poe_lantern',
   char: 'L',

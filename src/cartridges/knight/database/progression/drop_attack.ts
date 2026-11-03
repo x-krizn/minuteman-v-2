@@ -5,6 +5,9 @@
 
 import { ProgressionNodeEntry } from '../../types';
 
+/**
+ * Canonical database definition for `dropAttackNode` (`Drop Attack`, id `'drop_attack'`, slot `'offense'`) — Plunge downward from high altitude dealing crushing impact damage..
+ */
 export const dropAttackNode: ProgressionNodeEntry = {
   id: 'drop_attack',
   name: 'Drop Attack',

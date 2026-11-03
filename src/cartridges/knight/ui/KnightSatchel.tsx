@@ -21,12 +21,18 @@ import {
 } from '../stateStore';
 import { SkillId } from '../types';
 
+/**
+ * Type contract for `KnightSatchelProps` (knight satchel props) in `KnightSatchel.tsx`.
+ */
 export interface KnightSatchelProps {
   onClose: () => void;
 }
 
 type TabType = 'loadout' | 'skills' | 'progression' | 'inventory' | 'stats' | 'merchant';
 
+/**
+ * Exported const `KnightSatchel` (knight satchel) in `KnightSatchel.tsx`.
+ */
 export const KnightSatchel: React.FC<KnightSatchelProps> = ({ onClose }) => {
   const [activeTab, setActiveTab] = useState<TabType>('loadout');
   const [knightState, setKnightState] = useState(() => getKnightState());

@@ -5,6 +5,9 @@
 
 import { ItemWikiDefinition } from '../../../types';
 
+/**
+ * Canonical database definition for `flaskShardItem` (`Flask Shard`, id `'flask_shard'`, slot `'shard'`) — +1 Max Flask Capacity.
+ */
 export const flaskShardItem: ItemWikiDefinition = {
   // 1. Identity & Metadata
   id: 'flask_shard',

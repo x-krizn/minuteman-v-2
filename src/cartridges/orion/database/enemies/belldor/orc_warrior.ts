@@ -34,6 +34,9 @@ function getOrcTarget(
   return { x: state.x, y: state.y, isNpc: false };
 }
 
+/**
+ * Canonical database definition for `orcWarriorEnemy` (`Orc Warrior`, id `'orc_warrior'`, load `'heavy'`) — A heavy shield-bearing brawler who closes distance relentlessly and hits like a siege ram..
+ */
 export const orcWarriorEnemy: EnemyWikiDefinition = {
   type: 'orc_warrior',
   name: 'Orc Warrior',

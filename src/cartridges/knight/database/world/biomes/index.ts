@@ -28,8 +28,14 @@ for (const [path, mod] of Object.entries(biomeModules)) {
   }
 }
 
+/**
+ * Exported const `ALL_BIOMES` (all biomes) in `index.ts`.
+ */
 export const ALL_BIOMES: BiomeDefinition[] = Array.from(biomeMap.values());
 
+/**
+ * Exported const `BIOME_REGISTRY` (biome registry) in `index.ts`.
+ */
 export const BIOME_REGISTRY: Record<string, BiomeDefinition> = ALL_BIOMES.reduce(
   (acc, b) => {
     acc[b.id] = b;
@@ -38,6 +44,9 @@ export const BIOME_REGISTRY: Record<string, BiomeDefinition> = ALL_BIOMES.reduce
   {} as Record<string, BiomeDefinition>
 );
 
+/**
+ * Executes `getBiomeDefinition` (get biome definition) in `index.ts`.
+ */
 export function getBiomeDefinition(id: string): BiomeDefinition | undefined {
   return BIOME_REGISTRY[id];
 }

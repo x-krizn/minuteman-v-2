@@ -5,9 +5,15 @@
 
 import { WeaponDefinition, WeaponExecutionContext } from '../../types';
 
+/**
+ * Embedded Base64 PNG pixel-art sprite payload or atlas lookup entry for `SHORT_SWORD_PNG`.
+ */
 export const SHORT_SWORD_PNG =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAd0lEQVR4nGNgGAXUBzd/zv1PkQG/zogOsAGvNnOQbkCFKf//WSZC/2EGTD76F4x//Prz/9GLDyh4yuIdqBaANKZocIHxlmDO/yADEpb+AuPTVx9i4JSSbkxD0F3ws1gMrNDYMRQnxukdkGaSwwAZvIrgGWADSAUAE79zqNkf6WQAAAAASUVORK5CYII=';
 
+/**
+ * Canonical database definition for `shortSwordWeapon` (`Iron Shortsword`, id `'short_sword'`, slot `'main_hand'`) — A nimble, balanced blade favored by dungeon vanguards..
+ */
 export const shortSwordWeapon: WeaponDefinition = {
   // 1. Identity & Equipment Slot
   id: 'short_sword',

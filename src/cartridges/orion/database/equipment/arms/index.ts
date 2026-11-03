@@ -22,6 +22,9 @@ import { CanonicalHardwareItemDefinition } from '../chassis_hardware';
 
 export * from './sprites';
 
+/**
+ * Canonical database definition for `CANONICAL_ARMS` (`BWI Twinstrike Gauntlets`, id `'arms_bwi_twinstrike'`, slot `'arms'`).
+ */
 export const CANONICAL_ARMS: CanonicalHardwareItemDefinition[] = [
   // ─── SET 0: BWI Twinstrike Gauntlets (Aperture Plate) ─────────────────────
   {

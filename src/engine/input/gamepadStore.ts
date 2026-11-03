@@ -6,10 +6,22 @@
 import { ButtonKey, GamepadButtons, StickVector } from '../../types/input';
 import { triggerHaptic } from './haptics';
 
+/**
+ * Maximum virtual thumbstick deflection radius as a fraction (`0.41`) of the D-Pad container width.
+ */
 export const STICK_RADIUS_FRAC = 0.41;
+/**
+ * Normalized radial deadzone (`0.2`) below which virtual analog stick deflection is treated as neutral (`0`).
+ */
 export const STICK_DEADZONE = 0.2;
+/**
+ * Normalized axis threshold (`0.4`) at which analog stick deflection synthesizes digital D-Pad directional presses.
+ */
 export const DIGITAL_THRESHOLD = 0.4;
 
+/**
+ * Centralized input state store merging `virtual`, `keyboard`, and `hardware` gamepad button states and 2D stick vectors.
+ */
 export class GamepadStore {
   private static instance: GamepadStore;
 
@@ -174,4 +186,7 @@ export class GamepadStore {
   }
 }
 
+/**
+ * Shared singleton instance of `GamepadStore`.
+ */
 export const gamepadStore = GamepadStore.getInstance();

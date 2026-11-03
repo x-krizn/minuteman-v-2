@@ -5,6 +5,9 @@
 
 import { TraitLineWikiDefinition } from '../../types';
 
+/**
+ * Canonical database definition for `warriorTrait` (`Bastion Striker Kit`, id `'Warrior'`, load `'medium'`) — BWI Bastion Coreplate & PNSY Alchemic Turbine Core Mk.IV (Medium Load) — frontline kinetic & thermal striker k....
+ */
 export const warriorTrait: TraitLineWikiDefinition = {
   id: 'Warrior',
   name: 'Bastion Striker Kit',

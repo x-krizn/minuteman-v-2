@@ -5,6 +5,9 @@
 
 import { ItemWikiDefinition } from '../../../../types';
 
+/**
+ * Canonical database definition for `corruptedShardItem` (`Corrupted Shard`, id `'corrupted_shard'`, slot `'valuable'`) — 0 WT Desynchronized Chrono-Crystal · Trade Value 25g Sell / 50g Buy · Emits −1 Light Distortion Field..
+ */
 export const corruptedShardItem: ItemWikiDefinition = {
   id: 'corrupted_shard',
   name: 'Corrupted Shard',

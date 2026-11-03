@@ -8,6 +8,9 @@ import { drawBase64Sprite } from '../../../systems/render/spriteAtlasCache';
 import { TileDefinition } from '../../../types';
 import { bogTiles_14_11, bogTiles_15_10, bogTiles_15_11, bogTiles_15_12 } from './bog_tileset_atlas';
 
+/**
+ * Canonical database definition for `rustedGateTile` (`Bog Exit / Perimeter Gate`, id `'rusted_gate'`, ASCII token `'G'`).
+ */
 export const rustedGateTile: TileDefinition = {
   id: 'rusted_gate',
   char: 'G',

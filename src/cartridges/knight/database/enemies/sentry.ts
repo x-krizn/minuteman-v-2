@@ -7,6 +7,9 @@ import { EnemyWikiDefinition } from '../../types';
 import { solidAt } from '../../physics';
 import { COLS, TILE_SIZE } from '../../constants';
 
+/**
+ * Canonical database definition for `sentryEnemy` (`Iron Sentry`, id `'sentry'`) — An armored stationary construct patrolling stone walkways and alerting to intrusions..
+ */
 export const sentryEnemy: EnemyWikiDefinition = {
   type: 'sentry',
   name: 'Iron Sentry',

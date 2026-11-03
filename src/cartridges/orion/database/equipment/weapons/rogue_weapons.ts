@@ -12,6 +12,9 @@ import { buildMagitechWeapon } from './builder';
 
 // ─── ROGUE / RECON LINEAGE MAGITECH WEAPONS ─────────────────────────────────
 
+/**
+ * Canonical database definition for `sv12ViperWeapon` (`SV-12 Viper`, id `'sv12_viper'`, load `'light'`) — High fire rate, close-range burst.
+ */
 export const sv12ViperWeapon = buildMagitechWeapon({
   id: 'sv12_viper',
   name: 'SV-12 Viper',
@@ -40,6 +43,9 @@ export const sv12ViperWeapon = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `sv18SerpentWeapon` (`SV-18 Serpent`, id `'sv18_serpent'`, load `'light'`) — Suppressed, mid-range stealth operations.
+ */
 export const sv18SerpentWeapon = buildMagitechWeapon({
   id: 'sv18_serpent',
   name: 'SV-18 Serpent',
@@ -68,6 +74,9 @@ export const sv18SerpentWeapon = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `sr440ShadowfangWeapon` (`SR-440 Shadowfang`, id `'sr440_shadowfang'`, load `'medium'`) — Critical amplification, long-range precision.
+ */
 export const sr440ShadowfangWeapon = buildMagitechWeapon({
   id: 'sr440_shadowfang',
   name: 'SR-440 Shadowfang',
@@ -96,6 +105,9 @@ export const sr440ShadowfangWeapon = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `s4WhisperBladeWeapon` (`S-4 Whisper Blade`, id `'s4_whisper_blade'`, load `'light'`) — Monomolecular edge, dual-wield capable.
+ */
 export const s4WhisperBladeWeapon = buildMagitechWeapon({
   id: 's4_whisper_blade',
   name: 'S-4 Whisper Blade',
@@ -125,6 +137,9 @@ export const s4WhisperBladeWeapon = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `s6PhantomEdgeWeapon` (`S-6 Phantom Edge`, id `'s6_phantom_edge'`, load `'light'`) — Thermal-coated, heat-dampened strikes.
+ */
 export const s6PhantomEdgeWeapon = buildMagitechWeapon({
   id: 's6_phantom_edge',
   name: 'S-6 Phantom Edge',
@@ -155,6 +170,9 @@ export const s6PhantomEdgeWeapon = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `greatBowWeapon` (`Arclight Great Bow`, id `'great_bow'`, load `'heavy'`) — High-draw torsion great bow firing heavy armor-piercing sabot arrows across long sightlines..
+ */
 export const greatBowWeapon: WeaponDefinition = {
   id: 'great_bow',
   name: 'Arclight Great Bow',
@@ -265,6 +283,9 @@ export const greatBowWeapon: WeaponDefinition = {
   ],
 };
 
+/**
+ * Canonical database definition for `quiverWeapon` (`Fletcher Munitions Quiver`, id `'quiver'`, load `'light'`) — Belt-fed fletcher quiver that grants +3 Magazine Capacity & -25% Reload Time when paired with ranged weapons, ....
+ */
 export const quiverWeapon: WeaponDefinition = {
   id: 'quiver',
   name: 'Fletcher Munitions Quiver',
@@ -377,6 +398,9 @@ export const quiverWeapon: WeaponDefinition = {
 
 // ─── ROGUE / RECON AUXILIARIES (Migrated from Utility, Aux 3 & Aux 4) ───────
 
+/**
+ * Canonical database definition for `utilityPhantomShroudAuxiliary` (`VX Smoke Dispersal System`, id `'utility_phantom_shroud'`, load `'medium'`) — Obscurement canisters and thermal masking (+14 Shield, +0.5 Light).
+ */
 export const utilityPhantomShroudAuxiliary = buildMagitechWeapon({
   id: 'utility_phantom_shroud',
   name: 'VX Smoke Dispersal System',
@@ -408,6 +432,9 @@ export const utilityPhantomShroudAuxiliary = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `aux3VxEclipseCloakAuxiliary` (`VX Eclipse Cloak Generator`, id `'aux3_vx_eclipse_cloak'`, load `'medium'`) — Active camouflage, heat masking (+14 Shield).
+ */
 export const aux3VxEclipseCloakAuxiliary = buildMagitechWeapon({
   id: 'aux3_vx_eclipse_cloak',
   name: 'VX Eclipse Cloak Generator',
@@ -438,6 +465,9 @@ export const aux3VxEclipseCloakAuxiliary = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `aux4VxPhaseShiftAuxiliary` (`VX Phase-Shift Module`, id `'aux4_vx_phase_shift'`, load `'medium'`) — Brief intangibility burst & phase step (+16 Shield).
+ */
 export const aux4VxPhaseShiftAuxiliary = buildMagitechWeapon({
   id: 'aux4_vx_phase_shift',
   name: 'VX Phase-Shift Module',

@@ -5,6 +5,9 @@
 
 import { CanonicalHardwareItemDefinition } from '../chassis_hardware';
 
+/**
+ * Canonical database definition for `CANONICAL_SENSORY_ARRAYS` (`Federated T7 Sensor Array`, id `'sensory_a_federated_t7'`, slot `'sensoryA'`) — Heat and motion battlefield monitor (+0.5 Light, +6% Lock Accuracy / +2 WT, +2% CD)..
+ */
 export const CANONICAL_SENSORY_ARRAYS: CanonicalHardwareItemDefinition[] = [
   {
     id: 'sensory_a_federated_t7',

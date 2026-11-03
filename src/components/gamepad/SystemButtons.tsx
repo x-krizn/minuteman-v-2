@@ -15,6 +15,9 @@ interface SystemButtonsProps {
   state: GamepadButtons;
 }
 
+/**
+ * Renders the `START`, `SHIFT`, `L`, and `R` shoulder and system buttons on the virtual handheld deck.
+ */
 export const SystemButtons: React.FC<SystemButtonsProps> = ({ scale, state }) => {
   const s = scale;
 

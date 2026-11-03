@@ -68,6 +68,9 @@ export {
 
 export { GEMSTONE_CATALOG, GEMSTONE_REGISTRY, TRAIT_FUNDING_GEMS };
 
+/**
+ * Type contract for `LevelUnlockInfo` (level unlock info) in `index.ts`.
+ */
 export interface LevelUnlockInfo {
   level: number;
   band: LevelBand;
@@ -210,6 +213,9 @@ export const LEVEL_UNLOCK_SEQUENCE: LevelUnlockInfo[] = [
   },
 ];
 
+/**
+ * Canonical database definition for `CORE_COMBAT_LAWS` (`Assault Ballistics & Turbine`, id `'Warrior'`).
+ */
 export const CORE_COMBAT_LAWS = [
   'Law 1: Every ability has a tell. No untelegraphed instant damage.',
   'Law 2: CC creates opportunity, not guaranteed damage.',
@@ -222,6 +228,9 @@ export const CORE_COMBAT_LAWS = [
 // [ORION-ANCHOR: PROG-SKILL-SCALING]
 // ─── LAYER 1: 6 COMBAT DISCIPLINE PILOT SKILLS (Funded by Matching Gems) ────
 
+/**
+ * Canonical database definition for `PILOT_SKILL_DEFINITIONS` (`Assault Ballistics & Turbine`, id `'Warrior'`).
+ */
 export const PILOT_SKILL_DEFINITIONS: Array<{
   id: PilotSkillId;
   name: string;
@@ -266,6 +275,9 @@ export const PILOT_SKILL_DEFINITIONS: Array<{
   },
 ];
 
+/**
+ * Executes `createInitialPilotSkills` (create initial pilot skills) in `index.ts`.
+ */
 export function createInitialPilotSkills(
   traitLine?: TraitLine
 ): Record<PilotSkillId, PilotSkillProgress> {
@@ -288,8 +300,12 @@ export function createInitialPilotSkills(
   );
 }
 
+/**
+ * Normalizes a persisted or partial pilot skill map against `PILOT_SKILL_DEFINITIONS`,
+ * clamping skill levels to `1..20` and preserving starter discipline investments.
+ */
 export function normalizePilotSkills(
-  raw?: Record<string, any>,
+  raw?: Partial<Record<string, Partial<PilotSkillProgress>>>,
   traitLine?: TraitLine
 ): Record<PilotSkillId, PilotSkillProgress> {
   const base = createInitialPilotSkills(traitLine);
@@ -313,6 +329,9 @@ export function normalizePilotSkills(
 
 // ─── LAYER 2: 97 CANONICAL FRAME FEAT NODES (Tiers I–V + Knight's Oath) ──────
 
+/**
+ * Exported const `FEAT_TIER_SKILL_THRESHOLDS` (feat tier skill thresholds) in `index.ts`.
+ */
 export const FEAT_TIER_SKILL_THRESHOLDS: Record<FeatTier, number> = {
   I: 2,
   II: 5,
@@ -321,6 +340,9 @@ export const FEAT_TIER_SKILL_THRESHOLDS: Record<FeatTier, number> = {
   V: 18,
 };
 
+/**
+ * Exported const `FRAME_FEAT_CATALOG` (frame feat catalog) in `index.ts`.
+ */
 export const FRAME_FEAT_CATALOG: FrameFeatDefinition[] = CANONICAL_FRAME_FEAT_CATALOG;
 
 /**
@@ -371,6 +393,9 @@ export function createStarterFeatLoadout(traitLine: TraitLine = 'Warrior'): {
 //   - Looted / Standalone (`origin: 'looted'`): Found via drops/caches, 1 to 3 gem slots (`maxGemSlots: 1 | 2 | 3`).
 //   - Universal Zero-Sum Law: Every stat increase creates a negative draw on another stat, resource cost, or weight (WT).
 
+/**
+ * Canonical database definition for `ACTION_MODIFICATION_CATALOG` (`Magnetic Anchor Structure`, id `'mod_hyper_armor_stance'`).
+ */
 export const ACTION_MODIFICATION_CATALOG: ActionModificationDefinition[] = [
   // ─── ARMS MOD 2: STRUCTURE (Replaces Melee Mod · targetCategory: 'melee') ───
   {
@@ -1014,6 +1039,9 @@ const DEFAULT_UTILITY_BY_TRAIT: Record<TraitLine, string> = {
   Cleric: 'utility_sanctum_font',
 };
 
+/**
+ * Executes `createStarterGemPouch` (create starter gem pouch) in `index.ts`.
+ */
 export function createStarterGemPouch(
   traitLine: TraitLine = 'Warrior'
 ): Array<{ itemId: string; count: number }> {
@@ -1033,6 +1061,9 @@ export function createStarterGemPouch(
 }
 
 
+/**
+ * Executes `getWeaponSubtypeInfo` (get weapon subtype info) in `index.ts`.
+ */
 export function getWeaponSubtypeInfo(weaponId: string): {
   equipmentType: 'Weapon' | 'Auxiliary';
   subtype: string;
@@ -1272,6 +1303,9 @@ const DEFAULT_CANONICAL_HARDWARE_BY_KIT: Record<
   },
 };
 
+/**
+ * Executes `createInitialEquipmentSlots` (create initial equipment slots) in `index.ts`.
+ */
 export function createInitialEquipmentSlots(traitLine: TraitLine = 'Warrior'): OrionEquipmentSlots {
   const trait = TRAIT_REGISTRY[traitLine] || TRAIT_REGISTRY.Warrior;
   const hw = DEFAULT_CANONICAL_HARDWARE_BY_KIT[traitLine] || DEFAULT_CANONICAL_HARDWARE_BY_KIT.Warrior;
@@ -1998,6 +2032,9 @@ export function unlockLevel2SecondaryWeapon(state: OrionState): string {
   return secondary;
 }
 
+/**
+ * Type contract for `WeaponGemCombatModifiers` (weapon gem combat modifiers) in `index.ts`.
+ */
 export interface WeaponGemCombatModifiers {
   gemId: GemId | null;
   installedGems?: GemId[];
@@ -2023,6 +2060,9 @@ export interface WeaponGemCombatModifiers {
   summaryLabel: string;
 }
 
+/**
+ * Exported const `WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS` (weapon gem combat bonus descriptions) in `index.ts`.
+ */
 export const WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS: Record<GemId, string> = {
   moonstone: '+8 Max Shield & -10% Cooldowns (−5% Direct DMG, +2 WT)',
   spinel: '+15% Weapon DMG (+22% ≥50 Heat) (+12% Heat Cost, +4 WT)',
@@ -2035,6 +2075,9 @@ export const WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS: Record<GemId, string> = {
   hematite: '-4 Heat per Hit & +4 Armor on Kill (+8% Cooldowns, +5 WT)',
 };
 
+/**
+ * Exported const `WEAPON_GEM_WEIGHT_DELTA` (weapon gem weight delta) in `index.ts`.
+ */
 export const WEAPON_GEM_WEIGHT_DELTA: Record<GemId, number> = {
   moonstone: 2,
   spinel: 4,
@@ -2290,12 +2333,18 @@ export function modifyWeaponWithGem(
 
 const LOAD_ORDER: FrameLoadCapacity[] = ['light', 'medium', 'heavy', 'superheavy'];
 
+/**
+ * Executes `getLevelBand` (get level band) in `index.ts`.
+ */
 export function getLevelBand(level: number): LevelBand {
   if (level <= 5) return 'Lesson';
   if (level <= 12) return 'Challenge';
   return 'Expression';
 }
 
+/**
+ * Executes `isStandardProgressionUnlocked` (is standard progression unlocked) in `index.ts`.
+ */
 export function isStandardProgressionUnlocked(state: OrionState): boolean {
   if (state.bypassProgressionGates) return true;
   if (!state.tutorialActive) return true;
@@ -2346,6 +2395,9 @@ export function syncPostTutorialFrameLevel(
   return false;
 }
 
+/**
+ * Executes `computeUnlockedFeatTiers` (compute unlocked feat tiers) in `index.ts`.
+ */
 export function computeUnlockedFeatTiers(
   pilotSkills?: Record<PilotSkillId, PilotSkillProgress>,
   bypass: boolean = false
@@ -2758,6 +2810,9 @@ export function doesPilotMeetFeatEquipmentRequirement(
   };
 }
 
+/**
+ * Executes `isFeatNodeAvailable` (is feat node available) in `index.ts`.
+ */
 export function isFeatNodeAvailable(
   state: OrionState,
   feat: FrameFeatDefinition
@@ -2782,11 +2837,17 @@ export function isFeatNodeAvailable(
   );
 }
 
+/**
+ * Executes `getInventoryGemCount` (get inventory gem count) in `index.ts`.
+ */
 export function getInventoryGemCount(state: OrionState, gemId: GemId): number {
   const slot = state.inventorySlots.find((s) => s.itemId === gemId);
   return slot ? slot.count : 0;
 }
 
+/**
+ * Executes `consumeInventoryGem` (consume inventory gem) in `index.ts`. Mutates `state: OrionState`.
+ */
 export function consumeInventoryGem(
   state: OrionState,
   gemId: GemId,
@@ -2801,6 +2862,9 @@ export function consumeInventoryGem(
   return true;
 }
 
+/**
+ * Executes `refundInventoryGem` (refund inventory gem) in `index.ts`. Mutates `state: OrionState`.
+ */
 export function refundInventoryGem(
   state: OrionState,
   gemId: GemId,
@@ -2815,6 +2879,9 @@ export function refundInventoryGem(
   }
 }
 
+/**
+ * Executes `getRetainedBuildGemCounts` (get retained build gem counts) in `index.ts`.
+ */
 export function getRetainedBuildGemCounts(state: OrionState): Record<GemId, number> {
   const counts: Record<GemId, number> = {
     moonstone: 0,
@@ -2903,6 +2970,9 @@ export function fundPilotSkillWithGem(
   return true;
 }
 
+/**
+ * Exported const `FEAT_TIER_MAX_SLOTS` (feat tier max slots) in `index.ts`.
+ */
 export const FEAT_TIER_MAX_SLOTS: Record<FeatTier, number> = {
   I: 6,
   II: 5,
@@ -2911,6 +2981,9 @@ export const FEAT_TIER_MAX_SLOTS: Record<FeatTier, number> = {
   V: 2,
 };
 
+/**
+ * Executes `getEquippedFeatCountByTier` (get equipped feat count by tier) in `index.ts`.
+ */
 export function getEquippedFeatCountByTier(state: OrionState, tier: FeatTier): number {
   let count = 0;
   for (const id of state.equippedFeats || []) {
@@ -3209,6 +3282,9 @@ export function generateEquipmentModWithGems(
 }
 
 
+/**
+ * Executes `computeEffectiveLoadCapacity` (compute effective load capacity) in `index.ts`.
+ */
 export function computeEffectiveLoadCapacity(
   traitLine: TraitLine,
   equippedFeats: string[],
@@ -3232,6 +3308,9 @@ export function computeEffectiveLoadCapacity(
   return LOAD_ORDER[finalIdx];
 }
 
+/**
+ * Type contract for `PlayerLoadMetrics` (player load metrics) in `index.ts`.
+ */
 export interface PlayerLoadMetrics {
   equippedWeight: number;
   maxCapacity: number;
@@ -3575,6 +3654,9 @@ export function computeLoadPenalty(
   };
 }
 
+/**
+ * Executes `computeInterfaceFeatModifiers` (compute interface feat modifiers) in `index.ts`.
+ */
 export function computeInterfaceFeatModifiers(equippedFeats: string[]): {
   damageMult: number;
   heatGenMult: number;

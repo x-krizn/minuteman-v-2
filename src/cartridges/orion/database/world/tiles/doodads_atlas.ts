@@ -14,11 +14,17 @@ import { OrionState } from '../../../types';
  */
 export const DOODADS_01_ATLAS_ID = 'doodads01';
 
+/**
+ * Embedded Base64 PNG pixel-art sprite payload or atlas lookup entry for `DOODADS_01_BASE64`.
+ */
 export const DOODADS_01_BASE64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAFaklEQVRoBe2ZzYpcRRTH70ggC8UQkKhBCcygkIAi9pCd4EJwk4DbvED31kfwEdx2v4APYDaCoOAuTKsoKCQ4EBQ/sgkBsxCEtn5n6l+eqlu37p1OBkeYgtt16nzV/5w6VbfuTNedtZPLwHK53PC0ZjjXEv7XsvV6PQrhmVGNU65wqldgNpuNpu9/vwInHQAbsLkJR1M8opBKaDm/cayJFqvbOxXf8oFsE1q3t7fXHR4ewjdetKnZVtyNsyyA+Y2ZTbz+9bdxi6Axu/xyh83q9toDKQEbeOewlHtbp/YvOeUUSiuAGcC2bJYAsu3aTsw8LMt+IdeqOJMjsjz7NV4sFr2gLYCvvv+552SM4Wx8ZmWmidTDTwFVSkt2HWBXq1UaewJZGYQF8OLF5zoHyNsM0tj8eP+ByYvMDtpIMKQv8Byf8/m8UyCiGZdBpBJ6541X5X9Sf/eXh9JrZdZKKyhaCbnMJ1sR6nX2Czx80ZJJlz47RgE15fEOIm2lUmTWSmt3dxeV6h7xfmJmjUXG2cD+gUcLJWSrYIPwk2r03bd2lS3Jmv2X3x4mW6coH5bxCJ5jFBXjRd2arcrDueuTIVCCSPaJ6Ks+FY4PaJLDkGnZVPVDOZ005uq8Z8yzDJzWDGQbYuqFbuAiV41RPo9jU3U0wEwvMib6+LM7A2o5G90xQAKOZeuSyPnPeb/t6WIvMiZrTZLDPwLkAZbyMdBeXzfOsePT23jaAgA8b2DuN3q8ErT49Oi2AlZwn9z5wdy0brnKPNcEVqOcd2ycrhJ/PPzTdOlFe2PPr8m9rujXX7nYKQgFJZnvFQS8465E2gMYA4wMizYi/gzxvQ50CVRB3Lp+rVTNxlwPAN9aCX+FkLGdQkxKSbDUbGSBlZJ6Avzw/etWPuiWG1ngyTrA+WLT157KqLSRb/WUUVgRDbM+BJjdgxBaALrIMakmKmvc89kDNF3o7NoZxqvFTSsZ/ND0yUkQ2GgV5stPTb4TmhHxR+B1bQawD4YNXwZhJeRrWuC8Y2jP9/oHBweb/f19u/oGupsvj/6WAzgFtri5333xzU/mEhBOH9ssCMALuAcvXokrbeJSMHUMoJA5mxQbwJFYBQY9/2iZ+OhIX0do5PG5CGlZR+YfBYMOK2WK4SdFf/XKpcSUsNWHz8lk6x2SQSajH6Llt9yU+FEQ0il7gvd2CUSpuO1YwTDJEN3yHUqlmciQnAxzNvCOVb/iUdOiT31fggdwjTcSCJn0z4j6duLqJmbzANg3v+FGpjLQ+h52ugrGsZ6cHCwLThHvvjzuvMzRZgP4N8+/13331+f6oHcqRg7OWyo+0ZggykAaDpX5zQdX57Z49CEYZb7sG66miwYzIeCUDsfhhBWw7DP10ArAj39iQW1wboRjjdMKXNU9QPpwIPDaEw2nCTw6gCzLB/CX/n7Ngot+MpuG755IRy24egEAHoEHrxeSAut5DAwA+uYybbLnX7jWvfTslTIIbzKJ5t0CHhrvhOw6DZPz3gOVMneR1rvAA8aPmsrGwjt/WeytemUeY73QegEQYRkEBvCQ+dc4fLW3L1zovn70yLLtg/H074/vdw/O3fP7QOZZrzd4xowDKkPgYfUCiHoEEcnUtWp2J4A3OYCVdQWFBwskLIMLqDcBeoAPACF7jSrw4FHo7YGe1TEY2gcCyYr4Jr7neVrgKVs9gZdoAitX52kGwP8JDI8CUe9BRrqafWQAJ9NqWg142o+SDfZxs2zoPT1okAsopU0oH+uhiyfXjqOY2TRnAMtpkx6Pxa9ClgkvqM4SmUMbubCxPeF42VyOn0jmD77TuEYEnfr3QAm+XC52v28Tg/Amk+i44oO65Sb+B843Y4EAAzYYAAAAAElFTkSuQmCC';
 
 registerBase64Atlas(DOODADS_01_ATLAS_ID, DOODADS_01_BASE64, 16, 16);
 
+/**
+ * Exported const `DOODAD_CELLS` (doodad cells) in `doodads_atlas.ts`.
+ */
 export const DOODAD_CELLS = {
   CHEST_CLOSED: { col: 0, row: 0 },
   WAYGATE_BASE: { col: 1, row: 0 },
@@ -31,6 +37,9 @@ export const DOODAD_CELLS = {
   LEVER_POS_3_RIGHT: { col: 2, row: 2 },
 } as const;
 
+/**
+ * Executes `getCanonicalRoomPersistenceKey` (get canonical room persistence key) in `doodads_atlas.ts`.
+ */
 export function getCanonicalRoomPersistenceKey(
   state: OrionState,
   roomKey: string = state.room
@@ -64,6 +73,9 @@ export function getCanonicalRoomPersistenceKey(
   return `fog_slot:${node.nodeType}:${src}:${node.id}`;
 }
 
+/**
+ * Executes `isRoomCacheLooted` (is room cache looted) in `doodads_atlas.ts`.
+ */
 export function isRoomCacheLooted(
   state: OrionState,
   tx: number,
@@ -77,6 +89,9 @@ export function isRoomCacheLooted(
   );
 }
 
+/**
+ * Executes `markRoomCacheLooted` (mark room cache looted) in `doodads_atlas.ts`. Mutates `state: OrionState`.
+ */
 export function markRoomCacheLooted(
   state: OrionState,
   tx: number,

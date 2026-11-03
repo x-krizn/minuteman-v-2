@@ -6,6 +6,9 @@
 import { CharacterDefinition } from '../../types';
 import { PROTO_KNIGHT_PNG } from '../../assets/sprites';
 
+/**
+ * Canonical database definition for `enemyKnightCharacter` (`Corrupted Knight`, id `'enemy_knight'`, slot `'enemy'`) — A rogue sentry knight bound by ancient tomb curses, wielding a balanced blade and buckler..
+ */
 export const enemyKnightCharacter: CharacterDefinition = {
   id: 'enemy_knight',
   name: 'Corrupted Knight',

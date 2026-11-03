@@ -9,6 +9,9 @@ import { cartridgeRunner } from './cartridgeRunner';
 import { registry } from './registry';
 import { soundSystem } from './soundSystem';
 
+/**
+ * Top-level system shell menu items (`PLAY`, `HOW TO PLAY`, `CREDITS`) displayed before launching a cartridge.
+ */
 export const MENU_ITEMS: MenuItem[] = [
   { label: 'PLAY', go: 'carts' },
   { label: 'HOW-TO & CONTROLS', go: 'howto' },
@@ -18,6 +21,9 @@ export const MENU_ITEMS: MenuItem[] = [
   { label: 'EXIT', go: 'exit' },
 ];
 
+/**
+ * Instructional text lines displayed on the system shell `HOW TO PLAY` screen.
+ */
 export const HOWTO_LINES = [
   'D-PAD / STICK: MOVE & NAVIGATE',
   'A / B: PRIMARY ACTIONS',
@@ -27,6 +33,9 @@ export const HOWTO_LINES = [
   'SHIFT: CARTRIDGE SPECIAL',
 ];
 
+/**
+ * State machine controlling the outer handheld shell screens (`boot`, `menu`, `howto`, `credits`, `cartridge`) and audio toggles.
+ */
 export class ShellStateMachine {
   private currentScreen: ShellScreen = 'splash';
   private splashMs = 0;
@@ -289,4 +298,7 @@ export class ShellStateMachine {
   }
 }
 
+/**
+ * Shared singleton instance of `ShellStateMachine`.
+ */
 export const shellStateMachine = new ShellStateMachine();

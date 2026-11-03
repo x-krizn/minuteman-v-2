@@ -5,6 +5,9 @@
 
 import { ProgressionNodeEntry } from '../../types';
 
+/**
+ * Canonical database definition for `dashAttackNode` (`Dash Attack`, id `'dash_attack'`, slot `'offense'`) — Thrust or cleave instantaneously out of a sprint or dash..
+ */
 export const dashAttackNode: ProgressionNodeEntry = {
   id: 'dash_attack',
   name: 'Dash Attack',

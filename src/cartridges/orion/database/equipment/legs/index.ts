@@ -5,6 +5,9 @@
 
 import { CanonicalHardwareItemDefinition } from '../chassis_hardware';
 
+/**
+ * Canonical database definition for `CANONICAL_LEGS` (`BWI Gatecrasher Striders`, id `'legs_bwi_gatecrasher'`, slot `'legs'`) — Shock-absorbing, booster-linked leg actuators (+24 Load Cap, +4% Stride Speed, +6 Stability / 7 WT, -3% Ventin....
+ */
 export const CANONICAL_LEGS: CanonicalHardwareItemDefinition[] = [
   {
     id: 'legs_bwi_gatecrasher',

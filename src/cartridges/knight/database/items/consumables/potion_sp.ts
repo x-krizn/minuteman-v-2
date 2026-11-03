@@ -5,6 +5,9 @@
 
 import { ItemWikiDefinition } from '../../../types';
 
+/**
+ * Canonical database definition for `potionSpItem` (`Vigor Brew`, id `'potion_sp'`, ASCII token `'4'`, slot `'potion'`) — Restores Stamina Points for dashes and blocks.
+ */
 export const potionSpItem: ItemWikiDefinition = {
   // 1. Identity & Metadata
   id: 'potion_sp',

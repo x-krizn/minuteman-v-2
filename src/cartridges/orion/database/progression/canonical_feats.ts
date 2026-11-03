@@ -1248,6 +1248,9 @@ const LORE_FEAT_SEEDS: LoreFeatSeed[] = [
   },
 ];
 
+/**
+ * Canonical database definition for `CANONICAL_FRAME_FEAT_CATALOG` (`Knight's Oath`, id `'knights_oath'`).
+ */
 export const CANONICAL_FRAME_FEAT_CATALOG: FrameFeatDefinition[] = [
   ...LORE_FEAT_SEEDS.map(buildLoreFeat),
   {

@@ -35,6 +35,7 @@ interface HudTitleModalProps {
   titleTab: 'new' | 'load';
   setTitleTab: (tab: 'new' | 'load') => void;
   setShowPilotModal: (show: boolean) => void;
+  canResumeCockpit?: boolean;
   forceRerender: () => void;
 }
 
@@ -55,8 +56,12 @@ const MAIN_MENU_ITEMS: Array<{
  */
 export function enterTrainingSandboxRoom(state: OrionState): void {
   const rooms = getOrionRoomsRef() || {};
+  const wasAtTitle = Boolean(state.atTitleMenu);
   state.atTitleMenu = false;
   state.titleMenuSubView = 'root';
+  if (wasAtTitle && state.room === '-4,0') {
+    state.room = '-3,0';
+  }
   toggleTrainingSandboxRoom(rooms, state);
 }
 
@@ -70,6 +75,7 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
   titleTab: _titleTab,
   setTitleTab,
   setShowPilotModal,
+  canResumeCockpit = false,
   forceRerender,
 }) => {
   const bgCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -207,7 +213,11 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
 
       {/* ROOT MAIN MENU VIEW */}
       {subView === 'root' ? (
-        <div className="relative z-10 flex-1 flex flex-col justify-between p-3 sm:p-4">
+        <div
+          key="title-subview-root"
+          data-menu-scope="true"
+          className="relative z-10 flex-1 flex flex-col justify-between p-3 sm:p-4"
+        >
           {/* Top Bar: Left Project Orion Pixel Logo + Right Quick Resume Strip */}
           <div className="flex items-start justify-between gap-2">
             <img
@@ -220,6 +230,7 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
               {roster.length > 0 && (
                 <button
                   type="button"
+                  data-menu-secondary="true"
                   onClick={() => {
                     if (loadPilotFromRoster(state, roster[0].pilotId)) {
                       soundSystem.playPowerup();
@@ -227,6 +238,7 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
                       state.titleMenuSubView = 'root';
                       setShowPilotModal(false);
                       notifyOrionStateChange();
+                      forceRerender();
                     }
                   }}
                   className="px-2.5 py-1 bg-[#0b1329]/90 hover:bg-[#1e3a8a] text-[#f8fafc] border border-[#3b82f6] rounded-xs text-[9px] font-bold tracking-wider uppercase cursor-pointer shadow-md"
@@ -235,16 +247,18 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
                 </button>
               )}
 
-              {state.t > 0.5 && (
+              {canResumeCockpit && (
                 <button
                   type="button"
                   data-menu-back="true"
+                  data-menu-secondary="true"
                   onClick={() => {
                     soundSystem.playMenuBeep();
                     state.atTitleMenu = false;
                     state.titleMenuSubView = 'root';
                     setShowPilotModal(false);
                     notifyOrionStateChange();
+                    forceRerender();
                   }}
                   className="px-2 py-1 bg-[#1e1b2e]/90 hover:bg-[#332d4d] text-[#fde047] border border-[#6366f1]/60 rounded-xs text-[9px] font-bold cursor-pointer"
                 >
@@ -311,7 +325,11 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
         </div>
       ) : (
         /* SUBVIEWS: NEW PILOT / LOAD ROSTER / OPTIONS */
-        <div className="relative z-10 flex-1 flex flex-col justify-between p-2.5 sm:p-3.5 overflow-y-auto">
+        <div
+          key={`title-subview-${subView}`}
+          data-menu-scope="true"
+          className="relative z-10 flex-1 flex flex-col justify-between p-2.5 sm:p-3.5 overflow-y-auto"
+        >
           {/* Subview Top Bar */}
           <div className="border-b border-[#334155] pb-2 mb-2 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
@@ -333,19 +351,6 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
                     ? `LOAD GAME — SAVED PILOT ROSTER (${roster.length})`
                     : 'SYSTEM OPTIONS & 2.5D CONTROLS'}
               </span>
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => {
-                  enterTrainingSandboxRoom(state);
-                  setShowPilotModal(false);
-                }}
-                className="px-2 py-0.5 bg-[#1d4ed8] hover:bg-[#2563eb] text-white border border-[#60a5fa] rounded-xs text-[9px] font-bold cursor-pointer"
-              >
-                ⚔ TRAINING [-4,0]
-              </button>
             </div>
           </div>
 
@@ -471,11 +476,18 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
                       state.pilotName = e.target.value;
                       forceRerender();
                     }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === 'Escape') {
+                        e.preventDefault();
+                        e.currentTarget.blur();
+                      }
+                    }}
                     placeholder="Enter Pilot Name..."
                     className="flex-1 bg-[#020617] border border-[#475569] focus:border-[#3b82f6] rounded-xs px-2.5 py-1.5 text-[11px] text-white font-mono outline-none"
                   />
                   <button
                     type="button"
+                    data-menu-autofocus="true"
                     onClick={() => {
                       const finalName =
                         state.pilotName.trim() || DEFAULT_CALLSIGNS[activeTrait];
@@ -485,6 +497,7 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
                       setShowPilotModal(false);
                       soundSystem.playPowerup();
                       notifyOrionStateChange();
+                      forceRerender();
                     }}
                     className="px-3.5 py-1.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white border border-[#93c5fd] font-black text-[10.5px] rounded-xs shadow-md cursor-pointer shrink-0"
                   >
@@ -505,6 +518,7 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
                     </div>
                     <button
                       type="button"
+                      data-menu-autofocus="true"
                       onClick={() => {
                         setTitleTab('new');
                         setSubView('new');
@@ -560,6 +574,13 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
                           <div className="flex items-center gap-1.5 shrink-0">
                             <button
                               type="button"
+                              data-menu-autofocus={isRowSel ? 'true' : undefined}
+                              onFocus={() => {
+                                if (state.titleMenuLoadCursor !== idx) {
+                                  state.titleMenuLoadCursor = idx;
+                                  forceRerender();
+                                }
+                              }}
                               onClick={() => {
                                 if (loadPilotFromRoster(state, entry.pilotId)) {
                                   state.atTitleMenu = false;
@@ -567,6 +588,7 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
                                   setShowPilotModal(false);
                                   soundSystem.playPowerup();
                                   notifyOrionStateChange();
+                                  forceRerender();
                                 }
                               }}
                               className="px-2.5 py-1 bg-[#2563eb] hover:bg-[#1d4ed8] text-white border border-[#93c5fd] font-bold rounded-xs text-[9.5px] cursor-pointer"

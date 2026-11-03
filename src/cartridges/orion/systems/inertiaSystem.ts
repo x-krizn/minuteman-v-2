@@ -108,7 +108,13 @@ export const INERTIA_CONSTANTS = {
   } as Record<AttackCommitmentClass, number>,
 } as const;
 
+/**
+ * Exported const `INERTIAL_TELEMETRY_SENSORY_ID` (inertial telemetry sensory id) in `inertiaSystem.ts`.
+ */
 export const INERTIAL_TELEMETRY_SENSORY_ID = 'sensory_b_inertial_gyro_telemetry';
+/**
+ * Exported const `INERTIAL_TELEMETRY_MOD_ID` (inertial telemetry mod id) in `inertiaSystem.ts`.
+ */
 export const INERTIAL_TELEMETRY_MOD_ID = 'mod_inertial_gyro_telemetry';
 
 // ─── 2. CORE PHYSICS EQUATIONS (§4 – §7 of `inertia-v0.md`) ──────────────────
@@ -202,6 +208,9 @@ export function classifyInertiaOutcomeBand(dvEff: number): InertiaOutcomeBand {
   return 'knockback';
 }
 
+/**
+ * Type contract for `HitInertiaResolution` (hit inertia resolution) in `inertiaSystem.ts`.
+ */
 export interface HitInertiaResolution {
   /** Outgoing impulse J transferred by the hit */
   impulseJ: number;
@@ -283,6 +292,9 @@ export function resolveHitInertia(params: {
   };
 }
 
+/**
+ * Type contract for `RecoilInertiaResolution` (recoil inertia resolution) in `inertiaSystem.ts`.
+ */
 export interface RecoilInertiaResolution {
   recoilImpulseJ: number;
   dvRecoil: number;
@@ -337,6 +349,9 @@ export function resolveRecoil(params: {
 
 // ─── 3. ACTOR & WEAPON INERTIA PROFILE RESOLVERS ─────────────────────────────
 
+/**
+ * Type contract for `ActorInertiaProfile` (actor inertia profile) in `inertiaSystem.ts`.
+ */
 export interface ActorInertiaProfile {
   weightClass: FrameLoadCapacity;
   frameMass: number;
@@ -502,6 +517,9 @@ export function resolvePlayerInertiaProfile(state: OrionState): ActorInertiaProf
   };
 }
 
+/**
+ * Type contract for `WeaponAttackInertiaSpec` (weapon attack inertia spec) in `inertiaSystem.ts`.
+ */
 export interface WeaponAttackInertiaSpec {
   attackWeight: number;
   attackSpeed: number;
@@ -613,6 +631,9 @@ export function resolveWeaponAttackInertiaSpec(
   };
 }
 
+/**
+ * Type contract for `EnemyInertiaProfile` (enemy inertia profile) in `inertiaSystem.ts`.
+ */
 export interface EnemyInertiaProfile {
   baseWeight: number;
   stability: number;

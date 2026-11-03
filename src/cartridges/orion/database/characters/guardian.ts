@@ -5,6 +5,9 @@
 
 import { TraitLineWikiDefinition } from '../../types';
 
+/**
+ * Canonical database definition for `guardianTrait` (`Dawnforge Guardian Kit`, id `'Guardian'`, load `'medium'`) — Dawnforge Guardian Coreplate & TI Manaheart Reactor Mk.IV (Medium Load) — physical barrier & layered anchor ki....
+ */
 export const guardianTrait: TraitLineWikiDefinition = {
   id: 'Guardian',
   name: 'Dawnforge Guardian Kit',

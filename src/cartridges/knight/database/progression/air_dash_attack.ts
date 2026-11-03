@@ -5,6 +5,9 @@
 
 import { ProgressionNodeEntry } from '../../types';
 
+/**
+ * Canonical database definition for `airDashAttackNode` (`Air Dash Attack`, id `'air_dash_attack'`, slot `'offense'`) — Unleash a high-speed forward piercing thrust out of an air dash..
+ */
 export const airDashAttackNode: ProgressionNodeEntry = {
   id: 'air_dash_attack',
   name: 'Air Dash Attack',

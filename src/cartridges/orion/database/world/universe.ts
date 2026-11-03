@@ -376,6 +376,9 @@ export const U00_UNIVERSE_CATALOG: UniverseWorldDefinition[] = [
   },
 ];
 
+/**
+ * Exported const `UNIVERSE_WORLD_BY_ID` (universe world by id) in `universe.ts`.
+ */
 export const UNIVERSE_WORLD_BY_ID: Record<string, UniverseWorldDefinition> = Object.fromEntries(
   U00_UNIVERSE_CATALOG.map((w) => [w.id, w])
 );

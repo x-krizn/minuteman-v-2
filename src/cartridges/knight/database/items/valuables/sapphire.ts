@@ -5,6 +5,9 @@
 
 import { ItemWikiDefinition } from '../../../types';
 
+/**
+ * Canonical database definition for `sapphireItem` (`Sapphire Gem`, id `'sapphire'`, ASCII token `'B'`, slot `'gem'`) — +1 Maximum Energy (EP).
+ */
 export const sapphireItem: ItemWikiDefinition = {
   // 1. Identity & Metadata
   id: 'sapphire',

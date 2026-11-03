@@ -12,6 +12,9 @@ import {
 } from '../../../systems/enemyHelpers';
 import { EnemyEntity, EnemyWikiDefinition, OrionState } from '../../../types';
 
+/**
+ * Canonical database definition for `bogWurmEnemy` (`The Bog Wurm`, id `'bog_wurm'`) — A snake-like hybrid of machine and flesh with glowing ætheric veins..
+ */
 export const bogWurmEnemy: EnemyWikiDefinition = {
   type: 'bog_wurm',
   name: 'The Bog Wurm',

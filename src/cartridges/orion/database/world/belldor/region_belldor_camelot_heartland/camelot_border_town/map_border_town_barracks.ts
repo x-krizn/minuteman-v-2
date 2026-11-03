@@ -5,6 +5,9 @@
 
 import { MapDefinition, RoomDefinition } from '../../../../../types';
 
+/**
+ * Canonical database definition for `mapBorderTownBarracks` (`Barracks Quarter`, id `'map_border_town_barracks'`, coord `"5,-1"`, scope `'local'`) — Barracks Quarter of Camelot Border Town patrolled by Percival, Tristan, and Bors..
+ */
 export const mapBorderTownBarracks: MapDefinition = {
   id: 'map_border_town_barracks',
   name: 'Barracks Quarter',
@@ -32,6 +35,9 @@ export const mapBorderTownBarracks: MapDefinition = {
   ],
 };
 
+/**
+ * Canonical database definition for `room4Neg1BorderTownBarracks` (`Barracks Quarter`, id `'room_4_neg1_border_town_barracks'`, coord `"4,-1"`, scope `'local'`).
+ */
 export const room4Neg1BorderTownBarracks: RoomDefinition = {
   id: 'room_4_neg1_border_town_barracks',
   scope: 'local',

@@ -5,6 +5,9 @@
 
 import { MapDefinition, RoomDefinition } from '../../../../../types';
 
+/**
+ * Canonical database definition for `mapBorderTownCathedral` (`Cathedral District & Dungeon Entrance`, id `'map_border_town_cathedral'`, coord `"5,1"`, scope `'local'`) — Cathedral District lore zone and Dungeon Entrance guarded by Sir Bors. Leads toward the Deep Dungeon (UNDEFINE....
+ */
 export const mapBorderTownCathedral: MapDefinition = {
   id: 'map_border_town_cathedral',
   name: 'Cathedral District & Dungeon Entrance',
@@ -43,6 +46,9 @@ export const mapBorderTownCathedral: MapDefinition = {
   ],
 };
 
+/**
+ * Canonical database definition for `room50BorderTownCathedral` (`Cathedral District & Dungeon Entrance`, id `'room_5_0_border_town_cathedral'`, coord `"5,0"`, scope `'local'`).
+ */
 export const room50BorderTownCathedral: RoomDefinition = {
   id: 'room_5_0_border_town_cathedral',
   scope: 'local',

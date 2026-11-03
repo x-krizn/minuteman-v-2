@@ -5,9 +5,15 @@
 
 import { WeaponDefinition, WeaponExecutionContext } from '../../types';
 
+/**
+ * Embedded Base64 PNG pixel-art sprite payload or atlas lookup entry for `IRON_ROUND_SHIELD_PNG`.
+ */
 export const IRON_ROUND_SHIELD_PNG =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAZElEQVR4nGNgGAXUB15eXv9x4SdPnvzPnz+fwYGBgYFBEknx/Pn/wfyPHz9A4hUVFeAc0tQyYALBpsEF/jOgu4Bh8GNgYGBg/PfvHwOaCxgGyACnAa2/jB5mDAwMjBhoGAAApY1eA2f7XJgAAAAASUVORK5CYII=';
 
+/**
+ * Canonical database definition for `ironRoundShield` (`Iron Round Shield`, id `'iron_round_shield'`, slot `'off_hand'`) — A reinforced wooden targe with iron banding..
+ */
 export const ironRoundShield: WeaponDefinition = {
   // 1. Identity & Equipment Slot
   id: 'iron_round_shield',

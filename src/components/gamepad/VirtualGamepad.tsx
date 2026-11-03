@@ -12,6 +12,9 @@ interface VirtualGamepadProps {
   customScale?: number;
 }
 
+/**
+ * Renders the interactive on-screen handheld controller and dispatches touch/pointer events to `gamepadStore`.
+ */
 export const VirtualGamepad: React.FC<VirtualGamepadProps> = ({ customScale }) => {
   const [padState, setPadState] = useState<GamepadButtons>(() =>
     gamepadStore.getState()

@@ -5,6 +5,9 @@
 
 import { ItemWikiDefinition } from '../../../types';
 
+/**
+ * Canonical database definition for `doubleJumpAbility` (`Winged Crest`, id `'ability_double_jump'`, ASCII token `'D'`, slot `'ability'`) — Unlocks Double Jump aerial ascension..
+ */
 export const doubleJumpAbility: ItemWikiDefinition = {
   // 1. Identity & Metadata
   id: 'ability_double_jump',

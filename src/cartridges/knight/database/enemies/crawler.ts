@@ -7,6 +7,9 @@ import { EnemyWikiDefinition } from '../../types';
 import { solidAt } from '../../physics';
 import { COLS, TILE_SIZE } from '../../constants';
 
+/**
+ * Canonical database definition for `crawlerEnemy` (`Crypt Crawler`, id `'crawler'`) — A skittering quadruped creature patrolling dungeon corridors..
+ */
 export const crawlerEnemy: EnemyWikiDefinition = {
   type: 'crawler',
   name: 'Crypt Crawler',

@@ -9,6 +9,9 @@ import { ItemWikiDefinition } from '../../../../types';
 export const RING_ICON_BASE64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAYUlEQVR42mNgGAW0Af+BoL5l2X9CYlgBSJGRUf5/AzOf/3HJTf9xieEEIAU2DpFg2zz9Mv7jEsPrZJAikAZkNdjEGEh2HjYLCTqPGAtxOo/IMCI5CkkKD9pHITogKQqBAACSbKW7LpoqtQAAAABJRU5ErkJggg==';
 
+/**
+ * Canonical database definition for `bedivereRingItem` (`Bedivere's Signet Ring`, id `'bedivere_ring'`, slot `'key'`) — 0 WT Key Signet Artifact · Grants +2 Passive Light Resonance & unlocks Camelot Vanguard Dialogue Gates..
+ */
 export const bedivereRingItem: ItemWikiDefinition = {
   id: 'bedivere_ring',
   name: "Bedivere's Signet Ring",

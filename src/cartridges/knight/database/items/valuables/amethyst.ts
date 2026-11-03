@@ -5,6 +5,9 @@
 
 import { ItemWikiDefinition } from '../../../types';
 
+/**
+ * Canonical database definition for `amethystItem` (`Amethyst Shard`, id `'amethyst'`, ASCII token `'P'`, slot `'shard'`) — +1 Max AP & Armor Reinforce.
+ */
 export const amethystItem: ItemWikiDefinition = {
   // 1. Identity & Metadata
   id: 'amethyst',

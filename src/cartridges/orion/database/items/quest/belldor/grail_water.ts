@@ -9,6 +9,9 @@ import { ItemWikiDefinition, OrionExecutionContext, OrionState } from '../../../
 export const FLASK_MOONSTONE_BASE64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAdklEQVR42sWS0Q3AIAhEmYUV2Imd2ImdbM6UhkSbgP3oJZeo8Z6gEm00XkQd3YERPOrq0+mpgmVclruP3bgFyD4CmNn0PwBcXACO/kCE2xCUq6rTEYx5qRVsEpEnFMZaGZBDGVYGMPNSAdbKr4G+Echuv0T1J14KIvCpSk2yhwAAAABJRU5ErkJggg==';
 
+/**
+ * Canonical database definition for `grailWaterItem` (`Moonstone Grail Flask`, id `'grail_water'`, slot `'consumable'`) — Restores +45 Shield Capacity and clears Shield Overload (Frame HP is only repairable at a Campfire or Waygate)....
+ */
 export const grailWaterItem: ItemWikiDefinition = {
   id: 'grail_water',
   name: 'Moonstone Grail Flask',

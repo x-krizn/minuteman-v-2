@@ -5,6 +5,9 @@
 
 import { BiomeDefinition } from '../../../types';
 
+/**
+ * Canonical database definition for `tyrranusColosseumOutpostBiome` (`Tyrranus Marble Gatehead`, id `'tyrranus_colosseum_outpost'`, scope `'local'`) — Imperial marble causeways and crimson-lit legionnaire bastions on the aligned world of Tyrranus..
+ */
 export const tyrranusColosseumOutpostBiome: BiomeDefinition = {
   id: 'tyrranus_colosseum_outpost',
   name: 'Tyrranus Marble Gatehead',

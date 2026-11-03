@@ -6,7 +6,9 @@
 import { Base64SpriteConfig, LightSourceConfig, WorldScope } from './common';
 import type { OrionState } from './state';
 
-// 2.5D World Tile
+/**
+ * 2.5D World Tile.
+ */
 export type OrionTileType =
   | 'floor'
   | 'wall'
@@ -27,8 +29,14 @@ export type OrionTileType =
   | 'waystation'
   | 'waygate';
 
+/**
+ * Type contract for `BiomeWeatherType` (biome weather type) in `world.ts`.
+ */
 export type BiomeWeatherType = 'none' | 'rain' | 'ash' | 'aether_mist';
 
+/**
+ * Type contract for `BiomePostProcessConfig` (biome post process config) in `world.ts`.
+ */
 export interface BiomePostProcessConfig {
   /** Ambient darkness veil opacity 0..0.75 (carved out by dynamic lights) */
   ambientDarkness?: number;
@@ -44,6 +52,9 @@ export interface BiomePostProcessConfig {
   scanlines?: boolean;
 }
 
+/**
+ * Type contract for `BiomeTileRules` (biome tile rules) in `world.ts`.
+ */
 export interface BiomeTileRules {
   corrosiveWater: boolean;
   corrosiveDamagePerSec: number;
@@ -52,6 +63,9 @@ export interface BiomeTileRules {
   aetherMistDensity: number;
 }
 
+/**
+ * Type contract for `BiomeTileAssets` (biome tile assets) in `world.ts`.
+ */
 export interface BiomeTileAssets {
   groundPrimary: string;
   groundSecondary: string;
@@ -66,8 +80,14 @@ export interface BiomeTileAssets {
 }
 
 // [ORION-ANCHOR: TYPES-WORLD-HIERARCHY]
+/**
+ * Type contract for `ClusterTerrainType` (cluster terrain type) in `world.ts`.
+ */
 export type ClusterTerrainType = 'dirt' | 'grass' | 'aether' | 'ruins' | 'mire';
 
+/**
+ * Type contract for `BiomeDefinition` (biome definition) in `world.ts`.
+ */
 export interface BiomeDefinition {
   id: string;
   name: string;
@@ -91,6 +111,9 @@ export interface BiomeDefinition {
   lightColor: string;
 }
 
+/**
+ * Type contract for `TileDefinition` (tile definition) in `world.ts`.
+ */
 export interface TileDefinition {
   id: string;
   char: string;
@@ -149,10 +172,22 @@ export interface TileDefinition {
   ) => void;
 }
 
+/**
+ * Type contract for `AetherNodeType` (aether node type) in `world.ts`.
+ */
 export type AetherNodeType = 'key' | 'general' | 'side' | 'loop' | 'end';
+/**
+ * Type contract for `AetherCardinalDir` (aether cardinal dir) in `world.ts`.
+ */
 export type AetherCardinalDir = 'N' | 'S' | 'E' | 'W';
+/**
+ * Type contract for `AetherEndFeature` (aether end feature) in `world.ts`.
+ */
 export type AetherEndFeature = 'loot_cache' | 'mini_boss' | 'secret_switch' | 'dead_end';
 
+/**
+ * Type contract for `AetherGraphNode` (aether graph node) in `world.ts`.
+ */
 export interface AetherGraphNode {
   id: string;
   nodeType: AetherNodeType;
@@ -198,6 +233,9 @@ export interface AetherGraphNode {
   grid?: string[];
 }
 
+/**
+ * Type contract for `AetherFogGraphState` (aether fog graph state) in `world.ts`.
+ */
 export interface AetherFogGraphState {
   seed: number;
   nextCounter: number;
@@ -209,8 +247,14 @@ export interface AetherFogGraphState {
   nodes: Record<string, AetherGraphNode>;
 }
 
+/**
+ * Type contract for `RoomSafetyTier` (room safety tier) in `world.ts`.
+ */
 export type RoomSafetyTier = 'sanctuary' | 'trail' | 'hazard' | 'abyss';
 
+/**
+ * Type contract for `RoomLightingProfile` (room lighting profile) in `world.ts`.
+ */
 export interface RoomLightingProfile {
   safetyTier?: RoomSafetyTier;
   /** Ambient darkness veil 0..0.85 (lower in safe sanctuaries, higher in hazard/abyss rooms) */
@@ -223,6 +267,9 @@ export interface RoomLightingProfile {
   ambientTintColor?: string;
 }
 
+/**
+ * Type contract for `ContextualLootPool` (contextual loot pool) in `world.ts`.
+ */
 export interface ContextualLootPool {
   /** Canonical weapon / shield / hardware IDs dropped or salvaged in this context */
   equipmentIds?: string[];
@@ -234,6 +281,9 @@ export interface ContextualLootPool {
   equipmentDropChance?: number;
 }
 
+/**
+ * Type contract for `RoomDefinition` (room definition) in `world.ts`.
+ */
 export interface RoomDefinition {
   id?: string;
   scope?: WorldScope;
@@ -266,6 +316,9 @@ export interface RoomDefinition {
   };
 }
 
+/**
+ * Type contract for `MapProceduralRoomSlot` (map procedural room slot) in `world.ts`.
+ */
 export interface MapProceduralRoomSlot {
   coord: string;
   globalRoomId?: string;
@@ -274,10 +327,22 @@ export interface MapProceduralRoomSlot {
   bannerTitle?: string;
 }
 
+/**
+ * Type contract for `UniverseWorldTier` (universe world tier) in `world.ts`.
+ */
 export type UniverseWorldTier = 'major' | 'minor' | 'unstable';
+/**
+ * Type contract for `UniverseCanonOrigin` (universe canon origin) in `world.ts`.
+ */
 export type UniverseCanonOrigin = 'canon' | 'non-canon';
+/**
+ * Type contract for `DesignSpecStatus` (design spec status) in `world.ts`.
+ */
 export type DesignSpecStatus = 'LOCKED' | 'UNDEFINED';
 
+/**
+ * Type contract for `ZoneFeatureSpec` (zone feature spec) in `world.ts`.
+ */
 export interface ZoneFeatureSpec {
   name: string;
   detail?: string;
@@ -286,6 +351,9 @@ export interface ZoneFeatureSpec {
   coord?: string;
 }
 
+/**
+ * Type contract for `MapDefinition` (map definition) in `world.ts`.
+ */
 export interface MapDefinition {
   id: string;
   name: string;
@@ -310,8 +378,14 @@ export interface MapDefinition {
   zoneFeatures?: ZoneFeatureSpec[];
 }
 
+/**
+ * Type contract for `WorldMapAccessMode` (world map access mode) in `world.ts`.
+ */
 export type WorldMapAccessMode = 'none' | 'menu' | 'campfire' | 'waygate';
 
+/**
+ * Type contract for `WorldMapNodeCoord` (world map node coord) in `world.ts`.
+ */
 export interface WorldMapNodeCoord {
   /** Normalized X percentage (0..100) on the cosmic World Map orb */
   xPct: number;
@@ -325,6 +399,9 @@ export interface WorldMapNodeCoord {
   label?: string;
 }
 
+/**
+ * Type contract for `UniverseWorldDefinition` (universe world definition) in `world.ts`.
+ */
 export interface UniverseWorldDefinition {
   id: string;
   index?: number;
@@ -345,6 +422,9 @@ export interface UniverseWorldDefinition {
   driftCoords?: WorldMapNodeCoord[];
 }
 
+/**
+ * Type contract for `WaystationNode` (waystation node) in `world.ts`.
+ */
 export interface WaystationNode {
   id: string;
   name: string;
@@ -357,6 +437,9 @@ export interface WaystationNode {
   lore: string;
 }
 
+/**
+ * Type contract for `WaygateNode` (waygate node) in `world.ts`.
+ */
 export interface WaygateNode {
   id: string;
   name: string;
@@ -371,6 +454,9 @@ export interface WaygateNode {
   lore: string;
 }
 
+/**
+ * Type contract for `AreaWikiDefinition` (area wiki definition) in `world.ts`.
+ */
 export interface AreaWikiDefinition {
   id: string;
   name: string;
@@ -403,6 +489,9 @@ export interface AreaWikiDefinition {
   lootPool?: ContextualLootPool;
 }
 
+/**
+ * Type contract for `RegionDefinition` (region definition) in `world.ts`.
+ */
 export interface RegionDefinition {
   id: string;
   name: string;

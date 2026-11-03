@@ -6,6 +6,9 @@
 import { TILE_SIZE } from '../../../constants';
 import { TileDefinition } from '../../../types';
 
+/**
+ * Canonical database definition for `desyncWallTile` (`Desynchronizing Wall`, id `'desync_wall'`, ASCII token `'%'`).
+ */
 export const desyncWallTile: TileDefinition = {
   id: 'desync_wall',
   char: '%',

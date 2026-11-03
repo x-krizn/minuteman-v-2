@@ -5,6 +5,9 @@
 
 import { GameInput } from './input';
 
+/**
+ * Declarative sprite strip specification (`src`, `frameWidth`, `frameHeight`, `frames`) for `assetLoader`.
+ */
 export interface StripSpec {
   src: string;
   cw: number;
@@ -16,6 +19,9 @@ export interface StripSpec {
   ay?: number;
 }
 
+/**
+ * Pre-sliced sprite strip containing normal and horizontally mirrored `HTMLCanvasElement` frames (`px`).
+ */
 export interface Strip {
   id: string;
   cw: number;
@@ -35,8 +41,14 @@ export interface Strip {
   ) => void;
 }
 
+/**
+ * Dictionary mapping sprite asset IDs to their pre-sliced `Strip` instances.
+ */
 export type AssetLibrary = Record<string, Strip>;
 
+/**
+ * Rendering surface passed to `Cartridge.render`, exposing the `160x144` `px` `CanvasRenderingContext2D` and `AssetLibrary`.
+ */
 export interface CartridgeSurface {
   g: CanvasRenderingContext2D;
   width: number;
@@ -44,8 +56,14 @@ export interface CartridgeSurface {
   assets: AssetLibrary;
 }
 
+/**
+ * Active modal overlay state (`'none'`, `'game-menu'`, or `'inventory'`) for a running cartridge.
+ */
 export type CartridgeMenuMode = 'none' | 'game-menu' | 'inventory';
 
+/**
+ * Props passed to a cartridge React overlay component, including `scale`, `menuMode`, and `onSetMenuMode`.
+ */
 export interface CartridgeOverlayProps {
   menuMode: CartridgeMenuMode;
   soundEnabled: boolean;
@@ -59,6 +77,9 @@ export interface CartridgeOverlayProps {
   connectedGamepads: string[];
 }
 
+/**
+ * Contract implemented by every game cartridge (`id`, `title`, `init`, `update`, `render`, and optional React `Overlay`).
+ */
 export interface Cartridge {
   id: string;
   name: string;

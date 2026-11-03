@@ -26,8 +26,14 @@ import {
 
 // ─── 1. SUB-TILE MICRO-COMPOSER (`4×4` of `4px` & `2×2` of `8px` Quadrants) ──
 
+/**
+ * Type contract for `RGB` (rgb) in `worldRenderer.ts`.
+ */
 export type RGB = [number, number, number];
 
+/**
+ * Type contract for `BasicFourTilesInput` (basic four tiles input) in `worldRenderer.ts`.
+ */
 export interface BasicFourTilesInput {
   dirt01: string;
   grass01: string;
@@ -35,6 +41,9 @@ export interface BasicFourTilesInput {
   ruins01: string;
 }
 
+/**
+ * Type contract for `TerrainMicroSeed` (terrain micro seed) in `worldRenderer.ts`.
+ */
 export interface TerrainMicroSeed {
   terrain: ClusterTerrainType;
   mode: '4x4' | '2x2';
@@ -51,24 +60,27 @@ export interface TerrainMicroSeed {
   livePixels?: Uint8ClampedArray;
 }
 
+/**
+ * Exported const `TERRAIN_MICRO_SEEDS` (terrain micro seeds) in `worldRenderer.ts`.
+ */
 export const TERRAIN_MICRO_SEEDS: Record<ClusterTerrainType, TerrainMicroSeed> = {
   dirt: {
     terrain: 'dirt',
     mode: '4x4',
     palette: [
-      [51, 51, 51],
-      [44, 50, 38],
-      [64, 48, 34],
-      [0, 0, 0],
-      [34, 34, 34],
+      [26, 30, 34],
+      [22, 27, 26],
+      [31, 33, 37],
+      [6, 7, 11],
+      [18, 21, 25],
     ],
     wallShading: {
-      edge: [0, 0, 0],
-      wallTop: [64, 48, 34],
-      wallFront: [34, 34, 34],
-      wallBrick: [51, 51, 51],
-      wallMortar: [0, 0, 0],
-      highlight: [84, 66, 48],
+      edge: [5, 6, 10],
+      wallTop: [36, 42, 48],
+      wallFront: [20, 24, 29],
+      wallBrick: [28, 33, 39],
+      wallMortar: [6, 7, 11],
+      highlight: [46, 54, 62],
     },
     grid16x16: [
       '0120233342022132',
@@ -93,19 +105,19 @@ export const TERRAIN_MICRO_SEEDS: Record<ClusterTerrainType, TerrainMicroSeed> =
     terrain: 'grass',
     mode: '4x4',
     palette: [
-      [41, 31, 22],
-      [123, 144, 81],
-      [67, 79, 45],
-      [50, 50, 15],
-      [90, 105, 60],
+      [14, 20, 19],
+      [34, 46, 41],
+      [24, 34, 30],
+      [11, 16, 15],
+      [29, 39, 35],
     ],
     wallShading: {
-      edge: [41, 31, 22],
-      wallTop: [90, 105, 60],
-      wallFront: [50, 50, 15],
-      wallBrick: [67, 79, 45],
-      wallMortar: [41, 31, 22],
-      highlight: [123, 144, 81],
+      edge: [10, 14, 14],
+      wallTop: [34, 46, 41],
+      wallFront: [16, 23, 21],
+      wallBrick: [24, 34, 30],
+      wallMortar: [10, 14, 14],
+      highlight: [44, 58, 52],
     },
     grid16x16: [
       '0123321343242424',
@@ -130,20 +142,20 @@ export const TERRAIN_MICRO_SEEDS: Record<ClusterTerrainType, TerrainMicroSeed> =
     terrain: 'aether',
     mode: '4x4',
     palette: [
-      [80, 41, 102],
-      [133, 57, 105],
-      [56, 30, 71],
-      [50, 50, 111],
-      [48, 54, 76],
-      [0, 0, 0],
+      [24, 16, 42],
+      [38, 22, 56],
+      [16, 11, 30],
+      [20, 22, 48],
+      [22, 28, 40],
+      [4, 4, 10],
     ],
     wallShading: {
-      edge: [0, 0, 0],
-      wallTop: [133, 57, 105],
-      wallFront: [56, 30, 71],
-      wallBrick: [80, 41, 102],
-      wallMortar: [0, 0, 0],
-      highlight: [168, 78, 140],
+      edge: [4, 4, 10],
+      wallTop: [42, 28, 64],
+      wallFront: [18, 12, 34],
+      wallBrick: [28, 18, 48],
+      wallMortar: [4, 4, 10],
+      highlight: [58, 38, 84],
     },
     grid16x16: [
       '0010000012300420',
@@ -168,17 +180,17 @@ export const TERRAIN_MICRO_SEEDS: Record<ClusterTerrainType, TerrainMicroSeed> =
     terrain: 'ruins',
     mode: '2x2',
     palette: [
-      [250, 230, 180],
-      [200, 185, 128],
-      [150, 128, 75],
+      [68, 78, 88],
+      [48, 56, 66],
+      [32, 38, 46],
     ],
     wallShading: {
-      edge: [110, 92, 52],
-      wallTop: [250, 230, 180],
-      wallFront: [150, 128, 75],
-      wallBrick: [200, 185, 128],
-      wallMortar: [110, 92, 52],
-      highlight: [250, 230, 180],
+      edge: [16, 20, 26],
+      wallTop: [74, 84, 96],
+      wallFront: [34, 40, 48],
+      wallBrick: [50, 58, 68],
+      wallMortar: [18, 22, 28],
+      highlight: [88, 98, 110],
     },
     grid16x16: [
       '0000011111111022',
@@ -203,19 +215,19 @@ export const TERRAIN_MICRO_SEEDS: Record<ClusterTerrainType, TerrainMicroSeed> =
     terrain: 'mire',
     mode: '4x4',
     palette: [
-      [28, 32, 38],
-      [38, 43, 50],
-      [20, 23, 28],
-      [12, 14, 18],
-      [48, 54, 62],
+      [18, 24, 28],
+      [24, 31, 36],
+      [12, 16, 20],
+      [7, 9, 14],
+      [30, 38, 44],
     ],
     wallShading: {
-      edge: [12, 14, 18],
-      wallTop: [68, 76, 86],
-      wallFront: [38, 43, 50],
-      wallBrick: [48, 54, 62],
-      wallMortar: [12, 14, 18],
-      highlight: [94, 104, 118],
+      edge: [7, 9, 14],
+      wallTop: [46, 54, 64],
+      wallFront: [22, 28, 34],
+      wallBrick: [32, 40, 48],
+      wallMortar: [7, 9, 14],
+      highlight: [62, 72, 84],
     },
     grid16x16: [
       '0120233342022132',
@@ -244,6 +256,9 @@ function hash2D(x: number, y: number, seed: number = 0): number {
   return ((h ^ (h >>> 16)) >>> 0) % 1000;
 }
 
+/**
+ * Executes `getBaseTilePixel` (get base tile pixel) in `worldRenderer.ts`.
+ */
 export function getBaseTilePixel(terrain: ClusterTerrainType, sx: number, sy: number): RGB {
   const seed = TERRAIN_MICRO_SEEDS[terrain];
   const x = sx & 15;
@@ -257,6 +272,9 @@ export function getBaseTilePixel(terrain: ClusterTerrainType, sx: number, sy: nu
   return seed.palette[palIdx] || seed.palette[0];
 }
 
+/**
+ * Executes `sampleSubTilePixel` (sample sub tile pixel) in `worldRenderer.ts`.
+ */
 export function sampleSubTilePixel(
   terrain: ClusterTerrainType,
   tc: number,
@@ -484,6 +502,9 @@ function renderClusterIntoCanvas(
   ctx.putImageData(imgData, 0, 0);
 }
 
+/**
+ * Type contract for `BakedBiomeClusterCatalog` (baked biome cluster catalog) in `worldRenderer.ts`.
+ */
 export interface BakedBiomeClusterCatalog {
   atlases: Base64AtlasDefinition[];
   masterAtlas: Base64AtlasDefinition;
@@ -492,6 +513,9 @@ export interface BakedBiomeClusterCatalog {
 let cachedCatalog: BakedBiomeClusterCatalog | null = null;
 
 // [ORION-ANCHOR: RENDER-CLUSTER-BAKE]
+/**
+ * Executes `bakeBiomeClusterTileset` (bake biome cluster tileset) in `worldRenderer.ts`.
+ */
 export function bakeBiomeClusterTileset(
   baseTiles?: Partial<BasicFourTilesInput>,
   modes?: Partial<Record<ClusterTerrainType, '4x4' | '2x2'>>
@@ -706,7 +730,22 @@ export function bakeBiomeClusterTileset(
         const sctx = scratch.getContext('2d');
         if (!sctx) return;
         sctx.drawImage(img, 0, 0, 16, 16);
-        TERRAIN_MICRO_SEEDS[terrain].livePixels = sctx.getImageData(0, 0, 16, 16).data;
+        const imgData = sctx.getImageData(0, 0, 16, 16);
+        const px = imgData.data;
+        // Grade base tile pixels toward desaturated corpse-slate, abyssal indigo, and sickly mire
+        for (let i = 0; i < px.length; i += 4) {
+          const r = px[i];
+          const g = px[i + 1];
+          const b = px[i + 2];
+          const luma = r * 0.299 + g * 0.587 + b * 0.114;
+          const desatR = r * 0.28 + luma * 0.72;
+          const desatG = g * 0.32 + luma * 0.68;
+          const desatB = b * 0.35 + luma * 0.65;
+          px[i] = Math.max(4, Math.min(255, Math.round(desatR * 0.42 + 6)));
+          px[i + 1] = Math.max(6, Math.min(255, Math.round(desatG * 0.48 + 10)));
+          px[i + 2] = Math.max(10, Math.min(255, Math.round(desatB * 0.54 + 14)));
+        }
+        TERRAIN_MICRO_SEEDS[terrain].livePixels = px;
         rebakeAll();
       };
       img.src = src;
@@ -728,6 +767,9 @@ export function bakeBiomeClusterTileset(
 
 // ─── 2. 3×3 CLUSTER & 4×5 BIOME TILESET AUTO-TILER ───────────────────────────
 
+/**
+ * Exported const `TERRAIN_CLUSTER_COL` (terrain cluster col) in `worldRenderer.ts`.
+ */
 export const TERRAIN_CLUSTER_COL: Record<ClusterTerrainType, number> = {
   dirt: 0,
   grass: 1,
@@ -736,6 +778,9 @@ export const TERRAIN_CLUSTER_COL: Record<ClusterTerrainType, number> = {
   mire: 0,
 };
 
+/**
+ * Exported const `GENERAL_CLUSTER_ATLAS_ID` (general cluster atlas id) in `worldRenderer.ts`.
+ */
 export const GENERAL_CLUSTER_ATLAS_ID: Record<ClusterTerrainType, string> = {
   dirt: 'dirt_general',
   grass: 'grass_general',
@@ -744,6 +789,9 @@ export const GENERAL_CLUSTER_ATLAS_ID: Record<ClusterTerrainType, string> = {
   mire: 'dirt_general',
 };
 
+/**
+ * Exported const `WALL_CLUSTER_ATLAS_ID` (wall cluster atlas id) in `worldRenderer.ts`.
+ */
 export const WALL_CLUSTER_ATLAS_ID: Record<ClusterTerrainType, string> = {
   dirt: 'dirt_walls',
   grass: 'grass_walls',
@@ -854,6 +902,9 @@ function makeBogTileSlice(row1Based: number, col1Based: number): ResolvedCluster
   };
 }
 
+/**
+ * Type contract for `ResolvedClusterTileSlice` (resolved cluster tile slice) in `worldRenderer.ts`.
+ */
 export interface ResolvedClusterTileSlice {
   clusterAtlasId: string;
   localCol: number;
@@ -862,6 +913,9 @@ export interface ResolvedClusterTileSlice {
   row: number;
 }
 
+/**
+ * Executes `charToExplicitTerrain` (char to explicit terrain) in `worldRenderer.ts`.
+ */
 export function charToExplicitTerrain(char: string | undefined): ClusterTerrainType | null {
   if (!char) return null;
   if (char === '.') return 'dirt';
@@ -872,14 +926,23 @@ export function charToExplicitTerrain(char: string | undefined): ClusterTerrainT
   return null;
 }
 
+/**
+ * Executes `isClusterSolidWallChar` (is cluster solid wall char) in `worldRenderer.ts`.
+ */
 export function isClusterSolidWallChar(char: string | undefined): boolean {
   return char === '#' || char === '%';
 }
 
+/**
+ * Executes `isClusterSingleWallChar` (is cluster single wall char) in `worldRenderer.ts`.
+ */
 export function isClusterSingleWallChar(char: string | undefined): boolean {
   return char === 'P';
 }
 
+/**
+ * Executes `resolveRoomBaseTerrain` (resolve room base terrain) in `worldRenderer.ts`.
+ */
 export function resolveRoomBaseTerrain(
   room: string[],
   tx: number,
@@ -1219,6 +1282,9 @@ function resolveBogClusterWallCoord(
   return makeBogTileSlice(8, dirtWallCols[spanCol] || 11);
 }
 
+/**
+ * Executes `resolveClusterLayer0Coord` (resolve cluster layer0 coord) in `worldRenderer.ts`.
+ */
 export function resolveClusterLayer0Coord(
   room: string[],
   tx: number,
@@ -1324,6 +1390,9 @@ export function resolveClusterLayer0Coord(
   };
 }
 
+/**
+ * Executes `resolveClusterWallCoord` (resolve cluster wall coord) in `worldRenderer.ts`.
+ */
 export function resolveClusterWallCoord(
   room: string[],
   tx: number,
@@ -1391,6 +1460,9 @@ export function resolveClusterWallCoord(
   };
 }
 
+/**
+ * Executes `drawClusterBiomeLayer0` (draw cluster biome layer0) in `worldRenderer.ts`.
+ */
 export function drawClusterBiomeLayer0(
   g: CanvasRenderingContext2D,
   room: string[],
@@ -1445,6 +1517,9 @@ export function drawClusterBiomeLayer0(
   );
 }
 
+/**
+ * Executes `drawClusterBiomeWall` (draw cluster biome wall) in `worldRenderer.ts`.
+ */
 export function drawClusterBiomeWall(
   g: CanvasRenderingContext2D,
   room: string[],
@@ -1499,6 +1574,9 @@ export function drawClusterBiomeWall(
   );
 }
 
+/**
+ * Executes `drawPlanarWaterReflections` (draw planar water reflections) in `worldRenderer.ts`. Mutates `state: OrionState`.
+ */
 export function drawPlanarWaterReflections(
   g: CanvasRenderingContext2D,
   room: string[] | undefined,
@@ -1600,6 +1678,9 @@ export function drawPlanarWaterReflections(
   g.restore();
 }
 
+/**
+ * Executes `drawDirectionalCastShadowsAndLandmarks` (draw directional cast shadows and landmarks) in `worldRenderer.ts`. Mutates `state: OrionState`.
+ */
 export function drawDirectionalCastShadowsAndLandmarks(
   g: CanvasRenderingContext2D,
   room: string[],
@@ -1681,7 +1762,7 @@ export function drawDirectionalCastShadowsAndLandmarks(
   }
 
   const isDesyncSolidNow = Math.floor(state.t / 3.5) % 2 === 0;
-  g.fillStyle = 'rgba(2, 6, 16, 0.36)';
+  g.fillStyle = 'rgba(2, 3, 10, 0.58)';
   for (let ty = minTy; ty <= maxTy; ty++) {
     for (let tx = minTx; tx <= maxTx; tx++) {
       const ch = room[ty]?.[tx];
@@ -1699,14 +1780,14 @@ export function drawDirectionalCastShadowsAndLandmarks(
 
       if (ch === 'P' || ch === 'D') {
         g.beginPath();
-        g.ellipse(sx + 13, sy + 14, 7, 4, 0.35, 0, Math.PI * 2);
+        g.ellipse(sx + 13, sy + 14, 8, 5, 0.35, 0, Math.PI * 2);
         g.fill();
       } else {
         if (southChar && !southIsWall && southChar !== '_') {
-          g.fillRect(sx + 2, sy + TILE_SIZE, TILE_SIZE - 1, 5);
+          g.fillRect(sx + 2, sy + TILE_SIZE, TILE_SIZE - 1, 6);
         }
         if (eastChar && !eastIsWall && eastChar !== '_') {
-          g.fillRect(sx + TILE_SIZE, sy + 3, 5, TILE_SIZE - 2);
+          g.fillRect(sx + TILE_SIZE, sy + 3, 6, TILE_SIZE - 2);
         }
         if (
           seChar &&
@@ -1715,15 +1796,15 @@ export function drawDirectionalCastShadowsAndLandmarks(
           !southIsWall &&
           !eastIsWall
         ) {
-          g.fillRect(sx + TILE_SIZE, sy + TILE_SIZE, 4, 4);
+          g.fillRect(sx + TILE_SIZE, sy + TILE_SIZE, 5, 5);
         }
       }
     }
   }
 
-  const cornerAlpha = Math.min(0.86, lighting.cornerShadowIntensity * 0.72);
+  const cornerAlpha = Math.min(0.94, lighting.cornerShadowIntensity * 0.84);
   if (cornerAlpha > 0.05) {
-    const cornerRadius = Math.max(56, Math.min(320, Math.min(widthPx, heightPx) * 0.52));
+    const cornerRadius = Math.max(64, Math.min(340, Math.min(widthPx, heightPx) * 0.58));
     const corners = [
       { x: 0, y: 0 },
       { x: widthPx, y: 0 },
@@ -1731,9 +1812,9 @@ export function drawDirectionalCastShadowsAndLandmarks(
       { x: widthPx, y: heightPx },
     ];
     for (const c of corners) {
-      const cGrad = g.createRadialGradient(c.x, c.y, 6, c.x, c.y, cornerRadius);
-      cGrad.addColorStop(0, `rgba(2, 5, 13, ${cornerAlpha.toFixed(2)})`);
-      cGrad.addColorStop(0.55, `rgba(4, 8, 18, ${(cornerAlpha * 0.48).toFixed(2)})`);
+      const cGrad = g.createRadialGradient(c.x, c.y, 4, c.x, c.y, cornerRadius);
+      cGrad.addColorStop(0, `rgba(2, 2, 8, ${cornerAlpha.toFixed(2)})`);
+      cGrad.addColorStop(0.55, `rgba(4, 5, 14, ${(cornerAlpha * 0.56).toFixed(2)})`);
       cGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
       g.fillStyle = cGrad;
       g.fillRect(
@@ -1748,6 +1829,9 @@ export function drawDirectionalCastShadowsAndLandmarks(
   g.restore();
 }
 
+/**
+ * Executes `renderWorldLayer0And1` (render world layer0 and1) in `worldRenderer.ts`. Mutates `state: OrionState`.
+ */
 export function renderWorldLayer0And1(
   g: CanvasRenderingContext2D,
   room: string[] | undefined,
@@ -1843,6 +1927,36 @@ export function renderWorldLayer0And1(
       if (!drewLayer1Sprite) {
         tile.renderLayer1?.(g, tx, ty, sx, sy, state);
       }
+    }
+  }
+
+  // 2B. CURSED LAND TERRAIN & FOLIAGE GRADE:
+  // Drains bright forest-green/tan saturation from ground tiles & trees and shifts them
+  // into desaturated corpse-slate (#141d24), sickly mire (#17221e), and abyssal indigo (#080612)
+  // before Layer 2 entities/player are rendered.
+  if (state.room !== '-4,0') {
+    const { widthPx, heightPx } = getRoomDimensions(room);
+    const rx0 = Math.max(0, minTx * TILE_SIZE);
+    const ry0 = Math.max(0, minTy * TILE_SIZE);
+    const rw = Math.min(widthPx, (maxTx + 1) * TILE_SIZE) - rx0;
+    const rh = Math.min(heightPx, (maxTy + 1) * TILE_SIZE) - ry0;
+    if (rw > 0 && rh > 0) {
+      g.save();
+      g.globalCompositeOperation = 'saturation';
+      g.fillStyle = 'hsl(195, 14%, 32%)';
+      g.globalAlpha = 0.72;
+      g.fillRect(rx0, ry0, rw, rh);
+
+      g.globalCompositeOperation = 'multiply';
+      g.fillStyle = '#5e7076'; // cold corpse-slate & sickly mire darkening
+      g.globalAlpha = 0.64;
+      g.fillRect(rx0, ry0, rw, rh);
+
+      g.globalCompositeOperation = 'source-over';
+      g.fillStyle = 'rgba(10, 12, 22, 0.24)'; // subtle abyssal indigo shadow veil
+      g.globalAlpha = 1.0;
+      g.fillRect(rx0, ry0, rw, rh);
+      g.restore();
     }
   }
 }

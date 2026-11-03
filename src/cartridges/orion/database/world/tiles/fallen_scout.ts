@@ -5,6 +5,9 @@
 
 import { TileDefinition } from '../../../types';
 
+/**
+ * Canonical database definition for `fallenScoutTile` (`Bedivere / Fallen Knight (Setpiece)`, id `'fallen_scout'`, ASCII token `'S'`).
+ */
 export const fallenScoutTile: TileDefinition = {
   id: 'fallen_scout',
   char: 'S',

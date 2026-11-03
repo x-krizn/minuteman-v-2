@@ -36,12 +36,15 @@ export { drawAetherFogWayfindingTells, drawCanonicalHud, drawOutlinedCanvasText 
 
 // ─── 2.5D DEPTH-SORTED SCENE RENDERER (`drawOrionGame`) ──────────────────────
 
+/**
+ * Top-level per-frame canvas render orchestrator for Project Orion (`160x144` `px` viewport), drawing terrain, 2.5D entities, lighting/occlusion, weather, and optional pixel canvas HUD.
+ */
 export function drawOrionGame(
   g: CanvasRenderingContext2D,
   rooms: Record<string, string[]>,
   state: OrionState
 ): void {
-  g.fillStyle = '#090d14';
+  g.fillStyle = '#030309';
   g.fillRect(0, 0, SCREEN_W, SCREEN_H);
 
   if (isChunkedExpanseRoom(state.room)) {

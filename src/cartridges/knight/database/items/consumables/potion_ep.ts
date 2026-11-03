@@ -5,6 +5,9 @@
 
 import { ItemWikiDefinition } from '../../../types';
 
+/**
+ * Canonical database definition for `potionEpItem` (`Ether Draught`, id `'potion_ep'`, ASCII token `'3'`, slot `'potion'`) — Restores Energy Points for magic skills.
+ */
 export const potionEpItem: ItemWikiDefinition = {
   // 1. Identity & Metadata
   id: 'potion_ep',

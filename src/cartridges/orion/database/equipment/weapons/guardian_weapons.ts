@@ -14,6 +14,9 @@ import { buildMagitechWeapon } from './builder';
 
 // ─── GUARDIAN / VANGUARD LINEAGE MAGITECH WEAPONS ───────────────────────────
 
+/**
+ * Canonical database definition for `ls900SwordspearWeapon` (`LS-900 Swordspear`, id `'ls900_swordspear'`, load `'medium'`) — Mana-channeling, cleave strikes.
+ */
 export const ls900SwordspearWeapon = buildMagitechWeapon({
   id: 'ls900_swordspear',
   name: 'LS-900 Swordspear',
@@ -43,6 +46,9 @@ export const ls900SwordspearWeapon = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `rs450RadiantProjectorWeapon` (`RS-450 Radiant Projector`, id `'rs450_radiant_projector'`, load `'medium'`) — Mid-range, shield reinforcement.
+ */
 export const rs450RadiantProjectorWeapon = buildMagitechWeapon({
   id: 'rs450_radiant_projector',
   name: 'RS-450 Radiant Projector',
@@ -72,6 +78,9 @@ export const rs450RadiantProjectorWeapon = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `hl220LightburstLanceWeapon` (`HL-220 Lightburst Lance`, id `'hl220_lightburst_lance'`, load `'heavy'`) — Reactor-linked, Judgment Strike.
+ */
 export const hl220LightburstLanceWeapon = buildMagitechWeapon({
   id: 'hl220_lightburst_lance',
   name: 'HL-220 Lightburst Lance',
@@ -101,13 +110,18 @@ export const hl220LightburstLanceWeapon = buildMagitechWeapon({
   ],
 });
 
-// Backward-compatible alias for existing lance
+/**
+ * Backward-compatible alias for existing lance.
+ */
 export const avalonSiegeLanceWeapon: WeaponDefinition = {
   ...hl220LightburstLanceWeapon,
   id: 'avalon_siege_lance',
   name: 'Avalon Siege Lance (HL-220)',
 };
 
+/**
+ * Canonical database definition for `tigEdgeWeapon` (`TIG Edge / Guardian's Edge`, id `'tig_edge'`, load `'light'`) — Compact, precision melee defense.
+ */
 export const tigEdgeWeapon = buildMagitechWeapon({
   id: 'tig_edge',
   name: "TIG Edge / Guardian's Edge",
@@ -137,6 +151,9 @@ export const tigEdgeWeapon = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `aegisChargeBucklerWeapon` (`Aegis Charge Buckler`, id `'aegis_charge_buckler'`, load `'medium'`) — Physical shield, enables Shield Charge feat (+25 Shield, +8 Armor).
+ */
 export const aegisChargeBucklerWeapon = buildMagitechWeapon({
   id: 'aegis_charge_buckler',
   name: 'Aegis Charge Buckler',
@@ -168,7 +185,9 @@ export const aegisChargeBucklerWeapon = buildMagitechWeapon({
   ],
 });
 
-// Backward-compatible alias for existing buckler
+/**
+ * Backward-compatible alias for existing buckler.
+ */
 export const bucklerShieldWeapon: WeaponDefinition = {
   ...aegisChargeBucklerWeapon,
   id: 'buckler_shield',
@@ -177,6 +196,9 @@ export const bucklerShieldWeapon: WeaponDefinition = {
   passiveArmorBonus: 6,
 };
 
+/**
+ * Canonical database definition for `heaterShieldWeapon` (`Knightly Heater Shield`, id `'heater_shield'`, load `'medium'`) — Broad triangular heraldic heater shield (+28 Max Shield, +12 Armor Durability) optimized for reliable guard ar....
+ */
 export const heaterShieldWeapon: WeaponDefinition = {
   id: 'heater_shield',
   name: 'Knightly Heater Shield',
@@ -291,6 +313,9 @@ export const heaterShieldWeapon: WeaponDefinition = {
   ],
 };
 
+/**
+ * Canonical database definition for `paviseShieldWeapon` (`Aegis Pavise Tower Shield`, id `'pavise_shield'`, load `'heavy'`) — Massive full-length fortress pavise shield granting +45 Max Shield Capacity, +20 Armor Durability, and immovab....
+ */
 export const paviseShieldWeapon: WeaponDefinition = {
   id: 'pavise_shield',
   name: 'Aegis Pavise Tower Shield',
@@ -405,6 +430,9 @@ export const paviseShieldWeapon: WeaponDefinition = {
   ],
 };
 
+/**
+ * Canonical database definition for `shortSpearWeapon` (`Camelot Short Spear`, id `'short_spear'`, load `'medium'`) — Swift, precise knightly thrusting spear engineered to bypass gaps in heavy enemy plating..
+ */
 export const shortSpearWeapon: WeaponDefinition = {
   id: 'short_spear',
   name: 'Camelot Short Spear',
@@ -519,6 +547,9 @@ export const shortSpearWeapon: WeaponDefinition = {
 
 // ─── GUARDIAN / VANGUARD AUXILIARIES (Migrated from Utility, Aux 3 & Aux 4) ───
 
+/**
+ * Canonical database definition for `utilityAegisPulseAuxiliary` (`TI Lightwell Recovery System`, id `'utility_aegis_pulse'`, load `'medium'`) — Converts excess reactor energy to shield & core repair (+26 Shield, active repair on hit).
+ */
 export const utilityAegisPulseAuxiliary = buildMagitechWeapon({
   id: 'utility_aegis_pulse',
   name: 'TI Lightwell Recovery System',
@@ -549,6 +580,9 @@ export const utilityAegisPulseAuxiliary = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `aux3TiAegisHardlightAuxiliary` (`TI Aegis Hard-Light Shield`, id `'aux3_ti_aegis_hardlight'`, load `'medium'`) — Deployable frontal barrier (Hardening Light) (+25 Shield, +0.5 Light).
+ */
 export const aux3TiAegisHardlightAuxiliary = buildMagitechWeapon({
   id: 'aux3_ti_aegis_hardlight',
   name: 'TI Aegis Hard-Light Shield',
@@ -581,6 +615,9 @@ export const aux3TiAegisHardlightAuxiliary = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `aux4TiRadiantSphereAuxiliary` (`TI Radiant Sphere Generator`, id `'aux4_ti_radiant_sphere'`, load `'medium'`) — Protective dome around pilot & allies (+20 Shield, +0.5 Light).
+ */
 export const aux4TiRadiantSphereAuxiliary = buildMagitechWeapon({
   id: 'aux4_ti_radiant_sphere',
   name: 'TI Radiant Sphere Generator',

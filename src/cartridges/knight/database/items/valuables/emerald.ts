@@ -5,6 +5,9 @@
 
 import { ItemWikiDefinition } from '../../../types';
 
+/**
+ * Canonical database definition for `emeraldItem` (`Emerald Gem`, id `'emerald'`, ASCII token `'G'`, slot `'gem'`) — +1 Maximum Armor/Poise (AP).
+ */
 export const emeraldItem: ItemWikiDefinition = {
   // 1. Identity & Metadata
   id: 'emerald',

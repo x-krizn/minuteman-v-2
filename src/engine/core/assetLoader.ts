@@ -5,6 +5,9 @@
 
 import { AssetLibrary, Strip, StripSpec } from '../../types/cartridge';
 
+/**
+ * Validation bounds (`maxWidth`, `maxHeight`, `maxFrames`) enforced when decoding cartridge sprite strips.
+ */
 export const ASSET_LIMITS = {
   cellMax: 64,
   framesMax: 64,
@@ -16,6 +19,9 @@ export const ASSET_LIMITS = {
 
 const PNG_PREFIX = 'data:image/png;base64,';
 
+/**
+ * Validates a `StripSpec` against `ASSET_LIMITS` and returns the validated frame count.
+ */
 export function validateSpec(cartId: string, id: string, s: StripSpec): number {
   const fail = (why: string) => {
     throw new Error(`${cartId}/${id}: ${why}`);
@@ -49,6 +55,9 @@ export function validateSpec(cartId: string, id: string, s: StripSpec): number {
   return bytes;
 }
 
+/**
+ * Asynchronously decodes a data URI or image URL into an `HTMLImageElement` ready for offscreen canvas slicing.
+ */
 export function decodeImage(name: string, src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -58,6 +67,9 @@ export function decodeImage(name: string, src: string): Promise<HTMLImageElement
   });
 }
 
+/**
+ * Slices a decoded `HTMLImageElement` into pre-baked horizontal and flipped `HTMLCanvasElement` frames according to `StripSpec`.
+ */
 export function makeStrip(id: string, s: StripSpec, img: HTMLImageElement): Strip {
   const { cw, ch, frames } = s;
   const rows = s.rows || 1;
@@ -113,6 +125,9 @@ export function makeStrip(id: string, s: StripSpec, img: HTMLImageElement): Stri
   };
 }
 
+/**
+ * Loads and validates all `StripSpec` entries declared by a `Cartridge` into an `AssetLibrary` map.
+ */
 export async function loadCartridgeAssets(
   cartId: string,
   specs?: Record<string, StripSpec>

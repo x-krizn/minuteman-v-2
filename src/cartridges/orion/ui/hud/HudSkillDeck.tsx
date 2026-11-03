@@ -18,6 +18,9 @@ import {
 } from '../../systems';
 import { OrionState } from '../../types';
 
+/**
+ * Shared CSS `textShadow` style string producing a crisp `1px` dark pixel-art outline on React overlay HUD labels. Supports the React overlay HUD.
+ */
 export const OUTLINED_TEXT =
   '[text-shadow:_-1px_-1px_0_#020617,_1px_-1px_0_#020617,_-1px_1px_0_#020617,_1px_1px_0_#020617,_0_1px_3px_#020617]';
 
@@ -44,6 +47,9 @@ const WORLD_Y_CLASSES = [
   'top-[72%]',
 ] as const;
 
+/**
+ * Computes Tailwind positioning classes anchoring floating prompts or toasts relative to the pilot's screen-space position. Supports the React overlay HUD.
+ */
 export function getWorldRelativeClasses(
   state: OrionState,
   wx: number,
@@ -65,6 +71,9 @@ export function getWorldRelativeClasses(
   return `${WORLD_X_CLASSES[xIdx]} ${WORLD_Y_CLASSES[yIdx]} -translate-x-1/2 -translate-y-1/2`;
 }
 
+/**
+ * Resolves non-overlapping vertical placement (`top` or `bottom`) for HUD notification toasts relative to the mech. Supports the React overlay HUD.
+ */
 export function resolveToastPlacement(
   state: OrionState,
   text: string
@@ -164,6 +173,9 @@ export function resolveToastPlacement(
   };
 }
 
+/**
+ * Renders an inline SVG vector icon for a combat action or weapon slot on the skill deck. Supports the React overlay HUD.
+ */
 export function renderSkillGlyph(
   skill: ResolvedCombatSkill | null,
   index: number
@@ -331,6 +343,9 @@ interface HudSkillDeckProps {
   state: OrionState;
 }
 
+/**
+ * Renders the bottom tactical skill deck (`A`, `B`, `X`, `Y`, `L`, `R`), context interaction prompts, and dialogue banners. Supports the React overlay HUD (paired with the pixel canvas HUD in `OrionHud`).
+ */
 export const HudSkillDeck: React.FC<HudSkillDeckProps> = ({ state }) => {
   const combatSkills = getResolvedCombatSkills(state);
   const skillSlots: Array<ResolvedCombatSkill | null> = [

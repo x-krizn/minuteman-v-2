@@ -38,8 +38,14 @@ for (const [path, mod] of Object.entries(modules)) {
   }
 }
 
+/**
+ * Exported const `CANONICAL_FRAME_PLATING` (canonical frame plating) in `index.ts`.
+ */
 export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = discoveredPlating;
 
+/**
+ * Executes `getFramePlatingDefinition` (get frame plating definition) in `index.ts`.
+ */
 export function getFramePlatingDefinition(idOrName?: string | null): FramePlatingDefinition | undefined {
   if (!idOrName) return undefined;
   const norm = idOrName.trim().toLowerCase();

@@ -43,6 +43,9 @@ interface ActionButtonsProps {
   state: GamepadButtons;
 }
 
+/**
+ * Renders the handheld `A`, `B`, `X`, and `Y` diamond action cluster for the virtual controller.
+ */
 export const ActionButtons: React.FC<ActionButtonsProps> = ({ scale, state }) => {
   const s = scale;
 

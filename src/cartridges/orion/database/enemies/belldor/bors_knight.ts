@@ -41,6 +41,9 @@ function handleGrailKnightDefeat(
   notifyOrionStateChange();
 }
 
+/**
+ * Canonical database definition for `borsKnightEnemy` (`Sir Bors (Berserk Striker)`, id `'bors_knight'`) — A relentless brawler who grows stronger with every hit and enrages at half health..
+ */
 export const borsKnightEnemy: EnemyWikiDefinition = {
   type: 'bors_knight',
   name: 'Sir Bors (Berserk Striker)',

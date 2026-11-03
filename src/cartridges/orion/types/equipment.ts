@@ -15,6 +15,9 @@ import {
 import { ActionDefinition, OrionExecutionContext } from './combat';
 import type { OrionState } from './state';
 
+/**
+ * Type contract for `GemId` (gem id) in `equipment.ts`.
+ */
 export type GemId =
   | 'moonstone'
   | 'spinel'
@@ -26,6 +29,9 @@ export type GemId =
   | 'rubellite'
   | 'hematite';
 
+/**
+ * Type contract for `GemDefinition` (gem definition) in `equipment.ts`.
+ */
 export interface GemDefinition {
   id: GemId;
   name: string;
@@ -43,10 +49,22 @@ export interface GemDefinition {
   fundsSkills: TraitLine[];
 }
 
+/**
+ * Type contract for `PilotSkillId` (pilot skill id) in `equipment.ts`.
+ */
 export type PilotSkillId = TraitLine;
+/**
+ * Type contract for `FeatTier` (feat tier) in `equipment.ts`.
+ */
 export type FeatTier = 'I' | 'II' | 'III' | 'IV' | 'V';
+/**
+ * Type contract for `FeatKind` (feat kind) in `equipment.ts`.
+ */
 export type FeatKind = 'system' | 'interface';
 
+/**
+ * Type contract for `PilotSkillProgress` (pilot skill progress) in `equipment.ts`.
+ */
 export interface PilotSkillProgress {
   id: PilotSkillId;
   name: string;
@@ -58,6 +76,9 @@ export interface PilotSkillProgress {
   fundingGems?: GemId[];
 }
 
+/**
+ * Type contract for `FeatSynergyCategory` (feat synergy category) in `equipment.ts`.
+ */
 export type FeatSynergyCategory =
   | 'Ballistics & Ordnance'
   | 'Melee & CQC'
@@ -66,6 +87,9 @@ export type FeatSynergyCategory =
   | 'Mobility & Stealth'
   | 'Optics & Support';
 
+/**
+ * Type contract for `FrameFeatDefinition` (frame feat definition) in `equipment.ts`.
+ */
 export interface FrameFeatDefinition {
   id: string;
   name: string;
@@ -101,6 +125,9 @@ export interface FrameFeatDefinition {
   };
 }
 
+/**
+ * Type contract for `WeaponComponentSlotId` (weapon component slot id) in `equipment.ts`.
+ */
 export type WeaponComponentSlotId =
   | 'hilt'
   | 'grip'
@@ -112,6 +139,9 @@ export type WeaponComponentSlotId =
   | 'actuator'
   | 'sight';
 
+/**
+ * Type contract for `StaticSubModSlotId` (static sub mod slot id) in `equipment.ts`.
+ */
 export type StaticSubModSlotId =
   | 'optics'
   | 'sensoryA'
@@ -123,9 +153,18 @@ export type StaticSubModSlotId =
   | 'legs'
   | 'mobility';
 
+/**
+ * Type contract for `ModPartOrigin` (mod part origin) in `equipment.ts`.
+ */
 export type ModPartOrigin = 'crafted' | 'looted';
+/**
+ * Type contract for `LoadBracket` (load bracket) in `equipment.ts`.
+ */
 export type LoadBracket = 'light' | 'medium' | 'heavy' | 'overloaded';
 
+/**
+ * Type contract for `WeaponComponentPartDefinition` (weapon component part definition) in `equipment.ts`.
+ */
 export interface WeaponComponentPartDefinition {
   id: string;
   name: string;
@@ -145,6 +184,9 @@ export interface WeaponComponentPartDefinition {
   projectileWeightDelta?: number;
 }
 
+/**
+ * Type contract for `ActionModificationDefinition` (action modification definition) in `equipment.ts`.
+ */
 export interface ActionModificationDefinition {
   id: string;
   name: string;
@@ -177,8 +219,17 @@ export interface ActionModificationDefinition {
   };
 }
 
+/**
+ * Type contract for `WeaponHanding` (weapon handing) in `equipment.ts`.
+ */
 export type WeaponHanding = '1-hand' | '2-hand' | 'off-hand-only' | 'buff-accessory';
+/**
+ * Type contract for `WeaponGripMode` (weapon grip mode) in `equipment.ts`.
+ */
 export type WeaponGripMode = '1h' | '2h';
+/**
+ * Type contract for `WeaponStanceType` (weapon stance type) in `equipment.ts`.
+ */
 export type WeaponStanceType =
   | 'paired'
   | 'unpaired'
@@ -187,6 +238,9 @@ export type WeaponStanceType =
   | 'main_consumable'
   | 'single_1h';
 
+/**
+ * Type contract for `OrionEquipmentSlots` (orion equipment slots) in `equipment.ts`.
+ */
 export interface OrionEquipmentSlots {
   /** Main Hand (Weapon Slot 1): 1H or 2H Weapon -> ac1, ac2, ac3 (and ac4, ac5 in Paired or 2H Power Stance) */
   slot1: string | null;
@@ -237,6 +291,9 @@ export interface OrionEquipmentSlots {
   weaponGemMods?: Record<string, GemId | null>;
 }
 
+/**
+ * Type contract for `LoadPenaltySummary` (load penalty summary) in `equipment.ts`.
+ */
 export interface LoadPenaltySummary {
   frameLoad: FrameLoadCapacity;
   weaponWeight: WeaponWeightClass;
@@ -252,7 +309,9 @@ export interface LoadPenaltySummary {
   label: string;
 }
 
-// Starting Loadout Kit Definition (Internal TraitLine id preserved for save compatibility)
+/**
+ * Starting Loadout Kit Definition (Internal TraitLine id preserved for save compatibility).
+ */
 export interface TraitLineWikiDefinition {
   id: TraitLine;
   name: string;
@@ -273,7 +332,9 @@ export interface TraitLineWikiDefinition {
   sprite?: Base64SpriteConfig;
 }
 
-// Weapon / Shield / Quiver / Catalyst Definition
+/**
+ * Weapon / Shield / Quiver / Catalyst Definition.
+ */
 export interface WeaponDefinition {
   id: string;
   name: string;
@@ -344,7 +405,9 @@ export interface WeaponDefinition {
   ) => void;
 }
 
-// Item Definition
+/**
+ * Item Definition.
+ */
 export interface ItemWikiDefinition {
   id: string;
   name: string;

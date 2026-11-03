@@ -5,6 +5,9 @@
 
 import { ItemWikiDefinition } from '../../../types';
 
+/**
+ * Canonical database definition for `potionHpItem` (`Health Elixir`, id `'potion_hp'`, ASCII token `'1'`, slot `'potion'`) — +1 Flask charge replenish.
+ */
 export const potionHpItem: ItemWikiDefinition = {
   // 1. Identity & Metadata
   id: 'potion_hp',

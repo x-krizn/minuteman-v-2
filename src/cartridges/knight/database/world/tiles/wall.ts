@@ -5,6 +5,9 @@
 
 import { TileDefinition } from '../../../types';
 
+/**
+ * Canonical database definition for `wallTile` (`Stone Wall`, id `'wall'`, ASCII token `'#'`, slot `'terrain'`) — Solid masonry dungeon wall blocking all physical traversal..
+ */
 export const wallTile: TileDefinition = {
   id: 'wall',
   symbol: '#',

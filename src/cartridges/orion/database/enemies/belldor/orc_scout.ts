@@ -34,6 +34,9 @@ function getOrcTarget(
   return { x: state.x, y: state.y, isNpc: false };
 }
 
+/**
+ * Canonical database definition for `orcScoutEnemy` (`Orc Scout`, id `'orc_scout'`) — Ranged skirmisher that stays back, shoots from range, and slips away to heal if hurt..
+ */
 export const orcScoutEnemy: EnemyWikiDefinition = {
   type: 'orc_scout',
   name: 'Orc Scout',

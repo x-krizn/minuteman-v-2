@@ -9,8 +9,17 @@ import { EnemyWikiDefinition } from '../../types';
 // Auto-discover all enemy entity modules in this directory (including subfolders) via Vite import.meta.glob
 const modules = import.meta.glob<Record<string, unknown>>('./**/*.ts', { eager: true });
 
+/**
+ * Exported const `ENEMY_REGISTRY` (enemy registry) in `index.ts`.
+ */
 export const ENEMY_REGISTRY: Record<string, EnemyWikiDefinition> = {};
+/**
+ * Exported const `CHAR_TO_ENEMY_TYPE` (char to enemy type) in `index.ts`.
+ */
 export const CHAR_TO_ENEMY_TYPE: Record<string, string> = {};
+/**
+ * Exported const `ENEMY_SPAWN_COLLISIONS` (enemy spawn collisions) in `index.ts`.
+ */
 export const ENEMY_SPAWN_COLLISIONS: string[] = [];
 
 function isEnemyWikiDefinition(val: unknown): val is EnemyWikiDefinition {
@@ -43,10 +52,16 @@ for (const [path, mod] of Object.entries(modules)) {
 }
 
 // [ORION-ANCHOR: ENEMY-SPAWN-RESOLVER]
+/**
+ * Executes `getEnemyDefinition` (get enemy definition) in `index.ts`.
+ */
 export function getEnemyDefinition(type: string): EnemyWikiDefinition | undefined {
   return ENEMY_REGISTRY[type];
 }
 
+/**
+ * Executes `resolveEnemyTypeForChar` (resolve enemy type for char) in `index.ts`.
+ */
 export function resolveEnemyTypeForChar(
   char: string,
   biomeEnemyMap?: Record<string, string>
@@ -57,6 +72,9 @@ export function resolveEnemyTypeForChar(
   return CHAR_TO_ENEMY_TYPE[char];
 }
 
+/**
+ * Executes `getEnemyBySpawnChar` (get enemy by spawn char) in `index.ts`.
+ */
 export function getEnemyBySpawnChar(
   char: string,
   biomeEnemyMap?: Record<string, string>

@@ -5,6 +5,9 @@
 
 import { TileDefinition } from '../../../types';
 
+/**
+ * Canonical database definition for `airTile` (`Air / Open Passage`, id `'air'`, ASCII token `'.'`, slot `'terrain'`) — Unobstructed empty space allowing free player and entity traversal..
+ */
 export const airTile: TileDefinition = {
   id: 'air',
   symbol: '.',

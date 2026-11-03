@@ -5,6 +5,9 @@
 
 import { CombatParticle } from './types';
 
+/**
+ * Spawns `count` visual combat or environmental particles at `(x, y)` in `px` with optional floating text. Mutates `state: OrionState`.
+ */
 export function spawnParticles(
   particles: CombatParticle[],
   x: number,
@@ -43,6 +46,9 @@ export function spawnParticles(
   }
 }
 
+/**
+ * Advances all active `OrionParticle` positions and lifetimes by `dt` seconds and removes expired particles. Mutates `state: OrionState`.
+ */
 export function updateParticles(particles: CombatParticle[], dt: number): CombatParticle[] {
   return particles.filter((p) => {
     p.life -= dt;

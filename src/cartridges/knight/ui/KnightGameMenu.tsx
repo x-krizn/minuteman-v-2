@@ -11,6 +11,9 @@ import {
   saveKnightGame,
 } from '../stateStore';
 
+/**
+ * Type contract for `KnightGameMenuProps` (knight game menu props) in `KnightGameMenu.tsx`.
+ */
 export interface KnightGameMenuProps {
   soundEnabled: boolean;
   scanlinesEnabled: boolean;
@@ -23,6 +26,9 @@ export interface KnightGameMenuProps {
   connectedGamepads?: string[];
 }
 
+/**
+ * Exported const `KnightGameMenu` (knight game menu) in `KnightGameMenu.tsx`.
+ */
 export const KnightGameMenu: React.FC<KnightGameMenuProps> = ({
   soundEnabled,
   scanlinesEnabled,

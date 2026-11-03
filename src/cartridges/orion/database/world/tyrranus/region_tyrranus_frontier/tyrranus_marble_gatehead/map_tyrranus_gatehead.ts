@@ -5,6 +5,9 @@
 
 import { MapDefinition, RoomDefinition } from '../../../../../types';
 
+/**
+ * Canonical database definition for `mapTyrranusGatehead` (`Tyrranus Waygate Colonnade Map`, id `'map_tyrranus_gatehead'`, coord `"7,1"`, scope `'local'`) — Local map unique to the Tyrranus Frontier, reachable via the Camelot Waygate or on foot across the Æther Drift....
+ */
 export const mapTyrranusGatehead: MapDefinition = {
   id: 'map_tyrranus_gatehead',
   name: 'Tyrranus Waygate Colonnade Map',
@@ -27,6 +30,9 @@ export const mapTyrranusGatehead: MapDefinition = {
   connectedMapIds: ['map_camelot_waygate_depths', 'global_aether_drift_bridge_map'],
 };
 
+/**
+ * Canonical database definition for `room70TyrranusWaygateLanding` (`Tyrranus Waygate Colonnade`, id `'room_7_0_tyrranus_waygate_landing'`, coord `"7,0"`, scope `'local'`).
+ */
 export const room70TyrranusWaygateLanding: RoomDefinition = {
   id: 'room_7_0_tyrranus_waygate_landing',
   scope: 'local',

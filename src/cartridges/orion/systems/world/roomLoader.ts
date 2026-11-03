@@ -29,6 +29,9 @@ import {
 
 // ─── 1. 5-TIER NESTED WORLD COMPOSER & ROOM REGISTRIES ───────────────────────
 
+/**
+ * Type contract for `OrionRoomMetadata` (orion room metadata) in `roomLoader.ts`.
+ */
 export interface OrionRoomMetadata {
   title: string;
   bannerTitle: string;
@@ -48,15 +51,30 @@ export interface OrionRoomMetadata {
   isChunkedExpanse?: boolean;
 }
 
+/**
+ * Type contract for `OrionCacheDefinition` (orion cache definition) in `roomLoader.ts`.
+ */
 export interface OrionCacheDefinition {
   scrap: number;
   items: Array<{ itemId: string; count: number }>;
   toast: string;
 }
 
+/**
+ * Exported const `ROOM_REGISTRY` (room registry) in `roomLoader.ts`.
+ */
 export const ROOM_REGISTRY: Record<string, RoomDefinition> = {};
+/**
+ * Exported const `ORION_TUTORIAL_ROOMS` (orion tutorial rooms) in `roomLoader.ts`.
+ */
 export const ORION_TUTORIAL_ROOMS: Record<string, string[]> = {};
+/**
+ * Exported const `ORION_ROOM_METADATA` (orion room metadata) in `roomLoader.ts`.
+ */
 export const ORION_ROOM_METADATA: Record<string, OrionRoomMetadata> = {};
+/**
+ * Exported const `ORION_CACHE_DEFINITIONS` (orion cache definitions) in `roomLoader.ts`.
+ */
 export const ORION_CACHE_DEFINITIONS: Record<string, OrionCacheDefinition> = {
   default: {
     scrap: 20,
@@ -65,8 +83,14 @@ export const ORION_CACHE_DEFINITIONS: Record<string, OrionCacheDefinition> = {
   },
 };
 
+/**
+ * Exported const `ALL_CARDINAL_DIRS` (all cardinal dirs) in `roomLoader.ts`.
+ */
 export const ALL_CARDINAL_DIRS: AetherCardinalDir[] = ['N', 'S', 'E', 'W'];
 
+/**
+ * Executes `getOppositeCardinalDir` (get opposite cardinal dir) in `roomLoader.ts`.
+ */
 export function getOppositeCardinalDir(dir: AetherCardinalDir): AetherCardinalDir {
   switch (dir) {
     case 'N':
@@ -85,6 +109,9 @@ export { KEY_NODE_ROUTES };
 export type { KeyNodeRouteDescriptor };
 
 // [ORION-ANCHOR: U00-ZONE-SEALS]
+/**
+ * Executes `getUndefinedZoneSealReason` (get undefined zone seal reason) in `roomLoader.ts`.
+ */
 export function getUndefinedZoneSealReason(coordOrNodeId: string): string | null {
   const meta = ORION_ROOM_METADATA[coordOrNodeId];
   if (!meta) return null;
@@ -101,6 +128,9 @@ export function getUndefinedZoneSealReason(coordOrNodeId: string): string | null
   return null;
 }
 
+/**
+ * Executes `getPrimaryKeyExitDir` (get primary key exit dir) in `roomLoader.ts`.
+ */
 export function getPrimaryKeyExitDir(coord: string): AetherCardinalDir | undefined {
   const routes = KEY_NODE_ROUTES[coord];
   if (!routes) return undefined;
@@ -116,6 +146,9 @@ function isDoorwayOpeningChar(ch: string | undefined): boolean {
   return ch !== '#' && ch !== 'P' && ch !== '_';
 }
 
+/**
+ * Executes `carveRoomCardinalDoors` (carve room cardinal doors) in `roomLoader.ts`.
+ */
 export function carveRoomCardinalDoors(
   rawGrid: string[],
   openDirs: AetherCardinalDir[]
@@ -217,6 +250,9 @@ export function carveRoomCardinalDoors(
   return matrix.map((r) => r.join(''));
 }
 
+/**
+ * Executes `buildEndNodeCacheDefinition` (build end node cache definition) in `roomLoader.ts`.
+ */
 export function buildEndNodeCacheDefinition(feature: AetherEndFeature): OrionCacheDefinition {
   if (feature === 'mini_boss') {
     return {
@@ -256,6 +292,9 @@ export function buildEndNodeCacheDefinition(feature: AetherEndFeature): OrionCac
   };
 }
 
+/**
+ * Executes `buildLoopNodeCacheDefinition` (build loop node cache definition) in `roomLoader.ts`.
+ */
 export function buildLoopNodeCacheDefinition(
   depth: number,
   maxDepth: number,
@@ -304,6 +343,9 @@ const MINI_BOSS_ARENA_TEMPLATE_GRID: string[] = [
   '######,,,,######',
 ];
 
+/**
+ * Executes `decorateDynamicRoomGrid` (decorate dynamic room grid) in `roomLoader.ts`.
+ */
 export function decorateDynamicRoomGrid(
   baseGrid: string[],
   nodeType: AetherNodeType,

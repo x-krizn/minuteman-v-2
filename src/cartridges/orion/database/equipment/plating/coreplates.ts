@@ -21,6 +21,9 @@ import {
 } from './sprites';
 import { MechPartSpriteStripConfig } from '../chassis_hardware';
 
+/**
+ * Type contract for `FramePlatingDefinition` (frame plating definition) in `coreplates.ts`.
+ */
 export interface FramePlatingDefinition {
   id: string;
   name: string;
@@ -69,6 +72,9 @@ export interface FramePlatingDefinition {
 /** Backward-compatible type alias */
 export type CoreplateDefinition = FramePlatingDefinition;
 
+/**
+ * Canonical database definition for `CANONICAL_FRAME_PLATING` (`BWI Bastion Frame Plating`, id `'coreplate_bwi_bastion'`, slot `'plating'`) — Heavy frontal torso & leg plating with turbine shielding (+140 Dur, 9 RTG, 5 THR, +45 Shield, +6 Stability, +6....
+ */
 export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = [
   // ─── SET 0: BWI Bastion Frame Plating ─────────────────────────────────────
   {
@@ -634,6 +640,9 @@ export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = [
   },
 ];
 
+/**
+ * Executes `getFramePlatingDefinition` (get frame plating definition) in `coreplates.ts`.
+ */
 export function getFramePlatingDefinition(idOrName?: string | null): FramePlatingDefinition | undefined {
   if (!idOrName) return undefined;
   const norm = idOrName.trim().toLowerCase();

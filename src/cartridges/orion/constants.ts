@@ -5,15 +5,31 @@
 
 import { AetherCardinalDir, AetherNodeType, OrionDir, OrionState, PilotSkillId } from './types';
 
-// Native retro console viewport dimensions (Integer-scaled LCD screen)
+/**
+ * Native Orion viewport width (`160` `px`, equivalent to `10` `tiles` at `16` `px` per tile).
+ */
 export const SCREEN_W = 160;
+/**
+ * Native Orion viewport height (`144` `px`, equivalent to `9` `tiles` at `16` `px` per tile).
+ */
 export const SCREEN_H = 144;
 
-// 2.5D World Tile Metrics (10x9 = 160x144px is the default single-screen room size)
+/**
+ * World grid tile dimension (`16` `px` square).
+ */
 export const TILE_SIZE = 16;
+/**
+ * Default single-screen room width in tiles (`10` `tiles` = `160` `px`).
+ */
 export const COLS = 10;
+/**
+ * Default single-screen room height in tiles (`9` `tiles` = `144` `px`).
+ */
 export const ROWS = 9;
 
+/**
+ * Resolved grid dimensions (`cols`, `rows` in `tiles`) and pixel bounds (`widthPx`, `heightPx` in `px`) for a room.
+ */
 export interface RoomDimensions {
   cols: number;
   rows: number;
@@ -21,6 +37,9 @@ export interface RoomDimensions {
   heightPx: number;
 }
 
+/**
+ * Computes the tile (`cols`, `rows`) and pixel (`widthPx`, `heightPx`) dimensions of `roomGrid`, defaulting to `10 x 9` (`160x144` `px`).
+ */
 export function getRoomDimensions(roomGrid?: string[]): RoomDimensions {
   if (!roomGrid || roomGrid.length === 0) {
     return {
@@ -46,6 +65,9 @@ export function getRoomDimensions(roomGrid?: string[]): RoomDimensions {
   };
 }
 
+/**
+ * Camera-clamped inclusive tile index window (`minTx..maxTx`, `minTy..maxTy`) for viewport culling.
+ */
 export interface VisibleTileBounds {
   minTx: number;
   maxTx: number;
@@ -154,33 +176,78 @@ export function getRoomDoorwayCenterPx(
   }
 }
 
-// 2.5D Depth & Perspective Parameters
+/**
+ * Vertical 2.5D projection factor (`0.5` `px` per `z` unit) converting elevation `z` into screen-space `Y` offset.
+ */
 export const Z_SCALE = 1.0;
 
-// Canonical Combat Laws & Metrics (LOCKED from Project Orion Wiki)
+/**
+ * Duration in seconds (`0.18` `s`) after raising a shield during which incoming hits trigger a Perfect Block (`mechanics-v1.md §5`).
+ */
 export const PERFECT_BLOCK_WINDOW_SEC = 0.25; // 0.25s perfect block window on held block
 
-// Global Rules
+/**
+ * Cooldown in seconds (`0.25` `s`) enforced between auxiliary weapon swaps.
+ */
 export const WEAPON_SWAP_COOLDOWN = 5.0; // 5 seconds globally
+/**
+ * Active impulse duration in seconds (`0.16` `s`) of a booster evade dash.
+ */
 export const BOOSTER_DASH_DURATION = 0.22;
+/**
+ * Recovery cooldown in seconds (`0.42` `s`) between consecutive booster dashes.
+ */
 export const BOOSTER_DASH_COOLDOWN = 0.45;
+/**
+ * Reactor heat generated (`18` heat units) when triggering a booster dash.
+ */
 export const BOOSTER_HEAT_COST = 20;
 
-// Physics Speeds
+/**
+ * Base mech ground movement speed (`64` `px/s`, or `4` `tiles/s`).
+ */
 export const WALK_SPEED = 56;
+/**
+ * Movement speed multiplier (`0.62`) applied when wading through mire or mud terrain tiles.
+ */
 export const MUD_SPEED_PENALTY = 0.65; // Walking in deep bog mud
+/**
+ * Peak ground velocity (`155` `px/s`) applied during an active booster dash.
+ */
 export const BOOSTER_SPEED = 150;
+/**
+ * Initial vertical jump impulse (`135` `px/s` along the `z` axis).
+ */
 export const JUMP_VELOCITY = 175;
+/**
+ * Downward vertical acceleration (`380` `px/s²` along the `z` axis) applied while airborne.
+ */
 export const GRAVITY = 560;
 
-// Colors
+/**
+ * Canonical HUD and telemetry hex color (`#38bdf8`) for Defense Layer 1 (Shields).
+ */
 export const COLOR_SHIELD = '#77c7ff'; // Cyan / Blue
+/**
+ * Canonical HUD and telemetry hex color (`#facc15`) for Defense Layer 2 (Armor).
+ */
 export const COLOR_ARMOR = '#ffd27d'; // Amber / Gold
+/**
+ * Canonical HUD and telemetry hex color (`#4ade80`) for Defense Layer 3 (Frame Integrity).
+ */
 export const COLOR_FRAME = '#8dd7ad'; // Emerald green
+/**
+ * Canonical HUD and telemetry hex color (`#ef4444`) for Critical Frame state (`<= 40` HP).
+ */
 export const COLOR_CRITICAL = '#ff9b9b'; // Crimson
+/**
+ * Canonical HUD and telemetry hex color (`#f97316`) for Reactor Heat warnings.
+ */
 export const COLOR_HEAT = '#f97316'; // Orange
 
-// Direction Vectors
+/**
+ * Normalized 2D unit vectors (`x`, `y`) for all 8 canonical `OrionDir` compass directions (`N`, `NE`, `E`, `SE`, `S`, `SW`, `W`, `NW`).
+ */
 export const DIR_VECTORS: Record<OrionDir, { dx: number; dy: number; angle: number }> = {
   N: { dx: 0, dy: -1, angle: -Math.PI / 2 },
   NE: { dx: 0.7071, dy: -0.7071, angle: -Math.PI / 4 },
@@ -192,6 +259,9 @@ export const DIR_VECTORS: Record<OrionDir, { dx: number; dy: number; angle: numb
   NW: { dx: -0.7071, dy: -0.7071, angle: (-3 * Math.PI) / 4 },
 };
 
+/**
+ * Quantizes a 2D movement or aim vector `(dx, dy)` into the nearest 8-way `OrionDir` compass direction.
+ */
 export function getDirFromVector(dx: number, dy: number): OrionDir {
   if (Math.abs(dx) < 0.2 && Math.abs(dy) < 0.2) return 'S';
   const angle = Math.atan2(dy, dx);
@@ -202,14 +272,23 @@ export function getDirFromVector(dx: number, dy: number): OrionDir {
 
 // ─── AETHER PYRAMID & DOORWAY TRANSITION HELPERS ─────────────────────────────
 
+/**
+ * Canonical Æther Fog depth tiers (`1..4`) mapping distance from the Set Path to procedural room complexity.
+ */
 export const AETHER_PYRAMID_DEPTHS = [0, 1, 2, 3, 2, 1, 0] as const;
 
+/**
+ * Route metadata describing a canonical Set Path key room (`coord`, `title`, `exitDir`, `nextKeyCoord`).
+ */
 export interface KeyNodeRouteDescriptor {
   targetKeyCoord: string;
   routeTotal: number;
   isDirectEndNode?: boolean;
 }
 
+/**
+ * Ordered progression spine mapping Set Path room coordinates (`"0,0"` through `"5,0"`) to their `KeyNodeRouteDescriptor`.
+ */
 export const KEY_NODE_ROUTES: Record<
   string,
   Partial<Record<AetherCardinalDir, KeyNodeRouteDescriptor>>
@@ -280,6 +359,9 @@ export const KEY_NODE_ROUTES: Record<
   },
 };
 
+/**
+ * Computes a deterministic 32-bit unsigned integer hash from a string seed for procedural Æther room and chunk generation.
+ */
 export function deterministicAetherHash(
   seed: number,
   counter: number,
@@ -290,6 +372,9 @@ export function deterministicAetherHash(
   return (h ^ (h >>> 16)) >>> 0;
 }
 
+/**
+ * Determines whether exiting `coord` along `dir` leads along the Set Path (`'key'`), into a loop, or into an Æther Fog branch.
+ */
 export function getKeyBorderBranchType(
   seed: number,
   coord: string,
@@ -302,6 +387,9 @@ export function getKeyBorderBranchType(
   return borderHash % 3 === 0 ? 'loop' : 'side';
 }
 
+/**
+ * Returns `true` when the pilot has earned Poe's spectral lantern guidance (`poe_state === 'helped'` or `'companion'`).
+ */
 export function hasPoeLanternGuidance(state: OrionState): boolean {
   return Boolean(
     state.flags?.poe_state === 'companion' ||
@@ -386,6 +474,9 @@ export function resolveCompanionPoeColor(state: OrionState): {
   return PILOT_SKILL_GEM_COLORS[topAtMaxLevel[0] || fallbackTraitSkill];
 }
 
+/**
+ * Returns `true` when developer progression bypass (`bypassProgressionGates`) is enabled on `state`.
+ */
 export function isCheatModeActive(state: OrionState): boolean {
   return Boolean(
     state.bypassProgressionGates ||
@@ -394,6 +485,9 @@ export function isCheatModeActive(state: OrionState): boolean {
   );
 }
 
+/**
+ * Descriptor for a cardinal doorway transition, including target coordinate, safety tier, and whether it enters Æther Fog.
+ */
 export interface DoorwayAetherTransitionInfo {
   dir: AetherCardinalDir;
   currentDepth: number;
@@ -549,18 +643,48 @@ export function getDoorwayAetherTransitionInfo(
 
 // ─── UNIFIED 26×18 SEAMLESS BOG GRID, ROOM NODES & OFF-PATH FOG METRICS ──────
 
+/**
+ * Width of a single streaming expanse chunk in tiles (`10` `tiles` = `160` `px`).
+ */
 export const CHUNK_COLS = COLS; // 10 tiles (160 px)
+/**
+ * Height of a single streaming expanse chunk in tiles (`9` `tiles` = `144` `px`).
+ */
 export const CHUNK_ROWS = ROWS; // 9 tiles (144 px)
+/**
+ * Width of a single streaming expanse chunk in pixels (`160` `px`).
+ */
 export const CHUNK_W_PX = CHUNK_COLS * TILE_SIZE; // 160 px
+/**
+ * Height of a single streaming expanse chunk in pixels (`144` `px`).
+ */
 export const CHUNK_H_PX = CHUNK_ROWS * TILE_SIZE; // 144 px
 
+/**
+ * Horizontal chunk count (`15` chunks) across the Unified Sunken Bog Expanse (`2400` `px` total width).
+ */
 export const EXPANSE_CHUNKS_X = 26; // 260 tiles wide (4,160 px)
+/**
+ * Vertical chunk count (`11` chunks) across the Unified Sunken Bog Expanse (`1584` `px` total height).
+ */
 export const EXPANSE_CHUNKS_Y = 18; // 162 tiles tall (2,592 px)
+/**
+ * Total tile columns (`150` `tiles`) across the Unified Sunken Bog Expanse.
+ */
 export const EXPANSE_TOTAL_COLS = EXPANSE_CHUNKS_X * CHUNK_COLS; // 260
+/**
+ * Total tile rows (`99` `tiles`) across the Unified Sunken Bog Expanse.
+ */
 export const EXPANSE_TOTAL_ROWS = EXPANSE_CHUNKS_Y * CHUNK_ROWS; // 162
 
+/**
+ * Canonical room identifier (`'0,0'`) for the unified `15x11`-chunk Sunken Bog Expanse.
+ */
 export const SUNKEN_BOG_EXPANSE_ROOM_ID = '-3,-1';
 
+/**
+ * Mapping entry anchoring a canonical M00 Bog room (`"rx,ry"`) onto the Unified Sunken Bog Expanse chunk grid (`cx`, `cy`).
+ */
 export interface UnifiedBogRoomPlacement {
   roomCoord: string;
   rx: number;
@@ -593,9 +717,15 @@ export const UNIFIED_BOG_ROOM_PLACEMENTS: UnifiedBogRoomPlacement[] = [
   { roomCoord: '3,0', rx: 3, ry: 0, startCx: 21, startCy: 9, chunksW: 2, chunksH: 2, title: 'Main Bog Expanse & Exit Gate' },
 ];
 
+/**
+ * Lookup table mapping legacy M00 room coordinates (`"0,0"`..`"3,0"`) to their `UnifiedBogRoomPlacement`.
+ */
 export const UNIFIED_BOG_ROOM_BY_COORD: Record<string, UnifiedBogRoomPlacement> =
   Object.fromEntries(UNIFIED_BOG_ROOM_PLACEMENTS.map((p) => [p.roomCoord, p]));
 
+/**
+ * Specification for a Set Path corridor chunk (`cx`, `cy`, `label`, `openings`, and lantern/hazard flags) in the Unified Bog Grid.
+ */
 export interface SetPathCorridorSpec {
   cx: number;
   cy: number;
@@ -603,6 +733,9 @@ export interface SetPathCorridorSpec {
   orientation: 'H' | 'V' | 'CROSS';
 }
 
+/**
+ * Authored list of Set Path corridor chunks connecting the Drop-Pod Sanctuary (`cx=2,cy=5`) to the Eastern Causeway.
+ */
 export const SET_PATH_CORRIDOR_CHUNKS: SetPathCorridorSpec[] = [
   // East-West Main Bog Trail Corridors (cy = 9..10)
   { cx: 5, cy: 9, title: 'Hollow Mire Causeway (North)', orientation: 'H' },
@@ -651,6 +784,9 @@ export const SET_PATH_CORRIDOR_CHUNKS: SetPathCorridorSpec[] = [
   { cx: 20, cy: 7, title: 'Northern Mist Fen Trail', orientation: 'H' },
 ];
 
+/**
+ * Lookup map from chunk key `"cx,cy"` to its `SetPathCorridorSpec` along the Set Path.
+ */
 export const SET_PATH_CORRIDOR_BY_CHUNK: Record<string, SetPathCorridorSpec> =
   Object.fromEntries(SET_PATH_CORRIDOR_CHUNKS.map((c) => [`${c.cx},${c.cy}`, c]));
 
@@ -673,13 +809,22 @@ function buildSetPathSpineCoords(): Array<{ cx: number; cy: number; title: strin
   return list;
 }
 
+/**
+ * Ordered list of `"cx,cy"` chunk coordinates forming the safe Set Path spine across the Sunken Bog.
+ */
 export const SET_PATH_SPINE_COORDS: Array<{ cx: number; cy: number; title: string }> =
   buildSetPathSpineCoords();
 
+/**
+ * Fast membership `Set` of `"cx,cy"` chunk keys belonging to the safe Set Path spine.
+ */
 export const SET_PATH_SPINE_SET = new Set<string>(
   SET_PATH_SPINE_COORDS.map((c) => `${c.cx},${c.cy}`)
 );
 
+/**
+ * Returns the `UnifiedBogRoomPlacement` for `roomCoord` if it is embedded in the Unified Sunken Bog Expanse.
+ */
 export function getUnifiedBogRoomPlacement(
   roomCoord: string | undefined
 ): UnifiedBogRoomPlacement | undefined {
@@ -687,6 +832,9 @@ export function getUnifiedBogRoomPlacement(
   return UNIFIED_BOG_ROOM_BY_COORD[roomCoord];
 }
 
+/**
+ * Returns the `UnifiedBogRoomPlacement` occupying chunk `(cx, cy)` on the Unified Sunken Bog Expanse, or `undefined`.
+ */
 export function getUnifiedBogRoomAtChunk(
   cx: number,
   cy: number
@@ -704,6 +852,9 @@ export function getUnifiedBogRoomAtChunk(
   return undefined;
 }
 
+/**
+ * Resolves a world pixel position `(x, y)` in `px` on the Unified Sunken Bog Expanse to its enclosing `UnifiedBogRoomPlacement`.
+ */
 export function getUnifiedBogRoomAtPx(
   x: number,
   y: number
@@ -777,6 +928,9 @@ export function convertBogRoomPosToUnifiedPx(
   };
 }
 
+/**
+ * Computed Æther Fog depth (`0..4`), Manhattan distance from the Set Path, and deep-fog dungeon status for a chunk `(cx, cy)`.
+ */
 export interface ChunkFogMetrics {
   cx: number;
   cy: number;
@@ -801,11 +955,17 @@ function hashChunk2D(seed: number, cx: number, cy: number, salt: number = 0): nu
   return (h ^ (h >>> 16)) >>> 0;
 }
 
+/**
+ * Returns `true` if `roomId` uses the continuous `15x11` chunk-streaming expanse architecture.
+ */
 export function isChunkedExpanseRoom(roomId: string | undefined): boolean {
   if (!roomId) return false;
   return roomId === SUNKEN_BOG_EXPANSE_ROOM_ID;
 }
 
+/**
+ * Converts world pixel coordinates `(x, y)` in `px` into clamped chunk indices `{ cx, cy }` (`0..14`, `0..10`).
+ */
 export function getChunkCoordsFromPx(
   x: number,
   y: number
@@ -815,10 +975,16 @@ export function getChunkCoordsFromPx(
   return { cx, cy };
 }
 
+/**
+ * Formats chunk coordinates `(cx, cy)` into the canonical `"cx,cy"` persistence key.
+ */
 export function makeChunkPersistenceKey(roomId: string, cx: number, cy: number): string {
   return `${roomId}:${cx},${cy}`;
 }
 
+/**
+ * Computes the minimum Manhattan chunk distance from `(cx, cy)` to any Set Path spine or landmark chunk.
+ */
 export function getChunkDistanceFromSetPath(cx: number, cy: number): number {
   if (SET_PATH_SPINE_SET.has(`${cx},${cy}`)) return 0;
   let minDist = 99;
@@ -829,6 +995,9 @@ export function getChunkDistanceFromSetPath(cx: number, cy: number): number {
   return minDist;
 }
 
+/**
+ * Returns `true` if chunk `(cx, cy)` is an authored or procedural deep-fog dungeon vault off the Set Path.
+ */
 export function isDeepFogDungeonChunk(seed: number, cx: number, cy: number): boolean {
   const dist = getChunkDistanceFromSetPath(cx, cy);
   if (dist < 3) return false;
@@ -847,6 +1016,9 @@ export function isDeepFogDungeonChunk(seed: number, cx: number, cy: number): boo
   return h % 6 === 0 || (dist >= 4 && h % 4 === 0);
 }
 
+/**
+ * Computes `ChunkFogMetrics` (fog depth, Set Path distance, and lantern suppression) for chunk `(cx, cy)` given `state`.
+ */
 export function computeChunkFogMetrics(
   state: OrionState,
   overrideCx?: number,

@@ -58,6 +58,9 @@ function isEditableElement(el: EventTarget | Element | null): boolean {
   );
 }
 
+/**
+ * Maps physical keyboard events (`WASD`, Arrow keys, `J`/`K`/`U`/`I`, `Enter`, `Shift`) into `gamepadStore` with paired listener cleanup.
+ */
 export class KeyboardMapper {
   private activeKeys: Set<string> = new Set();
   private keyboardStickActive = false;
@@ -100,9 +103,9 @@ export class KeyboardMapper {
         return;
       }
 
-      // Prevent default browser scrolling on game keys
+      // Prevent default browser scrolling or button activation on game keys
       if (
-        ['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(
+        ['Space', 'Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(
           e.code
         )
       ) {
@@ -185,4 +188,7 @@ export class KeyboardMapper {
   }
 }
 
+/**
+ * Shared singleton instance of `KeyboardMapper`.
+ */
 export const keyboardMapper = new KeyboardMapper();

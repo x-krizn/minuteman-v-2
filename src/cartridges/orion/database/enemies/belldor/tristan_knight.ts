@@ -41,6 +41,9 @@ function handleGrailKnightDefeat(
   notifyOrionStateChange();
 }
 
+/**
+ * Canonical database definition for `tristanKnightEnemy` (`Sir Tristan (Corrupted Ranger)`, id `'tristan_knight'`) — A kiting archer with spread arrow volleys, smoke escapes, and cover-piercing sight..
+ */
 export const tristanKnightEnemy: EnemyWikiDefinition = {
   type: 'tristan_knight',
   name: 'Sir Tristan (Corrupted Ranger)',

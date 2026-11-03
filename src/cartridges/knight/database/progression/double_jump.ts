@@ -5,6 +5,9 @@
 
 import { ProgressionNodeEntry } from '../../types';
 
+/**
+ * Canonical database definition for `doubleJumpNode` (`Double Jump`, id `'double_jump'`, slot `'movement'`) — Perform a secondary ascension burst mid-air..
+ */
 export const doubleJumpNode: ProgressionNodeEntry = {
   id: 'double_jump',
   name: 'Double Jump',

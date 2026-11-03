@@ -5,6 +5,9 @@
 
 import { TraitLineWikiDefinition } from '../../types';
 
+/**
+ * Canonical database definition for `clericTrait` (`Sanctum Support Kit`, id `'Cleric'`, load `'medium'`) — Sanctum Support Coreplate & SANC Heartwell Reactor Mk.IV (Medium Load) — distributed buffer & harmonic support....
+ */
 export const clericTrait: TraitLineWikiDefinition = {
   id: 'Cleric',
   name: 'Sanctum Support Kit',

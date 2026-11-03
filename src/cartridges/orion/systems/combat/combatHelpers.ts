@@ -13,6 +13,9 @@ import { getPointVisibilityFactor } from '../renderSystem';
 
 const MAX_LOCK_ON_RANGE = 165;
 
+/**
+ * Executes `isTargetableEnemy` (is targetable enemy) in `combatHelpers.ts`.
+ */
 export function isTargetableEnemy(e: EnemyEntity, state?: OrionState): boolean {
   if (e.frame.integrity <= 0) return false;
   if (e.isSubmerged) return false;
@@ -27,6 +30,9 @@ export function isTargetableEnemy(e: EnemyEntity, state?: OrionState): boolean {
   return true;
 }
 
+/**
+ * Executes `getLockedTarget` (get locked target) in `combatHelpers.ts`.
+ */
 export function getLockedTarget(state: OrionState): EnemyEntity | null {
   if (state.lockedTargetId === null || state.lockedTargetId === undefined) {
     return null;
@@ -40,6 +46,9 @@ export function getLockedTarget(state: OrionState): EnemyEntity | null {
   return target;
 }
 
+/**
+ * Executes `cycleTargetLock` (cycle target lock) in `combatHelpers.ts`. Mutates `state: OrionState`.
+ */
 export function cycleTargetLock(
   state: OrionState,
   _ctx?: OrionCombatContext
@@ -92,6 +101,9 @@ export function cycleTargetLock(
   }
 }
 
+/**
+ * Executes `updateTargetLock` (update target lock) in `combatHelpers.ts`. Mutates `state: OrionState`.
+ */
 export function updateTargetLock(state: OrionState): EnemyEntity | null {
   const target = getLockedTarget(state);
   if (!target) {
@@ -112,6 +124,9 @@ export function updateTargetLock(state: OrionState): EnemyEntity | null {
   return target;
 }
 
+/**
+ * Executes `getCombatAimVector` (get combat aim vector) in `combatHelpers.ts`.
+ */
 export function getCombatAimVector(state: OrionState): { dx: number; dy: number } {
   const locked = getLockedTarget(state);
   if (locked) {
@@ -128,6 +143,9 @@ export function getCombatAimVector(state: OrionState): { dx: number; dy: number 
   return { dx: dirInfo.dx, dy: dirInfo.dy };
 }
 
+/**
+ * Executes `normalizeAngleDiff` (normalize angle diff) in `combatHelpers.ts`.
+ */
 export function normalizeAngleDiff(a: number, b: number): number {
   let diff = a - b;
   while (diff > Math.PI) diff -= Math.PI * 2;
@@ -161,8 +179,14 @@ export function triggerEntityFlash(
   target.flashKind = kind;
 }
 
+/**
+ * Type contract for `PositionalHitQuality` (positional hit quality) in `combatHelpers.ts`.
+ */
 export type PositionalHitQuality = 'sweet' | 'normal' | 'sour';
 
+/**
+ * Type contract for `PositionalHitEvaluation` (positional hit evaluation) in `combatHelpers.ts`.
+ */
 export interface PositionalHitEvaluation {
   quality: PositionalHitQuality;
   damageMult: number;

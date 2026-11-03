@@ -5,6 +5,9 @@
 
 import { AreaWikiDefinition } from '../../../../../types';
 
+/**
+ * Canonical database definition for `camelotBorderTownArea` (`CAMELOT BORDER TOWN`, id `'camelot_border_town'`, scope `'local'`) — Locked second zone of Belldor comprising the Outer Perimeter (spawn from the Bog), Market District (central hu....
+ */
 export const camelotBorderTownArea: AreaWikiDefinition = {
   id: 'camelot_border_town',
   name: 'CAMELOT BORDER TOWN',

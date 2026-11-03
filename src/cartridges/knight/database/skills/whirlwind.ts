@@ -5,6 +5,9 @@
 
 import { SkillDef } from '../../types';
 
+/**
+ * Canonical database definition for `whirlwindSkill` (`WHIRLWIND`, id `'whirlwind'`) — Spinning blade strikes all around..
+ */
 export const whirlwindSkill: SkillDef = {
   id: 'whirlwind',
   name: 'WHIRLWIND',

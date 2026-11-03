@@ -5,6 +5,9 @@
 
 import { ItemWikiDefinition } from '../../../../types';
 
+/**
+ * Canonical database definition for `knightsOathItem` (`Feat: Knight's Oath`, id `'knights_oath'`, slot `'equipment'`) — Earned by defeating Percival, Tristan, and Bors simultaneously. Grants permanent +25% bonus damage against Cam....
+ */
 export const knightsOathItem: ItemWikiDefinition = {
   id: 'knights_oath',
   name: "Feat: Knight's Oath",

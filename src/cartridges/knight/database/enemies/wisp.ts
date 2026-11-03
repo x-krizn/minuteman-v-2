@@ -5,6 +5,9 @@
 
 import { EnemyWikiDefinition } from '../../types';
 
+/**
+ * Canonical database definition for `wispEnemy` (`Grave Wisp`, id `'wisp'`) — An ethereal flame floating along sinusoidal trajectories through stone chambers..
+ */
 export const wispEnemy: EnemyWikiDefinition = {
   type: 'wisp',
   name: 'Grave Wisp',

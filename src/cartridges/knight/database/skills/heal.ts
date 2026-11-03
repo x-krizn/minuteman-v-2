@@ -5,6 +5,9 @@
 
 import { SkillDef } from '../../types';
 
+/**
+ * Canonical database definition for `healSkill` (`FLASK`, id `'heal'`) — Consume 1 Flask charge to restore 2 HP..
+ */
 export const healSkill: SkillDef = {
   id: 'heal',
   name: 'FLASK',

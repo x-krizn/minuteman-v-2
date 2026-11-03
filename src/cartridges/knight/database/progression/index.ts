@@ -33,14 +33,23 @@ for (const [path, mod] of Object.entries(progressionModules)) {
   }
 }
 
+/**
+ * Exported const `ALL_PROGRESSION_NODES` (all progression nodes) in `index.ts`.
+ */
 export const ALL_PROGRESSION_NODES: ProgressionNodeEntry[] = collectedNodes;
 
+/**
+ * Exported const `PROGRESSION_REGISTRY` (progression registry) in `index.ts`.
+ */
 export const PROGRESSION_REGISTRY: Record<string, ProgressionNodeEntry> =
   ALL_PROGRESSION_NODES.reduce((acc, node) => {
     acc[node.id] = node;
     return acc;
   }, {} as Record<string, ProgressionNodeEntry>);
 
+/**
+ * Executes `getProgressionNode` (get progression node) in `index.ts`.
+ */
 export function getProgressionNode(id: string): ProgressionNodeEntry | undefined {
   return PROGRESSION_REGISTRY[id];
 }

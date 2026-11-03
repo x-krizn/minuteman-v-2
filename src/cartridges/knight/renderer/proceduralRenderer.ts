@@ -21,6 +21,9 @@ export function getCachedImage(uri: string): HTMLImageElement | null {
   return img.complete && img.naturalWidth > 0 ? img : null;
 }
 
+/**
+ * Type contract for `TransformOptions` (transform options) in `proceduralRenderer.ts`.
+ */
 export interface TransformOptions {
   rotation?: number; // Radians
   scaleX?: number;

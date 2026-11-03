@@ -3,6 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import type { SoundSystem } from '../../engine/core/soundSystem';
+
+/**
+ * Axis-aligned bounding box in room `px` coordinates (`x0..x1`, `y0..y1`).
+ */
 export interface BoundingBox {
   x0: number;
   x1: number;
@@ -10,8 +15,14 @@ export interface BoundingBox {
   y1: number;
 }
 
+/**
+ * Core player attribute identifier (`hp`, `ap`, `ep`, or `sp`).
+ */
 export type StatType = 'hp' | 'ap' | 'ep' | 'sp';
 
+/**
+ * Shared base metadata interface for all Knight database entries.
+ */
 export interface BaseEntry {
   id: string; // Unique entity identifier, e.g. 'short_sword', 'desert'
   name: string; // Display name
@@ -19,12 +30,18 @@ export interface BaseEntry {
   description?: string;
 }
 
+/**
+ * Compact pickup sprite cell and stat mapping entry.
+ */
 export interface ItemDef {
   i: number; // sprite cell index, -1 for special
   k: string;
   s?: StatType;
 }
 
+/**
+ * Static single-frame sprite asset configuration with optional procedural bob/trail transforms.
+ */
 export interface SingleFrameAsset {
   type?: 'single';
   imageUri: string;
@@ -38,6 +55,9 @@ export interface SingleFrameAsset {
   };
 }
 
+/**
+ * Animated spritesheet asset configuration with frame dimensions (`px`) and playback rate (`fps`).
+ */
 export interface MultiFrameAsset {
   type: 'sheet';
   sheetUri: string;
@@ -49,13 +69,19 @@ export interface MultiFrameAsset {
   anchor?: { x: number; y: number };
 }
 
+/**
+ * Union of supported sprite asset descriptors for Knight entities.
+ */
 export type EntityAsset =
   | SingleFrameAsset
   | MultiFrameAsset
   | { spriteIndex: number; sheetName?: string };
 
+/**
+ * Runtime callback context passed to item `onCollect` hooks.
+ */
 export interface ItemExecutionContext {
-  sound: any;
+  sound: SoundSystem;
   say: (text: string) => void;
   spawnParticles: (
     x: number,
@@ -66,6 +92,9 @@ export interface ItemExecutionContext {
   ) => void;
 }
 
+/**
+ * Complete wiki and gameplay definition for a collectible or purchasable item in Knight.
+ */
 export interface ItemWikiDefinition extends BaseEntry {
   id: string;
   name: string;
@@ -100,10 +129,13 @@ export interface ItemWikiDefinition extends BaseEntry {
   };
 }
 
+/**
+ * Runtime callback context passed to weapon `onSwing` and `onHit` hooks.
+ */
 export interface WeaponExecutionContext {
   player: KnightState;
   state: KnightState;
-  sound: any;
+  sound: SoundSystem;
   spawnParticles: (
     x: number,
     y: number,
@@ -114,6 +146,9 @@ export interface WeaponExecutionContext {
   say: (message: string) => void;
 }
 
+/**
+ * Complete definition for an equippable melee weapon or off-hand shield in Knight.
+ */
 export interface WeaponDefinition extends BaseEntry {
   id: string;
   name: string;
@@ -167,8 +202,14 @@ export interface WeaponDefinition extends BaseEntry {
 // Progression & Skill Tree Nodes (Entry-Driven)
 // ---------------------------------------------------------------------------
 
+/**
+ * Unlock source classification for a progression skill tree node (`core`, `loot`, or `feat`).
+ */
 export type ProgressionUnlockType = 'core' | 'loot' | 'feat';
 
+/**
+ * Prerequisite unlock condition for a `ProgressionNodeEntry`.
+ */
 export interface ProgressionRequirement {
   type: ProgressionUnlockType;
   lootItemId?: string; // e.g. 'ability_double_jump' or 'dungeon_key'
@@ -176,6 +217,9 @@ export interface ProgressionRequirement {
   requiredLevel?: number;
 }
 
+/**
+ * Equipment compatibility filter restricting when a progression action can execute.
+ */
 export interface ProgressionEquipmentFilter {
   requiresWeapon?: boolean; // Must have weapon equipped
   allowedWeaponTypes?: string[]; // e.g. ['sword', 'dagger'] or ['shield']
@@ -184,10 +228,13 @@ export interface ProgressionEquipmentFilter {
   specificWeaponIds?: string[];
 }
 
+/**
+ * Runtime callback context passed to `ProgressionNodeEntry.execute`.
+ */
 export interface ProgressionExecutionContext {
   player: KnightState;
   state: KnightState;
-  sound: any;
+  sound: SoundSystem;
   say: (text: string) => void;
   spawnParticles: (
     x: number,
@@ -198,6 +245,9 @@ export interface ProgressionExecutionContext {
   ) => void;
 }
 
+/**
+ * Skill tree node entry defining movement, offense, or defense actions and their unlock gates.
+ */
 export interface ProgressionNodeEntry extends BaseEntry {
   id: string; // Unique action ID: 'jump', 'double_jump', 'attack', 'block', 'parry', 'counter_attack'
   name: string; // Display name
@@ -227,6 +277,9 @@ export interface ProgressionNodeEntry extends BaseEntry {
 // Equipment & Inventory Slots
 // ---------------------------------------------------------------------------
 
+/**
+ * Equipped item IDs across `mainHand`, `offHand`, `armor`, and `trinket` slots.
+ */
 export interface EquipmentLoadout {
   mainHand?: string; // weapon ID
   offHand?: string; // shield / parrying dagger ID
@@ -234,15 +287,24 @@ export interface EquipmentLoadout {
   trinket?: string; // relic / accessory ID
 }
 
+/**
+ * Stacked item entry in the player's inventory pouch.
+ */
 export interface InventorySlot {
   itemId: string;
   quantity: number;
 }
 
+/**
+ * Identifier for enemy archetypes in the Knight cartridge (`crawler`, `sentry`, `wisp`).
+ */
 export type EnemyType = 'crawler' | 'sentry' | 'wisp' | string;
 
+/**
+ * Runtime callback context passed to enemy `onDefeat` hooks.
+ */
 export interface EnemyExecutionContext {
-  sound: any;
+  sound: SoundSystem;
   say?: (text: string) => void;
   spawnParticles: (
     x: number,
@@ -253,6 +315,9 @@ export interface EnemyExecutionContext {
   ) => void;
 }
 
+/**
+ * Static enemy archetype definition with base stats, loot table, and AI hooks.
+ */
 export interface EnemyWikiDefinition {
   type: EnemyType;
   name: string;
@@ -277,6 +342,9 @@ export interface EnemyWikiDefinition {
   ) => void;
 }
 
+/**
+ * Live runtime state for a spawned enemy instance in the current room (`px` coordinates).
+ */
 export interface EnemyEntity {
   id?: number;
   type: EnemyType;
@@ -297,6 +365,9 @@ export interface EnemyEntity {
   animTimer?: number;
 }
 
+/**
+ * World pickup entity placed at `(x, y)` in room `px` coordinates.
+ */
 export interface PickupEntity {
   x: number;
   y: number;
@@ -304,6 +375,9 @@ export interface PickupEntity {
   id: string; // room:tx,ty
 }
 
+/**
+ * Relative melee hitbox bounds (`x0..x1`, `y0..y1` in `px`) for a swing variation.
+ */
 export interface AttackVariant {
   x0: number;
   x1: number;
@@ -311,11 +385,17 @@ export interface AttackVariant {
   y1: number;
 }
 
+/**
+ * Identifier for active combat skills (`heal`, `fireball`, `whirlwind`, `shockwave`).
+ */
 export type SkillId = 'heal' | 'fireball' | 'whirlwind' | 'shockwave' | string;
 
+/**
+ * Runtime callback context passed to `SkillDef.execute`.
+ */
 export interface SkillExecutionContext {
   say: (t: string) => void;
-  sound: any;
+  sound: SoundSystem;
   spawnParticles: (
     x: number,
     y: number,
@@ -325,6 +405,9 @@ export interface SkillExecutionContext {
   ) => void;
 }
 
+/**
+ * Definition for an assignable active skill (`L` / `R` bumper slots) in Knight.
+ */
 export interface SkillDef {
   id: SkillId;
   name: string;
@@ -337,6 +420,9 @@ export interface SkillDef {
   execute?: (state: KnightState, ctx: SkillExecutionContext) => void;
 }
 
+/**
+ * Active projectile entity in flight (`px` position and `px/s` velocity).
+ */
 export interface ProjectileEntity {
   x: number;
   y: number;
@@ -348,6 +434,9 @@ export interface ProjectileEntity {
   radius: number;
 }
 
+/**
+ * Visual particle or floating combat text instance in room `px` space.
+ */
 export interface CombatParticle {
   x: number;
   y: number;
@@ -360,6 +449,9 @@ export interface CombatParticle {
   text?: string;
 }
 
+/**
+ * Afterimage silhouette spawned during a dash maneuver.
+ */
 export interface DashGhost {
   x: number;
   y: number;
@@ -367,6 +459,9 @@ export interface DashGhost {
   alpha: number;
 }
 
+/**
+ * Complete mutable game state for the Knight cartridge.
+ */
 export interface KnightState {
   room: string;
   rx: number;
@@ -465,6 +560,9 @@ export interface KnightState {
   msgT: number;
 }
 
+/**
+ * Character archetype definition specifying base stats, movement physics, and sprite sheet metrics.
+ */
 export interface CharacterDefinition extends BaseEntry {
   id: string;
   name: string;
@@ -522,6 +620,9 @@ export interface CharacterDefinition extends BaseEntry {
   };
 }
 
+/**
+ * Biome visual palette and environmental hook definition for Knight dungeon floors.
+ */
 export interface BiomeDefinition extends BaseEntry {
   id: string;
   name: string;
@@ -541,8 +642,11 @@ export interface BiomeDefinition extends BaseEntry {
   };
 }
 
+/**
+ * Runtime callback context passed to tile `onStep` and `onHit` triggers.
+ */
 export interface TileExecutionContext {
-  sound?: any;
+  sound?: SoundSystem;
   say?: (text: string) => void;
   spawnParticles?: (
     x: number,
@@ -553,6 +657,9 @@ export interface TileExecutionContext {
   ) => void;
 }
 
+/**
+ * Tile archetype definition mapping an ASCII symbol (`#`, `.`, `=`, `D`) to collision and trigger behavior.
+ */
 export interface TileDefinition extends BaseEntry {
   id: string;
   symbol: string;
@@ -572,6 +679,9 @@ export interface TileDefinition extends BaseEntry {
   };
 }
 
+/**
+ * Authored or procedural room layout definition (`10 x 9` or multi-screen ASCII grid) in Knight.
+ */
 export interface RoomDefinition extends BaseEntry {
   id: string; // e.g. '0,0' or 'desert_passage'
   name: string;

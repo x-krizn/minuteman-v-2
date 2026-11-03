@@ -14,6 +14,9 @@ import {
 
 import { isSolidTile } from './database/world/tiles';
 
+/**
+ * Executes `solidChar` (solid char) in `physics.ts`.
+ */
 export function solidChar(
   key: string,
   c: string,
@@ -22,6 +25,9 @@ export function solidChar(
   return isSolidTile(c, key, got);
 }
 
+/**
+ * Executes `neighbor` (neighbor) in `physics.ts`.
+ */
 export function neighbor(
   rooms: Record<string, string[]>,
   rx: number,
@@ -32,6 +38,9 @@ export function neighbor(
   return rooms[`${rx + dx},${ry + dy}`];
 }
 
+/**
+ * Executes `solidAt` (solid at) in `physics.ts`.
+ */
 export function solidAt(
   rooms: Record<string, string[]>,
   state: KnightState,
@@ -59,6 +68,9 @@ export function solidAt(
   );
 }
 
+/**
+ * Executes `hits` (hits) in `physics.ts`.
+ */
 export function hits(
   rooms: Record<string, string[]>,
   state: KnightState,
@@ -78,6 +90,9 @@ export function hits(
   return false;
 }
 
+/**
+ * Executes `moveX` (move x) in `physics.ts`.
+ */
 export function moveX(
   rooms: Record<string, string[]>,
   state: KnightState,
@@ -96,6 +111,9 @@ export function moveX(
   }
 }
 
+/**
+ * Executes `moveY` (move y) in `physics.ts`.
+ */
 export function moveY(
   rooms: Record<string, string[]>,
   state: KnightState,
@@ -119,10 +137,16 @@ export function moveY(
   }
 }
 
+/**
+ * Executes `overlap` (overlap) in `physics.ts`.
+ */
 export function overlap(a: BoundingBox, b: BoundingBox): boolean {
   return a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
 }
 
+/**
+ * Executes `bodyBox` (body box) in `physics.ts`.
+ */
 export function bodyBox(state: KnightState): BoundingBox {
   return {
     x0: state.x - HALF_WIDTH,
@@ -132,6 +156,9 @@ export function bodyBox(state: KnightState): BoundingBox {
   };
 }
 
+/**
+ * Executes `enemyBox` (enemy box) in `physics.ts`.
+ */
 export function enemyBox(e: EnemyEntity): BoundingBox {
   const h = e.type === 'sentry' ? 14 : e.type === 'wisp' ? 8 : 10;
   const w = e.type === 'sentry' ? 7 : 6;
@@ -143,10 +170,22 @@ export function enemyBox(e: EnemyEntity): BoundingBox {
   };
 }
 
+/**
+ * Exported const `ROW_CEILING` (row ceiling) in `physics.ts`.
+ */
 export const ROW_CEILING = 0;
+/**
+ * Exported const `ROW_WALL_A` (row wall a) in `physics.ts`.
+ */
 export const ROW_WALL_A = 1;
+/**
+ * Exported const `ROW_FLOOR` (row floor) in `physics.ts`.
+ */
 export const ROW_FLOOR = 3;
 
+/**
+ * Executes `isWall` (is wall) in `physics.ts`.
+ */
 export function isWall(
   rooms: Record<string, string[]>,
   state: KnightState,
@@ -156,6 +195,9 @@ export function isWall(
   return solidAt(rooms, state, tx, ty - 1) && solidAt(rooms, state, tx, ty + 1);
 }
 
+/**
+ * Executes `tileIndex` (tile index) in `physics.ts`.
+ */
 export function tileIndex(
   rooms: Record<string, string[]>,
   state: KnightState,

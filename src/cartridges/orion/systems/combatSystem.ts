@@ -41,6 +41,9 @@ export { ASSIGNABLE_ACTION_CATALOG, getResolvedActionDescriptor };
 const DOUBLE_TAP_WINDOW_SEC = 0.26;
 const HOLD_TRIGGER_THRESHOLD_SEC = 0.22;
 
+/**
+ * Processes per-frame combat button inputs (`A`, `B`, `X`, `Y`, `L`, `R`), weapon swaps, target locking, and skill activations. Mutates `state: OrionState`.
+ */
 export function handleCombatInput(
   input: {
     pressed: { a: boolean; b: boolean; x: boolean; y: boolean; l: boolean; r: boolean; select: boolean };
@@ -294,6 +297,9 @@ export function handleCombatInput(
   }
 }
 
+/**
+ * Advances combat timers, active melee hitboxes, projectiles, heat dissipation, shield recharge, and status effects by `dt` seconds. Mutates `state: OrionState`.
+ */
 export function updateCombat(
   state: OrionState,
   ctx: OrionCombatContext,

@@ -13,6 +13,9 @@ import { buildMagitechWeapon } from './builder';
 
 // ─── WARRIOR / ASSAULT LINEAGE MAGITECH WEAPONS ─────────────────────────────
 
+/**
+ * Canonical database definition for `n55GladiusWeapon` (`N-55 Gladius`, id `'n55_gladius'`, load `'medium'`) — BCU reference weapon, burst-fire stabilization.
+ */
 export const n55GladiusWeapon = buildMagitechWeapon({
   id: 'n55_gladius',
   name: 'N-55 Gladius',
@@ -42,13 +45,18 @@ export const n55GladiusWeapon = buildMagitechWeapon({
   ],
 });
 
-// Backward-compatible alias for starter loadouts and existing systems
+/**
+ * Backward-compatible alias for starter loadouts and existing systems.
+ */
 export const gladiusBoltcasterWeapon: WeaponDefinition = {
   ...n55GladiusWeapon,
   id: 'gladius_boltcaster',
   name: 'Gladius Boltcaster (N-55)',
 };
 
+/**
+ * Canonical database definition for `m300HastaWeapon` (`M-300 Hasta`, id `'m300_hasta'`, load `'medium'`) — Mid-range sustained fire.
+ */
 export const m300HastaWeapon = buildMagitechWeapon({
   id: 'm300_hasta',
   name: 'M-300 Hasta',
@@ -78,6 +86,9 @@ export const m300HastaWeapon = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `m450PilumWeapon` (`M-450 Pilum`, id `'m450_pilum'`, load `'heavy'`) — Shock-channeling, heavy hitter.
+ */
 export const m450PilumWeapon = buildMagitechWeapon({
   id: 'm450_pilum',
   name: 'M-450 Pilum',
@@ -107,6 +118,9 @@ export const m450PilumWeapon = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `s2TurbineKhopeshWeapon` (`S-2 Turbine Khopesh`, id `'s2_turbine_khopesh'`, load `'light'`) — Compact fallback, dual-wield capable.
+ */
 export const s2TurbineKhopeshWeapon = buildMagitechWeapon({
   id: 's2_turbine_khopesh',
   name: 'S-2 Turbine Khopesh',
@@ -136,13 +150,18 @@ export const s2TurbineKhopeshWeapon = buildMagitechWeapon({
   ],
 });
 
-// Backward-compatible alias for existing khopesh
+/**
+ * Backward-compatible alias for existing khopesh.
+ */
 export const khopeshWeapon: WeaponDefinition = {
   ...s2TurbineKhopeshWeapon,
   id: 'khopesh',
   name: 'Turbine Khopesh (S-2)',
 };
 
+/**
+ * Canonical database definition for `longSwordWeapon` (`Camelot Longsword`, id `'long_sword'`, load `'medium'`) — Balanced double-edged knightly magitech broadsword with wide sweeping arcs and disciplined reach..
+ */
 export const longSwordWeapon: WeaponDefinition = {
   id: 'long_sword',
   name: 'Camelot Longsword',
@@ -257,6 +276,9 @@ export const longSwordWeapon: WeaponDefinition = {
 
 // ─── WARRIOR / ASSAULT AUXILIARIES (Migrated from Utility, Aux 3 & Aux 4) ───
 
+/**
+ * Canonical database definition for `utilityIchorSurgeAuxiliary` (`PNSY D-0g Repair Drone`, id `'utility_ichor_surge'`, load `'medium'`) — Bay-launched autonomous repair drone (+16 Shield, active Armor weld on hit).
+ */
 export const utilityIchorSurgeAuxiliary = buildMagitechWeapon({
   id: 'utility_ichor_surge',
   name: 'PNSY D-0g Repair Drone',
@@ -287,6 +309,9 @@ export const utilityIchorSurgeAuxiliary = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `aux3PnsyRockweilerBucklerAuxiliary` (`PNSY R-11 Rockweiler Buckler`, id `'aux3_pnsy_rockweiler_buckler'`, load `'medium'`) — Parrying shield, reactive plating (+18 Shield, +10 Armor).
+ */
 export const aux3PnsyRockweilerBucklerAuxiliary = buildMagitechWeapon({
   id: 'aux3_pnsy_rockweiler_buckler',
   name: 'PNSY R-11 Rockweiler Buckler',
@@ -318,6 +343,9 @@ export const aux3PnsyRockweilerBucklerAuxiliary = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `aux4PnsyRoughRiderBoosterAuxiliary` (`PNSY UF-9 Rough Rider Booster`, id `'aux4_pnsy_rough_rider_booster'`, load `'medium'`) — Engagement/evasion kit with thrusters (+12 Shield).
+ */
 export const aux4PnsyRoughRiderBoosterAuxiliary = buildMagitechWeapon({
   id: 'aux4_pnsy_rough_rider_booster',
   name: 'PNSY UF-9 Rough Rider Booster',

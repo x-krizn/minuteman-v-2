@@ -32,6 +32,9 @@ import {
 
 // ─── MULTI-PASS 2.5D POST-PROCESSING, TRAILS, WEATHER & LIGHTING ─────────────
 
+/**
+ * Type contract for `SceneLightEmitter` (scene light emitter) in `effectsRenderer.ts`.
+ */
 export interface SceneLightEmitter {
   x: number;
   y: number;
@@ -40,6 +43,9 @@ export interface SceneLightEmitter {
   intensity: number;
 }
 
+/**
+ * Executes `resolveBiomePostProcess` (resolve biome post process) in `effectsRenderer.ts`.
+ */
 export function resolveBiomePostProcess(biome: BiomeDefinition): {
   ambientDarkness: number;
   bloomIntensity: number;
@@ -64,8 +70,8 @@ export function resolveBiomePostProcess(biome: BiomeDefinition): {
   }
 
   return {
-    ambientDarkness: custom.ambientDarkness ?? 0.24,
-    bloomIntensity: custom.bloomIntensity ?? 0.55,
+    ambientDarkness: custom.ambientDarkness ?? 0.94,
+    bloomIntensity: custom.bloomIntensity ?? 0.38,
     weather: custom.weather ?? defaultWeather,
     weatherIntensity: custom.weatherIntensity ?? 0.65,
     liquidReflection: custom.liquidReflection ?? true,
@@ -73,6 +79,9 @@ export function resolveBiomePostProcess(biome: BiomeDefinition): {
   };
 }
 
+/**
+ * Executes `drawEnhancedProjectilesAndBladeTrails` (draw enhanced projectiles and blade trails) in `effectsRenderer.ts`. Mutates `state: OrionState`.
+ */
 export function drawEnhancedProjectilesAndBladeTrails(
   g: CanvasRenderingContext2D,
   state: OrionState
@@ -435,6 +444,9 @@ export function drawEnhancedProjectilesAndBladeTrails(
   g.restore();
 }
 
+/**
+ * Executes `updateBladeTrails` (update blade trails) in `effectsRenderer.ts`. Mutates `state: OrionState`.
+ */
 export function updateBladeTrails(state: OrionState, dt: number): void {
   if (!state.bladeTrails || state.bladeTrails.length === 0) return;
   for (let i = state.bladeTrails.length - 1; i >= 0; i--) {
@@ -445,6 +457,9 @@ export function updateBladeTrails(state: OrionState, dt: number): void {
   }
 }
 
+/**
+ * Executes `drawBiomeWeatherLayer` (draw biome weather layer) in `effectsRenderer.ts`. Mutates `state: OrionState`.
+ */
 export function drawBiomeWeatherLayer(
   g: CanvasRenderingContext2D,
   activeBiome: BiomeDefinition,
@@ -456,7 +471,7 @@ export function drawBiomeWeatherLayer(
   const count = pp.weather !== 'none' && pp.weatherIntensity > 0 ? Math.round(18 * pp.weatherIntensity) : 0;
 
   if (count > 0 && pp.weather === 'rain') {
-    g.strokeStyle = 'rgba(125, 211, 252, 0.32)';
+    g.strokeStyle = 'rgba(100, 130, 148, 0.28)';
     g.lineWidth = 1;
     for (let i = 0; i < count; i++) {
       const seed = (i + 1) * 97.31;
@@ -473,11 +488,11 @@ export function drawBiomeWeatherLayer(
         const splashR = (cycle - 0.85) * 20;
         const splashX = (seed * 61.3) % SCREEN_W;
         const splashY = (seed * 29.7) % SCREEN_H;
-        g.strokeStyle = 'rgba(186, 230, 253, 0.25)';
+        g.strokeStyle = 'rgba(116, 144, 158, 0.22)';
         g.beginPath();
         g.ellipse(splashX, splashY, splashR, splashR * 0.45, 0, 0, Math.PI * 2);
         g.stroke();
-        g.strokeStyle = 'rgba(125, 211, 252, 0.32)';
+        g.strokeStyle = 'rgba(100, 130, 148, 0.28)';
       }
     }
   } else if (count > 0 && pp.weather === 'ash') {
@@ -486,7 +501,7 @@ export function drawBiomeWeatherLayer(
       const px = (seed * 31 + state.t * 14 + Math.sin(state.t * 2 + i) * 6) % SCREEN_W;
       const py = (seed * 53 + state.t * 9) % SCREEN_H;
       const isEmber = i % 3 === 0;
-      g.fillStyle = isEmber ? 'rgba(251, 146, 60, 0.65)' : 'rgba(148, 163, 184, 0.35)';
+      g.fillStyle = isEmber ? 'rgba(217, 119, 6, 0.55)' : 'rgba(100, 116, 139, 0.35)';
       g.fillRect(Math.round(px), Math.round(py), isEmber ? 2 : 1, isEmber ? 2 : 1);
     }
   } else if (count > 0 && pp.weather === 'aether_mist') {
@@ -494,11 +509,11 @@ export function drawBiomeWeatherLayer(
       const seed = (i + 1) * 59.47;
       const px = (seed * 37 + Math.sin(state.t * 1.4 + i) * 8 + SCREEN_W) % SCREEN_W;
       const py = (SCREEN_H - ((state.t * 10 + seed * 41) % SCREEN_H)) % SCREEN_H;
-      const pulse = 0.25 + 0.35 * Math.sin(state.t * 3 + i * 1.7);
+      const pulse = 0.22 + 0.30 * Math.sin(state.t * 3 + i * 1.7);
       g.fillStyle =
         i % 2 === 0
-          ? `rgba(56, 189, 248, ${pulse.toFixed(2)})`
-          : `rgba(192, 132, 252, ${pulse.toFixed(2)})`;
+          ? `rgba(71, 118, 138, ${pulse.toFixed(2)})`
+          : `rgba(88, 62, 124, ${pulse.toFixed(2)})`;
       g.fillRect(Math.round(px), Math.round(py), 1.5, 1.5);
     }
   }
@@ -523,11 +538,11 @@ export function drawBiomeWeatherLayer(
         );
         g.fillStyle = fogMetrics.isSoftCapAbyss
           ? i % 2 === 0
-            ? `rgba(244, 63, 94, ${alpha.toFixed(2)})`
-            : `rgba(192, 132, 252, ${alpha.toFixed(2)})`
+            ? `rgba(190, 24, 93, ${alpha.toFixed(2)})`
+            : `rgba(88, 28, 135, ${alpha.toFixed(2)})`
           : i % 2 === 0
-            ? `rgba(34, 211, 238, ${alpha.toFixed(2)})`
-            : `rgba(168, 85, 247, ${alpha.toFixed(2)})`;
+            ? `rgba(56, 118, 128, ${alpha.toFixed(2)})`
+            : `rgba(76, 29, 149, ${alpha.toFixed(2)})`;
         const sz = fogMetrics.isSoftCapAbyss ? 2 : 1.5;
         g.fillRect(Math.round(px), Math.round(py), sz, sz);
       }
@@ -535,7 +550,7 @@ export function drawBiomeWeatherLayer(
   }
 
   // Cursed-Bog Atmospheric Depth Pass:
-  // 1) Low-lying drifting bog miasma ribbons across the ground plane
+  // 1) Low-lying drifting corpse-slate & sickly-mire miasma ribbons across the ground plane
   // 2) Suspended spore motes that glint only when caught inside light pools or penumbra
   if (state.room !== '-4,0') {
     const camX = state.camX || 0;
@@ -543,10 +558,10 @@ export function drawBiomeWeatherLayer(
     const activeRoom = room;
 
     // 1. Low-lying creeping bog miasma wisps (world-space anchored, modulated by light visibility)
-    const wispCount = 14;
+    const wispCount = 16;
     for (let i = 0; i < wispCount; i++) {
       const seed = (i + 1) * 83.41;
-      const baseWx = camX + ((seed * 53.7 + state.t * (3.2 + (i % 3) * 0.9)) % (SCREEN_W + 64)) - 32;
+      const baseWx = camX + ((seed * 53.7 + state.t * (2.6 + (i % 3) * 0.8)) % (SCREEN_W + 64)) - 32;
       const baseWy =
         camY +
         ((seed * 79.3 + Math.sin(state.t * 0.45 + i * 1.7) * 14 + SCREEN_H + 48) %
@@ -557,20 +572,26 @@ export function drawBiomeWeatherLayer(
 
       const sx = baseWx - camX;
       const sy = baseWy - camY;
-      const wispW = 24 + (i % 4) * 9;
-      const wispH = 4 + (i % 3) * 2;
+      const wispW = 26 + (i % 4) * 9;
+      const wispH = 5 + (i % 3) * 2;
       const breathe = 0.65 + 0.35 * Math.sin(state.t * 1.3 + i * 2.1);
-      // Miasma is thickest in the cold mid-ring penumbra and softer in the hot core
-      const penumbraBoost = vis < 0.7 ? vis * 1.35 : 0.95 - (vis - 0.7) * 0.6;
-      const wispAlpha = Math.min(0.28, 0.16 * penumbraBoost * breathe);
+      // Miasma is thickest in the cold mid-ring penumbra and softer in the inner core
+      const penumbraBoost = vis < 0.65 ? vis * 1.45 : 0.95 - (vis - 0.65) * 0.65;
+      const wispAlpha = Math.min(0.34, 0.20 * penumbraBoost * breathe);
 
       const mGrad = g.createRadialGradient(sx, sy, 1, sx, sy, wispW);
-      if (i % 2 === 0) {
-        mGrad.addColorStop(0, `rgba(45, 85, 96, ${wispAlpha.toFixed(3)})`);
-        mGrad.addColorStop(0.6, `rgba(22, 46, 58, ${(wispAlpha * 0.55).toFixed(3)})`);
+      if (i % 3 === 0) {
+        // Sickly mire miasma
+        mGrad.addColorStop(0, `rgba(28, 48, 42, ${wispAlpha.toFixed(3)})`);
+        mGrad.addColorStop(0.6, `rgba(14, 26, 23, ${(wispAlpha * 0.58).toFixed(3)})`);
+      } else if (i % 3 === 1) {
+        // Corpse-slate fog
+        mGrad.addColorStop(0, `rgba(34, 44, 54, ${wispAlpha.toFixed(3)})`);
+        mGrad.addColorStop(0.6, `rgba(16, 22, 30, ${(wispAlpha * 0.58).toFixed(3)})`);
       } else {
-        mGrad.addColorStop(0, `rgba(51, 65, 85, ${wispAlpha.toFixed(3)})`);
-        mGrad.addColorStop(0.6, `rgba(15, 23, 42, ${(wispAlpha * 0.55).toFixed(3)})`);
+        // Abyssal indigo vapor
+        mGrad.addColorStop(0, `rgba(24, 18, 42, ${wispAlpha.toFixed(3)})`);
+        mGrad.addColorStop(0.6, `rgba(10, 8, 22, ${(wispAlpha * 0.58).toFixed(3)})`);
       }
       mGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
@@ -585,36 +606,35 @@ export function drawBiomeWeatherLayer(
     }
 
     // 2. Suspended bog spore motes caught in the lantern/campfire beam
-    const sporeCount = 28;
+    const sporeCount = 24;
     for (let i = 0; i < sporeCount; i++) {
       const seed = (i + 1) * 113.17;
-      const driftX = Math.sin(state.t * 0.85 + seed) * 9 + state.t * 2.1;
-      const driftY = Math.cos(state.t * 0.65 + seed * 0.7) * 7 - state.t * 1.6;
+      const driftX = Math.sin(state.t * 0.85 + seed) * 9 + state.t * 1.8;
+      const driftY = Math.cos(state.t * 0.65 + seed * 0.7) * 7 - state.t * 1.4;
       const wx = camX + (((seed * 67.3 + driftX) % SCREEN_W) + SCREEN_W) % SCREEN_W;
       const wy = camY + (((seed * 91.9 + driftY) % SCREEN_H) + SCREEN_H) % SCREEN_H;
 
       const vis = getPointVisibilityFactor(wx, wy, state, activeRoom);
-      if (vis <= 0.08) continue;
+      if (vis <= 0.1) continue;
 
       const sx = Math.round(wx - camX);
       const sy = Math.round(wy - camY);
-      const twinkle = 0.55 + 0.45 * Math.sin(state.t * 2.6 + seed * 1.9);
-      const moteAlpha = Math.min(0.75, vis * 0.72 * twinkle);
-      const isWarmCoreMote = vis > 0.62;
+      const twinkle = 0.5 + 0.5 * Math.sin(state.t * 2.4 + seed * 1.9);
+      const moteAlpha = Math.min(0.62, vis * 0.60 * twinkle);
+      const isInnerMote = vis > 0.66;
 
-      // Soft spore halo inside strong light
-      if (i % 3 === 0 && vis > 0.3) {
-        g.fillStyle = isWarmCoreMote
-          ? `rgba(251, 191, 36, ${(moteAlpha * 0.24).toFixed(3)})`
-          : `rgba(94, 234, 212, ${(moteAlpha * 0.2).toFixed(3)})`;
+      if (i % 3 === 0 && vis > 0.35) {
+        g.fillStyle = isInnerMote
+          ? `rgba(217, 119, 6, ${(moteAlpha * 0.18).toFixed(3)})`
+          : `rgba(74, 124, 112, ${(moteAlpha * 0.18).toFixed(3)})`;
         g.fillRect(sx - 1, sy - 1, 3, 3);
       }
 
-      g.fillStyle = isWarmCoreMote
-        ? `rgba(254, 240, 138, ${moteAlpha.toFixed(3)})`
+      g.fillStyle = isInnerMote
+        ? `rgba(214, 196, 148, ${moteAlpha.toFixed(3)})`
         : i % 2 === 0
-          ? `rgba(148, 184, 196, ${moteAlpha.toFixed(3)})`
-          : `rgba(94, 234, 212, ${(moteAlpha * 0.85).toFixed(3)})`;
+          ? `rgba(112, 132, 144, ${moteAlpha.toFixed(3)})`
+          : `rgba(82, 136, 122, ${(moteAlpha * 0.82).toFixed(3)})`;
       g.fillRect(sx, sy, 1, 1);
     }
   }
@@ -623,6 +643,9 @@ export function drawBiomeWeatherLayer(
 }
 
 // [ORION-ANCHOR: RENDER-VISION-LIGHTING]
+/**
+ * Type contract for `ResolvedRoomLightingState` (resolved room lighting state) in `effectsRenderer.ts`.
+ */
 export interface ResolvedRoomLightingState {
   safetyTier: 'sanctuary' | 'trail' | 'hazard' | 'abyss';
   ambientDarkness: number;
@@ -632,6 +655,9 @@ export interface ResolvedRoomLightingState {
   staticLightAnchors: Array<{ x: number; y: number; radius: number; color: string }>;
 }
 
+/**
+ * Executes `resolveRoomLightingProfile` (resolve room lighting profile) in `effectsRenderer.ts`.
+ */
 export function resolveRoomLightingProfile(
   state: OrionState,
   room?: string[]
@@ -666,55 +692,56 @@ export function resolveRoomLightingProfile(
             ? 'sanctuary'
             : 'trail');
 
-  // Gloomy dying-world baseline: outside light sources, the cursed bog sinks into deep twilight/abyss
+  // Pitch-black abyss beyond active light pools (92%-97% dark across the cursed land)
   const baseDarkness =
     expanseFog && expanseFog.distFromSetPath > 0
-      ? Math.min(0.95, 0.84 + expanseFog.fogIntensity * 0.05)
+      ? Math.min(0.97, 0.94 + expanseFog.fogIntensity * 0.03)
       : Math.max(
           authoredProfile?.ambientDarkness ?? 0,
           safetyTier === 'sanctuary'
-            ? 0.68
+            ? 0.92
             : safetyTier === 'trail'
-              ? 0.82
+              ? 0.94
               : safetyTier === 'hazard'
-                ? 0.90
-                : 0.95
+                ? 0.96
+                : 0.97
         );
   const ambientDarkness = isLoop
-    ? Math.min(0.96, Math.max(baseDarkness, 0.88 + loopDepth * 0.02))
+    ? Math.min(0.97, Math.max(baseDarkness, 0.95 + loopDepth * 0.01))
     : baseDarkness;
 
   const baseCornerShadow =
     expanseFog && expanseFog.distFromSetPath > 0
-      ? Math.min(0.92, 0.76 + expanseFog.fogIntensity * 0.1)
+      ? Math.min(0.96, 0.88 + expanseFog.fogIntensity * 0.06)
       : Math.max(
           authoredProfile?.cornerShadowIntensity ?? 0,
           safetyTier === 'sanctuary'
-            ? 0.56
+            ? 0.84
             : safetyTier === 'trail'
-              ? 0.72
+              ? 0.88
               : safetyTier === 'hazard'
-                ? 0.84
-                : 0.92
+                ? 0.92
+                : 0.96
         );
   const cornerShadowIntensity = isLoop
-    ? Math.min(0.94, Math.max(baseCornerShadow, 0.80 + loopDepth * 0.03))
+    ? Math.min(0.97, Math.max(baseCornerShadow, 0.90 + loopDepth * 0.025))
     : baseCornerShadow;
 
+  // Tight personal halo (2.5 to 3.5 tiles = 40px to 56px at base Light = 5)
   const playerLightTiles = computeEffectivePlayerLightTiles(state);
   const baseLightStatPx = Math.max(
-    playerLightTiles * 14.4,
-    safetyTier === 'sanctuary' ? 78 : 68
+    playerLightTiles * 8.8,
+    safetyTier === 'sanctuary' ? 48 : 42
   );
 
   const fogPenaltyPx =
     expanseFog && expanseFog.distFromSetPath > 0
-      ? Math.round(expanseFog.fogIntensity * 12) - (expanseFog.isLanternLit ? 14 : 0)
+      ? Math.round(expanseFog.fogIntensity * 8) - (expanseFog.isLanternLit ? 10 : 0)
       : isLoop
-        ? loopDepth * 5
+        ? loopDepth * 4
         : 0;
 
-  const effectiveVisionRadiusPx = Math.max(32, baseLightStatPx - fogPenaltyPx);
+  const effectiveVisionRadiusPx = Math.max(30, baseLightStatPx - fogPenaltyPx);
   const hasLantern = hasPoeLanternGuidance(state);
 
   const staticLightAnchors: Array<{ x: number; y: number; radius: number; color: string }> = [];
@@ -737,7 +764,7 @@ export function resolveRoomLightingProfile(
               ? Boolean(state.flags?.first_campfire_lit)
               : true;
           if (isCampfireLit) {
-            staticLightAnchors.push({ x: cx, y: cy, radius: 54, color: '#f59e0b' });
+            staticLightAnchors.push({ x: cx, y: cy, radius: 44, color: '#d97706' });
           }
         } else if (ch === 'L') {
           const tileChunk = getChunkCoordsFromPx(cx, cy);
@@ -752,13 +779,13 @@ export function resolveRoomLightingProfile(
           staticLightAnchors.push({
             x: cx,
             y: cy,
-            radius: isChunkLanternLit ? 58 : isLit ? 52 : 16,
-            color: isChunkLanternLit ? '#22d3ee' : isLit ? '#22d3ee' : '#fbbf24',
+            radius: isChunkLanternLit ? 46 : isLit ? 40 : 14,
+            color: isChunkLanternLit ? '#38bdf8' : isLit ? '#38bdf8' : '#d97706',
           });
         } else if (ch === 'D') {
-          staticLightAnchors.push({ x: cx, y: cy, radius: 22, color: '#f43f5e' });
+          staticLightAnchors.push({ x: cx, y: cy, radius: 20, color: '#e11d48' });
         } else if (ch === 'Q') {
-          staticLightAnchors.push({ x: cx, y: cy, radius: 26, color: '#22d3ee' });
+          staticLightAnchors.push({ x: cx, y: cy, radius: 24, color: '#22d3ee' });
         }
       }
     }
@@ -770,7 +797,7 @@ export function resolveRoomLightingProfile(
       staticLightAnchors.push({
         x: e.x,
         y: e.y,
-        radius: 26,
+        radius: 22,
         color: '#7dd3fc',
       });
     }
@@ -971,6 +998,9 @@ function getPenumbraTintContext(): {
   return { canvas: penumbraTintCanvas, ctx: penumbraTintCtx };
 }
 
+/**
+ * Executes `getPointVisibilityFactor` (get point visibility factor) in `effectsRenderer.ts`.
+ */
 export function getPointVisibilityFactor(
   x: number,
   y: number,
@@ -991,42 +1021,42 @@ export function getPointVisibilityFactor(
     return 0;
   }
 
-  const visionR = lighting.effectiveVisionRadiusPx * 1.15;
+  const visionR = lighting.effectiveVisionRadiusPx * 1.04;
   const distToPlayer = Math.hypot(x - state.x, y - state.y);
 
   const dirInfo = DIR_VECTORS[state.dir] || DIR_VECTORS.S;
   const dx = x - state.x;
   const dy = y - state.y;
   const dot = distToPlayer > 1 ? (dx * dirInfo.dx + dy * dirInfo.dy) / distToPlayer : 1;
-  const directionalBonus = dot > 0.2 ? 1 + (dot - 0.2) * 0.16 : 1.0;
+  const directionalBonus = dot > 0.2 ? 1 + (dot - 0.2) * 0.14 : 1.0;
   const effPlayerR = visionR * directionalBonus;
 
   let bestVis = 0;
-  // Multi-stop visibility matching the warm core (0..32%) and dim mid-ring penumbra (32..100%)
-  if (distToPlayer <= effPlayerR * 0.32) {
+  // Steep multi-stop visibility matching the tight 2.5-3.5 tile halo and steep falloff
+  if (distToPlayer <= effPlayerR * 0.24) {
     bestVis = playerLos;
-  } else if (distToPlayer <= effPlayerR * 0.68) {
-    const t = (distToPlayer - effPlayerR * 0.32) / (effPlayerR * 0.36);
-    bestVis = Math.max(0, (1 - t * 0.52) * playerLos);
+  } else if (distToPlayer <= effPlayerR * 0.56) {
+    const t = (distToPlayer - effPlayerR * 0.24) / (effPlayerR * 0.32);
+    bestVis = Math.max(0, (1 - t * 0.62) * playerLos);
   } else if (distToPlayer < effPlayerR) {
-    const t = (distToPlayer - effPlayerR * 0.68) / (effPlayerR * 0.32);
-    bestVis = Math.max(0, 0.48 * (1 - t) * playerLos);
+    const t = (distToPlayer - effPlayerR * 0.56) / (effPlayerR * 0.44);
+    bestVis = Math.max(0, 0.38 * (1 - t) * playerLos);
   }
 
   for (const anchor of lighting.staticLightAnchors) {
     const d = Math.hypot(x - anchor.x, y - anchor.y);
-    const ar = anchor.radius * 1.15;
+    const ar = anchor.radius * 1.05;
     if (d < ar) {
       const rawAnchorVis =
-        d <= ar * 0.35
+        d <= ar * 0.28
           ? 1.0
-          : d <= ar * 0.72
-            ? 1 - ((d - ar * 0.35) / (ar * 0.37)) * 0.5
-            : 0.5 * (1 - (d - ar * 0.72) / (ar * 0.28));
+          : d <= ar * 0.62
+            ? 1 - ((d - ar * 0.28) / (ar * 0.34)) * 0.58
+            : 0.42 * (1 - (d - ar * 0.62) / (ar * 0.38));
       const anchorLos = activeRoom
         ? computeRayLightTransmission(activeRoom, state, anchor.x, anchor.y, x, y)
         : 1.0;
-      const aVis = rawAnchorVis * anchorLos * Math.max(0.35, playerLos);
+      const aVis = rawAnchorVis * anchorLos * Math.max(0.32, playerLos);
       if (aVis > bestVis) bestVis = aVis;
     }
   }
@@ -1034,7 +1064,7 @@ export function getPointVisibilityFactor(
   for (const p of state.projectiles) {
     if (p.lightRadius && p.lightRadius > 0) {
       const d = Math.hypot(x - p.x, y - p.y);
-      const pr = p.lightRadius * 1.35;
+      const pr = p.lightRadius * 1.15;
       if (d < pr) {
         const rawProjVis = Math.max(0, 1 - d / pr);
         const projLos = activeRoom
@@ -1052,7 +1082,7 @@ export function getPointVisibilityFactor(
 /**
  * Projects soft, feathered radial shadow cones onto `dg` (`source-over`) behind opaque bog trees (`P`),
  * walls (`#`, `%`), and closed gates (`G`, `M`) relative to a light emitter at `(lightWorldX, lightWorldY)`.
- * Front faces of trees and walls remain illuminated while casting moody shadow wedges behind them.
+ * Front faces of trees and walls remain illuminated while casting oppressive shadow wedges behind them.
  */
 function projectSoftOccluderShadowCones(
   dg: CanvasRenderingContext2D,
@@ -1090,19 +1120,17 @@ function projectSoftOccluderShadowCones(
       const dy = occWorldY - lightWorldY;
       const dist = Math.hypot(dx, dy);
 
-      if (dist < 10 || dist > lightRadiusPx * 0.92) continue;
+      if (dist < 8 || dist > lightRadiusPx * 0.96) continue;
 
-      // Trees ('P') have a narrower cylindrical trunk core so light grazes past their mossy edges;
-      // solid ruin walls ('#', 'G', 'M', '%') cast a clean rear shadow wedge behind their back face.
-      const occRadius = ch === 'P' ? 4.2 : 5.8;
+      const occRadius = ch === 'P' ? 4.8 : 6.4;
       const centerAngle = Math.atan2(dy, dx);
-      const baseHalfAngle = Math.min(Math.PI * 0.22, Math.atan2(occRadius, Math.max(10, dist)));
+      const baseHalfAngle = Math.min(Math.PI * 0.25, Math.atan2(occRadius, Math.max(9, dist)));
 
-      // Begin the shadow strictly behind the obstacle so the obstacle itself and nearby ground stay lit
-      const shadowStartDist = Math.max(20, dist + (ch === 'P' ? 4.5 : 6.5));
-      const shadowEndDist = Math.max(shadowStartDist + 14, lightRadiusPx + 10);
+      // Begin the shadow behind the obstacle so the front face stays readable while umbra swallows the rear
+      const shadowStartDist = Math.max(14, dist + (ch === 'P' ? 3.5 : 5.0));
+      const shadowEndDist = Math.max(shadowStartDist + 16, lightRadiusPx + 12);
       const distRatio = Math.max(0, Math.min(1, 1 - dist / lightRadiusPx));
-      const coneAlpha = maxShadowAlpha * (0.42 + 0.38 * distRatio);
+      const coneAlpha = maxShadowAlpha * (0.56 + 0.38 * distRatio);
 
       const startX = lSx + Math.cos(centerAngle) * shadowStartDist;
       const startY = lSy + Math.sin(centerAngle) * shadowStartDist;
@@ -1110,16 +1138,16 @@ function projectSoftOccluderShadowCones(
       const endY = lSy + Math.sin(centerAngle) * shadowEndDist;
 
       const grad = dg.createLinearGradient(startX, startY, endX, endY);
-      grad.addColorStop(0, `rgba(2, 5, 11, ${(coneAlpha * 0.18).toFixed(3)})`);
-      grad.addColorStop(0.3, `rgba(2, 5, 11, ${(coneAlpha * 0.62).toFixed(3)})`);
-      grad.addColorStop(1, `rgba(2, 5, 11, ${(coneAlpha * 0.88).toFixed(3)})`);
+      grad.addColorStop(0, `rgba(2, 3, 9, ${(coneAlpha * 0.28).toFixed(3)})`);
+      grad.addColorStop(0.25, `rgba(2, 3, 9, ${(coneAlpha * 0.76).toFixed(3)})`);
+      grad.addColorStop(1, `rgba(2, 3, 9, ${(coneAlpha * 0.96).toFixed(3)})`);
 
       dg.fillStyle = grad;
 
-      // 2-lobe feathered shadow cone (soft penumbra -> core umbra)
+      // 2-lobe feathered shadow cone (soft penumbra -> deep abyssal umbra)
       const lobes: Array<{ spread: number; weight: number }> = [
-        { spread: 1.15, weight: 0.24 },
-        { spread: 0.78, weight: 0.42 },
+        { spread: 1.18, weight: 0.32 },
+        { spread: 0.82, weight: 0.56 },
       ];
 
       for (const lobe of lobes) {
@@ -1144,6 +1172,9 @@ function projectSoftOccluderShadowCones(
 }
 
 // [ORION-ANCHOR: RENDER-POST-PROCESS]
+/**
+ * Executes `drawDynamicLightingAndBloomPass` (draw dynamic lighting and bloom pass) in `effectsRenderer.ts`. Mutates `state: OrionState`.
+ */
 export function drawDynamicLightingAndBloomPass(
   g: CanvasRenderingContext2D,
   room: string[] | undefined,
@@ -1166,22 +1197,22 @@ export function drawDynamicLightingAndBloomPass(
   if (!state.isFallingIntoPit) {
     const py = state.y - state.z * Z_SCALE - 8;
     const reactorColor =
-      state.reactor === 'Ichor' ? '#f97316' : state.reactor === 'Mana' ? '#38bdf8' : '#c084fc';
-    const boostMult = state.isContinuousBoosting || (state.overdriveTimer || 0) > 0 ? 1.35 : 1.0;
-    // Warm tallow/ember inner core light + subtle reactor aura
+      state.reactor === 'Ichor' ? '#ea580c' : state.reactor === 'Mana' ? '#38bdf8' : '#a855f7';
+    const boostMult = state.isContinuousBoosting || (state.overdriveTimer || 0) > 0 ? 1.28 : 1.0;
+    // Muted dying-ember inner core light + subtle reactor glint
     lights.push({
       x: state.x,
       y: py,
-      radius: 26 * boostMult * radiusBreathMult,
-      color: '#fdba74',
-      intensity: (0.22 + flickerWave * 0.8) * boostMult,
+      radius: 18 * boostMult * radiusBreathMult,
+      color: '#d97706',
+      intensity: (0.16 + flickerWave * 0.6) * boostMult,
     });
     lights.push({
       x: state.x,
       y: py,
-      radius: 18 * boostMult,
+      radius: 13 * boostMult,
       color: reactorColor,
-      intensity: 0.16 * boostMult,
+      intensity: 0.12 * boostMult,
     });
   }
 
@@ -1204,13 +1235,13 @@ export function drawDynamicLightingAndBloomPass(
         lights.push({
           x: doorPos.x,
           y: doorPos.y,
-          radius: isLoopDensityWarning ? 18 + transInfo.nextDepth * 4 : 24,
+          radius: isLoopDensityWarning ? 16 + transInfo.nextDepth * 3 : 20,
           color: isLoopDensityWarning
             ? transInfo.nextDepth >= 3
-              ? '#f43f5e'
-              : '#c084fc'
+              ? '#e11d48'
+              : '#9333ea'
             : '#22d3ee',
-          intensity: isLoopDensityWarning ? 0.18 + transInfo.nextDepth * 0.05 : 0.26,
+          intensity: isLoopDensityWarning ? 0.16 + transInfo.nextDepth * 0.04 : 0.22,
         });
       }
     }
@@ -1218,7 +1249,7 @@ export function drawDynamicLightingAndBloomPass(
 
   if (room) {
     const { minTx, maxTx, minTy, maxTy } = getVisibleTileBounds(room, camX, camY, 5);
-    const pulse = Math.sin(state.t * 3.8) * 1.8 + Math.cos(state.t * 9.3) * 0.7;
+    const pulse = Math.sin(state.t * 3.8) * 1.4 + Math.cos(state.t * 9.3) * 0.6;
     for (let ty = minTy; ty <= maxTy; ty++) {
       for (let tx = minTx; tx <= maxTx; tx++) {
         const ch = room[ty]?.[tx];
@@ -1231,17 +1262,17 @@ export function drawDynamicLightingAndBloomPass(
           lights.push({
             x: cx,
             y: cy - 6,
-            radius: (isHelped ? 46 : 20) + pulse,
-            color: isHelped ? '#38bdf8' : '#fbbf24',
-            intensity: isHelped ? 0.38 : 0.24,
+            radius: (isHelped ? 36 : 15) + pulse,
+            color: isHelped ? '#38bdf8' : '#d97706',
+            intensity: isHelped ? 0.30 : 0.18,
           });
         } else if (ch === 'D') {
           lights.push({
             x: cx,
             y: cy - 4,
-            radius: 24 + pulse,
+            radius: 18 + pulse,
             color: '#38bdf8',
-            intensity: 0.26,
+            intensity: 0.20,
           });
         } else if (ch === 'A') {
           const effRoom = getEffectiveRoomCoord(state);
@@ -1251,26 +1282,26 @@ export function drawDynamicLightingAndBloomPass(
             lights.push({
               x: cx,
               y: cy - 3,
-              radius: 52 + pulse * 1.4,
-              color: '#f97316',
-              intensity: 0.42 + flickerWave * 0.9,
+              radius: 40 + pulse * 1.2,
+              color: '#ea580c',
+              intensity: 0.32 + flickerWave * 0.7,
             });
           }
         } else if (ch === 'Q') {
           lights.push({
             x: cx,
             y: cy - 8,
-            radius: 28 + pulse * 1.2,
+            radius: 22 + pulse,
             color: '#22d3ee',
-            intensity: 0.32,
+            intensity: 0.26,
           });
         } else if (ch === '~' && (tx + ty) % 2 === 0) {
           lights.push({
             x: cx,
             y: cy,
-            radius: 16,
-            color: '#5eead4',
-            intensity: 0.09,
+            radius: 13,
+            color: '#2dd4bf',
+            intensity: 0.06,
           });
         }
       }
@@ -1282,9 +1313,9 @@ export function drawDynamicLightingAndBloomPass(
       lights.push({
         x: p.x,
         y: p.y - p.z * Z_SCALE,
-        radius: p.lightRadius,
+        radius: p.lightRadius * 0.85,
         color: p.color,
-        intensity: 0.25,
+        intensity: 0.20,
       });
     }
   }
@@ -1295,9 +1326,9 @@ export function drawDynamicLightingAndBloomPass(
       lights.push({
         x: e.x,
         y: e.y - e.z * Z_SCALE - 6,
-        radius: e.type === 'bog_poe' ? 28 : e.state === 'windup' ? 22 : 20,
-        color: e.state === 'windup' ? '#fbbf24' : e.emissiveColor || '#38bdf8',
-        intensity: e.type === 'bog_poe' ? 0.34 : 0.22,
+        radius: e.type === 'bog_poe' ? 22 : e.state === 'windup' ? 18 : 16,
+        color: e.state === 'windup' ? '#d97706' : e.emissiveColor || '#38bdf8',
+        intensity: e.type === 'bog_poe' ? 0.28 : 0.18,
       });
     }
   }
@@ -1307,13 +1338,13 @@ export function drawDynamicLightingAndBloomPass(
     lights.push({
       x: state.poeCompanion.x,
       y: state.poeCompanion.y - (state.poeCompanion.z || 8) * Z_SCALE,
-      radius: state.poeCompanion.hoveringObjective ? 34 : 26,
+      radius: state.poeCompanion.hoveringObjective ? 28 : 20,
       color: poeStyle.hexColor,
-      intensity: state.poeCompanion.hoveringObjective ? 0.42 : 0.34,
+      intensity: state.poeCompanion.hoveringObjective ? 0.34 : 0.26,
     });
   }
 
-  // Cursed-Bog Multi-Depth Lighting, Cold Penumbra Grading, Soft Shadow Cones & Abyssal Void:
+  // Cursed-Land Multi-Depth Lighting: Desaturated Corpse-Slate, Abyssal Indigo, Sickly Mire & 92-97% Void
   if (room && state.room !== '-4,0') {
     state.exploredTiles = state.exploredTiles || {};
     const roomExplored =
@@ -1321,7 +1352,7 @@ export function drawDynamicLightingAndBloomPass(
     const { minTx, maxTx, minTy, maxTy } = getVisibleTileBounds(room, camX, camY, 2);
 
     // Update persistent tile exploration for world map / minimap tracking
-    const exploreR = roomLighting.effectiveVisionRadiusPx * 0.92;
+    const exploreR = roomLighting.effectiveVisionRadiusPx * 0.95;
     for (let ty = minTy; ty <= maxTy; ty++) {
       for (let tx = minTx; tx <= maxTx; tx++) {
         const tileCx = tx * TILE_SIZE + 8;
@@ -1358,11 +1389,16 @@ export function drawDynamicLightingAndBloomPass(
     }
 
     const playerLightY = state.y - state.z * Z_SCALE - 6;
-    const playerOuterR = Math.max(38, roomLighting.effectiveVisionRadiusPx * 1.24 * radiusBreathMult);
+    // Tight 2.5 to 3.5 tile personal halo (40px to 56px at base Light = 5)
+    const playerOuterR = Math.max(
+      36,
+      roomLighting.effectiveVisionRadiusPx * 1.04 * radiusBreathMult
+    );
     const dirInfo = DIR_VECTORS[state.dir] || DIR_VECTORS.S;
 
-    // PASS 1: Cold, Desaturated Bog-Mire Color Grading over the Mid-Ring Penumbra & Perimeter
-    // Drains saturation and shifts colors outside the immediate warm core toward drowned slate-teal (#334954)
+    // PASS 1: Cursed Land Color Grading (Desaturated Corpse-Slate, Abyssal Indigo & Sickly Mire)
+    // Even inside the inner lantern core, we retain ~48% of the cursed grade so grass and trees
+    // look withered, cold, and blighted rather than a pleasant sunny forest.
     const tintOverlay = getPenumbraTintContext();
     if (tintOverlay) {
       const { canvas: tintCvs, ctx: tg } = tintOverlay;
@@ -1370,20 +1406,40 @@ export function drawDynamicLightingAndBloomPass(
       tg.globalCompositeOperation = 'source-over';
       tg.globalAlpha = 1.0;
       tg.clearRect(0, 0, SCREEN_W, SCREEN_H);
-      tg.fillStyle = 'rgba(28, 44, 56, 0.34)';
+
+      // Base corpse-slate & sickly-mire wash across the viewport
+      tg.fillStyle = 'rgba(14, 21, 24, 0.56)';
       tg.fillRect(0, 0, SCREEN_W, SCREEN_H);
 
-      // Punch out the innermost warm core so the mid-ring penumbra retains a subtle bog tint
+      // Deep abyssal indigo radial wash toward the penumbra and outer perimeter
+      const pSx = state.x - camX;
+      const pSy = playerLightY - camY;
+      const indigoGrad = tg.createRadialGradient(
+        pSx,
+        pSy,
+        playerOuterR * 0.22,
+        pSx,
+        pSy,
+        playerOuterR * 1.45
+      );
+      indigoGrad.addColorStop(0, 'rgba(18, 28, 25, 0.14)'); // sickly mire undertone in near-penumbra
+      indigoGrad.addColorStop(0.55, 'rgba(16, 22, 32, 0.34)'); // cold corpse-slate mid-ring
+      indigoGrad.addColorStop(1, 'rgba(8, 6, 18, 0.52)'); // abyssal indigo outer shroud
+      tg.fillStyle = indigoGrad;
+      tg.fillRect(0, 0, SCREEN_W, SCREEN_H);
+
+      // Partially soften the grade only in the immediate personal core (strength <= 0.54)
+      // so the world never reverts to raw ungraded forest greens
       tg.globalCompositeOperation = 'destination-out';
-      const punchWarmCore = (wx: number, wy: number, coreR: number, strength: number) => {
+      const punchCursedCore = (wx: number, wy: number, coreR: number, strength: number) => {
         const sx = wx - camX;
         const sy = wy - camY;
         if (sx + coreR < 0 || sx - coreR > SCREEN_W || sy + coreR < 0 || sy - coreR > SCREEN_H) {
           return;
         }
-        const cGrad = tg.createRadialGradient(sx, sy, coreR * 0.08, sx, sy, coreR);
+        const cGrad = tg.createRadialGradient(sx, sy, coreR * 0.06, sx, sy, coreR);
         cGrad.addColorStop(0, `rgba(0, 0, 0, ${strength.toFixed(2)})`);
-        cGrad.addColorStop(0.65, `rgba(0, 0, 0, ${(strength * 0.65).toFixed(2)})`);
+        cGrad.addColorStop(0.5, `rgba(0, 0, 0, ${(strength * 0.48).toFixed(2)})`);
         cGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
         tg.fillStyle = cGrad;
         tg.beginPath();
@@ -1391,9 +1447,9 @@ export function drawDynamicLightingAndBloomPass(
         tg.fill();
       };
 
-      punchWarmCore(state.x, playerLightY, playerOuterR * 0.56, 0.96);
+      punchCursedCore(state.x, playerLightY, playerOuterR * 0.42, 0.52);
       for (const anchor of roomLighting.staticLightAnchors) {
-        punchWarmCore(anchor.x, anchor.y, anchor.radius * 0.62, 0.92);
+        punchCursedCore(anchor.x, anchor.y, anchor.radius * 0.48, 0.56);
       }
       tg.restore();
 
@@ -1403,11 +1459,11 @@ export function drawDynamicLightingAndBloomPass(
       g.restore();
     }
 
-    // PASS 2: Abyssal Void with Multi-Stop Mid-Ring Penumbra & Soft Tree/Wall Shadow Cones
+    // PASS 2: Pitch-Black Abyss (92%-97% Dark) with Tight 2.5-3.5 Tile Halo & Steep Falloff
     const overlay = getDarknessOverlayContext();
     const effectiveDarkness = Math.min(
-      0.95,
-      Math.max(0.64, roomLighting.ambientDarkness)
+      0.97,
+      Math.max(0.92, roomLighting.ambientDarkness)
     );
 
     if (overlay) {
@@ -1416,10 +1472,11 @@ export function drawDynamicLightingAndBloomPass(
       dg.globalCompositeOperation = 'source-over';
       dg.globalAlpha = 1.0;
       dg.clearRect(0, 0, SCREEN_W, SCREEN_H);
-      dg.fillStyle = `rgba(2, 5, 11, ${effectiveDarkness.toFixed(3)})`;
+      // Abyssal indigo-black void outside light pools
+      dg.fillStyle = `rgba(3, 3, 9, ${effectiveDarkness.toFixed(3)})`;
       dg.fillRect(0, 0, SCREEN_W, SCREEN_H);
 
-      // Carve multi-stop light pools: clear inner core -> mid-ring penumbra -> dark bog perimeter
+      // Carve steep-falloff light pools: tight personal core -> steep mid-ring drop -> pitch-black abyss
       dg.globalCompositeOperation = 'destination-out';
 
       const punchMultiStopLightPool = (
@@ -1430,8 +1487,8 @@ export function drawDynamicLightingAndBloomPass(
       ) => {
         const sx = worldX - camX;
         const sy = worldY - camY;
-        const outerR = Math.max(24, radiusPx);
-        const innerR = outerR * 0.12;
+        const outerR = Math.max(18, radiusPx);
+        const innerR = outerR * 0.08;
         if (
           sx + outerR < 0 ||
           sx - outerR > SCREEN_W ||
@@ -1442,14 +1499,14 @@ export function drawDynamicLightingAndBloomPass(
         }
         const grad = dg.createRadialGradient(sx, sy, innerR, sx, sy, outerR);
         const s = Math.min(1, strength);
-        // 0..32%: warm clear center around pilot
-        grad.addColorStop(0, `rgba(0, 0, 0, ${(s * 0.99).toFixed(3)})`);
-        grad.addColorStop(0.32, `rgba(0, 0, 0, ${(s * 0.92).toFixed(3)})`);
-        // 32..62%: readable mid-ring penumbra
-        grad.addColorStop(0.60, `rgba(0, 0, 0, ${(s * 0.64).toFixed(3)})`);
-        // 62..85%: dim ghostly penumbra ring where bog shapes emerge
-        grad.addColorStop(0.82, `rgba(0, 0, 0, ${(s * 0.32).toFixed(3)})`);
-        // 85..100%: seamless fade into bog darkness
+        // 0..24%: tight personal halo core (keeps a subtle 6% shadow veil even at center)
+        grad.addColorStop(0, `rgba(0, 0, 0, ${(s * 0.94).toFixed(3)})`);
+        grad.addColorStop(0.24, `rgba(0, 0, 0, ${(s * 0.80).toFixed(3)})`);
+        // 24..50%: steep falloff across the mid-ring penumbra
+        grad.addColorStop(0.50, `rgba(0, 0, 0, ${(s * 0.38).toFixed(3)})`);
+        // 50..74%: faint ghostly rim where silhouettes barely emerge from the mire
+        grad.addColorStop(0.74, `rgba(0, 0, 0, ${(s * 0.12).toFixed(3)})`);
+        // 74..100%: rapid sink into the 92-97% pitch-black abyss
         grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
         dg.fillStyle = grad;
         dg.beginPath();
@@ -1457,13 +1514,13 @@ export function drawDynamicLightingAndBloomPass(
         dg.fill();
       };
 
-      // Primary player Light stat radial pool + subtle forward-facing penumbra lobe
+      // Primary player Light stat radial pool + tight forward-facing beam lobe
       punchMultiStopLightPool(state.x, playerLightY, playerOuterR, 1.0);
       punchMultiStopLightPool(
-        state.x + dirInfo.dx * (playerOuterR * 0.18),
-        playerLightY + dirInfo.dy * (playerOuterR * 0.18),
-        playerOuterR * 0.76,
-        0.62
+        state.x + dirInfo.dx * (playerOuterR * 0.15),
+        playerLightY + dirInfo.dy * (playerOuterR * 0.15),
+        playerOuterR * 0.62,
+        0.45
       );
 
       // Static world light anchors (campfires, Poe lanterns, shrines, beacons)
@@ -1476,11 +1533,11 @@ export function drawDynamicLightingAndBloomPass(
           anchor.x,
           anchor.y
         );
-        const anchorStrength = 0.72 + 0.26 * anchorLos;
+        const anchorStrength = 0.64 + 0.24 * anchorLos;
         punchMultiStopLightPool(
           anchor.x,
           anchor.y,
-          anchor.radius * 1.22 * radiusBreathMult,
+          anchor.radius * 1.05 * radiusBreathMult,
           anchorStrength
         );
       }
@@ -1490,12 +1547,12 @@ export function drawDynamicLightingAndBloomPass(
         punchMultiStopLightPool(
           light.x,
           light.y,
-          light.radius * 1.18,
-          Math.min(0.88, 0.42 + light.intensity)
+          light.radius * 0.95,
+          Math.min(0.76, 0.30 + light.intensity)
         );
       }
 
-      // PASS 3: Project Soft Radial Shadow Cones Behind Bog Trees ('P') and Ruin Walls ('#', 'G', 'M', '%')
+      // PASS 3: Project Oppressive Radial Shadow Cones Behind Bog Trees ('P') and Ruin Walls ('#', 'G', 'M', '%')
       dg.globalCompositeOperation = 'source-over';
       projectSoftOccluderShadowCones(
         dg,
@@ -1506,29 +1563,29 @@ export function drawDynamicLightingAndBloomPass(
         playerOuterR,
         camX,
         camY,
-        effectiveDarkness * 0.78
+        effectiveDarkness * 0.92
       );
 
-      // Re-punch the protected personal core around the pilot after shadow projection
-      // so surrounding wall/tree shadow cones can never black out the player or immediate footing
+      // Re-punch only a tight personal footing core around the pilot after shadow projection
+      // so surrounding wall/tree shadow cones creep close while keeping the pilot sprite readable
       dg.globalCompositeOperation = 'destination-out';
-      punchMultiStopLightPool(state.x, playerLightY, Math.max(32, playerOuterR * 0.46), 0.96);
+      punchMultiStopLightPool(state.x, playerLightY, Math.max(18, playerOuterR * 0.32), 0.84);
 
-      // PASS 4: Breathing Claustrophobic Perimeter Vignette on the Darkness Buffer
+      // PASS 4: Heavy Claustrophobic Abyssal Vignette on the Darkness Buffer
       dg.globalCompositeOperation = 'source-over';
-      const vigR = Math.hypot(SCREEN_W, SCREEN_H) * (0.58 + flickerWave * 0.35);
+      const vigR = Math.hypot(SCREEN_W, SCREEN_H) * (0.50 + flickerWave * 0.25);
       const vigGrad = dg.createRadialGradient(
         SCREEN_W * 0.5,
         SCREEN_H * 0.5,
-        SCREEN_W * 0.28,
+        SCREEN_W * 0.18,
         SCREEN_W * 0.5,
         SCREEN_H * 0.5,
         vigR
       );
-      const cornerAlpha = Math.min(0.72, roomLighting.cornerShadowIntensity * 0.45);
-      vigGrad.addColorStop(0, 'rgba(2, 4, 9, 0)');
-      vigGrad.addColorStop(0.68, `rgba(2, 4, 9, ${(cornerAlpha * 0.32).toFixed(3)})`);
-      vigGrad.addColorStop(1, `rgba(1, 2, 6, ${cornerAlpha.toFixed(3)})`);
+      const cornerAlpha = Math.min(0.92, roomLighting.cornerShadowIntensity * 0.76);
+      vigGrad.addColorStop(0, 'rgba(2, 2, 7, 0)');
+      vigGrad.addColorStop(0.55, `rgba(3, 3, 10, ${(cornerAlpha * 0.46).toFixed(3)})`);
+      vigGrad.addColorStop(1, `rgba(1, 1, 5, ${cornerAlpha.toFixed(3)})`);
       dg.fillStyle = vigGrad;
       dg.fillRect(0, 0, SCREEN_W, SCREEN_H);
 
@@ -1540,7 +1597,7 @@ export function drawDynamicLightingAndBloomPass(
     }
   }
 
-  // PASS 5: Subtle Flickering Warmth & Localized Lantern Bloom (drawn after darkness so light sources glow softly without washing out the bog)
+  // PASS 5: Restrained Flickering Ember & Spirit Bloom (localized so it never washes out the cursed mire)
   if (pp.bloomIntensity > 0 && lights.length > 0) {
     g.save();
     g.translate(-camX, -camY);
@@ -1550,10 +1607,10 @@ export function drawDynamicLightingAndBloomPass(
         ? computeRayLightTransmission(room, state, state.x, state.y, light.x, light.y)
         : 1.0;
       if (sourceLos <= 0.05) continue;
-      const alpha = Math.min(0.32, light.intensity * pp.bloomIntensity * 0.72 * sourceLos);
+      const alpha = Math.min(0.22, light.intensity * pp.bloomIntensity * 0.58 * sourceLos);
       const grad = g.createRadialGradient(light.x, light.y, 1, light.x, light.y, light.radius);
       grad.addColorStop(0, light.color);
-      grad.addColorStop(0.55, light.color);
+      grad.addColorStop(0.45, light.color);
       grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
       g.globalAlpha = alpha;
       g.fillStyle = grad;
@@ -1587,6 +1644,9 @@ export function drawDynamicLightingAndBloomPass(
   }
 }
 
+/**
+ * Executes `drawParticlesPass` (draw particles pass) in `effectsRenderer.ts`. Mutates `state: OrionState`.
+ */
 export function drawParticlesPass(g: CanvasRenderingContext2D, state: OrionState): void {
   for (const p of state.particles) {
     const py = p.y - p.z * Z_SCALE;

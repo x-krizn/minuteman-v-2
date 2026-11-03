@@ -44,13 +44,13 @@ src/
   - Damage cascades through **Shields** (regenerating energy barrier), **Armor** (physical mitigation + durability), and **Frame Integrity** (`200` base).
   - Hits resolve via classical momentum transfer (`Δv = J / m_eff`) against defender **Weight (`m`)**, directional charge (`μ`), and **Stability (`S`)** across four outcome bands (`none`, `flinch`, `stagger`, `knockback`).
 - **Oppressive Cursed-Bog Lighting (`systems/render/effectsRenderer.ts`)**:
-  - Multi-stop cold bog penumbra, radial shadow cones cast behind trees and ruins, drifting ground miasma ribbons, and suspended spore motes illuminated within the player's lantern cone.
+  - Pitch-black `92–97%` abyssal darkness beyond active light pools, tight `2.5–3.5` tile personal mech halos (`40–56px`) with steep cubic falloff, desaturated corpse-slate (`#141d24`), abyssal indigo (`#080612`), and sickly mire (`#17221e`) color grading, radial shadow cones cast behind trees and ruins, and drifting miasma/spore motes strictly gated to active light pools.
 - **Living Æther Cosmic World Map (`ui/satchel/AetherCosmosCanvas.tsx`)**:
   - Real-time procedural canvas simulation of the `u00` universe: **Sin** churns at the central gravitational vortex while Major (`1–8`), Minor (`1–7`), and Unstable/Drift worlds orbit along swirling Æther currents.
 - **Discovery-Gated Pilot Codex (`ui/satchel/SatchelCodexTab.tsx`)**:
   - In-game field encyclopedia that reveals lore, stats, and schematics only as worlds, areas, weapons, chassis mods, gemstones, feats, and enemies are discovered during play.
 - **Orion Code Wiki (`scripts/build-index.mjs` & `/wiki/`)**:
-  - Zero-dependency AST/regex indexer that cross-references every source file, export, JSDoc block, and `// [ORION-ANCHOR: <ID>]` tag against `src/cartridges/orion/docs/*.md`.
+  - Zero-dependency AST/regex indexer that cross-references all `160` Orion source files, `1,095` documented exports (`1,599` JSDoc blocks), and `23` `// [ORION-ANCHOR: <ID>]` tags against `src/cartridges/orion/docs/*.md`.
   - Accessible standalone at `/wiki/` or directly inside the Start Menu via **📖 Code Wiki**.
 
 ---

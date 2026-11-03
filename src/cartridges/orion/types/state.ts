@@ -33,6 +33,9 @@ import {
 import { EnemyEntity, PickupEntity } from './entities';
 import { AetherFogGraphState } from './world';
 
+/**
+ * Type contract for `OrionSavedPilotEntry` (orion saved pilot entry) in `state.ts`.
+ */
 export interface OrionSavedPilotEntry {
   pilotId: string;
   pilotName: string;
@@ -47,9 +50,14 @@ export interface OrionSavedPilotEntry {
   savedDataJson: string;
 }
 
+/**
+ * Type contract for `OrionGlidePhase` (orion glide phase) in `state.ts`.
+ */
 export type OrionGlidePhase = 'idle' | 'windup' | 'glide' | 'boost' | 'winddown';
 
-// Master Player / Orion State
+/**
+ * Master Player / Orion State.
+ */
 export interface OrionState {
   pilotId?: string;
   regionId?: string;
@@ -319,6 +327,9 @@ export interface OrionState {
   worldMapModalMode?: 'none' | 'menu' | 'campfire' | 'waygate';
 }
 
+/**
+ * Type contract for `OrionContextMenuOption` (orion context menu option) in `state.ts`.
+ */
 export interface OrionContextMenuOption {
   id: string;
   label: string;
@@ -326,6 +337,9 @@ export interface OrionContextMenuOption {
   disabled?: boolean;
 }
 
+/**
+ * Type contract for `OrionContextMenuState` (orion context menu state) in `state.ts`.
+ */
 export interface OrionContextMenuState {
   title: string;
   subtitle?: string;
@@ -342,6 +356,9 @@ export interface OrionContextMenuState {
   options: OrionContextMenuOption[];
 }
 
+/**
+ * Type contract for `OrionSpawnAnchor` (orion spawn anchor) in `state.ts`.
+ */
 export interface OrionSpawnAnchor {
   areaId: string;
   room: string;
@@ -349,6 +366,9 @@ export interface OrionSpawnAnchor {
   y: number;
 }
 
+/**
+ * Type contract for `OrionCapabilityGates` (orion capability gates) in `state.ts`.
+ */
 export interface OrionCapabilityGates {
   levelBand: LevelBand; // Lesson (1-5), Challenge (6-12), Expression (13-20)
   standardProgressionUnlocked: boolean; // Locked out until tutorial is cleared (or bypass enabled)

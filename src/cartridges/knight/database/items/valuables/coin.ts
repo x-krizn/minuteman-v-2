@@ -5,6 +5,9 @@
 
 import { ItemWikiDefinition } from '../../../types';
 
+/**
+ * Canonical database definition for `coinItem` (`Gold Coin`, id `'coin'`, ASCII token `'o'`, slot `'coin'`) — Glinting currency used for trade and upgrades..
+ */
 export const coinItem: ItemWikiDefinition = {
   // 1. Identity & Metadata
   id: 'coin',

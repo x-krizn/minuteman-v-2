@@ -11,21 +11,45 @@ import { ItemWikiDefinition, OrionExecutionContext, OrionState } from '../../../
  */
 export const FLASK_SPINEL_BASE64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAf0lEQVR42mNgwAL+4wAMpACohv8w8xhIBRTZjuQCDDbR4MyZM/+xsUky4Je3NxiTbcAJGxswHhgDQAEHM4CsNADTTLIhIOdO09UFY5hGGJ8or4AUpcjJwTXBMEiMaAOQNSEbRrQBwQwMGC4AiREdGyB/gzQgY5JjAmQbMsalDgD/keSSIf9syAAAAABJRU5ErkJggg==';
+/**
+ * Embedded Base64 PNG pixel-art sprite payload or atlas lookup entry for `FLASK_CARNELIAN_BASE64`.
+ */
 export const FLASK_CARNELIAN_BASE64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAfklEQVR42mNgwAL+4wAMpACohv8w8xhIBRTZjuQCDDbR4MyZM/+xsUky4NcvbzAm24D/ZxjAeGAMAAc91ACy0gBcM6mGgJ0+kwGCoRphfKK8AlI0O5YBYQgUg8SINgBZE7JhRBuQ5mOM4QKQGNGxAfI2SAMyJjkmQLYhY1zqAMid+zVznFphAAAAAElFTkSuQmCC';
+/**
+ * Embedded Base64 PNG pixel-art sprite payload or atlas lookup entry for `FLASK_TITANITE_BASE64`.
+ */
 export const FLASK_TITANITE_BASE64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAgElEQVR42mNgwAL+4wAMpACohv8w8xhIBRTZjuQCDDbR4MyZM/+xsUky4NcvbzAm24A7d8zBeGAMAAUczACy0gBMM8mGgJx74oQNGMM0wvhEeQWkaNo0XbgmGAaJEW0AsiZkw4g2ICVFDsMFIDGiYwPkb5AGZExyTIBsQ8a41AEAjRkBmhkz/aMAAAAASUVORK5CYII=';
+/**
+ * Embedded Base64 PNG pixel-art sprite payload or atlas lookup entry for `FLASK_DEMANTOID_BASE64`.
+ */
 export const FLASK_DEMANTOID_BASE64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAf0lEQVR42mNgwAL+4wAMpACohv8w8xhIBRTZjuQCDDbR4MyZM/+xsUkyIOVXChiTbUDUiSgwHhgDQAEHM4CsNADTTLIhIOe6rXIDY5hGGJ8or4AU2UyzgWuCYZAY0QYga0I2jGgDNFI0MFwAEiM6NkD+BmlAxiTHBMg2ZIxLHQAoRe/oww9GhgAAAABJRU5ErkJggg==';
+/**
+ * Embedded Base64 PNG pixel-art sprite payload or atlas lookup entry for `FLASK_KYANITE_BASE64`.
+ */
 export const FLASK_KYANITE_BASE64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAf0lEQVR42mNgwAL+4wAMpACohv8w8xhIBRTZjuQCDDbR4MyZM/+xsUkyICpqCxiTbUB9yzIwHhgDQAEHM4CsNADTTLIhIOfGJTeBMUwjjE+UV0CKPP0y4JpgGCRGtAHImpANI9oAG4dIDBeAxIiODZC/QRqQMckxAbINGeNSBwDldvJ9xG71+gAAAABJRU5ErkJggg==';
+/**
+ * Embedded Base64 PNG pixel-art sprite payload or atlas lookup entry for `FLASK_CHAROITE_BASE64`.
+ */
 export const FLASK_CHAROITE_BASE64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAf0lEQVR42mNgwAL+4wAMpACohv8w8xhIBRTZjuQCDDbR4MyZM/+xsUkyoLj4KxiTbUBr0EwwHhgDQAEHM4CsNADTTLIhIOcGaKaBMUwjjE+UV0CKjIzy4ZpgGCRGtAHImpANI9oACzl3DBeAxIiODZC/QRqQMckxAbINGeNSBwDzzeiwiAFcVAAAAABJRU5ErkJggg==';
+/**
+ * Embedded Base64 PNG pixel-art sprite payload or atlas lookup entry for `FLASK_RUBELLITE_BASE64`.
+ */
 export const FLASK_RUBELLITE_BASE64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAdUlEQVR42mNgwAL+4wAMpACohv8w8xhIBRTZjuQCDDbR4MyZM/+xsUky4Je3NxiTbcDuwClgPDAGgAIOZgBZaQCmmWRDQM5ttcwEY5hGGJ8or4AUpcjJwTXBMEiMaAOQNSEbRh8XwAIRZjsMkxwTINuQMS51ACwN7fButxNvAAAAAElFTkSuQmCC';
+/**
+ * Embedded Base64 PNG pixel-art sprite payload or atlas lookup entry for `FLASK_HEMATITE_BASE64`.
+ */
 export const FLASK_HEMATITE_BASE64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAbklEQVR42sWTAQrAIAhFPYtX6E6e1js5lByyFajB9uFDRf9pUQALyUZQ0QyI86Cqo+qhg9c4LWaW1bgEICJzGzDGMP8D0ItzQOsNeLgM0XYR0exBn6eOMjfdIbeupQExFGHfdPD8SO0PpdWid/suDXzPl9p+cssAAAAASUVORK5CYII=';
 
+/**
+ * Canonical database definition for `spinelFlaskItem` (`Spinel Fury Flask`, id `'spinel_flask'`, slot `'consumable'`) — Grants +30% Weapon Damage Overdrive for 6s and vents -30 Reactor Heat..
+ */
 export const spinelFlaskItem: ItemWikiDefinition = {
   id: 'spinel_flask',
   name: 'Spinel Fury Flask',
@@ -45,6 +69,9 @@ export const spinelFlaskItem: ItemWikiDefinition = {
   },
 };
 
+/**
+ * Canonical database definition for `carnelianFlaskItem` (`Carnelian Siege Draught`, id `'carnelian_flask'`, slot `'consumable'`) — Restores +45 Armor Durability and boosts Presence priority..
+ */
 export const carnelianFlaskItem: ItemWikiDefinition = {
   id: 'carnelian_flask',
   name: 'Carnelian Siege Draught',
@@ -64,6 +91,9 @@ export const carnelianFlaskItem: ItemWikiDefinition = {
   },
 };
 
+/**
+ * Canonical database definition for `titaniteFlaskItem` (`Titanite Bastion Phial`, id `'titanite_flask'`, slot `'consumable'`) — Restores +40 Shield Capacity and +30 Armor Durability..
+ */
 export const titaniteFlaskItem: ItemWikiDefinition = {
   id: 'titanite_flask',
   name: 'Titanite Bastion Phial',
@@ -84,6 +114,9 @@ export const titaniteFlaskItem: ItemWikiDefinition = {
   },
 };
 
+/**
+ * Canonical database definition for `demantoidFlaskItem` (`Demantoid Repair Flask`, id `'demantoid_flask'`, slot `'consumable'`) — Restores +50 Layer 2 Armor Durability (Layer 3 Frame HP cannot be field-repaired; requires a Campfire or Wayga....
+ */
 export const demantoidFlaskItem: ItemWikiDefinition = {
   id: 'demantoid_flask',
   name: 'Demantoid Repair Flask',
@@ -111,6 +144,9 @@ export const demantoidFlaskItem: ItemWikiDefinition = {
   },
 };
 
+/**
+ * Canonical database definition for `kyaniteFlaskItem` (`Kyanite Arc Condensate`, id `'kyanite_flask'`, slot `'consumable'`) — Restores +60 Reactor Energy and resets all active Weapon & Trigger cooldowns..
+ */
 export const kyaniteFlaskItem: ItemWikiDefinition = {
   id: 'kyanite_flask',
   name: 'Kyanite Arc Condensate',
@@ -131,6 +167,9 @@ export const kyaniteFlaskItem: ItemWikiDefinition = {
   },
 };
 
+/**
+ * Canonical database definition for `charoiteFlaskItem` (`Charoite Phantom Vial`, id `'charoite_flask'`, slot `'consumable'`) — Marks all targets (+25% Vulnerability for 6s) and resets Booster & Swap cooldowns..
+ */
 export const charoiteFlaskItem: ItemWikiDefinition = {
   id: 'charoite_flask',
   name: 'Charoite Phantom Vial',
@@ -151,6 +190,9 @@ export const charoiteFlaskItem: ItemWikiDefinition = {
   },
 };
 
+/**
+ * Canonical database definition for `rubelliteFlaskItem` (`Rubellite Ether Tonic`, id `'rubellite_flask'`, slot `'consumable'`) — Instantly reloads active weapon chain to full and grants 5s Overdrive (+30% DMG)..
+ */
 export const rubelliteFlaskItem: ItemWikiDefinition = {
   id: 'rubellite_flask',
   name: 'Rubellite Ether Tonic',
@@ -171,6 +213,9 @@ export const rubelliteFlaskItem: ItemWikiDefinition = {
   },
 };
 
+/**
+ * Canonical database definition for `hematiteFlaskItem` (`Hematite Thermal Quench`, id `'hematite_flask'`, slot `'consumable'`) — Purges -80 Reactor Heat immediately and reinforces +25 Armor Durability..
+ */
 export const hematiteFlaskItem: ItemWikiDefinition = {
   id: 'hematite_flask',
   name: 'Hematite Thermal Quench',

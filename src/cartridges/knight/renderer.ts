@@ -20,8 +20,8 @@ import { SKILL_REGISTRY } from './database/skills';
 import { getWeaponDefinition } from './database/weapons';
 import { getBiomeDefinition } from './database/world';
 import {
-  drawProceduralPickup,
   drawProceduralArcTrail,
+  drawProceduralPickup,
   drawTransformedImage,
   getCachedImage,
 } from './renderer/proceduralRenderer';
@@ -30,6 +30,9 @@ function cap(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+/**
+ * Executes `drawKnightGame` (draw knight game) in `renderer.ts`.
+ */
 export function drawKnightGame(
   surface: CartridgeSurface,
   state: KnightState,

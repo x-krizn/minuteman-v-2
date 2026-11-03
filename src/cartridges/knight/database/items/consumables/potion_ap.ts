@@ -5,6 +5,9 @@
 
 import { ItemWikiDefinition } from '../../../types';
 
+/**
+ * Canonical database definition for `potionApItem` (`Armor Tonic`, id `'potion_ap'`, ASCII token `'2'`, slot `'potion'`) — Restores Armor Poise points.
+ */
 export const potionApItem: ItemWikiDefinition = {
   // 1. Identity & Metadata
   id: 'potion_ap',

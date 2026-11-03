@@ -5,11 +5,17 @@
 
 import { soundSystem } from '../../engine/core/soundSystem';
 import { EnemyEntity, KnightState, PickupEntity, SkillId } from './types';
-import { VendorItem, VENDOR_ITEMS as DB_VENDOR_ITEMS } from './database/vendors';
+import { VENDOR_ITEMS as DB_VENDOR_ITEMS, VendorItem } from './database/vendors';
 
 export type { VendorItem };
+/**
+ * Exported const `VENDOR_ITEMS` (vendor items) in `stateStore.ts`.
+ */
 export const VENDOR_ITEMS: VendorItem[] = DB_VENDOR_ITEMS;
 
+/**
+ * Type contract for `DungeonStateData` (dungeon state data) in `stateStore.ts`.
+ */
 export interface DungeonStateData {
   rooms: Record<string, string[]>;
   greenRooms: Record<string, number>;
@@ -17,11 +23,17 @@ export interface DungeonStateData {
   floor: unknown;
 }
 
+/**
+ * Type contract for `DungeonEntityData` (dungeon entity data) in `stateStore.ts`.
+ */
 export interface DungeonEntityData {
   enemies: EnemyEntity[];
   picks: PickupEntity[];
 }
 
+/**
+ * Type contract for `DungeonContext` (dungeon context) in `stateStore.ts`.
+ */
 export interface DungeonContext {
   getDungeonData: () => DungeonStateData;
   restoreDungeonData: (
@@ -35,19 +47,31 @@ let activeKnightState: KnightState | null = null;
 let activeDungeonContext: DungeonContext | null = null;
 const stateListeners: Set<() => void> = new Set();
 
+/**
+ * Executes `setKnightStateRef` (set knight state ref) in `stateStore.ts`.
+ */
 export function setKnightStateRef(st: KnightState | null): void {
   activeKnightState = st;
   notifyStateChange();
 }
 
+/**
+ * Executes `setDungeonContextRef` (set dungeon context ref) in `stateStore.ts`.
+ */
 export function setDungeonContextRef(ctx: DungeonContext | null): void {
   activeDungeonContext = ctx;
 }
 
+/**
+ * Executes `getKnightState` (get knight state) in `stateStore.ts`.
+ */
 export function getKnightState(): KnightState | null {
   return activeKnightState;
 }
 
+/**
+ * Executes `subscribeKnightState` (subscribe knight state) in `stateStore.ts`.
+ */
 export function subscribeKnightState(fn: () => void): () => void {
   stateListeners.add(fn);
   return () => {
@@ -55,6 +79,9 @@ export function subscribeKnightState(fn: () => void): () => void {
   };
 }
 
+/**
+ * Executes `notifyStateChange` (notify state change) in `stateStore.ts`.
+ */
 export function notifyStateChange(): void {
   stateListeners.forEach((fn) => {
     try {
@@ -65,6 +92,9 @@ export function notifyStateChange(): void {
   });
 }
 
+/**
+ * Executes `assignSkill` (assign skill) in `stateStore.ts`.
+ */
 export function assignSkill(slot: 'L' | 'R', skillId: SkillId): boolean {
   if (!activeKnightState) return false;
   if (slot === 'L') {
@@ -77,6 +107,9 @@ export function assignSkill(slot: 'L' | 'R', skillId: SkillId): boolean {
   return true;
 }
 
+/**
+ * Executes `equipItem` (equip item) in `stateStore.ts`.
+ */
 export function equipItem(slot: 'mainHand' | 'offHand' | 'armor' | 'trinket', itemId: string): boolean {
   const st = activeKnightState;
   if (!st) return false;
@@ -94,6 +127,9 @@ export function equipItem(slot: 'mainHand' | 'offHand' | 'armor' | 'trinket', it
   return true;
 }
 
+/**
+ * Executes `unlockFeat` (unlock feat) in `stateStore.ts`.
+ */
 export function unlockFeat(featId: string, cost: number): { success: boolean; message: string } {
   const st = activeKnightState;
   if (!st) return { success: false, message: 'No active game.' };
@@ -117,6 +153,9 @@ export function unlockFeat(featId: string, cost: number): { success: boolean; me
   return { success: true, message: `Mastered feat: ${featId}!` };
 }
 
+/**
+ * Executes `addItemToInventory` (add item to inventory) in `stateStore.ts`.
+ */
 export function addItemToInventory(itemId: string, quantity = 1): void {
   const st = activeKnightState;
   if (!st) return;
@@ -132,6 +171,9 @@ export function addItemToInventory(itemId: string, quantity = 1): void {
   notifyStateChange();
 }
 
+/**
+ * Executes `buyVendorItem` (buy vendor item) in `stateStore.ts`.
+ */
 export function buyVendorItem(item: VendorItem): { success: boolean; message: string } {
   const st = activeKnightState;
   if (!st) {
@@ -173,6 +215,9 @@ export function buyVendorItem(item: VendorItem): { success: boolean; message: st
 const SAVE_KEY_V2 = 'minuteman_knight_save_v2';
 const SAVE_KEY_V1 = 'minuteman_knight_save_v1';
 
+/**
+ * Executes `saveKnightGame` (save knight game) in `stateStore.ts`.
+ */
 export function saveKnightGame(): { success: boolean; message: string } {
   const st = activeKnightState;
   if (!st) return { success: false, message: 'No active game to save.' };
@@ -228,6 +273,9 @@ export function saveKnightGame(): { success: boolean; message: string } {
   }
 }
 
+/**
+ * Executes `loadSavedKnightGame` (load saved knight game) in `stateStore.ts`.
+ */
 export function loadSavedKnightGame(): boolean {
   const st = activeKnightState;
   if (!st) return false;
@@ -323,6 +371,9 @@ export function loadSavedKnightGame(): boolean {
   }
 }
 
+/**
+ * Executes `hasSavedKnightGame` (has saved knight game) in `stateStore.ts`.
+ */
 export function hasSavedKnightGame(): boolean {
   try {
     return Boolean(localStorage.getItem(SAVE_KEY_V2) || localStorage.getItem(SAVE_KEY_V1));

@@ -29,8 +29,14 @@ for (const [path, mod] of Object.entries(characterModules)) {
   }
 }
 
+/**
+ * Exported const `ALL_CHARACTERS` (all characters) in `index.ts`.
+ */
 export const ALL_CHARACTERS: CharacterDefinition[] = Array.from(characterMap.values());
 
+/**
+ * Exported const `CHARACTER_REGISTRY` (character registry) in `index.ts`.
+ */
 export const CHARACTER_REGISTRY: Record<string, CharacterDefinition> = ALL_CHARACTERS.reduce(
   (acc, char) => {
     acc[char.id] = char;
@@ -39,6 +45,9 @@ export const CHARACTER_REGISTRY: Record<string, CharacterDefinition> = ALL_CHARA
   {} as Record<string, CharacterDefinition>
 );
 
+/**
+ * Executes `getCharacterDefinition` (get character definition) in `index.ts`.
+ */
 export function getCharacterDefinition(id: string): CharacterDefinition | undefined {
   return CHARACTER_REGISTRY[id];
 }

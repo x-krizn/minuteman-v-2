@@ -5,6 +5,9 @@
 
 import { SkillDef } from '../../types';
 
+/**
+ * Canonical database definition for `shockwaveSkill` (`SLAMSURGE`, id `'shockwave'`) — Ground slam sends armor-breaking surge..
+ */
 export const shockwaveSkill: SkillDef = {
   id: 'shockwave',
   name: 'SLAMSURGE',

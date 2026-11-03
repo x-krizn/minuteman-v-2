@@ -29,8 +29,14 @@ for (const [path, mod] of Object.entries(tileModules)) {
   }
 }
 
+/**
+ * Exported const `ALL_TILES` (all tiles) in `index.ts`.
+ */
 export const ALL_TILES: TileDefinition[] = Array.from(tileMap.values());
 
+/**
+ * Exported const `TILE_REGISTRY` (tile registry) in `index.ts`.
+ */
 export const TILE_REGISTRY: Record<string, TileDefinition> = ALL_TILES.reduce(
   (acc, tile) => {
     acc[tile.id] = tile;
@@ -39,6 +45,9 @@ export const TILE_REGISTRY: Record<string, TileDefinition> = ALL_TILES.reduce(
   {} as Record<string, TileDefinition>
 );
 
+/**
+ * Exported const `TILE_BY_SYMBOL` (tile by symbol) in `index.ts`.
+ */
 export const TILE_BY_SYMBOL: Record<string, TileDefinition> = ALL_TILES.reduce(
   (acc, tile) => {
     acc[tile.symbol] = tile;
@@ -47,6 +56,9 @@ export const TILE_BY_SYMBOL: Record<string, TileDefinition> = ALL_TILES.reduce(
   {} as Record<string, TileDefinition>
 );
 
+/**
+ * Executes `getTileDefinition` (get tile definition) in `index.ts`.
+ */
 export function getTileDefinition(idOrSymbol: string): TileDefinition | undefined {
   return TILE_REGISTRY[idOrSymbol] || TILE_BY_SYMBOL[idOrSymbol];
 }

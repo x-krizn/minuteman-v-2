@@ -5,6 +5,9 @@
 
 import { AreaWikiDefinition } from '../../../../../types';
 
+/**
+ * Canonical database definition for `m00TheBogArea` (`M00 THE BOG`, id `'m00_the_bog'`, scope `'local'`) — Starting zone of Belldor featuring a maze of downed trees, temple/monastery ruins, corrosive bog water zones, ....
+ */
 export const m00TheBogArea: AreaWikiDefinition = {
   id: 'm00_the_bog',
   name: 'M00 THE BOG',

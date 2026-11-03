@@ -5,6 +5,9 @@
 
 import { RoomDefinition } from '../../../../types';
 
+/**
+ * Canonical database definition for `secretVault` (`Hidden Alcove Vault`, id `'recycled_vault_secret'`).
+ */
 export const secretVault: RoomDefinition = {
   id: 'recycled_vault_secret',
   name: 'Hidden Alcove Vault',
@@ -21,6 +24,9 @@ export const secretVault: RoomDefinition = {
   ],
 };
 
+/**
+ * Canonical database definition for `deadEndChamber` (`Secluded Crypt Chamber`, id `'recycled_vault_dead_end'`).
+ */
 export const deadEndChamber: RoomDefinition = {
   id: 'recycled_vault_dead_end',
   name: 'Secluded Crypt Chamber',

@@ -12,6 +12,9 @@ import { buildMagitechWeapon } from './builder';
 
 // ─── MARAUDER / HEAVY ORDNANCE LINEAGE MAGITECH WEAPONS ─────────────────────
 
+/**
+ * Canonical database definition for `b25BrushcutterWeapon` (`B-25 Brushcutter`, id `'b25_brushcutter'`, load `'heavy'`) — Twin-rotor, intercept + suppression.
+ */
 export const b25BrushcutterWeapon = buildMagitechWeapon({
   id: 'b25_brushcutter',
   name: 'B-25 Brushcutter',
@@ -40,6 +43,9 @@ export const b25BrushcutterWeapon = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `m350MaulerWeapon` (`M-350 Mauler`, id `'m350_mauler'`, load `'medium'`) — Three-shot burst suppression.
+ */
 export const m350MaulerWeapon = buildMagitechWeapon({
   id: 'm350_mauler',
   name: 'M-350 Mauler',
@@ -68,6 +74,9 @@ export const m350MaulerWeapon = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `ln1200AvalancheWeapon` (`LN-1200 Avalanche`, id `'ln1200_avalanche'`, load `'heavy'`) — Long-range, interference shielding.
+ */
 export const ln1200AvalancheWeapon = buildMagitechWeapon({
   id: 'ln1200_avalanche',
   name: 'LN-1200 Avalanche',
@@ -96,6 +105,9 @@ export const ln1200AvalancheWeapon = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `lg950TomahawkWeapon` (`LG-950 Tomahawk`, id `'lg950_tomahawk'`, load `'heavy'`) — Long-range, soft lock.
+ */
 export const lg950TomahawkWeapon = buildMagitechWeapon({
   id: 'lg950_tomahawk',
   name: 'LG-950 Tomahawk',
@@ -124,6 +136,9 @@ export const lg950TomahawkWeapon = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `siegebreakerWeapon` (`Siegebreaker`, id `'siegebreaker'`, load `'heavy'`) — Two-handed, integrated energy vent.
+ */
 export const siegebreakerWeapon = buildMagitechWeapon({
   id: 'siegebreaker',
   name: 'Siegebreaker',
@@ -154,6 +169,9 @@ export const siegebreakerWeapon = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `maceWeapon` (`Sanctum Flange Mace`, id `'mace'`, load `'medium'`) — Weighted flanged morningstar mace engineered to dent heavy Ablative and Reactive armor..
+ */
 export const maceWeapon: WeaponDefinition = {
   id: 'mace',
   name: 'Sanctum Flange Mace',
@@ -266,6 +284,9 @@ export const maceWeapon: WeaponDefinition = {
   ],
 };
 
+/**
+ * Canonical database definition for `handAxeWeapon` (`Marauder Hand Axe`, id `'hand_axe'`, load `'heavy'`) — Heavy-bearded boarding and siege hand axe built for aggressive close-quarters hacking..
+ */
 export const handAxeWeapon: WeaponDefinition = {
   id: 'hand_axe',
   name: 'Marauder Hand Axe',
@@ -380,6 +401,9 @@ export const handAxeWeapon: WeaponDefinition = {
 
 // ─── MARAUDER / HEAVY ORDNANCE AUXILIARIES (Migrated from Utility, Aux 3 & Aux 4) ───
 
+/**
+ * Canonical database definition for `utilitySiegeBraceAuxiliary` (`RAD R463 Fathomless System`, id `'utility_siege_brace'`, load `'medium'`) — Excess energy repairs subsystems and vents heat (+14 Shield, active Armor knit).
+ */
 export const utilitySiegeBraceAuxiliary = buildMagitechWeapon({
   id: 'utility_siege_brace',
   name: 'RAD R463 Fathomless System',
@@ -410,6 +434,9 @@ export const utilitySiegeBraceAuxiliary = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `aux3RadKineticRecyclingAuxiliary` (`RAD R-22 Bastion Kinetic Recycling`, id `'aux3_rad_kinetic_recycling'`, load `'medium'`) — Kinetic capacitor recycles stress into repair & venting (+18 Shield).
+ */
 export const aux3RadKineticRecyclingAuxiliary = buildMagitechWeapon({
   id: 'aux3_rad_kinetic_recycling',
   name: 'RAD R-22 Bastion Kinetic Recycling',
@@ -440,6 +467,9 @@ export const aux3RadKineticRecyclingAuxiliary = buildMagitechWeapon({
   ],
 });
 
+/**
+ * Canonical database definition for `aux4RadEtherVaporAuxiliary` (`RAD UF-12 Ether Vapor Launcher`, id `'aux4_rad_ether_vapor'`, load `'medium'`) — Vision obscurement, targeting scramble (+18 Shield, +0.5 Light).
+ */
 export const aux4RadEtherVaporAuxiliary = buildMagitechWeapon({
   id: 'aux4_rad_ether_vapor',
   name: 'RAD UF-12 Ether Vapor Launcher',

@@ -5,8 +5,14 @@
 
 import { Cartridge } from '../../types/cartridge';
 
+/**
+ * Maximum number of runtime error entries (`20`) retained in the `CartridgeRegistry` diagnostic ring buffer.
+ */
 export const MAX_ERRORS = 20;
 
+/**
+ * Singleton registry storing available `Cartridge` factories, active cartridge selection, and bounded error logs.
+ */
 export class CartridgeRegistry {
   private static instance: CartridgeRegistry;
   private carts: Cartridge[] = [];
@@ -87,4 +93,7 @@ export class CartridgeRegistry {
   }
 }
 
+/**
+ * Shared singleton instance of `CartridgeRegistry`.
+ */
 export const registry = CartridgeRegistry.getInstance();

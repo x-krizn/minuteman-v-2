@@ -69,6 +69,9 @@ export const TUTORIAL_ROOMS: Record<string, string[]> = {
   ],
 };
 
+/**
+ * Exported const `TUTORIAL_GREEN` (tutorial green) in `tutorial.ts`.
+ */
 export const TUTORIAL_GREEN: Record<string, number> = {
   '0,0': 1,
   '1,0': 1,
@@ -77,6 +80,11 @@ export const TUTORIAL_GREEN: Record<string, number> = {
   '1,-1': 1,
 };
 
-// Aliases for backwards compatibility with legacy level systems
+/**
+ * Aliases for backwards compatibility with legacy level systems.
+ */
 export const INITIAL_ROOMS = TUTORIAL_ROOMS;
+/**
+ * Exported const `INITIAL_GREEN` (initial green) in `tutorial.ts`.
+ */
 export const INITIAL_GREEN = TUTORIAL_GREEN;

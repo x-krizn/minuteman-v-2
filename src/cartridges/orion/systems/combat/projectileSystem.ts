@@ -40,6 +40,9 @@ import {
 import { applyDamageToLayers, PERFECT_BLOCK_WINDOW_SEC } from './damageSystem';
 import { getSkillCooldownKey } from './skillExecution';
 
+/**
+ * Executes `firePrimarySalvoShot` (fire primary salvo shot) in `projectileSystem.ts`. Mutates `state: OrionState`.
+ */
 export function firePrimarySalvoShot(
   state: OrionState,
   _ctx: OrionCombatContext,

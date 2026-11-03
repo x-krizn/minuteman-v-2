@@ -5,6 +5,9 @@
 
 import { MapDefinition, RoomDefinition } from '../../../../../types';
 
+/**
+ * Canonical database definition for `mapDeepBogMaze` (`Main Bog Expanse & Lady of the Lake Arena`, id `'map_deep_bog_maze'`, coord `"2,-1"`, scope `'local'`) — Expansive multi-screen Main Bog sectors featuring deep corrosive mire basins, stepping-stone ruins, submerged ....
+ */
 export const mapDeepBogMaze: MapDefinition = {
   id: 'map_deep_bog_maze',
   name: 'Main Bog Expanse & Lady of the Lake Arena',
@@ -48,6 +51,9 @@ export const mapDeepBogMaze: MapDefinition = {
   ],
 };
 
+/**
+ * Canonical database definition for `room20DeepBogMaze` (`Corrosive Marsh Trail`, id `'room_2_0_deep_bog_maze'`, coord `"2,0"`, scope `'local'`, safety tier `'hazard'`).
+ */
 export const room20DeepBogMaze: RoomDefinition = {
   id: 'room_2_0_deep_bog_maze',
   scope: 'local',
@@ -90,6 +96,9 @@ export const room20DeepBogMaze: RoomDefinition = {
   ],
 };
 
+/**
+ * Canonical database definition for `room21LadyOfTheLakeArena` (`Lady of the Lake Arena`, id `'room_2_1_lady_of_the_lake_arena'`, coord `"2,1"`, scope `'local'`, safety tier `'abyss'`).
+ */
 export const room21LadyOfTheLakeArena: RoomDefinition = {
   id: 'room_2_1_lady_of_the_lake_arena',
   scope: 'local',
@@ -148,6 +157,9 @@ export const room21LadyOfTheLakeArena: RoomDefinition = {
   },
 };
 
+/**
+ * Canonical database definition for `room3Neg1BogLoopHollow` (`Northern Bog Hollow`, id `'room_3_neg1_bog_loop_hollow'`, coord `"3,-1"`, scope `'local'`, safety tier `'hazard'`).
+ */
 export const room3Neg1BogLoopHollow: RoomDefinition = {
   id: 'room_3_neg1_bog_loop_hollow',
   scope: 'local',
@@ -193,6 +205,9 @@ export const room3Neg1BogLoopHollow: RoomDefinition = {
   },
 };
 
+/**
+ * Canonical database definition for `room30BogExitPerimeter` (`Main Bog Expanse & Exit Gate`, id `'room_3_0_bog_exit_perimeter'`, coord `"3,0"`, scope `'local'`, safety tier `'hazard'`).
+ */
 export const room30BogExitPerimeter: RoomDefinition = {
   id: 'room_3_0_bog_exit_perimeter',
   scope: 'local',

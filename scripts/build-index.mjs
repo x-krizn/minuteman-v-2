@@ -67,8 +67,9 @@ function docAbove(lines, i) {
   let k = j;
   while (k >= 0 && !lines[k].includes('/**')) k--;
   if (k < 0) return '';
-  return lines
-    .slice(k, j + 1)
+  const blockLines = lines.slice(k, j + 1);
+  if (blockLines.some((l) => l.includes('@license'))) return '';
+  return blockLines
     .map((l) => l.replace(/^\s*\/?\*+\/?\s?/, '').replace(/\*\/\s*$/, '').trim())
     .filter(Boolean)
     .join(' ');

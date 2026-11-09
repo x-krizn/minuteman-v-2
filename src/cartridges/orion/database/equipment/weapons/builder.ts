@@ -4,8 +4,10 @@
  */
 
 import {
+  ActionDefinition,
   DamageFamily,
   DamageType,
+  MeleeComboStepSpec,
   WeaponCategory,
   WeaponDefinition,
   WeaponTier,
@@ -491,7 +493,7 @@ export function buildMagitechWeapon(seed: MagitechWeaponSeed): WeaponDefinition 
           : 4
       : undefined);
 
-  return {
+  const rawWeapon: WeaponDefinition = {
     id: seed.id,
     name: seed.name,
     category: resolvedCategory,
@@ -619,6 +621,730 @@ export function buildMagitechWeapon(seed: MagitechWeaponSeed): WeaponDefinition 
         description: seed.skills[4].desc,
       },
     ],
+  };
+
+  return normalizeWeaponCombatFunctions(rawWeapon);
+}
+
+/**
+ * Generates a weapon-unique, fluid, reload-free melee combo sequence (`3–5` steps)
+ * tailored to the weapon's category, functional class, and Magitech/Custom identity.
+ */
+export function buildWeaponUniqueComboSequence(
+  weaponId: string,
+  category: WeaponCategory,
+  functionalType: string,
+  weightClass: WeaponWeightClass,
+  baseRange: number
+): MeleeComboStepSpec[] {
+  const r = Math.max(20, baseRange || 26);
+  const isLight = weightClass === 'light';
+  const isHeavy = weightClass === 'heavy';
+  const speedScale = isLight ? 0.82 : isHeavy ? 1.18 : 1.0;
+  const ft = functionalType.toLowerCase();
+  const idLower = weaponId.toLowerCase();
+
+  // 1. SHIELDS: 3-step Rim-Bash -> Counter-Sweep -> Fortress Slam
+  if (category === 'Shields') {
+    const isEnergyDisc = ft === 'corona' || ft === 'mote' || ft === 'disc' || ft === 'rhom';
+    return [
+      {
+        stepIndex: 0,
+        label: isEnergyDisc ? 'Phase Rim Pulse' : 'Leading Rim Check',
+        style: 'bash',
+        arcSpan: Math.PI * 0.58,
+        radius: r,
+        width: 14,
+        damageMult: 0.92,
+        tellDurationSec: Number((0.07 * speedScale).toFixed(2)),
+        actionDurationSec: Number((0.22 * speedScale).toFixed(2)),
+        flipDir: false,
+        knockbackScale: 0.8,
+      },
+      {
+        stepIndex: 1,
+        label: isEnergyDisc ? 'Gyro Edge Sweep' : 'Backhand Boss Bash',
+        style: isEnergyDisc ? 'slash' : 'bash',
+        arcSpan: Math.PI * 0.72,
+        radius: r + 2,
+        width: 16,
+        damageMult: 1.08,
+        tellDurationSec: Number((0.08 * speedScale).toFixed(2)),
+        actionDurationSec: Number((0.24 * speedScale).toFixed(2)),
+        flipDir: true,
+        knockbackScale: 1.0,
+      },
+      {
+        stepIndex: 2,
+        label: isEnergyDisc ? 'Aegis Nova Crush' : 'Bulwark Shock Slam',
+        style: 'slam',
+        arcSpan: Math.PI * 0.85,
+        radius: r + 4,
+        length: 14,
+        width: 20,
+        damageMult: 1.35,
+        tellDurationSec: Number((0.11 * speedScale).toFixed(2)),
+        actionDurationSec: Number((0.32 * speedScale).toFixed(2)),
+        flipDir: false,
+        extraArmorDent: 4,
+        knockbackScale: 1.35,
+      },
+    ];
+  }
+
+  // 2. SPEARS: Thrust-centric & Polearm sweeping fluid combos
+  if (category === 'Spears') {
+    const isHeavyLanceOrPike = ft === 'lance' || ft === 'pike' || ft === 'boar spear' || idLower.includes('lance');
+    const isPoleCleave = ft === 'partisan' || ft === 'spetum' || ft === 'broad spear' || ft === 'winged spear';
+    if (isHeavyLanceOrPike) {
+      return [
+        {
+          stepIndex: 0,
+          label: 'Couched Point Probe',
+          style: 'thrust',
+          arcSpan: Math.PI * 0.22,
+          radius: r,
+          length: r + 4,
+          width: 11,
+          damageMult: 0.95,
+          tellDurationSec: Number((0.09 * speedScale).toFixed(2)),
+          actionDurationSec: Number((0.25 * speedScale).toFixed(2)),
+        },
+        {
+          stepIndex: 1,
+          label: 'Haft Clearing Sweep',
+          style: 'slash',
+          arcSpan: Math.PI * 0.65,
+          radius: Math.round(r * 0.82),
+          width: 14,
+          damageMult: 1.05,
+          tellDurationSec: Number((0.09 * speedScale).toFixed(2)),
+          actionDurationSec: Number((0.26 * speedScale).toFixed(2)),
+          flipDir: true,
+        },
+        {
+          stepIndex: 2,
+          label: 'Grand Breaching Drive',
+          style: 'thrust',
+          arcSpan: Math.PI * 0.28,
+          radius: r + 8,
+          length: r + 10,
+          width: 14,
+          damageMult: 1.42,
+          tellDurationSec: Number((0.12 * speedScale).toFixed(2)),
+          actionDurationSec: Number((0.34 * speedScale).toFixed(2)),
+          extraArmorDent: 5,
+          knockbackScale: 1.3,
+        },
+      ];
+    }
+    return [
+      {
+        stepIndex: 0,
+        label: 'Snap Viper Thrust',
+        style: 'thrust',
+        arcSpan: Math.PI * 0.22,
+        radius: r,
+        length: r + 2,
+        width: 10,
+        damageMult: 0.9,
+        tellDurationSec: Number((0.06 * speedScale).toFixed(2)),
+        actionDurationSec: Number((0.19 * speedScale).toFixed(2)),
+      },
+      {
+        stepIndex: 1,
+        label: 'Double-Tap Shaft Poke',
+        style: 'thrust',
+        arcSpan: Math.PI * 0.25,
+        radius: r + 3,
+        length: r + 5,
+        width: 11,
+        damageMult: 1.02,
+        tellDurationSec: Number((0.06 * speedScale).toFixed(2)),
+        actionDurationSec: Number((0.2 * speedScale).toFixed(2)),
+        flipDir: true,
+      },
+      {
+        stepIndex: 2,
+        label: isPoleCleave ? 'Winged Halberd Arc' : 'Whirling Butt-Sweep',
+        style: 'slash',
+        arcSpan: Math.PI * 0.78,
+        radius: Math.round(r * 0.9),
+        width: 14,
+        damageMult: 1.15,
+        tellDurationSec: Number((0.08 * speedScale).toFixed(2)),
+        actionDurationSec: Number((0.23 * speedScale).toFixed(2)),
+      },
+      {
+        stepIndex: 3,
+        label: 'Heart-Seeker Skewer',
+        style: 'thrust',
+        arcSpan: Math.PI * 0.28,
+        radius: r + 7,
+        length: r + 9,
+        width: 13,
+        damageMult: 1.38,
+        tellDurationSec: Number((0.1 * speedScale).toFixed(2)),
+        actionDurationSec: Number((0.28 * speedScale).toFixed(2)),
+        extraArmorDent: 3,
+        knockbackScale: 1.2,
+      },
+    ];
+  }
+
+  // 3. IMPACT & AXES: Heavy blunt slams & bearded axe chops
+  if (category === 'Impact & Axes') {
+    const isAxe = ft === 'tomahawk' || ft === 'parashu' || ft === 'labrys' || ft === 'battle axe' || idLower.includes('axe');
+    if (isAxe) {
+      return [
+        {
+          stepIndex: 0,
+          label: 'Bearded Forehand Hack',
+          style: 'chop',
+          arcSpan: Math.PI * 0.58,
+          radius: r,
+          width: 14,
+          damageMult: 0.95,
+          tellDurationSec: Number((0.07 * speedScale).toFixed(2)),
+          actionDurationSec: Number((0.22 * speedScale).toFixed(2)),
+          flipDir: false,
+        },
+        {
+          stepIndex: 1,
+          label: 'Rending Back-Hook',
+          style: 'chop',
+          arcSpan: Math.PI * 0.64,
+          radius: r + 1,
+          width: 15,
+          damageMult: 1.1,
+          tellDurationSec: Number((0.08 * speedScale).toFixed(2)),
+          actionDurationSec: Number((0.23 * speedScale).toFixed(2)),
+          flipDir: true,
+          extraArmorDent: 2,
+        },
+        {
+          stepIndex: 2,
+          label: 'Spinning Cleaver Arc',
+          style: 'whirlwind',
+          arcSpan: Math.PI * 0.95,
+          radius: r + 3,
+          width: 16,
+          damageMult: 1.22,
+          tellDurationSec: Number((0.09 * speedScale).toFixed(2)),
+          actionDurationSec: Number((0.26 * speedScale).toFixed(2)),
+          flipDir: false,
+        },
+        {
+          stepIndex: 3,
+          label: 'Guillotine Timber-Drop',
+          style: 'slam',
+          arcSpan: Math.PI * 0.72,
+          radius: r + 4,
+          length: 16,
+          width: 20,
+          damageMult: 1.48,
+          tellDurationSec: Number((0.12 * speedScale).toFixed(2)),
+          actionDurationSec: Number((0.33 * speedScale).toFixed(2)),
+          extraArmorDent: 5,
+          knockbackScale: 1.35,
+        },
+      ];
+    }
+    // Maces, Hammers, Cudgels, Spikes, Mallets
+    return [
+      {
+        stepIndex: 0,
+        label: 'Flanged Rib-Cracker',
+        style: 'chop',
+        arcSpan: Math.PI * 0.56,
+        radius: r,
+        width: 15,
+        damageMult: 0.96,
+        tellDurationSec: Number((0.08 * speedScale).toFixed(2)),
+        actionDurationSec: Number((0.24 * speedScale).toFixed(2)),
+        flipDir: false,
+        extraArmorDent: 2,
+      },
+      {
+        stepIndex: 1,
+        label: 'Rising Pommel Uppercut',
+        style: 'chop',
+        arcSpan: Math.PI * 0.62,
+        radius: r + 1,
+        width: 16,
+        damageMult: 1.12,
+        tellDurationSec: Number((0.09 * speedScale).toFixed(2)),
+        actionDurationSec: Number((0.25 * speedScale).toFixed(2)),
+        flipDir: true,
+        extraArmorDent: 3,
+      },
+      {
+        stepIndex: 2,
+        label: 'Anvil-Breaker Overhead Slam',
+        style: 'slam',
+        arcSpan: Math.PI * 0.78,
+        radius: r + 4,
+        length: 16,
+        width: 22,
+        damageMult: 1.45,
+        tellDurationSec: Number((0.12 * speedScale).toFixed(2)),
+        actionDurationSec: Number((0.34 * speedScale).toFixed(2)),
+        extraArmorDent: 6,
+        knockbackScale: 1.4,
+      },
+    ];
+  }
+
+  // 4. BLADES: CURVED — Fluid 4-to-5 step draw-cuts, hooks, and whirling arcs
+  if (category === 'Blades: Curved') {
+    const isHookBlade = ft === 'khopesh' || ft === 'shotel' || ft === 'falx';
+    const isFastCurved = ft === 'wakizashi' || ft === 'katana' || ft === 'kilij' || isLight;
+    const baseSteps: MeleeComboStepSpec[] = [
+      {
+        stepIndex: 0,
+        label: isHookBlade ? 'Sickle Rim Draw' : 'Iai Quick-Draw Cut',
+        style: 'slash',
+        arcSpan: Math.PI * 0.66,
+        radius: r,
+        width: 12,
+        damageMult: 0.88,
+        tellDurationSec: Number((0.05 * speedScale).toFixed(2)),
+        actionDurationSec: Number((0.17 * speedScale).toFixed(2)),
+        flipDir: false,
+      },
+      {
+        stepIndex: 1,
+        label: isHookBlade ? 'Reverse Hook Wrench' : 'Ascending Swallow Slash',
+        style: isHookBlade ? 'chop' : 'slash',
+        arcSpan: Math.PI * 0.72,
+        radius: r + 1,
+        width: 13,
+        damageMult: 1.0,
+        tellDurationSec: Number((0.06 * speedScale).toFixed(2)),
+        actionDurationSec: Number((0.18 * speedScale).toFixed(2)),
+        flipDir: true,
+      },
+      {
+        stepIndex: 2,
+        label: 'Whirling Crescent Spin',
+        style: 'whirlwind',
+        arcSpan: Math.PI * 1.1,
+        radius: r + 2,
+        width: 14,
+        damageMult: 1.14,
+        tellDurationSec: Number((0.07 * speedScale).toFixed(2)),
+        actionDurationSec: Number((0.21 * speedScale).toFixed(2)),
+        flipDir: false,
+      },
+      {
+        stepIndex: 3,
+        label: isHookBlade ? 'Turbine Tendon Ripper' : 'Crimson Moon Finisher',
+        style: isHookBlade ? 'chop' : 'slash',
+        arcSpan: Math.PI * 0.92,
+        radius: r + 4,
+        width: 16,
+        damageMult: 1.38,
+        tellDurationSec: Number((0.09 * speedScale).toFixed(2)),
+        actionDurationSec: Number((0.26 * speedScale).toFixed(2)),
+        flipDir: true,
+        extraArmorDent: 3,
+        knockbackScale: 1.15,
+      },
+    ];
+    if (isFastCurved) {
+      baseSteps.splice(3, 0, {
+        stepIndex: 3,
+        label: 'Reverse-Grip Flurry',
+        style: 'slash',
+        arcSpan: Math.PI * 0.78,
+        radius: r + 2,
+        width: 13,
+        damageMult: 1.18,
+        tellDurationSec: 0.05,
+        actionDurationSec: 0.16,
+        flipDir: true,
+      });
+      baseSteps[4].stepIndex = 4;
+    }
+    return baseSteps;
+  }
+
+  // 5. BLADES: STRAIGHT (and default Melee) — Slash -> Cross-Cut -> Point Thrust -> Execution Cleave
+  const isGreatsword = ft === 'zweihander' || ft === 'flamberge' || ft === 'executioner sword';
+  const isDaggerOrShort = ft === 'cinquedea' || idLower.includes('whisper') || idLower.includes('phantom');
+  if (isDaggerOrShort) {
+    return [
+      {
+        stepIndex: 0,
+        label: 'Viper Cross-Slice',
+        style: 'slash',
+        arcSpan: Math.PI * 0.55,
+        radius: r,
+        width: 10,
+        damageMult: 0.85,
+        tellDurationSec: 0.04,
+        actionDurationSec: 0.14,
+        flipDir: false,
+      },
+      {
+        stepIndex: 1,
+        label: 'Backhand Seam Cut',
+        style: 'slash',
+        arcSpan: Math.PI * 0.6,
+        radius: r,
+        width: 10,
+        damageMult: 0.95,
+        tellDurationSec: 0.04,
+        actionDurationSec: 0.14,
+        flipDir: true,
+      },
+      {
+        stepIndex: 2,
+        label: 'Stiletto Joint Puncture',
+        style: 'thrust',
+        arcSpan: Math.PI * 0.22,
+        radius: r + 4,
+        length: r + 6,
+        width: 9,
+        damageMult: 1.1,
+        tellDurationSec: 0.05,
+        actionDurationSec: 0.16,
+      },
+      {
+        stepIndex: 3,
+        label: 'Spinning Twin-Edge Lacerate',
+        style: 'whirlwind',
+        arcSpan: Math.PI * 1.0,
+        radius: r + 2,
+        width: 12,
+        damageMult: 1.18,
+        tellDurationSec: 0.06,
+        actionDurationSec: 0.18,
+        flipDir: true,
+      },
+      {
+        stepIndex: 4,
+        label: 'Mercy-Stroke Vital Thrust',
+        style: 'thrust',
+        arcSpan: Math.PI * 0.25,
+        radius: r + 6,
+        length: r + 8,
+        width: 11,
+        damageMult: 1.4,
+        tellDurationSec: 0.07,
+        actionDurationSec: 0.22,
+        extraArmorDent: 3,
+      },
+    ];
+  }
+
+  return [
+    {
+      stepIndex: 0,
+      label: isGreatsword ? 'Wide Montante Sweep' : 'Diagonal Ward Slash',
+      style: 'slash',
+      arcSpan: isGreatsword ? Math.PI * 0.85 : Math.PI * 0.68,
+      radius: r,
+      width: isGreatsword ? 16 : 13,
+      damageMult: 0.92,
+      tellDurationSec: Number((0.07 * speedScale).toFixed(2)),
+      actionDurationSec: Number((0.21 * speedScale).toFixed(2)),
+      flipDir: false,
+    },
+    {
+      stepIndex: 1,
+      label: isGreatsword ? 'Returning Zwerchhau' : 'Backhand Cross-Cut',
+      style: 'slash',
+      arcSpan: isGreatsword ? Math.PI * 0.9 : Math.PI * 0.72,
+      radius: r + 1,
+      width: isGreatsword ? 17 : 13,
+      damageMult: 1.05,
+      tellDurationSec: Number((0.07 * speedScale).toFixed(2)),
+      actionDurationSec: Number((0.22 * speedScale).toFixed(2)),
+      flipDir: true,
+    },
+    {
+      stepIndex: 2,
+      label: 'Half-Sword Estoc Thrust',
+      style: 'thrust',
+      arcSpan: Math.PI * 0.24,
+      radius: r + 5,
+      length: r + 7,
+      width: 12,
+      damageMult: 1.18,
+      tellDurationSec: Number((0.08 * speedScale).toFixed(2)),
+      actionDurationSec: Number((0.23 * speedScale).toFixed(2)),
+      extraArmorDent: 2,
+    },
+    {
+      stepIndex: 3,
+      label: isGreatsword ? 'Executioner Wrath Cleave' : 'High-Guard Wrath Finisher',
+      style: isGreatsword ? 'slam' : 'chop',
+      arcSpan: Math.PI * 0.82,
+      radius: r + 4,
+      length: isGreatsword ? 16 : undefined,
+      width: isGreatsword ? 20 : 16,
+      damageMult: 1.42,
+      tellDurationSec: Number((0.1 * speedScale).toFixed(2)),
+      actionDurationSec: Number((0.29 * speedScale).toFixed(2)),
+      flipDir: false,
+      extraArmorDent: 4,
+      knockbackScale: 1.25,
+    },
+  ];
+}
+
+/**
+ * Resolves the appropriate multi-round salvo `ammoCount` and optional `internalCharges`
+ * for any ranged skill (`Slots 1..4` / Actions 2–5).
+ */
+export function resolveSkillAmmoAndCharges(
+  category: WeaponCategory,
+  functionalType: string,
+  slot: 1 | 2 | 3 | 4,
+  skillName: string,
+  skillDesc: string,
+  isBlock?: boolean
+): { ammoCount: number; internalCharges?: number; internalCycleSec?: number } {
+  if (isBlock) return { ammoCount: 0 };
+  const text = `${skillName} ${skillDesc} ${functionalType}`.toLowerCase();
+
+  let ammoCount = slot === 4 ? 6 : slot === 2 ? 3 : slot === 1 ? 2 : 2;
+  if (text.includes('nine') || text.includes('9-') || text.includes('rotary') || text.includes('melting point')) {
+    ammoCount = 9;
+  } else if (text.includes('seven') || text.includes('7-') || text.includes('storm') || text.includes('carpet')) {
+    ammoCount = 7;
+  } else if (
+    text.includes('six') ||
+    text.includes('6-') ||
+    text.includes('swarm') ||
+    text.includes('barrage') ||
+    text.includes('avalanche') ||
+    text.includes('saturation') ||
+    text.includes('drum') ||
+    text.includes('unload')
+  ) {
+    ammoCount = 6;
+  } else if (text.includes('five') || text.includes('5-') || text.includes('volley') || text.includes('fan')) {
+    ammoCount = 5;
+  } else if (text.includes('four') || text.includes('4-') || text.includes('quad') || text.includes('salvo')) {
+    ammoCount = 4;
+  } else if (text.includes('three') || text.includes('3-') || text.includes('triple') || text.includes('burst')) {
+    ammoCount = 3;
+  } else if (text.includes('two') || text.includes('2-') || text.includes('double') || text.includes('twin')) {
+    ammoCount = 2;
+  } else if (
+    text.includes('slug') ||
+    text.includes('spike') ||
+    text.includes('bodkin') ||
+    text.includes('lance') ||
+    text.includes('bore') ||
+    text.includes('impale') ||
+    text.includes('skewer') ||
+    text.includes('snipe')
+  ) {
+    ammoCount = 1;
+  }
+
+  // Skills that fire 1-3 precision rounds on Slot 1 or Slot 2 can hold 2-3 internal charges
+  // with a short per-shot internal cycle before entering their long depletion cooldown.
+  let internalCharges: number | undefined;
+  let internalCycleSec: number | undefined;
+  if (slot === 1 || (slot === 2 && ammoCount <= 2)) {
+    internalCharges = category === 'Bows' ? 2 : ammoCount === 1 ? 3 : 2;
+    internalCycleSec = category === 'Bows' ? 0.55 : 0.45;
+  }
+
+  return { ammoCount, internalCharges, internalCycleSec };
+}
+
+/**
+ * Normalizes any `WeaponDefinition` to enforce the canonical combat overhaul rules:
+ * 1. `Bows`: Single-shot hold-to-charge weapons (`shotsPerChain = 1`, `isChargeable = true` on Slot 0, scaling damage/velocity/heat).
+ * 2. `Melee & Shields`: Never reload (`noReload = true`, `reloadDurationSec = 0`), fluid weapon-unique combo sequence with internal reset cooldown.
+ * 3. `Ranged Weapons`: 100% increase (`2×`) on Basic Attack (`Slot 0`) ammo (`shotsPerChain`), reload strictly on Slot 0 (`noReload = true` on Slots 1–4), and explicit `ammoCount` / `internalCharges` on ranged skills.
+ */
+export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): WeaponDefinition {
+  // Avoid double-normalizing if already normalized
+  if (
+    weapon.moveset[0]?.isChargeable ||
+    weapon.moveset[0]?.comboSequence ||
+    weapon.moveset[1]?.noReload !== undefined
+  ) {
+    return weapon;
+  }
+
+  const category = resolveWeaponCategory(
+    weapon.id,
+    weapon.weaponClass,
+    weapon.equipmentRole,
+    weapon.category
+  );
+  const functionalType = resolveWeaponFunctionalType(
+    weapon.id,
+    category,
+    weapon.weaponClass,
+    weapon.name
+  );
+  const weightClass: WeaponWeightClass = weapon.weightClass || 'medium';
+  const isBow = category === 'Bows' || weapon.id === 'great_bow' || weapon.id.startsWith('bow_');
+  const isMeleeOrShield =
+    !isBow &&
+    (weapon.equipmentRole === 'melee' ||
+      weapon.equipmentRole === 'shield' ||
+      category === 'Shields' ||
+      category === 'Spears' ||
+      category === 'Impact & Axes' ||
+      category === 'Blades: Curved' ||
+      category === 'Blades: Straight');
+
+  // 1. BOWS: Single-shot charge-up weapon
+  if (isBow) {
+    const maxChargeSec =
+      weightClass === 'heavy' ? 1.05 : weightClass === 'medium' ? 0.88 : 0.72;
+    const singleShotBaseDmg = Math.max(
+      18,
+      Math.round(
+        Math.max(weapon.damagePerShot * 2.1, weapon.damagePerShot * Math.min(4, weapon.shotsPerChain) * 0.55)
+      )
+    );
+    const singleArrowNockSec =
+      weightClass === 'heavy' ? 0.95 : weightClass === 'medium' ? 0.8 : 0.65;
+
+    const updatedMoveset: ActionDefinition[] = weapon.moveset.map((m, idx) => {
+      if (idx === 0) {
+        return {
+          ...m,
+          damage: singleShotBaseDmg,
+          isChain: true,
+          noReload: false,
+          isChargeable: true,
+          maxChargeSec,
+          ammoCount: 1,
+          reloadDurationSec: singleArrowNockSec,
+          description: `${m.description} [Single-Shot Charge: Hold [X] up to ${maxChargeSec.toFixed(2)}s for 1.85× DMG & 1.45× Velocity at 1.65× Heat]`,
+        };
+      }
+      const { ammoCount, internalCharges, internalCycleSec } = resolveSkillAmmoAndCharges(
+        category,
+        functionalType,
+        idx as 1 | 2 | 3 | 4,
+        m.name,
+        m.description,
+        m.isBlock
+      );
+      return {
+        ...m,
+        isChain: false,
+        noReload: true,
+        reloadDurationSec: undefined,
+        ammoCount,
+        internalCharges,
+        internalCycleSec,
+      };
+    });
+
+    return {
+      ...weapon,
+      category,
+      weaponClass: functionalType,
+      shotsPerChain: 1,
+      damagePerShot: singleShotBaseDmg,
+      chainDurationSec: 0.32,
+      reloadDurationSec: singleArrowNockSec,
+      moveset: updatedMoveset,
+    };
+  }
+
+  // 2. MELEE & SHIELDS: Fluid weapon-unique movesets, zero reload, internal combo reset window
+  if (isMeleeOrShield) {
+    const comboSequence = buildWeaponUniqueComboSequence(
+      weapon.id,
+      category,
+      functionalType,
+      weightClass,
+      weapon.moveset[0]?.range || 26
+    );
+    const totalComboDuration = Number(
+      comboSequence
+        .reduce((acc, s) => acc + s.tellDurationSec + s.actionDurationSec, 0)
+        .toFixed(2)
+    );
+
+    const updatedMoveset: ActionDefinition[] = weapon.moveset.map((m, idx) => {
+      if (idx === 0) {
+        return {
+          ...m,
+          isChain: false,
+          noReload: true,
+          reloadDurationSec: undefined,
+          comboSequence,
+          comboResetWindowSec: 1.1,
+          description: `${m.description} [${comboSequence.length}-Step Fluid Combo (${comboSequence.map((s) => s.label).join(' → ')}) · No Reload]`,
+        };
+      }
+      return {
+        ...m,
+        isChain: false,
+        noReload: true,
+        reloadDurationSec: undefined,
+      };
+    });
+
+    return {
+      ...weapon,
+      category,
+      weaponClass: functionalType,
+      shotsPerChain: comboSequence.length,
+      chainDurationSec: totalComboDuration,
+      reloadDurationSec: 0,
+      moveset: updatedMoveset,
+    };
+  }
+
+  // 3. RANGED WEAPONS (Casters, Carriers & Munitions, etc.):
+  //    - 100% increase (2×) on Basic Attack (Slot 0) ammo
+  //    - Reload strictly on Basic Attack (Slot 0); Skills 1..4 have noReload = true + ammoCount / internalCharges
+  const doubledAmmo = Math.max(2, weapon.shotsPerChain * 2);
+  const scaledChainDuration = Number((weapon.chainDurationSec * 1.55).toFixed(2));
+
+  const updatedMoveset: ActionDefinition[] = weapon.moveset.map((m, idx) => {
+    if (idx === 0) {
+      return {
+        ...m,
+        isChain: true,
+        noReload: false,
+        ammoCount: doubledAmmo,
+        actionDurationSec: scaledChainDuration,
+        reloadDurationSec: weapon.reloadDurationSec,
+      };
+    }
+    const { ammoCount, internalCharges, internalCycleSec } = resolveSkillAmmoAndCharges(
+      category,
+      functionalType,
+      idx as 1 | 2 | 3 | 4,
+      m.name,
+      m.description,
+      m.isBlock
+    );
+    return {
+      ...m,
+      isChain: false,
+      noReload: true,
+      reloadDurationSec: undefined,
+      ammoCount,
+      internalCharges,
+      internalCycleSec,
+    };
+  });
+
+  return {
+    ...weapon,
+    category,
+    weaponClass: functionalType,
+    shotsPerChain: doubledAmmo,
+    chainDurationSec: scaledChainDuration,
+    moveset: updatedMoveset,
   };
 }
 

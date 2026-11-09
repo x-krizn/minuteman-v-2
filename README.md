@@ -68,9 +68,9 @@ Project Orion can be played using the on-screen virtual handheld pad, keyboard, 
 | **Move / Aim** | 8-Way D-Pad / Stick | `WASD` / `Arrow Keys` | 8-directional Magic-Current glide movement and directional facing. |
 | **A** | Face Button A | `Z` / `Space` | **Interact / Jump**: Context interaction at Waystations, Waygates, Caches, Switches, and NPCs; vertical jump over pitfalls and hazards when clear. |
 | **B** | Face Button B | `X` / `Shift` | **Booster Dash / Continuous Boost**: Tap for a high-impulse directional dash; hold to sustain continuous boost (generates reactor heat). |
-| **X** | Face Button X | `C` / `J` | **Action 1 / Action 2**: Tap for primary weapon salvo/combo (`Action 1`); hold for primary weapon special (`Action 2`). Double-tap for tactical reload/vent. |
+| **X** | Face Button X | `C` / `J` | **Action 1 / Action 2**: **Ranged**: Tap/hold for primary salvo (`2×` magazine capacity) and double-tap for tactical reload/vent (Basic Attack is the *only* skill that reloads). **Bows**: Hold `[X]` to draw & charge a single high-velocity arrow (scaling damage, range, and heat), release `[X]` to fire. **Melee & Shields**: Never reload—tap/hold `[X]` to chain through fluid weapon-unique 3-to-5 step combo sequences (resets after `1.1s` idle). |
 | **Y** | Face Button Y | `V` / `K` | **Action 3 / Action 4 (Guard)**: Tap for heavy tactical skill (`Action 3`); hold to raise directional guard (`Action 4`, `0.25s` perfect block/parry window). |
-| **R** | Right Trigger | `E` / `I` | **Action 5 / Utility (`Action 6`)**: Tap to trigger off-hand, paired, or tactical utility system. |
+| **R** | Right Trigger | `E` / `I` | **Action 5 / Utility (`Action 6`)**: Tap to trigger off-hand, paired, or tactical utility system. Ranged skills (`Actions 2–5`) fire multi-round bursts/salvos (`ammoCount`) or use per-shot internal charges (`internalCharges`) without manual reload. |
 | **L** | Left Trigger | `Q` / `U` | **Weapon Set Swap / Target Lock**: Tap to cycle target lock (`SELECT` also cycles lock); hold to swap between Weapon Set 1 and Weapon Set 2 (`5.0s` base cooldown). |
 | **SELECT / SHIFT** | Pill Button | `Tab` / `Backspace` | **Pilot Satchel**: Opens the 7-tab tactical menu (`[L]` / `[R]` cycles tabs). |
 | **START** | Pill Button | `Enter` | **System Menu**: Opens Pause Menu, HUD mode toggle (Overlay vs. Pixel Canvas), Pilot Roster Save/Load, and Options. |
@@ -163,7 +163,7 @@ Incoming damage cascades sequentially through three distinct defensive layers:
 
 ### 3.3 Weight, Momentum & Stability (`Inertia Physics`)
 
-Project Orion does not use an arbitrary "poise bar." Instead, hit reactions (`none`, `flinch`, `stagger`, `knockback`) are governed by **Weight vs. Weight** and **Stability (`S`)**:
+Project Orion does not use an arbitrary "poise bar." Instead, hit reactions (`none`, `flinch`, `stagger`, `knockback`, `knockdown`) are governed by **Weight vs. Weight** and **Stability (`S`)**:
 
 | Property | What Controls It | How It Feels in Combat |
 | :--- | :--- | :--- |
@@ -171,7 +171,8 @@ Project Orion does not use an arbitrary "poise bar." Instead, hit reactions (`no
 | **Directional Charge (`μ`)** | Gliding *into* the direction of an incoming hit | Increases your effective weight (`m_eff = m × (1 + μ)`). Charging head-on into an attack makes you much harder to push back. Moving sideways or retreating gives `μ = 0`. |
 | **Stability (`S`)** | Frame Plating + Leg Stabilizers + Hardware + Feats | Controls your **shrug-off deadband** (ignoring small hits completely) and **recovery speed** (how quickly your mech regains control after being staggered or knocked back). |
 | **Melee Impulse (`J_melee`)** | Attack Weight + Attacker Frame Weight × Charge (`μ`) × Speed | A heavy mech charging forward puts its own body mass behind a melee swing. |
-| **Ranged Impulse (`J_ranged`)** | Projectile Weight × Projectile Speed *(only)* | A bullet or rocket pushes based purely on the ordnance itself—never the shooter's frame weight. |
+| **Ranged Impulse (`J_ranged`)** | Projectile Weight × Projectile Speed *(only)* | Ranged hits push based purely on projectile mass/velocity, dampened while **Layer 1 Shields** hold (`0.35×` push) so targets are never pushed off screen before shields break. |
+| **Grounded Knockdown** | Excess Impulse (`Δv_eff >= 72` or capped push speed) | When impact force exceeds the horizontal push cap (`105 px/s`), excess impulse converts into a grounded **Knockdown**, flooring the target in place for `0.65s–1.15s` instead of launching them off screen. |
 
 ---
 

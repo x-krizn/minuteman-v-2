@@ -87,6 +87,8 @@ export interface EnemyEntity {
   effectiveWeight?: number;
   stability?: number;
   hitstopTimer?: number;
+  /** Remaining grounded knockdown duration in seconds when excess impulse floors the enemy in place */
+  knockdownTimer?: number;
   lastInertiaOutcome?: InertiaOutcomeBand;
   lastInertiaOutcomeTimer?: number;
   /** Enemy Light / vision radius in tiles (defaults to 5 tiles = 80px) */

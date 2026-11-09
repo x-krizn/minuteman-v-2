@@ -272,8 +272,19 @@ export function renderDepthSortedEntitiesAndProps(
           g.restore();
         }
 
-        // §8 Player Legibility: Distinct visible outcome ring for Shrugged-Off / Flinch / Stagger / Knockback
-        if ((e.lastInertiaOutcomeTimer || 0) > 0 && e.lastInertiaOutcome) {
+        // §8 Player Legibility: Distinct visible outcome ring for Shrugged-Off / Flinch / Stagger / Knockback / Knockdown
+        if ((e.knockdownTimer || 0) > 0) {
+          g.save();
+          g.strokeStyle = '#e879f9';
+          g.lineWidth = 2.0;
+          g.globalAlpha = 0.92;
+          g.beginPath();
+          g.ellipse(e.x, ey + 1, 10, 4.5, 0, 0, Math.PI * 2);
+          g.stroke();
+          g.fillStyle = '#f5d0fe';
+          g.fillRect(e.x - 6, ey - 26, Math.max(2, 12 * Math.min(1, (e.knockdownTimer || 0) / 1.1)), 2);
+          g.restore();
+        } else if ((e.lastInertiaOutcomeTimer || 0) > 0 && e.lastInertiaOutcome) {
           g.save();
           const outColor =
             e.lastInertiaOutcome === 'none'
@@ -282,7 +293,9 @@ export function renderDepthSortedEntitiesAndProps(
                 ? '#fde047'
                 : e.lastInertiaOutcome === 'stagger'
                   ? '#fb923c'
-                  : '#f43f5e';
+                  : e.lastInertiaOutcome === 'knockdown'
+                    ? '#e879f9'
+                    : '#f43f5e';
           g.strokeStyle = outColor;
           g.lineWidth = e.lastInertiaOutcome === 'none' ? 1.4 : 1.8;
           g.globalAlpha = Math.min(0.9, (e.lastInertiaOutcomeTimer || 0) * 1.6);
@@ -479,8 +492,46 @@ export function renderDepthSortedEntitiesAndProps(
         g.restore();
       }
 
-      // §8 Player Legibility: Distinct visible outcome ring for Shrugged-Off / Flinch / Stagger / Knockback on Player
-      if ((state.lastInertiaOutcomeTimer || 0) > 0 && state.lastInertiaOutcome) {
+      // Bow Single-Shot Charge-Up Tension Arc & Draw Bar
+      if (state.isChargingBow) {
+        const maxCharge = Math.max(0.25, state.bowMaxChargeSec || 0.78);
+        const ratio = Math.max(0, Math.min(1, (state.bowChargeTimer || 0) / maxCharge));
+        const aimAng = Math.atan2(dirInfo.dy, dirInfo.dx);
+        const isFullDraw = ratio >= 0.92;
+        g.save();
+        g.strokeStyle = isFullDraw ? '#fde047' : '#38bdf8';
+        g.lineWidth = isFullDraw ? 2.1 : 1.5;
+        g.globalAlpha = 0.92;
+        g.beginPath();
+        g.arc(
+          state.x + Math.cos(aimAng) * 5,
+          py - 8 + Math.sin(aimAng) * 4,
+          10,
+          aimAng - Math.PI * 0.38 * Math.max(0.25, ratio),
+          aimAng + Math.PI * 0.38 * Math.max(0.25, ratio)
+        );
+        g.stroke();
+
+        // Overhead charge bar
+        const barW = 16;
+        g.fillStyle = '#020617';
+        g.fillRect(state.x - barW / 2, py - 24, barW, 3);
+        g.fillStyle = isFullDraw ? '#fde047' : '#38bdf8';
+        g.fillRect(state.x - barW / 2, py - 24, Math.round(barW * ratio), 3);
+        g.restore();
+      }
+
+      // §8 Player Legibility: Distinct visible outcome ring for Shrugged-Off / Flinch / Stagger / Knockback / Knockdown on Player
+      if ((state.knockdownTimer || 0) > 0) {
+        g.save();
+        g.strokeStyle = '#e879f9';
+        g.lineWidth = 2.0;
+        g.globalAlpha = 0.92;
+        g.beginPath();
+        g.ellipse(state.x, py + 1, 11, 5, 0, 0, Math.PI * 2);
+        g.stroke();
+        g.restore();
+      } else if ((state.lastInertiaOutcomeTimer || 0) > 0 && state.lastInertiaOutcome) {
         g.save();
         const pOutColor =
           state.lastInertiaOutcome === 'none'
@@ -489,7 +540,9 @@ export function renderDepthSortedEntitiesAndProps(
               ? '#fde047'
               : state.lastInertiaOutcome === 'stagger'
                 ? '#fb923c'
-                : '#f43f5e';
+                : state.lastInertiaOutcome === 'knockdown'
+                  ? '#e879f9'
+                  : '#f43f5e';
         g.strokeStyle = pOutColor;
         g.lineWidth = state.lastInertiaOutcome === 'none' ? 1.5 : 1.9;
         g.globalAlpha = Math.min(0.92, (state.lastInertiaOutcomeTimer || 0) * 1.5);

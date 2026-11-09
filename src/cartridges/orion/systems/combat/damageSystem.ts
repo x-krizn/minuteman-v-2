@@ -376,11 +376,18 @@ export function resolveEnemyMeleeAttacks(
           e.x - state.x,
           e.y - state.y
         );
+        const existingPlayerKbSpeed = Math.hypot(
+          state.knockbackVx || 0,
+          state.knockbackVy || 0
+        );
         const inertiaRes = resolveHitInertia({
           impulseJ,
           defenderWeight: playerProf.totalBaseWeight,
           defenderMu: playerDefenderMu,
           defenderStability: playerProf.stability,
+          isRanged: false,
+          defenderShieldsActive: state.shields.capacity > 0,
+          existingKnockbackSpeedPx: existingPlayerKbSpeed,
         });
 
         state.knockbackVx =
@@ -407,6 +414,28 @@ export function resolveEnemyMeleeAttacks(
           const outFmt = formatInertiaOutcomeLabel('flinch');
           triggerEntityFlash(state, outFmt.color, 0.12, 'hit');
           ctx.spawnParticles(state.x, state.y, state.z + 12, 4, outFmt.color, '');
+        } else if (inertiaRes.outcome === 'knockdown') {
+          state.knockdownTimer = Math.max(
+            state.knockdownTimer || 0,
+            inertiaRes.knockdownSec
+          );
+          state.staggerRecoveryTimer = Math.max(
+            state.staggerRecoveryTimer || 0,
+            inertiaRes.recoverySec
+          );
+          state.isContinuousBoosting = false;
+          state.isBoosterDashing = false;
+          state.isChargingBow = false;
+          state.glidePhase = 'winddown';
+          if (state.skillTellTimer > 0) {
+            state.skillTellTimer = 0;
+            state.skillActionTimer = 0;
+            state.activeSkillSlot = null;
+            state.activeActionId = null;
+          }
+          const outFmt = formatInertiaOutcomeLabel('knockdown');
+          triggerEntityFlash(state, outFmt.color, 0.22, 'stagger');
+          ctx.spawnParticles(state.x, state.y, state.z + 10, 8, outFmt.color, 'KNOCKDOWN!');
         } else {
           // Stagger or Knockback (e.g. Sir Bors big slow hit breaking a charge!)
           state.staggerRecoveryTimer = Math.max(

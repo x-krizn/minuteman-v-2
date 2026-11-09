@@ -276,6 +276,12 @@ export function updateEnemies(
     if ((e.lastInertiaOutcomeTimer || 0) > 0) {
       e.lastInertiaOutcomeTimer = Math.max(0, (e.lastInertiaOutcomeTimer || 0) - dt);
     }
+    if ((e.knockdownTimer || 0) > 0) {
+      e.knockdownTimer = Math.max(0, (e.knockdownTimer || 0) - dt);
+      e.stun = Math.max(e.stun, e.knockdownTimer);
+      e.knockbackVx = (e.knockbackVx || 0) * 0.45;
+      e.knockbackVy = (e.knockbackVy || 0) * 0.45;
+    }
 
     // Apply physical knockback displacement slide (`Δv = J / m_eff`, `inertia-v0.md`)
     const ekvx = e.knockbackVx || 0;

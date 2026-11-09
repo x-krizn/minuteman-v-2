@@ -109,6 +109,8 @@ export interface OrionState {
   spawnGraceTimer?: number;
   /** Active stagger/knockback recovery timer in seconds (`Δv_eff / (k2 * S)`) */
   staggerRecoveryTimer?: number;
+  /** Active grounded knockdown timer in seconds when excess impulse floors the mech */
+  knockdownTimer?: number;
   /** Current directional forward momentum fraction `μ` (0..1) */
   currentMu?: number;
   /** Current base frame + loadout weight `m` */
@@ -117,7 +119,7 @@ export interface OrionState {
   effectiveWeight?: number;
   /** Current frame stability `S` (governs shrug-off deadband `k1 * S` and recovery `k2 * S`) */
   stability?: number;
-  /** Most recent collision outcome band (`none` | `flinch` | `stagger` | `knockback`) */
+  /** Most recent collision outcome band (`none` | `flinch` | `stagger` | `knockback` | `knockdown`) */
   lastInertiaOutcome?: InertiaOutcomeBand;
   /** Visual feedback timer for the most recent inertia outcome */
   lastInertiaOutcomeTimer?: number;
@@ -154,13 +156,29 @@ export interface OrionState {
   activeWeaponIndex: number;
   weaponSwapCooldown: number; // 5.0s global cooldown
 
-  // Weapon State & Ammo
-  ammo: number; // e.g. 9 for Gladius
+  // Weapon State, Ammo, Bow Charge & Fluid Melee Combo
+  ammo: number; // e.g. 18 for Gladius (2x basic attack ammo)
   maxAmmo: number;
   isReloading: boolean;
   reloadTimer: number;
   reloadDuration: number;
   skillCooldowns: number[]; // Cooldowns for Skills 0..4
+  /** True while holding [X] to draw & charge a single-shot Bow */
+  isChargingBow?: boolean;
+  /** Elapsed draw charge time in seconds on the active Bow */
+  bowChargeTimer?: number;
+  /** Target draw duration in seconds for 100% Bow charge */
+  bowMaxChargeSec?: number;
+  /** Charge ratio (0..1) captured on Bow release for the queued release shot */
+  pendingBowChargeRatio?: number;
+  /** Current 0-based combo step in the active melee weapon's fluid moveset */
+  meleeComboStep?: number;
+  /** Remaining idle window in seconds before the melee combo resets to Step 0 */
+  meleeComboResetTimer?: number;
+  /** Brief internal sequence reset cooldown in seconds after completing a melee combo finisher */
+  meleeSequenceCooldownTimer?: number;
+  /** Remaining internal per-shot charges for ranged skills (Slots 1..4) before long cooldown */
+  skillInternalAmmo?: Record<string, number>;
 
   // Active Skill / Action Windup & Tell
   activeSkillSlot: number | null;

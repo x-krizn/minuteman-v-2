@@ -968,19 +968,36 @@ export function syncStateGates(state: OrionState): OrionCapabilityGates {
     'gladius_boltcaster';
   const activeWDef = getWeaponDefinition(activeWId);
   if (activeWDef) {
-    const hasQuiverSynergy =
-      activeWDef.equipmentRole === 'ranged' &&
-      (state.equippedWeapons.includes('quiver') || state.equipmentSlots.slot3 === 'quiver');
-    const activeGemMod = getWeaponGemCombatModifiers(state, activeWId);
-    const targetMaxAmmo =
-      activeWDef.shotsPerChain +
-      (hasQuiverSynergy ? 3 : 0) +
-      activeGemMod.bonusMaxAmmo;
-    if (state.maxAmmo !== targetMaxAmmo) {
-      state.maxAmmo = targetMaxAmmo;
-      state.ammo = Math.min(state.ammo, state.maxAmmo);
+    const isMeleeNoReload =
+      Boolean(activeWDef.moveset[0]?.noReload) ||
+      activeWDef.equipmentRole === 'melee' ||
+      activeWDef.equipmentRole === 'shield';
+    if (isMeleeNoReload) {
+      const comboLen =
+        activeWDef.moveset[0]?.comboSequence?.length || activeWDef.shotsPerChain || 3;
+      state.maxAmmo = comboLen;
+      state.ammo = comboLen;
+      state.isReloading = false;
+      state.reloadTimer = 0;
+      state.reloadDuration = 0;
+    } else {
+      const hasQuiverSynergy =
+        activeWDef.equipmentRole === 'ranged' &&
+        (state.equippedWeapons.includes('quiver') || state.equipmentSlots.slot3 === 'quiver');
+      const activeGemMod = getWeaponGemCombatModifiers(state, activeWId);
+      const isBowSingleShot =
+        activeWDef.category === 'Bows' || Boolean(activeWDef.moveset[0]?.isChargeable);
+      const targetMaxAmmo = isBowSingleShot
+        ? 1
+        : activeWDef.shotsPerChain +
+          (hasQuiverSynergy ? 3 : 0) +
+          activeGemMod.bonusMaxAmmo;
+      if (state.maxAmmo !== targetMaxAmmo) {
+        state.maxAmmo = targetMaxAmmo;
+        state.ammo = Math.min(state.ammo, state.maxAmmo);
+      }
+      state.reloadDuration = activeWDef.reloadDurationSec * (hasQuiverSynergy ? 0.75 : 1.0);
     }
-    state.reloadDuration = activeWDef.reloadDurationSec * (hasQuiverSynergy ? 0.75 : 1.0);
   }
 
   const inertiaProfile = resolvePlayerInertiaProfile(state);
@@ -1734,6 +1751,11 @@ export function updatePlayerSystem(
   if ((state.staggerRecoveryTimer || 0) > 0) {
     state.staggerRecoveryTimer = Math.max(0, (state.staggerRecoveryTimer || 0) - dt);
   }
+  if ((state.knockdownTimer || 0) > 0) {
+    state.knockdownTimer = Math.max(0, (state.knockdownTimer || 0) - dt);
+    state.knockbackVx = (state.knockbackVx || 0) * 0.5;
+    state.knockbackVy = (state.knockbackVy || 0) * 0.5;
+  }
   if ((state.lastInertiaOutcomeTimer || 0) > 0) {
     state.lastInertiaOutcomeTimer = Math.max(0, (state.lastInertiaOutcomeTimer || 0) - dt);
   }
@@ -1746,7 +1768,9 @@ export function updatePlayerSystem(
 
   const recoilMult =
     (state.recoilRestrictionTimer || 0) > 0 ? (state.recoilSpeedMult ?? 0.8) : 1.0;
+  const knockdownMult = (state.knockdownTimer || 0) > 0 ? 0.16 : 1.0;
   const staggerMult = (state.staggerRecoveryTimer || 0) > 0 ? 0.38 : 1.0;
+  const bowDrawSlowMult = state.isChargingBow ? 0.72 : 1.0;
 
   // §3.5 Critical Frame State (LOCKED): <= 40 HP (<= 20%) imposes -30% movement speed
   const criticalSpeedMult = state.frame.integrity <= 40 ? 0.7 : 1.0;
@@ -1758,7 +1782,9 @@ export function updatePlayerSystem(
     hwStats.moveSpeedMult *
     criticalSpeedMult *
     recoilMult *
-    staggerMult;
+    knockdownMult *
+    staggerMult *
+    bowDrawSlowMult;
 
   const installedMobilityModId = state.equipmentSlots?.installedMods?.mobility;
   const mobilityMod = ACTION_MODIFICATION_CATALOG.find((m) => m.id === installedMobilityModId);

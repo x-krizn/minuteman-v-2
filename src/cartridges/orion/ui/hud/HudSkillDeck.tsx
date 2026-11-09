@@ -378,19 +378,20 @@ export const HudSkillDeck: React.FC<HudSkillDeckProps> = ({ state }) => {
       >
         {skillSlots.map((skill, idx) => {
           const slotNum = (idx + 1) as 1 | 2 | 3 | 4 | 5;
+          const isBasicNoReload = Boolean(idx === 0 && skill?.noReload);
+          const isBasicBowCharge = Boolean(idx === 0 && skill?.isChargeable);
           const rawCd =
-            idx === 0 && isReloading
+            idx === 0 && isReloading && !isBasicNoReload
               ? reloadTimer
               : skill?.currentCooldown || 0;
           const activeRem = skill?.activeRemaining || 0;
           const isDurationActive = activeRem > 0.05;
           const onCooldown = rawCd > 0.05;
-          const isSkillReloading = Boolean(
-            (idx === 0 && isReloading) || (skill?.isReloading && onCooldown)
-          );
+          // Reload function is strictly restricted to Basic Attack (Slot 1) on non-melee weapons
+          const isSkillReloading = Boolean(idx === 0 && isReloading && !isBasicNoReload);
           const isAvailable = Boolean(skill && skill.available && skill.id !== 'none');
           const isActiveSlot =
-            (idx === 0 && state.combatActiveChain) ||
+            (idx === 0 && (state.combatActiveChain || state.isChargingBow)) ||
             isDurationActive ||
             Boolean(
               skill?.cooldownKey &&
@@ -403,29 +404,41 @@ export const HudSkillDeck: React.FC<HudSkillDeckProps> = ({ state }) => {
             isHeldBlockSlot && (state.blockHoldTimer || 0) <= PERFECT_BLOCK_WINDOW_SEC
           );
 
+          const bowDrawPct =
+            isBasicBowCharge && state.isChargingBow
+              ? Math.round(
+                  Math.min(
+                    1,
+                    (state.bowChargeTimer || 0) / Math.max(0.25, state.bowMaxChargeSec || 0.78)
+                  ) * 100
+                )
+              : 0;
+
           const borderColorClass = !isAvailable
             ? 'border-[#334155]/45 opacity-40'
             : isPerfectBlockActive
               ? 'border-[#38bdf8] scale-110'
               : isHeldBlockSlot
                 ? 'border-[#93c5fd] scale-105'
-                : isDurationActive
-                  ? 'border-[#4ade80] scale-105'
-                  : isActiveSlot
-                    ? 'border-white scale-105'
-                    : isSkillReloading
-                      ? 'border-[#f59e0b]/90'
-                      : onCooldown
-                        ? 'border-[#64748b]/80'
-                        : idx === 0
-                          ? 'border-[#38bdf8]/85 hover:border-[#7dd3fc]'
-                          : idx === 1
-                            ? 'border-[#fbbf24]/85 hover:border-[#fde047]'
-                            : idx === 2
-                              ? 'border-[#c084fc]/85 hover:border-[#e9d5ff]'
-                              : idx === 3
-                                ? 'border-[#38bdf8]/75 hover:border-[#7dd3fc]'
-                                : 'border-[#f472b6]/80 hover:border-[#fbcfe8]';
+                : isBasicBowCharge && state.isChargingBow
+                  ? 'border-[#fde047] scale-110'
+                  : isDurationActive
+                    ? 'border-[#4ade80] scale-105'
+                    : isActiveSlot
+                      ? 'border-white scale-105'
+                      : isSkillReloading
+                        ? 'border-[#f59e0b]/90'
+                        : onCooldown
+                          ? 'border-[#64748b]/80'
+                          : idx === 0
+                            ? 'border-[#38bdf8]/85 hover:border-[#7dd3fc]'
+                            : idx === 1
+                              ? 'border-[#fbbf24]/85 hover:border-[#fde047]'
+                              : idx === 2
+                                ? 'border-[#c084fc]/85 hover:border-[#e9d5ff]'
+                                : idx === 3
+                                  ? 'border-[#38bdf8]/75 hover:border-[#7dd3fc]'
+                                  : 'border-[#f472b6]/80 hover:border-[#fbcfe8]';
 
           return (
             <button
@@ -434,11 +447,24 @@ export const HudSkillDeck: React.FC<HudSkillDeckProps> = ({ state }) => {
               onPointerDown={() => {
                 if (skill?.isBlock) {
                   startHoldingBlock(state, hudCombatCtx);
+                } else if (idx === 0 && isBasicBowCharge && !state.isReloading && state.ammo > 0) {
+                  state.isChargingBow = true;
+                  state.bowChargeTimer = 0;
+                  state.bowMaxChargeSec = skill?.maxChargeSec || 0.78;
                 }
               }}
               onPointerUp={() => {
                 if (skill?.isBlock) {
                   releaseHeldBlock(state);
+                } else if (idx === 0 && isBasicBowCharge && state.isChargingBow) {
+                  const ratio = Math.min(
+                    1,
+                    (state.bowChargeTimer || 0) / Math.max(0.25, state.bowMaxChargeSec || 0.78)
+                  );
+                  state.isChargingBow = false;
+                  state.bowChargeTimer = 0;
+                  state.pendingBowChargeRatio = ratio;
+                  firePrimarySalvoShot(state, hudCombatCtx, false);
                 }
               }}
               onPointerLeave={() => {
@@ -452,7 +478,7 @@ export const HudSkillDeck: React.FC<HudSkillDeckProps> = ({ state }) => {
                 }
               }}
               onClick={() => {
-                if (skill?.isBlock) return;
+                if (skill?.isBlock || (idx === 0 && isBasicBowCharge)) return;
                 if (idx === 0) {
                   firePrimarySalvoShot(state, hudCombatCtx, false);
                 } else {
@@ -464,13 +490,17 @@ export const HudSkillDeck: React.FC<HudSkillDeckProps> = ({ state }) => {
                   ? `${skill.name}${
                       skill.isBlock
                         ? ' [Hold: 0.25s Perfect Block Window · No Cooldown]'
-                        : isDurationActive
-                          ? ` [ACTIVE ${activeRem.toFixed(1)}s]`
-                          : isSkillReloading
-                            ? ` [RELOAD ${rawCd.toFixed(1)}s]`
-                            : onCooldown
-                              ? ` (${rawCd.toFixed(1)}s)`
-                              : ''
+                        : isBasicBowCharge
+                          ? ' [Hold X to Charge Single Shot · Release to Fire]'
+                          : isBasicNoReload
+                            ? ` [Fluid ${skill.comboSequence?.length || 3}-Step Melee Combo · No Reload]`
+                            : isDurationActive
+                              ? ` [ACTIVE ${activeRem.toFixed(1)}s]`
+                              : isSkillReloading
+                                ? ` [RELOAD ${rawCd.toFixed(1)}s]`
+                                : onCooldown
+                                  ? ` (${rawCd.toFixed(1)}s)`
+                                  : ''
                     }`
                   : `Skill ${slotNum}`
               }
@@ -480,6 +510,50 @@ export const HudSkillDeck: React.FC<HudSkillDeckProps> = ({ state }) => {
               <span className={onCooldown ? 'opacity-35' : 'opacity-95'}>
                 {renderSkillGlyph(skill, idx)}
               </span>
+
+              {/* Basic Attack (Slot 1) Badge: Bow Charge %, Melee Combo Step, or Ranged Ammo */}
+              {idx === 0 && isAvailable && !onCooldown && (
+                <span
+                  className={`absolute bottom-0 right-0.5 text-[6.5px] font-black leading-none ${
+                    isBasicBowCharge
+                      ? state.isChargingBow
+                        ? 'text-[#fde047]'
+                        : 'text-[#4ade80]'
+                      : isBasicNoReload
+                        ? 'text-[#f472b6]'
+                        : 'text-[#7dd3fc]'
+                  } ${OUTLINED_TEXT}`}
+                >
+                  {isBasicBowCharge
+                    ? state.isChargingBow
+                      ? `${bowDrawPct}%`
+                      : '1/1'
+                    : isBasicNoReload
+                      ? `S${((state.meleeComboStep || 0) % (skill?.comboSequence?.length || 3)) + 1}`
+                      : `${state.ammo}`}
+                </span>
+              )}
+
+              {/* Ranged Skill (Slots 2-5) Ammo Salvo or Internal Charges Badge */}
+              {idx > 0 &&
+                skill?.sourceCategory !== 'belt' &&
+                !skill?.isBlock &&
+                !onCooldown &&
+                (typeof skill?.remainingCharges === 'number' &&
+                typeof skill?.internalCharges === 'number' &&
+                skill.internalCharges > 1 ? (
+                  <span
+                    className={`absolute bottom-0 right-0.5 text-[6.5px] font-black text-[#38bdf8] leading-none ${OUTLINED_TEXT}`}
+                  >
+                    {skill.remainingCharges}/{skill.internalCharges}
+                  </span>
+                ) : typeof skill?.ammoCount === 'number' && skill.ammoCount > 1 ? (
+                  <span
+                    className={`absolute bottom-0 right-0.5 text-[6.5px] font-black text-[#fde047] leading-none ${OUTLINED_TEXT}`}
+                  >
+                    ×{skill.ammoCount}
+                  </span>
+                ) : null)}
 
               {/* Consumable Stack Count */}
               {skill?.sourceCategory === 'belt' &&

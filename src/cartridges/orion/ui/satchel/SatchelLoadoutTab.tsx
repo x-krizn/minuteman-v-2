@@ -217,7 +217,13 @@ export const WeaponStatReadout: React.FC<{
           {handingLabel}
         </span>
         <span className="px-1 py-0.2 rounded-[2px] bg-[#172554] text-[#7dd3fc] font-bold">
-          {effectiveDmg > 0 ? `${effectiveDmg} DMG × ${effectiveChain} CHAIN` : 'SUPPORT / GUARD'}
+          {effectiveDmg > 0
+            ? primaryAction?.isChargeable
+              ? `${effectiveDmg}–${Math.round(effectiveDmg * 1.85)} DMG · SINGLE-SHOT CHARGE BOW`
+              : primaryAction?.noReload || w.equipmentRole === 'melee' || w.equipmentRole === 'shield'
+                ? `${effectiveDmg} DMG · ${primaryAction?.comboSequence?.length || w.shotsPerChain}-STEP COMBO (NO RELOAD)`
+                : `${effectiveDmg} DMG × ${effectiveChain} AMMO`
+            : 'SUPPORT / GUARD'}
         </span>
         <span className="px-1 py-0.2 rounded-[2px] bg-[#0f172a] text-[#38bdf8] border border-[#1e3a8a]">
           {w.primaryDamageType.toUpperCase()} · {primaryFamily.toUpperCase()}
@@ -228,7 +234,11 @@ export const WeaponStatReadout: React.FC<{
           </span>
         )}
         <span className="px-1 py-0.2 rounded-[2px] bg-[#0f172a] text-[#94a3b8]">
-          {w.reloadDurationSec}s RLD · {primaryRange}px RNG
+          {primaryAction?.noReload || w.equipmentRole === 'melee' || w.equipmentRole === 'shield'
+            ? `NO RELOAD (${primaryAction?.comboResetWindowSec ?? 1.1}s RESET) · ${primaryRange}px RNG`
+            : primaryAction?.isChargeable
+              ? `${primaryAction.maxChargeSec ?? 0.78}s DRAW · ${w.reloadDurationSec}s NOCK · ${primaryRange}px RNG`
+              : `${w.reloadDurationSec}s BASIC RLD · ${primaryRange}px RNG`}
         </span>
       </div>
 
@@ -254,14 +264,37 @@ export const WeaponStatReadout: React.FC<{
       )}
 
       {!compact && w.moveset && w.moveset.length > 0 && (
-        <div className="text-[6.5px] text-[#94a3b8] leading-tight pt-0.5 border-t border-[#1e293b]/70">
-          <span className="text-[#cbd5e1] font-bold">MOVESET: </span>
-          {w.moveset
-            .map(
-              (s) =>
-                `[S${s.slot} ${s.name}: ${s.damage > 0 ? `${s.damage} ${s.damageType}` : s.damageType} · ${s.cooldownSec}s CD · ${s.heatCost}H]`
-            )
-            .join(' · ')}
+        <div className="text-[6.5px] text-[#94a3b8] leading-tight pt-0.5 border-t border-[#1e293b]/70 space-y-0.5">
+          <div>
+            <span className="text-[#cbd5e1] font-bold">MOVESET: </span>
+            {w.moveset
+              .map((s) => {
+                const ammoTag =
+                  s.slot === 1
+                    ? s.isChargeable
+                      ? ' · 1-SHOT CHARGE'
+                      : s.noReload
+                        ? ` · ${s.comboSequence?.length || 3}-STEP NO-RLD`
+                        : ` · ${effectiveChain} AMMO`
+                    : s.internalCharges && s.internalCharges > 1
+                      ? ` · ${s.internalCharges} CHG (${s.ammoCount || 1}/SHOT)`
+                      : s.ammoCount && s.ammoCount > 1
+                        ? ` · ×${s.ammoCount} SALVO`
+                        : '';
+                return `[S${s.slot} ${s.name}: ${
+                  s.damage > 0 ? `${s.damage} ${s.damageType}` : s.damageType
+                }${ammoTag} · ${s.cooldownSec}s CD · ${s.heatCost}H]`;
+              })
+              .join(' · ')}
+          </div>
+          {primaryAction?.comboSequence && primaryAction.comboSequence.length > 0 && (
+            <div className="text-[#f472b6]">
+              <span className="font-bold">FLUID COMBO CHAIN: </span>
+              {primaryAction.comboSequence
+                .map((c, idx) => `${idx + 1}. ${c.label} (${Math.round(c.damageMult * 100)}% DMG)`)
+                .join(' ▸ ')}
+            </div>
+          )}
         </div>
       )}
     </div>

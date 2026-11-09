@@ -77,6 +77,13 @@ export const INERTIA_CONSTANTS = {
   /** OD-INR-03: Outcome band thresholds on Δv_eff */
   BAND_FLINCH_MAX: 25,
   BAND_STAGGER_MAX: 55,
+  BAND_KNOCKDOWN_MIN: 72,
+
+  /** Ranged & Shield Knockback Dampening + Grounded Knockdown Conversion */
+  RANGED_DISPLACEMENT_SCALE: 0.42,
+  SHIELD_DISPLACEMENT_MULT: 0.35,
+  MAX_KNOCKBACK_SPEED_PX: 105,
+  KNOCKDOWN_INPLACE_SPEED_PX: 24,
 
   /** OD-INR-04: Numeric mass scale for Frame weight classes */
   FRAME_WEIGHT_BY_CLASS: {
@@ -93,11 +100,11 @@ export const INERTIA_CONSTANTS = {
     heavy: 65,
   } as Record<WeaponWeightClass, number>,
 
-  /** OD-INR-04: Numeric mass scale for Projectiles */
+  /** OD-INR-04: Numeric mass scale for Projectiles (tuned so ranged fire does not push enemies off-screen) */
   PROJECTILE_WEIGHT_BY_CLASS: {
-    light: 8,
-    medium: 20,
-    heavy: 45,
+    light: 5,
+    medium: 11,
+    heavy: 24,
   } as Record<WeaponWeightClass, number>,
 
   /** OD-INR-07: Commitment factor scaling how much of attacker frame momentum transfers into melee */
@@ -198,14 +205,15 @@ export function computeRangedImpulse(
 }
 
 /**
- * Maps stability-reduced velocity change `Δv_eff` onto the 4 outcome bands (§4, §8, OD-INR-03):
- * `'none' | 'flinch' | 'stagger' | 'knockback'`
+ * Maps stability-reduced velocity change `Δv_eff` onto the 5 outcome bands (§4, §8, OD-INR-03):
+ * `'none' | 'flinch' | 'stagger' | 'knockback' | 'knockdown'`
  */
 export function classifyInertiaOutcomeBand(dvEff: number): InertiaOutcomeBand {
   if (dvEff <= 0.001) return 'none';
   if (dvEff < INERTIA_CONSTANTS.BAND_FLINCH_MAX) return 'flinch';
   if (dvEff < INERTIA_CONSTANTS.BAND_STAGGER_MAX) return 'stagger';
-  return 'knockback';
+  if (dvEff < INERTIA_CONSTANTS.BAND_KNOCKDOWN_MIN) return 'knockback';
+  return 'knockdown';
 }
 
 /**
@@ -226,6 +234,8 @@ export interface HitInertiaResolution {
   outcome: InertiaOutcomeBand;
   /** Recovery duration in seconds (`Δv_eff / (k2 · S)` snapped/bounded for Law 2 consistency) */
   recoverySec: number;
+  /** Grounded knockdown duration in seconds when outcome === 'knockdown' */
+  knockdownSec: number;
   /** Hitstop freeze-frame duration in seconds */
   hitstopSec: number;
   /** Physical displacement velocity magnitude applied along the impact vector (px/s) */
@@ -234,13 +244,16 @@ export interface HitInertiaResolution {
 
 /**
  * Resolves a hit's physical displacement (`Δv`), reaction outcome band (`band(Δv_eff)`),
- * recovery duration (`Δv_eff / (k2 · S)`), and hitstop freeze frames (§4, §5).
+ * recovery duration (`Δv_eff / (k2 · S)`), grounded knockdown conversion, and hitstop freeze frames (§4, §5).
  */
 export function resolveHitInertia(params: {
   impulseJ: number;
   defenderWeight: number;
   defenderMu: number;
   defenderStability: number;
+  isRanged?: boolean;
+  defenderShieldsActive?: boolean;
+  existingKnockbackSpeedPx?: number;
 }): HitInertiaResolution {
   const defenderEffectiveWeight = computeEffectiveWeight(
     params.defenderWeight,
@@ -250,33 +263,76 @@ export function resolveHitInertia(params: {
   const s = Math.max(5, params.defenderStability);
   const deadbandThreshold = INERTIA_CONSTANTS.K1_DEADBAND * s;
   const dvEff = Math.max(0, dv - deadbandThreshold);
-  const outcome = classifyInertiaOutcomeBand(dvEff);
+  let outcome = classifyInertiaOutcomeBand(dvEff);
   const rawRecovery = dvEff / Math.max(1, INERTIA_CONSTANTS.K2_RECOVERY * s);
 
   let recoverySec = 0;
+  let knockdownSec = 0;
   let hitstopSec = 0.018;
   let displacementSpeedPx = 0;
+
+  // Active shields absorb kinetic shock and prevent grounded knockdown until broken
+  if (params.defenderShieldsActive && outcome === 'knockdown') {
+    outcome = 'stagger';
+  } else if (params.defenderShieldsActive && outcome === 'knockback' && params.isRanged) {
+    outcome = 'flinch';
+  }
 
   if (outcome === 'none') {
     // Shrugged off inside stability deadband (k1 · S): no interruption, minor physical slide from weight Δv
     recoverySec = 0;
     hitstopSec = 0.018;
-    displacementSpeedPx = Math.min(42, dv * 0.65);
+    displacementSpeedPx = Math.min(28, dv * 0.45);
   } else if (outcome === 'flinch') {
     // Light reaction: brief movement flinch, drops boost to glide without cancelling weapon tells
     recoverySec = Math.max(0.08, Math.min(0.18, rawRecovery));
     hitstopSec = 0.036;
-    displacementSpeedPx = Math.min(95, Math.max(24, dv * 1.15));
+    displacementSpeedPx = Math.min(62, Math.max(16, dv * 0.85));
   } else if (outcome === 'stagger') {
     // Heavy reaction: interrupts active weapon tells & forces glide wind-down
     recoverySec = Math.max(0.24, Math.min(0.45, Math.max(0.28, rawRecovery)));
     hitstopSec = 0.062;
-    displacementSpeedPx = Math.min(145, Math.max(55, dv * 1.4));
-  } else {
-    // Knockback: full action cancel + high-velocity displacement slide + Law 2 0.75s baseline scaled by S
+    displacementSpeedPx = Math.min(92, Math.max(36, dv * 1.05));
+  } else if (outcome === 'knockback') {
+    // Knockback: full action cancel + capped displacement slide + Law 2 0.75s baseline scaled by S
     recoverySec = Math.max(0.48, Math.min(0.75, Math.max(0.55, rawRecovery)));
-    hitstopSec = 0.088;
-    displacementSpeedPx = Math.min(220, Math.max(95, dv * 1.75));
+    hitstopSec = 0.082;
+    displacementSpeedPx = Math.min(115, Math.max(52, dv * 1.25));
+  } else {
+    // Knockdown: excessive impulse floors target in place with clamped horizontal slide
+    recoverySec = Math.max(0.68, Math.min(1.05, Math.max(0.75, rawRecovery * 1.25)));
+    knockdownSec = recoverySec;
+    hitstopSec = 0.095;
+    displacementSpeedPx = INERTIA_CONSTANTS.KNOCKDOWN_INPLACE_SPEED_PX;
+  }
+
+  // Scale down ranged displacement so projectiles never push targets across/off the screen
+  if (params.isRanged && outcome !== 'knockdown') {
+    displacementSpeedPx *= INERTIA_CONSTANTS.RANGED_DISPLACEMENT_SCALE;
+  }
+
+  // Dampen physical displacement by 65% while defender shields remain active
+  if (params.defenderShieldsActive) {
+    displacementSpeedPx *= INERTIA_CONSTANTS.SHIELD_DISPLACEMENT_MULT;
+  }
+
+  // Convert excessive cumulative knockback into grounded Knockdown if shields are broken or hit is heavy
+  const existingSpeed = params.existingKnockbackSpeedPx || 0;
+  if (
+    outcome !== 'knockdown' &&
+    !params.defenderShieldsActive &&
+    existingSpeed + displacementSpeedPx > INERTIA_CONSTANTS.MAX_KNOCKBACK_SPEED_PX &&
+    (outcome === 'knockback' || outcome === 'stagger')
+  ) {
+    outcome = 'knockdown';
+    recoverySec = Math.max(0.68, Math.min(1.05, recoverySec * 1.3));
+    knockdownSec = recoverySec;
+    displacementSpeedPx = INERTIA_CONSTANTS.KNOCKDOWN_INPLACE_SPEED_PX;
+  } else {
+    displacementSpeedPx = Math.min(
+      Math.max(0, INERTIA_CONSTANTS.MAX_KNOCKBACK_SPEED_PX - existingSpeed * 0.5),
+      displacementSpeedPx
+    );
   }
 
   return {
@@ -287,6 +343,7 @@ export function resolveHitInertia(params: {
     dvEff,
     outcome,
     recoverySec,
+    knockdownSec,
     hitstopSec,
     displacementSpeedPx,
   };
@@ -621,9 +678,9 @@ export function resolveWeaponAttackInertiaSpec(
     attackSpeed: Math.round(baseSpeed * slotSpeedMult),
     commitment,
     projectileWeight: Math.max(
-      8,
+      4,
       Math.round(
-        (projectileWeight + gemMods.projectileWeightDelta) * (slot >= 1 ? 1.25 : 1.0)
+        (projectileWeight + gemMods.projectileWeightDelta) * (slot >= 1 ? 1.15 : 1.0)
       )
     ),
     projectileSpeed: Math.round(projectileSpeed * gemMods.projectileSpeedMult),
@@ -751,5 +808,7 @@ export function formatInertiaOutcomeLabel(outcome: InertiaOutcomeBand): {
       return { label: 'STAGGER!', color: '#fb923c' };
     case 'knockback':
       return { label: 'KNOCKBACK!', color: '#f43f5e' };
+    case 'knockdown':
+      return { label: 'KNOCKDOWN!', color: '#fb7185' };
   }
 }

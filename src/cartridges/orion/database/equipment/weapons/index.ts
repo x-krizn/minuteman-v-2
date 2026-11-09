@@ -9,6 +9,7 @@ import {
   parseEquipmentInstanceId,
 } from '../mod_naming';
 import {
+  normalizeWeaponCombatFunctions,
   resolveWeaponCategory,
   resolveWeaponFunctionalType,
 } from './builder';
@@ -80,13 +81,13 @@ for (const [path, mod] of Object.entries(modules)) {
       );
       const tier = exportedValue.weaponTier || 'customizable';
       const subtypeLabel = tier === 'unique' ? 'Magitech' : 'Custom';
-      WEAPON_REGISTRY[exportedValue.id] = {
+      WEAPON_REGISTRY[exportedValue.id] = normalizeWeaponCombatFunctions({
         ...exportedValue,
         category,
         weaponTier: tier,
         weaponClass: functionalType,
         class: `${category} · ${functionalType} (${subtypeLabel})`,
-      };
+      });
     }
   }
 }

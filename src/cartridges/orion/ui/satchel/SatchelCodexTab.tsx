@@ -600,14 +600,22 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                     </div>
                     <span className="text-[8.5px] text-[#4ade80] font-bold">
                       {w.damagePerShot > 0
-                        ? `${w.damagePerShot} ${w.primaryDamageType} (${primaryFamily}) · ${w.shotsPerChain}× CHAIN`
+                        ? primaryAction?.isChargeable
+                          ? `${w.damagePerShot}–${Math.round(w.damagePerShot * 1.85)} ${w.primaryDamageType} (${primaryFamily}) · 1-SHOT CHARGE BOW`
+                          : primaryAction?.noReload || w.equipmentRole === 'melee' || w.equipmentRole === 'shield'
+                            ? `${w.damagePerShot} ${w.primaryDamageType} (${primaryFamily}) · ${primaryAction?.comboSequence?.length || w.shotsPerChain}-STEP COMBO`
+                            : `${w.damagePerShot} ${w.primaryDamageType} (${primaryFamily}) · ${w.shotsPerChain} AMMO`
                         : `SUPPORT / GUARD (${w.primaryDamageType} · ${primaryFamily})`}
                     </span>
                   </div>
 
                   <div className="mt-1 flex flex-wrap items-center gap-1 text-[7.5px]">
                     <span className="px-1 py-0.2 rounded-[2px] bg-[#090d14] text-[#94a3b8] border border-[#1e293b]">
-                      {w.reloadDurationSec}s RLD · {primaryRange}px RNG
+                      {primaryAction?.noReload || w.equipmentRole === 'melee' || w.equipmentRole === 'shield'
+                        ? `NO RELOAD (${primaryAction?.comboResetWindowSec ?? 1.1}s RESET) · ${primaryRange}px RNG`
+                        : primaryAction?.isChargeable
+                          ? `${primaryAction.maxChargeSec ?? 0.78}s CHARGE · ${w.reloadDurationSec}s NOCK · ${primaryRange}px RNG`
+                          : `${w.reloadDurationSec}s BASIC RLD · ${primaryRange}px RNG`}
                     </span>
                     {w.adaptiveDamageTypes && w.adaptiveDamageTypes.length > 1 && (
                       <span className="px-1 py-0.2 rounded-[2px] bg-[#311042] text-[#e879f9] border border-[#a21caf]/50">
@@ -670,21 +678,44 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                       <div className="text-[#fde68a] italic leading-snug">
                         “{w.lore}”
                       </div>
+                      {primaryAction?.comboSequence && primaryAction.comboSequence.length > 0 && (
+                        <div className="px-1.5 py-0.5 bg-[#090d14] border border-[#f472b6]/40 rounded-xs text-[8px] text-[#f472b6]">
+                          <span className="font-bold">FLUID COMBO SEQUENCE: </span>
+                          {primaryAction.comboSequence
+                            .map((c, idx) => `${idx + 1}. ${c.label} (${Math.round(c.damageMult * 100)}% DMG)`)
+                            .join(' ▸ ')}
+                        </div>
+                      )}
                       <div className="grid grid-cols-1 gap-1 pt-1">
-                        {w.moveset.map((act, idx) => (
-                          <div
-                            key={`${act.name}-${idx}`}
-                            className="px-1.5 py-0.5 bg-[#090d14] border border-[#1e293b] rounded-xs flex flex-wrap items-center justify-between gap-1 text-[8.5px]"
-                          >
-                            <span className="text-[#38bdf8] font-bold">
-                              S{idx + 1}: {act.name}
-                            </span>
-                            <span className="text-[#94a3b8]">
-                              {act.damage > 0 ? `${act.damage} DMG · ` : ''}
-                              {act.damageType} ({act.damageFamily}) · CD {act.cooldownSec}s · {act.heatCost} Heat · {act.range}px RNG
-                            </span>
-                          </div>
-                        ))}
+                        {w.moveset.map((act, idx) => {
+                          const skillAmmoNote =
+                            idx === 0
+                              ? act.isChargeable
+                                ? '1-Shot Hold Charge · '
+                                : act.noReload
+                                  ? 'No Reload · '
+                                  : `${w.shotsPerChain} Ammo (Basic Reload) · `
+                              : act.internalCharges && act.internalCharges > 1
+                                ? `${act.internalCharges} Internal Charges (${act.ammoCount || 1}/Shot, ${act.internalCycleSec || 0.35}s Cycle) · `
+                                : act.ammoCount && act.ammoCount > 1
+                                  ? `${act.ammoCount}-Round Salvo · `
+                                  : '';
+                          return (
+                            <div
+                              key={`${act.name}-${idx}`}
+                              className="px-1.5 py-0.5 bg-[#090d14] border border-[#1e293b] rounded-xs flex flex-wrap items-center justify-between gap-1 text-[8.5px]"
+                            >
+                              <span className="text-[#38bdf8] font-bold">
+                                S{idx + 1}: {act.name}
+                              </span>
+                              <span className="text-[#94a3b8]">
+                                {act.damage > 0 ? `${act.damage} DMG · ` : ''}
+                                {skillAmmoNote}
+                                {act.damageType} ({act.damageFamily}) · CD {act.cooldownSec}s · {act.heatCost} Heat · {act.range}px RNG
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}

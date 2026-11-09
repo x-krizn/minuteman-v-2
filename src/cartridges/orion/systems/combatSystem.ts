@@ -60,7 +60,25 @@ export function handleCombatInput(
   const weapon = getWeaponDefinition(currentWeaponId);
   if (!weapon) return;
 
-  // 1. Tick primary chain reloading
+  const skill0 = weapon.moveset[0];
+  const isMeleeOrShield =
+    Boolean(skill0?.noReload) ||
+    weapon.equipmentRole === 'melee' ||
+    weapon.equipmentRole === 'shield' ||
+    currentWeaponId === 'khopesh';
+  const isBowWeapon =
+    weapon.category === 'Bows' ||
+    Boolean(skill0?.isChargeable) ||
+    currentWeaponId === 'great_bow';
+
+  // Melee & Shield weapons never reload
+  if (isMeleeOrShield && state.isReloading) {
+    state.isReloading = false;
+    state.reloadTimer = 0;
+    state.ammo = state.maxAmmo;
+  }
+
+  // 1. Tick primary chain reloading (strictly for Ranged Basic Attack)
   if (state.isReloading) {
     const reloadMult = (state.overdriveTimer || 0) > 0 ? 1.6 : 1.0;
     state.reloadTimer -= dt * reloadMult;
@@ -117,55 +135,119 @@ export function handleCombatInput(
     l: !!input.held.l,
   };
 
-  // ─── [X] BUTTON: Single Tap = [chain manual] · Double Tap = [reload chain] · Hold = [chain auto] ───
-  if (p.x) {
-    state.combatHoldTimers.x = 0;
-    state.combatHoldTriggered.x = false;
+  // ─── [X] BUTTON: Bow Hold-to-Charge · Melee Fluid Combo · Ranged Chain + Double-Tap Reload ───
+  if (isBowWeapon) {
+    const maxCharge =
+      skill0?.maxChargeSec ?? (weapon.weightClass === 'heavy' ? 1.25 : 0.9);
+    state.bowMaxChargeSec = maxCharge;
 
-    const isMidBasicSwing = state.activeSkillSlot === 0 && !state.activeActionId;
-    if (
-      state.combatInputTimers.x > 0 &&
-      !isMidBasicSwing &&
-      state.ammo < state.maxAmmo &&
-      !state.isReloading
-    ) {
-      state.combatInputTimers.x = 0;
-      state.combatQueuedChainShot = false;
-      triggerTacticalReload(state, ctx, [1]);
-    } else {
-      state.combatInputTimers.x = DOUBLE_TAP_WINDOW_SEC;
+    if (p.x) {
+      if (state.ammo <= 0 && !state.isReloading) {
+        firePrimarySalvoShot(state, ctx, false, 0);
+      } else if (!state.isReloading && !state.activeActionId && state.activeSkillSlot === null) {
+        state.isChargingBow = true;
+        state.bowChargeTimer = 0;
+        soundSystem.playCharge();
+        notifyOrionStateChange();
+      }
+    }
+
+    if (h.x && state.isChargingBow) {
+      if (state.isReloading || state.activeActionId) {
+        state.isChargingBow = false;
+        state.bowChargeTimer = 0;
+      } else {
+        const prevRatio = (state.bowChargeTimer || 0) / maxCharge;
+        state.bowChargeTimer = Math.min(maxCharge, (state.bowChargeTimer || 0) + dt);
+        const newRatio = state.bowChargeTimer / maxCharge;
+        if (prevRatio < 1.0 && newRatio >= 1.0) {
+          soundSystem.playSelect();
+          triggerEntityFlash(state, '#fde047', 0.12, 'sweet');
+        }
+        if (Math.random() < 0.45) {
+          const ang = Math.random() * Math.PI * 2;
+          const dist = 10 + (1 - newRatio) * 8;
+          state.particles.push({
+            x: state.x + Math.cos(ang) * dist,
+            y: state.y + Math.sin(ang) * dist,
+            z: state.z + 6,
+            vx: -Math.cos(ang) * 28,
+            vy: -Math.sin(ang) * 28,
+            vz: 4,
+            life: 0.18,
+            maxLife: 0.18,
+            color: newRatio >= 0.85 ? '#fde047' : weapon.bladeTrailColor || '#38bdf8',
+            size: newRatio >= 0.85 ? 2.5 : 1.8,
+            fade: true,
+          });
+        }
+      }
+    } else if (!h.x && state.isChargingBow) {
+      const chargeRatio = Math.max(
+        0,
+        Math.min(1, (state.bowChargeTimer || 0) / Math.max(0.2, maxCharge))
+      );
+      state.isChargingBow = false;
+      state.bowChargeTimer = 0;
       if (!state.isReloading && !state.activeActionId) {
-        if (state.activeSkillSlot === null) {
-          firePrimarySalvoShot(state, ctx, false);
-        } else if (state.activeSkillSlot === 0) {
-          state.combatQueuedChainShot = true;
+        firePrimarySalvoShot(state, ctx, false, chargeRatio);
+      }
+      notifyOrionStateChange();
+    }
+  } else {
+    state.isChargingBow = false;
+    state.bowChargeTimer = 0;
+
+    if (p.x) {
+      state.combatHoldTimers.x = 0;
+      state.combatHoldTriggered.x = false;
+
+      const isMidBasicSwing = state.activeSkillSlot === 0 && !state.activeActionId;
+      if (
+        !isMeleeOrShield &&
+        state.combatInputTimers.x > 0 &&
+        !isMidBasicSwing &&
+        state.ammo < state.maxAmmo &&
+        !state.isReloading
+      ) {
+        state.combatInputTimers.x = 0;
+        state.combatQueuedChainShot = false;
+        triggerTacticalReload(state, ctx, [1]);
+      } else {
+        state.combatInputTimers.x = DOUBLE_TAP_WINDOW_SEC;
+        if (!state.isReloading && !state.activeActionId) {
+          if (state.activeSkillSlot === null) {
+            firePrimarySalvoShot(state, ctx, false);
+          } else if (state.activeSkillSlot === 0) {
+            state.combatQueuedChainShot = true;
+          }
         }
       }
     }
+
+    if (h.x) {
+      state.combatHoldTimers.x += dt;
+      if (state.combatHoldTimers.x >= HOLD_TRIGGER_THRESHOLD_SEC && !state.combatHoldTriggered.x) {
+        state.combatHoldTriggered.x = true;
+        state.combatActiveChain = true;
+        state.combatInputTimers.x = 0;
+      }
+      if (
+        state.combatActiveChain &&
+        !state.isReloading &&
+        state.activeSkillSlot === null &&
+        !state.activeActionId
+      ) {
+        firePrimarySalvoShot(state, ctx, true);
+      }
+    } else {
+      state.combatHoldTimers.x = 0;
+      state.combatHoldTriggered.x = false;
+      state.combatActiveChain = false;
+    }
   }
 
-  if (h.x) {
-    state.combatHoldTimers.x += dt;
-    if (state.combatHoldTimers.x >= HOLD_TRIGGER_THRESHOLD_SEC && !state.combatHoldTriggered.x) {
-      state.combatHoldTriggered.x = true;
-      state.combatActiveChain = true;
-      state.combatInputTimers.x = 0;
-    }
-    if (
-      state.combatActiveChain &&
-      !state.isReloading &&
-      state.activeSkillSlot === null &&
-      !state.activeActionId
-    ) {
-      firePrimarySalvoShot(state, ctx, true);
-    }
-  } else {
-    state.combatHoldTimers.x = 0;
-    state.combatHoldTriggered.x = false;
-    state.combatActiveChain = false;
-  }
-
-  // ─── [Y] BUTTON: Tap Release = [Skill 2] · Double Tap Release = [reload 2/4 or Skill 2] · Hold = [Skill 4 / Held Block] ───
+  // ─── [Y] BUTTON: Tap Release = [Skill 2] · Hold = [Skill 4 / Held Block] (No reload on Skills 2/4) ───
   if (p.y) {
     const isDoubleTap = state.combatInputTimers.y > 0;
     state.combatInputTimers.y = isDoubleTap ? 0 : DOUBLE_TAP_WINDOW_SEC;
@@ -199,16 +281,9 @@ export function handleCombatInput(
       releaseHeldBlock(state);
     }
     if (state.combatTapPending.y && !state.combatHoldTriggered.y) {
-      const wasDoubleTap = state.combatDoubleTapPending.y;
       state.combatTapPending.y = false;
       state.combatDoubleTapPending.y = false;
-      if (wasDoubleTap) {
-        if (!triggerTacticalReload(state, ctx, [2, 4])) {
-          activateResolvedCombatSkill(state, ctx, 2);
-        }
-      } else {
-        activateResolvedCombatSkill(state, ctx, 2);
-      }
+      activateResolvedCombatSkill(state, ctx, 2);
     }
     state.combatHoldTimers.y = 0;
     state.combatHoldTriggered.y = false;
@@ -216,7 +291,7 @@ export function handleCombatInput(
     state.combatDoubleTapPending.y = false;
   }
 
-  // ─── [R] BUTTON: Tap Release = [Skill 3] · Double Tap Release = [reload 3/5 or Skill 3] · Hold = [Skill 5] ───
+  // ─── [R] BUTTON: Tap Release = [Skill 3] · Hold = [Skill 5] (No reload on Skills 3/5) ───
   if (p.r) {
     const isDoubleTap = state.combatInputTimers.r > 0;
     state.combatInputTimers.r = isDoubleTap ? 0 : DOUBLE_TAP_WINDOW_SEC;
@@ -239,16 +314,9 @@ export function handleCombatInput(
     }
   } else {
     if (state.combatTapPending.r && !state.combatHoldTriggered.r) {
-      const wasDoubleTap = state.combatDoubleTapPending.r;
       state.combatTapPending.r = false;
       state.combatDoubleTapPending.r = false;
-      if (wasDoubleTap) {
-        if (!triggerTacticalReload(state, ctx, [3, 5])) {
-          activateResolvedCombatSkill(state, ctx, 3);
-        }
-      } else {
-        activateResolvedCombatSkill(state, ctx, 3);
-      }
+      activateResolvedCombatSkill(state, ctx, 3);
     }
     state.combatHoldTimers.r = 0;
     state.combatHoldTriggered.r = false;
@@ -309,6 +377,20 @@ export function updateCombat(
 
   if (state.weaponSwapCooldown > 0) {
     state.weaponSwapCooldown = Math.max(0, state.weaponSwapCooldown - dt);
+  }
+
+  // Tick fluid Melee Combo sequence cooldown & idle reset timers
+  if ((state.meleeSequenceCooldownTimer || 0) > 0) {
+    state.meleeSequenceCooldownTimer = Math.max(
+      0,
+      (state.meleeSequenceCooldownTimer || 0) - dt
+    );
+  }
+  if ((state.meleeComboResetTimer || 0) > 0 && state.activeSkillSlot !== 0) {
+    state.meleeComboResetTimer = Math.max(0, (state.meleeComboResetTimer || 0) - dt);
+    if (state.meleeComboResetTimer <= 0) {
+      state.meleeComboStep = 0;
+    }
   }
 
   if (state.boosterCooldown > 0) state.boosterCooldown = Math.max(0, state.boosterCooldown - dt);

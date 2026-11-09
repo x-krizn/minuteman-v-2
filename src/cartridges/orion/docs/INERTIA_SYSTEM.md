@@ -143,12 +143,16 @@ Hit reaction
   Δv       = J / m_eff
   Δv_eff   = max(0, Δv − k1·S)
   recovery = Δv_eff / (k2·S)
-  outcome  = band(Δv_eff)   →  none | flinch | stagger | knockback
+  outcome  = band(Δv_eff)   →  none | flinch | stagger | knockback | knockdown
 ```
 
 ### Notes
 
 - Both sides of a melee hit use the same shape: a base weight plus a momentum-scaled bonus. [INF]
+- **Ranged Knockback Reduction & Grounded Knockdown (`LOCKED`)**:
+  - Ranged projectile weights (`light: 5`, `medium: 11`, `heavy: 24`) and ranged displacement scaling (`0.42×`) are tuned so ranged weapons never push enemies off screen before breaking shields.
+  - While a defender's **Layer 1 Shields** (`shields.capacity > 0`) hold, physical knockback displacement speed is dampened (`0.35×`).
+  - Total knockback push speed is capped (`MAX_KNOCKBACK_SPEED_PX = 105`), and excessive effective velocity change (`Δv_eff >= 72` or cumulative impulse exceeding the push cap) converts excess force into a grounded **Knockdown** state (`outcome = 'knockdown'`, `0.65s–1.15s`), flooring the target in place rather than launching them across the room.
 - A restitution (bounce) factor was considered and folded into tuning for simplicity. Whether it should vary per attack is OD-INR-08. [INF]
 - Band thresholds are UNDEFINED (OD-INR-03).
 - Whether `recovery` is continuous (as above) or snapped to fixed values is UNDEFINED (OD-INR-09). See §10 for the conflict with fixed CC durations.

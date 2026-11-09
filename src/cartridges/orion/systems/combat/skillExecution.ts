@@ -40,6 +40,7 @@ import {
   computeMomentumFraction,
   computeRangedImpulse,
   formatInertiaOutcomeLabel,
+  INERTIA_CONSTANTS,
   resolveEnemyInertiaProfile,
   resolveHitInertia,
   resolvePlayerInertiaProfile,
@@ -244,7 +245,10 @@ export function executeActionPayload(
   ) => {
     const oathMult = hasKnightsOath && faction === 'camelot' ? 1.1 : 1.0;
     const isLockedOrStaggered =
-      target && (target.id === state.lockedTargetId || target.stun > 0);
+      target &&
+      (target.id === state.lockedTargetId ||
+        target.stun > 0 ||
+        (target.knockdownTimer || 0) > 0);
     const charoiteMult = isLockedOrStaggered
       ? gemCombatMods.lockedOrStaggeredDamageMult * hwStats.staggerDamageMult
       : 1.0;
@@ -363,18 +367,30 @@ export function executeActionPayload(
     );
     const eProf = resolveEnemyInertiaProfile(e);
     const defenderMu = computeMomentumFraction(e.vx || 0, e.vy || 0, -impDx, -impDy);
+    const existingSpeed = Math.hypot(e.knockbackVx || 0, e.knockbackVy || 0);
     const inertiaRes = resolveHitInertia({
       impulseJ,
       defenderWeight: eProf.baseWeight,
       defenderMu,
       defenderStability: eProf.stability,
+      isRanged: false,
+      defenderShieldsActive: e.shields.capacity > 0,
+      existingKnockbackSpeedPx: existingSpeed,
     });
 
     const pullSign = knockbackDist < 0 ? -1 : 1;
-    e.knockbackVx =
+    let nextKvx =
       (e.knockbackVx || 0) + impDx * pullSign * inertiaRes.displacementSpeedPx;
-    e.knockbackVy =
+    let nextKvy =
       (e.knockbackVy || 0) + impDy * pullSign * inertiaRes.displacementSpeedPx;
+    const nextMag = Math.hypot(nextKvx, nextKvy);
+    if (nextMag > INERTIA_CONSTANTS.MAX_KNOCKBACK_SPEED_PX) {
+      const capScale = INERTIA_CONSTANTS.MAX_KNOCKBACK_SPEED_PX / nextMag;
+      nextKvx *= capScale;
+      nextKvy *= capScale;
+    }
+    e.knockbackVx = nextKvx;
+    e.knockbackVy = nextKvy;
     e.lastInertiaOutcome = inertiaRes.outcome;
     e.lastInertiaOutcomeTimer = 0.6;
     state.hitstopTimer = Math.max(
@@ -385,6 +401,17 @@ export function executeActionPayload(
     if (inertiaRes.outcome === 'none') {
       triggerEntityFlash(e, '#94a3b8', 0.08, 'armor_deflect');
       ctx.spawnParticles(e.x, e.y, e.z + 10, 3, '#94a3b8', '');
+    } else if (inertiaRes.outcome === 'knockdown') {
+      e.knockdownTimer = Math.max(e.knockdownTimer || 0, inertiaRes.knockdownSec);
+      e.stun = Math.max(e.stun, inertiaRes.recoverySec);
+      e.state = 'stagger';
+      e.stateTimer = inertiaRes.recoverySec;
+      e.stateMaxTimer = inertiaRes.recoverySec;
+      e.knockbackVx *= 0.3;
+      e.knockbackVy *= 0.3;
+      const outFmt = formatInertiaOutcomeLabel('knockdown');
+      triggerEntityFlash(e, outFmt.color, 0.22, 'stagger');
+      ctx.spawnParticles(e.x, e.y, e.z + 12, 8, outFmt.color, outFmt.label);
     } else {
       e.stun = Math.max(e.stun, inertiaRes.recoverySec);
       if (inertiaRes.outcome === 'stagger' || inertiaRes.outcome === 'knockback') {
@@ -787,12 +814,13 @@ export function executeActionPayload(
         ctx.spawnParticles(state.x, state.y, state.z + 8, 10, trailColor, action.name);
         soundSystem.playSword();
       } else {
+        const salvoCount = Math.max(1, action.ammoCount || (isRapidRotaryWeapon ? 4 : 1));
         state.bladeTrails.push({
           x: state.x,
           y: state.y,
           z: state.z,
           angle: aimAngle,
-          arcSpan: Math.PI * 0.45,
+          arcSpan: Math.PI * (salvoCount > 1 ? 0.55 : 0.45),
           radius: 16,
           style: 'volley',
           color: trailColor,
@@ -805,20 +833,18 @@ export function executeActionPayload(
             state.ammo = Math.min(state.maxAmmo, state.ammo + 4);
             state.isReloading = false;
           }
-          const volleyOffsets =
-            currentWeaponId === 'b25_brushcutter'
-              ? [-0.15, -0.05, 0.05, 0.15]
-              : [-0.1, 0, 0.1];
-          for (const off of volleyOffsets) {
+          const count = Math.max(3, salvoCount);
+          for (let idx = 0; idx < count; idx++) {
+            const off = count > 1 ? (idx - (count - 1) / 2) * 0.08 : 0;
             const ang = aimAngle + off;
             state.projectiles.push({
               x: state.x + Math.cos(ang) * 8,
               y: state.y + Math.sin(ang) * 8,
               z: state.z + 6,
-              vx: Math.cos(ang) * 220,
-              vy: Math.sin(ang) * 220,
+              vx: Math.cos(ang) * (220 - idx * 6),
+              vy: Math.sin(ang) * (220 - idx * 6),
               vz: 0,
-              damage: Math.round(action.damage * 0.55 * overdriveMult),
+              damage: Math.round(action.damage * 0.52 * overdriveMult),
               damageType: action.damageType || 'Pierce',
               isPlayer: true,
               life: 0.75,
@@ -826,6 +852,7 @@ export function executeActionPayload(
               color: trailColor,
               trailColor: coreColor,
               lightRadius: 20,
+              projectileWeight: weaponInertiaSpec.projectileWeight,
             });
           }
         } else if (isExplosiveOrdnanceWeapon) {
@@ -836,52 +863,60 @@ export function executeActionPayload(
                 dy: (locked.y - state.y) / (Math.hypot(locked.x - state.x, locked.y - state.y) || 1),
               }
             : aim;
-          state.projectiles.push({
-            x: state.x + aimVec.dx * 10,
-            y: state.y + aimVec.dy * 10,
-            z: state.z + 7,
-            vx: aimVec.dx * (currentWeaponId === 'm350_mauler' ? 165 : 210),
-            vy: aimVec.dy * (currentWeaponId === 'm350_mauler' ? 165 : 210),
-            vz: currentWeaponId === 'm350_mauler' ? 14 : 0,
-            damage: Math.round(action.damage * overdriveMult),
-            damageType: 'Blast',
-            isPlayer: true,
-            life: 0.85,
-            radius: 5.5,
-            color: trailColor,
-            trailColor: coreColor,
-            lightRadius: 30,
-            onImpact(x, y, _z, st) {
-              soundSystem.playExplosion();
-              st.bladeTrails = st.bladeTrails || [];
-              st.bladeTrails.push({
-                x,
-                y,
-                z: 0,
-                angle: 0,
-                arcSpan: Math.PI * 2,
-                radius: 30,
-                style: 'shockwave',
-                color: trailColor,
-                coreColor,
-                life: 0.26,
-                maxLife: 0.26,
-              });
-              for (const e of st.enemies) {
-                if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
-                if (Math.hypot(e.x - x, e.y - y) < 32) {
-                  e.stun = Math.max(e.stun, 0.85);
-                  applyDamageFn(
-                    e.shields,
-                    e.armor,
-                    e.frame,
-                    computeEnemyDamage(Math.round(action.damage * 0.65), e.faction, e, 'Blast'),
-                    'Blast'
-                  );
+          const baseOrdAng = Math.atan2(aimVec.dy, aimVec.dx);
+          const ordCount = Math.min(3, salvoCount);
+          for (let idx = 0; idx < ordCount; idx++) {
+            const off = ordCount > 1 ? (idx - (ordCount - 1) / 2) * 0.09 : 0;
+            const ang = baseOrdAng + off;
+            const ordSpeed = (currentWeaponId === 'm350_mauler' ? 165 : 210) * (1 - idx * 0.05);
+            state.projectiles.push({
+              x: state.x + Math.cos(ang) * 10,
+              y: state.y + Math.sin(ang) * 10,
+              z: state.z + 7,
+              vx: Math.cos(ang) * ordSpeed,
+              vy: Math.sin(ang) * ordSpeed,
+              vz: currentWeaponId === 'm350_mauler' ? 14 : 0,
+              damage: Math.round((action.damage * overdriveMult) / Math.pow(ordCount, 0.45)),
+              damageType: 'Blast',
+              isPlayer: true,
+              life: 0.85,
+              radius: 5.5,
+              color: trailColor,
+              trailColor: coreColor,
+              lightRadius: 30,
+              projectileWeight: weaponInertiaSpec.projectileWeight,
+              onImpact(x, y, _z, st) {
+                soundSystem.playExplosion();
+                st.bladeTrails = st.bladeTrails || [];
+                st.bladeTrails.push({
+                  x,
+                  y,
+                  z: 0,
+                  angle: 0,
+                  arcSpan: Math.PI * 2,
+                  radius: 30,
+                  style: 'shockwave',
+                  color: trailColor,
+                  coreColor,
+                  life: 0.26,
+                  maxLife: 0.26,
+                });
+                for (const e of st.enemies) {
+                  if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
+                  if (Math.hypot(e.x - x, e.y - y) < 32) {
+                    e.stun = Math.max(e.stun, 0.85);
+                    applyDamageFn(
+                      e.shields,
+                      e.armor,
+                      e.frame,
+                      computeEnemyDamage(Math.round(action.damage * 0.65), e.faction, e, 'Blast'),
+                      'Blast'
+                    );
+                  }
                 }
-              }
-            },
-          });
+              },
+            });
+          }
         } else {
           const isHeavyBeamOrRail =
             currentWeaponId === 'great_bow' ||
@@ -889,22 +924,32 @@ export function executeActionPayload(
             currentWeaponId === 'sr440_shadowfang' ||
             currentWeaponId === 'wz800_arclight_cannon' ||
             currentWeaponId === 'wz650_prism_lance';
-          state.projectiles.push({
-            x: state.x + aim.dx * 10,
-            y: state.y + aim.dy * 10,
-            z: state.z + 6,
-            vx: aim.dx * (isHeavyBeamOrRail ? 260 : 230),
-            vy: aim.dy * (isHeavyBeamOrRail ? 260 : 230),
-            vz: 0,
-            damage: Math.round(action.damage * overdriveMult),
-            damageType: action.damageType,
-            isPlayer: true,
-            life: 0.9,
-            radius: isHeavyBeamOrRail ? 5.5 : 4.5,
-            color: trailColor,
-            trailColor: coreColor,
-            lightRadius: 28,
-          });
+          for (let idx = 0; idx < salvoCount; idx++) {
+            const off = salvoCount > 1 ? (idx - (salvoCount - 1) / 2) * 0.065 : 0;
+            const ang = aimAngle + off;
+            const speed = (isHeavyBeamOrRail ? 260 : 230) * (1 - idx * 0.035);
+            const perRoundDmg =
+              salvoCount > 1
+                ? Math.max(4, Math.round((action.damage * overdriveMult) / Math.pow(salvoCount, 0.55)))
+                : Math.round(action.damage * overdriveMult);
+            state.projectiles.push({
+              x: state.x + Math.cos(ang) * 10,
+              y: state.y + Math.sin(ang) * 10,
+              z: state.z + 6,
+              vx: Math.cos(ang) * speed,
+              vy: Math.sin(ang) * speed,
+              vz: 0,
+              damage: perRoundDmg,
+              damageType: action.damageType,
+              isPlayer: true,
+              life: 0.9,
+              radius: isHeavyBeamOrRail ? 5.5 : salvoCount > 1 ? 4.0 : 4.5,
+              color: trailColor,
+              trailColor: coreColor,
+              lightRadius: 28,
+              projectileWeight: weaponInertiaSpec.projectileWeight,
+            });
+          }
         }
         soundSystem.playLaser();
       }
@@ -1973,11 +2018,9 @@ export function updateActionTimers(state: OrionState, dt: number): void {
         const next = Math.max(0, prev - dt);
         state.skillActiveTimers[key] = next;
         if (next === 0) {
-          const reloadDur = state.skillPendingReloadDurations?.[key] ?? 2.4;
-          state.skillReloadTimers = state.skillReloadTimers || {};
+          const pendingCd = state.skillPendingReloadDurations?.[key] ?? 2.4;
           state.actionCooldowns = state.actionCooldowns || {};
-          state.skillReloadTimers[key] = reloadDur;
-          state.actionCooldowns[key] = reloadDur;
+          state.actionCooldowns[key] = pendingCd;
         }
       }
     }
@@ -2267,6 +2310,15 @@ export interface ResolvedCombatSkill {
   currentCooldown: number;
   activatesReloadState?: boolean;
   isChain?: boolean;
+  noReload?: boolean;
+  isChargeable?: boolean;
+  maxChargeSec?: number;
+  ammoCount?: number;
+  internalCharges?: number;
+  remainingCharges?: number;
+  comboStep?: number;
+  comboLength?: number;
+  comboSequence?: import('../../types').MeleeComboStepSpec[];
   activeDurationSec?: number;
   reloadDurationSec?: number;
   activeRemaining?: number;
@@ -2355,33 +2407,43 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
     const isBlock = Boolean(
       m?.isBlock || (movesetSlot === 3 && isBlockingWeapon(weaponDef || weaponId))
     );
+    const isMeleeOrShieldWpn =
+      Boolean(m?.noReload) ||
+      weaponDef?.equipmentRole === 'melee' ||
+      weaponDef?.equipmentRole === 'shield';
+    const isBasicRanged = movesetSlot === 0 && !isBlock && !isMeleeOrShieldWpn;
     const isChain = Boolean(!isBlock && (m?.isChain || movesetSlot === 0));
     const activeDurationSec = isBlock ? 0 : m?.activeDurationSec ?? 0;
-    const activatesReloadState = !isBlock && (isChain || activeDurationSec > 0);
-    const reloadDurationSec = isBlock
-      ? undefined
-      : m?.reloadDurationSec ??
-        (movesetSlot === 0
-          ? weaponDef?.reloadDurationSec ?? 1.2
-          : activatesReloadState
-            ? m?.cooldownSec ?? 3.5
-            : undefined);
+
+    // Strictly enforce: ONLY Basic Attack (movesetSlot === 0) on Ranged weapons has a reload state!
+    const activatesReloadState = isBasicRanged;
+    const reloadDurationSec = isBasicRanged
+      ? m?.reloadDurationSec ?? weaponDef?.reloadDurationSec ?? 1.2
+      : undefined;
 
     const activeRemaining = isBlock
       ? state.isHoldingBlock
         ? Math.max(0.06, 0.25 - (state.blockHoldTimer || 0))
         : Math.max(0, state.blockTimer || 0)
       : Math.max(0, state.skillActiveTimers?.[cooldownKey] || 0);
-    const reloadRemaining = isBlock
-      ? 0
-      : movesetSlot === 0 && state.isReloading
-        ? Math.max(0, state.reloadTimer || 0)
-        : Math.max(0, state.skillReloadTimers?.[cooldownKey] || 0);
+    const reloadRemaining =
+      isBasicRanged && state.isReloading ? Math.max(0, state.reloadTimer || 0) : 0;
     const separateCd = isBlock
       ? 0
       : movesetSlot === 0
-        ? reloadRemaining
-        : Math.max(0, state.actionCooldowns?.[cooldownKey] || 0, reloadRemaining);
+        ? isMeleeOrShieldWpn
+          ? Math.max(0, state.meleeSequenceCooldownTimer || 0)
+          : reloadRemaining
+        : Math.max(0, state.actionCooldowns?.[cooldownKey] || 0);
+
+    const internalCharges = !isBlock && movesetSlot > 0 ? m?.internalCharges : undefined;
+    const remainingCharges =
+      internalCharges && internalCharges > 1
+        ? state.skillInternalAmmo?.[cooldownKey] ?? internalCharges
+        : undefined;
+    const comboLen = movesetSlot === 0 ? m?.comboSequence?.length : undefined;
+    const comboStep =
+      comboLen && comboLen > 0 ? ((state.meleeComboStep || 0) % comboLen) + 1 : undefined;
 
     return {
       id: actionId,
@@ -2402,6 +2464,15 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
       currentCooldown: separateCd,
       activatesReloadState,
       isChain,
+      noReload: isMeleeOrShieldWpn || movesetSlot > 0,
+      isChargeable: Boolean(m?.isChargeable),
+      maxChargeSec: m?.maxChargeSec,
+      ammoCount: m?.ammoCount,
+      internalCharges,
+      remainingCharges,
+      comboStep,
+      comboLength: comboLen,
+      comboSequence: m?.comboSequence,
       activeDurationSec: activeDurationSec > 0 ? activeDurationSec : undefined,
       reloadDurationSec,
       activeRemaining,
@@ -2591,41 +2662,13 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
 
 /**
  * Executes `triggerTacticalReload` (trigger tactical reload) in `skillExecution.ts`. Mutates `state: OrionState`.
+ * Strictly restricted to Basic Attack (`Slot 1`) on Ranged weapons; Melee weapons and Skills 2–5 never reload.
  */
 export function triggerTacticalReload(
   state: OrionState,
   _ctx: OrionCombatContext,
   targetSlots: Array<1 | 2 | 3 | 4 | 5> = [1]
 ): boolean {
-  const skills = getResolvedCombatSkills(state);
-
-  for (const slotNum of targetSlots) {
-    if (slotNum === 1) continue;
-    const sk = skills[`skill${slotNum}` as keyof ResolvedCombatSkills];
-    if (!sk || !sk.available || !sk.activatesReloadState) continue;
-
-    const activeRem = state.skillActiveTimers?.[sk.cooldownKey] || 0;
-    if (activeRem > 0) {
-      state.skillActiveTimers![sk.cooldownKey] = 0;
-      const reloadDur =
-        state.skillPendingReloadDurations?.[sk.cooldownKey] ??
-        sk.reloadDurationSec ??
-        2.4;
-      state.skillReloadTimers = state.skillReloadTimers || {};
-      state.actionCooldowns = state.actionCooldowns || {};
-      state.skillReloadTimers[sk.cooldownKey] = reloadDur;
-      state.actionCooldowns[sk.cooldownKey] = reloadDur;
-      if (sk.isBlock) {
-        state.blockTimer = 0;
-        state.blockingWeaponId = null;
-      }
-      soundSystem.playPowerup();
-      triggerEntityFlash(state, '#38bdf8', 0.12, 'ready');
-      notifyOrionStateChange();
-      return true;
-    }
-  }
-
   if (!targetSlots.includes(1)) {
     return false;
   }
@@ -2636,6 +2679,15 @@ export function triggerTacticalReload(
     'gladius_boltcaster';
   const weapon = getWeaponDefinition(currentWeaponId);
   if (!weapon) return false;
+
+  const isMeleeOrShield =
+    Boolean(weapon.moveset[0]?.noReload) ||
+    weapon.equipmentRole === 'melee' ||
+    weapon.equipmentRole === 'shield' ||
+    currentWeaponId === 'khopesh';
+  if (isMeleeOrShield) {
+    return false;
+  }
 
   if (state.ammo >= state.maxAmmo && !state.isReloading) {
     return false;
@@ -2648,6 +2700,8 @@ export function triggerTacticalReload(
   state.activeSkillCooldownKey = null;
   state.skillTellTimer = 0;
   state.skillActionTimer = 0;
+  state.isChargingBow = false;
+  state.bowChargeTimer = 0;
   state.isReloading = true;
   state.reloadTimer = reloadDur;
   state.skillReloadTimers = state.skillReloadTimers || {};
@@ -2765,6 +2819,10 @@ export function activateResolvedCombatSkill(
     state.skillActionTimer = 0;
     state.combatQueuedChainShot = false;
   }
+  if (state.isChargingBow) {
+    state.isChargingBow = false;
+    state.bowChargeTimer = 0;
+  }
 
   const skills = getResolvedCombatSkills(state);
   const skillKey = `skill${skillIndex}` as keyof ResolvedCombatSkills;
@@ -2846,21 +2904,32 @@ export function activateResolvedCombatSkill(
   state.skillActiveTimers = state.skillActiveTimers || {};
   state.skillReloadTimers = state.skillReloadTimers || {};
   state.skillPendingReloadDurations = state.skillPendingReloadDurations || {};
+  state.skillInternalAmmo = state.skillInternalAmmo || {};
 
   if (skill.isBlock) {
     startHoldingBlock(state, ctx, skill.weaponId);
     return true;
   }
 
-  if (skill.activeDurationSec && skill.activeDurationSec > 0) {
-    const reloadDur = (skill.reloadDurationSec ?? finalCd) * cdScale;
+  if ((skill.internalCharges || 0) > 1) {
+    const maxCharges = skill.internalCharges!;
+    const currentCharges = state.skillInternalAmmo[skill.cooldownKey] ?? maxCharges;
+    const nextCharges = currentCharges - 1;
+    if (nextCharges > 0) {
+      state.skillInternalAmmo[skill.cooldownKey] = nextCharges;
+      const cycleSec = Math.max(
+        0.26,
+        (desc.internalCycleSec ?? 0.45) * cdScale
+      );
+      state.actionCooldowns[skill.cooldownKey] = cycleSec;
+    } else {
+      state.skillInternalAmmo[skill.cooldownKey] = maxCharges;
+      state.actionCooldowns[skill.cooldownKey] = finalCd;
+    }
+  } else if (skill.activeDurationSec && skill.activeDurationSec > 0) {
     state.skillActiveTimers[skill.cooldownKey] = skill.activeDurationSec;
-    state.skillPendingReloadDurations[skill.cooldownKey] = reloadDur;
+    state.skillPendingReloadDurations[skill.cooldownKey] = finalCd;
     state.actionCooldowns[skill.cooldownKey] = 0;
-  } else if (skill.isChain) {
-    const reloadDur = (skill.reloadDurationSec ?? finalCd) * cdScale;
-    state.skillReloadTimers[skill.cooldownKey] = reloadDur;
-    state.actionCooldowns[skill.cooldownKey] = reloadDur;
   } else {
     state.actionCooldowns[skill.cooldownKey] = finalCd;
   }

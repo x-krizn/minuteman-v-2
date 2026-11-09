@@ -56,9 +56,15 @@ export interface BladeTrailEffect {
  * Inertia System (`inertia-v0.md`) Outcome Bands & Modifier Hooks
  * - Displacement is governed by Weight (`m`, `m_eff = m * (1 + μ)`)
  * - Reaction & Recovery are governed by Stability (`S`, deadband `k1 * S`, recovery `k2 * S`)
+ * - Excess ranged/heavy impulse converts into grounded `'knockdown'` instead of launching targets off-screen
  * - Inertia never alters damage dealt or taken (BCU invariant)
  */
-export type InertiaOutcomeBand = 'none' | 'flinch' | 'stagger' | 'knockback';
+export type InertiaOutcomeBand =
+  | 'none'
+  | 'flinch'
+  | 'stagger'
+  | 'knockback'
+  | 'knockdown';
 /**
  * Type contract for `AttackCommitmentClass` (attack commitment class) in `combat.ts`.
  */
@@ -72,6 +78,25 @@ export interface InertiaModifiers {
   weightMult?: number;
   stabilityFlat?: number;
   stabilityMult?: number;
+}
+
+/**
+ * Single step descriptor in a weapon-unique fluid melee combo sequence (`noReload: true`).
+ */
+export interface MeleeComboStepSpec {
+  stepIndex: number;
+  label: string;
+  style: ActionEffectStyle;
+  arcSpan: number;
+  radius: number;
+  length?: number;
+  width?: number;
+  damageMult: number;
+  tellDurationSec: number;
+  actionDurationSec: number;
+  flipDir?: boolean;
+  extraArmorDent?: number;
+  knockbackScale?: number;
 }
 
 /**
@@ -89,11 +114,27 @@ export interface ActionDefinition {
   heatCost: number;
   range: number;
   description: string;
-  /** True if this skill fires/strikes as a multi-shot chain and activates a reload state */
+  /** True if this skill fires/strikes as a multi-shot chain and activates a reload state (strictly Slot 0 ranged basic attacks) */
   isChain?: boolean;
-  /** Active duration in seconds for sustained/guard skills (activates reload state when finished) */
+  /** True if this action never triggers a reload state (all Melee/Shield actions and all Skills 1–4) */
+  noReload?: boolean;
+  /** Number of rounds/projectiles fired in a salvo or held as internal skill ammo for ranged skills */
+  ammoCount?: number;
+  /** Number of per-shot internal charges before the skill enters its full depletion cooldown */
+  internalCharges?: number;
+  /** Brief per-shot internal cycle time (seconds) between internal charges */
+  internalCycleSec?: number;
+  /** True when this action is a single-shot hold-to-charge Bow draw */
+  isChargeable?: boolean;
+  /** Full draw time in seconds for 100% Bow charge scaling */
+  maxChargeSec?: number;
+  /** Weapon-unique fluid melee combo step sequence for reload-free melee Basic Attacks */
+  comboSequence?: MeleeComboStepSpec[];
+  /** Internal idle window in seconds before the fluid melee combo resets to Step 1 */
+  comboResetWindowSec?: number;
+  /** Active duration in seconds for sustained/guard skills */
   activeDurationSec?: number;
-  /** Reload state duration in seconds for chain or active-duration skills */
+  /** Reload state duration in seconds for Slot 0 ranged basic attacks */
   reloadDurationSec?: number;
   /** True if this skill is a Block action (always Skill 4 on blocking weapons) */
   isBlock?: boolean;
@@ -207,6 +248,14 @@ export interface OrionActionTemplate {
   actionDurationSec?: number;
   cooldownSec?: number;
   isChain?: boolean;
+  noReload?: boolean;
+  ammoCount?: number;
+  internalCharges?: number;
+  internalCycleSec?: number;
+  isChargeable?: boolean;
+  maxChargeSec?: number;
+  comboSequence?: MeleeComboStepSpec[];
+  comboResetWindowSec?: number;
   activeDurationSec?: number;
   reloadDurationSec?: number;
   isBlock?: boolean;

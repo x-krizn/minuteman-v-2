@@ -5,6 +5,10 @@
 
 import { soundSystem } from '../../../../engine/core/soundSystem';
 import { DIR_VECTORS, getDirFromVector } from '../../constants';
+import {
+  classifyWeaponCombatArchetype,
+  getWeaponDefinition,
+} from '../../database/equipment/weapons';
 import { EnemyEntity, OrionCombatContext, OrionState } from '../../types';
 import { notifyOrionStateChange } from '../playerSystem';
 import { getPointVisibilityFactor } from '../renderSystem';
@@ -244,17 +248,9 @@ export function evaluatePositionalHitQuality(
   const targetAng = Math.atan2(ty - oy, tx - ox);
   const angDiff = Math.abs(normalizeAngleDiff(targetAng, aimAngle));
 
-  const isSpearOrLance =
-    weaponId === 'short_spear' ||
-    weaponId === 'ls900_swordspear' ||
-    weaponId === 'avalon_siege_lance' ||
-    weaponId === 'hl220_lightburst_lance';
-  const isHammerMaceOrAxe =
-    weaponId === 'mace' ||
-    weaponId === 'wz200_manacore_staff' ||
-    weaponId === 'hallowed_scepter' ||
-    weaponId === 'hand_axe' ||
-    weaponId === 'siegebreaker';
+  const arch = classifyWeaponCombatArchetype(getWeaponDefinition(weaponId), weaponId);
+  const isSpearOrLance = arch.isSpearOrPolearm;
+  const isHammerMaceOrAxe = arch.isImpactOrAxe || arch.isBluntOrStaff;
 
   if (isSpearOrLance) {
     // Spear / Lance: tipper sweet-spot at outer 68%..105% reach near thrust centerline; shaft sour-spot inside 45%

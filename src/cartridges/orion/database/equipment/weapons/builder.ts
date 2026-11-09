@@ -627,8 +627,271 @@ export function buildMagitechWeapon(seed: MagitechWeaponSeed): WeaponDefinition 
 }
 
 /**
+ * Canonical Combat Tempo Constants anchored to a **Medium (`1.00×`)** baseline
+ * with a **Moderate `±30%` spread** (`Light = +30%` faster rate / `0.77×` cycle duration;
+ * `Heavy = -30%` slower rate / `1.30×` cycle duration) and **`[0.70×, 1.30×]`** stacked multiplier caps.
+ */
+export const COMBAT_TEMPO_CONSTANTS = {
+  /** Hard lower bound on stacked speed/cooldown/tell multipliers (`-30%` from baseline) */
+  MULTIPLIER_MIN: 0.7,
+  /** Hard upper bound on stacked speed/cooldown/tell multipliers (`+30%` from baseline) */
+  MULTIPLIER_MAX: 1.3,
+  /** Cycle duration multiplier by weight class around Medium (`1.00×`) baseline */
+  WEIGHT_CYCLE_SCALE: {
+    light: 0.77, // +30% faster tempo (1 / 1.30)
+    medium: 1.0, // 1.00x baseline
+    heavy: 1.3, // -30% slower tempo
+  } as const,
+  /** Ranged Basic Attack (`Slot 0`) per-shot cycle time in seconds (Medium = `0.22s` / `~4.5 shots/s`) */
+  RANGED_BASIC_SHOT_SEC: {
+    light: 0.17, // ~5.8 shots/s
+    medium: 0.22, // ~4.5 shots/s baseline
+    heavy: 0.29, // ~3.4 shots/s
+    minFloor: 0.14, // Strict floor (<= 7.1 shots/s max with all buffs)
+    maxCap: 0.36,
+  } as const,
+  /** Melee Fluid Combo (`Slot 0`) per-strike cycle time in seconds (Medium = `0.30s` / `~3.3 strikes/s`) */
+  MELEE_COMBO_STEP_SEC: {
+    light: 0.23, // ~4.3 strikes/s
+    medium: 0.3, // ~3.3 strikes/s baseline
+    heavy: 0.39, // ~2.5 strikes/s
+    minFloor: 0.18, // Strict floor (<= 5.5 strikes/s max with all buffs)
+    maxCap: 0.48,
+  } as const,
+  /** Bow Single-Shot Hold-to-Charge (`Slot 0`) full draw duration in seconds (Medium = `0.85s`) */
+  BOW_FULL_DRAW_SEC: {
+    light: 0.65,
+    medium: 0.85,
+    heavy: 1.1,
+    minFloor: 0.55,
+    maxCap: 1.25,
+  } as const,
+  /** Bow Single-Shot nock/reload duration in seconds (Medium = `0.75s`) */
+  BOW_NOCK_RELOAD_SEC: {
+    light: 0.58,
+    medium: 0.75,
+    heavy: 0.98,
+  } as const,
+  /** Tactical Skill (`Slots 1–4`) tell & action duration baselines by weight class */
+  SKILL_TELL_SEC: {
+    light: 0.16,
+    medium: 0.21,
+    heavy: 0.27,
+    minFloor: 0.11,
+    maxCap: 0.38,
+  } as const,
+  SKILL_ACTION_SEC: {
+    light: 0.25,
+    medium: 0.32,
+    heavy: 0.42,
+    minFloor: 0.18,
+    maxCap: 0.56,
+  } as const,
+} as const;
+
+/**
+ * Clamps any cumulative speed, cooldown, tell, or passive mobility multiplier
+ * into the canonical `[0.70, 1.30]` (`±30%`) band around the `1.00×` Medium baseline.
+ */
+export function clampTempoMultiplier(
+  mult: number,
+  min: number = COMBAT_TEMPO_CONSTANTS.MULTIPLIER_MIN,
+  max: number = COMBAT_TEMPO_CONSTANTS.MULTIPLIER_MAX
+): number {
+  if (!Number.isFinite(mult)) return 1.0;
+  return Math.max(min, Math.min(max, mult));
+}
+
+/**
+ * Unified combat archetype descriptor derived from a weapon's canonical `WeaponCategory` (8 classes)
+ * and `weaponClass` (9 functional types per class), eliminating hardcoded legacy weapon ID branches.
+ */
+export interface WeaponCombatArchetype {
+  category: WeaponCategory;
+  functionalType: string;
+  weightClass: WeaponWeightClass;
+  isShield: boolean;
+  isTowerOrHeavyShield: boolean;
+  isBucklerOrDiscShield: boolean;
+  isBow: boolean;
+  isSpearOrPolearm: boolean;
+  isLanceOrPike: boolean;
+  isImpactOrAxe: boolean;
+  isAxe: boolean;
+  isBluntOrStaff: boolean;
+  isCurvedBlade: boolean;
+  isHookBlade: boolean;
+  isStraightBlade: boolean;
+  isDaggerOrShortBlade: boolean;
+  isGreatsword: boolean;
+  isBlade: boolean;
+  isMelee: boolean;
+  isMeleeOrShield: boolean;
+  isCarrierOrMunition: boolean;
+  isQuiverOrBandolier: boolean;
+  isCatalystOrBattery: boolean;
+  isExplosiveOrdnance: boolean;
+  isRapidCaster: boolean;
+  isBeamOrStellarCaster: boolean;
+  isHybridLanceOrStaff: boolean;
+  hasShieldBypassEdge: boolean;
+}
+
+/**
+ * Classifies any weapon definition (across all 72 Customizable and 29 Magitech weapons)
+ * into its unified combat archetype using the 8 Weapon Classes and 9 Functional Types.
+ */
+export function classifyWeaponCombatArchetype(
+  weapon?: Partial<WeaponDefinition> | null,
+  fallbackId?: string
+): WeaponCombatArchetype {
+  const id = (weapon?.id || fallbackId || '').toLowerCase().split('::')[0];
+  const category = resolveWeaponCategory(
+    id,
+    weapon?.weaponClass,
+    weapon?.equipmentRole,
+    weapon?.category
+  );
+  const functionalType = resolveWeaponFunctionalType(
+    id,
+    category,
+    weapon?.weaponClass,
+    weapon?.name
+  );
+  const weightClass: WeaponWeightClass = weapon?.weightClass || 'medium';
+
+  const isShield = category === 'Shields' || weapon?.equipmentRole === 'shield';
+  const isTowerOrHeavyShield =
+    isShield &&
+    (functionalType === 'Tower' ||
+      functionalType === 'Scutum' ||
+      functionalType === 'Norman' ||
+      weightClass === 'heavy');
+  const isBucklerOrDiscShield =
+    isShield &&
+    (functionalType === 'Buckler' ||
+      functionalType === 'Disc' ||
+      functionalType === 'Mote' ||
+      functionalType === 'Corona' ||
+      functionalType === 'Rhom');
+  const isBow = category === 'Bows' || Boolean(weapon?.moveset?.[0]?.isChargeable);
+  const isSpearOrPolearm = category === 'Spears';
+  const isLanceOrPike =
+    isSpearOrPolearm &&
+    (functionalType === 'Lance' ||
+      functionalType === 'Pike' ||
+      functionalType === 'Boar Spear');
+  const isImpactOrAxe = category === 'Impact & Axes';
+  const isAxe =
+    isImpactOrAxe &&
+    (functionalType === 'Tomahawk' ||
+      functionalType === 'Parashu' ||
+      functionalType === 'Labrys' ||
+      functionalType === 'Battle Axe');
+  const isBluntOrStaff =
+    (isImpactOrAxe && !isAxe) ||
+    (isSpearOrPolearm &&
+      (functionalType === 'Partisan' || functionalType === 'Spetum') &&
+      weapon?.primaryDamageType === 'Wave');
+  const isCurvedBlade = category === 'Blades: Curved';
+  const isHookBlade =
+    isCurvedBlade &&
+    (functionalType === 'Khopesh' ||
+      functionalType === 'Shotel' ||
+      functionalType === 'Falx');
+  const isStraightBlade = category === 'Blades: Straight';
+  const isDaggerOrShortBlade =
+    (isStraightBlade &&
+      (functionalType === 'Cinquedea' || functionalType === 'Spatha')) ||
+    (isCurvedBlade && functionalType === 'Wakizashi');
+  const isGreatsword =
+    (isStraightBlade &&
+      (functionalType === 'Zweihander' ||
+        functionalType === 'Flamberge' ||
+        functionalType === 'Executioner Sword')) ||
+    (isCurvedBlade && (functionalType === 'Odachi' || functionalType === 'Dadao'));
+  const isBlade = isCurvedBlade || isStraightBlade;
+  const isMelee =
+    isSpearOrPolearm ||
+    isImpactOrAxe ||
+    isBlade ||
+    weapon?.equipmentRole === 'melee';
+  const isMeleeOrShield =
+    !isBow && (isMelee || isShield || Boolean(weapon?.moveset?.[0]?.noReload));
+  const isCarrierOrMunition = category === 'Carriers & Munitions';
+  const isQuiverOrBandolier =
+    isCarrierOrMunition &&
+    (functionalType === 'Quiver' ||
+      functionalType === 'Bandolier' ||
+      functionalType === 'Yebira' ||
+      functionalType === 'Sheaf' ||
+      functionalType === 'Plumbata' ||
+      functionalType === 'Kaad' ||
+      weapon?.equipmentRole === 'quiver');
+  const isCatalystOrBattery =
+    isCarrierOrMunition &&
+    (functionalType === 'Battery' ||
+      functionalType === 'Pangao' ||
+      weapon?.equipmentRole === 'catalyst');
+  const isExplosiveOrdnance =
+    (isCarrierOrMunition && functionalType === 'Rack') ||
+    (category === 'Casters' &&
+      (functionalType === 'Blast Caster' ||
+        functionalType === 'Meteoric Caster' ||
+        functionalType === 'Nova Caster')) ||
+    weapon?.primaryDamageType === 'Blast';
+  const isRapidCaster =
+    category === 'Casters' &&
+    (functionalType === 'Bolt Caster' ||
+      functionalType === 'Arc Caster' ||
+      functionalType === 'Pulse Caster');
+  const isBeamOrStellarCaster =
+    category === 'Casters' &&
+    (functionalType === 'Beam Caster' ||
+      functionalType === 'Wave Caster' ||
+      functionalType === 'Stellar Caster');
+  const isHybridLanceOrStaff =
+    isLanceOrPike ||
+    (isMelee &&
+      (weapon?.primaryDamageType === 'Beam' || weapon?.primaryDamageType === 'Wave'));
+  const hasShieldBypassEdge = isHookBlade || isDaggerOrShortBlade;
+
+  return {
+    category,
+    functionalType,
+    weightClass,
+    isShield,
+    isTowerOrHeavyShield,
+    isBucklerOrDiscShield,
+    isBow,
+    isSpearOrPolearm,
+    isLanceOrPike,
+    isImpactOrAxe,
+    isAxe,
+    isBluntOrStaff,
+    isCurvedBlade,
+    isHookBlade,
+    isStraightBlade,
+    isDaggerOrShortBlade,
+    isGreatsword,
+    isBlade,
+    isMelee,
+    isMeleeOrShield,
+    isCarrierOrMunition,
+    isQuiverOrBandolier,
+    isCatalystOrBattery,
+    isExplosiveOrdnance,
+    isRapidCaster,
+    isBeamOrStellarCaster,
+    isHybridLanceOrStaff,
+    hasShieldBypassEdge,
+  };
+}
+
+/**
  * Generates a weapon-unique, fluid, reload-free melee combo sequence (`3–5` steps)
- * tailored to the weapon's category, functional class, and Magitech/Custom identity.
+ * anchored to the **Medium (`0.30s/strike`)** tempo baseline with a **Moderate `±30%` band**
+ * (`Light = 0.23s/strike`, `Heavy = 0.39s/strike`).
  */
 export function buildWeaponUniqueComboSequence(
   weaponId: string,
@@ -638,9 +901,20 @@ export function buildWeaponUniqueComboSequence(
   baseRange: number
 ): MeleeComboStepSpec[] {
   const r = Math.max(20, baseRange || 26);
-  const isLight = weightClass === 'light';
-  const isHeavy = weightClass === 'heavy';
-  const speedScale = isLight ? 0.82 : isHeavy ? 1.18 : 1.0;
+  const stepBaseSec = COMBAT_TEMPO_CONSTANTS.MELEE_COMBO_STEP_SEC[weightClass];
+  const makeTimings = (paceMult: number = 1.0) => {
+    const total = Math.max(
+      COMBAT_TEMPO_CONSTANTS.MELEE_COMBO_STEP_SEC.minFloor,
+      Math.min(
+        COMBAT_TEMPO_CONSTANTS.MELEE_COMBO_STEP_SEC.maxCap,
+        stepBaseSec * paceMult
+      )
+    );
+    const tellDurationSec = Number((total * 0.26).toFixed(2));
+    const actionDurationSec = Number((total - tellDurationSec).toFixed(2));
+    return { tellDurationSec, actionDurationSec };
+  };
+
   const ft = functionalType.toLowerCase();
   const idLower = weaponId.toLowerCase();
 
@@ -656,8 +930,7 @@ export function buildWeaponUniqueComboSequence(
         radius: r,
         width: 14,
         damageMult: 0.92,
-        tellDurationSec: Number((0.07 * speedScale).toFixed(2)),
-        actionDurationSec: Number((0.22 * speedScale).toFixed(2)),
+        ...makeTimings(0.95),
         flipDir: false,
         knockbackScale: 0.8,
       },
@@ -669,8 +942,7 @@ export function buildWeaponUniqueComboSequence(
         radius: r + 2,
         width: 16,
         damageMult: 1.08,
-        tellDurationSec: Number((0.08 * speedScale).toFixed(2)),
-        actionDurationSec: Number((0.24 * speedScale).toFixed(2)),
+        ...makeTimings(1.0),
         flipDir: true,
         knockbackScale: 1.0,
       },
@@ -683,8 +955,7 @@ export function buildWeaponUniqueComboSequence(
         length: 14,
         width: 20,
         damageMult: 1.35,
-        tellDurationSec: Number((0.11 * speedScale).toFixed(2)),
-        actionDurationSec: Number((0.32 * speedScale).toFixed(2)),
+        ...makeTimings(1.18),
         flipDir: false,
         extraArmorDent: 4,
         knockbackScale: 1.35,
@@ -694,8 +965,10 @@ export function buildWeaponUniqueComboSequence(
 
   // 2. SPEARS: Thrust-centric & Polearm sweeping fluid combos
   if (category === 'Spears') {
-    const isHeavyLanceOrPike = ft === 'lance' || ft === 'pike' || ft === 'boar spear' || idLower.includes('lance');
-    const isPoleCleave = ft === 'partisan' || ft === 'spetum' || ft === 'broad spear' || ft === 'winged spear';
+    const isHeavyLanceOrPike =
+      ft === 'lance' || ft === 'pike' || ft === 'boar spear' || idLower.includes('lance');
+    const isPoleCleave =
+      ft === 'partisan' || ft === 'spetum' || ft === 'broad spear' || ft === 'winged spear';
     if (isHeavyLanceOrPike) {
       return [
         {
@@ -707,8 +980,7 @@ export function buildWeaponUniqueComboSequence(
           length: r + 4,
           width: 11,
           damageMult: 0.95,
-          tellDurationSec: Number((0.09 * speedScale).toFixed(2)),
-          actionDurationSec: Number((0.25 * speedScale).toFixed(2)),
+          ...makeTimings(0.96),
         },
         {
           stepIndex: 1,
@@ -718,8 +990,7 @@ export function buildWeaponUniqueComboSequence(
           radius: Math.round(r * 0.82),
           width: 14,
           damageMult: 1.05,
-          tellDurationSec: Number((0.09 * speedScale).toFixed(2)),
-          actionDurationSec: Number((0.26 * speedScale).toFixed(2)),
+          ...makeTimings(1.02),
           flipDir: true,
         },
         {
@@ -731,8 +1002,7 @@ export function buildWeaponUniqueComboSequence(
           length: r + 10,
           width: 14,
           damageMult: 1.42,
-          tellDurationSec: Number((0.12 * speedScale).toFixed(2)),
-          actionDurationSec: Number((0.34 * speedScale).toFixed(2)),
+          ...makeTimings(1.18),
           extraArmorDent: 5,
           knockbackScale: 1.3,
         },
@@ -748,8 +1018,7 @@ export function buildWeaponUniqueComboSequence(
         length: r + 2,
         width: 10,
         damageMult: 0.9,
-        tellDurationSec: Number((0.06 * speedScale).toFixed(2)),
-        actionDurationSec: Number((0.19 * speedScale).toFixed(2)),
+        ...makeTimings(0.92),
       },
       {
         stepIndex: 1,
@@ -760,8 +1029,7 @@ export function buildWeaponUniqueComboSequence(
         length: r + 5,
         width: 11,
         damageMult: 1.02,
-        tellDurationSec: Number((0.06 * speedScale).toFixed(2)),
-        actionDurationSec: Number((0.2 * speedScale).toFixed(2)),
+        ...makeTimings(0.96),
         flipDir: true,
       },
       {
@@ -772,8 +1040,7 @@ export function buildWeaponUniqueComboSequence(
         radius: Math.round(r * 0.9),
         width: 14,
         damageMult: 1.15,
-        tellDurationSec: Number((0.08 * speedScale).toFixed(2)),
-        actionDurationSec: Number((0.23 * speedScale).toFixed(2)),
+        ...makeTimings(1.04),
       },
       {
         stepIndex: 3,
@@ -784,8 +1051,7 @@ export function buildWeaponUniqueComboSequence(
         length: r + 9,
         width: 13,
         damageMult: 1.38,
-        tellDurationSec: Number((0.1 * speedScale).toFixed(2)),
-        actionDurationSec: Number((0.28 * speedScale).toFixed(2)),
+        ...makeTimings(1.15),
         extraArmorDent: 3,
         knockbackScale: 1.2,
       },
@@ -794,7 +1060,12 @@ export function buildWeaponUniqueComboSequence(
 
   // 3. IMPACT & AXES: Heavy blunt slams & bearded axe chops
   if (category === 'Impact & Axes') {
-    const isAxe = ft === 'tomahawk' || ft === 'parashu' || ft === 'labrys' || ft === 'battle axe' || idLower.includes('axe');
+    const isAxe =
+      ft === 'tomahawk' ||
+      ft === 'parashu' ||
+      ft === 'labrys' ||
+      ft === 'battle axe' ||
+      idLower.includes('axe');
     if (isAxe) {
       return [
         {
@@ -805,8 +1076,7 @@ export function buildWeaponUniqueComboSequence(
           radius: r,
           width: 14,
           damageMult: 0.95,
-          tellDurationSec: Number((0.07 * speedScale).toFixed(2)),
-          actionDurationSec: Number((0.22 * speedScale).toFixed(2)),
+          ...makeTimings(0.95),
           flipDir: false,
         },
         {
@@ -817,8 +1087,7 @@ export function buildWeaponUniqueComboSequence(
           radius: r + 1,
           width: 15,
           damageMult: 1.1,
-          tellDurationSec: Number((0.08 * speedScale).toFixed(2)),
-          actionDurationSec: Number((0.23 * speedScale).toFixed(2)),
+          ...makeTimings(1.0),
           flipDir: true,
           extraArmorDent: 2,
         },
@@ -830,8 +1099,7 @@ export function buildWeaponUniqueComboSequence(
           radius: r + 3,
           width: 16,
           damageMult: 1.22,
-          tellDurationSec: Number((0.09 * speedScale).toFixed(2)),
-          actionDurationSec: Number((0.26 * speedScale).toFixed(2)),
+          ...makeTimings(1.06),
           flipDir: false,
         },
         {
@@ -843,8 +1111,7 @@ export function buildWeaponUniqueComboSequence(
           length: 16,
           width: 20,
           damageMult: 1.48,
-          tellDurationSec: Number((0.12 * speedScale).toFixed(2)),
-          actionDurationSec: Number((0.33 * speedScale).toFixed(2)),
+          ...makeTimings(1.18),
           extraArmorDent: 5,
           knockbackScale: 1.35,
         },
@@ -860,8 +1127,7 @@ export function buildWeaponUniqueComboSequence(
         radius: r,
         width: 15,
         damageMult: 0.96,
-        tellDurationSec: Number((0.08 * speedScale).toFixed(2)),
-        actionDurationSec: Number((0.24 * speedScale).toFixed(2)),
+        ...makeTimings(0.98),
         flipDir: false,
         extraArmorDent: 2,
       },
@@ -873,8 +1139,7 @@ export function buildWeaponUniqueComboSequence(
         radius: r + 1,
         width: 16,
         damageMult: 1.12,
-        tellDurationSec: Number((0.09 * speedScale).toFixed(2)),
-        actionDurationSec: Number((0.25 * speedScale).toFixed(2)),
+        ...makeTimings(1.04),
         flipDir: true,
         extraArmorDent: 3,
       },
@@ -887,8 +1152,7 @@ export function buildWeaponUniqueComboSequence(
         length: 16,
         width: 22,
         damageMult: 1.45,
-        tellDurationSec: Number((0.12 * speedScale).toFixed(2)),
-        actionDurationSec: Number((0.34 * speedScale).toFixed(2)),
+        ...makeTimings(1.2),
         extraArmorDent: 6,
         knockbackScale: 1.4,
       },
@@ -898,7 +1162,8 @@ export function buildWeaponUniqueComboSequence(
   // 4. BLADES: CURVED — Fluid 4-to-5 step draw-cuts, hooks, and whirling arcs
   if (category === 'Blades: Curved') {
     const isHookBlade = ft === 'khopesh' || ft === 'shotel' || ft === 'falx';
-    const isFastCurved = ft === 'wakizashi' || ft === 'katana' || ft === 'kilij' || isLight;
+    const isFastCurved =
+      ft === 'wakizashi' || ft === 'katana' || ft === 'kilij' || weightClass === 'light';
     const baseSteps: MeleeComboStepSpec[] = [
       {
         stepIndex: 0,
@@ -908,8 +1173,7 @@ export function buildWeaponUniqueComboSequence(
         radius: r,
         width: 12,
         damageMult: 0.88,
-        tellDurationSec: Number((0.05 * speedScale).toFixed(2)),
-        actionDurationSec: Number((0.17 * speedScale).toFixed(2)),
+        ...makeTimings(0.92),
         flipDir: false,
       },
       {
@@ -920,8 +1184,7 @@ export function buildWeaponUniqueComboSequence(
         radius: r + 1,
         width: 13,
         damageMult: 1.0,
-        tellDurationSec: Number((0.06 * speedScale).toFixed(2)),
-        actionDurationSec: Number((0.18 * speedScale).toFixed(2)),
+        ...makeTimings(0.96),
         flipDir: true,
       },
       {
@@ -932,8 +1195,7 @@ export function buildWeaponUniqueComboSequence(
         radius: r + 2,
         width: 14,
         damageMult: 1.14,
-        tellDurationSec: Number((0.07 * speedScale).toFixed(2)),
-        actionDurationSec: Number((0.21 * speedScale).toFixed(2)),
+        ...makeTimings(1.04),
         flipDir: false,
       },
       {
@@ -944,8 +1206,7 @@ export function buildWeaponUniqueComboSequence(
         radius: r + 4,
         width: 16,
         damageMult: 1.38,
-        tellDurationSec: Number((0.09 * speedScale).toFixed(2)),
-        actionDurationSec: Number((0.26 * speedScale).toFixed(2)),
+        ...makeTimings(1.14),
         flipDir: true,
         extraArmorDent: 3,
         knockbackScale: 1.15,
@@ -960,8 +1221,7 @@ export function buildWeaponUniqueComboSequence(
         radius: r + 2,
         width: 13,
         damageMult: 1.18,
-        tellDurationSec: 0.05,
-        actionDurationSec: 0.16,
+        ...makeTimings(0.95),
         flipDir: true,
       });
       baseSteps[4].stepIndex = 4;
@@ -970,8 +1230,10 @@ export function buildWeaponUniqueComboSequence(
   }
 
   // 5. BLADES: STRAIGHT (and default Melee) — Slash -> Cross-Cut -> Point Thrust -> Execution Cleave
-  const isGreatsword = ft === 'zweihander' || ft === 'flamberge' || ft === 'executioner sword';
-  const isDaggerOrShort = ft === 'cinquedea' || idLower.includes('whisper') || idLower.includes('phantom');
+  const isGreatsword =
+    ft === 'zweihander' || ft === 'flamberge' || ft === 'executioner sword';
+  const isDaggerOrShort =
+    ft === 'cinquedea' || idLower.includes('whisper') || idLower.includes('phantom');
   if (isDaggerOrShort) {
     return [
       {
@@ -982,8 +1244,7 @@ export function buildWeaponUniqueComboSequence(
         radius: r,
         width: 10,
         damageMult: 0.85,
-        tellDurationSec: 0.04,
-        actionDurationSec: 0.14,
+        ...makeTimings(0.9),
         flipDir: false,
       },
       {
@@ -994,8 +1255,7 @@ export function buildWeaponUniqueComboSequence(
         radius: r,
         width: 10,
         damageMult: 0.95,
-        tellDurationSec: 0.04,
-        actionDurationSec: 0.14,
+        ...makeTimings(0.92),
         flipDir: true,
       },
       {
@@ -1007,8 +1267,7 @@ export function buildWeaponUniqueComboSequence(
         length: r + 6,
         width: 9,
         damageMult: 1.1,
-        tellDurationSec: 0.05,
-        actionDurationSec: 0.16,
+        ...makeTimings(0.96),
       },
       {
         stepIndex: 3,
@@ -1018,8 +1277,7 @@ export function buildWeaponUniqueComboSequence(
         radius: r + 2,
         width: 12,
         damageMult: 1.18,
-        tellDurationSec: 0.06,
-        actionDurationSec: 0.18,
+        ...makeTimings(1.02),
         flipDir: true,
       },
       {
@@ -1031,8 +1289,7 @@ export function buildWeaponUniqueComboSequence(
         length: r + 8,
         width: 11,
         damageMult: 1.4,
-        tellDurationSec: 0.07,
-        actionDurationSec: 0.22,
+        ...makeTimings(1.12),
         extraArmorDent: 3,
       },
     ];
@@ -1047,8 +1304,7 @@ export function buildWeaponUniqueComboSequence(
       radius: r,
       width: isGreatsword ? 16 : 13,
       damageMult: 0.92,
-      tellDurationSec: Number((0.07 * speedScale).toFixed(2)),
-      actionDurationSec: Number((0.21 * speedScale).toFixed(2)),
+      ...makeTimings(0.95),
       flipDir: false,
     },
     {
@@ -1059,8 +1315,7 @@ export function buildWeaponUniqueComboSequence(
       radius: r + 1,
       width: isGreatsword ? 17 : 13,
       damageMult: 1.05,
-      tellDurationSec: Number((0.07 * speedScale).toFixed(2)),
-      actionDurationSec: Number((0.22 * speedScale).toFixed(2)),
+      ...makeTimings(1.0),
       flipDir: true,
     },
     {
@@ -1072,8 +1327,7 @@ export function buildWeaponUniqueComboSequence(
       length: r + 7,
       width: 12,
       damageMult: 1.18,
-      tellDurationSec: Number((0.08 * speedScale).toFixed(2)),
-      actionDurationSec: Number((0.23 * speedScale).toFixed(2)),
+      ...makeTimings(1.04),
       extraArmorDent: 2,
     },
     {
@@ -1085,8 +1339,7 @@ export function buildWeaponUniqueComboSequence(
       length: isGreatsword ? 16 : undefined,
       width: isGreatsword ? 20 : 16,
       damageMult: 1.42,
-      tellDurationSec: Number((0.1 * speedScale).toFixed(2)),
-      actionDurationSec: Number((0.29 * speedScale).toFixed(2)),
+      ...makeTimings(1.18),
       flipDir: false,
       extraArmorDent: 4,
       knockbackScale: 1.25,
@@ -1146,8 +1399,6 @@ export function resolveSkillAmmoAndCharges(
     ammoCount = 1;
   }
 
-  // Skills that fire 1-3 precision rounds on Slot 1 or Slot 2 can hold 2-3 internal charges
-  // with a short per-shot internal cycle before entering their long depletion cooldown.
   let internalCharges: number | undefined;
   let internalCycleSec: number | undefined;
   if (slot === 1 || (slot === 2 && ammoCount <= 2)) {
@@ -1159,13 +1410,12 @@ export function resolveSkillAmmoAndCharges(
 }
 
 /**
- * Normalizes any `WeaponDefinition` to enforce the canonical combat overhaul rules:
- * 1. `Bows`: Single-shot hold-to-charge weapons (`shotsPerChain = 1`, `isChargeable = true` on Slot 0, scaling damage/velocity/heat).
- * 2. `Melee & Shields`: Never reload (`noReload = true`, `reloadDurationSec = 0`), fluid weapon-unique combo sequence with internal reset cooldown.
- * 3. `Ranged Weapons`: 100% increase (`2×`) on Basic Attack (`Slot 0`) ammo (`shotsPerChain`), reload strictly on Slot 0 (`noReload = true` on Slots 1–4), and explicit `ammoCount` / `internalCharges` on ranged skills.
+ * Normalizes any `WeaponDefinition` to enforce the canonical combat overhaul and tempo rules:
+ * 1. `Bows`: Single-shot hold-to-charge weapons (`shotsPerChain = 1`, `isChargeable = true` on Slot 0, Medium draw = `0.85s` with `±30%` spread).
+ * 2. `Melee & Shields`: Never reload (`noReload = true`, `reloadDurationSec = 0`), fluid weapon-unique combo sequence anchored to Medium (`0.30s/strike`) with `±30%` spread.
+ * 3. `Ranged Weapons`: 100% increase (`2×`) on Basic Attack (`Slot 0`) ammo (`shotsPerChain`), per-shot cadence decoupled from magazine size and anchored to Medium (`0.22s/shot` with `±30%` spread), reload strictly on Slot 0 (`noReload = true` on Slots 1–4).
  */
 export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): WeaponDefinition {
-  // Avoid double-normalizing if already normalized
   if (
     weapon.moveset[0]?.isChargeable ||
     weapon.moveset[0]?.comboSequence ||
@@ -1174,48 +1424,32 @@ export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): Weapon
     return weapon;
   }
 
-  const category = resolveWeaponCategory(
-    weapon.id,
-    weapon.weaponClass,
-    weapon.equipmentRole,
-    weapon.category
-  );
-  const functionalType = resolveWeaponFunctionalType(
-    weapon.id,
-    category,
-    weapon.weaponClass,
-    weapon.name
-  );
-  const weightClass: WeaponWeightClass = weapon.weightClass || 'medium';
-  const isBow = category === 'Bows' || weapon.id === 'great_bow' || weapon.id.startsWith('bow_');
-  const isMeleeOrShield =
-    !isBow &&
-    (weapon.equipmentRole === 'melee' ||
-      weapon.equipmentRole === 'shield' ||
-      category === 'Shields' ||
-      category === 'Spears' ||
-      category === 'Impact & Axes' ||
-      category === 'Blades: Curved' ||
-      category === 'Blades: Straight');
+  const arch = classifyWeaponCombatArchetype(weapon);
+  const { category, functionalType, weightClass, isBow, isMeleeOrShield } = arch;
+  const skillTellBase = COMBAT_TEMPO_CONSTANTS.SKILL_TELL_SEC[weightClass];
+  const skillActionBase = COMBAT_TEMPO_CONSTANTS.SKILL_ACTION_SEC[weightClass];
 
-  // 1. BOWS: Single-shot charge-up weapon
+  // 1. BOWS: Single-shot charge-up weapon (Medium = 0.85s draw, 0.75s nock; Light = 0.65s / 0.58s; Heavy = 1.10s / 0.98s)
   if (isBow) {
-    const maxChargeSec =
-      weightClass === 'heavy' ? 1.05 : weightClass === 'medium' ? 0.88 : 0.72;
+    const maxChargeSec = COMBAT_TEMPO_CONSTANTS.BOW_FULL_DRAW_SEC[weightClass];
     const singleShotBaseDmg = Math.max(
       18,
       Math.round(
-        Math.max(weapon.damagePerShot * 2.1, weapon.damagePerShot * Math.min(4, weapon.shotsPerChain) * 0.55)
+        Math.max(
+          weapon.damagePerShot * 2.1,
+          weapon.damagePerShot * Math.min(4, weapon.shotsPerChain) * 0.55
+        )
       )
     );
-    const singleArrowNockSec =
-      weightClass === 'heavy' ? 0.95 : weightClass === 'medium' ? 0.8 : 0.65;
+    const singleArrowNockSec = COMBAT_TEMPO_CONSTANTS.BOW_NOCK_RELOAD_SEC[weightClass];
 
     const updatedMoveset: ActionDefinition[] = weapon.moveset.map((m, idx) => {
       if (idx === 0) {
         return {
           ...m,
           damage: singleShotBaseDmg,
+          tellDurationSec: 0.05,
+          actionDurationSec: 0.22,
           isChain: true,
           noReload: false,
           isChargeable: true,
@@ -1235,6 +1469,8 @@ export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): Weapon
       );
       return {
         ...m,
+        tellDurationSec: m.isBlock ? 0.04 : Number((skillTellBase * (idx === 4 ? 1.25 : 1.0)).toFixed(2)),
+        actionDurationSec: m.isBlock ? 0.2 : Number((skillActionBase * (idx === 4 ? 1.25 : 1.0)).toFixed(2)),
         isChain: false,
         noReload: true,
         reloadDurationSec: undefined,
@@ -1250,7 +1486,7 @@ export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): Weapon
       weaponClass: functionalType,
       shotsPerChain: 1,
       damagePerShot: singleShotBaseDmg,
-      chainDurationSec: 0.32,
+      chainDurationSec: 0.27,
       reloadDurationSec: singleArrowNockSec,
       moveset: updatedMoveset,
     };
@@ -1275,6 +1511,8 @@ export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): Weapon
       if (idx === 0) {
         return {
           ...m,
+          tellDurationSec: comboSequence[0].tellDurationSec,
+          actionDurationSec: comboSequence[0].actionDurationSec,
           isChain: false,
           noReload: true,
           reloadDurationSec: undefined,
@@ -1285,6 +1523,8 @@ export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): Weapon
       }
       return {
         ...m,
+        tellDurationSec: m.isBlock ? 0.04 : Number((skillTellBase * (idx === 4 ? 1.25 : 1.0)).toFixed(2)),
+        actionDurationSec: m.isBlock ? 0.2 : Number((skillActionBase * (idx === 4 ? 1.25 : 1.0)).toFixed(2)),
         isChain: false,
         noReload: true,
         reloadDurationSec: undefined,
@@ -1302,20 +1542,25 @@ export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): Weapon
     };
   }
 
-  // 3. RANGED WEAPONS (Casters, Carriers & Munitions, etc.):
+  // 3. RANGED WEAPONS (Casters, Carriers & Munitions):
   //    - 100% increase (2×) on Basic Attack (Slot 0) ammo
+  //    - Per-shot cadence anchored to Medium (0.22s/shot) with +/-30% spread (Light 0.17s, Heavy 0.29s), decoupled from magazine size!
   //    - Reload strictly on Basic Attack (Slot 0); Skills 1..4 have noReload = true + ammoCount / internalCharges
   const doubledAmmo = Math.max(2, weapon.shotsPerChain * 2);
-  const scaledChainDuration = Number((weapon.chainDurationSec * 1.55).toFixed(2));
+  const perShotSec = COMBAT_TEMPO_CONSTANTS.RANGED_BASIC_SHOT_SEC[weightClass];
+  const basicTellSec = Number((perShotSec * 0.27).toFixed(2));
+  const basicActionSec = Number((perShotSec - basicTellSec).toFixed(2));
+  const scaledChainDuration = Number((doubledAmmo * perShotSec).toFixed(2));
 
   const updatedMoveset: ActionDefinition[] = weapon.moveset.map((m, idx) => {
     if (idx === 0) {
       return {
         ...m,
+        tellDurationSec: basicTellSec,
+        actionDurationSec: basicActionSec,
         isChain: true,
         noReload: false,
         ammoCount: doubledAmmo,
-        actionDurationSec: scaledChainDuration,
         reloadDurationSec: weapon.reloadDurationSec,
       };
     }
@@ -1329,6 +1574,8 @@ export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): Weapon
     );
     return {
       ...m,
+      tellDurationSec: m.isBlock ? 0.04 : Number((skillTellBase * (idx === 4 ? 1.25 : 1.0)).toFixed(2)),
+      actionDurationSec: m.isBlock ? 0.2 : Number((skillActionBase * (idx === 4 ? 1.25 : 1.0)).toFixed(2)),
       isChain: false,
       noReload: true,
       reloadDurationSec: undefined,

@@ -204,7 +204,6 @@ export interface OrionState {
   actionCooldowns: Record<string, number>;
   skillActiveTimers?: Record<string, number>;
   skillReloadTimers?: Record<string, number>;
-  skillPendingReloadDurations?: Record<string, number>;
   blockTimer?: number;
   isHoldingBlock?: boolean;
   blockHoldTimer?: number;

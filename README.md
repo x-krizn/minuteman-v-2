@@ -121,6 +121,7 @@ Press **SELECT / SHIFT** (`Tab` / `Backspace`) at any time to open the Pilot Sat
 1. **Unified Rules**: PvE and PvP share the exact same combat math, cooldowns, and crowd-control durations.
 2. **Every Skill Has a Tell**: Every heavy attack, boss lunge, and artillery volley has a visible windup telegraph and audio cue before impact.
 3. **Static Core Budget**: Every mech has **`200` Frame Integrity** and scales around the **Base Combat Unit (`1× BCU = 54`)**. Survival comes from managing your defense layers, positioning, and momentum.
+4. **Balanced Combat Tempo (`Medium = 1.00×`, `±30%` Band)**: Medium frames and weapons set the `1.00×` baseline tempo (`0.22s/shot` ranged, `0.30s/step` melee, `0.85s` bow draw). Light setups run up to `+30%` faster (`0.17s/shot`, `0.23s/step`) and Heavy setups run up to `-30%` slower (`0.29s/shot`, `0.39s/step`), while cumulative speed modifiers from feats, gems, and hardware are hard-capped at `±30%` (`0.70×` to `1.30×`) to keep every duel readable and tactical.
 
 ---
 

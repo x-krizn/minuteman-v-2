@@ -6,10 +6,14 @@
 import React from 'react';
 import { soundSystem } from '../../../../engine/core/soundSystem';
 import {
+  classifyWeaponCombatArchetype,
+  getWeaponDefinition,
+} from '../../database/equipment/weapons';
+import {
   activateResolvedCombatSkill,
   firePrimarySalvoShot,
   getLockedTarget,
-   getResolvedCombatSkills,
+  getResolvedCombatSkills,
   PERFECT_BLOCK_WINDOW_SEC,
   releaseHeldBlock,
   ResolvedCombatSkill,
@@ -213,13 +217,14 @@ export function renderSkillGlyph(
   }
 
   const wId = skill.weaponId || '';
-  const isShield = wId.includes('shield');
-  const isCatalyst = wId.includes('catalyst');
-  const isBowOrQuiver = wId === 'great_bow' || wId === 'quiver';
-  const isSpearOrLance = wId === 'short_spear' || wId === 'avalon_siege_lance';
-  const isMace = wId === 'mace';
-  const isAxe = wId === 'hand_axe';
-  const isSwordOrKhopesh = wId === 'long_sword' || wId === 'khopesh';
+  const arch = classifyWeaponCombatArchetype(getWeaponDefinition(wId), wId);
+  const isShield = arch.isShield;
+  const isCatalyst = arch.isCatalystOrBattery;
+  const isBowOrQuiver = arch.isBow || arch.isQuiverOrBandolier;
+  const isSpearOrLance = arch.isSpearOrPolearm;
+  const isMace = arch.isBluntOrStaff;
+  const isAxe = arch.isAxe;
+  const isSwordOrKhopesh = arch.isBlade;
 
   if (isCatalyst) {
     return (

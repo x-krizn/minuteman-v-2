@@ -5,7 +5,12 @@
 
 import { soundSystem } from '../../../../engine/core/soundSystem';
 import { TILE_SIZE } from '../../constants';
-import { getWeaponDefinition } from '../../database/equipment/weapons';
+import {
+  classifyWeaponCombatArchetype,
+  clampTempoMultiplier,
+  COMBAT_TEMPO_CONSTANTS,
+  getWeaponDefinition,
+} from '../../database/equipment/weapons';
 import {
   ACTION_MODIFICATION_CATALOG,
   computeInterfaceFeatModifiers,
@@ -57,11 +62,8 @@ export function firePrimarySalvoShot(
   if (!weapon) return false;
 
   const skill0 = weapon.moveset[0];
-  const isMeleeOrShield =
-    Boolean(skill0?.noReload) ||
-    weapon.equipmentRole === 'melee' ||
-    weapon.equipmentRole === 'shield' ||
-    currentWeaponId === 'khopesh';
+  const arch = classifyWeaponCombatArchetype(weapon, currentWeaponId);
+  const isMeleeOrShield = Boolean(skill0?.noReload) || arch.isMeleeOrShield;
 
   const s1Key = getSkillCooldownKey(currentWeaponId, 0);
 
@@ -86,9 +88,10 @@ export function firePrimarySalvoShot(
   const installedRangedModId = state.equipmentSlots?.installedMods?.ranged;
   const rangedMod = ACTION_MODIFICATION_CATALOG.find((m) => m.id === installedRangedModId);
   const hwStats = resolveEquippedHardwareStats(state);
-  const tellMult =
+  const tellMult = clampTempoMultiplier(
     (!isMeleeOrShield ? (rangedMod?.modifiers.tellDurationMult ?? 1.0) : 1.0) *
-    hwStats.tellDurationMult;
+      hwStats.tellDurationMult
+  );
 
   const comboSteps = isMeleeOrShield ? skill0.comboSequence : undefined;
   const currentStepIdx = comboSteps?.length
@@ -102,32 +105,36 @@ export function firePrimarySalvoShot(
   state.pendingBowChargeRatio = bowChargeRatio;
 
   if (isMeleeOrShield && activeComboStep) {
-    state.skillTellTimer = Math.max(0.035, activeComboStep.tellDurationSec * tellMult);
+    const rawTell = Math.max(0.04, activeComboStep.tellDurationSec * tellMult);
+    const minTotalStep = COMBAT_TEMPO_CONSTANTS.MELEE_COMBO_STEP_SEC.minFloor;
+    const rawAction = Math.max(
+      minTotalStep - rawTell,
+      activeComboStep.actionDurationSec * tellMult
+    );
+    state.skillTellTimer = Number(rawTell.toFixed(3));
     state.skillTellMaxTimer = state.skillTellTimer;
-    state.skillActionTimer = Math.max(0.14, activeComboStep.actionDurationSec);
+    state.skillActionTimer = Number(rawAction.toFixed(3));
     state.skillActionMaxTimer = state.skillActionTimer;
     state.meleeComboResetTimer =
       (skill0.comboResetWindowSec ?? 1.1) + state.skillTellTimer + state.skillActionTimer;
   } else if (skill0.isChargeable && bowChargeRatio !== undefined) {
     // Bow release: immediate crisp release tell since the player already held draw
-    state.skillTellTimer = 0.03;
-    state.skillTellMaxTimer = 0.03;
-    state.skillActionTimer = Math.max(0.12, skill0.actionDurationSec);
+    state.skillTellTimer = 0.035;
+    state.skillTellMaxTimer = 0.035;
+    state.skillActionTimer = Math.max(0.14, skill0.actionDurationSec * tellMult);
     state.skillActionMaxTimer = state.skillActionTimer;
   } else {
-    state.skillTellTimer = Math.max(0.04, skill0.tellDurationSec * tellMult);
+    // Ranged Basic Attack: per-shot cadence decoupled from doubled magazine size (`shotsPerChain`)
+    const rawTell = Math.max(0.038, skill0.tellDurationSec * tellMult);
+    const minTotalShot = COMBAT_TEMPO_CONSTANTS.RANGED_BASIC_SHOT_SEC.minFloor;
+    const rawAction = Math.max(
+      minTotalShot - rawTell,
+      skill0.actionDurationSec * tellMult
+    );
+    state.skillTellTimer = Number(rawTell.toFixed(3));
     state.skillTellMaxTimer = state.skillTellTimer;
-    const perShotAction = isMeleeOrShield
-      ? Math.max(
-          0.18,
-          weapon.chainDurationSec / Math.max(1, weapon.shotsPerChain) - skill0.tellDurationSec
-        )
-      : Math.max(
-          0.08,
-          weapon.chainDurationSec / Math.max(1, weapon.shotsPerChain) - skill0.tellDurationSec
-        );
-    state.skillActionTimer = perShotAction;
-    state.skillActionMaxTimer = perShotAction;
+    state.skillActionTimer = Number(rawAction.toFixed(3));
+    state.skillActionMaxTimer = state.skillActionTimer;
   }
   return true;
 }
@@ -144,15 +151,9 @@ export function executeBasicAttackShot(
 ): void {
   const weapon = getWeaponDefinition(currentWeaponId);
   const action = weapon?.moveset[0];
-  const isMeleeOrShield =
-    Boolean(action?.noReload) ||
-    weapon?.equipmentRole === 'melee' ||
-    weapon?.equipmentRole === 'shield' ||
-    currentWeaponId === 'khopesh';
-  const isBowWeapon =
-    weapon?.category === 'Bows' ||
-    Boolean(action?.isChargeable) ||
-    currentWeaponId === 'great_bow';
+  const arch = classifyWeaponCombatArchetype(weapon, currentWeaponId);
+  const isMeleeOrShield = Boolean(action?.noReload) || arch.isMeleeOrShield;
+  const isBowWeapon = arch.isBow || Boolean(action?.isChargeable);
   const gemVis = getWeaponGemVisuals(state, currentWeaponId);
   const featMods = computeInterfaceFeatModifiers(state.equippedFeats || []);
   const loadPenalty = state.gates?.loadPenalty;
@@ -491,13 +492,7 @@ export function executeBasicAttackShot(
         flipDir: comboStep.flipDir,
       });
 
-      const bypassShieldRatio =
-        currentWeaponId === 'khopesh' ||
-        currentWeaponId === 's2_turbine_khopesh' ||
-        currentWeaponId === 's4_whisper_blade' ||
-        currentWeaponId === 's6_phantom_edge'
-          ? 0.25
-          : 0;
+      const bypassShieldRatio = arch.hasShieldBypassEdge ? 0.25 : 0;
 
       for (const e of state.enemies) {
         if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
@@ -550,11 +545,8 @@ export function executeBasicAttackShot(
         }
       }
 
-      // Preserve unique hybrid projectiles on lances / mana staves on combo finishers or thrusts
-      if (
-        currentWeaponId === 'avalon_siege_lance' ||
-        currentWeaponId === 'hl220_lightburst_lance'
-      ) {
+      // Preserve hybrid projectiles on Beam lances and Wave mana staves
+      if (arch.isLanceOrPike && weapon?.primaryDamageType === 'Beam') {
         state.projectiles.push({
           x: state.x + aim.dx * 12,
           y: state.y + aim.dy * 12,
@@ -571,10 +563,7 @@ export function executeBasicAttackShot(
           trailColor: coreColor,
           lightRadius: 24,
         });
-      } else if (
-        currentWeaponId === 'wz200_manacore_staff' ||
-        currentWeaponId === 'hallowed_scepter'
-      ) {
+      } else if (arch.isBluntOrStaff && weapon?.primaryDamageType === 'Wave') {
         state.projectiles.push({
           x: state.x + aim.dx * 10,
           y: state.y + aim.dy * 10,
@@ -596,48 +585,6 @@ export function executeBasicAttackShot(
       ctx.spawnParticles(
         state.x + aim.dx * 15,
         state.y + aim.dy * 15,
-        state.z + 6,
-        5,
-        trailColor,
-        ''
-      );
-      soundSystem.playSword();
-    } else {
-      const slashRadius = 24;
-      const slashArc = Math.PI * 0.85;
-      state.bladeTrails.push({
-        x: state.x,
-        y: state.y,
-        z: state.z,
-        angle: aimAngle,
-        arcSpan: slashArc,
-        radius: slashRadius,
-        style: 'slash',
-        color: trailColor,
-        coreColor,
-        life: 0.22,
-        maxLife: 0.22,
-        flipDir: false,
-      });
-      for (const e of state.enemies) {
-        if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
-        if (
-          isTargetInDirectionalArc(
-            state.x,
-            state.y,
-            aimAngle,
-            slashRadius + 4,
-            slashArc + 0.12,
-            e.x,
-            e.y
-          )
-        ) {
-          resolveMeleeHit(e, 0.22, 3, 0, 0, slashRadius + 4);
-        }
-      }
-      ctx.spawnParticles(
-        state.x + aim.dx * 14,
-        state.y + aim.dy * 14,
         state.z + 6,
         5,
         trailColor,
@@ -721,10 +668,10 @@ export function executeBasicAttackShot(
       : action.damageType;
     const adaptiveShotDmg = weapon?.adaptiveDamageTypes ? Math.round(shotDmg * 1.12) : shotDmg;
     const bowSpeedMult = isBowWeapon ? 1.0 + 0.45 * bowChargeRatio : 1.0;
-    const baseProjSpeed =
-      (isBowWeapon ? 205 * bowSpeedMult : 185) *
-      gemCombatMods.projectileSpeedMult *
-      Math.max(0.85, Math.min(1.25, hwStats.accuracyMult));
+    const projSpeedScale = clampTempoMultiplier(
+      gemCombatMods.projectileSpeedMult * hwStats.accuracyMult
+    );
+    const baseProjSpeed = (isBowWeapon ? 205 * bowSpeedMult : 185) * projSpeedScale;
     const projLife = isBowWeapon ? 0.68 + 0.34 * bowChargeRatio : 0.75;
     const rangedPlayerProf = resolvePlayerInertiaProfile(state);
     const rangedWeaponSpec = resolveWeaponAttackInertiaSpec(currentWeaponId, 0, state);

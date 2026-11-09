@@ -8,7 +8,11 @@ import {
   ASSIGNABLE_ACTION_CATALOG,
   getResolvedActionDescriptor,
 } from '../database/equipment';
-import { getWeaponDefinition } from '../database/equipment/weapons';
+import {
+  classifyWeaponCombatArchetype,
+  COMBAT_TEMPO_CONSTANTS,
+  getWeaponDefinition,
+} from '../database/equipment/weapons';
 import {
   computeInterfaceFeatModifiers,
   getWeaponGemVisuals,
@@ -61,15 +65,9 @@ export function handleCombatInput(
   if (!weapon) return;
 
   const skill0 = weapon.moveset[0];
-  const isMeleeOrShield =
-    Boolean(skill0?.noReload) ||
-    weapon.equipmentRole === 'melee' ||
-    weapon.equipmentRole === 'shield' ||
-    currentWeaponId === 'khopesh';
-  const isBowWeapon =
-    weapon.category === 'Bows' ||
-    Boolean(skill0?.isChargeable) ||
-    currentWeaponId === 'great_bow';
+  const arch = classifyWeaponCombatArchetype(weapon, currentWeaponId);
+  const isMeleeOrShield = Boolean(skill0?.noReload) || arch.isMeleeOrShield;
+  const isBowWeapon = arch.isBow || Boolean(skill0?.isChargeable);
 
   // Melee & Shield weapons never reload
   if (isMeleeOrShield && state.isReloading) {
@@ -137,8 +135,13 @@ export function handleCombatInput(
 
   // ─── [X] BUTTON: Bow Hold-to-Charge · Melee Fluid Combo · Ranged Chain + Double-Tap Reload ───
   if (isBowWeapon) {
-    const maxCharge =
-      skill0?.maxChargeSec ?? (weapon.weightClass === 'heavy' ? 1.25 : 0.9);
+    const defaultCharge =
+      weapon.weightClass === 'light'
+        ? COMBAT_TEMPO_CONSTANTS.BOW_FULL_DRAW_SEC.light
+        : weapon.weightClass === 'heavy'
+          ? COMBAT_TEMPO_CONSTANTS.BOW_FULL_DRAW_SEC.heavy
+          : COMBAT_TEMPO_CONSTANTS.BOW_FULL_DRAW_SEC.medium;
+    const maxCharge = Math.max(0.55, Math.min(1.25, skill0?.maxChargeSec ?? defaultCharge));
     state.bowMaxChargeSec = maxCharge;
 
     if (p.x) {
@@ -212,7 +215,7 @@ export function handleCombatInput(
       ) {
         state.combatInputTimers.x = 0;
         state.combatQueuedChainShot = false;
-        triggerTacticalReload(state, ctx, [1]);
+        triggerTacticalReload(state, ctx);
       } else {
         state.combatInputTimers.x = DOUBLE_TAP_WINDOW_SEC;
         if (!state.isReloading && !state.activeActionId) {
@@ -447,10 +450,8 @@ export function updateCombat(
       state.equippedWeapons[state.activeWeaponIndex] ||
       'gladius_boltcaster';
     const weapon = getWeaponDefinition(currentWeaponId);
-    const isMeleeOrShield =
-      weapon?.equipmentRole === 'melee' ||
-      weapon?.equipmentRole === 'shield' ||
-      currentWeaponId === 'khopesh';
+    const arch = classifyWeaponCombatArchetype(weapon, currentWeaponId);
+    const isMeleeOrShield = arch.isMeleeOrShield;
     const gemVis = getWeaponGemVisuals(state, currentWeaponId);
     const trailColor = gemVis.gemId
       ? gemVis.color

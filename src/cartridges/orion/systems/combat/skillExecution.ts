@@ -10,6 +10,8 @@ import {
   getResolvedActionDescriptor,
 } from '../../database/equipment';
 import {
+  classifyWeaponCombatArchetype,
+  clampTempoMultiplier,
   getWeaponDefinition,
   isAuxiliaryEquipment,
   isBlockingWeapon,
@@ -215,10 +217,8 @@ export function executeActionPayload(
     'gladius_boltcaster';
   const weapon = getWeaponDefinition(rawWeaponId);
   const currentWeaponId = parseEquipmentInstanceId(rawWeaponId).baseId || rawWeaponId;
-  const isMeleeOrShield =
-    weapon?.equipmentRole === 'melee' ||
-    weapon?.equipmentRole === 'shield' ||
-    currentWeaponId === 'khopesh';
+  const arch = classifyWeaponCombatArchetype(weapon, currentWeaponId);
+  const isMeleeOrShield = arch.isMeleeOrShield;
   const gemVis = getWeaponGemVisuals(state, rawWeaponId);
   const trailColor = gemVis.gemId
     ? gemVis.color
@@ -486,33 +486,18 @@ export function executeActionPayload(
     soundSystem.playHit();
   };
 
-  const isSpearWeapon =
-    currentWeaponId === 'short_spear' || currentWeaponId === 'ls900_swordspear';
-  const isLanceWeapon =
-    currentWeaponId === 'avalon_siege_lance' || currentWeaponId === 'hl220_lightburst_lance';
-  const isStaffOrMaceWeapon =
-    currentWeaponId === 'mace' ||
-    currentWeaponId === 'wz200_manacore_staff' ||
-    currentWeaponId === 'hallowed_scepter';
-  const isAxeWeapon =
-    currentWeaponId === 'hand_axe' || currentWeaponId === 'siegebreaker';
-  const isDaggerWeapon =
-    currentWeaponId === 's4_whisper_blade' || currentWeaponId === 's6_phantom_edge';
-  const isBladeWeapon =
-    currentWeaponId === 'long_sword' ||
-    currentWeaponId === 'khopesh' ||
-    currentWeaponId === 's2_turbine_khopesh' ||
-    currentWeaponId === 'tig_edge' ||
-    currentWeaponId === 'grace_edge';
-  const isExplosiveOrdnanceWeapon =
-    currentWeaponId === 'm350_mauler' ||
-    currentWeaponId === 'ln1200_avalanche' ||
-    currentWeaponId === 'lg950_tomahawk';
-  const isRapidRotaryWeapon =
-    currentWeaponId === 'b25_brushcutter' ||
-    currentWeaponId === 'sv12_viper' ||
-    currentWeaponId === 'm300_hasta' ||
-    currentWeaponId === 'wz450_sparkstrike';
+  const isSpearWeapon = arch.isSpearOrPolearm && !arch.isLanceOrPike;
+  const isLanceWeapon = arch.isLanceOrPike;
+  const isStaffOrMaceWeapon = arch.isBluntOrStaff;
+  const isAxeWeapon = arch.isAxe;
+  const isDaggerWeapon = arch.isDaggerOrShortBlade;
+  const isBladeWeapon = arch.isBlade;
+  const isExplosiveOrdnanceWeapon = arch.isExplosiveOrdnance;
+  const isRapidRotaryWeapon = arch.isRapidCaster;
+  const isHeavyAxe = isAxeWeapon && weapon?.weightClass === 'heavy';
+  const isLightShield = arch.isBucklerOrDiscShield;
+  const isMediumShield = arch.isShield && !arch.isBucklerOrDiscShield && !arch.isTowerOrHeavyShield;
+  const isHeavyShield = arch.isTowerOrHeavyShield;
 
   // 1. WEAPON SKILLS (Slots 1..4)
   if (desc.sourceCategory === 'weapon' && desc.weaponSkillSlot) {
@@ -651,7 +636,7 @@ export function executeActionPayload(
             applyHitToEnemy(e, action.damage, action.damageType || 'Impact', 1.1, 8, 8);
           }
         }
-        if (currentWeaponId === 'hallowed_scepter') {
+        if (weapon?.supportPulseOnHit) {
           state.shields.overloaded = false;
           state.shields.capacity = Math.min(state.shields.maxCapacity, state.shields.capacity + 10);
           state.armor.durability = Math.min(state.armor.maxDurability, state.armor.durability + 6);
@@ -670,7 +655,7 @@ export function executeActionPayload(
         state.boosterTimer = isDaggerWeapon ? 0.16 : 0.14;
         state.boosterDirX = aim.dx;
         state.boosterDirY = aim.dy;
-        const thrustLen = currentWeaponId === 'long_sword' ? 44 : isDaggerWeapon ? 36 : 40;
+        const thrustLen = arch.isGreatsword || weapon?.weightClass === 'heavy' ? 44 : isDaggerWeapon ? 36 : 40;
         state.bladeTrails.push({
           x: state.x,
           y: state.y,
@@ -706,7 +691,7 @@ export function executeActionPayload(
         state.boosterTimer = 0.13;
         state.boosterDirX = aim.dx;
         state.boosterDirY = aim.dy;
-        if (currentWeaponId === 'siegebreaker') {
+        if (isHeavyAxe) {
           state.heat = Math.max(0, state.heat - 14);
         }
         state.bladeTrails.push({
@@ -715,7 +700,7 @@ export function executeActionPayload(
           z: state.z,
           angle: aimAngle,
           arcSpan: Math.PI * 0.7,
-          radius: currentWeaponId === 'siegebreaker' ? 32 : 26,
+          radius: isHeavyAxe ? 32 : 26,
           width: 18,
           style: 'chop',
           color: trailColor,
@@ -730,7 +715,7 @@ export function executeActionPayload(
               state.x,
               state.y,
               aimAngle,
-              currentWeaponId === 'siegebreaker' ? 34 : 30,
+              isHeavyAxe ? 34 : 30,
               Math.PI * 0.8,
               e.x,
               e.y
@@ -742,7 +727,7 @@ export function executeActionPayload(
               action.damageType || 'Impact',
               0.7,
               8,
-              currentWeaponId === 'siegebreaker' ? 8 : 5
+              isHeavyAxe ? 8 : 5
             );
           }
         }
@@ -755,41 +740,31 @@ export function executeActionPayload(
           action.name
         );
         soundSystem.playSword();
-      } else if (weapon?.equipmentRole === 'shield') {
+      } else if (arch.isShield) {
         const hasShieldChargeFeat = equippedFeats.some((f) =>
           ['shield_charge', 'shield_wall_advance', 'unstoppable_momentum'].includes(f)
         );
-        const shieldRestore =
-          currentWeaponId === 'pavise_shield'
-            ? 35
-            : currentWeaponId === 'buckler_shield' || currentWeaponId === 'aegis_charge_buckler'
-              ? 18
-              : 12;
+        const shieldRestore = isHeavyShield ? 35 : isLightShield ? 18 : 12;
         state.shields.overloaded = false;
         state.shields.capacity = Math.min(
           state.shields.maxCapacity,
           state.shields.capacity + shieldRestore
         );
-        if (
-          currentWeaponId === 'heater_shield' ||
-          currentWeaponId === 'aegis_charge_buckler' ||
-          hasShieldChargeFeat
-        ) {
+        if (isMediumShield || isLightShield || hasShieldChargeFeat) {
           state.isBoosterDashing = true;
           state.boosterTimer = hasShieldChargeFeat ? 0.2 : 0.16;
           state.boosterDirX = aim.dx;
           state.boosterDirY = aim.dy;
         }
-        const isPavisePlant = currentWeaponId === 'pavise_shield';
         state.bladeTrails.push({
           x: state.x,
           y: state.y,
           z: state.z,
           angle: aimAngle,
-          arcSpan: isPavisePlant ? Math.PI * 2 : Math.PI * 0.8,
-          radius: isPavisePlant ? 30 : 28,
+          arcSpan: isHeavyShield ? Math.PI * 2 : Math.PI * 0.8,
+          radius: isHeavyShield ? 30 : 28,
           width: 18,
-          style: isPavisePlant ? 'shockwave' : 'bash',
+          style: isHeavyShield ? 'shockwave' : 'bash',
           color: trailColor,
           coreColor,
           life: 0.28,
@@ -798,7 +773,7 @@ export function executeActionPayload(
         const chargeBonusMult = hasShieldChargeFeat ? 1.25 : 1.0;
         for (const e of state.enemies) {
           if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
-          const hit = isPavisePlant
+          const hit = isHeavyShield
             ? Math.hypot(e.x - state.x, e.y - state.y) <= 32
             : isTargetInDirectionalArc(state.x, state.y, aimAngle, 36, Math.PI * 0.9, e.x, e.y);
           if (hit) {
@@ -828,8 +803,8 @@ export function executeActionPayload(
           life: 0.18,
           maxLife: 0.18,
         });
-        if (currentWeaponId === 'quiver' || isRapidRotaryWeapon) {
-          if (currentWeaponId === 'quiver') {
+        if (arch.isQuiverOrBandolier || isRapidRotaryWeapon) {
+          if (arch.isQuiverOrBandolier) {
             state.ammo = Math.min(state.maxAmmo, state.ammo + 4);
             state.isReloading = false;
           }
@@ -865,17 +840,18 @@ export function executeActionPayload(
             : aim;
           const baseOrdAng = Math.atan2(aimVec.dy, aimVec.dx);
           const ordCount = Math.min(3, salvoCount);
+          const isMortarLob = weapon?.weightClass === 'medium' && arch.category === 'Casters';
           for (let idx = 0; idx < ordCount; idx++) {
             const off = ordCount > 1 ? (idx - (ordCount - 1) / 2) * 0.09 : 0;
             const ang = baseOrdAng + off;
-            const ordSpeed = (currentWeaponId === 'm350_mauler' ? 165 : 210) * (1 - idx * 0.05);
+            const ordSpeed = (isMortarLob ? 165 : 210) * (1 - idx * 0.05);
             state.projectiles.push({
               x: state.x + Math.cos(ang) * 10,
               y: state.y + Math.sin(ang) * 10,
               z: state.z + 7,
               vx: Math.cos(ang) * ordSpeed,
               vy: Math.sin(ang) * ordSpeed,
-              vz: currentWeaponId === 'm350_mauler' ? 14 : 0,
+              vz: isMortarLob ? 14 : 0,
               damage: Math.round((action.damage * overdriveMult) / Math.pow(ordCount, 0.45)),
               damageType: 'Blast',
               isPlayer: true,
@@ -919,15 +895,13 @@ export function executeActionPayload(
           }
         } else {
           const isHeavyBeamOrRail =
-            currentWeaponId === 'great_bow' ||
-            currentWeaponId === 'm450_pilum' ||
-            currentWeaponId === 'sr440_shadowfang' ||
-            currentWeaponId === 'wz800_arclight_cannon' ||
-            currentWeaponId === 'wz650_prism_lance';
+            arch.isBow ||
+            weapon?.weightClass === 'heavy' ||
+            action.damageType === 'Beam';
           for (let idx = 0; idx < salvoCount; idx++) {
             const off = salvoCount > 1 ? (idx - (salvoCount - 1) / 2) * 0.065 : 0;
             const ang = aimAngle + off;
-            const speed = (isHeavyBeamOrRail ? 260 : 230) * (1 - idx * 0.035);
+            const speed = (isHeavyBeamOrRail ? 255 : 225) * (1 - idx * 0.035);
             const perRoundDmg =
               salvoCount > 1
                 ? Math.max(4, Math.round((action.damage * overdriveMult) / Math.pow(salvoCount, 0.55)))
@@ -978,24 +952,21 @@ export function executeActionPayload(
             applyHitToEnemy(
               e,
               action.damage,
-              action.damageType || (currentWeaponId === 'mace' ? 'Blast' : 'Wave'),
+              action.damageType || (weapon?.primaryDamageType === 'Impact' ? 'Blast' : 'Wave'),
               1.25,
               10,
               6
             );
           }
         }
-        if (currentWeaponId === 'hallowed_scepter') {
+        if (weapon?.supportPulseOnHit) {
           state.shields.overloaded = false;
           state.shields.capacity = Math.min(state.shields.maxCapacity, state.shields.capacity + 14);
           state.armor.durability = Math.min(state.armor.maxDurability, state.armor.durability + 8);
         }
         ctx.spawnParticles(state.x, state.y, state.z + 6, 12, trailColor, action.name);
         soundSystem.playExplosion();
-      } else if (
-        currentWeaponId === 'buckler_shield' ||
-        currentWeaponId === 'aegis_charge_buckler'
-      ) {
+      } else if (isLightShield) {
         state.bladeTrails.push({
           x: state.x,
           y: state.y,
@@ -1026,7 +997,7 @@ export function executeActionPayload(
           lightRadius: 24,
         });
         soundSystem.playSword();
-      } else if (currentWeaponId === 'pavise_shield') {
+      } else if (isHeavyShield) {
         state.bladeTrails.push({
           x: state.x,
           y: state.y,
@@ -1063,8 +1034,8 @@ export function executeActionPayload(
           y: state.y,
           z: state.z,
           angle: aimAngle,
-          arcSpan: currentWeaponId === 'siegebreaker' ? Math.PI * 0.95 : Math.PI * 0.58,
-          radius: currentWeaponId === 'siegebreaker' ? 32 : 28,
+          arcSpan: isHeavyAxe ? Math.PI * 0.95 : Math.PI * 0.58,
+          radius: isHeavyAxe ? 32 : 28,
           width: 16,
           style: 'chop',
           color: trailColor,
@@ -1079,7 +1050,7 @@ export function executeActionPayload(
               state.x,
               state.y,
               aimAngle,
-              currentWeaponId === 'siegebreaker' ? 36 : 32,
+              isHeavyAxe ? 36 : 32,
               Math.PI * 0.9,
               e.x,
               e.y
@@ -1090,7 +1061,7 @@ export function executeActionPayload(
               action.damage,
               action.damageType || 'Impact',
               0.95,
-              currentWeaponId === 'hand_axe' ? -12 : 10,
+              isHeavyAxe ? 10 : -12,
               6
             );
           }
@@ -1132,14 +1103,14 @@ export function executeActionPayload(
       } else if (
         isBladeWeapon ||
         isDaggerWeapon ||
-        currentWeaponId === 'heater_shield' ||
+        isMediumShield ||
         isLanceWeapon
       ) {
         soundSystem.playSword();
-        const isHeaterSlam = currentWeaponId === 'heater_shield';
+        const isHeaterSlam = isMediumShield;
         const reach = isLanceWeapon ? 40 : isHeaterSlam ? 28 : isDaggerWeapon ? 26 : 32;
         const span =
-          currentWeaponId === 'long_sword'
+          isBladeWeapon && (arch.isGreatsword || weapon?.weightClass === 'heavy')
             ? Math.PI * 1.35
             : isHeaterSlam
               ? Math.PI * 0.95
@@ -1162,7 +1133,7 @@ export function executeActionPayload(
         for (const e of state.enemies) {
           if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
           if (isTargetInDirectionalArc(state.x, state.y, aimAngle, reach, span + 0.15, e.x, e.y)) {
-            if (currentWeaponId === 'khopesh' || currentWeaponId === 's2_turbine_khopesh' || isDaggerWeapon) {
+            if (arch.hasShieldBypassEdge || isDaggerWeapon) {
               e.speed = Math.max(12, e.speed * 0.65);
             }
             applyHitToEnemy(
@@ -1175,8 +1146,8 @@ export function executeActionPayload(
           }
         }
       } else if (
-        currentWeaponId === 'great_bow' ||
-        currentWeaponId === 'quiver' ||
+        arch.isBow ||
+        arch.isQuiverOrBandolier ||
         isRapidRotaryWeapon
       ) {
         state.bladeTrails.push({
@@ -1193,11 +1164,11 @@ export function executeActionPayload(
           maxLife: 0.2,
         });
         const offsets =
-          currentWeaponId === 'great_bow' || isRapidRotaryWeapon
+          arch.isBow || isRapidRotaryWeapon
             ? [-0.26, -0.13, 0, 0.13, 0.26]
             : [-0.36, -0.18, 0, 0.18, 0.36];
-        const speed = currentWeaponId === 'quiver' ? 135 : 195;
-        const life = currentWeaponId === 'quiver' ? 0.42 : 0.65;
+        const speed = arch.isQuiverOrBandolier ? 135 : 195;
+        const life = arch.isQuiverOrBandolier ? 0.42 : 0.65;
         for (const off of offsets) {
           const ang = aimAngle + off;
           state.projectiles.push({
@@ -1288,7 +1259,7 @@ export function executeActionPayload(
     // ─── SLOT 3 (SKILL 4): BLOCK FOR ALL BLOCKING WEAPONS / SUPPRESSION FOR RANGED ───
     if (slot === 3) {
       if (action.isBlock || isBlockingWeapon(currentWeaponId)) {
-        const isShieldEquip = weapon?.equipmentRole === 'shield';
+        const isShieldEquip = arch.isShield;
         state.isHoldingBlock = true;
         state.blockHoldTimer = 0;
         state.blockTimer = 0.25;
@@ -1319,9 +1290,9 @@ export function executeActionPayload(
           'BLOCK (0.25s PERFECT)'
         );
       } else if (
-        currentWeaponId === 'great_bow' ||
-        currentWeaponId === 'quiver' ||
-        currentWeaponId === 'aether_catalyst'
+        arch.isBow ||
+        arch.isQuiverOrBandolier ||
+        arch.isCatalystOrBattery
       ) {
         state.bladeTrails.push({
           x: state.x,
@@ -1336,7 +1307,7 @@ export function executeActionPayload(
           life: 0.18,
           maxLife: 0.18,
         });
-        if (currentWeaponId === 'quiver' || currentWeaponId === 'aether_catalyst') {
+        if (arch.isQuiverOrBandolier || arch.isCatalystOrBattery) {
           state.opticMarkTimer = 5.0;
         }
         state.projectiles.push({
@@ -1404,7 +1375,7 @@ export function executeActionPayload(
 
     // ─── SLOT 4: HEAVY FINISHER SKILL ────────────────────────────────────────
     if (slot === 4) {
-      if (currentWeaponId === 'short_spear') {
+      if (isSpearWeapon) {
         soundSystem.playSword();
         state.bladeTrails.push({
           x: state.x,
@@ -1445,7 +1416,7 @@ export function executeActionPayload(
           trailColor,
           action.name
         );
-      } else if (currentWeaponId === 'mace') {
+      } else if (isStaffOrMaceWeapon) {
         soundSystem.playExplosion();
         state.bladeTrails.push({
           x: state.x,
@@ -1482,7 +1453,7 @@ export function executeActionPayload(
           }
         }
         ctx.spawnParticles(state.x, state.y, state.z + 8, 16, trailColor, action.name);
-      } else if (currentWeaponId === 'long_sword') {
+      } else if (isBladeWeapon && weapon?.weightClass !== 'light') {
         soundSystem.playSword();
         state.bladeTrails.push({
           x: state.x,
@@ -1527,7 +1498,7 @@ export function executeActionPayload(
           trailColor,
           action.name
         );
-      } else if (currentWeaponId === 'avalon_siege_lance') {
+      } else if (isLanceWeapon) {
         soundSystem.playLaser();
         state.bladeTrails.push({
           x: state.x,
@@ -1567,7 +1538,7 @@ export function executeActionPayload(
           lightRadius: 34,
         });
         ctx.spawnParticles(state.x, state.y, state.z + 8, 14, trailColor, action.name);
-      } else if (weapon?.equipmentRole === 'shield') {
+      } else if (arch.isShield) {
         soundSystem.playExplosion();
         state.shields.overloaded = false;
         state.shields.overloadTimer = 0;
@@ -1631,7 +1602,7 @@ export function executeActionPayload(
             applyHitToEnemy(e, action.damage, action.damageType || 'Pierce', 1.0, 8);
           }
         }
-      } else if (currentWeaponId === 'quiver') {
+      } else if (arch.isQuiverOrBandolier) {
         state.bladeTrails.push({
           x: state.x,
           y: state.y,
@@ -1695,7 +1666,7 @@ export function executeActionPayload(
           trailColor: coreColor,
           lightRadius: 32,
           onImpact:
-            currentWeaponId === 'great_bow'
+            arch.isBow || isExplosiveOrdnanceWeapon
               ? (x, y, _z, st) => {
                   soundSystem.playExplosion();
                   st.bladeTrails = st.bladeTrails || [];
@@ -1992,7 +1963,7 @@ export function updateActionTimers(state: OrionState, dt: number): void {
 
   if (state.actionCooldowns) {
     for (const key of Object.keys(state.actionCooldowns)) {
-      if (state.actionCooldowns[key] > 0) {
+      if (state.actionCooldowns[key] > 0 && (state.skillActiveTimers?.[key] || 0) <= 0) {
         const isReloadingKey = (state.skillReloadTimers?.[key] || 0) > 0;
         const rate = isReloadingKey ? reloadMult : 1.0;
         state.actionCooldowns[key] = Math.max(0, state.actionCooldowns[key] - dt * rate);
@@ -2015,13 +1986,7 @@ export function updateActionTimers(state: OrionState, dt: number): void {
     for (const key of Object.keys(state.skillActiveTimers)) {
       const prev = state.skillActiveTimers[key];
       if (prev > 0) {
-        const next = Math.max(0, prev - dt);
-        state.skillActiveTimers[key] = next;
-        if (next === 0) {
-          const pendingCd = state.skillPendingReloadDurations?.[key] ?? 2.4;
-          state.actionCooldowns = state.actionCooldowns || {};
-          state.actionCooldowns[key] = pendingCd;
-        }
+        state.skillActiveTimers[key] = Math.max(0, prev - dt);
       }
     }
   }
@@ -2434,7 +2399,9 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
         ? isMeleeOrShieldWpn
           ? Math.max(0, state.meleeSequenceCooldownTimer || 0)
           : reloadRemaining
-        : Math.max(0, state.actionCooldowns?.[cooldownKey] || 0);
+        : activeRemaining > 0
+          ? 0
+          : Math.max(0, state.actionCooldowns?.[cooldownKey] || 0);
 
     const internalCharges = !isBlock && movesetSlot > 0 ? m?.internalCharges : undefined;
     const remainingCharges =
@@ -2666,13 +2633,8 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
  */
 export function triggerTacticalReload(
   state: OrionState,
-  _ctx: OrionCombatContext,
-  targetSlots: Array<1 | 2 | 3 | 4 | 5> = [1]
+  _ctx: OrionCombatContext
 ): boolean {
-  if (!targetSlots.includes(1)) {
-    return false;
-  }
-
   const currentWeaponId =
     state.equipmentSlots?.slot1 ||
     state.equippedWeapons[state.activeWeaponIndex] ||
@@ -2680,11 +2642,8 @@ export function triggerTacticalReload(
   const weapon = getWeaponDefinition(currentWeaponId);
   if (!weapon) return false;
 
-  const isMeleeOrShield =
-    Boolean(weapon.moveset[0]?.noReload) ||
-    weapon.equipmentRole === 'melee' ||
-    weapon.equipmentRole === 'shield' ||
-    currentWeaponId === 'khopesh';
+  const arch = classifyWeaponCombatArchetype(weapon, currentWeaponId);
+  const isMeleeOrShield = Boolean(weapon.moveset[0]?.noReload) || arch.isMeleeOrShield;
   if (isMeleeOrShield) {
     return false;
   }
@@ -2896,14 +2855,18 @@ export function activateResolvedCombatSkill(
   }
 
   const hwStats = resolveEquippedHardwareStats(state);
-  const cdScale =
-    featMods.cooldownMult * gemCombatMods.skillCooldownMult * hwStats.cooldownMult;
-  const finalCd = (skill.cooldownSec ?? desc.cooldownSec ?? 4.0) * cdScale;
+  const cdScale = clampTempoMultiplier(
+    featMods.cooldownMult * gemCombatMods.skillCooldownMult * hwStats.cooldownMult
+  );
+  const tellScale = clampTempoMultiplier(hwStats.tellDurationMult);
+  const finalCd = Math.max(
+    1.2,
+    (skill.cooldownSec ?? desc.cooldownSec ?? 4.0) * cdScale
+  );
 
   state.actionCooldowns = state.actionCooldowns || {};
   state.skillActiveTimers = state.skillActiveTimers || {};
   state.skillReloadTimers = state.skillReloadTimers || {};
-  state.skillPendingReloadDurations = state.skillPendingReloadDurations || {};
   state.skillInternalAmmo = state.skillInternalAmmo || {};
 
   if (skill.isBlock) {
@@ -2918,7 +2881,7 @@ export function activateResolvedCombatSkill(
     if (nextCharges > 0) {
       state.skillInternalAmmo[skill.cooldownKey] = nextCharges;
       const cycleSec = Math.max(
-        0.26,
+        0.28,
         (desc.internalCycleSec ?? 0.45) * cdScale
       );
       state.actionCooldowns[skill.cooldownKey] = cycleSec;
@@ -2928,8 +2891,7 @@ export function activateResolvedCombatSkill(
     }
   } else if (skill.activeDurationSec && skill.activeDurationSec > 0) {
     state.skillActiveTimers[skill.cooldownKey] = skill.activeDurationSec;
-    state.skillPendingReloadDurations[skill.cooldownKey] = finalCd;
-    state.actionCooldowns[skill.cooldownKey] = 0;
+    state.actionCooldowns[skill.cooldownKey] = finalCd;
   } else {
     state.actionCooldowns[skill.cooldownKey] = finalCd;
   }
@@ -2942,9 +2904,9 @@ export function activateResolvedCombatSkill(
 
   state.activeActionId = skill.id;
   state.activeSkillCooldownKey = skill.cooldownKey;
-  state.skillTellTimer = Math.max(0.04, desc.tellDurationSec * hwStats.tellDurationMult);
+  state.skillTellTimer = Math.max(0.04, desc.tellDurationSec * tellScale);
   state.skillTellMaxTimer = state.skillTellTimer;
-  state.skillActionTimer = Math.max(0.15, desc.actionDurationSec);
+  state.skillActionTimer = Math.max(0.15, desc.actionDurationSec * tellScale);
   state.skillActionMaxTimer = state.skillActionTimer;
 
   soundSystem.playCharge();

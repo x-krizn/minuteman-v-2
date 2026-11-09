@@ -46,7 +46,11 @@ import {
   syncPostTutorialFrameLevel,
   unlockLevel2SecondaryWeapon,
 } from '../database/progression';
-import { getWeaponDefinition } from '../database/equipment/weapons';
+import {
+  clampTempoMultiplier,
+  getWeaponDefinition,
+  isTwoHandOnlyWeapon,
+} from '../database/equipment/weapons';
 import { getBiomeDefinition, getTileDefinition } from '../database/world';
 import {
   OrionCapabilityGates,
@@ -877,7 +881,7 @@ export function syncStateGates(state: OrionState): OrionCapabilityGates {
   if (state.equipmentSlots.slot3 === undefined) {
     state.equipmentSlots.slot3 = null;
   }
-  if (state.equipmentSlots.slot1 === 'great_bow') {
+  if (isTwoHandOnlyWeapon(state.equipmentSlots.slot1)) {
     state.equipmentSlots.mainGrip = '2h';
   } else if (!state.equipmentSlots.mainGrip) {
     state.equipmentSlots.mainGrip = '1h';
@@ -1775,11 +1779,14 @@ export function updatePlayerSystem(
   // §3.5 Critical Frame State (LOCKED): <= 40 HP (<= 20%) imposes -30% movement speed
   const criticalSpeedMult = state.frame.integrity <= 40 ? 0.7 : 1.0;
   const hwStats = resolveEquippedHardwareStats(state);
-  const totalMobilityMult =
+  const passiveMobilityMult = clampTempoMultiplier(
     gates.loadPenalty.mobilityMult *
-    featMods.moveSpeedMult *
-    gemCombatMods.moveSpeedMult *
-    hwStats.moveSpeedMult *
+      featMods.moveSpeedMult *
+      gemCombatMods.moveSpeedMult *
+      hwStats.moveSpeedMult
+  );
+  const totalMobilityMult =
+    passiveMobilityMult *
     criticalSpeedMult *
     recoilMult *
     knockdownMult *

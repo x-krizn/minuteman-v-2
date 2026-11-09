@@ -38,7 +38,10 @@
 
 import { getEnemyDefinition } from '../database/enemies';
 import { parseEquipmentInstanceId } from '../database/equipment/mod_naming';
-import { getWeaponDefinition } from '../database/equipment/weapons';
+import {
+  classifyWeaponCombatArchetype,
+  getWeaponDefinition,
+} from '../database/equipment/weapons';
 import {
   ACTION_MODIFICATION_CATALOG,
   computeEffectiveLoadCapacity,
@@ -627,19 +630,16 @@ export function resolveWeaponAttackInertiaSpec(
         ? INERTIA_CONSTANTS.COMMITMENT_BY_CLASS.heavy
         : INERTIA_CONSTANTS.COMMITMENT_BY_CLASS.slash);
 
-  // Spears/Daggers on basic poke have lower body commitment; shields/maces/axes have higher commitment
-  if (
-    slot === 0 &&
-    (baseWeaponId === 'short_spear' ||
-      baseWeaponId === 's4_whisper_blade' ||
-      baseWeaponId === 's6_phantom_edge')
-  ) {
+  const arch = classifyWeaponCombatArchetype(weapon, baseWeaponId);
+
+  // Spears/Daggers on basic poke have lower body commitment; shields/maces/heavy axes/lances have higher commitment
+  if (slot === 0 && ((arch.isSpearOrPolearm && !arch.isLanceOrPike) || arch.isDaggerOrShortBlade)) {
     commitment = INERTIA_CONSTANTS.COMMITMENT_BY_CLASS.poke;
   } else if (
-    weapon?.equipmentRole === 'shield' ||
-    baseWeaponId === 'mace' ||
-    baseWeaponId === 'siegebreaker' ||
-    baseWeaponId === 'avalon_siege_lance'
+    arch.isShield ||
+    arch.isBluntOrStaff ||
+    arch.isLanceOrPike ||
+    (arch.isImpactOrAxe && weightClass === 'heavy')
   ) {
     commitment = Math.max(commitment, 0.85);
   }
@@ -653,11 +653,7 @@ export function resolveWeaponAttackInertiaSpec(
   const projectileWeight =
     action?.projectileWeight ??
     weapon?.projectileWeight ??
-    (baseWeaponId === 'm350_mauler' ||
-    baseWeaponId === 'ln1200_avalanche' ||
-    baseWeaponId === 'lg950_tomahawk' ||
-    baseWeaponId === 'm450_pilum' ||
-    baseWeaponId === 'wz800_arclight_cannon'
+    (arch.isExplosiveOrdnance || (weightClass === 'heavy' && !arch.isMeleeOrShield)
       ? INERTIA_CONSTANTS.PROJECTILE_WEIGHT_BY_CLASS.heavy
       : weightClass === 'heavy'
         ? 36

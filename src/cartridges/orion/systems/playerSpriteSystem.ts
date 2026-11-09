@@ -10,7 +10,10 @@ import {
   CANONICAL_FRAME_PLATING,
   FramePlatingDefinition,
 } from '../database/equipment/plating';
-import { getWeaponDefinition } from '../database/equipment/weapons';
+import {
+  classifyWeaponCombatArchetype,
+  getWeaponDefinition,
+} from '../database/equipment/weapons';
 import { getItemDefinition } from '../database/items';
 import {
   computePlayerLoadMetrics,
@@ -925,7 +928,8 @@ function resolveEquipmentCellGripPivot(
   equipmentRole: string | undefined,
   mountRole: 'main' | 'side' | 'aux'
 ): { gripCellX: number; gripCellY: number; scale: number } {
-  const isBolter = equipmentRole === 'ranged' && itemId !== 'great_bow';
+  const arch = classifyWeaponCombatArchetype(getWeaponDefinition(itemId), itemId);
+  const isBolter = equipmentRole === 'ranged' && !arch.isBow;
   const isMelee = equipmentRole === 'melee';
   const isShield = equipmentRole === 'shield';
   const isCatalyst = equipmentRole === 'catalyst';
@@ -1134,7 +1138,8 @@ export function drawPlayerWeaponMounts25D(
   const auxPass: 'behindBody' | 'inFrontOfBody' = isNorth ? 'inFrontOfBody' : 'behindBody';
   if (auxId && auxPass === pass) {
     const auxDef = getWeaponDefinition(auxId);
-    const auxIsBolter = auxDef?.equipmentRole === 'ranged' && auxId !== 'great_bow';
+    const auxArch = classifyWeaponCombatArchetype(auxDef, auxId);
+    const auxIsBolter = auxDef?.equipmentRole === 'ranged' && !auxArch.isBow;
 
     const bx = isNorth
       ? cx
@@ -1181,8 +1186,9 @@ export function drawPlayerWeaponMounts25D(
     isNorth || isEast ? 'behindBody' : 'inFrontOfBody';
   if (sideId && sidePass === pass) {
     const sideDef = getWeaponDefinition(sideId);
+    const sideArch = classifyWeaponCombatArchetype(sideDef, sideId);
     const sideIsMelee = sideDef?.equipmentRole === 'melee';
-    const sideIsBolter = sideDef?.equipmentRole === 'ranged' && sideId !== 'great_bow';
+    const sideIsBolter = sideDef?.equipmentRole === 'ranged' && !sideArch.isBow;
 
     const lx = isEast
       ? cx + 2.5
@@ -1263,22 +1269,14 @@ export function drawPlayerWeaponMounts25D(
     const recoveryLerp = isFollowThrough ? 1 - (actionElapsedPct - 0.6) / 0.4 : 1.0;
 
     const mainDef = getWeaponDefinition(mainId);
+    const mainArch = classifyWeaponCombatArchetype(mainDef, mainId);
     const mainIsMelee = mainDef?.equipmentRole === 'melee';
-    const mainIsBolter = mainDef?.equipmentRole === 'ranged' && mainId !== 'great_bow';
-    const isSpearOrLance =
-      mainId === 'short_spear' ||
-      mainId === 'ls900_swordspear' ||
-      mainId === 'avalon_siege_lance' ||
-      mainId === 'hl220_lightburst_lance';
-    const isMaceOrHammer =
-      mainId === 'mace' ||
-      mainId === 'wz200_manacore_staff' ||
-      mainId === 'hallowed_scepter' ||
-      mainId === 'hand_axe' ||
-      mainId === 'siegebreaker';
-    const isShield = mainDef?.equipmentRole === 'shield';
-    const isRanged = mainDef?.equipmentRole === 'ranged' || mainDef?.equipmentRole === 'quiver';
-    const swingParity = state.ammo % 2 === 0 ? 1 : -1;
+    const mainIsBolter = mainDef?.equipmentRole === 'ranged' && !mainArch.isBow;
+    const isSpearOrLance = mainArch.isSpearOrPolearm;
+    const isMaceOrHammer = mainArch.isBluntOrStaff || mainArch.isImpactOrAxe;
+    const isShield = mainArch.isShield;
+    const isRanged = mainDef?.equipmentRole === 'ranged' || mainArch.isQuiverOrBandolier;
+    const swingParity = ((state.meleeComboStep || state.ammo) % 2 === 0) ? 1 : -1;
 
     // 3-Phase Multi-Frame Keyframes:
     // Phase 1 (Windup): Pull weapon back / raise overhead

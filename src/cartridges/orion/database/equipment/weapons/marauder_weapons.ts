@@ -175,6 +175,8 @@ export const siegebreakerWeapon = buildMagitechWeapon({
 export const maceWeapon: WeaponDefinition = {
   id: 'mace',
   name: 'Sanctum Flange Mace',
+  category: 'Impact & Axes',
+  weaponTier: 'customizable',
   class: 'Heavy Mace / Blunt (Weapon 1 / Aux 1)',
   weaponClass: 'Blunt',
   loadoutSlots: ['Weapon 1', 'Aux 1'],
@@ -290,6 +292,8 @@ export const maceWeapon: WeaponDefinition = {
 export const handAxeWeapon: WeaponDefinition = {
   id: 'hand_axe',
   name: 'Marauder Hand Axe',
+  category: 'Impact & Axes',
+  weaponTier: 'customizable',
   class: 'Hand Axe / Cleaver (Weapon 1 / Aux 1)',
   weaponClass: 'Blade',
   loadoutSlots: ['Weapon 1', 'Aux 1'],

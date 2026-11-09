@@ -49,7 +49,7 @@ src/cartridges/orion/
 │   ├── INDEX.md                  # Narrative worldbuilding, Belldor stages & doc index
 │   ├── CODE_RULES.md             # Engineering & AI authoring rules (commenting, modularity, memory/network safety)
 │   ├── AUTHORING_GUIDE.md        # Technical architecture & content authoring manual
-│   ├── EQUIPMENT_AND_FEATS.md    # 29 Magitech weapons, hardware & 97 canonical feats
+│   ├── EQUIPMENT_AND_FEATS.md    # 101 weapons (72 Custom + 29 Magitech across 8 Classes), hardware & 97 canonical feats
 │   └── INERTIA_SYSTEM.md         # Inertia v0.1 physics & stability specification
 │
 ├── types/                        # Domain-Organized TypeScript Schemas

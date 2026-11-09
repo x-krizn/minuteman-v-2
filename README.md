@@ -33,7 +33,7 @@
    - [6.3 The Three Grail Knights & The Dungeon Door](#63-the-three-grail-knights--the-dungeon-door)
    - [6.4 Whispers, Rumors & What Lies Ahead](#64-whispers-rumors--what-lies-ahead)
 7. **[Complete Equipment & Hardware Reference](#7-complete-equipment--hardware-reference)**
-   - [7.1 All 29 Magitech Weapons](#71-all-29-magitech-weapons)
+   - [7.1 All 101 Weapons Across the 8 Canonical Categories](#71-all-101-weapons-across-the-8-canonical-categories)
    - [7.2 Core Frame Platings (6 Coreplates)](#72-core-frame-platings-6-coreplates)
    - [7.3 Core Systems (6 Generators / Reactors)](#73-core-systems-6-generators--reactors)
    - [7.4 Auxiliary & Tactical Utility Systems (18 Modules)](#74-auxiliary--tactical-utility-systems-18-modules)
@@ -243,12 +243,15 @@ You never need to read equations to master inertia—just remember the **Dynamic
 
 ### 4.3 Mech Doll (`LOADOUT`) vs. Modification Workbench (`ARMORY`)
 
-- **`LOADOUT` (`Mech Doll`)**: Organizes your equipped weapons and hardware around an anatomical diagram of your chassis (`Head Dome`, `Frame Plating`, `Arm Assembly`, `Leg Striders`, `Main Hand`, `Side Hand`, `Auxiliary Back Mount`, and `[L]`/`[R]` Trigger Binds). Select any slot to **Equip / Swap**, **Unequip**, **Toggle Grip / Stance** (1H, 2H, Dual-Wield), or jump directly to **Modify in Armory**.
+- **`LOADOUT` (`Mech Doll`)**: Organizes your equipped weapons and hardware around an anatomical diagram of your chassis (`Head Dome`, `Frame Plating`, `Arm Assembly`, `Leg Striders`, `Main Hand`, `Side Hand`, `Auxiliary Back Mount`, and `[L]`/`[R]` Trigger Binds). Select any slot to **Equip / Swap**, **Unequip**, **Toggle Grip / Stance** (1H, 2H, Dual-Wield), or jump directly to **Modify in Armory**. When equipping a weapon or shield, the **Nested Weapon Selector** organizes items into **8 Weapon Classes** ▸ **9 Shared Functional Weapon Types** ▸ **`Custom` / `Magitech` Subtypes** (for example, `Blades: Curved` ▸ `Khopesh` ▸ `Khopesh (Custom)` alongside `S-2 Turbine Khopesh (Magitech)`).
 - **`ARMORY` (`Modification Workbench`)**: Houses all deep engineering:
+  - **72 Customizable (`Custom`) Weapons vs. 29 Unique (`Magitech`) Weapons**:
+    - **`Custom` Subtype (72 Archetypes across 8 Weapon Classes × 9 Functional Types)**: Feature **3 Component & Gem Slots** (`Slot 1`, `Slot 2`, `Slot 3`), allowing you to swap physical weapon parts (`Hilt / Grip / Stock`, `Blade / Head / Limbs`, `Counterweight / Focus / Payload`) or socket Gemstones in any order.
+    - **`Magitech` Subtype (29 Unique Relics)**: Share the same 8 Weapon Classes and 9 Functional Weapon Types per class (`weaponClass`), while defining a unique named relic with **fixed internal components**, distinct movesets, and **1 Resonance Gem Socket**.
   - **Non-Sequential Slot Order**: Install, replace, or strip modifications in **any slot order** (`Slot 1`, `Slot 2`, or `Slot 3`).
   - **Physical Domain Separation**: Only exterior armor (**Dome Plates**, **Aperture Plates**, **Frame Platings**) and **Shields** grant Armor (`Durability`, `Rating`, `Threshold`). Internal sub-modules (`Optics`, `Sensory A/B`, `Actuators`, `Reactor Core`, `Leg Actuators`) grant `0` Armor and instead tune vision radius, accuracy, tell duration, attack mass, stability, heat venting, cooldowns, mobility, and weight capacity.
   - **Crafted vs. Looted Mod Parts**: Mod parts crafted from Gemstones have at most `1` additional gem socket (`maxGemSlots: 1`), whereas standalone parts looted in the field can roll `1–3` gem sockets.
-  - **Semantic `Custom` Naming**: Modified gear automatically earns a `Custom` designation—**`Custom <BaseName>`** for traditional weapons/shields (e.g., `Custom Heater Shield`) or **`<BaseName> Custom`** for manufacturer model codes (e.g., `N-55 Gladius Custom`, `BWI Bastion Frame Plating Custom`), appending **`+II`** or **`+III`** when 2 or 3 modification slots are populated.
+  - **Semantic `Custom` Naming**: Modified gear automatically earns a `Custom` designation—**`Custom <BaseName>`** for traditional weapons/shields (e.g., `Custom Katana`, `Custom Buckler`) or **`<BaseName> Custom`** for manufacturer model codes (e.g., `N-55 Gladius Custom`, `BWI Bastion Frame Plating Custom`), appending **`+II`** or **`+III`** when 2 or 3 modification slots are populated.
 
 ---
 
@@ -440,41 +443,146 @@ Three corrupted champions patrol the Barracks and Cathedral districts. You can d
 
 ## 7. Complete Equipment & Hardware Reference
 
-### 7.1 All 29 Magitech Weapons
+### 7.1 All 101 Weapons Across the 8 Weapon Classes (Shared Functional Classes · Custom & Magitech Subtypes)
 
-*Note: Trait Line indicates the weapon's design heritage and discipline synergy—never a class restriction.*
+Project Orion features **101 weapons** organized into **8 Weapon Classes**, each containing **9 shared Functional Weapon Types**:
+- **`Custom` Subtype (72 Customizable Weapons · 9 per Class)**: Feature **3 Component & Gem Slots** (`3S`) in the Armory Workbench for swapping physical weapon components and Gemstones.
+- **`Magitech` Subtype (29 Unique Magitech Weapons)**: Named manufacturer relics that share a functional weapon class with their customizable counterparts (for example, `S-2 Turbine Khopesh` is a `Magitech` subtype of `Khopesh` under `Blades: Curved`) while featuring distinct movesets, **fixed internal components**, and **1 Resonance Gem Socket** (`1G`).
 
-| Weapon Name | Heritage | Weapon Class | Damage Type | Weight Class | Primary Slot | Combat Identity |
-| :--- | :--- | :--- | :--- | :---: | :--- | :--- |
-| **N-55 Gladius** | Warrior | Bolter | Impact | Medium | Main Hand | BCU reference weapon; burst-fire stabilization |
-| **M-300 Hasta** | Warrior | Polybolos | Impact | Medium | Main Hand | Mid-range sustained kinetic fire |
-| **M-450 Pilum** | Warrior | Ballista | Impact | Heavy | Main Hand | Shock-channeling heavy artillery hitter |
-| **S-2 Turbine Khopesh** | Warrior | Blade | Pierce | Light | Aux / Side | Compact fallback blade; dual-wield capable |
-| **B-25 Brushcutter** | Marauder | Gatling Gun | Pierce | Heavy | Main Hand | Twin-rotor rotary gun; intercept & suppression |
-| **M-350 Mauler** | Marauder | Grenade Cannon | Blast | Medium | Main Hand | Three-shot explosive burst suppression |
-| **LN-1200 Avalanche** | Marauder | Rocket System | Blast | Heavy | Main Hand | Long-range rocket pod; interference shielding |
-| **LG-950 Tomahawk** | Marauder | Missile System | Blast | Heavy | Main Hand | Long-range soft-lock missile salvo |
-| **Siegebreaker** | Marauder | Battle Axe | Impact | Heavy | Aux / Side | Two-handed cleaver with integrated energy vent |
-| **LS-900 Swordspear** | Guardian | Polearm | Wave (Mana) | Medium | Main Hand | Mana-channeling reach weapon; wide cleave strikes |
-| **RS-450 Radiant Projector** | Guardian | Beam Emitter | Beam | Medium | Main Hand | Mid-range beam; reinforces personal shields |
-| **HL-220 Lightburst Lance** | Guardian | Lance | Beam | Heavy | Main Hand | Reactor-linked heavy lance; Judgment Strike |
-| **TIG Edge / Guardian's Edge** | Guardian | Energy Blade | Pulse | Light | Aux / Side | Compact precision melee defense blade |
-| **Aegis Charge Buckler** | Guardian | Physical Shield | Impact | Medium | Aux / Side | Physical barrier; enables `Shield Charge` feat |
-| **SV-12 Viper** | Rogue | SMG | Pierce | Light | Main Hand | High fire rate; close-range rapid burst |
-| **SV-18 Serpent** | Rogue | Carbine | Pierce | Light | Main Hand | Suppressed carbine for mid-range stealth ops |
-| **SR-440 Shadowfang** | Rogue | Marksman Rifle | Pierce | Medium | Main Hand | Long-range precision rifle; critical amplification |
-| **S-4 Whisper Blade** | Rogue | Dagger | Pierce | Light | Aux / Side | Monomolecular edge; dual-wield capable |
-| **S-6 Phantom Edge** | Rogue | Knife | Pierce | Light | Aux / Side | Thermal-coated blade; heat-dampened strikes |
-| **WZ-800 Arclight Cannon** | Wizard | Beam Projector | Beam | Heavy | Main Hand | Long-range heavy sustained beam cannon |
-| **WZ-650 Prism Lance** | Wizard | Beam Rifle | Beam | Medium | Main Hand | Focusing crystal rifle with variable intensity |
-| **WZ-450 Sparkstrike** | Wizard | Energy Carbine | Pulse | Medium | Main Hand | Rapid pulse burst for close-range defense |
-| **WZ-200 Manacore Staff** | Wizard | Polearm | Wave (Mana) | Heavy | Main Hand | AoE mana discharge and area denial |
-| **ARC Conductor** | Wizard | Energy Pistol | Pulse | Light | Aux / Side | Lightweight emergency energy sidearm |
-| **CL-700 Sanctifier** | Cleric | Hybrid Rifle | Beam / Pierce | Medium | Main Hand | Adaptive damage type per target defense |
-| **CL-500 Absolution** | Cleric | Beam Projector | Beam | Medium | Main Hand | Area purification beam; buffs allies on sustained fire |
-| **CL-350 Litany** | Cleric | Support Carbine | Pulse | Medium | Main Hand | Applies ally tactical buffs on enemy hit |
-| **Hallowed Scepter** | Cleric | Hybrid Staff | Wave / Impact | Medium | Main Hand | Hybrid melee sweeps + ranged healing pulses |
-| **Grace Edge** | Cleric | Consecrated Blade | Pierce | Light | Aux / Side | Releases a healing pulse on critical hit |
+#### 1. Shields (9 Custom + 1 Magitech = 10)
+| Subtype | Functional Class | Weapon Name | Damage Type | Weight Class | Slots | Combat Identity |
+| :---: | :--- | :--- | :--- | :---: | :---: | :--- |
+| `Custom` | `Buckler` | **Buckler** | Impact | Light (`5 WT`) | `3S` | Compact, fist-held iron boss designed for active parrying, deflection, and close-quarters hand-to-hand binding |
+| `Magitech` | `Buckler` | **Aegis Charge Buckler** | Impact | Medium (`9 WT`) | `1G` | Guardian physical buckler barrier; enables `Shield Charge` feat |
+| `Custom` | `Heater` | **Heater** | Impact | Medium (`10 WT`) | `3S` | Compact, triangular cavalry shield offering high torso coverage without impeding weapon clearance enabling high mobility |
+| `Custom` | `Tower` | **Tower** | Impact | Heavy (`22 WT`) | `3S` | Heavy, slightly curved full-length pavis designed to establish a portable defensive wall against ranged volleys |
+| `Custom` | `Norman` | **Norman** | Impact | Medium (`13 WT`) | `3S` | Teardrop kite shield elongated at the base to protect a rider's flank and leg, tapering upward for upper-body warding |
+| `Custom` | `Scutum` | **Scutum** | Impact | Heavy (`19 WT`) | `3S` | Semi-cylindrical curved rectangular shield engineered for overlapping frontline legion formations and devastating forward shield-punches |
+| `Custom` | `Corona` | **Corona** | Beam | Medium (`11 WT`) | `3S` | Radiant magitech projection ring generating a localized solar flare field that incinerates incoming projectiles on impact |
+| `Custom` | `Mote` | **Mote** | Pulse | Light (`6 WT`) | `3S` | Swarm of orbiting micro-kinetic shields that dynamically drift to intercept incoming ballistics and dispersed spell fire |
+| `Custom` | `Disc` | **Disc** | Wave | Light (`7 WT`) | `3S` | Revolving hard-light barrier that rotates around the forearm to disperse ballistic momentum through centrifugal force |
+| `Custom` | `Rhom` | **Rhom** | Beam | Heavy (`18 WT`) | `3S` | Asymmetric rhombus-phase energy lattice calibrated to shatter high-caliber kinetic munitions and thermal lances |
+
+#### 2. Bows (9 Custom + 2 Magitech = 11)
+| Subtype | Functional Class | Weapon Name | Damage Type | Weight Class | Slots | Combat Identity |
+| :---: | :--- | :--- | :--- | :---: | :---: | :--- |
+| `Custom` | `Self Bow` | **Self Bow** | Pierce | Light (`5 WT`) | `3S` | Primitive bow fashioned from a single continuous stave of conditioned hardwood, dependable in its structural simplicity |
+| `Custom` | `Short Bow` | **Short Bow** | Pierce | Light (`6 WT`) | `3S` | Lightweight, quick-drawing bow optimized for swift skirmishing, outrider maneuvers, and confined ambushes |
+| `Custom` | `Flat Bow` | **Flat Bow** | Pierce | Medium (`9 WT`) | `3S` | Broad-limbed stave engineered to distribute mechanical stress evenly, yielding a stable, high-efficiency draw |
+| `Custom` | `Recurve Bow` | **Recurve Bow** | Pierce | Medium (`10 WT`) | `3S` | Bow with limbs that curve outward at the tips, accelerating arrow velocity without requiring an oversized draw length |
+| `Custom` | `Reflex Bow` | **Reflex Bow** | Pierce | Light (`7 WT`) | `3S` | Aggressively pre-stressed limb profile that curves completely away from the archer when unstrung, delivering snap-fire power |
+| `Custom` | `Composite Bow` | **Composite Bow** | Pierce | Medium (`11 WT`) | `3S` | Layered construct of horn, wood, and sinew bonded with alchemical resin, producing immense kinetic energy for its compact frame |
+| `Custom` | `Long Bow` | **Long Bow** | Pierce | Heavy (`16 WT`) | `3S` | Tall, high-draw-weight war bow capable of driving heavy bodkin shafts clean through reinforced armor plating at distance |
+| `Custom` | `Compound Bow` | **Compound Bow** | Pierce | Medium (`13 WT`) | `3S` | Engineered pulley-and-cam mechanical rig that reduces holding weight at full draw while maximizing projectile speed |
+| `Magitech` | `Compound Bow` | **M-300 Hasta** | Impact | Medium (`13 WT`) | `1G` | Warrior polybolos repeating bow; mid-range sustained kinetic fire |
+| `Custom` | `Great Bow` | **Great Bow** | Pierce | Heavy (`20 WT`) | `3S` | Monstrous oversized war bow anchored by raw foot-pounds, launching heavy harpoons capable of staggering armored constructs |
+| `Magitech` | `Great Bow` | **M-450 Pilum** | Impact | Heavy (`20 WT`) | `1G` | Warrior shock-channeling heavy ballista artillery hitter |
+
+#### 3. Casters (9 Custom + 13 Magitech = 22)
+| Subtype | Functional Class | Weapon Name | Damage Type | Weight Class | Slots | Combat Identity |
+| :---: | :--- | :--- | :--- | :---: | :---: | :--- |
+| `Custom` | `Bolt Caster` | **Bolt Caster** | Pierce | Light (`6 WT`) | `3S` | Direct-channel focal barrel designed to condense raw ether into high-velocity, single-shot kinetic penetrators |
+| `Magitech` | `Bolt Caster` | **N-55 Gladius** | Impact | Medium (`11 WT`) | `1G` | Warrior BCU reference bolter; burst-fire stabilization |
+| `Magitech` | `Bolt Caster` | **SV-12 Viper** | Pierce | Light (`6 WT`) | `1G` | Rogue high-fire-rate SMG; close-range rapid burst |
+| `Magitech` | `Bolt Caster` | **SV-18 Serpent** | Pierce | Light (`8 WT`) | `1G` | Rogue suppressed carbine for mid-range stealth ops |
+| `Magitech` | `Bolt Caster` | **SR-440 Shadowfang** | Pierce | Medium (`11 WT`) | `1G` | Rogue long-range marksman rifle; critical amplification |
+| `Magitech` | `Bolt Caster` | **B-25 Brushcutter** | Pierce | Heavy (`20 WT`) | `1G` | Marauder twin-rotor rotary gun; intercept & suppression |
+| `Custom` | `Beam Caster` | **Beam Caster** | Beam | Medium (`10 WT`) | `3S` | Continuous collimated emitter that sustains a coherent lance of focused thermal energy to scour armor seams |
+| `Magitech` | `Beam Caster` | **RS-450 Radiant Projector** | Beam | Medium (`12 WT`) | `1G` | Guardian mid-range beam emitter; reinforces personal shields |
+| `Magitech` | `Beam Caster` | **WZ-800 Arclight Cannon** | Beam | Heavy (`19 WT`) | `1G` | Wizard long-range heavy sustained beam cannon |
+| `Magitech` | `Beam Caster` | **WZ-650 Prism Lance** | Beam | Medium (`12 WT`) | `1G` | Wizard focusing crystal beam rifle with variable intensity |
+| `Magitech` | `Beam Caster` | **CL-700 Sanctifier** | Beam | Medium (`12 WT`) | `1G` | Cleric adaptive hybrid rifle |
+| `Magitech` | `Beam Caster` | **CL-500 Absolution** | Beam | Medium (`13 WT`) | `1G` | Cleric area purification beam projector; buffs allies on sustained fire |
+| `Custom` | `Arc Caster` | **Arc Caster** | Pulse | Light (`7 WT`) | `3S` | Conductively tuned emitter fork that discharges cascading chain lightning to leap across clustered targets |
+| `Magitech` | `Arc Caster` | **WZ-450 Sparkstrike** | Pulse | Medium (`10 WT`) | `1G` | Wizard rapid pulse carbine for close-range defense |
+| `Magitech` | `Arc Caster` | **ARC Conductor** | Pulse | Light (`5 WT`) | `1G` | Wizard lightweight emergency energy pistol sidearm |
+| `Custom` | `Pulse Caster` | **Pulse Caster** | Pulse | Medium (`10 WT`) | `3S` | Cyclic resonance chamber firing rhythmic concussive soundwaves to rupture internal components and stagger advances |
+| `Magitech` | `Pulse Caster` | **CL-350 Litany** | Pulse | Medium (`10 WT`) | `1G` | Cleric support carbine; applies ally tactical buffs on enemy hit |
+| `Custom` | `Wave Caster` | **Wave Caster** | Wave | Medium (`12 WT`) | `3S` | Wide-aperture diffuser that unleashes rolling horizontal crests of force to clear infantry lanes and sweeps |
+| `Custom` | `Blast Caster` | **Blast Caster** | Blast | Medium (`13 WT`) | `3S` | High-pressure compression nozzle delivering volatile shockwave detonations at close-to-medium range |
+| `Magitech` | `Blast Caster` | **M-350 Mauler** | Blast | Medium (`14 WT`) | `1G` | Marauder three-shot explosive burst grenade cannon |
+| `Custom` | `Nova Caster` | **Nova Caster** | Wave | Heavy (`16 WT`) | `3S` | Omnidirectional release matrix that discharges an expanding radial burst of energy from the operator’s core |
+| `Custom` | `Meteoric Caster` | **Meteoric Caster** | Blast | Heavy (`18 WT`) | `3S` | Atmospheric ionization channel that commands violent, weather-born aerial barrages and crushing downdrafts |
+| `Custom` | `Stellar Caster` | **Stellar Caster** | Beam | Heavy (`21 WT`) | `3S` | Astrological focus tuned to deep-space geometry, drawing down the devastating, hyper-dense fusion energy of falling stars |
+
+#### 4. Spears (9 Custom + 3 Magitech = 12)
+| Subtype | Functional Class | Weapon Name | Damage Type | Weight Class | Slots | Combat Identity |
+| :---: | :--- | :--- | :--- | :---: | :---: | :--- |
+| `Custom` | `Short Spear` | **Short Spear** | Pierce | Light (`7 WT`) | `3S` | Handy six-foot thrusting spear built for swift one-on-one skirmishing and close-quarters combat |
+| `Custom` | `Winged Spear` | **Winged Spear** | Pierce | Medium (`10 WT`) | `3S` | Thrusting spear flanked by side lugs behind the head to prevent over-penetration and entangle enemy weapon shafts |
+| `Custom` | `Javelin` | **Javelin** | Pierce | Light (`6 WT`) | `3S` | Light, front-weighted throwing shaft weighted for maximum aerodynamic piercing upon ballistic impact |
+| `Custom` | `Spetum` | **Spetum** | Pierce | Medium (`12 WT`) | `3S` | Long thrusting spear featuring two sharp, crescent-shaped side blades designed to hook armor and parry strikes |
+| `Custom` | `Broad Spear` | **Broad Spear** | Pierce | Medium (`13 WT`) | `3S` | Wide, leaf-bladed spear optimized to deliver vicious cutting wounds alongside heavy forward thrusts |
+| `Magitech` | `Broad Spear` | **LS-900 Swordspear** | Wave | Medium (`12 WT`) | `1G` | Guardian mana-channeling polearm; wide cleave strikes |
+| `Custom` | `Partisan` | **Partisan** | Pierce | Medium (`14 WT`) | `3S` | Broad double-edged spear head mounted with sharp basal projections, serving both as an officer’s insignia and a lethal thrusting tool |
+| `Magitech` | `Partisan` | **WZ-200 Manacore Staff** | Wave | Heavy (`16 WT`) | `1G` | Wizard AoE mana discharge polearm and area denial |
+| `Custom` | `Pike` | **Pike** | Pierce | Heavy (`18 WT`) | `3S` | Impressively reaching pole topped with a compact steel point, built to break cavalry charges in massive phalanxes |
+| `Custom` | `Boar Spear` | **Boar Spear** | Pierce | Heavy (`16 WT`) | `3S` | Thick-shafted spear fitted with a sturdy cross-bar designed to halt charging beasts and armored vanguards dead in their tracks |
+| `Custom` | `Lance` | **Lance** | Impact | Heavy (`21 WT`) | `3S` | Heavy, tapered cavalry spear fitted with a vamplate guard, designed to deliver the crushing momentum of a charge |
+| `Magitech` | `Lance` | **HL-220 Lightburst Lance** | Beam | Heavy (`18 WT`) | `1G` | Guardian reactor-linked heavy lance; Judgment Strike |
+
+#### 5. Impact & Axes (9 Custom + 2 Magitech = 11)
+| Subtype | Functional Class | Weapon Name | Damage Type | Weight Class | Slots | Combat Identity |
+| :---: | :--- | :--- | :--- | :---: | :---: | :--- |
+| `Custom` | `Cudgel` | **Cudgel** | Impact | Light (`6 WT`) | `3S` | Weighted hardwood club reinforced with metal studs, delivering blunt concussive force through brute leverage |
+| `Custom` | `Mace` | **Mace** | Impact | Medium (`11 WT`) | `3S` | Flanged steel head mounted on an iron shaft, engineered specifically to crush rigid plate and cause trauma beneath armor |
+| `Magitech` | `Mace` | **Hallowed Scepter** | Wave | Medium (`11 WT`) | `1G` | Cleric hybrid staff; melee sweeps + ranged healing pulses |
+| `Custom` | `Spike` | **Spike** | Pierce | Light (`8 WT`) | `3S` | Dedicated armor-piercing war pick designed to concentrate striking force onto a fine steel tooth |
+| `Custom` | `Hammer` | **Hammer** | Impact | Medium (`14 WT`) | `3S` | Compact war hammer featuring a flat striking face for crushing bone and an opposing beak for puncturing helmets |
+| `Custom` | `Mallet` | **Mallet** | Impact | Heavy (`20 WT`) | `3S` | Heavy two-handed lead or iron head built for devastating, unbalanced blows that shatter defenses and stagger frames |
+| `Custom` | `Tomahawk` | **Tomahawk** | Pierce | Light (`7 WT`) | `3S` | Light, nimble throwing axe balanced with a straight haft, equally lethal in close melee or spun from the hand |
+| `Custom` | `Parashu` | **Parashu** | Pierce | Medium (`13 WT`) | `3S` | Ancient, crescent-bladed war axe from the southern mountain traditions, balanced for deep cleaving arc strikes |
+| `Custom` | `Labrys` | **Labrys** | Impact | Heavy (`17 WT`) | `3S` | Classical symmetrical double-bitted war axe representing divine balance and royal execution, dangerous on both forward and backswings |
+| `Custom` | `Battle Axe` | **Battle Axe** | Impact | Heavy (`19 WT`) | `3S` | Purpose-built broad axe perched on a long haft, designed to sever limbs and split weak shields |
+| `Magitech` | `Battle Axe` | **Siegebreaker** | Impact | Heavy (`18 WT`) | `1G` | Marauder two-handed battle axe with integrated energy vent |
+
+#### 6. Blades: Curved (9 Custom + 1 Magitech = 10)
+| Subtype | Functional Class | Weapon Name | Damage Type | Weight Class | Slots | Combat Identity |
+| :---: | :--- | :--- | :--- | :---: | :---: | :--- |
+| `Custom` | `Wakizashi` | **Wakizashi** | Pierce | Light (`5 WT`) | `3S` | Traditional companion sidearm forged by eastern guildsmiths for rapid duels and close-quarters defense |
+| `Custom` | `Katana` | **Katana** | Pierce | Medium (`10 WT`) | `3S` | Medium-length curved blade designed for slashing and piercing, folded in master smithing traditions, a deadly tool in skilled hands |
+| `Custom` | `Khopesh` | **Khopesh** | Pierce | Light (`8 WT`) | `3S` | Ancient sickle-sword featuring an outer-curved forward edge designed to hook shields and deliver sweeping slashes |
+| `Magitech` | `Khopesh` | **S-2 Turbine Khopesh** | Pierce | Light (`7 WT`) | `1G` | Warrior compact turbine fallback khopesh; dual-wield capable |
+| `Custom` | `Shotel` | **Shotel** | Pierce | Light (`8 WT`) | `3S` | Deeply curved, sickle-like highlands blade engineered to reach around shields and bypass an opponent’s guard |
+| `Custom` | `Odachi` | **Odachi** | Pierce | Heavy (`17 WT`) | `3S` | Immense two-handed battlefield sword with a sweeping edge, deployed to sweep through mounted vanguards on open fields |
+| `Custom` | `Kilij` | **Kilij** | Pierce | Medium (`11 WT`) | `3S` | Nomad cavalry sabre with a flared, double-edged tip that shifts kinetic mass forward to produce devastating draw-cuts |
+| `Custom` | `Falx` | **Falx** | Pierce | Heavy (`15 WT`) | `3S` | Fearsome two-handed forward-curving war blade designed to hook over tower shields and split helmets with a scythe-like chop |
+| `Custom` | `Dao` | **Dao** | Pierce | Medium (`12 WT`) | `3S` | Single-edged broadsword from the eastern manufacturing clans featuring a flared slashing belly, balanced for rapid sweeping forms |
+| `Custom` | `Dadao` | **Dadao** | Impact | Heavy (`18 WT`) | `3S` | Heavy, two-handed military cleaver built with a broad tip, designed for brutal overhead chops through frontline armor lines |
+
+#### 7. Blades: Straight (9 Custom + 4 Magitech = 13)
+| Subtype | Functional Class | Weapon Name | Damage Type | Weight Class | Slots | Combat Identity |
+| :---: | :--- | :--- | :--- | :---: | :---: | :--- |
+| `Custom` | `Cinquedea` | **Cinquedea** | Pierce | Light (`5 WT`) | `3S` | Broad, five-finger-wide guild dagger tapering sharply to a thrusting point, lethal in crowded alley ambushes |
+| `Magitech` | `Cinquedea` | **S-4 Whisper Blade** | Pierce | Light (`5 WT`) | `1G` | Rogue monomolecular dagger edge; dual-wield capable |
+| `Custom` | `Spatha` | **Spatha** | Pierce | Medium (`9 WT`) | `3S` | Straight, medium-length double-edged cavalry sword engineered by frontier garrisons for sweeping mounted slashes |
+| `Magitech` | `Spatha` | **TIG Edge / Guardian's Edge** | Pulse | Light (`6 WT`) | `1G` | Guardian compact precision melee defense energy blade |
+| `Magitech` | `Spatha` | **Grace Edge** | Pierce | Light (`6 WT`) | `1G` | Cleric consecrated blade; releases a healing pulse on critical hit |
+| `Custom` | `Falchion` | **Falchion** | Pierce | Medium (`10 WT`) | `3S` | Single-edged heavy blade combining the balance of a sword with the forward weight and cutting bite of an axe |
+| `Custom` | `Arming Sword` | **Arming Sword** | Pierce | Medium (`10 WT`) | `3S` | Quintessential knightly one-handed cross-hilted sword, balanced for agile thrusts, cuts, and paired shield maneuvers |
+| `Custom` | `Bastard Sword` | **Bastard Sword** | Pierce | Medium (`13 WT`) | `3S` | Hand-and-a-half sword featuring an extended grip, allowing the wielder to switch fluidly between one-handed guard and two-handed power |
+| `Custom` | `Messer` | **Messer** | Pierce | Medium (`12 WT`) | `3S` | Heavy, single-edged knife-sword fitted with a distinct guard lug, favored by frontline skirmishers and duelists |
+| `Magitech` | `Messer` | **S-6 Phantom Edge** | Pierce | Light (`5 WT`) | `1G` | Rogue thermal-coated stealth knife; heat-dampened strikes |
+| `Custom` | `Zweihander` | **Zweihander** | Impact | Heavy (`18 WT`) | `3S` | Massive double-handed sword with flanged parrying lugs, wielded by frontline shock infantry to break spear lines |
+| `Custom` | `Flamberge` | **Flamberge** | Pierce | Heavy (`17 WT`) | `3S` | Greatsword with an undulating, wave-shaped blade designed to induce heavy blade vibrations on parry and tear ragged cuts |
+| `Custom` | `Executioner Sword` | **Executioner Sword** | Impact | Heavy (`21 WT`) | `3S` | Heavy, flat-tipped two-handed blade balanced purely for forward momentum and decapitating downward chops |
+
+#### 8. Carriers & Munitions (9 Custom + 2 Magitech = 11)
+| Subtype | Functional Class | Weapon Name | Damage Type | Weight Class | Slots | Combat Identity |
+| :---: | :--- | :--- | :--- | :---: | :---: | :--- |
+| `Custom` | `Bandolier` | **Bandolier** | Impact | Light (`6 WT`) | `3S` | Chest-slung webbing harness fitted with dedicated loops to carry loose cartridges, shells, or small munitions |
+| `Custom` | `Quiver` | **Quiver** | Pierce | Light (`5 WT`) | `3S` | Reinforced leather or hardened chassis container worn on the hip or flank, designed for rapid dispensing while mobile |
+| `Custom` | `Yebira` | **Yebira** | Pierce | Light (`8 WT`) | `3S` | Open-face rig of eastern origin designed to secure and display medium munitions individually for rapid draw |
+| `Custom` | `Battery` | **Battery** | Pulse | Medium (`13 WT`) | `3S` | Integrated multi-cell energy cell and munitions cluster rigged for synchronized, sequential salvo discharges |
+| `Custom` | `Sheaf` | **Sheaf** | Pierce | Light (`7 WT`) | `3S` | Tightly bound tactical bundle of standardized munitions wrapped for rapid field distribution and logistics |
+| `Custom` | `Rack` | **Rack** | Blast | Heavy (`14 WT`) | `3S` | Open-frame mechanical rail assembly mounted to hardpoints, holding heavy ordnance ready for automated feed cycles |
+| `Magitech` | `Rack` | **LN-1200 Avalanche** | Blast | Heavy (`19 WT`) | `1G` | Marauder long-range rocket pod; interference shielding |
+| `Magitech` | `Rack` | **LG-950 Tomahawk** | Blast | Heavy (`18 WT`) | `1G` | Marauder long-range soft-lock missile salvo system |
+| `Custom` | `Plumbata` | **Plumbata** | Pierce | Light (`6 WT`) | `3S` | Weighted darts tipped with heavy core weights, loosed underhand in high arcs to rain down behind shield walls |
+| `Custom` | `Kaad` | **Kaad** | Wave | Light (`6 WT`) | `3S` | Consecrated wraps wound along the hands and forearms, trailing weighted cords used to bind incoming strikes and whip mid-range targets |
+| `Custom` | `Pangao` | **Pangao** | Blast | Medium (`11 WT`) | `3S` | Protected, shock-dampened shoulder satchel engineered to transport volatile bombs, powder flasks, and other explosives |
+
+*(Note: 9 additional starting-kit field weapons—`Camelot Longsword` (`Arming Sword`), `Sanctum Flange Mace` (`Mace`), `Marauder Hand Axe` (`Tomahawk`), `Knightly Heater Shield` (`Heater`), `Aegis Pavise Tower Shield` (`Tower`), `Camelot Short Spear` (`Short Spear`), `Arclight Great Bow` (`Great Bow`), `Fletcher Munitions Quiver` (`Quiver`), and `Sanctum Æther Catalyst` (`Battery`)—also remain available in Belldor caches and Starting Loadout Kits under their shared functional classes.)*
 
 ---
 

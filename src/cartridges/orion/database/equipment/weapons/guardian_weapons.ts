@@ -202,6 +202,8 @@ export const bucklerShieldWeapon: WeaponDefinition = {
 export const heaterShieldWeapon: WeaponDefinition = {
   id: 'heater_shield',
   name: 'Knightly Heater Shield',
+  category: 'Shields',
+  weaponTier: 'customizable',
   class: 'Heater Shield (Offhand Auxiliary)',
   weaponClass: 'Physical Shield',
   loadoutSlots: ['Aux 2'],
@@ -319,6 +321,8 @@ export const heaterShieldWeapon: WeaponDefinition = {
 export const paviseShieldWeapon: WeaponDefinition = {
   id: 'pavise_shield',
   name: 'Aegis Pavise Tower Shield',
+  category: 'Shields',
+  weaponTier: 'customizable',
   class: 'Pavise Tower Shield (Offhand Auxiliary)',
   weaponClass: 'Physical Shield',
   loadoutSlots: ['Aux 2'],
@@ -436,6 +440,8 @@ export const paviseShieldWeapon: WeaponDefinition = {
 export const shortSpearWeapon: WeaponDefinition = {
   id: 'short_spear',
   name: 'Camelot Short Spear',
+  category: 'Spears',
+  weaponTier: 'customizable',
   class: 'Short Spear / Thrust (Weapon 1 / Aux 1)',
   weaponClass: 'Polearm',
   loadoutSlots: ['Weapon 1', 'Aux 1'],

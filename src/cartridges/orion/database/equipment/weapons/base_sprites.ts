@@ -69,3 +69,62 @@ export const GREAT_BOW_STRIP_BASE64 =
 export const QUIVER_STRIP_BASE64 =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJAAAAAQCAYAAAD59vZgAAABY0lEQVR42u2WMUoDURCG9yS5gU22sNkLSIKg5YLdsthZ5AA2eoOwEOw9gZ0XSJEj5Bo2rxn5nz4YQnx5Mwu+5v9gGAL5FnaYzJ+mIYQQQgghhNgREdGfd+NadF3yw2o1zw91/SEMs/y+/5jlbzZfVec/jqPflzNoeVy3cvpAXcNiIXgB9H3XxbL4bw+NYAHQ5fBTFn+arqKPfjxex7L43dQJFgi93/exLP7N7aNggdCfX95jWfzl8kmwQOiv97tY3vl/3m1jWXyswO8CSdu2sYx+/gKVPCD3CyjyQ10/d4FK/NwFKvFzF+g/5p+7QEULdBpl3gekF3H7oa6fFsnrp0Xy+mmRas0/LZLrAuUiLFfwEVv6lFp9xJaOMquP2NJRZvURWzrKrD5iS0eZ1Uds6Siz+oitOfNHbOkos/pnL9CfXyr4M+f2Q11fXyCPry+Qx9cXqMb89QXy+IQQQgghhJACvgFTvSjeUrUhkAAAAABJRU5ErkJggg==';
 
+/**
+ * Convenience alias for `BOLT_CASTER_STRIP_BASE64`.
+ */
+export const BOLT_CASTER_STRIP = BOLT_CASTER_STRIP_BASE64;
+
+/**
+ * Convenience alias for `SHOTEL_STRIP_BASE64`.
+ */
+export const SHOTEL_STRIP = SHOTEL_STRIP_BASE64;
+
+/**
+ * Convenience alias for `BUCKLER_SHIELD_STRIP_BASE64`.
+ */
+export const BUCKLER_SHIELD_STRIP = BUCKLER_SHIELD_STRIP_BASE64;
+
+/**
+ * Convenience alias for `HEATER_SHIELD_STRIP_BASE64`.
+ */
+export const HEATER_SHIELD_STRIP = HEATER_SHIELD_STRIP_BASE64;
+
+/**
+ * Convenience alias for `PAVISE_SHIELD_STRIP_BASE64`.
+ */
+export const PAVISE_SHIELD_STRIP = PAVISE_SHIELD_STRIP_BASE64;
+
+/**
+ * Convenience alias for `LONG_SWORD_STRIP_BASE64`.
+ */
+export const LONG_SWORD_STRIP = LONG_SWORD_STRIP_BASE64;
+
+/**
+ * Convenience alias for `MACE_STRIP_BASE64`.
+ */
+export const MACE_STRIP = MACE_STRIP_BASE64;
+
+/**
+ * Convenience alias for `HAND_AXE_STRIP_BASE64`.
+ */
+export const HAND_AXE_STRIP = HAND_AXE_STRIP_BASE64;
+
+/**
+ * Convenience alias for `SHORT_SPEAR_STRIP_BASE64`.
+ */
+export const SHORT_SPEAR_STRIP = SHORT_SPEAR_STRIP_BASE64;
+
+/**
+ * Convenience alias for `GREAT_BOW_STRIP_BASE64`.
+ */
+export const GREAT_BOW_STRIP = GREAT_BOW_STRIP_BASE64;
+
+/**
+ * Convenience alias for `QUIVER_STRIP_BASE64`.
+ */
+export const QUIVER_STRIP = QUIVER_STRIP_BASE64;
+
+/**
+ * Convenience alias for off-hand catalyst placeholder strip (`BUCKLER_SHIELD_STRIP_BASE64`).
+ */
+export const AETHER_CATALYST_STRIP = BUCKLER_SHIELD_STRIP_BASE64;

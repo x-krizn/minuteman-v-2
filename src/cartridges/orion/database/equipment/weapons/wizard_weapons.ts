@@ -173,6 +173,8 @@ export const arcConductorWeapon = buildMagitechWeapon({
 export const aetherCatalystWeapon: WeaponDefinition = {
   id: 'aether_catalyst',
   name: 'Sanctum Æther Catalyst',
+  category: 'Carriers & Munitions',
+  weaponTier: 'customizable',
   class: 'Auxiliary Catalyst (Skill 4 & 5)',
   weaponClass: 'Catalyst',
   loadoutSlots: ['Aux 1', 'Aux 2'],

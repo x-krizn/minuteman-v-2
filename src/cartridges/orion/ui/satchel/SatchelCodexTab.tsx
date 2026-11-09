@@ -15,6 +15,7 @@ import {
   GEMSTONE_REGISTRY,
   getWeaponComponentSlots,
   getWeaponInstanceEquipWeight,
+  getWeaponSubtypeInfo,
   isEquipmentUnlocked,
   WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS,
   WEAPON_GEM_WEIGHT_DELTA,
@@ -26,6 +27,8 @@ import {
   ItemWikiDefinition,
   OrionState,
   RoomDefinition,
+  WEAPON_CATEGORIES,
+  WeaponCategory,
   WeaponDefinition,
 } from '../../types';
 import { SpriteCanvasIcon } from './SatchelCanvases';
@@ -137,6 +140,9 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  const [arsenalClassFilter, setArsenalClassFilter] = useState<'ALL' | WeaponCategory>('ALL');
+  const [arsenalSubtypeFilter, setArsenalSubtypeFilter] = useState<'ALL' | 'Custom' | 'Magitech'>('ALL');
+
   const q = searchQuery.trim().toLowerCase();
 
   const discoveredEnemies = useMemo(() => {
@@ -159,23 +165,53 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
   }, [state, state.enemies, state.discoveredCodex, state.flags, state.lockedTargetId, q]);
 
   const discoveredWeapons = useMemo(() => {
-    const all = Object.values(WEAPON_REGISTRY);
+    const all = Object.values(WEAPON_REGISTRY).filter(
+      (w) =>
+        !w.id.startsWith('utility_') &&
+        !w.id.startsWith('aux3_') &&
+        !w.id.startsWith('aux4_')
+    );
     const unlocked = all.filter((w) => isWeaponDiscoveredInCodex(state, w));
     return {
       totalCount: all.length,
       items: unlocked
-        .filter(
-          (w) =>
+        .filter((w) => {
+          const stInfo = getWeaponSubtypeInfo(w.id);
+          if (arsenalClassFilter !== 'ALL' && stInfo.category !== arsenalClassFilter) {
+            return false;
+          }
+          if (arsenalSubtypeFilter !== 'ALL' && stInfo.variantSubtype !== arsenalSubtypeFilter) {
+            return false;
+          }
+          return (
             !q ||
             w.name.toLowerCase().includes(q) ||
+            stInfo.subtype.toLowerCase().includes(q) ||
             (w.weaponClass || w.class || '').toLowerCase().includes(q) ||
             w.description.toLowerCase().includes(q) ||
             w.lore.toLowerCase().includes(q)
-        )
-        .sort((a, b) => a.name.localeCompare(b.name)),
+          );
+        })
+        .sort((a, b) => {
+          const sa = getWeaponSubtypeInfo(a.id);
+          const sb = getWeaponSubtypeInfo(b.id);
+          if (sa.category !== sb.category) return sa.category.localeCompare(sb.category);
+          if (sa.functionalType !== sb.functionalType) {
+            return sa.functionalType.localeCompare(sb.functionalType);
+          }
+          return a.name.localeCompare(b.name);
+        }),
       unlockedCount: unlocked.length,
     };
-  }, [state, state.equipmentSlots, state.equippedWeapons, state.discoveredCodex, q]);
+  }, [
+    state,
+    state.equipmentSlots,
+    state.equippedWeapons,
+    state.discoveredCodex,
+    q,
+    arsenalClassFilter,
+    arsenalSubtypeFilter,
+  ]);
 
   const discoveredItems = useMemo(() => {
     const all = Object.values(ITEM_REGISTRY);
@@ -455,6 +491,57 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
             })
           ))}
 
+        {category === 'arsenal' && (
+          <div className="p-1.5 bg-[#090d14] border border-[#1e293b] rounded-xs space-y-1">
+            <div className="flex flex-wrap items-center justify-between gap-1">
+              <div className="flex flex-wrap items-center gap-1">
+                <span className="text-[7.5px] font-bold text-[#ffd27d]">8 WEAPON CLASSES:</span>
+                {(['ALL', ...WEAPON_CATEGORIES] as const).map((catOpt) => (
+                  <button
+                    key={catOpt}
+                    type="button"
+                    onClick={() => {
+                      soundSystem.playSelect();
+                      setArsenalClassFilter(catOpt);
+                    }}
+                    className={`px-1.5 py-0.2 rounded-xs text-[7px] font-bold border cursor-pointer ${
+                      arsenalClassFilter === catOpt
+                        ? 'bg-[#ffd27d] text-[#05070a] border-[#fde047]'
+                        : 'bg-[#05070a] text-[#94a3b8] border-[#1e293b]'
+                    }`}
+                  >
+                    {catOpt.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-[7px] text-[#94a3b8] font-bold">SUBTYPE:</span>
+                {(['ALL', 'Custom', 'Magitech'] as const).map((subOpt) => (
+                  <button
+                    key={subOpt}
+                    type="button"
+                    onClick={() => {
+                      soundSystem.playSelect();
+                      setArsenalSubtypeFilter(subOpt);
+                    }}
+                    className={`px-1.5 py-0.2 rounded-xs text-[7px] font-bold border cursor-pointer ${
+                      arsenalSubtypeFilter === subOpt
+                        ? subOpt === 'Magitech'
+                          ? 'bg-[#a21caf] text-[#f8fafc] border-[#e879f9]'
+                          : subOpt === 'Custom'
+                            ? 'bg-[#15803d] text-[#f8fafc] border-[#86efac]'
+                            : 'bg-[#ffd27d] text-[#05070a] border-[#fde047]'
+                        : 'bg-[#05070a] text-[#94a3b8] border-[#1e293b]'
+                    }`}
+                  >
+                    {subOpt.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {category === 'arsenal' &&
           (discoveredWeapons.items.length === 0 ? (
             <div className="p-4 text-center text-[#64748b] bg-[#090d14]/70 border border-[#1e293b] rounded-xs italic">
@@ -469,6 +556,8 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
               const primaryAction = w.moveset?.[0];
               const primaryFamily = primaryAction?.damageFamily || 'Kinetic';
               const primaryRange = primaryAction?.range ?? 64;
+              const stInfo = getWeaponSubtypeInfo(w.id);
+              const isMagitech = stInfo.variantSubtype === 'Magitech';
               return (
                 <div
                   key={w.id}
@@ -495,8 +584,17 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                         <span className="font-bold text-[#ffd27d] text-[10.5px]">
                           {w.name}
                         </span>
+                        <span
+                          className={`ml-1.5 px-1 py-0.1 rounded-[2px] text-[7px] font-bold ${
+                            isMagitech
+                              ? 'bg-[#311042] text-[#e879f9] border border-[#a21caf]/50'
+                              : 'bg-[#052e16] text-[#86efac] border border-[#22c55e]/40'
+                          }`}
+                        >
+                          {stInfo.variantSubtype.toUpperCase()}
+                        </span>
                         <span className="ml-2 text-[8.5px] text-[#94a3b8]">
-                          {w.weaponClass || w.class} · {wt} WT ({(w.weightClass || 'medium').toUpperCase()}) · {w.handing || '1-hand'} · [{compSlots}]
+                          {stInfo.category} ▸ {stInfo.functionalType} · {wt} WT ({(w.weightClass || 'medium').toUpperCase()}) · {w.handing || '1-hand'} · [{isMagitech ? '1 GEM SOCKET' : `3 SLOTS: ${compSlots}`}]
                         </span>
                       </div>
                     </div>

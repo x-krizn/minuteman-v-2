@@ -165,6 +165,8 @@ export const khopeshWeapon: WeaponDefinition = {
 export const longSwordWeapon: WeaponDefinition = {
   id: 'long_sword',
   name: 'Camelot Longsword',
+  category: 'Blades: Straight',
+  weaponTier: 'customizable',
   class: 'Blade / Longsword (Weapon 1 / Aux 1)',
   weaponClass: 'Blade',
   loadoutSlots: ['Weapon 1', 'Aux 1'],

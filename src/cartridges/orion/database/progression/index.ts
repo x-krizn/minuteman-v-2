@@ -17,8 +17,10 @@ import {
   PilotSkillId,
   PilotSkillProgress,
   TraitLine,
+  WeaponCategory,
   WeaponComponentPartDefinition,
   WeaponComponentSlotId,
+  WeaponDefinition,
   WeaponWeightClass,
 } from '../../types';
 import { TRAIT_REGISTRY } from '../characters';
@@ -42,7 +44,12 @@ import {
   parseEquipmentInstanceId,
   usesCustomSuffixBySemantics,
 } from '../equipment/mod_naming';
-import { getWeaponDefinition, isAuxiliaryEquipment } from '../equipment/weapons';
+import {
+  getWeaponDefinition,
+  isAuxiliaryEquipment,
+  resolveWeaponFunctionalType,
+  WEAPON_FUNCTIONAL_TYPES_BY_CATEGORY,
+} from '../equipment/weapons';
 import { getItemDefinition } from '../items';
 import { GEMSTONE_CATALOG, GEMSTONE_REGISTRY, TRAIT_FUNDING_GEMS } from '../items/gemstones';
 import { CANONICAL_FRAME_FEAT_CATALOG } from './canonical_feats';
@@ -67,6 +74,7 @@ export {
 };
 
 export { GEMSTONE_CATALOG, GEMSTONE_REGISTRY, TRAIT_FUNDING_GEMS };
+export { resolveWeaponFunctionalType, WEAPON_FUNCTIONAL_TYPES_BY_CATEGORY };
 
 /**
  * Type contract for `LevelUnlockInfo` (level unlock info) in `index.ts`.
@@ -951,83 +959,40 @@ export function getWeaponComponentSlots(
 ): [WeaponComponentSlotId, WeaponComponentSlotId, WeaponComponentSlotId] {
   if (!weaponIdOrName) return ['grip', 'actuator', 'sight'];
   const { baseId } = parseEquipmentInstanceId(weaponIdOrName);
-  switch (baseId) {
-    // Melee Blades -> hilt, grip, blade
-    case 'long_sword':
-    case 'khopesh':
-    case 's2_turbine_khopesh':
-    case 'tig_edge':
-    case 's4_whisper_blade':
-    case 's6_phantom_edge':
-    case 'grace_edge':
-      return ['hilt', 'grip', 'blade'];
+  const wDef = getWeaponDefinition(baseId);
 
-    // Melee Blunt & Axes -> hilt, grip, head
-    case 'mace':
-    case 'hand_axe':
-    case 'siegebreaker':
-      return ['hilt', 'grip', 'head'];
+  // Unique Magitech weapons have fixed internal components and expose 1 Resonance Gem Socket (focus)
+  if (wDef?.weaponTier === 'unique') {
+    return ['focus', 'focus', 'focus'];
+  }
 
-    // Melee / Hybrid Polearms & Lances -> grip, head, tip
-    case 'short_spear':
-    case 'avalon_siege_lance':
-    case 'ls900_swordspear':
-    case 'hl220_lightburst_lance':
-    case 'wz200_manacore_staff':
-    case 'hallowed_scepter':
-      return ['grip', 'head', 'tip'];
-
-    // Ranged 2H Bow -> grip, focus, catalyst
-    case 'great_bow':
-      return ['grip', 'focus', 'catalyst'];
-
-    // Ranged Beam, Wave & Hybrid -> grip, focus, sight
-    case 'gladius_boltcaster':
-    case 'rs450_radiant_projector':
-    case 'wz800_arclight_cannon':
-    case 'wz650_prism_lance':
-    case 'cl500_absolution':
-    case 'wz450_sparkstrike':
-    case 'arc_conductor':
-    case 'cl350_litany':
-    case 'cl700_sanctifier':
-      return ['grip', 'focus', 'sight'];
-
-    // Ranged Ballistics, Ordnance & Quiver -> grip, actuator, sight
-    case 'n55_gladius':
-    case 'm300_hasta':
-    case 'm450_pilum':
-    case 'b25_brushcutter':
-    case 'm350_mauler':
-    case 'ln1200_avalanche':
-    case 'lg950_tomahawk':
-    case 'sv12_viper':
-    case 'sv18_serpent':
-    case 'sr440_shadowfang':
-    case 'quiver':
-      return ['grip', 'actuator', 'sight'];
-
-    // Shields & Bucklers -> grip, head, focus
-    case 'buckler_shield':
-    case 'heater_shield':
-    case 'pavise_shield':
-    case 'aegis_charge_buckler':
-    case 'aux3_pnsy_rockweiler_buckler':
-    case 'aux3_ti_aegis_hardlight':
-    case 'aux4_ti_radiant_sphere':
-    case 'aux3_arc_prismatic_barrier':
-      return ['grip', 'head', 'focus'];
-
-    default: {
-      const wDef = getWeaponDefinition(baseId);
-      if (wDef?.equipmentRole === 'melee') return ['hilt', 'grip', 'blade'];
-      if (wDef?.equipmentRole === 'shield') return ['grip', 'head', 'focus'];
-      if (wDef?.equipmentRole === 'catalyst' || isAuxiliaryEquipment(wDef)) {
+  // Category-driven anatomical component slots for all 72 Customizable Weapons
+  if (wDef?.category) {
+    switch (wDef.category) {
+      case 'Blades: Straight':
+      case 'Blades: Curved':
+        return ['hilt', 'grip', 'blade'];
+      case 'Impact & Axes':
+        return ['hilt', 'grip', 'head'];
+      case 'Spears':
+        return ['grip', 'head', 'tip'];
+      case 'Bows':
         return ['grip', 'focus', 'catalyst'];
-      }
-      return ['grip', 'actuator', 'sight'];
+      case 'Casters':
+        return ['grip', 'focus', 'sight'];
+      case 'Carriers & Munitions':
+        return ['grip', 'actuator', 'sight'];
+      case 'Shields':
+        return ['grip', 'head', 'focus'];
     }
   }
+
+  if (wDef?.equipmentRole === 'melee') return ['hilt', 'grip', 'blade'];
+  if (wDef?.equipmentRole === 'shield') return ['grip', 'head', 'focus'];
+  if (wDef?.equipmentRole === 'catalyst' || isAuxiliaryEquipment(wDef)) {
+    return ['grip', 'focus', 'catalyst'];
+  }
+  return ['grip', 'actuator', 'sight'];
 }
 
 const DEFAULT_UTILITY_BY_TRAIT: Record<TraitLine, string> = {
@@ -1063,103 +1028,47 @@ export function createStarterGemPouch(
 
 /**
  * Executes `getWeaponSubtypeInfo` (get weapon subtype info) in `index.ts`.
+ * Returns the 8-category `WeaponCategory`, the shared functional weapon class (`functionalType`),
+ * and the `Custom` vs `Magitech` subtype so Customizable and Unique Magitech weapons are presented
+ * together inside their shared functional class.
  */
 export function getWeaponSubtypeInfo(weaponId: string): {
   equipmentType: 'Weapon' | 'Auxiliary';
+  category: WeaponCategory;
+  functionalType: string;
+  variantSubtype: 'Custom' | 'Magitech';
   subtype: string;
 } {
   const { baseId } = parseEquipmentInstanceId(weaponId);
-  switch (baseId) {
-    case 'long_sword':
-    case 'khopesh':
-    case 's2_turbine_khopesh':
-      return { equipmentType: 'Weapon', subtype: 'Melee · Blade' };
-    case 'tig_edge':
-      return { equipmentType: 'Weapon', subtype: 'Melee · Energy Blade' };
-    case 's4_whisper_blade':
-    case 's6_phantom_edge':
-      return { equipmentType: 'Weapon', subtype: 'Melee · Stealth Dagger / Knife' };
-    case 'grace_edge':
-      return { equipmentType: 'Weapon', subtype: 'Melee · Consecrated Blade' };
-    case 'mace':
-    case 'hand_axe':
-    case 'siegebreaker':
-      return { equipmentType: 'Weapon', subtype: 'Melee · Heavy Battle Axe / Blunt' };
-    case 'short_spear':
-    case 'avalon_siege_lance':
-    case 'ls900_swordspear':
-    case 'hl220_lightburst_lance':
-    case 'wz200_manacore_staff':
-    case 'hallowed_scepter':
-      return { equipmentType: 'Weapon', subtype: 'Melee / Hybrid · Polearm & Lance' };
-    case 'great_bow':
-      return { equipmentType: 'Weapon', subtype: 'Ranged · 2H Bow' };
-    case 'gladius_boltcaster':
-    case 'n55_gladius':
-      return { equipmentType: 'Weapon', subtype: 'Ranged · Bolter' };
-    case 'm300_hasta':
-      return { equipmentType: 'Weapon', subtype: 'Ranged · Polybolos' };
-    case 'm450_pilum':
-      return { equipmentType: 'Weapon', subtype: 'Ranged · Heavy Ballista' };
-    case 'b25_brushcutter':
-      return { equipmentType: 'Weapon', subtype: 'Ranged · Rotary Gatling' };
-    case 'm350_mauler':
-      return { equipmentType: 'Weapon', subtype: 'Ranged · Grenade Cannon' };
-    case 'ln1200_avalanche':
-    case 'lg950_tomahawk':
-      return { equipmentType: 'Weapon', subtype: 'Ranged · Rocket & Missile System' };
-    case 'rs450_radiant_projector':
-    case 'wz800_arclight_cannon':
-    case 'wz650_prism_lance':
-    case 'cl500_absolution':
-      return { equipmentType: 'Weapon', subtype: 'Ranged · Beam Projector / Rifle' };
-    case 'wz450_sparkstrike':
-    case 'arc_conductor':
-    case 'cl350_litany':
-      return { equipmentType: 'Weapon', subtype: 'Ranged · Pulse Carbine / Pistol' };
-    case 'cl700_sanctifier':
-      return { equipmentType: 'Weapon', subtype: 'Ranged · Adaptive Hybrid Rifle' };
-    case 'sv12_viper':
-    case 'sv18_serpent':
-      return { equipmentType: 'Weapon', subtype: 'Ranged · SMG / Suppressed Carbine' };
-    case 'sr440_shadowfang':
-      return { equipmentType: 'Weapon', subtype: 'Ranged · Marksman Rifle' };
-    case 'buckler_shield':
-    case 'heater_shield':
-    case 'pavise_shield':
-    case 'aegis_charge_buckler':
-    case 'aux3_pnsy_rockweiler_buckler':
-      return { equipmentType: 'Auxiliary', subtype: 'Auxiliary · Physical Shield' };
-    case 'aux3_ti_aegis_hardlight':
-    case 'aux4_ti_radiant_sphere':
-    case 'aux3_arc_prismatic_barrier':
-    case 'utility_sanctum_font':
-      return { equipmentType: 'Auxiliary', subtype: 'Auxiliary · Energy / Ward Shield' };
-    case 'quiver':
-      return { equipmentType: 'Auxiliary', subtype: 'Auxiliary · Quiver' };
-    case 'aether_catalyst':
-    case 'utility_ichor_surge':
-    case 'aux4_pnsy_rough_rider_booster':
-    case 'utility_siege_brace':
-    case 'aux3_rad_kinetic_recycling':
-    case 'aux4_rad_ether_vapor':
-    case 'utility_aegis_pulse':
-    case 'utility_phantom_shroud':
-    case 'aux3_vx_eclipse_cloak':
-    case 'aux4_vx_phase_shift':
-    case 'utility_arclight_capacitor':
-    case 'aux4_arc_feedback_capacitor':
-    case 'aux3_sanc_restoration_field':
-    case 'aux4_sanc_martyrdom_plating':
-      return { equipmentType: 'Auxiliary', subtype: 'Auxiliary · Tactical Catalyst' };
-    default: {
-      const wDef = getWeaponDefinition(baseId);
-      if (wDef && isAuxiliaryEquipment(wDef)) {
-        return { equipmentType: 'Auxiliary', subtype: `Auxiliary · ${wDef.weaponClass || 'System'}` };
-      }
-      return { equipmentType: 'Weapon', subtype: 'Weapon' };
-    }
+  const wDef = getWeaponDefinition(baseId);
+  if (wDef) {
+    const equipmentType: 'Weapon' | 'Auxiliary' = isAuxiliaryEquipment(wDef)
+      ? 'Auxiliary'
+      : 'Weapon';
+    const category: WeaponCategory = wDef.category || 'Casters';
+    const functionalType = resolveWeaponFunctionalType(
+      baseId,
+      category,
+      wDef.weaponClass,
+      wDef.name
+    );
+    const variantSubtype: 'Custom' | 'Magitech' =
+      wDef.weaponTier === 'unique' ? 'Magitech' : 'Custom';
+    return {
+      equipmentType,
+      category,
+      functionalType,
+      variantSubtype,
+      subtype: `${category} · ${functionalType} (${variantSubtype})`,
+    };
   }
+  return {
+    equipmentType: 'Weapon',
+    category: 'Casters',
+    functionalType: 'Bolt Caster',
+    variantSubtype: 'Custom',
+    subtype: 'Casters · Bolt Caster (Custom)',
+  };
 }
 
 /**
@@ -1195,16 +1104,17 @@ export function getEquipmentDisplayName(idOrName: string | null | undefined): st
 
 /**
  * Computes the maximum number of Gem/Component mod slots (`1` to `3`) for any equipment or mod item:
- * - **Weapons & Auxiliaries**: Always `3` named anatomical component slots (`getWeaponComponentSlots(id)`).
+ * - **72 Customizable Weapons (`weaponTier === 'customizable'`)**: `3` anatomical component & gem slots.
+ * - **29 Unique Magitech Weapons (`weaponTier === 'unique'`)**: `1` Resonance Gem socket (fixed internal components).
  * - **Crafted Mod Parts (`origin === 'crafted'`)**: Strictly capped at `1` additional gem slot (`maxGemSlots: 0 | 1`).
- * - **Looted Standalone Armor & Hardware (`origin === 'looted'`)**: `1` to `3` gem slots depending on the item (`plating`/`reactor` = 3, `head`/`optics`/`arms`/`actuators`/`legs` = 2..3, `sensoryA`/`sensoryB` = 1..2).
+ * - **Looted Standalone Armor & Hardware (`origin === 'looted'`)**: `1` to `3` gem slots depending on the item.
  */
 export function getEquipmentMaxModSlots(idOrName: string | null | undefined): 1 | 2 | 3 {
   if (!idOrName) return 1;
   const { baseId } = parseEquipmentInstanceId(idOrName);
   const wDef = getWeaponDefinition(baseId);
   if (wDef) {
-    return 3;
+    return wDef.weaponTier === 'unique' ? 1 : 3;
   }
   const hwDef = findHardwareItemByNameOrId(baseId);
   if (hwDef) {
@@ -1336,12 +1246,26 @@ export function createInitialEquipmentSlots(traitLine: TraitLine = 'Warrior'): O
     hw.sensoryB,
   ].map((name) => findHardwareItemByNameOrId(name)?.id || name);
 
+  const starterCustomizableIds = [
+    'shield_01_buckler',
+    'bow_01_self',
+    'caster_01_bolt',
+    'spear_01_short',
+    'hafted_01_cudgel',
+    'curved_01_wakizashi',
+    'straight_01_cinquedea',
+    'carrier_01_bandolier',
+  ];
+
   const initialCounts: Record<string, number> = { [w1]: 1 };
   if (w2) {
     initialCounts[w2] = (initialCounts[w2] || 0) + 1;
   }
   if (defaultAuxBack) {
     initialCounts[defaultAuxBack] = Math.max(1, initialCounts[defaultAuxBack] || 1);
+  }
+  for (const cwId of starterCustomizableIds) {
+    initialCounts[cwId] = Math.max(1, initialCounts[cwId] || 1);
   }
   for (const hwId of starterHardwareIds) {
     initialCounts[hwId] = 1;
@@ -1391,6 +1315,7 @@ export function createInitialEquipmentSlots(traitLine: TraitLine = 'Warrior'): O
         w1,
         ...(w2 ? [w2] : []),
         ...(defaultAuxBack ? [defaultAuxBack] : []),
+        ...starterCustomizableIds,
         ...starterHardwareIds,
       ])
     ),
@@ -1587,6 +1512,13 @@ export function installGemModOnEquipment(
 
   const normSource = normalizeEquipmentInstanceKey(sourceInstanceId);
   const { baseId, installedGems, slotGems } = parseEquipmentInstanceId(normSource);
+  const wDef = getWeaponDefinition(baseId);
+  if (wDef?.weaponTier === 'unique' && componentMeta?.partDef) {
+    ctx?.say(
+      `${wDef.name.toUpperCase()} IS A UNIQUE MAGITECH WEAPON WITH FIXED INTERNAL COMPONENTS (1 GEM SOCKET ONLY)`
+    );
+    return null;
+  }
   const maxSlots = getEquipmentMaxModSlots(baseId);
   const weaponSlots = getWeaponComponentSlots(baseId);
 
@@ -2469,6 +2401,16 @@ export function doesPilotMeetFeatEquipmentRequirement(
     .filter(Boolean)
     .map((s) => s.toLowerCase().replace(/_/g, ' '));
 
+  const equippedWeaponDefs = [
+    eq?.slot1,
+    eq?.slot2,
+    eq?.slot3,
+    ...(state.equippedWeapons || []),
+  ]
+    .filter(Boolean)
+    .map((id) => getWeaponDefinition(id!))
+    .filter((d): d is WeaponDefinition => Boolean(d));
+
   const hwStats = resolveEquippedHardwareStats(state);
   const effLoad = computeEffectiveLoadCapacity(state.traitLine, state.equippedFeats || [], state);
 
@@ -2580,12 +2522,17 @@ export function doesPilotMeetFeatEquipmentRequirement(
       );
     }
     if (c.includes('physical shield')) {
-      return equippedStrings.some(
-        (s) =>
-          s.includes('buckler') ||
-          s.includes('heater') ||
-          s.includes('pavise') ||
-          s.includes('rockweiler')
+      return (
+        equippedWeaponDefs.some(
+          (w) => w.category === 'Shields' && (w.passiveArmorBonus || 0) >= 6
+        ) ||
+        equippedStrings.some(
+          (s) =>
+            s.includes('buckler') ||
+            s.includes('heater') ||
+            s.includes('pavise') ||
+            s.includes('rockweiler')
+        )
       );
     }
     if (c.includes('energy shield') || c.includes('radiant sphere')) {
@@ -2594,6 +2541,13 @@ export function doesPilotMeetFeatEquipmentRequirement(
       }
       return (
         state.shields?.type === 'energy' ||
+        equippedWeaponDefs.some(
+          (w) =>
+            w.category === 'Shields' &&
+            (w.primaryDamageType === 'Beam' ||
+              w.primaryDamageType === 'Pulse' ||
+              w.primaryDamageType === 'Wave')
+        ) ||
         equippedStrings.some(
           (s) =>
             s.includes('hard-light') ||
@@ -2608,14 +2562,17 @@ export function doesPilotMeetFeatEquipmentRequirement(
       );
     }
     if (c.includes('shield')) {
-      return equippedStrings.some(
-        (s) =>
-          s.includes('shield') ||
-          s.includes('buckler') ||
-          s.includes('pavise') ||
-          s.includes('heater') ||
-          s.includes('barrier') ||
-          s.includes('sphere')
+      return (
+        equippedWeaponDefs.some((w) => w.category === 'Shields' || w.equipmentRole === 'shield') ||
+        equippedStrings.some(
+          (s) =>
+            s.includes('shield') ||
+            s.includes('buckler') ||
+            s.includes('pavise') ||
+            s.includes('heater') ||
+            s.includes('barrier') ||
+            s.includes('sphere')
+        )
       );
     }
     if (c.includes('cloak') || c.includes('stealth')) {
@@ -2648,12 +2605,15 @@ export function doesPilotMeetFeatEquipmentRequirement(
       );
     }
     if (c.includes('interference launcher')) {
-      return equippedStrings.some(
-        (s) =>
-          s.includes('ether vapor') ||
-          s.includes('avalanche') ||
-          s.includes('smoke') ||
-          s.includes('ironveil')
+      return (
+        equippedWeaponDefs.some((w) => w.category === 'Carriers & Munitions') ||
+        equippedStrings.some(
+          (s) =>
+            s.includes('ether vapor') ||
+            s.includes('avalanche') ||
+            s.includes('smoke') ||
+            s.includes('ironveil')
+        )
       );
     }
     if (c.includes('martyrdom')) {
@@ -2670,22 +2630,27 @@ export function doesPilotMeetFeatEquipmentRequirement(
       c.includes('buff system') ||
       c.includes('area healing')
     ) {
-      return equippedStrings.some(
-        (s) =>
-          s.includes('restoration') ||
-          s.includes('lightwell') ||
-          s.includes('repair drone') ||
-          s.includes('fathomless') ||
-          s.includes('radiant ward') ||
-          s.includes('benediction') ||
-          s.includes('blessing') ||
-          s.includes('litany') ||
-          s.includes('absolution') ||
-          s.includes('hallowed scepter') ||
-          s.includes('sanctum') ||
-          s.includes('catalyst') ||
-          s.includes('arclight') ||
-          s.includes('infinite well')
+      return (
+        equippedWeaponDefs.some(
+          (w) => Boolean(w.supportPulseOnHit) || w.equipmentRole === 'catalyst'
+        ) ||
+        equippedStrings.some(
+          (s) =>
+            s.includes('restoration') ||
+            s.includes('lightwell') ||
+            s.includes('repair drone') ||
+            s.includes('fathomless') ||
+            s.includes('radiant ward') ||
+            s.includes('benediction') ||
+            s.includes('blessing') ||
+            s.includes('litany') ||
+            s.includes('absolution') ||
+            s.includes('hallowed scepter') ||
+            s.includes('sanctum') ||
+            s.includes('catalyst') ||
+            s.includes('arclight') ||
+            s.includes('infinite well')
+        )
       );
     }
     if (c.includes('artillery optics')) {
@@ -2700,24 +2665,33 @@ export function doesPilotMeetFeatEquipmentRequirement(
       );
     }
     if (c.includes('beam weapon') || c.includes('energy weapon')) {
-      return equippedStrings.some(
-        (s) =>
-          s.includes('radiant projector') ||
-          s.includes('lightburst lance') ||
-          s.includes('tig edge') ||
-          s.includes('arclight') ||
-          s.includes('prism lance') ||
-          s.includes('sparkstrike') ||
-          s.includes('manacore') ||
-          s.includes('conductor') ||
-          s.includes('sanctifier') ||
-          s.includes('absolution') ||
-          s.includes('litany') ||
-          s.includes('swordspear') ||
-          s.includes('hallowed scepter') ||
-          s.includes('catalyst') ||
-          s.includes('phantom') ||
-          s.includes('khopesh')
+      return (
+        equippedWeaponDefs.some(
+          (w) =>
+            w.primaryDamageType === 'Beam' ||
+            w.primaryDamageType === 'Pulse' ||
+            w.primaryDamageType === 'Wave' ||
+            w.category === 'Casters'
+        ) ||
+        equippedStrings.some(
+          (s) =>
+            s.includes('radiant projector') ||
+            s.includes('lightburst lance') ||
+            s.includes('tig edge') ||
+            s.includes('arclight') ||
+            s.includes('prism lance') ||
+            s.includes('sparkstrike') ||
+            s.includes('manacore') ||
+            s.includes('conductor') ||
+            s.includes('sanctifier') ||
+            s.includes('absolution') ||
+            s.includes('litany') ||
+            s.includes('swordspear') ||
+            s.includes('hallowed scepter') ||
+            s.includes('catalyst') ||
+            s.includes('phantom') ||
+            s.includes('khopesh')
+        )
       );
     }
     if (
@@ -2725,64 +2699,82 @@ export function doesPilotMeetFeatEquipmentRequirement(
       c.includes('intercept') ||
       c.includes('rapid-fire')
     ) {
-      return equippedStrings.some(
-        (s) =>
-          s.includes('brushcutter') ||
-          s.includes('mauler') ||
-          s.includes('gladius') ||
-          s.includes('hasta') ||
-          s.includes('viper') ||
-          s.includes('serpent') ||
-          s.includes('sparkstrike') ||
-          s.includes('avalanche') ||
-          s.includes('tomahawk')
+      return (
+        equippedWeaponDefs.some(
+          (w) =>
+            w.shotsPerChain >= 6 ||
+            w.category === 'Casters' ||
+            w.category === 'Carriers & Munitions' ||
+            w.category === 'Bows'
+        ) ||
+        equippedStrings.some(
+          (s) =>
+            s.includes('brushcutter') ||
+            s.includes('mauler') ||
+            s.includes('gladius') ||
+            s.includes('hasta') ||
+            s.includes('viper') ||
+            s.includes('serpent') ||
+            s.includes('sparkstrike') ||
+            s.includes('avalanche') ||
+            s.includes('tomahawk')
+        )
       );
     }
     if (c.includes('parry')) {
-      return equippedStrings.some(
-        (s) =>
-          s.includes('khopesh') ||
-          s.includes('tig edge') ||
-          s.includes('whisper blade') ||
-          s.includes('phantom edge') ||
-          s.includes('grace edge') ||
-          s.includes('sword') ||
-          s.includes('buckler') ||
-          s.includes('shield') ||
-          s.includes('swordspear') ||
-          s.includes('lance')
+      return (
+        equippedWeaponDefs.some((w) => Boolean(w.canBlock)) ||
+        equippedStrings.some(
+          (s) =>
+            s.includes('khopesh') ||
+            s.includes('tig edge') ||
+            s.includes('whisper blade') ||
+            s.includes('phantom edge') ||
+            s.includes('grace edge') ||
+            s.includes('sword') ||
+            s.includes('buckler') ||
+            s.includes('shield') ||
+            s.includes('swordspear') ||
+            s.includes('lance')
+        )
       );
     }
     if (c.includes('melee')) {
-      return equippedStrings.some(
-        (s) =>
-          s.includes('sword') ||
-          s.includes('khopesh') ||
-          s.includes('spear') ||
-          s.includes('lance') ||
-          s.includes('mace') ||
-          s.includes('axe') ||
-          s.includes('siegebreaker') ||
-          s.includes('tig edge') ||
-          s.includes('whisper') ||
-          s.includes('phantom edge') ||
-          s.includes('staff') ||
-          s.includes('scepter') ||
-          s.includes('grace edge')
+      return (
+        equippedWeaponDefs.some((w) => w.equipmentRole === 'melee') ||
+        equippedStrings.some(
+          (s) =>
+            s.includes('sword') ||
+            s.includes('khopesh') ||
+            s.includes('spear') ||
+            s.includes('lance') ||
+            s.includes('mace') ||
+            s.includes('axe') ||
+            s.includes('siegebreaker') ||
+            s.includes('tig edge') ||
+            s.includes('whisper') ||
+            s.includes('phantom edge') ||
+            s.includes('staff') ||
+            s.includes('scepter') ||
+            s.includes('grace edge')
+        )
       );
     }
     if (c.includes('heavy weapon')) {
-      return equippedStrings.some(
-        (s) =>
-          s.includes('pilum') ||
-          s.includes('brushcutter') ||
-          s.includes('avalanche') ||
-          s.includes('tomahawk') ||
-          s.includes('siegebreaker') ||
-          s.includes('lightburst lance') ||
-          s.includes('arclight') ||
-          s.includes('manacore') ||
-          s.includes('avalon')
+      return (
+        equippedWeaponDefs.some((w) => w.weightClass === 'heavy') ||
+        equippedStrings.some(
+          (s) =>
+            s.includes('pilum') ||
+            s.includes('brushcutter') ||
+            s.includes('avalanche') ||
+            s.includes('tomahawk') ||
+            s.includes('siegebreaker') ||
+            s.includes('lightburst lance') ||
+            s.includes('arclight') ||
+            s.includes('manacore') ||
+            s.includes('avalon')
+        )
       );
     }
     if (c.includes('matching') || c.includes('sidearms')) {

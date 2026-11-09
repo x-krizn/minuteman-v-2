@@ -333,12 +333,52 @@ export interface TraitLineWikiDefinition {
 }
 
 /**
+ * Canonical 8 broad weapon categories (`docs/EQUIPMENT_AND_FEATS.md §1`) housing the 72 customizable archetypes
+ * and the 29 dissolved Unique Magitech weapons (`101` total).
+ */
+export type WeaponCategory =
+  | 'Shields'
+  | 'Bows'
+  | 'Casters'
+  | 'Spears'
+  | 'Impact & Axes'
+  | 'Blades: Curved'
+  | 'Blades: Straight'
+  | 'Carriers & Munitions';
+
+/**
+ * Ordered list of the 8 canonical weapon categories (`docs/EQUIPMENT_AND_FEATS.md §1`).
+ */
+export const WEAPON_CATEGORIES: WeaponCategory[] = [
+  'Shields',
+  'Bows',
+  'Casters',
+  'Spears',
+  'Impact & Axes',
+  'Blades: Curved',
+  'Blades: Straight',
+  'Carriers & Munitions',
+];
+
+/**
+ * Customization tier for a weapon (`'customizable'` for the 72 modular weapons with `3` component/gem slots,
+ * or `'unique'` for the 29 fixed-part Magitech weapons with `1` gem socket).
+ */
+export type WeaponTier = 'customizable' | 'unique';
+
+/**
  * Weapon / Shield / Quiver / Catalyst Definition.
  */
 export interface WeaponDefinition {
   id: string;
   name: string;
   class: string;
+  /** Canonical broad weapon category (`'Shields' | 'Bows' | 'Casters' | 'Spears' | 'Impact & Axes' | 'Blades: Curved' | 'Blades: Straight' | 'Carriers & Munitions'`) */
+  category?: WeaponCategory;
+  /** Customization tier (`'customizable'` = 3 component & gem slots; `'unique'` = fixed parts & 1 gem socket) */
+  weaponTier?: WeaponTier;
+  /** Two-digit archetype index (`'01'`..`'09'`) within its category for the 72 customizable weapons */
+  archetypeNumber?: string;
   /** Canonical weapon family classification (e.g. 'Bolter', 'Polybolos', 'Ballista', 'Beam Projector', 'Hybrid Rifle') */
   weaponClass?: string;
   /** Canonical active skill count (e.g. 3 or 4) */

@@ -176,6 +176,8 @@ export const s6PhantomEdgeWeapon = buildMagitechWeapon({
 export const greatBowWeapon: WeaponDefinition = {
   id: 'great_bow',
   name: 'Arclight Great Bow',
+  category: 'Bows',
+  weaponTier: 'customizable',
   class: 'Heavy Great Bow (Weapon 3 / Weapon 4)',
   weaponClass: 'Great Bow',
   loadoutSlots: ['Weapon 3', 'Weapon 4'],
@@ -289,6 +291,8 @@ export const greatBowWeapon: WeaponDefinition = {
 export const quiverWeapon: WeaponDefinition = {
   id: 'quiver',
   name: 'Fletcher Munitions Quiver',
+  category: 'Carriers & Munitions',
+  weaponTier: 'customizable',
   class: 'Ranged Quiver (Offhand / Set)',
   weaponClass: 'Quiver',
   loadoutSlots: ['Aux 2'],

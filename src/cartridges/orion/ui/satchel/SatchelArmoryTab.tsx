@@ -47,6 +47,8 @@ import { notifyOrionStateChange } from '../../systems';
 import {
   GemId,
   OrionState,
+  WEAPON_CATEGORIES,
+  WeaponCategory,
   WeaponComponentPartDefinition,
   WeaponComponentSlotId,
 } from '../../types';
@@ -107,6 +109,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
   const [activeActionModCategory, setActiveActionModCategory] = useState<
     'melee' | 'ranged' | 'mobility'
   >('melee');
+  const [weaponCategoryFilter, setWeaponCategoryFilter] = useState<'ALL' | WeaponCategory>('ALL');
 
   // Synchronize workbench focus when jumping from Loadout "Modify in Armory" context action
   useEffect(() => {
@@ -337,19 +340,21 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
     const hwItem = !isWeaponItem ? findHardwareItemByNameOrId(targetInstanceId) : undefined;
     const clampedSlotIdx = Math.max(0, Math.min(maxSlots - 1, selectedModSlotIndex));
     const activeAnatomicalSlotName = anatomicalSlots[clampedSlotIdx];
+    const wDef = isWeaponItem ? getWeaponDefinition(baseId) : undefined;
+    const isUniqueWeapon = Boolean(wDef?.weaponTier === 'unique');
     const currentSlotGem = slotGems[clampedSlotIdx] || null;
-    const currentInstalledPartId = isWeaponItem
-      ? compMap[activeAnatomicalSlotName]
-      : undefined;
+    const currentInstalledPartId =
+      isWeaponItem && !isUniqueWeapon ? compMap[activeAnatomicalSlotName] : undefined;
     const currentInstalledPartDef = currentInstalledPartId
       ? WEAPON_COMPONENT_PART_CATALOG.find((p) => p.id === currentInstalledPartId)
       : undefined;
 
-    const compatibleWeaponParts: WeaponComponentPartDefinition[] = isWeaponItem
-      ? WEAPON_COMPONENT_PART_CATALOG.filter(
-          (p) => p.componentSlot === activeAnatomicalSlotName
-        )
-      : [];
+    const compatibleWeaponParts: WeaponComponentPartDefinition[] =
+      isWeaponItem && !isUniqueWeapon
+        ? WEAPON_COMPONENT_PART_CATALOG.filter(
+            (p) => p.componentSlot === activeAnatomicalSlotName
+          )
+        : [];
 
     // Compute what the Custom name will look like if a gem/part is installed in clampedSlotIdx
     const previewNextName = (candidateGemId: GemId) => {
@@ -365,19 +370,36 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
         <div className="flex flex-wrap items-center justify-between gap-1 border-b border-[#1e293b] pb-1">
           <div>
             <div className="text-[9.5px] font-bold text-[#fde047]">
-              ANY-ORDER MODIFICATION SLOTS ({installedGems.length}/{maxSlots} OCCUPIED)
+              {isUniqueWeapon
+                ? `UNIQUE MAGITECH · FIXED COMPONENTS & 1 RESONANCE GEM SOCKET (${installedGems.length}/${maxSlots} OCCUPIED)`
+                : `ANY-ORDER MODIFICATION SLOTS (${installedGems.length}/${maxSlots} OCCUPIED)`}
             </div>
             <div className="text-[7.5px] text-[#94a3b8]">
-              Select any slot below in any order to install, replace, or remove a modification.
-              Modified items use semantic <b className="text-[#fde047]">Custom</b> naming (
-              <span className="text-[#86efac]">
-                {formatModifiedEquipmentName(baseName, ['spinel'])}
-              </span>{' '}
-              /{' '}
-              <span className="text-[#86efac]">
-                {formatModifiedEquipmentName(baseName, ['spinel', 'carnelian'])}
-              </span>
-              ).
+              {isUniqueWeapon ? (
+                <>
+                  Unique Magitech ordnance features factory-sealed internal components (Hilt, Grip,
+                  Blade, Actuator) and exposes <b className="text-[#c084fc]">1 Resonance Gem Socket</b>{' '}
+                  for elemental domain tuning (
+                  <span className="text-[#86efac]">
+                    {formatModifiedEquipmentName(baseName, ['spinel'])}
+                  </span>
+                  ).
+                </>
+              ) : (
+                <>
+                  Select any slot below in any order to install, replace, or remove a component part
+                  or gemstone. Modified items use semantic <b className="text-[#fde047]">Custom</b>{' '}
+                  naming (
+                  <span className="text-[#86efac]">
+                    {formatModifiedEquipmentName(baseName, ['spinel'])}
+                  </span>{' '}
+                  /{' '}
+                  <span className="text-[#86efac]">
+                    {formatModifiedEquipmentName(baseName, ['spinel', 'carnelian'])}
+                  </span>
+                  ).
+                </>
+              )}
             </div>
           </div>
           {isWeaponItem && (
@@ -749,60 +771,99 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
       {/* ─── WORKBENCH 1: WEAPONS & AUXILIARIES MODIFICATION ─── */}
       {category === 'weapons' && activeWeaponDef && activeWeaponBaseDef && (
         <div className="space-y-2">
-          {/* Quick Equipped + Owned Weapon Selector */}
+          {/* Quick Equipped + Owned Weapon Selector with 8-Category Filter */}
           <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">
-            <div className="text-[8.5px] font-bold text-[#ffd27d]">
-              SELECT WEAPON OR AUXILIARY TO MODIFY:
-            </div>
-            <div className="flex flex-wrap gap-1 max-h-28 overflow-y-auto pr-1">
-              {ownedWeaponInstances.map(({ instanceId }) => {
-                const w = getWeaponDefinition(instanceId);
-                if (!w) return null;
-                const isMain = eq.slot1 === instanceId;
-                const isSide = eq.slot2 === instanceId;
-                const isAux = eq.slot3 === instanceId;
-                const isSelected = selectedWeaponInstanceId === instanceId;
-                const gemVis = getWeaponGemVisuals(state, instanceId);
-                const strip = w.variantStripBase64 || w.hardpointSprite?.base64;
-
-                return (
+            <div className="flex flex-wrap items-center justify-between gap-1">
+              <div className="text-[8.5px] font-bold text-[#ffd27d]">
+                SELECT WEAPON OR AUXILIARY TO MODIFY:
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {(['ALL', ...WEAPON_CATEGORIES] as const).map((catOpt) => (
                   <button
-                    key={instanceId}
+                    key={catOpt}
                     type="button"
                     onClick={() => {
                       soundSystem.playSelect();
-                      setSelectedWeaponInstanceId(instanceId);
+                      setWeaponCategoryFilter(catOpt);
                     }}
-                    className={`px-2 py-1 rounded-xs border text-[8px] font-bold flex items-center gap-1.5 cursor-pointer ${
-                      isSelected
-                        ? 'bg-[#172554] text-[#fde047] border-[#fde047]'
-                        : 'bg-[#05070a] text-[#cbd5e1] border-[#1e293b] hover:border-[#38bdf8]'
+                    className={`px-1.5 py-0.5 rounded-xs text-[7.5px] font-bold border cursor-pointer ${
+                      weaponCategoryFilter === catOpt
+                        ? 'bg-[#ffd27d] text-[#05070a] border-[#fde047]'
+                        : 'bg-[#05070a] text-[#94a3b8] border-[#1e293b] hover:border-[#ffd27d]/60'
                     }`}
                   >
-                    <SpriteCanvasIcon
-                      base64={strip}
-                      col={gemVis.colIndex}
-                      sizeClass="w-3.5 h-3.5"
-                    />
-                    <span>{w.name}</span>
-                    {isMain && (
-                      <span className="px-1 py-0.2 bg-[#fde047]/20 text-[#fde047] rounded-[2px] text-[6.5px]">
-                        MAIN
-                      </span>
-                    )}
-                    {isSide && (
-                      <span className="px-1 py-0.2 bg-[#38bdf8]/20 text-[#38bdf8] rounded-[2px] text-[6.5px]">
-                        SIDE
-                      </span>
-                    )}
-                    {isAux && (
-                      <span className="px-1 py-0.2 bg-[#c084fc]/20 text-[#c084fc] rounded-[2px] text-[6.5px]">
-                        AUX
-                      </span>
-                    )}
+                    {catOpt}
                   </button>
-                );
-              })}
+                ))}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto pr-1">
+              {ownedWeaponInstances
+                .filter(
+                  ({ baseW }) =>
+                    weaponCategoryFilter === 'ALL' || baseW.category === weaponCategoryFilter
+                )
+                .map(({ instanceId }) => {
+                  const w = getWeaponDefinition(instanceId);
+                  if (!w) return null;
+                  const isMain = eq.slot1 === instanceId;
+                  const isSide = eq.slot2 === instanceId;
+                  const isAux = eq.slot3 === instanceId;
+                  const isSelected = selectedWeaponInstanceId === instanceId;
+                  const gemVis = getWeaponGemVisuals(state, instanceId);
+                  const strip = w.variantStripBase64 || w.hardpointSprite?.base64;
+                  const isUnique = w.weaponTier === 'unique';
+                  const stInfo = getWeaponSubtypeInfo(w.id);
+
+                  return (
+                    <button
+                      key={instanceId}
+                      type="button"
+                      onClick={() => {
+                        soundSystem.playSelect();
+                        setSelectedWeaponInstanceId(instanceId);
+                        setSelectedModSlotIndex(0);
+                      }}
+                      className={`px-2 py-1 rounded-xs border text-[8px] font-bold flex items-center gap-1.5 cursor-pointer ${
+                        isSelected
+                          ? 'bg-[#172554] text-[#fde047] border-[#fde047]'
+                          : 'bg-[#05070a] text-[#cbd5e1] border-[#1e293b] hover:border-[#38bdf8]'
+                      }`}
+                    >
+                      <SpriteCanvasIcon
+                        base64={strip}
+                        col={gemVis.colIndex}
+                        sizeClass="w-3.5 h-3.5"
+                      />
+                      <span>{w.name}</span>
+                      <span className="text-[6.5px] text-[#7dd3fc]">
+                        [{stInfo.functionalType}]
+                      </span>
+                      <span
+                        className={`text-[6.5px] font-mono ${
+                          isUnique ? 'text-[#c084fc]' : 'text-[#86efac]'
+                        }`}
+                      >
+                        {isUnique ? '· Magitech (1G)' : '· Custom (3S)'}
+                      </span>
+                      {isMain && (
+                        <span className="px-1 py-0.2 bg-[#fde047]/20 text-[#fde047] rounded-[2px] text-[6.5px]">
+                          MAIN
+                        </span>
+                      )}
+                      {isSide && (
+                        <span className="px-1 py-0.2 bg-[#38bdf8]/20 text-[#38bdf8] rounded-[2px] text-[6.5px]">
+                          SIDE
+                        </span>
+                      )}
+                      {isAux && (
+                        <span className="px-1 py-0.2 bg-[#c084fc]/20 text-[#c084fc] rounded-[2px] text-[6.5px]">
+                          AUX
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
             </div>
           </div>
 
@@ -825,9 +886,17 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                   </div>
                   <div className="text-[8px] text-[#7dd3fc]">
                     {getWeaponSubtypeInfo(activeWeaponBaseId).subtype} · Equip Weight:{' '}
-                    <b>{getWeaponInstanceEquipWeight(activeWeaponDef.id, state)} WT</b> ·
-                    Slots: [
-                    {getWeaponComponentSlots(activeWeaponBaseId).join(' / ').toUpperCase()}]
+                    <b>{getWeaponInstanceEquipWeight(activeWeaponDef.id, state)} WT</b> ·{' '}
+                    {activeWeaponBaseDef.weaponTier === 'unique' ? (
+                      <span className="text-[#c084fc] font-bold">
+                        FIXED INTERNAL PARTS · 1 RESONANCE GEM SOCKET
+                      </span>
+                    ) : (
+                      <>
+                        3 Component Slots: [
+                        {getWeaponComponentSlots(activeWeaponBaseId).join(' / ').toUpperCase()}]
+                      </>
+                    )}
                   </div>
                 </div>
                 <span className="px-2 py-0.5 rounded-xs bg-[#1e293b] text-[#86efac] text-[8px] font-bold">

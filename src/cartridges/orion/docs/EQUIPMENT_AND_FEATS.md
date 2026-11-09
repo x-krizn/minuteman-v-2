@@ -1,49 +1,78 @@
 # PROJECT ORION — EQUIPMENT & FEATS
 
-## 1. WEAPONS
+## 1. WEAPONS (`101 CANONICAL WEAPONS` = `72 CUSTOMIZABLE` + `29 UNIQUE MAGITECH`)
 
-| Name | Trait Line | Class | Damage Type | Weight | Skill Count | Loadout Slot | Identity |
-|---|---|---|---|---|---|---|---|
-| N-55 Gladius | Warrior | Bolter | Impact | Medium | 3 | Weapon 1, Weapon 2 | BCU reference weapon, burst-fire stabilization |
-| M-300 Hasta | Warrior | Polybolos | Impact | Medium | 3 | Weapon 3 | Mid-range sustained fire |
-| M-450 Pilum | Warrior | Ballista | Impact | Heavy | 4 | Weapon 4 | Shock-channeling, heavy hitter |
-| S-2 Turbine Khopesh | Warrior | Blade | Pierce | Light | — | Aux 1, Aux 2 | Compact fallback, dual-wield capable |
-| B-25 Brushcutter | Marauder | Gatling Gun | Pierce | Heavy | — | Weapon 1 | Twin-rotor, intercept + suppression |
-| M-350 Mauler | Marauder | Grenade Cannon | Blast | Medium | — | Weapon 2 | Three-shot burst suppression |
-| LN-1200 Avalanche | Marauder | Rocket System | Blast | Heavy | — | Weapon 3 | Long-range, interference shielding |
-| LG-950 Tomahawk | Marauder | Missile System | Blast | Heavy | — | Weapon 4 | Long-range, soft lock |
-| Siegebreaker | Marauder | Battle Axe | Impact | Heavy | — | Aux 1 | Two-handed, integrated energy vent |
-| LS-900 Swordspear | Guardian | Polearm | Wave (Mana) | Medium | — | Weapon 1 | Mana-channeling, cleave strikes |
-| RS-450 Radiant Projector | Guardian | Beam Emitter | Beam | Medium | — | Weapon 2 | Mid-range, shield reinforcement |
-| HL-220 Lightburst Lance | Guardian | Lance | Beam | Heavy | — | Weapon 3 | Reactor-linked, Judgment Strike |
-| TIG Edge / Guardian's Edge | Guardian | Energy Blade | Pulse | Light | — | Aux 1 | Compact, precision melee defense |
-| Aegis Charge Buckler | Guardian | Physical Shield | Impact | — | — | Aux 2 | Physical shield, enables Shield Charge feat |
-| SV-12 Viper | Rogue | SMG | Pierce | Light | — | Weapon 1 | High fire rate, close-range burst |
-| SV-18 Serpent | Rogue | Carbine | Pierce | Light | — | Weapon 2 | Suppressed, mid-range stealth operations |
-| SR-440 Shadowfang | Rogue | Marksman Rifle | Pierce | Medium | — | Weapon 3 | Critical amplification, long-range precision |
-| S-4 Whisper Blade | Rogue | Dagger | Pierce | Light | — | Aux 1 | Monomolecular edge, dual-wield capable |
-| S-6 Phantom Edge | Rogue | Knife | Pierce | Light | — | Aux 2 | Thermal-coated, heat-dampened strikes |
-| WZ-800 Arclight Cannon | Wizard | Beam Projector | Beam | Heavy | — | Weapon 1 | Long-range, sustained fire |
-| WZ-650 Prism Lance | Wizard | Beam Rifle | Beam | Medium | — | Weapon 2 | Focusing crystal, variable intensity |
-| WZ-450 Sparkstrike | Wizard | Energy Carbine | Pulse | Medium | — | Weapon 3 | Rapid burst, close-range defense |
-| WZ-200 Manacore Staff | Wizard | Polearm | Wave (Mana) | Heavy | — | Weapon 4 | AoE discharge, area denial |
-| ARC Conductor | Wizard | Energy Pistol | Pulse | Light | — | Aux 1 | Emergency sidearm |
-| CL-700 Sanctifier | Cleric | Hybrid Rifle | Beam / Pierce | Medium | — | Weapon 1 | Adaptive damage type per target |
-| CL-500 Absolution | Cleric | Beam Projector | Beam | Medium | — | Weapon 2 | Area purification, ally buff on sustained fire |
-| CL-350 Litany | Cleric | Support Carbine | Pulse | Medium | — | Weapon 3 | Ally buff application on hit |
-| Hallowed Scepter | Cleric | Hybrid Staff | Wave / Impact | Medium | — | Weapon 4 | Melee + ranged healing pulses |
-| Grace Edge | Cleric | Consecrated Blade | Pierce | Light | — | Aux 1 | Healing pulse on critical hit |
+### 1A. Eight Broad Weapon Classes, Nine Shared Functional Types & Two Subtypes (`LOCKED`)
+All weapons in Project Orion are classified into **8 broad Weapon Classes** (`WeaponCategory`), each containing **9 shared Functional Weapon Types** (`WEAPON_FUNCTIONAL_TYPES_BY_CATEGORY`). Both **Custom** and **Magitech** weapons share the same functional weapon class (for example, `S-2 Turbine Khopesh` is a `Magitech` subtype of `Khopesh` under `Blades: Curved`, alongside the `Custom` `Khopesh`):
+1. **`Shields`** (`Buckler` .. `Rhom` + `Aegis Charge Buckler`)
+2. **`Bows`** (`Self Bow` .. `Great Bow` + `M-300 Hasta`, `M-450 Pilum`)
+3. **`Casters`** (`Bolt Caster` .. `Stellar Caster` + `N-55 Gladius`, `B-25 Brushcutter`, `M-350 Mauler`, `RS-450 Radiant Projector`, `SV-12 Viper`, `SV-18 Serpent`, `SR-440 Shadowfang`, `WZ-800 Arclight Cannon`, `WZ-650 Prism Lance`, `WZ-450 Sparkstrike`, `ARC Conductor`, `CL-700 Sanctifier`, `CL-500 Absolution`, `CL-350 Litany`)
+4. **`Spears`** (`Short Spear` .. `Lance` + `LS-900 Swordspear`, `HL-220 Lightburst Lance`, `WZ-200 Manacore Staff`)
+5. **`Impact & Axes`** (`Cudgel` .. `Battle Axe` + `Siegebreaker`, `Hallowed Scepter`)
+6. **`Blades: Curved`** (`Wakizashi` .. `Dadao` + `S-2 Turbine Khopesh`)
+7. **`Blades: Straight`** (`Cinquedea` .. `Executioner Sword` + `TIG Edge`, `S-4 Whisper Blade`, `S-6 Phantom Edge`, `Grace Edge`)
+8. **`Carriers & Munitions`** (`Bandolier` .. `Pangao` + `LN-1200 Avalanche`, `LG-950 Tomahawk`)
+
+- **`Custom` Subtype (`weaponTier: 'customizable'` — 72 Archetypes + 5 Legacy Field Weapons)**: Have **3 Component & Gem Slots** (`maxModSlots: 3`) in the Armory Workbench (`Hilt / Grip / Stock`, `Blade / Head / Limbs`, `Counterweight / Focus / Payload`).
+- **`Magitech` Subtype (`weaponTier: 'unique'` — 29 Unique Magitech Relics)**: Dissolved into the 8 Weapon Classes and their shared Functional Weapon Types while keeping their canonical names; feature **fixed internal components**, distinct movesets, and **1 Resonance Gem Socket** (`maxModSlots: 1`).
+
+### 1B. The 72 Customizable Weapons (9 Shared Functional Types × 8 Weapon Classes)
+
+| Weapon Class | Type 1 | Type 2 | Type 3 | Type 4 | Type 5 | Type 6 | Type 7 | Type 8 | Type 9 |
+|---|---|---|---|---|---|---|---|---|---|
+| **Shields** | Buckler | Heater | Tower | Norman | Scutum | Corona | Mote | Disc | Rhom |
+| **Bows** | Self Bow | Short Bow | Flat Bow | Recurve Bow | Reflex Bow | Composite Bow | Long Bow | Compound Bow | Great Bow |
+| **Casters** | Bolt Caster | Beam Caster | Arc Caster | Pulse Caster | Wave Caster | Blast Caster | Nova Caster | Meteoric Caster | Stellar Caster |
+| **Spears** | Short Spear | Winged Spear | Javelin | Spetum | Broad Spear | Partisan | Pike | Boar Spear | Lance |
+| **Impact & Axes** | Cudgel | Mace | Spike | Hammer | Mallet | Tomahawk | Parashu | Labrys | Battle Axe |
+| **Blades: Curved** | Wakizashi | Katana | Khopesh | Shotel | Odachi | Kilij | Falx | Dao | Dadao |
+| **Blades: Straight** | Cinquedea | Spatha | Falchion | Arming Sword | Bastard Sword | Messer | Zweihander | Flamberge | Executioner Sword |
+| **Carriers & Munitions** | Bandolier | Quiver | Yebira | Battery | Sheaf | Rack | Plumbata | Kaad | Pangao |
+
+### 1C. The 29 Unique Magitech Weapons (Dissolved into the 8 Weapon Classes & Functional Types)
+
+| Name | Trait Line | Weapon Class | Functional Class (`Magitech`) | Damage Type | Weight | Skill Count | Loadout Slot | Identity |
+|---|---|---|---|---|---|---|---|---|
+| N-55 Gladius | Warrior | Casters | Bolt Caster | Impact | Medium | 3 | Weapon 1, Weapon 2 | BCU reference weapon, burst-fire stabilization |
+| M-300 Hasta | Warrior | Bows | Compound Bow | Impact | Medium | 3 | Weapon 3 | Mid-range sustained fire |
+| M-450 Pilum | Warrior | Bows | Great Bow | Impact | Heavy | 4 | Weapon 4 | Shock-channeling, heavy hitter |
+| S-2 Turbine Khopesh | Warrior | Blades: Curved | Khopesh | Pierce | Light | — | Aux 1, Aux 2 | Compact fallback, dual-wield capable |
+| B-25 Brushcutter | Marauder | Casters | Bolt Caster | Pierce | Heavy | — | Weapon 1 | Twin-rotor, intercept + suppression |
+| M-350 Mauler | Marauder | Casters | Blast Caster | Blast | Medium | — | Weapon 2 | Three-shot burst suppression |
+| LN-1200 Avalanche | Marauder | Carriers & Munitions | Rack | Blast | Heavy | — | Weapon 3 | Long-range, interference shielding |
+| LG-950 Tomahawk | Marauder | Carriers & Munitions | Battery | Blast | Heavy | — | Weapon 4 | Long-range, soft lock |
+| Siegebreaker | Marauder | Impact & Axes | Battle Axe | Impact | Heavy | — | Aux 1 | Two-handed, integrated energy vent |
+| LS-900 Swordspear | Guardian | Spears | Partisan | Wave (Mana) | Medium | — | Weapon 1 | Mana-channeling, cleave strikes |
+| RS-450 Radiant Projector | Guardian | Casters | Beam Caster | Beam | Medium | — | Weapon 2 | Mid-range, shield reinforcement |
+| HL-220 Lightburst Lance | Guardian | Spears | Lance | Beam | Heavy | — | Weapon 3 | Reactor-linked, Judgment Strike |
+| TIG Edge / Guardian's Edge | Guardian | Blades: Straight | Arming Sword | Pulse | Light | — | Aux 1 | Compact, precision melee defense |
+| Aegis Charge Buckler | Guardian | Shields | Buckler | Impact | — | — | Aux 2 | Physical shield, enables Shield Charge feat |
+| SV-12 Viper | Rogue | Casters | Bolt Caster | Pierce | Light | — | Weapon 1 | High fire rate, close-range burst |
+| SV-18 Serpent | Rogue | Casters | Bolt Caster | Pierce | Light | — | Weapon 2 | Suppressed, mid-range stealth operations |
+| SR-440 Shadowfang | Rogue | Casters | Bolt Caster | Pierce | Medium | — | Weapon 3 | Critical amplification, long-range precision |
+| S-4 Whisper Blade | Rogue | Blades: Straight | Cinquedea | Pierce | Light | — | Aux 1 | Monomolecular edge, dual-wield capable |
+| S-6 Phantom Edge | Rogue | Blades: Straight | Spatha | Pierce | Light | — | Aux 2 | Thermal-coated, heat-dampened strikes |
+| WZ-800 Arclight Cannon | Wizard | Casters | Stellar Caster | Beam | Heavy | — | Weapon 1 | Long-range, sustained fire |
+| WZ-650 Prism Lance | Wizard | Casters | Beam Caster | Beam | Medium | — | Weapon 2 | Focusing crystal, variable intensity |
+| WZ-450 Sparkstrike | Wizard | Casters | Arc Caster | Pulse | Medium | — | Weapon 3 | Rapid burst, close-range defense |
+| WZ-200 Manacore Staff | Wizard | Spears | Spetum | Wave (Mana) | Heavy | — | Weapon 4 | AoE discharge, area denial |
+| ARC Conductor | Wizard | Casters | Pulse Caster | Pulse | Light | — | Aux 1 | Emergency sidearm |
+| CL-700 Sanctifier | Cleric | Casters | Beam Caster | Beam / Pierce | Medium | — | Weapon 1 | Adaptive damage type per target |
+| CL-500 Absolution | Cleric | Casters | Wave Caster | Beam | Medium | — | Weapon 2 | Area purification, ally buff on sustained fire |
+| CL-350 Litany | Cleric | Casters | Pulse Caster | Pulse | Medium | — | Weapon 3 | Ally buff application on hit |
+| Hallowed Scepter | Cleric | Impact & Axes | Mace | Wave / Impact | Medium | — | Weapon 4 | Melee + ranged healing pulses |
+| Grace Edge | Cleric | Blades: Straight | Spatha | Pierce | Light | — | Aux 1 | Healing pulse on critical hit |
 
 ## 2. ARMOR / CORE FRAMES & HARDWARE DOMAIN RULES
 
 ### 2A. Physical Domain Separation, Load Brackets, Armory Workbench & Gem Socket Laws (`LOCKED`)
 - **Exterior Armor vs. Internal Hardware**: Only **Dome Plates** (`slot: 'head'`), **Aperture Plates** (`slot: 'arms'`), **Frame Platings** (`slot: 'plating'`), and physical/ward **Shields** grant Armor (`armorDurability`, `armorRating`, `armorThreshold`). Internal sub-modules (**Optics**, **Sensory A/B**, **Actuators**, **Reactor Core**, **Leg Actuators**) never grant armor values; they strictly modify their mechanical domains (`lightBonus`, `accuracyMult`, `staggerDamageMult`, `tellDurationMult`, `attackMassBonus`, `stabilityBonus`, `heatVentMult`, `cooldownMult`, `moveSpeedMult`, `capacityBonus`).
 - **Mech Doll `LOADOUT` vs. `ARMORY` Workbench**:
-  - **`LOADOUT`**: Displays a central interactive **Mech Doll** surrounded by selectable anatomical hardpoint nodes (`Head Dome`, `Frame Plating`, `Arm Assembly`, `Leg Striders`, `Main Hand`, `Side Hand`, `Auxiliary Back Mount`, and `[L]`/`[R]` Trigger Binds) with a 4-action Slot Context Menu (`Equip / Swap`, `Unequip`, `Stance / Grip Toggle`, and `Modify in Armory`) and `128×128` technical schematics.
-  - **`ARMORY`**: Houses all equipment modification systems—**Weapon Component Parts**, **Weapon Gem Sockets**, **Internal Sub-Modules**, **Hardware Gem Sockets**, and **Action Modifications** (`Structure / Melee`, `Integration / Ranged`, `Mobility Kit`).
+  - **`LOADOUT`**: Displays a central interactive **Mech Doll** surrounded by selectable anatomical hardpoint nodes (`Head Dome`, `Frame Plating`, `Arm Assembly`, `Leg Striders`, `Main Hand`, `Side Hand`, `Auxiliary Back Mount`, and `[L]`/`[R]` Trigger Binds) with a 4-action Slot Context Menu (`Equip / Swap`, `Unequip`, `Stance / Grip Toggle`, and `Modify in Armory`), a nested **3-tier Weapon Selector** (`8 Weapon Classes` ▸ `9 Shared Functional Weapon Types` ▸ `Custom / Magitech Subtypes`), and `128×128` technical schematics.
+  - **`ARMORY`**: Houses all equipment modification systems—**Weapon Component Parts** (`3` slots on `Custom` weapons; locked on `Magitech` unique weapons), **Weapon Gem Sockets** (`3` slots on `Custom` weapons; `1` socket on `Magitech` unique weapons), **Internal Sub-Modules**, **Hardware Gem Sockets**, and **Action Modifications** (`Structure / Melee`, `Integration / Ranged`, `Mobility Kit`).
 - **Non-Sequential Modification Slot Order & Semantic `Custom` Naming**:
   - Modifications and Gemstones can be installed, replaced, or removed in **any slot order** (`Slot 1`, `Slot 2`, or `Slot 3`) using positional slot encoding (`<baseId>::<slot1>+<slot2>+<slot3>` with `'none'` placeholders).
-  - Modified items use semantic **`Custom`** placement (`formatModifiedEquipmentName`): **`Custom <BaseName>`** for standard weapon and armor nouns (e.g., `Custom Camelot Longsword`, `Custom Heater Shield`) and **`<BaseName> Custom`** for alphanumeric model designations and manufacturer-coded hardware (e.g., `N-55 Gladius Custom`, `BWI Bastion Frame Plating Custom`), followed by **`+II`** or **`+III`** when 2 or 3 slots are populated.
+  - Modified items use semantic **`Custom`** placement (`formatModifiedEquipmentName`): **`Custom <BaseName>`** for standard weapon and armor nouns (e.g., `Custom Camelot Longsword`, `Custom Heater`) and **`<BaseName> Custom`** for alphanumeric model designations and manufacturer-coded hardware (e.g., `N-55 Gladius Custom`, `BWI Bastion Frame Plating Custom`), followed by **`+II`** or **`+III`** when 2 or 3 slots are populated.
 - **Slot-Adaptive Gemstones**: Socketing a Gemstone into exterior armor modifies physical mitigation/durability/shielding, whereas socketing the same Gemstone into an internal sub-module adapts its bonus to that slot's physical function.
 - **Crafted vs. Looted Mod Parts**: Mod parts crafted from Gemstones (`origin: 'crafted'`) have variable gem costs and at most `1` additional gem slot (`maxGemSlots <= 1`). Looted or standalone components (`origin: 'looted'`) have `1–3` gem slots (`maxGemSlots: 1..3`).
 - **Zero-Sum Trade-Off Law**: Every stat increase carries a paired negative draw on another stat or equip weight (`drawbackDescription`).

@@ -43,6 +43,7 @@ import {
   getWeaponSubtypeInfo,
   isEquipmentUnlocked,
   setMainWeaponGrip,
+  WEAPON_FUNCTIONAL_TYPES_BY_CATEGORY,
   WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS,
   WEAPON_GEM_WEIGHT_DELTA,
 } from '../../database/progression';
@@ -57,7 +58,14 @@ import {
   performAuxiliarySwap,
   syncStateGates,
 } from '../../systems';
-import { GemId, OrionState, TraitLine, WeaponDefinition } from '../../types';
+import {
+  GemId,
+  OrionState,
+  TraitLine,
+  WEAPON_CATEGORIES,
+  WeaponCategory,
+  WeaponDefinition,
+} from '../../types';
 import {
   ALL_TRAIT_LINES,
   EditableLoadoutSlot,
@@ -184,7 +192,24 @@ export const WeaponStatReadout: React.FC<{
 
   return (
     <div className="mt-1 space-y-0.5 text-[7px]">
-      <div className="flex flex-wrap items-center gap-1">
+      <div className="flex flex-wrap items-center gap-1 tabular-nums">
+        {w.category && (
+          <span className="px-1 py-0.2 rounded-[2px] bg-[#0f172a] text-[#fde047] border border-[#fde047]/40 font-bold">
+            {w.category.toUpperCase()} ▸ {(w.weaponClass || w.name).toUpperCase()}
+          </span>
+        )}
+        <span
+          className={`px-1 py-0.2 rounded-[2px] font-bold ${
+            w.weaponTier === 'unique'
+              ? 'bg-[#311042] text-[#e879f9] border border-[#a21caf]/50'
+              : 'bg-[#052e16] text-[#86efac] border border-[#22c55e]/40'
+          }`}
+        >
+          {w.weaponTier === 'unique' ? 'SUBTYPE: MAGITECH · 1 GEM' : 'SUBTYPE: CUSTOM · 3 SLOTS'}
+        </span>
+        <span className="px-1 py-0.2 rounded-[2px] bg-[#0f172a] text-[#94a3b8] border border-[#334155]">
+          MODS: {getWeaponComponentSlots(instanceId).join(' / ').toUpperCase()}
+        </span>
         <span className="px-1 py-0.2 rounded-[2px] bg-[#1e293b] text-[#ffd27d] font-bold">
           {totalWt} WT ({(w.weightClass || 'medium').toUpperCase()})
         </span>
@@ -424,6 +449,8 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
   const [contextMenuSlot, setContextMenuSlot] = useState<EditableLoadoutSlot | null>('slot1');
   const [hoveredSlot, setHoveredSlot] = useState<EditableLoadoutSlot | null>(null);
   const [previewCandidateId, setPreviewCandidateId] = useState<string | null>(null);
+  const [loadoutSelectedClass, setLoadoutSelectedClass] = useState<WeaponCategory | null>(null);
+  const [loadoutVariantFilter, setLoadoutVariantFilter] = useState<'ALL' | 'Custom' | 'Magitech'>('ALL');
 
   if (!state.equipmentSlots) {
     state.equipmentSlots = createInitialEquipmentSlots(state.traitLine);
@@ -668,14 +695,42 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
     }
 
     if (isWeaponSlot) {
-      const candidates = Object.values(WEAPON_REGISTRY)
+      const allUnlockedWeapons = Object.values(WEAPON_REGISTRY).filter((baseW) => {
+        if (
+          baseW.id.startsWith('utility_') ||
+          baseW.id.startsWith('aux3_') ||
+          baseW.id.startsWith('aux4_')
+        ) {
+          return false;
+        }
+        if (!isCheatMode && !isEquipmentUnlocked(state, baseW.id)) return false;
+        return true;
+      });
+
+      const currentSubtypeInfo = currentId ? getWeaponSubtypeInfo(currentId) : null;
+      const activeWeaponClass: WeaponCategory =
+        loadoutSelectedClass ||
+        currentSubtypeInfo?.category ||
+        (editingSlot === 'slot3' ? 'Shields' : 'Blades: Straight');
+
+      const functionalTypesInClass = WEAPON_FUNCTIONAL_TYPES_BY_CATEGORY[activeWeaponClass] || [];
+      const activeFunctionalFilter =
+        loadoutSubtypeFilter !== 'ALL' && functionalTypesInClass.includes(loadoutSubtypeFilter)
+          ? loadoutSubtypeFilter
+          : 'ALL';
+
+      const candidates = allUnlockedWeapons
         .filter((baseW) => {
-          if (!isCheatMode && !isEquipmentUnlocked(state, baseW.id)) return false;
-          if (editingSlot === 'slot1' && !isTrueWeaponEquipment(baseW)) return false;
-          if (editingSlot === 'slot2' && isTwoHandOnlyWeapon(baseW)) return false;
-          if (loadoutSubtypeFilter !== 'ALL') {
-            const st = getWeaponSubtypeInfo(baseW.id).subtype;
-            if (st !== loadoutSubtypeFilter) return false;
+          const stInfo = getWeaponSubtypeInfo(baseW.id);
+          if (stInfo.category !== activeWeaponClass) return false;
+          if (
+            activeFunctionalFilter !== 'ALL' &&
+            stInfo.functionalType !== activeFunctionalFilter
+          ) {
+            return false;
+          }
+          if (loadoutVariantFilter !== 'ALL' && stInfo.variantSubtype !== loadoutVariantFilter) {
+            return false;
           }
           return true;
         })
@@ -686,25 +741,39 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
             baseW,
             instanceId,
             resolvedW: getWeaponDefinition(instanceId) || baseW,
+            stInfo: getWeaponSubtypeInfo(baseW.id),
           }));
         });
 
-      const allSubtypes = Array.from(
-        new Set(
-          Object.values(WEAPON_REGISTRY)
-            .filter((w) => (editingSlot === 'slot1' ? isTrueWeaponEquipment(w) : true))
-            .map((w) => getWeaponSubtypeInfo(w.id).subtype)
-        )
-      );
+      const groupedByFunctionalType = functionalTypesInClass
+        .map((funcType) => ({
+          funcType,
+          items: candidates.filter((c) => c.stInfo.functionalType === funcType),
+        }))
+        .filter((g) => g.items.length > 0);
 
-      const inspectedId = previewCandidateId || currentId || candidates[0]?.instanceId || 'long_sword';
+      const inspectedId =
+        previewCandidateId || currentId || candidates[0]?.instanceId || 'long_sword';
       const inspectedWeapon = getWeaponDefinition(inspectedId);
 
       const handleEquipWeaponInSlot = (instanceId: string) => {
         const w = getWeaponDefinition(instanceId);
         if (!w) return;
         soundSystem.playPowerup();
-        if (editingSlot === 'slot1') {
+
+        // Smart slot routing so all 8 Weapon Classes can be browsed & equipped from any weapon/auxiliary slot
+        let targetSlot: 'slot1' | 'slot2' | 'slot3' =
+          editingSlot === 'slot1' || editingSlot === 'slot2' || editingSlot === 'slot3'
+            ? editingSlot
+            : 'slot1';
+
+        if (targetSlot === 'slot1' && !isTrueWeaponEquipment(w)) {
+          targetSlot = isTwoHandOnlyWeapon(eq.slot1) ? 'slot3' : 'slot2';
+        } else if (targetSlot === 'slot2' && isTwoHandOnlyWeapon(w)) {
+          targetSlot = 'slot1';
+        }
+
+        if (targetSlot === 'slot1') {
           eq.slot1 = instanceId;
           state.equippedWeapons[0] = instanceId;
           eq.weaponSet1 = [instanceId, null];
@@ -715,27 +784,28 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
             eq.slot2 = null;
             eq.mainGrip = '2h';
           }
-        } else if (editingSlot === 'slot2') {
+        } else if (targetSlot === 'slot2') {
           if (isTwoHandOnlyWeapon(eq.slot1)) {
-            sayCtx.say('MAIN HAND BOW IS 2H ONLY — EQUIP IN AUXILIARY [BACK] INSTEAD');
-            return;
-          }
-          eq.slot2 = instanceId;
-          eq.mainGrip = '1h';
-          if (state.equippedWeapons.length < 2) {
-            state.equippedWeapons.push(instanceId);
+            eq.slot3 = instanceId;
+            targetSlot = 'slot3';
           } else {
-            state.equippedWeapons[1] = instanceId;
+            eq.slot2 = instanceId;
+            eq.mainGrip = '1h';
+            if (state.equippedWeapons.length < 2) {
+              state.equippedWeapons.push(instanceId);
+            } else {
+              state.equippedWeapons[1] = instanceId;
+            }
+            eq.weaponSet2 = [instanceId, null];
           }
-          eq.weaponSet2 = [instanceId, null];
-        } else if (editingSlot === 'slot3') {
+        } else if (targetSlot === 'slot3') {
           eq.slot3 = instanceId;
         }
         sayCtx.say(
           `EQUIPPED ${w.name.toUpperCase()} IN ${
-            editingSlot === 'slot1'
+            targetSlot === 'slot1'
               ? 'MAIN HAND [R]'
-              : editingSlot === 'slot2'
+              : targetSlot === 'slot2'
                 ? 'SIDE HAND [L]'
                 : 'AUXILIARY [BACK]'
           }`
@@ -752,7 +822,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#1e293b] pb-1.5">
             <div>
               <div className="text-[10px] font-bold text-[#fde047]">
-                SELECT EQUIPMENT FOR{' '}
+                NESTED ARSENAL SELECTOR ·{' '}
                 {editingSlot === 'slot1'
                   ? 'MAIN HAND [RIGHT]'
                   : editingSlot === 'slot2'
@@ -760,7 +830,10 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                     : 'AUXILIARY [BACK]'}
               </div>
               <div className="text-[7.5px] text-[#94a3b8]">
-                Hover, focus, or click any weapon/auxiliary to inspect its high-resolution schematic.
+                Select one of the <span className="text-[#fde047] font-semibold">8 Weapon Classes</span>{' '}
+                ▸ choose a <span className="text-[#38bdf8] font-semibold">Functional Weapon Class</span>{' '}
+                (e.g. Khopesh) to compare <span className="text-[#86efac] font-semibold">Custom</span>{' '}
+                (3 Slots) &amp; <span className="text-[#e879f9] font-semibold">Magitech</span> (Unique · 1 Gem) variants.
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -808,9 +881,14 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
               />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-1">
-                  <span className="font-bold text-[10px] text-[#fde047]">
-                    {inspectedWeapon.name}
-                  </span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-bold text-[10px] text-[#fde047]">
+                      {inspectedWeapon.name}
+                    </span>
+                    <span className="text-[7.5px] text-[#7dd3fc] font-semibold">
+                      [{getWeaponSubtypeInfo(inspectedWeapon.id).subtype}]
+                    </span>
+                  </div>
                   {onOpenArmory && (
                     <button
                       type="button"
@@ -836,83 +914,249 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
             </div>
           )}
 
-          {/* Subtype Filter */}
-          <div className="flex flex-wrap items-center gap-1">
-            <button
-              type="button"
-              onClick={() => setLoadoutSubtypeFilter('ALL')}
-              className={`px-1.5 py-0.5 rounded-xs text-[7px] font-bold border cursor-pointer ${
-                loadoutSubtypeFilter === 'ALL'
-                  ? 'bg-[#fde047] text-[#05070a] border-[#facc15]'
-                  : 'bg-[#05070a] text-[#94a3b8] border-[#1e293b]'
-              }`}
-            >
-              ALL SUBTYPES
-            </button>
-            {allSubtypes.map((st) => (
-              <button
-                key={st}
-                type="button"
-                onClick={() => setLoadoutSubtypeFilter(st)}
-                className={`px-1.5 py-0.5 rounded-xs text-[7px] font-bold border cursor-pointer ${
-                  loadoutSubtypeFilter === st
-                    ? 'bg-[#fde047] text-[#05070a] border-[#facc15]'
-                    : 'bg-[#05070a] text-[#94a3b8] border-[#1e293b]'
-                }`}
-              >
-                {st.toUpperCase()}
-              </button>
-            ))}
-          </div>
-
-          {/* Candidate Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-64 overflow-y-auto pr-0.5">
-            {candidates.map(({ instanceId, resolvedW }) => {
-              const isEquippedHere = currentId === instanceId;
-              const copies = getOwnedWeaponCount(state, instanceId);
-              return (
-                <div
-                  key={instanceId}
-                  onMouseEnter={() => setPreviewCandidateId(instanceId)}
-                  className={`p-1.5 rounded-xs border flex items-center justify-between gap-2 ${
-                    isEquippedHere
-                      ? 'bg-[#172554]/70 border-[#fde047]'
-                      : 'bg-[#05070a] border-[#1e293b] hover:border-[#38bdf8]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <HighResEquipmentArtCanvas
-                      state={state}
-                      itemIdOrName={instanceId}
-                      slotHint={editingSlot}
-                      sizeClass="w-11 h-11"
-                    />
-                    <div className="min-w-0">
-                      <div className="font-bold text-[8.5px] text-[#e2e8f0] truncate">
-                        {resolvedW.name}{' '}
-                        <span className="text-[#94a3b8]">×{copies}</span>
-                      </div>
-                      <div className="text-[7px] text-[#7dd3fc] truncate">
-                        {getWeaponSubtypeInfo(resolvedW.id).subtype} ·{' '}
-                        {getWeaponInstanceEquipWeight(instanceId, state)} WT
-                      </div>
-                    </div>
-                  </div>
+          {/* TIER 1: THE 8 WEAPON CLASSES (Nested Top-Level Folders) */}
+          <div className="p-1.5 bg-[#05070a] rounded-xs border border-[#1e293b] space-y-1">
+            <div className="flex items-center justify-between text-[7.5px]">
+              <span className="font-bold text-[#fde047]">
+                1. SELECT WEAPON CLASS (8 CLASSES):
+              </span>
+              <span className="text-[#94a3b8]">
+                ACTIVE CLASS: <span className="text-[#fde047] font-bold">{activeWeaponClass.toUpperCase()}</span>
+              </span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1">
+              {WEAPON_CATEGORIES.map((cat) => {
+                const classItems = allUnlockedWeapons.filter(
+                  (w) => getWeaponSubtypeInfo(w.id).category === cat
+                );
+                const customCount = classItems.filter(
+                  (w) => w.weaponTier !== 'unique'
+                ).length;
+                const magitechCount = classItems.filter(
+                  (w) => w.weaponTier === 'unique'
+                ).length;
+                const isSelected = activeWeaponClass === cat;
+                const hasEquippedInClass = currentSubtypeInfo?.category === cat;
+                return (
                   <button
+                    key={cat}
                     type="button"
-                    onFocus={() => setPreviewCandidateId(instanceId)}
-                    onClick={() => handleEquipWeaponInSlot(instanceId)}
-                    className={`px-2 py-1 rounded-xs text-[7.5px] font-bold border cursor-pointer shrink-0 ${
-                      isEquippedHere
-                        ? 'bg-[#1e293b] text-[#fde047] border-[#fde047]/60'
-                        : 'bg-[#052e16] hover:bg-[#14532d] text-[#86efac] border-[#22c55e]/60'
+                    onClick={() => {
+                      soundSystem.playSelect();
+                      setLoadoutSelectedClass(cat);
+                      setLoadoutSubtypeFilter('ALL');
+                    }}
+                    className={`p-1.5 rounded-xs border text-left cursor-pointer transition-colors ${
+                      isSelected
+                        ? 'bg-[#172554] border-[#fde047] text-[#fde047]'
+                        : 'bg-[#090d14] border-[#1e293b] hover:border-[#38bdf8] text-[#e2e8f0]'
                     }`}
                   >
-                    {isEquippedHere ? 'EQUIPPED' : 'EQUIP'}
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="font-bold text-[8px] truncate">
+                        {isSelected ? '▾ ' : '▸ '}
+                        {cat.toUpperCase()}
+                      </span>
+                      {hasEquippedInClass && (
+                        <span className="px-1 py-0.1 rounded-[2px] bg-[#fde047]/20 text-[#fde047] text-[6px] font-bold">
+                          EQP
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[6.5px] text-[#94a3b8] mt-0.5 flex items-center gap-1.5">
+                      <span className="text-[#86efac]">{customCount} Custom</span>
+                      <span>·</span>
+                      <span className="text-[#e879f9]">{magitechCount} Magitech</span>
+                    </div>
                   </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* TIER 2: NESTED FUNCTIONAL WEAPON TYPES & SUBTYPE FILTER (Custom vs Magitech) */}
+          <div className="p-1.5 bg-[#05070a] rounded-xs border border-[#1e293b] space-y-1.5">
+            <div className="flex flex-wrap items-center justify-between gap-1">
+              <span className="text-[7.5px] font-bold text-[#38bdf8]">
+                2. {activeWeaponClass.toUpperCase()} ▸ FUNCTIONAL WEAPON TYPE:
+              </span>
+              <div className="flex items-center gap-1">
+                <span className="text-[7px] text-[#94a3b8] font-bold">SUBTYPE:</span>
+                {(['ALL', 'Custom', 'Magitech'] as const).map((variantOpt) => (
+                  <button
+                    key={variantOpt}
+                    type="button"
+                    onClick={() => {
+                      soundSystem.playSelect();
+                      setLoadoutVariantFilter(variantOpt);
+                    }}
+                    className={`px-1.5 py-0.2 rounded-xs text-[6.8px] font-bold border cursor-pointer ${
+                      loadoutVariantFilter === variantOpt
+                        ? variantOpt === 'Magitech'
+                          ? 'bg-[#a21caf] text-[#f8fafc] border-[#e879f9]'
+                          : variantOpt === 'Custom'
+                            ? 'bg-[#15803d] text-[#f8fafc] border-[#86efac]'
+                            : 'bg-[#fde047] text-[#05070a] border-[#facc15]'
+                        : 'bg-[#090d14] text-[#94a3b8] border-[#1e293b]'
+                    }`}
+                  >
+                    {variantOpt === 'ALL'
+                      ? 'ALL (CUSTOM + MAGITECH)'
+                      : variantOpt === 'Custom'
+                        ? 'CUSTOM (3 SLOTS)'
+                        : 'MAGITECH (UNIQUE · 1G)'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1">
+              <button
+                type="button"
+                onClick={() => {
+                  soundSystem.playSelect();
+                  setLoadoutSubtypeFilter('ALL');
+                }}
+                className={`px-1.5 py-0.5 rounded-xs text-[7px] font-bold border cursor-pointer ${
+                  activeFunctionalFilter === 'ALL'
+                    ? 'bg-[#38bdf8] text-[#05070a] border-[#7dd3fc]'
+                    : 'bg-[#090d14] text-[#94a3b8] border-[#1e293b] hover:border-[#38bdf8]'
+                }`}
+              >
+                ALL {activeWeaponClass.toUpperCase()} ({functionalTypesInClass.length} TYPES)
+              </button>
+              {functionalTypesInClass.map((funcType) => {
+                const matchingInType = allUnlockedWeapons.filter((w) => {
+                  const info = getWeaponSubtypeInfo(w.id);
+                  return info.category === activeWeaponClass && info.functionalType === funcType;
+                });
+                if (matchingInType.length === 0) return null;
+                const hasMagitech = matchingInType.some((w) => w.weaponTier === 'unique');
+                const isSelected = activeFunctionalFilter === funcType;
+                return (
+                  <button
+                    key={funcType}
+                    type="button"
+                    onClick={() => {
+                      soundSystem.playSelect();
+                      setLoadoutSubtypeFilter(funcType);
+                    }}
+                    className={`px-1.5 py-0.5 rounded-xs text-[7px] font-bold border cursor-pointer flex items-center gap-1 ${
+                      isSelected
+                        ? 'bg-[#38bdf8] text-[#05070a] border-[#7dd3fc]'
+                        : 'bg-[#090d14] text-[#cbd5e1] border-[#1e293b] hover:border-[#38bdf8]'
+                    }`}
+                  >
+                    <span>{funcType.toUpperCase()}</span>
+                    <span
+                      className={`text-[6.2px] ${
+                        isSelected
+                          ? 'text-[#05070a]'
+                          : hasMagitech
+                            ? 'text-[#e879f9]'
+                            : 'text-[#64748b]'
+                      }`}
+                    >
+                      ({matchingInType.length})
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* TIER 3: NESTED FUNCTIONAL CLASS GROUPS (Presenting Custom & Magitech Together) */}
+          <div className="space-y-2 max-h-72 overflow-y-auto pr-0.5">
+            {groupedByFunctionalType.length === 0 ? (
+              <div className="p-3 bg-[#05070a] rounded-xs border border-[#1e293b] text-center text-[8px] text-[#94a3b8]">
+                No unlocked weapons match the selected filter in {activeWeaponClass}.
+              </div>
+            ) : (
+              groupedByFunctionalType.map(({ funcType, items }) => (
+                <div
+                  key={funcType}
+                  className="p-1.5 bg-[#05070a]/90 rounded-xs border border-[#1e293b] space-y-1"
+                >
+                  <div className="flex items-center justify-between border-b border-[#1e293b]/80 pb-0.5">
+                    <span className="text-[7.5px] font-bold text-[#7dd3fc]">
+                      {activeWeaponClass.toUpperCase()} ▸ {funcType.toUpperCase()}
+                    </span>
+                    <span className="text-[6.5px] text-[#94a3b8]">
+                      {items.filter((i) => i.stInfo.variantSubtype === 'Custom').length} Custom ·{' '}
+                      {items.filter((i) => i.stInfo.variantSubtype === 'Magitech').length} Magitech
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {items.map(({ instanceId, resolvedW, stInfo }) => {
+                      const isEquippedHere = currentId === instanceId;
+                      const copies = getOwnedWeaponCount(state, instanceId);
+                      const isMagitech = stInfo.variantSubtype === 'Magitech';
+                      const slotsLabel =
+                        resolvedW.weaponTier === 'unique'
+                          ? '1 GEM SOCKET (FIXED PARTS)'
+                          : `3 SLOTS (${getWeaponComponentSlots(instanceId).join('/').toUpperCase()})`;
+                      return (
+                        <div
+                          key={instanceId}
+                          onMouseEnter={() => setPreviewCandidateId(instanceId)}
+                          className={`p-1.5 rounded-xs border flex items-center justify-between gap-2 ${
+                            isEquippedHere
+                              ? 'bg-[#172554]/70 border-[#fde047]'
+                              : 'bg-[#090d14] border-[#1e293b] hover:border-[#38bdf8]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <HighResEquipmentArtCanvas
+                              state={state}
+                              itemIdOrName={instanceId}
+                              slotHint={editingSlot}
+                              sizeClass="w-11 h-11"
+                            />
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1 flex-wrap">
+                                <span className="font-bold text-[8.5px] text-[#e2e8f0] truncate">
+                                  {resolvedW.name}
+                                </span>
+                                <span className="text-[7px] text-[#94a3b8]">×{copies}</span>
+                                <span
+                                  className={`px-1 py-0.1 rounded-[2px] text-[6px] font-bold ${
+                                    isMagitech
+                                      ? 'bg-[#311042] text-[#e879f9] border border-[#a21caf]/50'
+                                      : 'bg-[#052e16] text-[#86efac] border border-[#22c55e]/40'
+                                  }`}
+                                >
+                                  {stInfo.variantSubtype.toUpperCase()}
+                                </span>
+                              </div>
+                              <div className="text-[7px] text-[#7dd3fc] truncate">
+                                {funcType} · {slotsLabel} ·{' '}
+                                {getWeaponInstanceEquipWeight(instanceId, state)} WT
+                              </div>
+                              <div className="text-[6.5px] text-[#94a3b8] truncate">
+                                S1: {resolvedW.moveset?.[1]?.name || '—'} · S2:{' '}
+                                {resolvedW.moveset?.[2]?.name || '—'}
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onFocus={() => setPreviewCandidateId(instanceId)}
+                            onClick={() => handleEquipWeaponInSlot(instanceId)}
+                            className={`px-2 py-1 rounded-xs text-[7.5px] font-bold border cursor-pointer shrink-0 ${
+                              isEquippedHere
+                                ? 'bg-[#1e293b] text-[#fde047] border-[#fde047]/60'
+                                : 'bg-[#052e16] hover:bg-[#14532d] text-[#86efac] border-[#22c55e]/60'
+                            }`}
+                          >
+                            {isEquippedHere ? 'EQUIPPED' : 'EQUIP'}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              );
-            })}
+              ))
+            )}
           </div>
         </div>
       );
@@ -1532,30 +1776,23 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
   onOpenArmory,
   handleUseItem,
 }) => {
+  const [invWeaponFuncFilter, setInvWeaponFuncFilter] = useState<string>('ALL');
+  const [invWeaponVariantFilter, setInvWeaponVariantFilter] = useState<
+    'ALL' | 'Custom' | 'Magitech'
+  >('ALL');
+
   const subtypeOptionsByCat: Record<EquipmentInventoryCategory, string[]> = {
-    all: ['ALL'],
+    all: ['ALL', ...WEAPON_CATEGORIES],
     weapon: [
       'ALL',
-      'Ranged · Bolter',
-      'Ranged · Polybolos',
-      'Ranged · Heavy Ballista',
-      'Ranged · Rotary Gatling',
-      'Ranged · Beam Projector / Rifle',
-      'Ranged · Pulse Carbine / Pistol',
-      'Ranged · SMG / Suppressed Carbine',
-      'Ranged · Marksman Rifle',
-      'Ranged · 2H Bow',
-      'Melee · Blade',
-      'Melee · Heavy Battle Axe / Blunt',
-      'Melee / Hybrid · Polearm & Lance',
+      'Bows',
+      'Casters',
+      'Spears',
+      'Impact & Axes',
+      'Blades: Curved',
+      'Blades: Straight',
     ],
-    auxiliary: [
-      'ALL',
-      'Auxiliary · Physical Shield',
-      'Auxiliary · Energy / Ward Shield',
-      'Auxiliary · Quiver',
-      'Auxiliary · Tactical Catalyst',
-    ],
+    auxiliary: ['ALL', 'Shields', 'Carriers & Munitions'],
     hardware: [
       'ALL',
       'head',
@@ -1572,6 +1809,12 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
     consumable: ['ALL', 'consumable', 'gemstone', 'relic'],
   };
   const activeSubtypes = subtypeOptionsByCat[invCategory] || ['ALL'];
+  const selectedInvWeaponClass = WEAPON_CATEGORIES.includes(invSubtype as WeaponCategory)
+    ? (invSubtype as WeaponCategory)
+    : null;
+  const invFunctionalTypes = selectedInvWeaponClass
+    ? WEAPON_FUNCTIONAL_TYPES_BY_CATEGORY[selectedInvWeaponClass]
+    : [];
 
   return (
     <div className="flex-1 overflow-y-auto space-y-2 pr-0.5 text-[10px]">
@@ -1652,6 +1895,7 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
                 soundSystem.playSelect();
                 setInvCategory(cat.id);
                 setInvSubtype('ALL');
+                setInvWeaponFuncFilter('ALL');
               }}
               className={`px-2 py-0.5 rounded-xs text-[8px] font-bold border cursor-pointer ${
                 invCategory === cat.id
@@ -1664,15 +1908,22 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
           ))}
         </div>
 
-        {/* Subtype Filter */}
+        {/* Nested Class / Subtype Filter */}
         {activeSubtypes.length > 1 && (
           <div className="flex flex-wrap items-center gap-1 pt-0.5">
-            <span className="text-[7.5px] text-[#94a3b8] font-bold">SUBTYPE:</span>
+            <span className="text-[7.5px] text-[#94a3b8] font-bold">
+              {invCategory === 'all' || invCategory === 'weapon' || invCategory === 'auxiliary'
+                ? 'WEAPON CLASS:'
+                : 'SUBTYPE:'}
+            </span>
             {activeSubtypes.map((st) => (
               <button
                 key={st}
                 type="button"
-                onClick={() => setInvSubtype(st)}
+                onClick={() => {
+                  setInvSubtype(st);
+                  setInvWeaponFuncFilter('ALL');
+                }}
                 className={`px-1.5 py-0.2 rounded-xs text-[7px] font-bold border cursor-pointer ${
                   invSubtype === st
                     ? 'bg-[#ffd27d] text-[#05070a] border-[#fbbf24]'
@@ -1684,24 +1935,96 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
             ))}
           </div>
         )}
+
+        {/* Nested Functional Type & Custom/Magitech Subtype Filter when viewing Weapons/Auxiliaries */}
+        {(invCategory === 'all' || invCategory === 'weapon' || invCategory === 'auxiliary') && (
+          <div className="flex flex-wrap items-center justify-between gap-1 pt-0.5 border-t border-[#1e293b]/70">
+            {selectedInvWeaponClass ? (
+              <div className="flex flex-wrap items-center gap-1">
+                <span className="text-[7px] text-[#38bdf8] font-bold">
+                  {selectedInvWeaponClass.toUpperCase()} TYPE:
+                </span>
+                {(['ALL', ...invFunctionalTypes] as const).map((ft) => (
+                  <button
+                    key={ft}
+                    type="button"
+                    onClick={() => setInvWeaponFuncFilter(ft)}
+                    className={`px-1.5 py-0.2 rounded-xs text-[6.8px] font-bold border cursor-pointer ${
+                      invWeaponFuncFilter === ft
+                        ? 'bg-[#38bdf8] text-[#05070a] border-[#7dd3fc]'
+                        : 'bg-[#05070a] text-[#cbd5e1] border-[#1e293b]'
+                    }`}
+                  >
+                    {ft.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <span className="text-[7px] text-[#94a3b8]">
+                Select a Weapon Class above to drill into its 9 shared Functional Types.
+              </span>
+            )}
+            <div className="flex items-center gap-1">
+              <span className="text-[7px] text-[#94a3b8] font-bold">SUBTYPE:</span>
+              {(['ALL', 'Custom', 'Magitech'] as const).map((vOpt) => (
+                <button
+                  key={vOpt}
+                  type="button"
+                  onClick={() => setInvWeaponVariantFilter(vOpt)}
+                  className={`px-1.5 py-0.2 rounded-xs text-[6.8px] font-bold border cursor-pointer ${
+                    invWeaponVariantFilter === vOpt
+                      ? vOpt === 'Magitech'
+                        ? 'bg-[#a21caf] text-[#f8fafc] border-[#e879f9]'
+                        : vOpt === 'Custom'
+                          ? 'bg-[#15803d] text-[#f8fafc] border-[#86efac]'
+                          : 'bg-[#ffd27d] text-[#05070a] border-[#fbbf24]'
+                      : 'bg-[#05070a] text-[#94a3b8] border-[#1e293b]'
+                  }`}
+                >
+                  {vOpt.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 1. Owned Weapons & Auxiliaries Inventory */}
       {(invCategory === 'all' || invCategory === 'weapon' || invCategory === 'auxiliary') && (
         <div className="space-y-1">
           <div className="text-[8.5px] font-bold text-[#ffd27d]">
-            OWNED WEAPONS & AUXILIARIES:
+            OWNED WEAPONS & AUXILIARIES (SHARED FUNCTIONAL CLASSES · CUSTOM &amp; MAGITECH):
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
             {Object.values(WEAPON_REGISTRY)
               .filter((w) => {
+                if (
+                  w.id.startsWith('utility_') ||
+                  w.id.startsWith('aux3_') ||
+                  w.id.startsWith('aux4_')
+                ) {
+                  return false;
+                }
                 const unlocked = isCheatMode || isEquipmentUnlocked(state, w.id);
                 if (!unlocked) return false;
                 const isAux = isAuxiliaryEquipment(w);
                 if (invCategory === 'weapon' && isAux) return false;
                 if (invCategory === 'auxiliary' && !isAux) return false;
                 const stInfo = getWeaponSubtypeInfo(w.id);
-                if (invSubtype !== 'ALL' && stInfo.subtype !== invSubtype) return false;
+                if (invSubtype !== 'ALL' && stInfo.category !== invSubtype) return false;
+                if (
+                  selectedInvWeaponClass &&
+                  invWeaponFuncFilter !== 'ALL' &&
+                  stInfo.functionalType !== invWeaponFuncFilter
+                ) {
+                  return false;
+                }
+                if (
+                  invWeaponVariantFilter !== 'ALL' &&
+                  stInfo.variantSubtype !== invWeaponVariantFilter
+                ) {
+                  return false;
+                }
                 return true;
               })
               .flatMap((baseW) => {

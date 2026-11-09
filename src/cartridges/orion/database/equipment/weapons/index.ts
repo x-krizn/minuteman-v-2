@@ -8,6 +8,10 @@ import {
   formatModifiedEquipmentName,
   parseEquipmentInstanceId,
 } from '../mod_naming';
+import {
+  resolveWeaponCategory,
+  resolveWeaponFunctionalType,
+} from './builder';
 
 export * from './base_sprites';
 export * from './builder';
@@ -17,9 +21,27 @@ export * from './guardian_weapons';
 export * from './rogue_weapons';
 export * from './wizard_weapons';
 export * from './cleric_weapons';
+export * from './custom_shields_and_bows';
+export * from './custom_casters_and_carriers';
+export * from './custom_spears_and_hafted';
+export * from './custom_blades';
 
 // Auto-discover all weapon entity modules in this directory (including subfolders) via Vite import.meta.glob
 const modules = import.meta.glob<Record<string, unknown>>('./**/*.ts', { eager: true });
+
+const LEGACY_WEAPON_ID_ALIASES: Record<string, string> = {
+  gladius_boltcaster: 'n55_gladius',
+  khopesh: 's2_turbine_khopesh',
+  avalon_siege_lance: 'hl220_lightburst_lance',
+  buckler_shield: 'aegis_charge_buckler',
+  carrier_01_quiver: 'carrier_02_quiver',
+  carrier_02_rack: 'carrier_06_rack',
+  carrier_03_sheaf: 'carrier_05_sheaf',
+  carrier_05_gorget: 'carrier_09_pangao',
+  carrier_06_bandolier: 'carrier_01_bandolier',
+  carrier_08_yebira: 'carrier_03_yebira',
+  carrier_09_kaad: 'carrier_08_kaad',
+};
 
 /**
  * Exported const `WEAPON_REGISTRY` (weapon registry) in `index.ts`.
@@ -40,7 +62,31 @@ for (const [path, mod] of Object.entries(modules)) {
   if (path === './index.ts') continue;
   for (const exportedValue of Object.values(mod)) {
     if (isWeaponDefinition(exportedValue)) {
-      WEAPON_REGISTRY[exportedValue.id] = exportedValue;
+      // Skip duplicate backward-compatible alias exports so they do not appear twice in UI lists
+      if (exportedValue.id in LEGACY_WEAPON_ID_ALIASES) {
+        continue;
+      }
+      const category = resolveWeaponCategory(
+        exportedValue.id,
+        exportedValue.weaponClass,
+        exportedValue.equipmentRole,
+        exportedValue.category
+      );
+      const functionalType = resolveWeaponFunctionalType(
+        exportedValue.id,
+        category,
+        exportedValue.weaponClass,
+        exportedValue.name
+      );
+      const tier = exportedValue.weaponTier || 'customizable';
+      const subtypeLabel = tier === 'unique' ? 'Magitech' : 'Custom';
+      WEAPON_REGISTRY[exportedValue.id] = {
+        ...exportedValue,
+        category,
+        weaponTier: tier,
+        weaponClass: functionalType,
+        class: `${category} · ${functionalType} (${subtypeLabel})`,
+      };
     }
   }
 }
@@ -53,14 +99,16 @@ const MODIFIED_WEAPON_CACHE: Record<string, WeaponDefinition> = {};
  */
 export function getWeaponDefinition(id: string): WeaponDefinition | undefined {
   if (!id) return undefined;
-  const direct = WEAPON_REGISTRY[id];
+  const aliasedDirect = LEGACY_WEAPON_ID_ALIASES[id] || id;
+  const direct = WEAPON_REGISTRY[aliasedDirect];
   if (direct) return direct;
 
   if (MODIFIED_WEAPON_CACHE[id]) {
     return MODIFIED_WEAPON_CACHE[id];
   }
 
-  const { baseId, installedGems } = parseEquipmentInstanceId(id);
+  const { baseId: rawBaseId, installedGems } = parseEquipmentInstanceId(id);
+  const baseId = LEGACY_WEAPON_ID_ALIASES[rawBaseId] || rawBaseId;
   const baseDef = WEAPON_REGISTRY[baseId];
   if (!baseDef) return undefined;
   if (installedGems.length === 0) return baseDef;
@@ -125,13 +173,14 @@ export function isTrueWeaponEquipment(weaponOrId?: WeaponDefinition | string | n
 }
 
 /**
- * Bows are designated 2-handed only.
+ * Bows (`category === 'Bows'` or `great_bow`) are designated 2-handed only.
  */
 export function isTwoHandOnlyWeapon(weaponOrId?: WeaponDefinition | string | null): boolean {
   if (!weaponOrId) return false;
   const def = typeof weaponOrId === 'string' ? getWeaponDefinition(weaponOrId) : weaponOrId;
   if (!def) return false;
-  return parseEquipmentInstanceId(def.id).baseId === 'great_bow';
+  const baseId = parseEquipmentInstanceId(def.id).baseId;
+  return def.category === 'Bows' || baseId === 'great_bow' || baseId.startsWith('bow_');
 }
 
 /**

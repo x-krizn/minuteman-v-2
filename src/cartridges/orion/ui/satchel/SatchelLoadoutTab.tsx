@@ -2085,6 +2085,7 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
                         <SpriteCanvasIcon
                           base64={strip}
                           col={gemVis.colIndex}
+                          row={!gemVis.gemId ? (w.hardpointSprite?.row ?? 0) : 0}
                           sizeClass="w-4 h-4"
                         />
                         <div className="min-w-0">
@@ -2275,6 +2276,7 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
                           <SpriteCanvasIcon
                             base64={def.iconSprite.base64}
                             col={def.iconSprite.col || 0}
+                            row={def.iconSprite.row || 0}
                             sizeClass="w-4 h-4"
                           />
                         ) : (

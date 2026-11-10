@@ -833,6 +833,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                       <SpriteCanvasIcon
                         base64={strip}
                         col={gemVis.colIndex}
+                        row={!gemVis.gemId ? (w.hardpointSprite?.row ?? 0) : 0}
                         sizeClass="w-3.5 h-3.5"
                       />
                       <span>{w.name}</span>

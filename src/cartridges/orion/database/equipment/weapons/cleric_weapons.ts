@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { SHOTEL_STRIP_BASE64 } from './base_sprites';
 import { buildMagitechWeapon } from './builder';
 
 // ─── CLERIC / SANCTUM LINEAGE MAGITECH WEAPONS ──────────────────────────────
@@ -29,8 +28,7 @@ export const cl700SanctifierWeapon = buildMagitechWeapon({
   chainDurationSec: 1.4,
   reloadDurationSec: 2.7,
   range: 100,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated dual-chamber hybrid rifle sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Adaptive Sanctifier Salvo', desc: '8-shot hybrid burst adapting between Beam and Pierce damage based on target defense.' },
     { name: 'Dual-Phase Piercer', dmg: 23, cd: 4.5, heat: 14, dt: 'Pierce', desc: 'Fires a kinetic-core bolt wrapped in a shield-stripping beam sheath.' },
@@ -61,8 +59,7 @@ export const cl500AbsolutionWeapon = buildMagitechWeapon({
   reloadDurationSec: 2.8,
   range: 96,
   supportPulseOnHit: { shieldRestore: 4, heatVent: 2 },
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated Sanctum purification beam projector sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Purification Beam Stream', desc: '9-tick sustained beam dealing 6 Beam damage and restoring +4 Shield / -2 Heat per hit.' },
     { name: 'Absolution Cleansing Wave', dmg: 21, cd: 4.8, heat: 14, dt: 'Wave', desc: 'Area purification pulse that restores 14 Shield and vents 8 Heat.' },
@@ -93,8 +90,7 @@ export const cl350LitanyWeapon = buildMagitechWeapon({
   reloadDurationSec: 2.5,
   range: 88,
   supportPulseOnHit: { shieldRestore: 3, armorRestore: 2 },
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated support pulse carbine sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Litany Harmonic Burst', desc: '9-shot support carbine burst dealing 6 Pulse damage and restoring +3 Shield / +2 Armor on hit.' },
     { name: 'Resonant Beacon Shot', dmg: 20, cd: 4.2, heat: 12, desc: 'Tags target with a harmonic beacon that restores 10 Shield on follow-up hits.' },
@@ -127,8 +123,7 @@ export const hallowedScepterWeapon = buildMagitechWeapon({
   reloadDurationSec: 0.55,
   range: 34,
   supportPulseOnHit: { shieldRestore: 4, armorRestore: 3 },
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated reliquary hybrid mace-staff sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Scepter Wave-Strike', desc: '4-hit hybrid melee/wave combo dealing 13 Wave/Impact damage and pulsing +4 Shield / +3 Armor.' },
     { name: 'Consecrated Shock-Mace', dmg: 24, cd: 4.5, heat: 13, dt: 'Impact', desc: 'Crushing scepter blow that releases a shield-mending wave.' },
@@ -160,9 +155,7 @@ export const graceEdgeWeapon = buildMagitechWeapon({
   reloadDurationSec: 0.4,
   range: 24,
   supportPulseOnHit: { shieldRestore: 5, armorRestore: 2 },
-  customStripBase64: SHOTEL_STRIP_BASE64,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated slender consecrated rapier sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Consecrated Rapier Slash', desc: '4-hit precision blade combo dealing 11 Pierce damage and pulsing +5 Shield on hit.' },
     { name: 'Mercy Critical Lunge', dmg: 23, cd: 4.0, heat: 10, desc: 'High-precision thrust that triggers a double healing pulse (+14 Shield).' },
@@ -198,8 +191,7 @@ export const utilitySanctumFontAuxiliary = buildMagitechWeapon({
   chainDurationSec: 0.95,
   reloadDurationSec: 0.5,
   range: 34,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated SANC Radiant Ward Projector auxiliary sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Ward Pulse', desc: 'Consecrated barrier pulse.' },
     { name: 'Sanctum Cleanse', dmg: 16, cd: 4.5, heat: 8, desc: 'Purifies hazard buildup and restores +18 Shield.' },
@@ -231,8 +223,7 @@ export const aux3SancRestorationFieldAuxiliary = buildMagitechWeapon({
   chainDurationSec: 0.95,
   reloadDurationSec: 1.5,
   range: 72,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated SANC Aegis Restoration Field sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Restoration Pulse', desc: 'Auxiliary focus node.' },
     { name: 'Aegis Knit', dmg: 14, cd: 4.5, heat: 8, desc: 'Auxiliary focus node.' },
@@ -265,8 +256,7 @@ export const aux4SancMartyrdomPlatingAuxiliary = buildMagitechWeapon({
   chainDurationSec: 1.0,
   reloadDurationSec: 1.5,
   range: 56,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated SANC Martyrdom Plating sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Martyrdom Brace', desc: 'Auxiliary focus node.' },
     { name: 'Trauma Shunt', dmg: 15, cd: 4.5, heat: 8, desc: 'Auxiliary focus node.' },

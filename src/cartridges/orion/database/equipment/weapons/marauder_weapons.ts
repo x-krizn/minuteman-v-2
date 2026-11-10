@@ -32,8 +32,7 @@ export const b25BrushcutterWeapon = buildMagitechWeapon({
   chainDurationSec: 1.9,
   reloadDurationSec: 3.5,
   range: 92,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated twin-rotor Gatling Gun rotary sprite strip planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Twin-Rotor Barrage', desc: '16-round rotary burst dealing 4 Pierce damage per round.' },
     { name: 'Intercept Curtain', dmg: 20, cd: 4.5, heat: 18, desc: 'Dense flechette wall that halts lunging enemies.' },
@@ -63,8 +62,7 @@ export const m350MaulerWeapon = buildMagitechWeapon({
   chainDurationSec: 1.2,
   reloadDurationSec: 2.9,
   range: 84,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated drum-fed Grenade Cannon sprite strip planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Three-Shot Thumper Burst', desc: '3-grenade burst dealing 16 Blast damage per shell.' },
     { name: 'Airburst Shrapnel Shell', dmg: 24, cd: 4.5, heat: 16, desc: 'Detonates above cover to stagger grouped enemies.' },
@@ -94,8 +92,7 @@ export const ln1200AvalancheWeapon = buildMagitechWeapon({
   chainDurationSec: 1.6,
   reloadDurationSec: 3.6,
   range: 130,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated heavy Rocket Pod missile bay sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Avalanche Rocket Pod', desc: '4-rocket long-range salvo dealing 15 Blast damage per warhead.' },
     { name: 'Chaff-Screen Volley', dmg: 25, cd: 5.5, heat: 20, desc: 'Launches rockets alongside interference chaff that bolsters shields.' },
@@ -125,8 +122,7 @@ export const lg950TomahawkWeapon = buildMagitechWeapon({
   chainDurationSec: 1.7,
   reloadDurationSec: 3.5,
   range: 135,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated guided missile rack hardpoint sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Soft-Lock Micromissiles', desc: '6-missile guided swarm dealing 10 Blast damage per warhead.' },
     { name: 'Top-Attack Javelin', dmg: 27, cd: 5.0, heat: 19, desc: 'Arcing missile that strikes from above, bypassing frontal shields.' },
@@ -158,8 +154,7 @@ export const siegebreakerWeapon = buildMagitechWeapon({
   reloadDurationSec: 0.75,
   range: 32,
   supportPulseOnHit: { heatVent: 5 },
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated two-handed heavy Battle Axe spine vent sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Heavy Vent Cleave', desc: '3-hit two-handed greataxe combo dealing 19 Impact damage and venting 5 Heat per hit.' },
     { name: 'Thermal Exhaust Slam', dmg: 32, cd: 5.0, heat: -15, dt: 'Blast', desc: 'Slams the ground and vents 15 Reactor Heat in a fiery shockwave.' },
@@ -427,8 +422,7 @@ export const utilitySiegeBraceAuxiliary = buildMagitechWeapon({
   chainDurationSec: 1.0,
   reloadDurationSec: 1.6,
   range: 48,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated RAD R463 Fathomless System auxiliary sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Fathomless Purge', desc: 'Auxiliary focus node.' },
     { name: 'Plating Knit', dmg: 14, cd: 4.5, heat: -8, desc: 'Auxiliary focus node.' },
@@ -460,8 +454,7 @@ export const aux3RadKineticRecyclingAuxiliary = buildMagitechWeapon({
   chainDurationSec: 1.0,
   reloadDurationSec: 1.5,
   range: 42,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated RAD R-22 Bastion Kinetic Recycling sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Kinetic Absorption', desc: 'Auxiliary focus node.' },
     { name: 'Stress Recycle', dmg: 15, cd: 4.5, heat: -6, desc: 'Auxiliary focus node.' },
@@ -493,8 +486,7 @@ export const aux4RadEtherVaporAuxiliary = buildMagitechWeapon({
   chainDurationSec: 1.0,
   reloadDurationSec: 1.6,
   range: 76,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated RAD UF-12 Ether Vapor Launcher sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Vapor Canister', desc: 'Auxiliary focus node.' },
     { name: 'Chaff Cloud', dmg: 14, cd: 4.5, heat: 8, desc: 'Auxiliary focus node.' },

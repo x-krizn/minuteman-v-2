@@ -244,6 +244,53 @@ export function getEastDirectionalTransform(dir: OrionDir = 'E'): {
 }
 
 /**
+ * Maps canonical 9-column gemstone indices (`0..8`) to the vertical row (`0..12`)
+ * in `16x224` vertical carrier/launcher sprite strips (`launcher__*`).
+ */
+const VERTICAL_STRIP_GEM_ROW_MAP: readonly number[] = [
+  0, // col 0: Unmodified / Moonstone (White #ffffff) -> Row 0
+  2, // col 1: Spinel (Red #ef4444) -> Row 2 (#fa4b4b)
+  3, // col 2: Carnelian (Orange #f97316) -> Row 3 (#ffcc00 / #ff9900)
+  4, // col 3: Titanite (Yellow #facc15) -> Row 4 (#fafa4b)
+  5, // col 4: Demantoid (Green #22c55e) -> Row 5 (#50c850)
+  6, // col 5: Kyanite (Blue #38bdf8) -> Row 6 (#8282be / #c8c8f0)
+  7, // col 6: Charoite (Purple #a855f7) -> Row 7 (#a078dc)
+  1, // col 7: Rubellite (Magenta #ec4899) -> Row 1 (#be5096)
+  11, // col 8: Hematite (Dark Steel #64748b) -> Row 11 (#666666)
+];
+
+/**
+ * Resolves the source pixel coordinates `(srcX, srcY)` for both horizontal weapon strips (`144x16`)
+ * and vertical carrier/launcher strips (`16x224`).
+ */
+export function resolveSpriteStripSliceCoords(
+  imgWidth: number,
+  imgHeight: number,
+  col: number,
+  row: number,
+  cellWidth: number = 16,
+  cellHeight: number = 16
+): { srcX: number; srcY: number } {
+  if (imgWidth > 0 && imgWidth <= cellWidth && imgHeight > cellHeight) {
+    const maxRow = Math.max(0, Math.floor(imgHeight / cellHeight) - 1);
+    const resolvedRow =
+      col > 0
+        ? (VERTICAL_STRIP_GEM_ROW_MAP[col] ?? Math.min(col, maxRow))
+        : row > 0
+          ? Math.min(row, maxRow)
+          : 0;
+    return {
+      srcX: 0,
+      srcY: Math.max(0, Math.min(maxRow, resolvedRow)) * cellHeight,
+    };
+  }
+  return {
+    srcX: Math.max(0, col) * cellWidth,
+    srcY: Math.max(0, row) * cellHeight,
+  };
+}
+
+/**
  * Executes `drawBase64Sprite` (draw base64 sprite) in `spriteAtlasCache.ts`.
  */
 export function drawBase64Sprite(
@@ -283,8 +330,14 @@ export function drawBase64Sprite(
     row = config.dirRowMap[options.dir]!;
   }
 
-  const srcX = col * cellW;
-  const srcY = row * cellH;
+  const { srcX, srcY } = resolveSpriteStripSliceCoords(
+    dims.width,
+    dims.height,
+    col,
+    row,
+    cellW,
+    cellH
+  );
 
   const scale = config.scale ?? 1;
   const destW = (config.renderWidth ?? options?.defaultWidth ?? cellW) * scale;

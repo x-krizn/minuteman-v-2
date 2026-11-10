@@ -5,10 +5,24 @@
 
 import { WeaponDefinition } from '../../../types';
 import {
-  BUCKLER_SHIELD_STRIP,
-  GREAT_BOW_STRIP,
-  HEATER_SHIELD_STRIP,
-  PAVISE_SHIELD_STRIP,
+  bow_composite,
+  bow_compound,
+  bow_flat,
+  bow_great,
+  bow_long,
+  bow_recurve,
+  bow_reflex,
+  bow_self,
+  bow_short,
+  shield_buckler,
+  shield_corona,
+  shield_disc,
+  shield_heater,
+  shield_mote,
+  shield_norman,
+  shield_rhom,
+  shield_scutum,
+  shield_tower,
 } from './base_sprites';
 import { buildCustomizableWeapon } from './builder';
 
@@ -38,7 +52,8 @@ export const shield01BucklerWeapon: WeaponDefinition = buildCustomizableWeapon({
   canBlock: true,
   passiveArmorBonus: 6,
   passiveShieldBonus: 18,
-  spriteStripBase64: BUCKLER_SHIELD_STRIP,
+  spriteStripBase64: shield_buckler,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Boss Jab', description: 'Punch forward with the reinforced center boss to interrupt close combos.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Binding Rim Hook', description: 'Trap an incoming weapon along the buckler rim and twist off-line.', damageMultiplier: 1.35, rangeMultiplier: 1.05, cooldown: 3.5, energyCost: 10 },
@@ -70,7 +85,8 @@ export const shield02HeaterWeapon: WeaponDefinition = buildCustomizableWeapon({
   canBlock: true,
   passiveArmorBonus: 12,
   passiveShieldBonus: 28,
-  spriteStripBase64: HEATER_SHIELD_STRIP,
+  spriteStripBase64: shield_heater,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Heater Bash', description: 'Drive the angled steel face forward to push back encroaching melee foes.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Point Wedge Thrust', description: 'Ram the tapered lower point into armor joints at close quarters.', damageMultiplier: 1.4, rangeMultiplier: 1.1, cooldown: 4.0, energyCost: 12 },
@@ -102,7 +118,8 @@ export const shield03TowerWeapon: WeaponDefinition = buildCustomizableWeapon({
   canBlock: true,
   passiveArmorBonus: 20,
   passiveShieldBonus: 45,
-  spriteStripBase64: PAVISE_SHIELD_STRIP,
+  spriteStripBase64: shield_tower,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Wall Press', description: 'Heave the full-length steel bulkhead forward with hydraulic force.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Spiked Base Drop', description: 'Slam the reinforced bottom edge onto enemy foot actuators.', damageMultiplier: 1.5, rangeMultiplier: 1.05, cooldown: 5.0, energyCost: 14 },
@@ -134,7 +151,8 @@ export const shield04NormanWeapon: WeaponDefinition = buildCustomizableWeapon({
   canBlock: true,
   passiveArmorBonus: 14,
   passiveShieldBonus: 32,
-  spriteStripBase64: HEATER_SHIELD_STRIP,
+  spriteStripBase64: shield_norman,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Kite Rim Sweep', description: 'Swing the elongated teardrop rim across the engagement lane.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Low Sweep Ward', description: 'Drive the tapered tail down to pin and crush low lunging attackers.', damageMultiplier: 1.4, rangeMultiplier: 1.1, cooldown: 4.2, energyCost: 12 },
@@ -166,7 +184,8 @@ export const shield05ScutumWeapon: WeaponDefinition = buildCustomizableWeapon({
   canBlock: true,
   passiveArmorBonus: 18,
   passiveShieldBonus: 38,
-  spriteStripBase64: PAVISE_SHIELD_STRIP,
+  spriteStripBase64: shield_scutum,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Umbo Punch', description: 'Horizontal fist-grip punch using the iron spindle boss.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Legion Rim Lift', description: 'Uppercut with the top bronze-bound rim to expose the target’s throat.', damageMultiplier: 1.45, rangeMultiplier: 1.05, cooldown: 4.5, energyCost: 13 },
@@ -199,7 +218,8 @@ export const shield06CoronaWeapon: WeaponDefinition = buildCustomizableWeapon({
   passiveArmorBonus: 4,
   passiveShieldBonus: 34,
   passiveLightBonus: 0.5,
-  spriteStripBase64: BUCKLER_SHIELD_STRIP,
+  spriteStripBase64: shield_corona,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Solar Rim Sear', description: 'Slash with the superheated plasma halo to scorch nearby enemies.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Prominence Flare', description: 'Pulse a blinding thermal corona that melts incoming ordinance.', damageMultiplier: 1.45, rangeMultiplier: 1.2, cooldown: 4.5, energyCost: 14 },
@@ -232,7 +252,8 @@ export const shield07MoteWeapon: WeaponDefinition = buildCustomizableWeapon({
   passiveArmorBonus: 4,
   passiveShieldBonus: 26,
   passiveLightBonus: 0.25,
-  spriteStripBase64: BUCKLER_SHIELD_STRIP,
+  spriteStripBase64: shield_mote,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Mote Dart Volley', description: 'Flick orbiting micro-plates outward to pepper close targets.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Intercept Orbit', description: 'Command the swarm to converge on a target and disrupt their aim.', damageMultiplier: 1.35, rangeMultiplier: 1.25, cooldown: 3.8, energyCost: 12 },
@@ -265,7 +286,8 @@ export const shield08DiscWeapon: WeaponDefinition = buildCustomizableWeapon({
   passiveArmorBonus: 5,
   passiveShieldBonus: 30,
   passiveLightBonus: 0.25,
-  spriteStripBase64: BUCKLER_SHIELD_STRIP,
+  spriteStripBase64: shield_disc,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Gyro-Rim Slice', description: 'Clip targets with the high-RPM hard-light disc edge.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Ricochet Throw', description: 'Sling the revolving hard-light disc out and recall it to the forearm mount.', damageMultiplier: 1.4, rangeMultiplier: 1.45, cooldown: 4.2, energyCost: 13 },
@@ -298,7 +320,8 @@ export const shield09RhomWeapon: WeaponDefinition = buildCustomizableWeapon({
   passiveArmorBonus: 8,
   passiveShieldBonus: 48,
   passiveLightBonus: 0.5,
-  spriteStripBase64: PAVISE_SHIELD_STRIP,
+  spriteStripBase64: shield_rhom,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Lattice Wedge Strike', description: 'Drive the crystalline diamond apex into the target’s guard.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Refraction Prism Shear', description: 'Split incoming energy along the rhombus facets into twin counter-beams.', damageMultiplier: 1.5, rangeMultiplier: 1.3, cooldown: 4.8, energyCost: 15 },
@@ -331,7 +354,8 @@ export const bow01SelfWeapon: WeaponDefinition = buildCustomizableWeapon({
   damagePerShot: 9,
   chainDuration: 1.25,
   reloadDuration: 1.9,
-  spriteStripBase64: GREAT_BOW_STRIP,
+  spriteStripBase64: bow_self,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Seasoned Loose', description: 'Steady, rhythmic arrow release from a single-stave yew frame.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Double-Nock', description: 'Loose two hunting shafts simultaneously along a tight horizontal spread.', damageMultiplier: 1.4, rangeMultiplier: 1.05, cooldown: 4.0, energyCost: 12 },
@@ -360,7 +384,8 @@ export const bow02ShortWeapon: WeaponDefinition = buildCustomizableWeapon({
   damagePerShot: 8,
   chainDuration: 1.1,
   reloadDuration: 1.7,
-  spriteStripBase64: GREAT_BOW_STRIP,
+  spriteStripBase64: bow_short,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Skirmish Snap-Loose', description: 'Blistering short-draw arrow cadence engineered for mobile kiting.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Ambush Triple-Tap', description: 'Three rapid-fire shafts loosed from hip-level in a split second.', damageMultiplier: 1.35, rangeMultiplier: 0.95, cooldown: 3.5, energyCost: 11 },
@@ -389,7 +414,8 @@ export const bow03FlatWeapon: WeaponDefinition = buildCustomizableWeapon({
   damagePerShot: 9,
   chainDuration: 1.3,
   reloadDuration: 2.0,
-  spriteStripBase64: GREAT_BOW_STRIP,
+  spriteStripBase64: bow_flat,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Broad-Limb Release', description: 'Vibration-free flat-stave shot with pinpoint trajectory stability.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Measured Twin-Shot', description: 'Two evenly spaced arrows placed along the same sightline.', damageMultiplier: 1.4, rangeMultiplier: 1.1, cooldown: 4.2, energyCost: 13 },
@@ -418,7 +444,8 @@ export const bow04RecurveWeapon: WeaponDefinition = buildCustomizableWeapon({
   damagePerShot: 11,
   chainDuration: 1.25,
   reloadDuration: 2.1,
-  spriteStripBase64: GREAT_BOW_STRIP,
+  spriteStripBase64: bow_recurve,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Recurve Whip-Shot', description: 'High-velocity arrow propelled by outward-snapping limb tips.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Curved Flight Pair', description: 'Loose twin high-tension shafts that converge at mid-range.', damageMultiplier: 1.45, rangeMultiplier: 1.1, cooldown: 4.5, energyCost: 13 },
@@ -447,7 +474,8 @@ export const bow05ReflexWeapon: WeaponDefinition = buildCustomizableWeapon({
   damagePerShot: 9,
   chainDuration: 1.15,
   reloadDuration: 1.8,
-  spriteStripBase64: GREAT_BOW_STRIP,
+  spriteStripBase64: bow_reflex,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Reflex Snap-Dart', description: 'Supersonic short-flight shaft launched from pre-stressed limbs.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Whip-String Double', description: 'Two lightning-fast arrows released before the first strikes home.', damageMultiplier: 1.4, rangeMultiplier: 1.05, cooldown: 3.8, energyCost: 12 },
@@ -476,7 +504,8 @@ export const bow06CompositeWeapon: WeaponDefinition = buildCustomizableWeapon({
   damagePerShot: 11,
   chainDuration: 1.2,
   reloadDuration: 2.0,
-  spriteStripBase64: GREAT_BOW_STRIP,
+  spriteStripBase64: bow_composite,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Horn-Belly Loose', description: 'Punchy, high-impulse arrow driven by compressed horn and sinew layers.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Steppe Twin-Loose', description: 'Two heavy cavalry shafts loosed in rapid succession while moving.', damageMultiplier: 1.45, rangeMultiplier: 1.1, cooldown: 4.3, energyCost: 13 },
@@ -505,7 +534,8 @@ export const bow07LongWeapon: WeaponDefinition = buildCustomizableWeapon({
   damagePerShot: 14,
   chainDuration: 1.45,
   reloadDuration: 2.4,
-  spriteStripBase64: GREAT_BOW_STRIP,
+  spriteStripBase64: bow_long,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'War-Shaft Draw', description: 'Ear-to-ear draw driving a yard-long bodkin shaft at extreme range.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Plate-Piercer Bodkin', description: 'Tempered steel needle point that ignores angled armor deflection.', damageMultiplier: 1.5, rangeMultiplier: 1.2, cooldown: 5.0, energyCost: 15 },
@@ -534,7 +564,8 @@ export const bow08CompoundWeapon: WeaponDefinition = buildCustomizableWeapon({
   damagePerShot: 14,
   chainDuration: 1.3,
   reloadDuration: 2.2,
-  spriteStripBase64: GREAT_BOW_STRIP,
+  spriteStripBase64: bow_compound,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Cam-Lock Release', description: 'High-let-off pulley draw firing carbon-core darts at flat rifle speeds.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Twin-Cam Sabot', description: 'Fire two sub-caliber flechettes from a single mechanical release.', damageMultiplier: 1.45, rangeMultiplier: 1.15, cooldown: 4.5, energyCost: 14 },
@@ -563,7 +594,8 @@ export const bow09GreatWeapon: WeaponDefinition = buildCustomizableWeapon({
   damagePerShot: 18,
   chainDuration: 1.55,
   reloadDuration: 2.6,
-  spriteStripBase64: GREAT_BOW_STRIP,
+  spriteStripBase64: bow_great,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Harpoon Shaft Loose', description: 'Launch a javelin-caliber iron shaft that staggers heavy frames.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Construct Skewer', description: 'Over-drawn steel stake that punches through frontline targets.', damageMultiplier: 1.55, rangeMultiplier: 1.25, cooldown: 5.5, energyCost: 16 },

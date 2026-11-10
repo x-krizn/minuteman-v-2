@@ -5,7 +5,7 @@
 
 import { WeaponDefinition } from '../../../types';
 import {
-  BUCKLER_SHIELD_STRIP_BASE64,
+  AETHER_CATALYST_STRIP,
 } from './base_sprites';
 import { buildMagitechWeapon } from './builder';
 
@@ -31,8 +31,7 @@ export const wz800ArclightCannonWeapon = buildMagitechWeapon({
   chainDurationSec: 1.7,
   reloadDurationSec: 3.3,
   range: 135,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated heavy crystal-lattice Beam Cannon sprite strip planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Sustained Arclight Beam', desc: '10-tick long-range coherent beam dealing 6 Beam damage per tick.' },
     { name: 'Ionizing Lance', dmg: 28, cd: 5.0, heat: 20, desc: 'High-output beam spike that overloads enemy energy shields.' },
@@ -62,8 +61,7 @@ export const wz650PrismLanceWeapon = buildMagitechWeapon({
   chainDurationSec: 1.4,
   reloadDurationSec: 2.8,
   range: 118,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated crystal-focus Beam Rifle sprite strip planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Variable Prism Ray', desc: '7-shot focused crystal beam chain dealing 8 Beam damage per pulse.' },
     { name: 'High-Aperture Focus', dmg: 26, cd: 4.5, heat: 16, desc: 'Tightens the crystal lens for a high-penetration pinpoint beam.' },
@@ -93,8 +91,7 @@ export const wz450SparkstrikeWeapon = buildMagitechWeapon({
   chainDurationSec: 1.25,
   reloadDurationSec: 2.5,
   range: 82,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated high-capacitance Pulse Carbine sprite strip planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Sparkstrike Pulse Burst', desc: '9-shot rapid energy carbine burst dealing 6 Pulse damage per bolt.' },
     { name: 'Arc-Jolt Volley', dmg: 22, cd: 4.0, heat: 14, desc: 'Electromagnetic pulse burst that disrupts enemy shield regeneration.' },
@@ -125,8 +122,7 @@ export const wz200ManacoreStaffWeapon = buildMagitechWeapon({
   chainDurationSec: 1.2,
   reloadDurationSec: 0.7,
   range: 38,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated resonant Manacore sphere staff sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Manacore Wave Pulse', desc: '4-stage conduit staff combo projecting 14 Wave (Mana) damage pulses.' },
     { name: 'Resonance Detonation', dmg: 28, cd: 5.0, heat: 18, desc: 'Radial AoE Mana discharge that clears surrounding space.' },
@@ -156,8 +152,7 @@ export const arcConductorWeapon = buildMagitechWeapon({
   chainDurationSec: 0.95,
   reloadDurationSec: 1.6,
   range: 70,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated holstered Pulse Pistol sidearm sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Quick-Draw Pulse Snap', desc: '6-shot fast energy sidearm chain dealing 8 Pulse damage per shot.' },
     { name: 'Overload Stun-Bolt', dmg: 19, cd: 3.8, heat: 10, desc: 'High-voltage sidearm shot that briefly staggers an approaching threat.' },
@@ -192,12 +187,12 @@ export const aetherCatalystWeapon: WeaponDefinition = {
   chainDurationSec: 1.0,
   reloadDurationSec: 1.6,
   primaryDamageType: 'Wave',
-  variantStripBase64: BUCKLER_SHIELD_STRIP_BASE64,
+  variantStripBase64: AETHER_CATALYST_STRIP,
   hardpointSprite: {
-    base64: BUCKLER_SHIELD_STRIP_BASE64,
+    base64: AETHER_CATALYST_STRIP,
     cellWidth: 16,
     cellHeight: 16,
-    col: 5,
+    col: 0,
     row: 0,
     renderWidth: 12,
     renderHeight: 12,
@@ -205,10 +200,10 @@ export const aetherCatalystWeapon: WeaponDefinition = {
     orientFromEast: true,
   },
   iconSprite: {
-    base64: BUCKLER_SHIELD_STRIP_BASE64,
+    base64: AETHER_CATALYST_STRIP,
     cellWidth: 16,
     cellHeight: 16,
-    col: 5,
+    col: 0,
     row: 0,
     anchor: 'center',
   },
@@ -306,8 +301,7 @@ export const utilityArclightCapacitorAuxiliary = buildMagitechWeapon({
   chainDurationSec: 0.9,
   reloadDurationSec: 1.5,
   range: 85,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated ARC Rift Anchor auxiliary sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Rift Siphon', desc: 'Auxiliary focus node.' },
     { name: 'Anchor Warp', dmg: 14, cd: 4.0, heat: -12, desc: 'Auxiliary focus node.' },
@@ -340,8 +334,7 @@ export const aux3ArcPrismaticBarrierAuxiliary = buildMagitechWeapon({
   chainDurationSec: 0.95,
   reloadDurationSec: 0.5,
   range: 30,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated ARC Prismatic Barrier sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Prism Ward Strike', desc: 'Refractive barrier pulse dealing 11 Beam damage.' },
     { name: 'Spectrum Deflection', dmg: 19, cd: 4.5, heat: 10, desc: 'Refracts beam energy and restores +14 Shield.' },
@@ -373,8 +366,7 @@ export const aux4ArcFeedbackCapacitorAuxiliary = buildMagitechWeapon({
   chainDurationSec: 0.95,
   reloadDurationSec: 1.5,
   range: 80,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated ARC Feedback Loop Capacitor sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Feedback Spark', desc: 'Auxiliary focus node.' },
     { name: 'Loop Charge', dmg: 15, cd: 4.0, heat: 8, desc: 'Auxiliary focus node.' },

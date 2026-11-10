@@ -5,9 +5,24 @@
 
 import { WeaponDefinition } from '../../../types';
 import {
-  HAND_AXE_STRIP,
-  MACE_STRIP,
-  SHORT_SPEAR_STRIP,
+  impact_axe_battle,
+  impact_axe_cudgel,
+  impact_axe_hammer,
+  impact_axe_labrys,
+  impact_axe_mace,
+  impact_axe_mallet,
+  impact_axe_parashu,
+  impact_axe_spike,
+  impact_axe_tomahawk,
+  spear_boar,
+  spear_broad,
+  spear_javelin,
+  spear_lance,
+  spear_partisan,
+  spear_pike,
+  spear_short,
+  spear_spetum,
+  spear_winged,
 } from './base_sprites';
 import { buildCustomizableWeapon } from './builder';
 
@@ -35,7 +50,8 @@ export const spear01ShortWeapon: WeaponDefinition = buildCustomizableWeapon({
   chainDuration: 0.9,
   reloadDuration: 0.45,
   canBlock: true,
-  spriteStripBase64: SHORT_SPEAR_STRIP,
+  spriteStripBase64: spear_short,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Skirmish Thrust', description: 'Quick, disciplined one-handed spear thrusts that keep foes at bay.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Double-Tap Viper', description: 'Two rapid lunging stabs aimed at exposed shoulder and visor seams.', damageMultiplier: 1.35, rangeMultiplier: 1.1, cooldown: 3.5, energyCost: 11 },
@@ -65,7 +81,8 @@ export const spear02WingedWeapon: WeaponDefinition = buildCustomizableWeapon({
   chainDuration: 0.95,
   reloadDuration: 0.5,
   canBlock: true,
-  spriteStripBase64: SHORT_SPEAR_STRIP,
+  spriteStripBase64: spear_winged,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Lugged Thrust', description: 'Measured spear thrust that stops cleanly at the cross-lugs.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Wing-Hook Twist', description: 'Catch the enemy’s shield rim on the side lugs and wrench it open.', damageMultiplier: 1.4, rangeMultiplier: 1.05, cooldown: 4.0, energyCost: 12 },
@@ -95,7 +112,8 @@ export const spear03JavelinWeapon: WeaponDefinition = buildCustomizableWeapon({
   chainDuration: 0.85,
   reloadDuration: 0.45,
   canBlock: true,
-  spriteStripBase64: SHORT_SPEAR_STRIP,
+  spriteStripBase64: spear_javelin,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Darting Stab', description: 'Agile, front-weighted stabs that recover almost instantly.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Amentum Hurl', description: 'Sling a Spare Javelin at high velocity using a leather throwing loop.', damageMultiplier: 1.45, rangeMultiplier: 2.2, cooldown: 4.2, energyCost: 13 },
@@ -125,7 +143,8 @@ export const spear04SpetumWeapon: WeaponDefinition = buildCustomizableWeapon({
   chainDuration: 1.0,
   reloadDuration: 0.55,
   canBlock: true,
-  spriteStripBase64: SHORT_SPEAR_STRIP,
+  spriteStripBase64: spear_spetum,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Trident-Point Thrust', description: 'Long-reach central thrust backed by two crescent side-prongs.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Crescent Flank-Hook', description: 'Snag enemy leg or shoulder plating with the curved side-blades.', damageMultiplier: 1.45, rangeMultiplier: 1.1, cooldown: 4.2, energyCost: 13 },
@@ -155,7 +174,8 @@ export const spear05BroadWeapon: WeaponDefinition = buildCustomizableWeapon({
   chainDuration: 1.05,
   reloadDuration: 0.55,
   canBlock: true,
-  spriteStripBase64: SHORT_SPEAR_STRIP,
+  spriteStripBase64: spear_broad,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Leaf-Blade Thrust', description: 'Heavy two-handed puncture that leaves wide structural tears.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Hewing Spear Cut', description: 'Whip the wide double-edged head in a bone-chopping horizontal slash.', damageMultiplier: 1.45, rangeMultiplier: 1.1, cooldown: 4.3, energyCost: 13 },
@@ -185,7 +205,8 @@ export const spear06PartisanWeapon: WeaponDefinition = buildCustomizableWeapon({
   chainDuration: 1.0,
   reloadDuration: 0.55,
   canBlock: true,
-  spriteStripBase64: SHORT_SPEAR_STRIP,
+  spriteStripBase64: spear_partisan,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Officer’s Thrust', description: 'Poised, razor-accurate thrust along the central medial ridge.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Winged Riposte Slash', description: 'Parry with the basal lugs and immediately draw-cut across the visor.', damageMultiplier: 1.45, rangeMultiplier: 1.1, cooldown: 4.2, energyCost: 13 },
@@ -215,7 +236,8 @@ export const spear07PikeWeapon: WeaponDefinition = buildCustomizableWeapon({
   chainDuration: 1.15,
   reloadDuration: 0.65,
   canBlock: true,
-  spriteStripBase64: SHORT_SPEAR_STRIP,
+  spriteStripBase64: spear_pike,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Stand-Off Poke', description: 'Long-range two-handed pike thrust that strikes before foes can close.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Cheek-Strap Hedge', description: 'Double-extended thrust that halts sprinting enemies in their tracks.', damageMultiplier: 1.5, rangeMultiplier: 1.15, cooldown: 4.8, energyCost: 15 },
@@ -245,7 +267,8 @@ export const spear08BoarWeapon: WeaponDefinition = buildCustomizableWeapon({
   chainDuration: 1.1,
   reloadDuration: 0.6,
   canBlock: true,
-  spriteStripBase64: SHORT_SPEAR_STRIP,
+  spriteStripBase64: spear_boar,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Stop-Toggle Thrust', description: 'Heavy leaf-head thrust backed by the iron cross-toggle.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Charge-Halt Bar', description: 'Catch a rushing target on the cross-guard and zero their velocity.', damageMultiplier: 1.5, rangeMultiplier: 1.1, cooldown: 4.8, energyCost: 15 },
@@ -275,7 +298,8 @@ export const spear09LanceWeapon: WeaponDefinition = buildCustomizableWeapon({
   chainDuration: 1.2,
   reloadDuration: 0.7,
   canBlock: true,
-  spriteStripBase64: SHORT_SPEAR_STRIP,
+  spriteStripBase64: spear_lance,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Couched Drive', description: 'Lock the tapered lance under the arm and drive forward with thruster mass.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Vamplate Ram', description: 'Follow a deep thrust with a concussive vamplate cone check.', damageMultiplier: 1.55, rangeMultiplier: 1.2, cooldown: 5.2, energyCost: 16 },
@@ -309,7 +333,8 @@ export const hafted01CudgelWeapon: WeaponDefinition = buildCustomizableWeapon({
   chainDuration: 0.85,
   reloadDuration: 0.45,
   canBlock: true,
-  spriteStripBase64: MACE_STRIP,
+  spriteStripBase64: impact_axe_cudgel,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Banded Club Thump', description: 'Brisk, unfussy iron-banded blows that rattle enemy sensors.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Knee-Capper Crack', description: 'Low horizontal swing aimed squarely at leg actuators.', damageMultiplier: 1.35, rangeMultiplier: 1.0, cooldown: 3.5, energyCost: 11 },
@@ -339,7 +364,8 @@ export const hafted02MaceWeapon: WeaponDefinition = buildCustomizableWeapon({
   chainDuration: 1.0,
   reloadDuration: 0.55,
   canBlock: true,
-  spriteStripBase64: MACE_STRIP,
+  spriteStripBase64: impact_axe_mace,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Flanged Crush', description: 'Concentrate kinetic shock onto steel flanges to buckle armor plates.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Pauldron Dent', description: 'Descending diagonal strike that degrades target armor efficiency.', damageMultiplier: 1.45, rangeMultiplier: 1.05, cooldown: 4.2, energyCost: 13 },
@@ -369,7 +395,8 @@ export const hafted03SpikeWeapon: WeaponDefinition = buildCustomizableWeapon({
   chainDuration: 0.9,
   reloadDuration: 0.5,
   canBlock: true,
-  spriteStripBase64: MACE_STRIP,
+  spriteStripBase64: impact_axe_spike,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Crow’s Beak Peck', description: 'Focus the entire swing mass onto a single hardened steel spike.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Plate-Can Opener', description: 'Hook the pick into a chest seam and rip outward.', damageMultiplier: 1.4, rangeMultiplier: 1.05, cooldown: 3.8, energyCost: 12 },
@@ -399,7 +426,8 @@ export const hafted04HammerWeapon: WeaponDefinition = buildCustomizableWeapon({
   chainDuration: 1.0,
   reloadDuration: 0.55,
   canBlock: true,
-  spriteStripBase64: MACE_STRIP,
+  spriteStripBase64: impact_axe_hammer,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Checkered Face Strike', description: 'Crisp, non-glancing war-hammer blows that bite into curved plate.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: ' Flip-Beak Twin', description: 'Strike with the flat face then rotate the wrist to sink the rear fluke.', damageMultiplier: 1.45, rangeMultiplier: 1.05, cooldown: 4.2, energyCost: 13 },
@@ -429,7 +457,8 @@ export const hafted05MalletWeapon: WeaponDefinition = buildCustomizableWeapon({
   chainDuration: 1.25,
   reloadDuration: 0.75,
   canBlock: true,
-  spriteStripBase64: MACE_STRIP,
+  spriteStripBase64: impact_axe_mallet,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Lead-Block Heave', description: 'Ponderous, ground-shaking swings of an oversized siege maul.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Stake-Driver Slam', description: 'Overhead two-handed smash that craters the floor and staggers foes.', damageMultiplier: 1.55, rangeMultiplier: 1.1, cooldown: 5.5, energyCost: 16 },
@@ -459,7 +488,8 @@ export const hafted06TomahawkWeapon: WeaponDefinition = buildCustomizableWeapon(
   chainDuration: 0.85,
   reloadDuration: 0.4,
   canBlock: true,
-  spriteStripBase64: HAND_AXE_STRIP,
+  spriteStripBase64: impact_axe_tomahawk,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Outrider Chop', description: 'Snappy, wrist-driven axe chops with minimal recovery lag.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Beard-Hook Pull', description: 'Hook the lower axe beard behind the target’s guard and yank.', damageMultiplier: 1.35, rangeMultiplier: 1.05, cooldown: 3.5, energyCost: 11 },
@@ -489,7 +519,8 @@ export const hafted07ParashuWeapon: WeaponDefinition = buildCustomizableWeapon({
   chainDuration: 0.95,
   reloadDuration: 0.5,
   canBlock: true,
-  spriteStripBase64: HAND_AXE_STRIP,
+  spriteStripBase64: impact_axe_parashu,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Crescent Shear', description: 'Sweeping draw-chop with the long curved parashu edge.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Counter-Spike Jab', description: 'Thrust with the top point to catch retreating enemies.', damageMultiplier: 1.4, rangeMultiplier: 1.15, cooldown: 4.0, energyCost: 12 },
@@ -519,7 +550,8 @@ export const hafted08LabrysWeapon: WeaponDefinition = buildCustomizableWeapon({
   chainDuration: 1.1,
   reloadDuration: 0.65,
   canBlock: true,
-  spriteStripBase64: HAND_AXE_STRIP,
+  spriteStripBase64: impact_axe_labrys,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Twin-Moon Hew', description: 'Symmetrical forehand and backhand cleaves with zero re-alignment delay.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Backswing Reap', description: 'Use the momentum of a missed or blocked swing to whip the rear bit home.', damageMultiplier: 1.5, rangeMultiplier: 1.1, cooldown: 4.8, energyCost: 15 },
@@ -549,7 +581,8 @@ export const hafted09BattleWeapon: WeaponDefinition = buildCustomizableWeapon({
   chainDuration: 1.15,
   reloadDuration: 0.7,
   canBlock: true,
-  spriteStripBase64: HAND_AXE_STRIP,
+  spriteStripBase64: impact_axe_battle,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Dane-Axe Cleave', description: 'Long-reach two-handed axe swing with terrifying edge velocity.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Horned Tip Thrust', description: 'Jab the upturned upper horn of the axe head into visor slits.', damageMultiplier: 1.5, rangeMultiplier: 1.15, cooldown: 5.0, energyCost: 15 },

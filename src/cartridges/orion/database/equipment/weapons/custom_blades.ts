@@ -5,8 +5,24 @@
 
 import { WeaponDefinition } from '../../../types';
 import {
-  LONG_SWORD_STRIP,
-  SHOTEL_STRIP,
+  blade_curved_dadao,
+  blade_curved_dao,
+  blade_curved_falx,
+  blade_curved_katana,
+  blade_curved_khopesh,
+  blade_curved_kilij,
+  blade_curved_odachi,
+  blade_curved_shotel,
+  blade_curved_wakizashi,
+  blade_straight_arming,
+  blade_straight_bastard,
+  blade_straight_cinquedea,
+  blade_straight_executioner,
+  blade_straight_falchion,
+  blade_straight_flamberge,
+  blade_straight_messer,
+  blade_straight_spatha,
+  blade_straight_zweihander,
 } from './base_sprites';
 import { buildCustomizableWeapon } from './builder';
 
@@ -34,7 +50,8 @@ export const curved01WakizashiWeapon: WeaponDefinition = buildCustomizableWeapon
   chainDuration: 0.75,
   reloadDuration: 0.35,
   canBlock: true,
-  spriteStripBase64: SHOTEL_STRIP,
+  spriteStripBase64: blade_curved_wakizashi,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Companion Snap-Cut', description: 'Blistering short-arc draw-cuts designed for cramped corridors.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Reverse-Grip Throat Slice', description: 'Flip the short blade to shear exposed neck and cable conduits.', damageMultiplier: 1.35, rangeMultiplier: 1.0, cooldown: 3.4, energyCost: 10 },
@@ -64,7 +81,8 @@ export const curved02KatanaWeapon: WeaponDefinition = buildCustomizableWeapon({
   chainDuration: 0.9,
   reloadDuration: 0.45,
   canBlock: true,
-  spriteStripBase64: SHOTEL_STRIP,
+  spriteStripBase64: blade_curved_katana,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'kesa-Giri Draw Cut', description: 'Fluid diagonal slicing strokes along the tempered curved edge.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Rising Swallow Cut', description: 'Snap the blade upward from a low scabbard stance to catch lunges.', damageMultiplier: 1.4, rangeMultiplier: 1.1, cooldown: 4.0, energyCost: 12 },
@@ -94,7 +112,8 @@ export const curved03KhopeshWeapon: WeaponDefinition = buildCustomizableWeapon({
   chainDuration: 0.85,
   reloadDuration: 0.45,
   canBlock: true,
-  spriteStripBase64: SHOTEL_STRIP,
+  spriteStripBase64: blade_curved_khopesh,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Outer-Arc Chop', description: 'Axe-weighted sickle chops that bite through light and medium plating.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Shield-Rim Snag', description: 'Hook the inner sickle curve over the enemy’s guard to expose their chest.', damageMultiplier: 1.4, rangeMultiplier: 1.05, cooldown: 3.8, energyCost: 12 },
@@ -124,7 +143,8 @@ export const curved04ShotelWeapon: WeaponDefinition = buildCustomizableWeapon({
   chainDuration: 0.85,
   reloadDuration: 0.45,
   canBlock: true,
-  spriteStripBase64: SHOTEL_STRIP,
+  spriteStripBase64: blade_curved_shotel,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Hooked Reach Slash', description: 'Whip the semicircular blade around frontal shields to sting the flank.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Kidney-Hook Peck', description: 'Invert the hilt to sink the curved point behind the target’s shoulder.', damageMultiplier: 1.4, rangeMultiplier: 1.1, cooldown: 3.9, energyCost: 12 },
@@ -154,7 +174,8 @@ export const curved05OdachiWeapon: WeaponDefinition = buildCustomizableWeapon({
   chainDuration: 1.15,
   reloadDuration: 0.65,
   canBlock: true,
-  spriteStripBase64: SHOTEL_STRIP,
+  spriteStripBase64: blade_curved_odachi,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Great-Field Sweep', description: 'Massive two-handed horizontal arcs that span the entire corridor.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Cavalry-Feller Cut', description: 'Low sweeping draw-cut that shears through leg actuators at long reach.', damageMultiplier: 1.5, rangeMultiplier: 1.15, cooldown: 5.0, energyCost: 15 },
@@ -184,7 +205,8 @@ export const curved06KilijWeapon: WeaponDefinition = buildCustomizableWeapon({
   chainDuration: 0.9,
   reloadDuration: 0.5,
   canBlock: true,
-  spriteStripBase64: SHOTEL_STRIP,
+  spriteStripBase64: blade_curved_kilij,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Yelman Whip-Cut', description: 'Forward-weighted sabre slashes that accelerate through the target.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'False-Edge Backslash', description: 'Flick the sharpened rear yelman edge on the recovery stroke.', damageMultiplier: 1.4, rangeMultiplier: 1.05, cooldown: 4.0, energyCost: 12 },
@@ -214,7 +236,8 @@ export const curved07FalxWeapon: WeaponDefinition = buildCustomizableWeapon({
   chainDuration: 1.1,
   reloadDuration: 0.6,
   canBlock: true,
-  spriteStripBase64: SHOTEL_STRIP,
+  spriteStripBase64: blade_curved_falx,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Inward Scythe Rip', description: 'Drive the forward-curving point into plating and drag backward.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Helm-Cracker Hook', description: 'Reach over the top edge of tower shields to spike the head unit.', damageMultiplier: 1.5, rangeMultiplier: 1.15, cooldown: 4.8, energyCost: 15 },
@@ -244,7 +267,8 @@ export const curved08DaoWeapon: WeaponDefinition = buildCustomizableWeapon({
   chainDuration: 0.9,
   reloadDuration: 0.45,
   canBlock: true,
-  spriteStripBase64: SHOTEL_STRIP,
+  spriteStripBase64: blade_curved_dao,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Ox-Tail Broad Slash', description: 'Forceful, continuous wrapping slashes that never lose momentum.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Coiling Body Wrap', description: 'Spin the broad blade around the shoulders to parry and strike in one motion.', damageMultiplier: 1.45, rangeMultiplier: 1.1, cooldown: 4.1, energyCost: 13 },
@@ -274,7 +298,8 @@ export const curved09DadaoWeapon: WeaponDefinition = buildCustomizableWeapon({
   chainDuration: 1.15,
   reloadDuration: 0.65,
   canBlock: true,
-  spriteStripBase64: SHOTEL_STRIP,
+  spriteStripBase64: blade_curved_dadao,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'War-Cleaver Chop', description: 'Top-heavy two-handed cleaver blows that combine blade bite with hammer shock.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Ring-Pommel Hook', description: 'Strike with the heavy iron ring pommel to stun close targets.', damageMultiplier: 1.5, rangeMultiplier: 1.0, cooldown: 4.8, energyCost: 15 },
@@ -308,7 +333,8 @@ export const straight01CinquedeaWeapon: WeaponDefinition = buildCustomizableWeap
   chainDuration: 0.75,
   reloadDuration: 0.35,
   canBlock: true,
-  spriteStripBase64: LONG_SWORD_STRIP,
+  spriteStripBase64: blade_straight_cinquedea,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Five-Finger Thrust', description: 'Wide-based short-blade thrusts that leave gaping structural punctures.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Alleyway Riposte', description: 'Deflect with the arched guard and drive the triangular point into the ribs.', damageMultiplier: 1.35, rangeMultiplier: 1.05, cooldown: 3.4, energyCost: 10 },
@@ -338,7 +364,8 @@ export const straight02SpathaWeapon: WeaponDefinition = buildCustomizableWeapon(
   chainDuration: 0.9,
   reloadDuration: 0.45,
   canBlock: true,
-  spriteStripBase64: LONG_SWORD_STRIP,
+  spriteStripBase64: blade_straight_spatha,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Limitanei Slash', description: 'Disciplined, parallel-edged cuts and thrusts with steady recovery.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Formation Double-Thrust', description: 'Two low, level stabs intended to slip past shield walls.', damageMultiplier: 1.4, rangeMultiplier: 1.1, cooldown: 4.0, energyCost: 12 },
@@ -368,7 +395,8 @@ export const straight03FalchionWeapon: WeaponDefinition = buildCustomizableWeapo
   chainDuration: 0.95,
   reloadDuration: 0.5,
   canBlock: true,
-  spriteStripBase64: LONG_SWORD_STRIP,
+  spriteStripBase64: blade_straight_falchion,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Cleaver-Tip Hew', description: 'Tip-heavy chops that bite deep into padded and plated frames.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Clipped-Point Thrust', description: 'Drive the angled cusped tip into mail and cable bundles.', damageMultiplier: 1.4, rangeMultiplier: 1.05, cooldown: 4.1, energyCost: 13 },
@@ -398,7 +426,8 @@ export const straight04ArmingWeapon: WeaponDefinition = buildCustomizableWeapon(
   chainDuration: 0.9,
   reloadDuration: 0.45,
   canBlock: true,
-  spriteStripBase64: LONG_SWORD_STRIP,
+  spriteStripBase64: blade_straight_arming,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Knightly Cut & Thrust', description: 'Balanced cruciform swordplay alternating diagonal cuts and crisp thrusts.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Pommel Mordhau Check', description: 'Step inside and crack the enemy’s helm with the wheel pommel.', damageMultiplier: 1.4, rangeMultiplier: 1.0, cooldown: 4.0, energyCost: 12 },
@@ -428,7 +457,8 @@ export const straight05BastardWeapon: WeaponDefinition = buildCustomizableWeapon
   chainDuration: 0.95,
   reloadDuration: 0.5,
   canBlock: true,
-  spriteStripBase64: LONG_SWORD_STRIP,
+  spriteStripBase64: blade_straight_bastard,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Hand-and-a-Half Sweep', description: 'Long-reach cuts that leverage the extended scent-stopper pommel.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Half-Sword Point Drive', description: 'Grip the mid-blade to guide the rigid tip into thick armor joints.', damageMultiplier: 1.45, rangeMultiplier: 1.1, cooldown: 4.2, energyCost: 13 },
@@ -458,7 +488,8 @@ export const straight06MesserWeapon: WeaponDefinition = buildCustomizableWeapon(
   chainDuration: 0.9,
   reloadDuration: 0.45,
   canBlock: true,
-  spriteStripBase64: LONG_SWORD_STRIP,
+  spriteStripBase64: blade_straight_messer,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Landsknecht Hew', description: 'Aggressive, workmanlike cuts from a slab-tang knife-sword.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Nagel Bind & Slice', description: 'Trap the opponent’s blade on the side-lug and shear across their wrist.', damageMultiplier: 1.45, rangeMultiplier: 1.05, cooldown: 4.0, energyCost: 12 },
@@ -488,7 +519,8 @@ export const straight07ZweihanderWeapon: WeaponDefinition = buildCustomizableWea
   chainDuration: 1.15,
   reloadDuration: 0.65,
   canBlock: true,
-  spriteStripBase64: LONG_SWORD_STRIP,
+  spriteStripBase64: blade_straight_zweihander,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Montante Figure-Eight', description: 'Continuous two-handed greatsword arcs that create a zone of denial.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Parierhaken Catch', description: 'Choke up on the leather ricasso and snag polearms with the parrying hooks.', damageMultiplier: 1.5, rangeMultiplier: 1.15, cooldown: 4.8, energyCost: 15 },
@@ -518,7 +550,8 @@ export const straight08FlambergeWeapon: WeaponDefinition = buildCustomizableWeap
   chainDuration: 1.15,
   reloadDuration: 0.65,
   canBlock: true,
-  spriteStripBase64: LONG_SWORD_STRIP,
+  spriteStripBase64: blade_straight_flamberge,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Flame-Wave Draw', description: 'Serrated undulating cuts that rasp and saw through composite plating.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Chatter-Parry Bind', description: 'Rasp the wavy edge along an enemy weapon to numb their actuators.', damageMultiplier: 1.5, rangeMultiplier: 1.1, cooldown: 4.8, energyCost: 15 },
@@ -548,7 +581,8 @@ export const straight09ExecutionerWeapon: WeaponDefinition = buildCustomizableWe
   chainDuration: 1.25,
   reloadDuration: 0.75,
   canBlock: true,
-  spriteStripBase64: LONG_SWORD_STRIP,
+  spriteStripBase64: blade_straight_executioner,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Headsman’s Hew', description: 'Ponderous, square-tipped horizontal cleaves with immense terminal mass.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Scaffold Sweep', description: 'Low ankle-height chop that fells charging enemies like timber.', damageMultiplier: 1.55, rangeMultiplier: 1.1, cooldown: 5.5, energyCost: 16 },

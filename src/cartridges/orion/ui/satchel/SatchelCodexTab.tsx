@@ -575,6 +575,8 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                       {w.iconSprite?.base64 && (
                         <SpriteCanvasIcon
                           base64={w.iconSprite.base64}
+                          col={w.iconSprite.col || 0}
+                          row={w.iconSprite.row || 0}
                           cellWidth={w.iconSprite.cellWidth || 16}
                           cellHeight={w.iconSprite.cellHeight || 16}
                           sizeClass="w-5 h-5"

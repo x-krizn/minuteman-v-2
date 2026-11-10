@@ -4,11 +4,7 @@
  */
 
 import { WeaponDefinition } from '../../../types';
-import {
-  BOLT_CASTER_STRIP_BASE64,
-  LONG_SWORD_STRIP_BASE64,
-  SHOTEL_STRIP_BASE64,
-} from './base_sprites';
+import { LONG_SWORD_STRIP_BASE64 } from './base_sprites';
 import { buildMagitechWeapon } from './builder';
 
 // ─── WARRIOR / ASSAULT LINEAGE MAGITECH WEAPONS ─────────────────────────────
@@ -34,7 +30,6 @@ export const n55GladiusWeapon = buildMagitechWeapon({
   chainDurationSec: 1.5,
   reloadDurationSec: 3.15,
   range: 88,
-  customStripBase64: BOLT_CASTER_STRIP_BASE64,
   isPlaceholderAsset: false,
   skills: [
     { name: 'Stabilized 9-Round Burst', desc: 'Reference 9-shot kinetic burst dealing 6 Impact damage per bolt (54 BCU).' },
@@ -75,8 +70,7 @@ export const m300HastaWeapon = buildMagitechWeapon({
   chainDurationSec: 1.8,
   reloadDurationSec: 3.2,
   range: 102,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated Polybolos mechanical repeater strip and quiver housing planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Polybolos Repeating Feed', desc: 'Sustained 12-bolt mid-range stream dealing 5 Impact damage per bolt.' },
     { name: 'Pinning Stake Volley', dmg: 19, cd: 4.5, heat: 15, desc: 'High-tension bolt cluster that checks enemy movement.' },
@@ -107,8 +101,7 @@ export const m450PilumWeapon = buildMagitechWeapon({
   chainDurationSec: 1.6,
   reloadDurationSec: 3.6,
   range: 125,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated heavy torsion Ballista sprite and rail assembly planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Heavy Pilum Javelin', desc: '4-shot heavy ballista chain dealing 14 Impact damage per javelin.' },
     { name: 'Shock-Core Impale', dmg: 28, cd: 5.0, heat: 20, dt: 'Wave', desc: 'Channels a shockwave pulse through the target on impact.' },
@@ -139,7 +132,6 @@ export const s2TurbineKhopeshWeapon = buildMagitechWeapon({
   chainDurationSec: 0.85,
   reloadDurationSec: 0.45,
   range: 25,
-  customStripBase64: SHOTEL_STRIP_BASE64,
   isPlaceholderAsset: false,
   skills: [
     { name: 'Turbine Hook Slash', desc: '4-hit high-RPM curved blade combo dealing 11 Pierce damage per strike.' },
@@ -300,8 +292,7 @@ export const utilityIchorSurgeAuxiliary = buildMagitechWeapon({
   chainDurationSec: 0.9,
   reloadDurationSec: 1.5,
   range: 64,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated PNSY D-0g Repair Drone auxiliary sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Drone Welder Pulse', desc: 'Auxiliary focus node (Auxiliaries expose Skill 4 & Skill 5).' },
     { name: 'Nanite Stitch', dmg: 12, cd: 4.0, heat: 6, desc: 'Auxiliary focus node.' },
@@ -334,8 +325,7 @@ export const aux3PnsyRockweilerBucklerAuxiliary = buildMagitechWeapon({
   chainDurationSec: 0.9,
   reloadDurationSec: 0.45,
   range: 24,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated PNSY R-11 Rockweiler Buckler sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Rockweiler Rim Bash', desc: '3-hit reactive buckler bash dealing 12 Impact damage.' },
     { name: 'Reactive Counter-Snap', dmg: 20, cd: 4.5, heat: 10, desc: 'Detonates a reactive rim plate to stagger melee attackers.' },
@@ -367,8 +357,7 @@ export const aux4PnsyRoughRiderBoosterAuxiliary = buildMagitechWeapon({
   chainDurationSec: 0.85,
   reloadDurationSec: 1.4,
   range: 42,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated PNSY UF-9 Rough Rider Booster sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Thruster Backblast', desc: 'Auxiliary focus node.' },
     { name: 'Vectored Hop', dmg: 14, cd: 4.0, heat: 8, desc: 'Auxiliary focus node.' },

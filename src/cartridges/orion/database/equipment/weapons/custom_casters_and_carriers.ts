@@ -5,9 +5,24 @@
 
 import { WeaponDefinition } from '../../../types';
 import {
-  AETHER_CATALYST_STRIP,
-  BOLT_CASTER_STRIP,
-  QUIVER_STRIP,
+  caster_arc,
+  caster_beam,
+  caster_blast,
+  caster_bolt,
+  caster_meteoric,
+  caster_nova,
+  caster_pulse,
+  caster_stellar,
+  caster_wave,
+  launcher_bandolier,
+  launcher_battery,
+  launcher_kaad,
+  launcher_pangao,
+  launcher_plumbata,
+  launcher_quiver,
+  launcher_rack,
+  launcher_sheaf,
+  launcher_yebira,
 } from './base_sprites';
 import { buildCustomizableWeapon } from './builder';
 
@@ -34,7 +49,8 @@ export const caster01BoltWeapon: WeaponDefinition = buildCustomizableWeapon({
   damagePerShot: 6,
   chainDuration: 1.35,
   reloadDuration: 2.4,
-  spriteStripBase64: BOLT_CASTER_STRIP,
+  spriteStripBase64: caster_bolt,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Condensed Bolt Stream', description: 'Rapid-fire ether-condensed kinetic bolts from a one-handed barrel.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Flechette Burst', description: 'Three-round hyper-velocity bolt burst aimed at armor seams.', damageMultiplier: 1.35, rangeMultiplier: 1.05, cooldown: 3.8, energyCost: 12 },
@@ -63,7 +79,8 @@ export const caster02BeamWeapon: WeaponDefinition = buildCustomizableWeapon({
   damagePerShot: 6,
   chainDuration: 1.45,
   reloadDuration: 2.7,
-  spriteStripBase64: BOLT_CASTER_STRIP,
+  spriteStripBase64: caster_beam,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Collimated Ray', description: 'Sustain a coherent thermal beam that scours target plating.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Focal Lens Sweep', description: 'Rake the focused beam horizontally across an advancing squad.', damageMultiplier: 1.4, rangeMultiplier: 1.1, cooldown: 4.5, energyCost: 14 },
@@ -92,7 +109,8 @@ export const caster03ArcWeapon: WeaponDefinition = buildCustomizableWeapon({
   damagePerShot: 7,
   chainDuration: 1.25,
   reloadDuration: 2.3,
-  spriteStripBase64: BOLT_CASTER_STRIP,
+  spriteStripBase64: caster_arc,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Forked Arc Discharge', description: 'Snap high-voltage lightning between the twin emitter tines.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Chain-Jump Surge', description: 'Launch an ionized arc that leaps across clustered enemy frames.', damageMultiplier: 1.4, rangeMultiplier: 1.1, cooldown: 4.0, energyCost: 13 },
@@ -121,7 +139,8 @@ export const caster04PulseWeapon: WeaponDefinition = buildCustomizableWeapon({
   damagePerShot: 9,
   chainDuration: 1.3,
   reloadDuration: 2.5,
-  spriteStripBase64: BOLT_CASTER_STRIP,
+  spriteStripBase64: caster_pulse,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Staccato Pulse', description: 'Rhythmic three-round resonance bursts that shake target poise.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Harmonic Double-Tap', description: 'Two phase-locked pulses that overload energy shield harmonics.', damageMultiplier: 1.45, rangeMultiplier: 1.1, cooldown: 4.2, energyCost: 13 },
@@ -150,7 +169,8 @@ export const caster05WaveWeapon: WeaponDefinition = buildCustomizableWeapon({
   damagePerShot: 9,
   chainDuration: 1.4,
   reloadDuration: 2.6,
-  spriteStripBase64: BOLT_CASTER_STRIP,
+  spriteStripBase64: caster_wave,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Horizon Crest', description: 'Project a wide horizontal energy wave that sweeps across the lane.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Cross-Rip Ripple', description: 'Launch two intersecting wave crests that shear through cover.', damageMultiplier: 1.45, rangeMultiplier: 1.1, cooldown: 4.5, energyCost: 14 },
@@ -179,7 +199,8 @@ export const caster06BlastWeapon: WeaponDefinition = buildCustomizableWeapon({
   damagePerShot: 14,
   chainDuration: 1.35,
   reloadDuration: 2.8,
-  spriteStripBase64: BOLT_CASTER_STRIP,
+  spriteStripBase64: caster_blast,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Compression Shell', description: 'Vent a volatile plasma-compression charge that detonates on contact.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Breacher Double-Blast', description: 'Two close-range shockwave blasts that crack heavy armor plates.', damageMultiplier: 1.5, rangeMultiplier: 1.0, cooldown: 4.8, energyCost: 15 },
@@ -208,7 +229,8 @@ export const caster07NovaWeapon: WeaponDefinition = buildCustomizableWeapon({
   damagePerShot: 18,
   chainDuration: 1.5,
   reloadDuration: 3.1,
-  spriteStripBase64: BOLT_CASTER_STRIP,
+  spriteStripBase64: caster_nova,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Radial Core Pulse', description: 'Vent an expanding sphere of pressurized ether from the core housing.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Ring Expansion', description: 'Project a chest-high shock ring that sweeps surrounding swarmers.', damageMultiplier: 1.5, rangeMultiplier: 1.15, cooldown: 5.2, energyCost: 16 },
@@ -237,7 +259,8 @@ export const caster08MeteoricWeapon: WeaponDefinition = buildCustomizableWeapon(
   damagePerShot: 18,
   chainDuration: 1.6,
   reloadDuration: 3.3,
-  spriteStripBase64: BOLT_CASTER_STRIP,
+  spriteStripBase64: caster_meteoric,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Molten Bolide', description: 'Lob a blazing orb of ionized slag that craters the target zone.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Chondrite Cluster', description: 'Launch a fracturing meteoric shell that rains three sub-impacts.', damageMultiplier: 1.55, rangeMultiplier: 1.15, cooldown: 5.5, energyCost: 17 },
@@ -266,7 +289,8 @@ export const caster09StellarWeapon: WeaponDefinition = buildCustomizableWeapon({
   damagePerShot: 27,
   chainDuration: 1.7,
   reloadDuration: 3.5,
-  spriteStripBase64: BOLT_CASTER_STRIP,
+  spriteStripBase64: caster_stellar,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Star-Fire Lance', description: 'Discharge a hyper-dense lance of fusion light across extreme distances.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Syzygy Alignment', description: 'Align twin astrolabe rings to pierce multiple targets in a line.', damageMultiplier: 1.55, rangeMultiplier: 1.25, cooldown: 5.8, energyCost: 18 },
@@ -299,7 +323,8 @@ export const carrier01BandolierWeapon: WeaponDefinition = buildCustomizableWeapo
   damagePerShot: 6,
   chainDuration: 1.05,
   reloadDuration: 3.0,
-  spriteStripBase64: QUIVER_STRIP,
+  spriteStripBase64: launcher_bandolier,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Chest-Loop Quick Toss', description: 'Snatch and hurl balanced cartridges and small munitions from the chest strap.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Shell-Strip Pitch', description: 'Sling a primed concussion cartridge that shatters against armor.', damageMultiplier: 1.4, rangeMultiplier: 1.1, cooldown: 4.0, energyCost: 12 },
@@ -328,7 +353,8 @@ export const carrier02QuiverWeapon: WeaponDefinition = buildCustomizableWeapon({
   damagePerShot: 6,
   chainDuration: 1.05,
   reloadDuration: 3.2,
-  spriteStripBase64: QUIVER_STRIP,
+  spriteStripBase64: launcher_quiver,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Rapid Shaft Feed', description: 'Quick-draw indexed shafts to maintain uninterrupted ranged pressure while mobile.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Bodkin Reserve Pull', description: 'Draw tempered armor-piercing shafts for the next volley.', damageMultiplier: 1.35, rangeMultiplier: 1.1, cooldown: 4.0, energyCost: 10 },
@@ -357,7 +383,8 @@ export const carrier03YebiraWeapon: WeaponDefinition = buildCustomizableWeapon({
   damagePerShot: 9,
   chainDuration: 1.1,
   reloadDuration: 3.0,
-  spriteStripBase64: QUIVER_STRIP,
+  spriteStripBase64: launcher_yebira,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Side-Slip Draw', description: 'Pull a medium war-shaft laterally through the retention cord without lifting.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Kabura-Ya Signal Shot', description: 'Loose a whistling bulb-arrow that marks the target for bonus precision.', damageMultiplier: 1.4, rangeMultiplier: 1.2, cooldown: 4.2, energyCost: 12 },
@@ -387,7 +414,8 @@ export const carrier04BatteryWeapon: WeaponDefinition = buildCustomizableWeapon(
   chainDuration: 1.15,
   reloadDuration: 3.0,
   passiveLightBonus: 0.25,
-  spriteStripBase64: AETHER_CATALYST_STRIP,
+  spriteStripBase64: launcher_battery,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Cell Salvo', description: 'Sequential pulse-cell discharge from the shoulder/off-hand battery.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Synchronized Micro-Swarm', description: 'Fire a guided cluster of micro-munitions that track moving targets.', damageMultiplier: 1.45, rangeMultiplier: 1.15, cooldown: 4.5, energyCost: 14 },
@@ -416,7 +444,8 @@ export const carrier05SheafWeapon: WeaponDefinition = buildCustomizableWeapon({
   damagePerShot: 9,
   chainDuration: 1.1,
   reloadDuration: 3.4,
-  spriteStripBase64: QUIVER_STRIP,
+  spriteStripBase64: launcher_sheaf,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Pitch-Shaft Draw', description: 'Snatch standardized war-munitions directly from the bound tactical sheaf.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Planted Resupply', description: 'Spike the sheaf upright to boost sustained fire cadence.', damageMultiplier: 1.4, rangeMultiplier: 1.1, cooldown: 4.2, energyCost: 12 },
@@ -445,7 +474,8 @@ export const carrier06RackWeapon: WeaponDefinition = buildCustomizableWeapon({
   damagePerShot: 14,
   chainDuration: 1.25,
   reloadDuration: 3.4,
-  spriteStripBase64: QUIVER_STRIP,
+  spriteStripBase64: launcher_rack,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Rail Rocket Release', description: 'Ignite a rail-mounted rocket pod downrange.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Twin Sabot Launch', description: 'Fire two heavy rail-locked ordnance rounds simultaneously.', damageMultiplier: 1.45, rangeMultiplier: 1.15, cooldown: 4.8, energyCost: 15 },
@@ -474,7 +504,8 @@ export const carrier07PlumbataWeapon: WeaponDefinition = buildCustomizableWeapon
   damagePerShot: 11,
   chainDuration: 1.0,
   reloadDuration: 2.8,
-  spriteStripBase64: QUIVER_STRIP,
+  spriteStripBase64: launcher_plumbata,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Underhand Dart Pitch', description: 'Loft a lead-weighted dart in a steep arc that drops onto enemy helms.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Plunging Pair', description: 'Loose two weighted darts that bypass frontal shield blocks from above.', damageMultiplier: 1.45, rangeMultiplier: 1.15, cooldown: 4.2, energyCost: 13 },
@@ -507,7 +538,8 @@ export const carrier08KaadWeapon: WeaponDefinition = buildCustomizableWeapon({
   passiveArmorBonus: 6,
   passiveShieldBonus: 16,
   passiveLightBonus: 0.25,
-  spriteStripBase64: AETHER_CATALYST_STRIP,
+  spriteStripBase64: launcher_kaad,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Weighted Cord Lash', description: 'Snap the talisman-weighted cords to whip mid-range targets.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Silk-Bind Entangle', description: 'Wrap an attacker’s weapon haft in consecrated cord and yank them off-line.', damageMultiplier: 1.45, rangeMultiplier: 1.1, cooldown: 4.0, energyCost: 12 },
@@ -536,7 +568,8 @@ export const carrier09PangaoWeapon: WeaponDefinition = buildCustomizableWeapon({
   damagePerShot: 18,
   chainDuration: 1.2,
   reloadDuration: 3.1,
-  spriteStripBase64: QUIVER_STRIP,
+  spriteStripBase64: launcher_pangao,
+  isPlaceholderAsset: false,
   actions: [
     { slot: 1, name: 'Powder Flask Pitch', description: 'Sling a volatile black-powder flask from the shock-dampened satchel.', damageMultiplier: 1.0, rangeMultiplier: 1.0, cooldown: 0, energyCost: 0 },
     { slot: 2, name: 'Cluster Bomb Toss', description: 'Hurl a fused bundle of ceramic bombs that detonate across the lane.', damageMultiplier: 1.5, rangeMultiplier: 1.1, cooldown: 4.6, energyCost: 15 },

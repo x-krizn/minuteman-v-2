@@ -24,6 +24,7 @@ import { OrionDir, OrionGlidePhase, OrionState, TraitLine } from '../types';
 import {
   getBase64Image,
   getOutlinedSpriteCanvas,
+  resolveSpriteStripSliceCoords,
 } from './render/spriteAtlasCache';
 
 /**
@@ -988,9 +989,17 @@ function drawSinglePlayerEquipmentMount(
       const cellW = spriteCfg.cellWidth || 16;
       const cellH = spriteCfg.cellHeight || 16;
       const col = weaponDef ? gemVis.colIndex : (spriteCfg.col ?? 0);
-      const row = spriteCfg.row ?? 0;
-      const srcX = col * cellW;
-      const srcY = row * cellH;
+      const row = weaponDef && gemVis.gemId ? 0 : (spriteCfg.row ?? 0);
+      const srcW = 'naturalWidth' in src ? src.naturalWidth || src.width : src.width;
+      const srcH = 'naturalHeight' in src ? src.naturalHeight || src.height : src.height;
+      const { srcX, srcY } = resolveSpriteStripSliceCoords(
+        srcW,
+        srcH,
+        col,
+        row,
+        cellW,
+        cellH
+      );
 
       const outlined = getOutlinedSpriteCanvas(
         spriteCfg.base64,

@@ -14,17 +14,78 @@ import {
   WeaponWeightClass,
 } from '../../../types';
 import {
-  BOLT_CASTER_STRIP_BASE64,
-  BUCKLER_SHIELD_STRIP_BASE64,
-  GREAT_BOW_STRIP_BASE64,
-  HAND_AXE_STRIP_BASE64,
-  HEATER_SHIELD_STRIP_BASE64,
-  LONG_SWORD_STRIP_BASE64,
-  MACE_STRIP_BASE64,
-  PAVISE_SHIELD_STRIP_BASE64,
-  QUIVER_STRIP_BASE64,
-  SHORT_SPEAR_STRIP_BASE64,
-  SHOTEL_STRIP_BASE64,
+  blade_curved_dadao,
+  blade_curved_dao,
+  blade_curved_falx,
+  blade_curved_katana,
+  blade_curved_khopesh,
+  blade_curved_kilij,
+  blade_curved_odachi,
+  blade_curved_shotel,
+  blade_curved_wakizashi,
+  blade_straight_arming,
+  blade_straight_bastard,
+  blade_straight_cinquedea,
+  blade_straight_executioner,
+  blade_straight_falchion,
+  blade_straight_flamberge,
+  blade_straight_messer,
+  blade_straight_spatha,
+  blade_straight_zweihander,
+  bow_composite,
+  bow_compound,
+  bow_flat,
+  bow_great,
+  bow_long,
+  bow_recurve,
+  bow_reflex,
+  bow_self,
+  bow_short,
+  caster_arc,
+  caster_beam,
+  caster_blast,
+  caster_bolt,
+  caster_meteoric,
+  caster_nova,
+  caster_pulse,
+  caster_stellar,
+  caster_wave,
+  impact_axe_battle,
+  impact_axe_cudgel,
+  impact_axe_hammer,
+  impact_axe_labrys,
+  impact_axe_mace,
+  impact_axe_mallet,
+  impact_axe_parashu,
+  impact_axe_spike,
+  impact_axe_tomahawk,
+  launcher_bandolier,
+  launcher_battery,
+  launcher_kaad,
+  launcher_pangao,
+  launcher_plumbata,
+  launcher_quiver,
+  launcher_rack,
+  launcher_sheaf,
+  launcher_yebira,
+  shield_buckler,
+  shield_corona,
+  shield_disc,
+  shield_heater,
+  shield_mote,
+  shield_norman,
+  shield_rhom,
+  shield_scutum,
+  shield_tower,
+  spear_boar,
+  spear_broad,
+  spear_javelin,
+  spear_lance,
+  spear_partisan,
+  spear_pike,
+  spear_short,
+  spear_spetum,
+  spear_winged,
 } from './base_sprites';
 
 /**
@@ -146,19 +207,19 @@ const EXPLICIT_FUNCTIONAL_TYPE_BY_ID: Record<string, string> = {
   sr440_shadowfang: 'Bolt Caster',
   b25_brushcutter: 'Bolt Caster',
   rs450_radiant_projector: 'Beam Caster',
-  wz800_arclight_cannon: 'Beam Caster',
   wz650_prism_lance: 'Beam Caster',
   cl700_sanctifier: 'Beam Caster',
-  cl500_absolution: 'Beam Caster',
   wz450_sparkstrike: 'Arc Caster',
-  arc_conductor: 'Arc Caster',
+  arc_conductor: 'Pulse Caster',
   cl350_litany: 'Pulse Caster',
+  cl500_absolution: 'Wave Caster',
   m350_mauler: 'Blast Caster',
+  wz800_arclight_cannon: 'Stellar Caster',
 
   // Spears
   short_spear: 'Short Spear',
-  ls900_swordspear: 'Broad Spear',
-  wz200_manacore_staff: 'Partisan',
+  wz200_manacore_staff: 'Spetum',
+  ls900_swordspear: 'Partisan',
   hl220_lightburst_lance: 'Lance',
   avalon_siege_lance: 'Lance',
 
@@ -174,10 +235,11 @@ const EXPLICIT_FUNCTIONAL_TYPE_BY_ID: Record<string, string> = {
 
   // Blades: Straight
   s4_whisper_blade: 'Cinquedea',
-  tig_edge: 'Spatha',
+  s6_phantom_edge: 'Spatha',
   grace_edge: 'Spatha',
+  tig_edge: 'Arming Sword',
   long_sword: 'Arming Sword',
-  s6_phantom_edge: 'Messer',
+  straight_09_executioner: 'Executioner Sword',
 
   // Carriers & Munitions
   utility_phantom_shroud: 'Bandolier',
@@ -190,11 +252,11 @@ const EXPLICIT_FUNCTIONAL_TYPE_BY_ID: Record<string, string> = {
   aux4_arc_feedback_capacitor: 'Battery',
   utility_aegis_pulse: 'Battery',
   aux3_sanc_restoration_field: 'Battery',
+  lg950_tomahawk: 'Battery',
   utility_ichor_surge: 'Sheaf',
   utility_siege_brace: 'Sheaf',
   aux3_rad_kinetic_recycling: 'Sheaf',
   ln1200_avalanche: 'Rack',
-  lg950_tomahawk: 'Rack',
   aux4_pnsy_rough_rider_booster: 'Rack',
   aux4_sanc_martyrdom_plating: 'Pangao',
 };
@@ -227,7 +289,12 @@ export function resolveWeaponFunctionalType(
   }
   for (const ft of allowed) {
     const ftLower = ft.toLowerCase();
-    if (nameLower.includes(ftLower) || rawClsLower.includes(ftLower)) {
+    if (
+      nameLower.includes(ftLower) ||
+      rawClsLower.includes(ftLower) ||
+      (nameLower.length >= 4 && ftLower.includes(nameLower)) ||
+      (rawClsLower.length >= 4 && ftLower.includes(rawClsLower))
+    ) {
       return ft;
     }
   }
@@ -345,41 +412,221 @@ export function resolveWeaponCategory(
 }
 
 /**
- * Selects the default embedded placeholder Base64 sprite strip (`144x16` `px`) for a given `WeaponCategory` and `WeaponWeightClass`.
+ * Resolves the canonical `16x224` pixel-art vertical sprite strip (`launcher_*`) for each of the 9
+ * functional weapon types within `Carriers & Munitions`.
  */
-export function getDefaultPlaceholderStripForCategory(
+export function getCarrierLauncherStripForFunctionalType(functionalType: string): string {
+  switch (functionalType) {
+    case 'Bandolier':
+      return launcher_bandolier;
+    case 'Quiver':
+      return launcher_quiver;
+    case 'Yebira':
+      return launcher_yebira;
+    case 'Battery':
+      return launcher_battery;
+    case 'Sheaf':
+      return launcher_sheaf;
+    case 'Rack':
+      return launcher_rack;
+    case 'Plumbata':
+      return launcher_plumbata;
+    case 'Kaad':
+      return launcher_kaad;
+    case 'Pangao':
+      return launcher_pangao;
+    default:
+      return launcher_quiver;
+  }
+}
+
+/**
+ * Resolves the dedicated `16x224` 14-row vertical pixel-art sprite strip for any `(category, functionalType)`
+ * combination across all 72 canonical weapon archetypes (`8 Weapon Classes × 9 Functional Types`).
+ */
+export function getWeaponStripForFunctionalType(
   category: WeaponCategory,
-  weightClass: WeaponWeightClass,
-  id?: string
+  functionalType: string
 ): string {
   switch (category) {
     case 'Shields':
-      if (weightClass === 'heavy') return PAVISE_SHIELD_STRIP_BASE64;
-      if (weightClass === 'medium') return HEATER_SHIELD_STRIP_BASE64;
-      return BUCKLER_SHIELD_STRIP_BASE64;
+      switch (functionalType) {
+        case 'Buckler':
+          return shield_buckler;
+        case 'Heater':
+          return shield_heater;
+        case 'Tower':
+          return shield_tower;
+        case 'Norman':
+          return shield_norman;
+        case 'Scutum':
+          return shield_scutum;
+        case 'Corona':
+          return shield_corona;
+        case 'Mote':
+          return shield_mote;
+        case 'Disc':
+          return shield_disc;
+        case 'Rhom':
+          return shield_rhom;
+        default:
+          return shield_heater;
+      }
     case 'Bows':
-      return GREAT_BOW_STRIP_BASE64;
+      switch (functionalType) {
+        case 'Self Bow':
+          return bow_self;
+        case 'Short Bow':
+          return bow_short;
+        case 'Flat Bow':
+          return bow_flat;
+        case 'Recurve Bow':
+          return bow_recurve;
+        case 'Reflex Bow':
+          return bow_reflex;
+        case 'Composite Bow':
+          return bow_composite;
+        case 'Long Bow':
+          return bow_long;
+        case 'Compound Bow':
+          return bow_compound;
+        case 'Great Bow':
+          return bow_great;
+        default:
+          return bow_great;
+      }
     case 'Casters':
-      return BOLT_CASTER_STRIP_BASE64;
+      switch (functionalType) {
+        case 'Bolt Caster':
+          return caster_bolt;
+        case 'Beam Caster':
+          return caster_beam;
+        case 'Arc Caster':
+          return caster_arc;
+        case 'Pulse Caster':
+          return caster_pulse;
+        case 'Wave Caster':
+          return caster_wave;
+        case 'Blast Caster':
+          return caster_blast;
+        case 'Nova Caster':
+          return caster_nova;
+        case 'Meteoric Caster':
+          return caster_meteoric;
+        case 'Stellar Caster':
+          return caster_stellar;
+        default:
+          return caster_bolt;
+      }
     case 'Spears':
-      return SHORT_SPEAR_STRIP_BASE64;
+      switch (functionalType) {
+        case 'Short Spear':
+          return spear_short;
+        case 'Winged Spear':
+          return spear_winged;
+        case 'Javelin':
+          return spear_javelin;
+        case 'Spetum':
+          return spear_spetum;
+        case 'Broad Spear':
+          return spear_broad;
+        case 'Partisan':
+          return spear_partisan;
+        case 'Pike':
+          return spear_pike;
+        case 'Boar Spear':
+          return spear_boar;
+        case 'Lance':
+          return spear_lance;
+        default:
+          return spear_short;
+      }
     case 'Impact & Axes':
-      return id &&
-        (id.includes('axe') ||
-          id.includes('tomahawk') ||
-          id.includes('parashu') ||
-          id.includes('labrys') ||
-          id.includes('battle') ||
-          id.includes('spike'))
-        ? HAND_AXE_STRIP_BASE64
-        : MACE_STRIP_BASE64;
+      switch (functionalType) {
+        case 'Cudgel':
+          return impact_axe_cudgel;
+        case 'Mace':
+          return impact_axe_mace;
+        case 'Spike':
+          return impact_axe_spike;
+        case 'Hammer':
+          return impact_axe_hammer;
+        case 'Mallet':
+          return impact_axe_mallet;
+        case 'Tomahawk':
+          return impact_axe_tomahawk;
+        case 'Parashu':
+          return impact_axe_parashu;
+        case 'Labrys':
+          return impact_axe_labrys;
+        case 'Battle Axe':
+          return impact_axe_battle;
+        default:
+          return impact_axe_mace;
+      }
     case 'Blades: Curved':
-      return SHOTEL_STRIP_BASE64;
+      switch (functionalType) {
+        case 'Wakizashi':
+          return blade_curved_wakizashi;
+        case 'Katana':
+          return blade_curved_katana;
+        case 'Khopesh':
+          return blade_curved_khopesh;
+        case 'Shotel':
+          return blade_curved_shotel;
+        case 'Odachi':
+          return blade_curved_odachi;
+        case 'Kilij':
+          return blade_curved_kilij;
+        case 'Falx':
+          return blade_curved_falx;
+        case 'Dao':
+          return blade_curved_dao;
+        case 'Dadao':
+          return blade_curved_dadao;
+        default:
+          return blade_curved_shotel;
+      }
     case 'Blades: Straight':
-      return LONG_SWORD_STRIP_BASE64;
+      switch (functionalType) {
+        case 'Cinquedea':
+          return blade_straight_cinquedea;
+        case 'Spatha':
+          return blade_straight_spatha;
+        case 'Falchion':
+          return blade_straight_falchion;
+        case 'Arming Sword':
+          return blade_straight_arming;
+        case 'Bastard Sword':
+          return blade_straight_bastard;
+        case 'Messer':
+          return blade_straight_messer;
+        case 'Zweihander':
+          return blade_straight_zweihander;
+        case 'Flamberge':
+          return blade_straight_flamberge;
+        case 'Executioner':
+        case 'Executioner Sword':
+          return blade_straight_executioner;
+        default:
+          return blade_straight_arming;
+      }
     case 'Carriers & Munitions':
-      return QUIVER_STRIP_BASE64;
+      return getCarrierLauncherStripForFunctionalType(functionalType);
   }
+}
+
+/**
+ * Selects the default embedded Base64 `16x224` vertical sprite strip for a given `WeaponCategory`, `WeaponWeightClass`, and `functionalType`.
+ */
+export function getDefaultPlaceholderStripForCategory(
+  category: WeaponCategory,
+  _weightClass: WeaponWeightClass,
+  id?: string,
+  functionalType?: string
+): string {
+  const resolvedFt = functionalType || resolveWeaponFunctionalType(id || '', category);
+  return getWeaponStripForFunctionalType(category, resolvedFt);
 }
 
 /**
@@ -464,7 +711,12 @@ export function buildMagitechWeapon(seed: MagitechWeaponSeed): WeaponDefinition 
   const subtypeLabel = resolvedTier === 'unique' ? 'Magitech' : 'Custom';
   const strip =
     seed.customStripBase64 ||
-    getDefaultPlaceholderStripForCategory(resolvedCategory, seed.weightClass, seed.id);
+    getDefaultPlaceholderStripForCategory(
+      resolvedCategory,
+      seed.weightClass,
+      seed.id,
+      resolvedFunctionalType
+    );
 
   const dt0 = seed.primaryDamageType;
   const dt1 = seed.skills[1].dt || dt0;
@@ -472,10 +724,12 @@ export function buildMagitechWeapon(seed: MagitechWeaponSeed): WeaponDefinition 
   const dt3 = seed.skills[3].dt || (seed.canBlock ? 'Impact' : dt0);
   const dt4 = seed.skills[4].dt || dt0;
 
-  const isPlch = seed.isPlaceholderAsset !== undefined ? seed.isPlaceholderAsset : true;
-  const futurePlanned =
-    seed.futureAssetPlanned ||
-    `Dedicated custom ${resolvedCategory} (${seed.name}) sprite strip & hardpoint render planned. Currently using placeholder ${resolvedCategory.toLowerCase()} asset.`;
+  const isPlch = seed.isPlaceholderAsset !== undefined ? seed.isPlaceholderAsset : false;
+  const futurePlanned = isPlch
+    ? seed.futureAssetPlanned ||
+      `Dedicated custom ${resolvedCategory} (${seed.name}) sprite strip & hardpoint render planned. Currently using placeholder ${resolvedCategory.toLowerCase()} asset.`
+    : undefined;
+  const defaultStripRow = resolvedTier === 'unique' ? 12 : 0;
 
   const defaultAttackWeight =
     seed.baseAttackWeight ??
@@ -535,7 +789,7 @@ export function buildMagitechWeapon(seed: MagitechWeaponSeed): WeaponDefinition 
       cellWidth: 16,
       cellHeight: 16,
       col: 0,
-      row: 0,
+      row: defaultStripRow,
       renderWidth: 14,
       renderHeight: 14,
       anchor: 'center',
@@ -546,7 +800,7 @@ export function buildMagitechWeapon(seed: MagitechWeaponSeed): WeaponDefinition 
       cellWidth: 16,
       cellHeight: 16,
       col: 0,
-      row: 0,
+      row: defaultStripRow,
       anchor: 'center',
     },
     isPlaceholderAsset: isPlch,
@@ -1631,6 +1885,7 @@ export interface CustomizableWeaponSeed {
   passiveShieldBonus?: number;
   passiveLightBonus?: number;
   spriteStripBase64?: string;
+  isPlaceholderAsset?: boolean;
   actions: [
     CustomizableWeaponActionSeed,
     CustomizableWeaponActionSeed,
@@ -1692,7 +1947,7 @@ export function buildCustomizableWeapon(seed: CustomizableWeaponSeed): WeaponDef
     reloadDurationSec: seed.reloadDuration,
     range: seed.range,
     customStripBase64: seed.spriteStripBase64,
-    isPlaceholderAsset: true,
+    isPlaceholderAsset: seed.isPlaceholderAsset ?? false,
     skills: [
       {
         name: seed.actions[0].name,

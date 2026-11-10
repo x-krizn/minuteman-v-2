@@ -5,7 +5,6 @@
 
 import { WeaponDefinition } from '../../../types';
 import {
-  BUCKLER_SHIELD_STRIP_BASE64,
   HEATER_SHIELD_STRIP_BASE64,
   PAVISE_SHIELD_STRIP_BASE64,
   SHORT_SPEAR_STRIP_BASE64,
@@ -35,8 +34,7 @@ export const ls900SwordspearWeapon = buildMagitechWeapon({
   chainDurationSec: 1.0,
   reloadDurationSec: 0.55,
   range: 36,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated mana-channeling Swordspear polearm sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Mana-Wave Cleave', desc: '4-hit sweeping polearm combo dealing 13 Wave (Mana) damage across a wide arc.' },
     { name: 'Crescent Resonator Sweep', dmg: 24, cd: 4.5, heat: 12, desc: 'Projects a Mana wave arc that hits multiple frontline enemies.' },
@@ -67,8 +65,7 @@ export const rs450RadiantProjectorWeapon = buildMagitechWeapon({
   reloadDurationSec: 2.8,
   range: 90,
   supportPulseOnHit: { shieldRestore: 3 },
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated Radiant Projector emitter strip planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Radiant Coherence Beam', desc: '8-tick mid-range beam dealing 7 Beam damage and reinforcing shields (+3 Shield per hit).' },
     { name: 'Aegis Refraction Pulse', dmg: 20, cd: 4.5, heat: 14, desc: 'Searing light burst that restores 12 Shield capacity on impact.' },
@@ -99,8 +96,7 @@ export const hl220LightburstLanceWeapon = buildMagitechWeapon({
   chainDurationSec: 1.1,
   reloadDurationSec: 0.7,
   range: 42,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated heavy reactor-linked Lightburst Lance sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Lightburst Thrust Chain', desc: '3-stage reactor-linked lance thrust dealing 18 Beam damage along a linear corridor.' },
     { name: 'Judgment Strike', dmg: 36, cd: 6.0, heat: 22, desc: 'Canonical reactor-linked lance charge that blasts targets with coherent light.' },
@@ -140,8 +136,7 @@ export const tigEdgeWeapon = buildMagitechWeapon({
   chainDurationSec: 0.8,
   reloadDurationSec: 0.4,
   range: 24,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated hard-light Energy Blade sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Pulse-Edge Slash', desc: '4-hit precision energy blade combo dealing 11 Pulse damage per strike.' },
     { name: 'Guard Counter-Slash', dmg: 21, cd: 4.0, heat: 10, desc: 'Swift defensive riposte that destabilizes enemy shields.' },
@@ -174,7 +169,6 @@ export const aegisChargeBucklerWeapon = buildMagitechWeapon({
   chainDurationSec: 0.95,
   reloadDurationSec: 0.45,
   range: 24,
-  customStripBase64: BUCKLER_SHIELD_STRIP_BASE64,
   isPlaceholderAsset: false,
   skills: [
     { name: 'Buckler Thrust Bash', desc: '3-hit kinetic shield bash combo dealing 12 Impact damage and generating Presence.' },
@@ -575,8 +569,7 @@ export const utilityAegisPulseAuxiliary = buildMagitechWeapon({
   chainDurationSec: 0.95,
   reloadDurationSec: 1.5,
   range: 68,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated TI Lightwell Recovery System auxiliary sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Lightwell Harmonic', desc: 'Auxiliary focus node.' },
     { name: 'Core Stabilize', dmg: 12, cd: 4.0, heat: 6, desc: 'Auxiliary focus node.' },
@@ -610,8 +603,7 @@ export const aux3TiAegisHardlightAuxiliary = buildMagitechWeapon({
   chainDurationSec: 0.95,
   reloadDurationSec: 0.5,
   range: 28,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated TI Aegis Hard-Light Shield sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Hard-Light Bash', desc: '3-hit photonic barrier strike dealing 12 Beam damage.' },
     { name: 'Refractive Flash', dmg: 20, cd: 4.5, heat: 10, desc: 'Blinding hard-light pulse that restores +15 Shield.' },
@@ -645,8 +637,7 @@ export const aux4TiRadiantSphereAuxiliary = buildMagitechWeapon({
   chainDurationSec: 1.0,
   reloadDurationSec: 0.55,
   range: 32,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated TI Radiant Sphere Generator sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Sphere Repulse', desc: 'Omnidirectional radiant dome pulse.' },
     { name: 'Dome Expansion', dmg: 18, cd: 4.5, heat: 10, desc: 'Expands the radiant sphere to push back nearby hostiles.' },

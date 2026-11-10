@@ -32,8 +32,7 @@ export const sv12ViperWeapon = buildMagitechWeapon({
   chainDurationSec: 1.1,
   reloadDurationSec: 2.1,
   range: 68,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated caseless needle SMG sprite strip planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Viper Needle Burst', desc: '14-round high-RPM close-range burst dealing 4 Pierce damage per shot.' },
     { name: 'Point-Blank Mag Dump', dmg: 24, cd: 4.0, heat: 12, desc: 'Concentrated close-range salvo that shreds exposed frame joints.' },
@@ -63,8 +62,7 @@ export const sv18SerpentWeapon = buildMagitechWeapon({
   chainDurationSec: 1.3,
   reloadDurationSec: 2.4,
   range: 95,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated suppressed Recon Carbine sprite strip planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Suppressed 3x3 Burst', desc: '9-round baffled carbine chain dealing 6 Pierce damage with minimal acoustic signature.' },
     { name: 'Subsonic Vital Shot', dmg: 23, cd: 4.2, heat: 11, desc: 'Silent precision round that strikes weak points without raising Presence.' },
@@ -94,8 +92,7 @@ export const sr440ShadowfangWeapon = buildMagitechWeapon({
   chainDurationSec: 1.5,
   reloadDurationSec: 2.9,
   range: 140,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated coil Marksman Rifle barrel sprite strip planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Shadowfang Precision Sabot', desc: '5-shot marksman chain dealing 12 Pierce damage at extreme range.' },
     { name: 'Critical Seam Piercer', dmg: 30, cd: 5.0, heat: 16, desc: 'Pinpoint sabot round that bypasses armor threshold on locked targets.' },
@@ -126,8 +123,7 @@ export const s4WhisperBladeWeapon = buildMagitechWeapon({
   chainDurationSec: 0.75,
   reloadDurationSec: 0.35,
   range: 22,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated monomolecular combat Dagger sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Monomolecular Flurry', desc: '5-hit ultra-fast dagger chain dealing 10 Pierce damage per slash.' },
     { name: 'Ambush Backstab', dmg: 26, cd: 3.8, heat: 9, desc: 'High-critical precision thrust into exposed rear or flanked plating.' },
@@ -159,8 +155,7 @@ export const s6PhantomEdgeWeapon = buildMagitechWeapon({
   reloadDurationSec: 0.35,
   range: 22,
   supportPulseOnHit: { heatVent: 4 },
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated thermal-coated stealth Knife sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Heat-Sink Knife Combo', desc: '5-hit stealth knife combo dealing 10 Pierce damage and venting 4 Heat per hit.' },
     { name: 'Zero-Signature Thrust', dmg: 23, cd: 4.0, heat: -8, desc: 'Dampened puncture strike that vents 8 Reactor Heat on impact.' },
@@ -425,8 +420,7 @@ export const utilityPhantomShroudAuxiliary = buildMagitechWeapon({
   chainDurationSec: 0.85,
   reloadDurationSec: 1.4,
   range: 70,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated VX Smoke Dispersal System auxiliary sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Thermal Canister', desc: 'Auxiliary focus node.' },
     { name: 'Baffle Vent', dmg: 12, cd: 4.0, heat: -10, desc: 'Auxiliary focus node.' },
@@ -458,8 +452,7 @@ export const aux3VxEclipseCloakAuxiliary = buildMagitechWeapon({
   chainDurationSec: 0.85,
   reloadDurationSec: 1.3,
   range: 64,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated VX Eclipse Cloak Generator sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Eclipse Shimmer', desc: 'Auxiliary focus node.' },
     { name: 'Heat Mask', dmg: 13, cd: 4.0, heat: -8, desc: 'Auxiliary focus node.' },
@@ -491,8 +484,7 @@ export const aux4VxPhaseShiftAuxiliary = buildMagitechWeapon({
   chainDurationSec: 0.85,
   reloadDurationSec: 1.4,
   range: 68,
-  isPlaceholderAsset: true,
-  futureAssetPlanned: 'Dedicated VX Phase-Shift Module sprite planned',
+  isPlaceholderAsset: false,
   skills: [
     { name: 'Phase Flicker', desc: 'Auxiliary focus node.' },
     { name: 'Aether Slip', dmg: 14, cd: 4.0, heat: 6, desc: 'Auxiliary focus node.' },

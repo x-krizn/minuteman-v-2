@@ -17,6 +17,7 @@ import {
 import {
   computePlayerWeightRecoveryProfile,
   drawCompositePlayerMech,
+  resolveSpriteStripSliceCoords,
   subscribeToMechSpriteLoad,
 } from '../../systems';
 import { GemId, OrionDir, OrionGlidePhase, OrionState, TraitLine } from '../../types';
@@ -86,10 +87,18 @@ export const SpriteCanvasIcon: React.FC<{
     img.onload = () => {
       ctx.clearRect(0, 0, 16, 16);
       ctx.imageSmoothingEnabled = false;
+      const { srcX, srcY } = resolveSpriteStripSliceCoords(
+        img.naturalWidth || img.width,
+        img.naturalHeight || img.height,
+        col,
+        row,
+        cellWidth,
+        cellHeight
+      );
       ctx.drawImage(
         img,
-        col * cellWidth,
-        row * cellHeight,
+        srcX,
+        srcY,
         cellWidth,
         cellHeight,
         0,
@@ -621,10 +630,19 @@ export const HighResEquipmentArtCanvas: React.FC<{
           ctx.imageSmoothingEnabled = false;
           ctx.shadowColor = accentColor;
           ctx.shadowBlur = 10;
+          const defaultRow = !gemVis.gemId ? (wDef.hardpointSprite?.row ?? 0) : 0;
+          const { srcX, srcY } = resolveSpriteStripSliceCoords(
+            img.naturalWidth || img.width,
+            img.naturalHeight || img.height,
+            gemVis.colIndex,
+            defaultRow,
+            16,
+            16
+          );
           ctx.drawImage(
             img,
-            gemVis.colIndex * 16,
-            0,
+            srcX,
+            srcY,
             16,
             16,
             W / 2 - 28,

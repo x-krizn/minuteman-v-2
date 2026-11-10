@@ -58,11 +58,11 @@ export const borsKnightEnemy: EnemyWikiDefinition = {
   shields: { type: 'physical', capacity: 60 },
   armor: { type: 'Reactive', threshold: 8, rating: 5, durability: 80 },
   frameIntegrity: 160,
-  speed: 24,
+  speed: 20,
   damage: 32,
   damageType: 'Impact',
-  tellDurationSec: 0.5,
-  attackCooldownSec: 2.0,
+  tellDurationSec: 0.88,
+  attackCooldownSec: 2.7,
   lootTable: [
     { itemId: 'trade_coin', chance: 1.0, count: 50 },
     { itemId: 'grail_fragment', chance: 1.0, count: 1 },
@@ -115,7 +115,7 @@ export const borsKnightEnemy: EnemyWikiDefinition = {
 
     if (e.frame.integrity <= e.frame.maxIntegrity * 0.5 && !e.enraged) {
       e.enraged = true;
-      e.speed = 33;
+      e.speed = 26;
       e.emissiveColor = '#ef4444';
       e.flashColor = '#ef4444';
       e.flashTimer = 0.24;
@@ -218,8 +218,19 @@ export const borsKnightEnemy: EnemyWikiDefinition = {
     if (e.state === 'attack') {
       e.stateTimer -= dt;
       if (e.stateTimer <= 0) {
+        e.state = 'recovery';
+        const recSec = e.enraged ? 0.65 : 0.8;
+        e.stateTimer = recSec;
+        e.stateMaxTimer = recSec;
+      }
+      return;
+    }
+
+    if (e.state === 'recovery') {
+      e.stateTimer -= dt;
+      if (e.stateTimer <= 0) {
         e.state = 'idle';
-        e.attackCd = e.enraged ? 1.35 : 2.0;
+        e.attackCd = e.enraged ? 1.85 : this.attackCooldownSec;
       }
       return;
     }

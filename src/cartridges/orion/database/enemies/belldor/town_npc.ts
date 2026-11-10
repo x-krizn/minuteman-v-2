@@ -28,11 +28,11 @@ export const townNpcEntity: EnemyWikiDefinition = {
   shields: { type: 'physical', capacity: 20 },
   armor: { type: 'Hardened', threshold: 4, rating: 2, durability: 30 },
   frameIntegrity: 50,
-  speed: 24,
+  speed: 20,
   damage: 18,
   damageType: 'Impact',
-  tellDurationSec: 0.4,
-  attackCooldownSec: 1.8,
+  tellDurationSec: 0.68,
+  attackCooldownSec: 2.4,
   lootTable: [{ itemId: 'trade_coin', chance: 0.8, count: 5 }],
   customSpawnSetup(_state, _px, _py, spawnCountOfType) {
     const dispositions: Array<'calm' | 'linger' | 'feral'> = ['calm', 'linger', 'feral'];
@@ -162,6 +162,15 @@ export const townNpcEntity: EnemyWikiDefinition = {
         return;
       }
       if (e.state === 'attack') {
+        e.stateTimer -= dt;
+        if (e.stateTimer <= 0) {
+          e.state = 'recovery';
+          e.stateTimer = 0.55;
+          e.stateMaxTimer = 0.55;
+        }
+        return;
+      }
+      if (e.state === 'recovery') {
         e.stateTimer -= dt;
         if (e.stateTimer <= 0) {
           e.state = 'idle';

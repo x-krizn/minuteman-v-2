@@ -29,11 +29,11 @@ export const ladyOfTheLakeEnemy: EnemyWikiDefinition = {
   shields: { type: 'energy', capacity: 80 },
   armor: { type: 'Reactive', threshold: 8, rating: 5, durability: 95 },
   frameIntegrity: 200,
-  speed: 30,
+  speed: 24,
   damage: 34,
   damageType: 'Wave',
-  tellDurationSec: 0.55,
-  attackCooldownSec: 2.0,
+  tellDurationSec: 0.95,
+  attackCooldownSec: 2.8,
   lootTable: [
     { itemId: 'trade_coin', chance: 1.0, count: 100 },
     { itemId: 'corrupted_shard', chance: 1.0, count: 3 },
@@ -130,13 +130,13 @@ export const ladyOfTheLakeEnemy: EnemyWikiDefinition = {
             x: e.x + Math.cos(ang) * 10,
             y: e.y + Math.sin(ang) * 10,
             z: 8,
-            vx: Math.cos(ang) * 125,
-            vy: Math.sin(ang) * 125,
+            vx: Math.cos(ang) * 88,
+            vy: Math.sin(ang) * 88,
             vz: 0,
             damage: e.damage,
             damageType: 'Wave',
             isPlayer: false,
-            life: 1.3,
+            life: 1.65,
             radius: 3.5,
             color: '#38bdf8',
             trailColor: '#c084fc',
@@ -148,6 +148,16 @@ export const ladyOfTheLakeEnemy: EnemyWikiDefinition = {
     }
 
     if (e.state === 'attack') {
+      e.stateTimer -= dt;
+      if (e.stateTimer <= 0) {
+        e.state = 'recovery';
+        e.stateTimer = 0.85;
+        e.stateMaxTimer = 0.85;
+      }
+      return;
+    }
+
+    if (e.state === 'recovery') {
       e.stateTimer -= dt;
       if (e.stateTimer <= 0) {
         e.state = 'idle';

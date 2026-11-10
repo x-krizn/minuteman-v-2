@@ -593,13 +593,13 @@ export function executeActionPayload(
           x: state.x + aim.dx * 12,
           y: state.y + aim.dy * 12,
           z: state.z + 6,
-          vx: aim.dx * 245,
-          vy: aim.dy * 245,
+          vx: aim.dx * 168,
+          vy: aim.dy * 168,
           vz: 0,
           damage: Math.round(action.damage * overdriveMult),
           damageType: action.damageType || 'Pierce',
           isPlayer: true,
-          life: 0.65,
+          life: 0.92,
           radius: 5,
           color: trailColor,
           trailColor: coreColor,
@@ -816,13 +816,13 @@ export function executeActionPayload(
               x: state.x + Math.cos(ang) * 8,
               y: state.y + Math.sin(ang) * 8,
               z: state.z + 6,
-              vx: Math.cos(ang) * (220 - idx * 6),
-              vy: Math.sin(ang) * (220 - idx * 6),
+              vx: Math.cos(ang) * (152 - idx * 4),
+              vy: Math.sin(ang) * (152 - idx * 4),
               vz: 0,
               damage: Math.round(action.damage * 0.52 * overdriveMult),
               damageType: action.damageType || 'Pierce',
               isPlayer: true,
-              life: 0.75,
+              life: 1.02,
               radius: 3.5,
               color: trailColor,
               trailColor: coreColor,
@@ -844,7 +844,7 @@ export function executeActionPayload(
           for (let idx = 0; idx < ordCount; idx++) {
             const off = ordCount > 1 ? (idx - (ordCount - 1) / 2) * 0.09 : 0;
             const ang = baseOrdAng + off;
-            const ordSpeed = (isMortarLob ? 165 : 210) * (1 - idx * 0.05);
+            const ordSpeed = (isMortarLob ? 115 : 145) * (1 - idx * 0.05);
             state.projectiles.push({
               x: state.x + Math.cos(ang) * 10,
               y: state.y + Math.sin(ang) * 10,
@@ -855,7 +855,7 @@ export function executeActionPayload(
               damage: Math.round((action.damage * overdriveMult) / Math.pow(ordCount, 0.45)),
               damageType: 'Blast',
               isPlayer: true,
-              life: 0.85,
+              life: 1.15,
               radius: 5.5,
               color: trailColor,
               trailColor: coreColor,
@@ -901,7 +901,7 @@ export function executeActionPayload(
           for (let idx = 0; idx < salvoCount; idx++) {
             const off = salvoCount > 1 ? (idx - (salvoCount - 1) / 2) * 0.065 : 0;
             const ang = aimAngle + off;
-            const speed = (isHeavyBeamOrRail ? 255 : 225) * (1 - idx * 0.035);
+            const speed = (isHeavyBeamOrRail ? 174 : 154) * (1 - idx * 0.035);
             const perRoundDmg =
               salvoCount > 1
                 ? Math.max(4, Math.round((action.damage * overdriveMult) / Math.pow(salvoCount, 0.55)))
@@ -916,7 +916,7 @@ export function executeActionPayload(
               damage: perRoundDmg,
               damageType: action.damageType,
               isPlayer: true,
-              life: 0.9,
+              life: 1.18,
               radius: isHeavyBeamOrRail ? 5.5 : salvoCount > 1 ? 4.0 : 4.5,
               color: trailColor,
               trailColor: coreColor,
@@ -984,13 +984,13 @@ export function executeActionPayload(
           x: state.x + aim.dx * 10,
           y: state.y + aim.dy * 10,
           z: state.z + 6,
-          vx: aim.dx * 180,
-          vy: aim.dy * 180,
+          vx: aim.dx * 128,
+          vy: aim.dy * 128,
           vz: 0,
           damage: Math.round(action.damage * overdriveMult),
           damageType: 'Impact',
           isPlayer: true,
-          life: 0.65,
+          life: 0.92,
           radius: 5,
           color: trailColor,
           trailColor: coreColor,
@@ -1167,8 +1167,8 @@ export function executeActionPayload(
           arch.isBow || isRapidRotaryWeapon
             ? [-0.26, -0.13, 0, 0.13, 0.26]
             : [-0.36, -0.18, 0, 0.18, 0.36];
-        const speed = arch.isQuiverOrBandolier ? 135 : 195;
-        const life = arch.isQuiverOrBandolier ? 0.42 : 0.65;
+        const speed = arch.isQuiverOrBandolier ? 105 : 138;
+        const life = arch.isQuiverOrBandolier ? 0.56 : 0.88;
         for (const off of offsets) {
           const ang = aimAngle + off;
           state.projectiles.push({
@@ -1208,13 +1208,13 @@ export function executeActionPayload(
           x: state.x + aim.dx * 8,
           y: state.y + aim.dy * 8,
           z: state.z + 8,
-          vx: aim.dx * (slot2DmgType === 'Beam' || slot2DmgType === 'Pulse' ? 195 : 125),
-          vy: aim.dy * (slot2DmgType === 'Beam' || slot2DmgType === 'Pulse' ? 195 : 125),
+          vx: aim.dx * (slot2DmgType === 'Beam' || slot2DmgType === 'Pulse' ? 138 : 96),
+          vy: aim.dy * (slot2DmgType === 'Beam' || slot2DmgType === 'Pulse' ? 138 : 96),
           vz: slot2DmgType === 'Blast' ? 20 : 0,
           damage: Math.round(action.damage * overdriveMult),
           damageType: slot2DmgType,
           isPlayer: true,
-          life: 0.65,
+          life: 0.88,
           radius: 5,
           color: gemVis.gemId ? trailColor : slot2DmgType === 'Blast' ? '#ea580c' : trailColor,
           trailColor: gemVis.gemId ? coreColor : slot2DmgType === 'Blast' ? '#f97316' : coreColor,
@@ -1262,7 +1262,7 @@ export function executeActionPayload(
         const isShieldEquip = arch.isShield;
         state.isHoldingBlock = true;
         state.blockHoldTimer = 0;
-        state.blockTimer = 0.25;
+        state.blockTimer = 0.34;
         state.blockingWeaponId = currentWeaponId;
 
         soundSystem.playSword();
@@ -1277,8 +1277,8 @@ export function executeActionPayload(
           style: 'bash',
           color: '#38bdf8',
           coreColor: '#ffffff',
-          life: 0.25,
-          maxLife: 0.25,
+          life: 0.34,
+          maxLife: 0.34,
         });
 
         ctx.spawnParticles(
@@ -1287,7 +1287,7 @@ export function executeActionPayload(
           state.z + 8,
           8,
           '#38bdf8',
-          'BLOCK (0.25s PERFECT)'
+          'BLOCK (0.34s PERFECT)'
         );
       } else if (
         arch.isBow ||
@@ -1314,13 +1314,13 @@ export function executeActionPayload(
           x: state.x + aim.dx * 9,
           y: state.y + aim.dy * 9,
           z: state.z + 6,
-          vx: aim.dx * 210,
-          vy: aim.dy * 210,
+          vx: aim.dx * 145,
+          vy: aim.dy * 145,
           vz: 0,
           damage: Math.round(action.damage * overdriveMult),
           damageType: action.damageType || 'Pierce',
           isPlayer: true,
-          life: 0.8,
+          life: 1.05,
           radius: 4,
           color: trailColor,
           trailColor: coreColor,
@@ -1355,13 +1355,13 @@ export function executeActionPayload(
             x: state.x + Math.cos(ang) * 8,
             y: state.y + Math.sin(ang) * 8,
             z: state.z + 6,
-            vx: Math.cos(ang) * 175,
-            vy: Math.sin(ang) * 175,
+            vx: Math.cos(ang) * 124,
+            vy: Math.sin(ang) * 124,
             vz: 0,
             damage: Math.round(action.damage * overdriveMult),
             damageType: action.damageType || 'Pierce',
             isPlayer: true,
-            life: 0.65,
+            life: 0.92,
             radius: 3,
             color: trailColor,
             trailColor: coreColor,
@@ -1396,13 +1396,13 @@ export function executeActionPayload(
           x: state.x + aim.dx * 12,
           y: state.y + aim.dy * 12,
           z: state.z + 6,
-          vx: aim.dx * 240,
-          vy: aim.dy * 240,
+          vx: aim.dx * 165,
+          vy: aim.dy * 165,
           vz: 0,
           damage: Math.round(action.damage * overdriveMult),
           damageType: 'Pierce',
           isPlayer: true,
-          life: 0.85,
+          life: 1.12,
           radius: 5,
           color: trailColor,
           trailColor: coreColor,
@@ -1478,13 +1478,13 @@ export function executeActionPayload(
           x: state.x + aim.dx * 12,
           y: state.y + aim.dy * 12,
           z: state.z + 6,
-          vx: aim.dx * 195,
-          vy: aim.dy * 195,
+          vx: aim.dx * 138,
+          vy: aim.dy * 138,
           vz: 0,
           damage: Math.round(action.damage * overdriveMult),
           damageType: 'Wave',
           isPlayer: true,
-          life: 0.65,
+          life: 0.92,
           radius: 6,
           color: trailColor,
           trailColor: coreColor,
@@ -1525,13 +1525,13 @@ export function executeActionPayload(
           x: state.x + aim.dx * 14,
           y: state.y + aim.dy * 14,
           z: state.z + 6,
-          vx: aim.dx * 240,
-          vy: aim.dy * 240,
+          vx: aim.dx * 168,
+          vy: aim.dy * 168,
           vz: 0,
           damage: Math.round(action.damage * overdriveMult),
           damageType: 'Wave',
           isPlayer: true,
-          life: 0.85,
+          life: 1.12,
           radius: 6,
           color: trailColor,
           trailColor: coreColor,
@@ -1622,13 +1622,13 @@ export function executeActionPayload(
             x: state.x + Math.cos(ang) * 8,
             y: state.y + Math.sin(ang) * 8,
             z: state.z + 6,
-            vx: Math.cos(ang) * 210,
-            vy: Math.sin(ang) * 210,
+            vx: Math.cos(ang) * 148,
+            vy: Math.sin(ang) * 148,
             vz: 0,
             damage: Math.round(action.damage * 0.6 * overdriveMult),
             damageType: 'Pierce',
             isPlayer: true,
-            life: 0.75,
+            life: 1.0,
             radius: 3,
             color: trailColor,
             trailColor: coreColor,
@@ -1654,13 +1654,13 @@ export function executeActionPayload(
           x: state.x + aim.dx * 10,
           y: state.y + aim.dy * 10,
           z: state.z + 6,
-          vx: aim.dx * 240,
-          vy: aim.dy * 240,
+          vx: aim.dx * 168,
+          vy: aim.dy * 168,
           vz: 0,
           damage: Math.round(action.damage * overdriveMult),
           damageType: action.damageType || 'Beam',
           isPlayer: true,
-          life: 0.85,
+          life: 1.12,
           radius: 5.5,
           color: trailColor,
           trailColor: coreColor,
@@ -1746,13 +1746,13 @@ export function executeActionPayload(
       x: state.x + aim.dx * 10,
       y: state.y + aim.dy * 10,
       z: state.z + 6,
-      vx: aim.dx * 210,
-      vy: aim.dy * 210,
+      vx: aim.dx * 148,
+      vy: aim.dy * 148,
       vz: 0,
       damage: Math.round(desc.damage * overdriveMult),
       damageType: 'Pulse',
       isPlayer: true,
-      life: 0.75,
+      life: 1.0,
       radius: 4.5,
       color: '#38bdf8',
       trailColor: '#7dd3fc',
@@ -2388,7 +2388,7 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
 
     const activeRemaining = isBlock
       ? state.isHoldingBlock
-        ? Math.max(0.06, 0.25 - (state.blockHoldTimer || 0))
+        ? Math.max(0.06, 0.34 - (state.blockHoldTimer || 0))
         : Math.max(0, state.blockTimer || 0)
       : Math.max(0, state.skillActiveTimers?.[cooldownKey] || 0);
     const reloadRemaining =
@@ -2416,7 +2416,7 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
       id: actionId,
       cooldownKey,
       slotIndex,
-      name: isBlock ? 'Block (Hold · 0.25s Perfect)' : m?.name || `Skill ${slotIndex}`,
+      name: isBlock ? 'Block (Hold · 0.34s Perfect)' : m?.name || `Skill ${slotIndex}`,
       shortLabel: (isBlock ? 'BLOCK' : m?.name || `SKILL ${slotIndex}`)
         .slice(0, 12)
         .toUpperCase(),
@@ -2850,6 +2850,7 @@ export function activateResolvedCombatSkill(
     const scaledHeat =
       rawHeat * heatPenaltyMult * featMods.heatGenMult * gemCombatMods.skillHeatCostMult;
     state.heat = Math.min(state.maxHeat, state.heat + scaledHeat);
+    state.heatDecayDelayTimer = Math.max(state.heatDecayDelayTimer || 0, 0.45);
   } else if (rawHeat < 0) {
     state.heat = Math.max(0, state.heat + rawHeat);
   }
@@ -2860,8 +2861,8 @@ export function activateResolvedCombatSkill(
   );
   const tellScale = clampTempoMultiplier(hwStats.tellDurationMult);
   const finalCd = Math.max(
-    1.2,
-    (skill.cooldownSec ?? desc.cooldownSec ?? 4.0) * cdScale
+    1.5,
+    (skill.cooldownSec ?? desc.cooldownSec ?? 4.5) * cdScale
   );
 
   state.actionCooldowns = state.actionCooldowns || {};
@@ -2881,8 +2882,8 @@ export function activateResolvedCombatSkill(
     if (nextCharges > 0) {
       state.skillInternalAmmo[skill.cooldownKey] = nextCharges;
       const cycleSec = Math.max(
-        0.28,
-        (desc.internalCycleSec ?? 0.45) * cdScale
+        0.45,
+        (desc.internalCycleSec ?? 0.65) * cdScale
       );
       state.actionCooldowns[skill.cooldownKey] = cycleSec;
     } else {
@@ -2904,9 +2905,9 @@ export function activateResolvedCombatSkill(
 
   state.activeActionId = skill.id;
   state.activeSkillCooldownKey = skill.cooldownKey;
-  state.skillTellTimer = Math.max(0.04, desc.tellDurationSec * tellScale);
+  state.skillTellTimer = Math.max(0.08, desc.tellDurationSec * tellScale);
   state.skillTellMaxTimer = state.skillTellTimer;
-  state.skillActionTimer = Math.max(0.15, desc.actionDurationSec * tellScale);
+  state.skillActionTimer = Math.max(0.22, desc.actionDurationSec * tellScale);
   state.skillActionMaxTimer = state.skillActionTimer;
 
   soundSystem.playCharge();

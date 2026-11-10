@@ -137,7 +137,7 @@ export const s2TurbineKhopeshWeapon = buildMagitechWeapon({
     { name: 'Turbine Hook Slash', desc: '4-hit high-RPM curved blade combo dealing 11 Pierce damage per strike.' },
     { name: 'Spooling Lunge', dmg: 24, cd: 4.0, heat: 11, desc: 'Turbine-boosted gap closer that bypasses frontal guard.' },
     { name: 'Cross-Rotor Riposte', dmg: 18, cd: 4.8, heat: 10, desc: 'Scissoring slash optimized for dual-wield and off-hand stances.' },
-    { name: 'Block', dmg: 10, cd: 0, heat: 3, isBlock: true, desc: 'Hold to raise turbine blade guard (0.25s Perfect Block window).' },
+    { name: 'Block', dmg: 10, cd: 0, heat: 3, isBlock: true, desc: 'Hold to raise turbine blade guard (0.34s Perfect Block window).' },
     { name: 'Redline Cyclone', dmg: 29, cd: 7.5, heat: 22, desc: 'Vents turbine exhaust into a 360-degree razor cleave.' },
   ],
 });
@@ -250,7 +250,7 @@ export const longSwordWeapon: WeaponDefinition = {
       isBlock: true,
       heatCost: 4,
       range: 24,
-      description: 'Raise broadsword guard to deflect incoming attacks (0.25s Perfect Block window).',
+      description: 'Raise broadsword guard to deflect incoming attacks (0.34s Perfect Block window).',
     },
     {
       slot: 4,
@@ -330,7 +330,7 @@ export const aux3PnsyRockweilerBucklerAuxiliary = buildMagitechWeapon({
     { name: 'Rockweiler Rim Bash', desc: '3-hit reactive buckler bash dealing 12 Impact damage.' },
     { name: 'Reactive Counter-Snap', dmg: 20, cd: 4.5, heat: 10, desc: 'Detonates a reactive rim plate to stagger melee attackers.' },
     { name: 'Braced Forearm Guard', dmg: 16, cd: 5.0, heat: 8, desc: 'Reinforces frontal guard and restores +12 Shield.' },
-    { name: 'Block', dmg: 10, cd: 0, heat: 2, isBlock: true, desc: 'Hold to raise Rockweiler parrying guard (0.25s Perfect Block window).' },
+    { name: 'Block', dmg: 10, cd: 0, heat: 2, isBlock: true, desc: 'Hold to raise Rockweiler parrying guard (0.34s Perfect Block window).' },
     { name: 'Rockweiler Concussion Slam', dmg: 28, cd: 7.5, heat: 18, dt: 'Blast', desc: 'Explosive shield slam that shreds enemy armor durability.' },
   ],
 });

@@ -29,9 +29,9 @@ import {
 } from './combatHelpers';
 
 /**
- * Duration in seconds (`0.18` `s`) after raising a shield during which incoming hits trigger a Perfect Block (`mechanics-v1.md §5`).
+ * Duration in seconds (`0.34` `s`) after raising a shield during which incoming hits trigger a Perfect Block (`mechanics-v1.md §5`).
  */
-export const PERFECT_BLOCK_WINDOW_SEC = 0.25;
+export const PERFECT_BLOCK_WINDOW_SEC = 0.34;
 
 /**
  * Type contract for `DamageLayerOptions` (damage layer options) in `damageSystem.ts`.
@@ -299,7 +299,7 @@ export function resolveEnemyMeleeAttacks(
           hitDamage = Math.round(e.damage * (1 + 0.1 * (e.hitsLanded - 1)));
         }
 
-        // Active Skill 4 Held Block mitigation (0.25s Perfect Block window vs Standard Held Block)
+        // Active Skill 4 Held Block mitigation (0.34s Perfect Block window vs Standard Held Block)
         if (state.isHoldingBlock || (state.blockTimer || 0) > 0) {
           const isShieldBlock = Boolean(
             state.blockingWeaponId && state.blockingWeaponId.includes('shield')
@@ -307,7 +307,7 @@ export function resolveEnemyMeleeAttacks(
           const isPerfectBlock = (state.blockHoldTimer ?? 0) <= PERFECT_BLOCK_WINDOW_SEC;
 
           if (isPerfectBlock) {
-            // 0.25s Perfect Block: 0 damage taken, heavy parry stagger, shield restore & heat vent!
+            // 0.34s Perfect Block: 0 damage taken, heavy parry stagger, shield restore & heat vent!
             e.stun = Math.max(e.stun, isShieldBlock ? 1.85 : 1.55);
             e.state = 'stagger';
             e.stateTimer = isShieldBlock ? 1.85 : 1.55;

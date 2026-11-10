@@ -105,7 +105,7 @@ export function firePrimarySalvoShot(
   state.pendingBowChargeRatio = bowChargeRatio;
 
   if (isMeleeOrShield && activeComboStep) {
-    const rawTell = Math.max(0.04, activeComboStep.tellDurationSec * tellMult);
+    const rawTell = Math.max(0.08, activeComboStep.tellDurationSec * tellMult);
     const minTotalStep = COMBAT_TEMPO_CONSTANTS.MELEE_COMBO_STEP_SEC.minFloor;
     const rawAction = Math.max(
       minTotalStep - rawTell,
@@ -116,16 +116,16 @@ export function firePrimarySalvoShot(
     state.skillActionTimer = Number(rawAction.toFixed(3));
     state.skillActionMaxTimer = state.skillActionTimer;
     state.meleeComboResetTimer =
-      (skill0.comboResetWindowSec ?? 1.1) + state.skillTellTimer + state.skillActionTimer;
+      (skill0.comboResetWindowSec ?? 1.45) + state.skillTellTimer + state.skillActionTimer;
   } else if (skill0.isChargeable && bowChargeRatio !== undefined) {
     // Bow release: immediate crisp release tell since the player already held draw
-    state.skillTellTimer = 0.035;
-    state.skillTellMaxTimer = 0.035;
-    state.skillActionTimer = Math.max(0.14, skill0.actionDurationSec * tellMult);
+    state.skillTellTimer = 0.045;
+    state.skillTellMaxTimer = 0.045;
+    state.skillActionTimer = Math.max(0.22, skill0.actionDurationSec * tellMult);
     state.skillActionMaxTimer = state.skillActionTimer;
   } else {
     // Ranged Basic Attack: per-shot cadence decoupled from doubled magazine size (`shotsPerChain`)
-    const rawTell = Math.max(0.038, skill0.tellDurationSec * tellMult);
+    const rawTell = Math.max(0.065, skill0.tellDurationSec * tellMult);
     const minTotalShot = COMBAT_TEMPO_CONSTANTS.RANGED_BASIC_SHOT_SEC.minFloor;
     const rawAction = Math.max(
       minTotalShot - rawTell,
@@ -194,21 +194,24 @@ export function executeBasicAttackShot(
     (loadPenalty?.heatMult ?? 1.0) *
     featMods.heatGenMult;
   state.heat = Math.min(state.maxHeat, state.heat + shotHeat);
+  state.heatDecayDelayTimer = Math.max(state.heatDecayDelayTimer || 0, 0.45);
   if (isBowWeapon && bowChargeRatio > 0.15 && state.gates?.energySystemActive) {
     const energyCost = Math.round(4 * bowChargeRatio);
     state.energy = Math.max(0, state.energy - energyCost);
   }
   const shotDmg = Math.round(action.damage * overdriveMult * bowDmgMult * comboDmgMult);
 
-  // Advance Melee Combo Step & set internal reset timer / finisher recovery
+  // Advance Melee Combo Step & set internal reset timer / deliberate finisher recovery
   if (isMeleeOrShield) {
     const nextStep = ((state.meleeComboStep || 0) + 1) % stepCount;
     state.meleeComboStep = nextStep;
     if (nextStep === 0 && stepCount > 1) {
-      state.meleeSequenceCooldownTimer = 0.34;
+      const wClass = arch.weightClass;
+      state.meleeSequenceCooldownTimer =
+        wClass === 'light' ? 0.45 : wClass === 'heavy' ? 0.75 : 0.58;
       state.meleeComboResetTimer = 0;
     } else {
-      state.meleeComboResetTimer = action.comboResetWindowSec ?? 1.1;
+      state.meleeComboResetTimer = action.comboResetWindowSec ?? 1.45;
     }
   }
 
@@ -551,13 +554,13 @@ export function executeBasicAttackShot(
           x: state.x + aim.dx * 12,
           y: state.y + aim.dy * 12,
           z: state.z + 6,
-          vx: aim.dx * 175,
-          vy: aim.dy * 175,
+          vx: aim.dx * 128,
+          vy: aim.dy * 128,
           vz: 0,
           damage: shotDmg,
           damageType: action.damageType,
           isPlayer: true,
-          life: 0.55,
+          life: 0.72,
           radius: 4.5,
           color: trailColor,
           trailColor: coreColor,
@@ -568,13 +571,13 @@ export function executeBasicAttackShot(
           x: state.x + aim.dx * 10,
           y: state.y + aim.dy * 10,
           z: state.z + 6,
-          vx: aim.dx * 165,
-          vy: aim.dy * 165,
+          vx: aim.dx * 118,
+          vy: aim.dy * 118,
           vz: 0,
           damage: Math.round(shotDmg * 0.75),
           damageType: 'Wave',
           isPlayer: true,
-          life: 0.5,
+          life: 0.68,
           radius: 4.5,
           color: trailColor,
           trailColor: coreColor,
@@ -667,12 +670,12 @@ export function executeBasicAttackShot(
         : weapon.adaptiveDamageTypes[0]
       : action.damageType;
     const adaptiveShotDmg = weapon?.adaptiveDamageTypes ? Math.round(shotDmg * 1.12) : shotDmg;
-    const bowSpeedMult = isBowWeapon ? 1.0 + 0.45 * bowChargeRatio : 1.0;
+    const bowSpeedMult = isBowWeapon ? 1.0 + 0.42 * bowChargeRatio : 1.0;
     const projSpeedScale = clampTempoMultiplier(
       gemCombatMods.projectileSpeedMult * hwStats.accuracyMult
     );
-    const baseProjSpeed = (isBowWeapon ? 205 * bowSpeedMult : 185) * projSpeedScale;
-    const projLife = isBowWeapon ? 0.68 + 0.34 * bowChargeRatio : 0.75;
+    const baseProjSpeed = (isBowWeapon ? 142 * bowSpeedMult : 128) * projSpeedScale;
+    const projLife = isBowWeapon ? 0.92 + 0.42 * bowChargeRatio : 1.02;
     const rangedPlayerProf = resolvePlayerInertiaProfile(state);
     const rangedWeaponSpec = resolveWeaponAttackInertiaSpec(currentWeaponId, 0, state);
     const recoilJ = computeRangedImpulse(rangedWeaponSpec.projectileWeight, baseProjSpeed);

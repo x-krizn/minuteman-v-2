@@ -211,6 +211,7 @@ movement_restriction ∝ Δv_recoil_eff / (k2·S)
 
 - Uses base frame weight; the charge bonus `μ` is not applied, because there is no incoming hit. [INF]
 - Heavier, more stable frames ignore light recoil and recover faster from heavy recoil, producing the author's "less movement restriction while attacking" with no special-case rule. [A, INF]
+- **Attack Movement Commitment (`LOCKED`)**: During active weapon execution (`attackCommitmentMult` in `playerSystem.ts`), mech glide velocity is throttled by weapon class and weight (`0.20×–0.36×` during melee windup/swing, `0.32×–0.48×` during ranged fire, `0.45×` while drawing a bow, `0.68×` while reloading, and `0.55×` while holding guard), and continuous booster sprinting is suppressed until the strike or cast finishes.
 
 ---
 

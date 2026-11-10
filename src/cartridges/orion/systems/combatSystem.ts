@@ -436,11 +436,13 @@ export function updateCombat(
     }
   }
 
-  if (state.heat > 0 && !state.isContinuousBoosting) {
+  if ((state.heatDecayDelayTimer || 0) > 0) {
+    state.heatDecayDelayTimer = Math.max(0, (state.heatDecayDelayTimer || 0) - dt);
+  } else if (state.heat > 0 && !state.isContinuousBoosting) {
     const hwStats = resolveEquippedHardwareStats(state);
     state.heat = Math.max(
       0,
-      state.heat - 12 * featMods.heatVentMult * hwStats.heatVentMult * dt
+      state.heat - 11 * featMods.heatVentMult * hwStats.heatVentMult * dt
     );
   }
 

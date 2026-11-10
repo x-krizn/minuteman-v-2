@@ -47,6 +47,7 @@ import {
   unlockLevel2SecondaryWeapon,
 } from '../database/progression';
 import {
+  classifyWeaponCombatArchetype,
   clampTempoMultiplier,
   getWeaponDefinition,
   isTwoHandOnlyWeapon,
@@ -1674,8 +1675,8 @@ export function updateCompanionPoe(
 
 // ─── 5. PLAYER MOVEMENT, DUAL-MODE BOOSTER & INPUT CONTROLLER ────────────────
 
-const B_HOLD_CONTINUOUS_THRESHOLD_SEC = 0.14;
-const CONTINUOUS_BOOST_HEAT_PER_SEC = 28;
+const B_HOLD_CONTINUOUS_THRESHOLD_SEC = 0.16;
+const CONTINUOUS_BOOST_HEAT_PER_SEC = 38;
 
 /**
  * Step player movement, pit-fall recovery, [Y] Lock-On/Weapon Swap, [B] Tap/Hold Booster,
@@ -1774,7 +1775,35 @@ export function updatePlayerSystem(
     (state.recoilRestrictionTimer || 0) > 0 ? (state.recoilSpeedMult ?? 0.8) : 1.0;
   const knockdownMult = (state.knockdownTimer || 0) > 0 ? 0.16 : 1.0;
   const staggerMult = (state.staggerRecoveryTimer || 0) > 0 ? 0.38 : 1.0;
-  const bowDrawSlowMult = state.isChargingBow ? 0.72 : 1.0;
+  const bowDrawSlowMult = state.isChargingBow ? 0.45 : 1.0;
+
+  // Heavy movement commitment during melee swings, ranged fire, reloading, and held guard
+  const activeWeaponId =
+    state.equipmentSlots?.slot1 ||
+    state.equippedWeapons[state.activeWeaponIndex] ||
+    'gladius_boltcaster';
+  const activeWeaponDef = getWeaponDefinition(activeWeaponId);
+  const activeArch = classifyWeaponCombatArchetype(activeWeaponDef, activeWeaponId);
+  const wClass = activeArch.weightClass;
+  const isAttackingOrWindingUp =
+    (state.skillTellTimer || 0) > 0 || (state.skillActionTimer || 0) > 0;
+  let attackCommitmentMult = 1.0;
+  if (isAttackingOrWindingUp) {
+    if (activeArch.isMeleeOrShield) {
+      if ((state.skillTellTimer || 0) > 0) {
+        attackCommitmentMult = wClass === 'light' ? 0.36 : wClass === 'heavy' ? 0.26 : 0.32;
+      } else {
+        attackCommitmentMult = wClass === 'light' ? 0.32 : wClass === 'heavy' ? 0.2 : 0.25;
+      }
+    } else {
+      attackCommitmentMult = wClass === 'light' ? 0.48 : wClass === 'heavy' ? 0.32 : 0.4;
+    }
+  } else if (state.isReloading && (state.reloadTimer || 0) > 0) {
+    attackCommitmentMult = 0.68;
+  }
+  if (state.isHoldingBlock) {
+    attackCommitmentMult = Math.min(attackCommitmentMult, 0.55);
+  }
 
   // §3.5 Critical Frame State (LOCKED): <= 40 HP (<= 20%) imposes -30% movement speed
   const criticalSpeedMult = state.frame.integrity <= 40 ? 0.7 : 1.0;
@@ -1791,7 +1820,8 @@ export function updatePlayerSystem(
     recoilMult *
     knockdownMult *
     staggerMult *
-    bowDrawSlowMult;
+    bowDrawSlowMult *
+    attackCommitmentMult;
 
   const installedMobilityModId = state.equipmentSlots?.installedMods?.mobility;
   const mobilityMod = ACTION_MODIFICATION_CATALOG.find((m) => m.id === installedMobilityModId);
@@ -1878,14 +1908,15 @@ export function updatePlayerSystem(
       );
       state.isBoosterDashing = true;
       state.boosterTimer =
-        BOOSTER_DASH_DURATION + extraDashSec + (hasBoosterEvasion ? 0.05 : 0);
+        BOOSTER_DASH_DURATION + extraDashSec + (hasBoosterEvasion ? 0.04 : 0);
       state.boosterCooldown =
-        BOOSTER_DASH_COOLDOWN * (hasBoosterEvasion ? 0.52 : 0.65);
+        BOOSTER_DASH_COOLDOWN * (hasBoosterEvasion ? 0.78 : 1.0);
       const dashHeat =
-        (BOOSTER_HEAT_COST * (hasBoosterEvasion ? 0.55 : 0.7) + extraDashHeat) *
+        (BOOSTER_HEAT_COST * (hasBoosterEvasion ? 0.75 : 1.0) + extraDashHeat) *
         gates.loadPenalty.heatMult *
         featMods.heatGenMult;
       state.heat = Math.min(state.maxHeat, state.heat + dashHeat);
+      state.heatDecayDelayTimer = Math.max(state.heatDecayDelayTimer || 0, 0.45);
 
       const dirInfo = DIR_VECTORS[state.dir] || DIR_VECTORS.S;
       state.boosterDirX = hasMoveInput ? normMoveX : state.faceX || dirInfo.dx;
@@ -1910,7 +1941,13 @@ export function updatePlayerSystem(
     }
   }
 
-  if (h.b && gates.legsSlotActive) {
+  if (
+    h.b &&
+    gates.legsSlotActive &&
+    !isAttackingOrWindingUp &&
+    !state.isChargingBow &&
+    !state.isHoldingBlock
+  ) {
     state.bHoldTimer = (state.bHoldTimer || 0) + dt;
     if (state.bHoldTimer >= B_HOLD_CONTINUOUS_THRESHOLD_SEC && state.heat < state.maxHeat) {
       state.isContinuousBoosting = true;
@@ -1925,6 +1962,7 @@ export function updatePlayerSystem(
         featMods.heatGenMult *
         dt;
       state.heat = Math.min(state.maxHeat, state.heat + contHeat);
+      state.heatDecayDelayTimer = Math.max(state.heatDecayDelayTimer || 0, 0.45);
 
       if (Math.random() < 0.75) {
         state.particles.push({
@@ -1945,7 +1983,7 @@ export function updatePlayerSystem(
       if (state.heat >= state.maxHeat) {
         state.isContinuousBoosting = false;
         state.isBoosterDashing = false;
-        state.boosterCooldown = 0.85;
+        state.boosterCooldown = 1.05;
         soundSystem.playMenuBeep();
         combatCtx.say('REACTOR OVERHEAT — CONTINUOUS BOOST CUT!');
         notifyOrionStateChange();
@@ -1972,7 +2010,7 @@ export function updatePlayerSystem(
       }
     }
     const boostSpeed =
-      (state.isContinuousBoosting ? BOOSTER_SPEED * 0.88 : BOOSTER_SPEED) * totalMobilityMult;
+      (state.isContinuousBoosting ? BOOSTER_SPEED * 0.84 : BOOSTER_SPEED) * totalMobilityMult;
     const step = boostSpeed * dt;
     state.x = moveEntityX(rooms, state, state.x, state.y, state.z, state.boosterDirX * step);
     state.y = moveEntityY(rooms, state, state.x, state.y, state.z, state.boosterDirY * step);

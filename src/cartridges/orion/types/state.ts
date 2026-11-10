@@ -143,6 +143,8 @@ export interface OrionState {
   level: number;
   heat: number;
   maxHeat: number;
+  /** Grace delay in seconds after attacking or dashing before passive reactor heat dissipation resumes */
+  heatDecayDelayTimer?: number;
   energy: number;
   maxEnergy: number;
 

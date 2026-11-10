@@ -53,11 +53,11 @@ export const orcScoutEnemy: EnemyWikiDefinition = {
   shields: { type: 'energy', capacity: 15 },
   armor: { type: 'Ablative', threshold: 3, rating: 1, durability: 25 },
   frameIntegrity: 42,
-  speed: 34,
+  speed: 27,
   damage: 17,
   damageType: 'Pierce',
-  tellDurationSec: 0.35,
-  attackCooldownSec: 2.0,
+  tellDurationSec: 0.68,
+  attackCooldownSec: 2.6,
   lootTable: [
     { itemId: 'demantoid_flask', chance: 0.45 },
   ],
@@ -130,13 +130,13 @@ export const orcScoutEnemy: EnemyWikiDefinition = {
           x: e.x + ldx * 8,
           y: e.y + ldy * 8,
           z: 6,
-          vx: ldx * 115,
-          vy: ldy * 115,
+          vx: ldx * 84,
+          vy: ldy * 84,
           vz: 0,
           damage: e.damage,
           damageType: 'Pierce',
           isPlayer: false,
-          life: 1.1,
+          life: 1.45,
           radius: 2.5,
           color: '#fb923c',
           trailColor: '#ea580c',
@@ -147,6 +147,16 @@ export const orcScoutEnemy: EnemyWikiDefinition = {
     }
 
     if (e.state === 'attack') {
+      e.stateTimer -= dt;
+      if (e.stateTimer <= 0) {
+        e.state = 'recovery';
+        e.stateTimer = 0.55;
+        e.stateMaxTimer = 0.55;
+      }
+      return;
+    }
+
+    if (e.state === 'recovery') {
       e.stateTimer -= dt;
       if (e.stateTimer <= 0) {
         e.state = 'idle';

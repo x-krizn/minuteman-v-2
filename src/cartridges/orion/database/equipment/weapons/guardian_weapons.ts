@@ -39,7 +39,7 @@ export const ls900SwordspearWeapon = buildMagitechWeapon({
     { name: 'Mana-Wave Cleave', desc: '4-hit sweeping polearm combo dealing 13 Wave (Mana) damage across a wide arc.' },
     { name: 'Crescent Resonator Sweep', dmg: 24, cd: 4.5, heat: 12, desc: 'Projects a Mana wave arc that hits multiple frontline enemies.' },
     { name: 'Impaling Vanguard Thrust', dmg: 22, cd: 5.0, heat: 14, dt: 'Pierce', desc: 'Long-reach piercing thrust that draws enemy Presence.' },
-    { name: 'Block', dmg: 12, cd: 0, heat: 3, isBlock: true, desc: 'Hold to parry with the reinforced polearm shaft (0.25s Perfect Block window).' },
+    { name: 'Block', dmg: 12, cd: 0, heat: 3, isBlock: true, desc: 'Hold to parry with the reinforced polearm shaft (0.34s Perfect Block window).' },
     { name: 'Swordspear Tempest', dmg: 34, cd: 8.5, heat: 24, desc: 'Whirling Mana-charged halberd storm that restores 8 Shield on hit.' },
   ],
 });
@@ -101,7 +101,7 @@ export const hl220LightburstLanceWeapon = buildMagitechWeapon({
     { name: 'Lightburst Thrust Chain', desc: '3-stage reactor-linked lance thrust dealing 18 Beam damage along a linear corridor.' },
     { name: 'Judgment Strike', dmg: 36, cd: 6.0, heat: 22, desc: 'Canonical reactor-linked lance charge that blasts targets with coherent light.' },
     { name: 'Radiant Pennant Sweep', dmg: 24, cd: 5.0, heat: 16, dt: 'Wave', desc: 'Cleaves a photonic arc that bolsters pilot Presence.' },
-    { name: 'Block', dmg: 14, cd: 0, heat: 3, isBlock: true, desc: 'Hold to plant the lance guard (0.25s Perfect Block window).' },
+    { name: 'Block', dmg: 14, cd: 0, heat: 3, isBlock: true, desc: 'Hold to plant the lance guard (0.34s Perfect Block window).' },
     { name: 'Dawnbreaker Cataclysm', dmg: 40, cd: 9.5, heat: 30, desc: 'Fires a long-range heavy beam straight from the lance tip.' },
   ],
 });
@@ -141,7 +141,7 @@ export const tigEdgeWeapon = buildMagitechWeapon({
     { name: 'Pulse-Edge Slash', desc: '4-hit precision energy blade combo dealing 11 Pulse damage per strike.' },
     { name: 'Guard Counter-Slash', dmg: 21, cd: 4.0, heat: 10, desc: 'Swift defensive riposte that destabilizes enemy shields.' },
     { name: 'Harmonic Disarm', dmg: 18, cd: 4.5, heat: 11, desc: 'Precision strike that lengthens the target’s next attack tell.' },
-    { name: 'Block', dmg: 12, cd: 0, heat: 2, isBlock: true, desc: 'Hold to project an energy-blade parry field (0.25s Perfect Block window).' },
+    { name: 'Block', dmg: 12, cd: 0, heat: 2, isBlock: true, desc: 'Hold to project an energy-blade parry field (0.34s Perfect Block window).' },
     { name: 'Aegis Flash Sever', dmg: 28, cd: 7.5, heat: 20, desc: 'High-frequency pulse cleave that restores 10 Shield on hit.' },
   ],
 });
@@ -174,7 +174,7 @@ export const aegisChargeBucklerWeapon = buildMagitechWeapon({
     { name: 'Buckler Thrust Bash', desc: '3-hit kinetic shield bash combo dealing 12 Impact damage and generating Presence.' },
     { name: 'Shield Charge Strike', dmg: 24, cd: 4.5, heat: 12, desc: 'Thrust-assisted shield charge slam enabling the Shield Charge feat.' },
     { name: 'Deflection Ward', dmg: 16, cd: 5.0, heat: 10, desc: 'Active parry ward that sheds projectile damage and resets shield recharge.' },
-    { name: 'Block', dmg: 10, cd: 0, heat: 2, isBlock: true, desc: 'Hold to deploy the buckler barrier (0.25s Perfect Block window).' },
+    { name: 'Block', dmg: 10, cd: 0, heat: 2, isBlock: true, desc: 'Hold to deploy the buckler barrier (0.34s Perfect Block window).' },
     { name: 'Aegis Citadel Slam', dmg: 30, cd: 8.0, heat: 22, desc: 'Overcharged kinetic shield burst that stuns and knocks back frontline hostiles.' },
   ],
 });
@@ -291,7 +291,7 @@ export const heaterShieldWeapon: WeaponDefinition = {
       isBlock: true,
       heatCost: 2,
       range: 24,
-      description: 'Hold to raise heater shield guard against incoming fire (0.25s Perfect Block window).',
+      description: 'Hold to raise heater shield guard against incoming fire (0.34s Perfect Block window).',
     },
     {
       slot: 4,
@@ -410,7 +410,7 @@ export const paviseShieldWeapon: WeaponDefinition = {
       isBlock: true,
       heatCost: 2,
       range: 26,
-      description: 'Plant the tower pavise into the ground (0.25s Perfect Block window, high stability).',
+      description: 'Plant the tower pavise into the ground (0.34s Perfect Block window, high stability).',
     },
     {
       slot: 4,
@@ -527,7 +527,7 @@ export const shortSpearWeapon: WeaponDefinition = {
       isBlock: true,
       heatCost: 3,
       range: 24,
-      description: 'Hold spear haft in two-handed parry stance (0.25s Perfect Block window).',
+      description: 'Hold spear haft in two-handed parry stance (0.34s Perfect Block window).',
     },
     {
       slot: 4,
@@ -608,7 +608,7 @@ export const aux3TiAegisHardlightAuxiliary = buildMagitechWeapon({
     { name: 'Hard-Light Bash', desc: '3-hit photonic barrier strike dealing 12 Beam damage.' },
     { name: 'Refractive Flash', dmg: 20, cd: 4.5, heat: 10, desc: 'Blinding hard-light pulse that restores +15 Shield.' },
     { name: 'Photon Wall Lock', dmg: 16, cd: 5.0, heat: 12, desc: 'Reinforces barrier lattice against energy and kinetic fire.' },
-    { name: 'Block', dmg: 11, cd: 0, heat: 2, isBlock: true, desc: 'Hold to project the TI Aegis Hard-Light barrier (0.25s Perfect Block window).' },
+    { name: 'Block', dmg: 11, cd: 0, heat: 2, isBlock: true, desc: 'Hold to project the TI Aegis Hard-Light barrier (0.34s Perfect Block window).' },
     { name: 'Hard-Light Prism Burst', dmg: 30, cd: 8.0, heat: 20, dt: 'Beam', desc: 'Shatters and reforms the hard-light lattice in a searing photonic burst.' },
   ],
 });
@@ -642,7 +642,7 @@ export const aux4TiRadiantSphereAuxiliary = buildMagitechWeapon({
     { name: 'Sphere Repulse', desc: 'Omnidirectional radiant dome pulse.' },
     { name: 'Dome Expansion', dmg: 18, cd: 4.5, heat: 10, desc: 'Expands the radiant sphere to push back nearby hostiles.' },
     { name: 'Harmonic Ward', dmg: 15, cd: 5.0, heat: 10, desc: 'Stabilizes shield harmonics.' },
-    { name: 'Block', dmg: 10, cd: 0, heat: 2, isBlock: true, desc: 'Hold to project a 360-degree Radiant Sphere guard (0.25s Perfect Block window).' },
+    { name: 'Block', dmg: 10, cd: 0, heat: 2, isBlock: true, desc: 'Hold to project a 360-degree Radiant Sphere guard (0.34s Perfect Block window).' },
     { name: 'Radiant Dome Detonation', dmg: 29, cd: 8.0, heat: 18, dt: 'Wave', desc: 'Pulses the radiant dome outward, restoring +25 Shield and stunning nearby foes.' },
   ],
 });

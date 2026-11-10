@@ -128,7 +128,7 @@ export const s4WhisperBladeWeapon = buildMagitechWeapon({
     { name: 'Monomolecular Flurry', desc: '5-hit ultra-fast dagger chain dealing 10 Pierce damage per slash.' },
     { name: 'Ambush Backstab', dmg: 26, cd: 3.8, heat: 9, desc: 'High-critical precision thrust into exposed rear or flanked plating.' },
     { name: 'Arterial Tendon Cut', dmg: 18, cd: 4.2, heat: 8, desc: 'Cripples enemy actuator servos, reducing movement speed.' },
-    { name: 'Block', dmg: 9, cd: 0, heat: 2, isBlock: true, desc: 'Hold to parry with reverse-grip dagger (0.25s Perfect Block window).' },
+    { name: 'Block', dmg: 9, cd: 0, heat: 2, isBlock: true, desc: 'Hold to parry with reverse-grip dagger (0.34s Perfect Block window).' },
     { name: 'Phantom Throat-Slit', dmg: 31, cd: 7.0, heat: 18, desc: 'Instant gap-closing execution strike.' },
   ],
 });
@@ -160,7 +160,7 @@ export const s6PhantomEdgeWeapon = buildMagitechWeapon({
     { name: 'Heat-Sink Knife Combo', desc: '5-hit stealth knife combo dealing 10 Pierce damage and venting 4 Heat per hit.' },
     { name: 'Zero-Signature Thrust', dmg: 23, cd: 4.0, heat: -8, desc: 'Dampened puncture strike that vents 8 Reactor Heat on impact.' },
     { name: 'Phase-Step Slice', dmg: 20, cd: 4.5, heat: 8, desc: 'Quick sidestep slash that evades incoming counter-attacks.' },
-    { name: 'Block', dmg: 9, cd: 0, heat: 2, isBlock: true, desc: 'Hold to deflect with thermal-coated blade (0.25s Perfect Block window).' },
+    { name: 'Block', dmg: 9, cd: 0, heat: 2, isBlock: true, desc: 'Hold to deflect with thermal-coated blade (0.34s Perfect Block window).' },
     { name: 'Eclipse Sever', dmg: 29, cd: 7.2, heat: 14, desc: 'Paired off-hand cross-slash that strips enemy shield harmonics.' },
   ],
 });

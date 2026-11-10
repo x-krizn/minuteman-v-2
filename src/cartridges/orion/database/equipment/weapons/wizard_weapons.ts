@@ -127,7 +127,7 @@ export const wz200ManacoreStaffWeapon = buildMagitechWeapon({
     { name: 'Manacore Wave Pulse', desc: '4-stage conduit staff combo projecting 14 Wave (Mana) damage pulses.' },
     { name: 'Resonance Detonation', dmg: 28, cd: 5.0, heat: 18, desc: 'Radial AoE Mana discharge that clears surrounding space.' },
     { name: 'Area-Denial Flux Field', dmg: 24, cd: 6.0, heat: 20, desc: 'Plants a lingering Mana shock-ring that damages and slows intruders.' },
-    { name: 'Block', dmg: 12, cd: 0, heat: 3, isBlock: true, desc: 'Hold to project a Manacore repulsion ward (0.25s Perfect Block window).' },
+    { name: 'Block', dmg: 12, cd: 0, heat: 3, isBlock: true, desc: 'Hold to project a Manacore repulsion ward (0.34s Perfect Block window).' },
     { name: 'Singularity Collapse', dmg: 38, cd: 9.5, heat: 32, desc: 'Implodes the staff’s Manacore field in a massive Wave blast.' },
   ],
 });
@@ -339,7 +339,7 @@ export const aux3ArcPrismaticBarrierAuxiliary = buildMagitechWeapon({
     { name: 'Prism Ward Strike', desc: 'Refractive barrier pulse dealing 11 Beam damage.' },
     { name: 'Spectrum Deflection', dmg: 19, cd: 4.5, heat: 10, desc: 'Refracts beam energy and restores +14 Shield.' },
     { name: 'Lattice Reinforce', dmg: 16, cd: 5.0, heat: 10, desc: 'Hardens the prismatic shield matrix.' },
-    { name: 'Block', dmg: 10, cd: 0, heat: 2, isBlock: true, desc: 'Hold to raise the ARC Prismatic Barrier (0.25s Perfect Block window).' },
+    { name: 'Block', dmg: 10, cd: 0, heat: 2, isBlock: true, desc: 'Hold to raise the ARC Prismatic Barrier (0.34s Perfect Block window).' },
     { name: 'Prismatic Nova Counter', dmg: 30, cd: 8.0, heat: 18, dt: 'Beam', desc: 'Releases refracted energy in a dazzling multi-spectrum Beam burst.' },
   ],
 });

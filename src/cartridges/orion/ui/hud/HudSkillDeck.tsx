@@ -494,7 +494,7 @@ export const HudSkillDeck: React.FC<HudSkillDeckProps> = ({ state }) => {
                 skill
                   ? `${skill.name}${
                       skill.isBlock
-                        ? ' [Hold: 0.25s Perfect Block Window · No Cooldown]'
+                        ? ' [Hold: 0.34s Perfect Block Window · No Cooldown]'
                         : isBasicBowCharge
                           ? ' [Hold X to Charge Single Shot · Release to Fire]'
                           : isBasicNoReload

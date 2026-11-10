@@ -128,7 +128,7 @@ export const hallowedScepterWeapon = buildMagitechWeapon({
     { name: 'Scepter Wave-Strike', desc: '4-hit hybrid melee/wave combo dealing 13 Wave/Impact damage and pulsing +4 Shield / +3 Armor.' },
     { name: 'Consecrated Shock-Mace', dmg: 24, cd: 4.5, heat: 13, dt: 'Impact', desc: 'Crushing scepter blow that releases a shield-mending wave.' },
     { name: 'Ranged Sanctuary Orb', dmg: 21, cd: 5.0, heat: 14, dt: 'Wave', desc: 'Projects a ranged Mana orb (85 range) that damages foes and repairs 12 Shield.' },
-    { name: 'Block', dmg: 12, cd: 0, heat: 3, isBlock: true, desc: 'Hold to raise the Hallowed Scepter ward (0.25s Perfect Block window).' },
+    { name: 'Block', dmg: 12, cd: 0, heat: 3, isBlock: true, desc: 'Hold to raise the Hallowed Scepter ward (0.34s Perfect Block window).' },
     { name: 'Reliquary Benediction', dmg: 32, cd: 8.5, heat: 22, desc: 'Slams the scepter to unleash a radial Wave blast (+22 Shield & +15 Armor).' },
   ],
 });
@@ -160,7 +160,7 @@ export const graceEdgeWeapon = buildMagitechWeapon({
     { name: 'Consecrated Rapier Slash', desc: '4-hit precision blade combo dealing 11 Pierce damage and pulsing +5 Shield on hit.' },
     { name: 'Mercy Critical Lunge', dmg: 23, cd: 4.0, heat: 10, desc: 'High-precision thrust that triggers a double healing pulse (+14 Shield).' },
     { name: 'Heartwell Riposte', dmg: 18, cd: 4.5, heat: 9, desc: 'Graceful counter-slash that vents 6 Heat and mends 8 Armor.' },
-    { name: 'Block', dmg: 11, cd: 0, heat: 2, isBlock: true, desc: 'Hold to parry with the consecrated blade (0.25s Perfect Block window).' },
+    { name: 'Block', dmg: 11, cd: 0, heat: 2, isBlock: true, desc: 'Hold to parry with the consecrated blade (0.34s Perfect Block window).' },
     { name: 'Halo Sever', dmg: 28, cd: 7.5, heat: 18, dt: 'Wave', desc: 'Sweeping luminous arc that damages hostiles and restores 16 Shield.' },
   ],
 });
@@ -196,7 +196,7 @@ export const utilitySanctumFontAuxiliary = buildMagitechWeapon({
     { name: 'Ward Pulse', desc: 'Consecrated barrier pulse.' },
     { name: 'Sanctum Cleanse', dmg: 16, cd: 4.5, heat: 8, desc: 'Purifies hazard buildup and restores +18 Shield.' },
     { name: 'Font of Grace', dmg: 18, cd: 5.0, heat: 10, desc: 'Mends +18 Armor Durability.' },
-    { name: 'Block', dmg: 10, cd: 0, heat: 2, isBlock: true, desc: 'Hold to deploy the SANC Radiant Ward barrier (0.25s Perfect Block window).' },
+    { name: 'Block', dmg: 10, cd: 0, heat: 2, isBlock: true, desc: 'Hold to deploy the SANC Radiant Ward barrier (0.34s Perfect Block window).' },
     { name: 'Benediction Sanctuary Wave', dmg: 28, cd: 8.5, heat: 14, dt: 'Wave', desc: 'Radiates a consecrated ward wave that restores +30 Shield and +25 Armor.' },
   ],
 });

@@ -29,11 +29,11 @@ export const bogWurmEnemy: EnemyWikiDefinition = {
   shields: { type: 'energy', capacity: 35 },
   armor: { type: 'Layered', threshold: 7, rating: 4, durability: 65 },
   frameIntegrity: 120,
-  speed: 32,
+  speed: 25,
   damage: 28,
   damageType: 'Pulse',
-  tellDurationSec: 0.45,
-  attackCooldownSec: 2.0,
+  tellDurationSec: 0.82,
+  attackCooldownSec: 2.7,
   lootTable: [
     { itemId: 'corrupted_shard', chance: 1.0, count: 1 },
     { itemId: 'bedivere_relic', chance: 1.0, count: 1 },
@@ -148,8 +148,8 @@ export const bogWurmEnemy: EnemyWikiDefinition = {
       e.stateTimer -= dt;
       if (e.stateTimer <= 0) {
         e.state = 'recovery';
-        e.stateTimer = 0.5;
-        e.stateMaxTimer = 0.5;
+        e.stateTimer = 0.75;
+        e.stateMaxTimer = 0.75;
       }
       return;
     }

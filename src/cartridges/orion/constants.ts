@@ -182,39 +182,39 @@ export function getRoomDoorwayCenterPx(
 export const Z_SCALE = 1.0;
 
 /**
- * Duration in seconds (`0.25` `s`) after raising a shield during which incoming hits trigger a Perfect Block (`mechanics-v1.md §5`).
+ * Duration in seconds (`0.34` `s`) after raising a shield during which incoming hits trigger a Perfect Block (`mechanics-v1.md §5`).
  */
-export const PERFECT_BLOCK_WINDOW_SEC = 0.25; // 0.25s perfect block window on held block
+export const PERFECT_BLOCK_WINDOW_SEC = 0.34; // 0.34s perfect block window on held block
 
 /**
  * Cooldown in seconds (`5.0` `s`) enforced between auxiliary weapon swaps.
  */
 export const WEAPON_SWAP_COOLDOWN = 5.0; // 5 seconds globally
 /**
- * Active impulse duration in seconds (`0.22` `s`) of a booster evade dash.
+ * Active impulse duration in seconds (`0.20` `s`) of a booster evade dash.
  */
-export const BOOSTER_DASH_DURATION = 0.22;
+export const BOOSTER_DASH_DURATION = 0.2;
 /**
- * Recovery cooldown in seconds (`0.45` `s`) between consecutive booster dashes.
+ * Recovery cooldown in seconds (`0.75` `s`) between consecutive booster dashes.
  */
-export const BOOSTER_DASH_COOLDOWN = 0.45;
+export const BOOSTER_DASH_COOLDOWN = 0.75;
 /**
- * Reactor heat generated (`20` heat units) when triggering a booster dash.
+ * Reactor heat generated (`22` heat units) when triggering a booster dash.
  */
-export const BOOSTER_HEAT_COST = 20;
+export const BOOSTER_HEAT_COST = 22;
 
 /**
- * Base mech ground movement speed (`56` `px/s`, or `3.5` `tiles/s`).
+ * Base mech ground movement speed (`44` `px/s`, or `2.75` `tiles/s`).
  */
-export const WALK_SPEED = 56;
+export const WALK_SPEED = 44;
 /**
  * Movement speed multiplier (`0.65`) applied when wading through mire or mud terrain tiles.
  */
 export const MUD_SPEED_PENALTY = 0.65; // Walking in deep bog mud
 /**
- * Peak ground velocity (`150` `px/s`) applied during an active booster dash.
+ * Peak ground velocity (`124` `px/s`) applied during an active booster dash.
  */
-export const BOOSTER_SPEED = 150;
+export const BOOSTER_SPEED = 124;
 /**
  * Initial vertical jump impulse (`175` `px/s` along the `z` axis).
  */

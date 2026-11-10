@@ -159,7 +159,7 @@ export const siegebreakerWeapon = buildMagitechWeapon({
     { name: 'Heavy Vent Cleave', desc: '3-hit two-handed greataxe combo dealing 19 Impact damage and venting 5 Heat per hit.' },
     { name: 'Thermal Exhaust Slam', dmg: 32, cd: 5.0, heat: -15, dt: 'Blast', desc: 'Slams the ground and vents 15 Reactor Heat in a fiery shockwave.' },
     { name: 'Hull-Splitter Overhead', dmg: 28, cd: 5.5, heat: 14, desc: 'Crushing vertical chop that sunders armor threshold.' },
-    { name: 'Block', dmg: 14, cd: 0, heat: 4, isBlock: true, desc: 'Hold to brace behind the broadaxe head (0.25s Perfect Block window).' },
+    { name: 'Block', dmg: 14, cd: 0, heat: 4, isBlock: true, desc: 'Hold to brace behind the broadaxe head (0.34s Perfect Block window).' },
     { name: 'Cataclysmic Guillotine', dmg: 42, cd: 9.0, heat: 26, desc: 'High-commitment execution cleave with massive stagger force.' },
   ],
 });
@@ -263,7 +263,7 @@ export const maceWeapon: WeaponDefinition = {
       isBlock: true,
       heatCost: 4,
       range: 22,
-      description: 'Raise the haft and flanged head in cross-guard (0.25s Perfect Block window).',
+      description: 'Raise the haft and flanged head in cross-guard (0.34s Perfect Block window).',
     },
     {
       slot: 4,
@@ -380,7 +380,7 @@ export const handAxeWeapon: WeaponDefinition = {
       isBlock: true,
       heatCost: 3,
       range: 20,
-      description: 'Raise the reinforced axe haft to deflect weapon strikes (0.25s Perfect Block window).',
+      description: 'Raise the reinforced axe haft to deflect weapon strikes (0.34s Perfect Block window).',
     },
     {
       slot: 4,

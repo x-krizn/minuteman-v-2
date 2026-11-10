@@ -812,12 +812,12 @@ export function buildMagitechWeapon(seed: MagitechWeaponSeed): WeaponDefinition 
         damageType: dt0,
         damageFamily: getDamageFamily(dt0),
         damage: seed.damagePerShot,
-        tellDurationSec: seed.equipmentRole === 'melee' ? 0.08 : 0.09,
+        tellDurationSec: seed.equipmentRole === 'melee' ? 0.14 : 0.12,
         actionDurationSec: seed.chainDurationSec,
         cooldownSec: 0,
         isChain: true,
         reloadDurationSec: seed.reloadDurationSec,
-        heatCost: seed.weightClass === 'heavy' ? 5 : seed.weightClass === 'medium' ? 3 : 2,
+        heatCost: seed.weightClass === 'heavy' ? 10 : seed.weightClass === 'medium' ? 7 : 5,
         range: seed.range,
         description: seed.skills[0].desc,
       },
@@ -881,9 +881,10 @@ export function buildMagitechWeapon(seed: MagitechWeaponSeed): WeaponDefinition 
 }
 
 /**
- * Canonical Combat Tempo Constants anchored to a **Medium (`1.00×`)** baseline
- * with a **Moderate `±30%` spread** (`Light = +30%` faster rate / `0.77×` cycle duration;
- * `Heavy = -30%` slower rate / `1.30×` cycle duration) and **`[0.70×, 1.30×]`** stacked multiplier caps.
+ * Canonical Combat Tempo Constants anchored to a **Medium (`1.00×`)** deliberate tactical baseline
+ * (`40–50%` slower than arcade pace) with a **Moderate `±30%` spread**
+ * (`Light = +30%` faster rate / `0.77×` cycle duration; `Heavy = -30%` slower rate / `1.30×` cycle duration)
+ * and **`[0.70×, 1.30×]`** stacked multiplier caps.
  */
 export const COMBAT_TEMPO_CONSTANTS = {
   /** Hard lower bound on stacked speed/cooldown/tell multipliers (`-30%` from baseline) */
@@ -896,50 +897,50 @@ export const COMBAT_TEMPO_CONSTANTS = {
     medium: 1.0, // 1.00x baseline
     heavy: 1.3, // -30% slower tempo
   } as const,
-  /** Ranged Basic Attack (`Slot 0`) per-shot cycle time in seconds (Medium = `0.22s` / `~4.5 shots/s`) */
+  /** Ranged Basic Attack (`Slot 0`) per-shot cycle time in seconds (Medium = `0.34s` / `~2.9 shots/s`) */
   RANGED_BASIC_SHOT_SEC: {
-    light: 0.17, // ~5.8 shots/s
-    medium: 0.22, // ~4.5 shots/s baseline
-    heavy: 0.29, // ~3.4 shots/s
-    minFloor: 0.14, // Strict floor (<= 7.1 shots/s max with all buffs)
-    maxCap: 0.36,
+    light: 0.26, // ~3.8 shots/s
+    medium: 0.34, // ~2.9 shots/s baseline
+    heavy: 0.44, // ~2.3 shots/s
+    minFloor: 0.22, // Strict floor (<= 4.5 shots/s max with all buffs)
+    maxCap: 0.56,
   } as const,
-  /** Melee Fluid Combo (`Slot 0`) per-strike cycle time in seconds (Medium = `0.30s` / `~3.3 strikes/s`) */
+  /** Melee Fluid Combo (`Slot 0`) per-strike cycle time in seconds (Medium = `0.45s` / `~2.2 strikes/s`) */
   MELEE_COMBO_STEP_SEC: {
-    light: 0.23, // ~4.3 strikes/s
-    medium: 0.3, // ~3.3 strikes/s baseline
-    heavy: 0.39, // ~2.5 strikes/s
-    minFloor: 0.18, // Strict floor (<= 5.5 strikes/s max with all buffs)
-    maxCap: 0.48,
+    light: 0.35, // ~2.85 strikes/s
+    medium: 0.45, // ~2.22 strikes/s baseline
+    heavy: 0.59, // ~1.69 strikes/s
+    minFloor: 0.28, // Strict floor (<= 3.5 strikes/s max with all buffs)
+    maxCap: 0.74,
   } as const,
-  /** Bow Single-Shot Hold-to-Charge (`Slot 0`) full draw duration in seconds (Medium = `0.85s`) */
+  /** Bow Single-Shot Hold-to-Charge (`Slot 0`) full draw duration in seconds (Medium = `1.15s`) */
   BOW_FULL_DRAW_SEC: {
-    light: 0.65,
-    medium: 0.85,
-    heavy: 1.1,
-    minFloor: 0.55,
-    maxCap: 1.25,
+    light: 0.88,
+    medium: 1.15,
+    heavy: 1.5,
+    minFloor: 0.75,
+    maxCap: 1.75,
   } as const,
-  /** Bow Single-Shot nock/reload duration in seconds (Medium = `0.75s`) */
+  /** Bow Single-Shot nock/reload duration in seconds (Medium = `0.95s`) */
   BOW_NOCK_RELOAD_SEC: {
-    light: 0.58,
-    medium: 0.75,
-    heavy: 0.98,
+    light: 0.73,
+    medium: 0.95,
+    heavy: 1.24,
   } as const,
   /** Tactical Skill (`Slots 1–4`) tell & action duration baselines by weight class */
   SKILL_TELL_SEC: {
-    light: 0.16,
-    medium: 0.21,
-    heavy: 0.27,
-    minFloor: 0.11,
-    maxCap: 0.38,
-  } as const,
-  SKILL_ACTION_SEC: {
-    light: 0.25,
+    light: 0.24,
     medium: 0.32,
     heavy: 0.42,
     minFloor: 0.18,
-    maxCap: 0.56,
+    maxCap: 0.58,
+  } as const,
+  SKILL_ACTION_SEC: {
+    light: 0.35,
+    medium: 0.46,
+    heavy: 0.6,
+    minFloor: 0.26,
+    maxCap: 0.8,
   } as const,
 } as const;
 
@@ -1144,8 +1145,8 @@ export function classifyWeaponCombatArchetype(
 
 /**
  * Generates a weapon-unique, fluid, reload-free melee combo sequence (`3–5` steps)
- * anchored to the **Medium (`0.30s/strike`)** tempo baseline with a **Moderate `±30%` band**
- * (`Light = 0.23s/strike`, `Heavy = 0.39s/strike`).
+ * anchored to the **Medium (`0.45s/strike`)** deliberate tempo baseline with a **Moderate `±30%` band**
+ * (`Light = 0.35s/strike`, `Heavy = 0.59s/strike`).
  */
 export function buildWeaponUniqueComboSequence(
   weaponId: string,
@@ -1164,7 +1165,7 @@ export function buildWeaponUniqueComboSequence(
         stepBaseSec * paceMult
       )
     );
-    const tellDurationSec = Number((total * 0.26).toFixed(2));
+    const tellDurationSec = Number((total * 0.35).toFixed(2));
     const actionDurationSec = Number((total - tellDurationSec).toFixed(2));
     return { tellDurationSec, actionDurationSec };
   };
@@ -1657,17 +1658,17 @@ export function resolveSkillAmmoAndCharges(
   let internalCycleSec: number | undefined;
   if (slot === 1 || (slot === 2 && ammoCount <= 2)) {
     internalCharges = category === 'Bows' ? 2 : ammoCount === 1 ? 3 : 2;
-    internalCycleSec = category === 'Bows' ? 0.55 : 0.45;
+    internalCycleSec = category === 'Bows' ? 0.8 : 0.65;
   }
 
   return { ammoCount, internalCharges, internalCycleSec };
 }
 
 /**
- * Normalizes any `WeaponDefinition` to enforce the canonical combat overhaul and tempo rules:
- * 1. `Bows`: Single-shot hold-to-charge weapons (`shotsPerChain = 1`, `isChargeable = true` on Slot 0, Medium draw = `0.85s` with `±30%` spread).
- * 2. `Melee & Shields`: Never reload (`noReload = true`, `reloadDurationSec = 0`), fluid weapon-unique combo sequence anchored to Medium (`0.30s/strike`) with `±30%` spread.
- * 3. `Ranged Weapons`: 100% increase (`2×`) on Basic Attack (`Slot 0`) ammo (`shotsPerChain`), per-shot cadence decoupled from magazine size and anchored to Medium (`0.22s/shot` with `±30%` spread), reload strictly on Slot 0 (`noReload = true` on Slots 1–4).
+ * Normalizes any `WeaponDefinition` to enforce the canonical combat overhaul and deliberate tempo rules:
+ * 1. `Bows`: Single-shot hold-to-charge weapons (`shotsPerChain = 1`, `isChargeable = true` on Slot 0, Medium draw = `1.15s` with `±30%` spread).
+ * 2. `Melee & Shields`: Never reload (`noReload = true`, `reloadDurationSec = 0`), fluid weapon-unique combo sequence anchored to Medium (`0.45s/strike`) with `±30%` spread.
+ * 3. `Ranged Weapons`: 100% increase (`2×`) on Basic Attack (`Slot 0`) ammo (`shotsPerChain`), per-shot cadence decoupled from magazine size and anchored to Medium (`0.34s/shot` with `±30%` spread), reload strictly on Slot 0 (`noReload = true` on Slots 1–4).
  */
 export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): WeaponDefinition {
   if (
@@ -1683,7 +1684,7 @@ export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): Weapon
   const skillTellBase = COMBAT_TEMPO_CONSTANTS.SKILL_TELL_SEC[weightClass];
   const skillActionBase = COMBAT_TEMPO_CONSTANTS.SKILL_ACTION_SEC[weightClass];
 
-  // 1. BOWS: Single-shot charge-up weapon (Medium = 0.85s draw, 0.75s nock; Light = 0.65s / 0.58s; Heavy = 1.10s / 0.98s)
+  // 1. BOWS: Single-shot charge-up weapon (Medium = 1.15s draw, 0.95s nock; Light = 0.88s / 0.73s; Heavy = 1.50s / 1.24s)
   if (isBow) {
     const maxChargeSec = COMBAT_TEMPO_CONSTANTS.BOW_FULL_DRAW_SEC[weightClass];
     const singleShotBaseDmg = Math.max(
@@ -1702,8 +1703,8 @@ export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): Weapon
         return {
           ...m,
           damage: singleShotBaseDmg,
-          tellDurationSec: 0.05,
-          actionDurationSec: 0.22,
+          tellDurationSec: 0.06,
+          actionDurationSec: 0.32,
           isChain: true,
           noReload: false,
           isChargeable: true,
@@ -1724,7 +1725,8 @@ export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): Weapon
       return {
         ...m,
         tellDurationSec: m.isBlock ? 0.04 : Number((skillTellBase * (idx === 4 ? 1.25 : 1.0)).toFixed(2)),
-        actionDurationSec: m.isBlock ? 0.2 : Number((skillActionBase * (idx === 4 ? 1.25 : 1.0)).toFixed(2)),
+        actionDurationSec: m.isBlock ? 0.24 : Number((skillActionBase * (idx === 4 ? 1.25 : 1.0)).toFixed(2)),
+        cooldownSec: m.isBlock ? 0 : Number((m.cooldownSec * 1.25).toFixed(2)),
         isChain: false,
         noReload: true,
         reloadDurationSec: undefined,
@@ -1740,7 +1742,7 @@ export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): Weapon
       weaponClass: functionalType,
       shotsPerChain: 1,
       damagePerShot: singleShotBaseDmg,
-      chainDurationSec: 0.27,
+      chainDurationSec: 0.38,
       reloadDurationSec: singleArrowNockSec,
       moveset: updatedMoveset,
     };
@@ -1771,14 +1773,15 @@ export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): Weapon
           noReload: true,
           reloadDurationSec: undefined,
           comboSequence,
-          comboResetWindowSec: 1.1,
+          comboResetWindowSec: 1.45,
           description: `${m.description} [${comboSequence.length}-Step Fluid Combo (${comboSequence.map((s) => s.label).join(' → ')}) · No Reload]`,
         };
       }
       return {
         ...m,
         tellDurationSec: m.isBlock ? 0.04 : Number((skillTellBase * (idx === 4 ? 1.25 : 1.0)).toFixed(2)),
-        actionDurationSec: m.isBlock ? 0.2 : Number((skillActionBase * (idx === 4 ? 1.25 : 1.0)).toFixed(2)),
+        actionDurationSec: m.isBlock ? 0.24 : Number((skillActionBase * (idx === 4 ? 1.25 : 1.0)).toFixed(2)),
+        cooldownSec: m.isBlock ? 0 : Number((m.cooldownSec * 1.25).toFixed(2)),
         isChain: false,
         noReload: true,
         reloadDurationSec: undefined,
@@ -1798,13 +1801,14 @@ export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): Weapon
 
   // 3. RANGED WEAPONS (Casters, Carriers & Munitions):
   //    - 100% increase (2×) on Basic Attack (Slot 0) ammo
-  //    - Per-shot cadence anchored to Medium (0.22s/shot) with +/-30% spread (Light 0.17s, Heavy 0.29s), decoupled from magazine size!
+  //    - Per-shot cadence anchored to Medium (0.34s/shot) with +/-30% spread (Light 0.26s, Heavy 0.44s), decoupled from magazine size!
   //    - Reload strictly on Basic Attack (Slot 0); Skills 1..4 have noReload = true + ammoCount / internalCharges
   const doubledAmmo = Math.max(2, weapon.shotsPerChain * 2);
   const perShotSec = COMBAT_TEMPO_CONSTANTS.RANGED_BASIC_SHOT_SEC[weightClass];
-  const basicTellSec = Number((perShotSec * 0.27).toFixed(2));
+  const basicTellSec = Number((perShotSec * 0.34).toFixed(2));
   const basicActionSec = Number((perShotSec - basicTellSec).toFixed(2));
   const scaledChainDuration = Number((doubledAmmo * perShotSec).toFixed(2));
+  const scaledReloadSec = Number((weapon.reloadDurationSec * 1.25).toFixed(2));
 
   const updatedMoveset: ActionDefinition[] = weapon.moveset.map((m, idx) => {
     if (idx === 0) {
@@ -1815,7 +1819,7 @@ export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): Weapon
         isChain: true,
         noReload: false,
         ammoCount: doubledAmmo,
-        reloadDurationSec: weapon.reloadDurationSec,
+        reloadDurationSec: scaledReloadSec,
       };
     }
     const { ammoCount, internalCharges, internalCycleSec } = resolveSkillAmmoAndCharges(
@@ -1829,7 +1833,8 @@ export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): Weapon
     return {
       ...m,
       tellDurationSec: m.isBlock ? 0.04 : Number((skillTellBase * (idx === 4 ? 1.25 : 1.0)).toFixed(2)),
-      actionDurationSec: m.isBlock ? 0.2 : Number((skillActionBase * (idx === 4 ? 1.25 : 1.0)).toFixed(2)),
+      actionDurationSec: m.isBlock ? 0.24 : Number((skillActionBase * (idx === 4 ? 1.25 : 1.0)).toFixed(2)),
+      cooldownSec: m.isBlock ? 0 : Number((m.cooldownSec * 1.25).toFixed(2)),
       isChain: false,
       noReload: true,
       reloadDurationSec: undefined,
@@ -1845,6 +1850,7 @@ export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): Weapon
     weaponClass: functionalType,
     shotsPerChain: doubledAmmo,
     chainDurationSec: scaledChainDuration,
+    reloadDurationSec: scaledReloadSec,
     moveset: updatedMoveset,
   };
 }
@@ -1974,7 +1980,7 @@ export function buildCustomizableWeapon(seed: CustomizableWeaponSeed): WeaponDef
         heat: isBlockSlot4 ? 3 : seed.actions[3].energyCost,
         isBlock: isBlockSlot4,
         desc: isBlockSlot4
-          ? `${seed.actions[3].description} (0.25s Perfect Block window).`
+          ? `${seed.actions[3].description} (0.34s Perfect Block window).`
           : seed.actions[3].description,
       },
       {

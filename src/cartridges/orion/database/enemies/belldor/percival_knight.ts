@@ -58,11 +58,11 @@ export const percivalKnightEnemy: EnemyWikiDefinition = {
   shields: { type: 'physical', capacity: 90 },
   armor: { type: 'Hardened', threshold: 9, rating: 6, durability: 90 },
   frameIntegrity: 150,
-  speed: 22,
+  speed: 18,
   damage: 28,
   damageType: 'Impact',
-  tellDurationSec: 0.5,
-  attackCooldownSec: 2.1,
+  tellDurationSec: 0.88,
+  attackCooldownSec: 2.8,
   lootTable: [
     { itemId: 'trade_coin', chance: 1.0, count: 40 },
     { itemId: 'grail_fragment', chance: 1.0, count: 1 },
@@ -139,6 +139,16 @@ export const percivalKnightEnemy: EnemyWikiDefinition = {
     }
 
     if (e.state === 'attack') {
+      e.stateTimer -= dt;
+      if (e.stateTimer <= 0) {
+        e.state = 'recovery';
+        e.stateTimer = 0.8;
+        e.stateMaxTimer = 0.8;
+      }
+      return;
+    }
+
+    if (e.state === 'recovery') {
       e.stateTimer -= dt;
       if (e.stateTimer <= 0) {
         e.state = 'idle';

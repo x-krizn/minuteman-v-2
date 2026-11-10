@@ -53,11 +53,11 @@ export const orcWarriorEnemy: EnemyWikiDefinition = {
   shields: { type: 'physical', capacity: 60 },
   armor: { type: 'Hardened', threshold: 9, rating: 4, durability: 75 },
   frameIntegrity: 95,
-  speed: 26,
+  speed: 21,
   damage: 28,
   damageType: 'Impact',
-  tellDurationSec: 0.44,
-  attackCooldownSec: 1.65,
+  tellDurationSec: 0.76,
+  attackCooldownSec: 2.5,
   weightClass: 'heavy',
   baseWeight: 185,
   baseStability: 72,
@@ -142,6 +142,16 @@ export const orcWarriorEnemy: EnemyWikiDefinition = {
     }
 
     if (e.state === 'attack') {
+      e.stateTimer -= dt;
+      if (e.stateTimer <= 0) {
+        e.state = 'recovery';
+        e.stateTimer = 0.7;
+        e.stateMaxTimer = 0.7;
+      }
+      return;
+    }
+
+    if (e.state === 'recovery') {
       e.stateTimer -= dt;
       if (e.stateTimer <= 0) {
         e.state = 'idle';

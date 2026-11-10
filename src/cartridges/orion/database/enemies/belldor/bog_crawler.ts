@@ -28,11 +28,11 @@ export const bogCrawlerEnemy: EnemyWikiDefinition = {
   shields: { type: 'energy', capacity: 0 },
   armor: { type: 'Hardened', threshold: 5, rating: 2, durability: 35 },
   frameIntegrity: 48,
-  speed: 28,
+  speed: 22,
   damage: 18,
   damageType: 'Impact',
-  tellDurationSec: 0.35,
-  attackCooldownSec: 1.8,
+  tellDurationSec: 0.68,
+  attackCooldownSec: 2.4,
   lootTable: [
     { itemId: 'demantoid_flask', chance: 0.35 },
     { itemId: 'rusted_gate_key', chance: 0.25 },
@@ -126,8 +126,8 @@ export const bogCrawlerEnemy: EnemyWikiDefinition = {
       e.stateTimer -= dt;
       if (e.stateTimer <= 0) {
         e.state = 'recovery';
-        e.stateTimer = 0.4;
-        e.stateMaxTimer = 0.4;
+        e.stateTimer = 0.6;
+        e.stateMaxTimer = 0.6;
       }
       return;
     }
@@ -136,7 +136,7 @@ export const bogCrawlerEnemy: EnemyWikiDefinition = {
       e.stateTimer -= dt;
       if (e.stateTimer <= 0) {
         e.state = 'idle';
-        e.attackCd = 1.8;
+        e.attackCd = this.attackCooldownSec;
       }
       return;
     }

@@ -58,11 +58,11 @@ export const tristanKnightEnemy: EnemyWikiDefinition = {
   shields: { type: 'energy', capacity: 45 },
   armor: { type: 'Ablative', threshold: 4, rating: 2, durability: 45 },
   frameIntegrity: 110,
-  speed: 35,
+  speed: 28,
   damage: 26,
   damageType: 'Pierce',
-  tellDurationSec: 0.4,
-  attackCooldownSec: 1.9,
+  tellDurationSec: 0.75,
+  attackCooldownSec: 2.6,
   lootTable: [
     { itemId: 'trade_coin', chance: 1.0, count: 40 },
     { itemId: 'grail_fragment', chance: 1.0, count: 1 },
@@ -134,13 +134,13 @@ export const tristanKnightEnemy: EnemyWikiDefinition = {
             x: e.x + Math.cos(ang) * 8,
             y: e.y + Math.sin(ang) * 8,
             z: 6,
-            vx: Math.cos(ang) * 135,
-            vy: Math.sin(ang) * 135,
+            vx: Math.cos(ang) * 96,
+            vy: Math.sin(ang) * 96,
             vz: 0,
             damage: e.damage,
             damageType: 'Pierce',
             isPlayer: false,
-            life: 1.2,
+            life: 1.55,
             radius: 2.5,
             color: '#4ade80',
             trailColor: '#16a34a',
@@ -152,6 +152,16 @@ export const tristanKnightEnemy: EnemyWikiDefinition = {
     }
 
     if (e.state === 'attack') {
+      e.stateTimer -= dt;
+      if (e.stateTimer <= 0) {
+        e.state = 'recovery';
+        e.stateTimer = 0.6;
+        e.stateMaxTimer = 0.6;
+      }
+      return;
+    }
+
+    if (e.state === 'recovery') {
       e.stateTimer -= dt;
       if (e.stateTimer <= 0) {
         e.state = 'idle';

@@ -114,7 +114,7 @@
 
 ---
 
-## 9. VERIFIED BASELINE (Updated 2026-11-09)
+## 9. VERIFIED BASELINE (Updated 2026-11-10)
 
 *DERIVED — re-check after major refactors.*
 

@@ -10,6 +10,7 @@ import {
   clampTempoMultiplier,
   COMBAT_TEMPO_CONSTANTS,
   getWeaponDefinition,
+  resolveRangedBasicShotProfile,
 } from '../../database/equipment/weapons';
 import {
   ACTION_MODIFICATION_CATALOG,
@@ -495,6 +496,37 @@ export function executeBasicAttackShot(
         flipDir: comboStep.flipDir,
       });
 
+      // Dual-Wield Companion Off-Hand Slash Trail when wielding a secondary melee weapon in Slot 2
+      const sideWeaponId = state.equipmentSlots?.slot2;
+      const sideWeapon = sideWeaponId ? getWeaponDefinition(sideWeaponId) : undefined;
+      if (
+        sideWeaponId &&
+        sideWeapon &&
+        sideWeapon.equipmentRole === 'melee' &&
+        state.equipmentSlots?.mainGrip !== '2h' &&
+        stepIdx % 2 === 1
+      ) {
+        const sideGemVis = getWeaponGemVisuals(state, sideWeaponId);
+        const sideTrailCol = sideGemVis.gemId
+          ? sideGemVis.color
+          : sideWeapon.bladeTrailColor || '#94a3b8';
+        state.bladeTrails.push({
+          x: state.x,
+          y: state.y,
+          z: state.z,
+          angle: aimAngle + (comboStep.flipDir ? -0.18 : 0.18),
+          arcSpan: Math.max(Math.PI * 0.48, comboStep.arcSpan * 0.85),
+          radius: Math.max(18, comboStep.radius - 2),
+          width: Math.max(10, (comboStep.width || 12) - 2),
+          style: comboStep.style === 'slam' ? 'chop' : comboStep.style,
+          color: sideTrailCol,
+          coreColor: '#ffffff',
+          life: Math.max(0.16, comboStep.actionDurationSec * 0.8),
+          maxLife: Math.max(0.16, comboStep.actionDurationSec * 0.8),
+          flipDir: !comboStep.flipDir,
+        });
+      }
+
       const bypassShieldRatio = arch.hasShieldBypassEdge ? 0.25 : 0;
 
       for (const e of state.enemies) {
@@ -596,7 +628,13 @@ export function executeBasicAttackShot(
       soundSystem.playSword();
     }
   } else {
-    // Ranged Basic Shot (including Single-Shot Hold-to-Charge Bows)
+    // Ranged Basic Shot (including Single-Shot Hold-to-Charge Bows and Functional-Type Caster/Carrier profiles)
+    const shotProfile = resolveRangedBasicShotProfile(
+      currentWeaponId,
+      arch.category,
+      arch.functionalType,
+      arch.weightClass
+    );
     const hwStats = resolveEquippedHardwareStats(state);
     const accMult =
       (loadPenalty?.accuracyMult ?? 1.0) * featMods.accuracyMult * hwStats.accuracyMult;
@@ -611,7 +649,16 @@ export function executeBasicAttackShot(
     const installedRangedModId = state.equipmentSlots?.installedMods?.ranged;
     const rangedMod = ACTION_MODIFICATION_CATALOG.find((m) => m.id === installedRangedModId);
     const extraCount = isBowWeapon ? 0 : rangedMod?.modifiers.extraProjectiles || 0;
-    const offsets = extraCount > 0 ? [-0.07, 0.07] : [0];
+    const totalProjectiles = Math.max(1, shotProfile.projectilesPerShot + extraCount);
+    const offsets: number[] = [];
+    for (let i = 0; i < totalProjectiles; i++) {
+      if (totalProjectiles === 1) {
+        offsets.push(0);
+      } else {
+        const stepAng = shotProfile.spreadAngleRad || 0.1;
+        offsets.push((i - (totalProjectiles - 1) / 2) * stepAng);
+      }
+    }
     const projColor = gemVis.gemId ? trailColor : weapon?.bladeTrailColor || '#ffd27d';
     const projTrail = gemVis.gemId ? coreColor : '#f59e0b';
 
@@ -621,13 +668,19 @@ export function executeBasicAttackShot(
       y: state.y,
       z: state.z,
       angle: baseAngle,
-      arcSpan: isBowWeapon ? Math.PI * (0.42 + 0.18 * bowChargeRatio) : Math.PI * 0.35,
-      radius: isBowWeapon ? Math.round(14 + 5 * bowChargeRatio) : 12,
-      style: 'volley',
+      arcSpan: isBowWeapon
+        ? Math.PI * (0.42 + 0.18 * bowChargeRatio)
+        : shotProfile.muzzleArcSpan,
+      radius: isBowWeapon
+        ? Math.round(14 + 5 * bowChargeRatio)
+        : shotProfile.muzzleRadius,
+      length: shotProfile.muzzleStyle === 'thrust' ? shotProfile.muzzleRadius + 8 : undefined,
+      width: shotProfile.muzzleStyle === 'thrust' ? 10 : undefined,
+      style: shotProfile.muzzleStyle,
       color: projColor,
       coreColor: projTrail,
-      life: 0.16,
-      maxLife: 0.16,
+      life: 0.18,
+      maxLife: 0.18,
     });
 
     if (isBowWeapon && bowChargeRatio >= 0.85) {
@@ -669,13 +722,21 @@ export function executeBasicAttackShot(
         ? weapon.adaptiveDamageTypes[1]
         : weapon.adaptiveDamageTypes[0]
       : action.damageType;
-    const adaptiveShotDmg = weapon?.adaptiveDamageTypes ? Math.round(shotDmg * 1.12) : shotDmg;
+    const adaptiveShotDmg = Math.max(
+      2,
+      Math.round(
+        (weapon?.adaptiveDamageTypes ? shotDmg * 1.12 : shotDmg) *
+          shotProfile.perProjectileDamageMult
+      )
+    );
     const bowSpeedMult = isBowWeapon ? 1.0 + 0.42 * bowChargeRatio : 1.0;
     const projSpeedScale = clampTempoMultiplier(
       gemCombatMods.projectileSpeedMult * hwStats.accuracyMult
     );
-    const baseProjSpeed = (isBowWeapon ? 142 * bowSpeedMult : 128) * projSpeedScale;
-    const projLife = isBowWeapon ? 0.92 + 0.42 * bowChargeRatio : 1.02;
+    const baseProjSpeed =
+      (isBowWeapon ? 142 * bowSpeedMult : 128 * shotProfile.speedMult) * projSpeedScale;
+    const projLife =
+      (isBowWeapon ? 0.92 + 0.42 * bowChargeRatio : 1.02) * shotProfile.lifeMult;
     const rangedPlayerProf = resolvePlayerInertiaProfile(state);
     const rangedWeaponSpec = resolveWeaponAttackInertiaSpec(currentWeaponId, 0, state);
     const recoilJ = computeRangedImpulse(rangedWeaponSpec.projectileWeight, baseProjSpeed);
@@ -698,6 +759,7 @@ export function executeBasicAttackShot(
       }
     }
 
+    const impactAoERadius = shotProfile.impactAoERadius;
     for (const off of offsets) {
       const ang = baseAngle + off;
       state.projectiles.push({
@@ -706,18 +768,57 @@ export function executeBasicAttackShot(
         z: state.z + 6,
         vx: Math.cos(ang) * baseProjSpeed,
         vy: Math.sin(ang) * baseProjSpeed,
-        vz: 0,
+        vz: shotProfile.lobVz || 0,
         damage: adaptiveShotDmg,
         damageType: adaptiveDmgType,
         isPlayer: true,
         life: projLife,
-        radius: isBowWeapon ? 3.5 + bowChargeRatio * 1.5 : 3,
+        radius: isBowWeapon
+          ? shotProfile.projectileRadius + bowChargeRatio * 1.5
+          : shotProfile.projectileRadius,
         color: projColor,
         trailColor: projTrail,
         lightRadius: isBowWeapon ? Math.round(18 + 10 * bowChargeRatio) : 18,
         projectileWeight:
           rangedWeaponSpec.projectileWeight * (isBowWeapon ? 0.9 + 0.45 * bowChargeRatio : 1.0),
         projectileSpeed: baseProjSpeed,
+        onImpact: impactAoERadius
+          ? (ix, iy, iz, st) => {
+              st.bladeTrails = st.bladeTrails || [];
+              st.bladeTrails.push({
+                x: ix,
+                y: iy,
+                z: Math.max(0, iz),
+                angle: 0,
+                arcSpan: Math.PI * 2,
+                radius: impactAoERadius,
+                innerRadius: 4,
+                style: 'shockwave',
+                color: projColor,
+                coreColor: projTrail,
+                life: 0.24,
+                maxLife: 0.24,
+              });
+              for (const e of st.enemies) {
+                if (
+                  e.isSubmerged ||
+                  (e.type === 'town_npc' && e.npcDisposition !== 'feral')
+                ) {
+                  continue;
+                }
+                if (Math.hypot(e.x - ix, e.y - iy) <= impactAoERadius) {
+                  applyDamageToLayers(
+                    e.shields,
+                    e.armor,
+                    e.frame,
+                    Math.max(2, Math.round(adaptiveShotDmg * 0.35)),
+                    adaptiveDmgType,
+                    (cnt, col) => ctx.spawnParticles(e.x, e.y, e.z + 6, cnt, col, '')
+                  );
+                }
+              }
+            }
+          : undefined,
       });
     }
     soundSystem.playLaser();

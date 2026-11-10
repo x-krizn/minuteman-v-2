@@ -14,6 +14,12 @@ import {
   WeaponWeightClass,
 } from '../../../types';
 import {
+  buildWeaponUniqueComboSequence as buildFunctionalTypeComboSequence,
+  RangedBasicShotProfile,
+  resolveRangedBasicShotProfile,
+  WEAPON_BCU_REFERENCE,
+} from './comboChoreography';
+import {
   blade_curved_dadao,
   blade_curved_dao,
   blade_curved_falx,
@@ -1143,8 +1149,11 @@ export function classifyWeaponCombatArchetype(
   };
 }
 
+export { resolveRangedBasicShotProfile, WEAPON_BCU_REFERENCE };
+export type { RangedBasicShotProfile };
+
 /**
- * Generates a weapon-unique, fluid, reload-free melee combo sequence (`3–5` steps)
+ * Generates a weapon-unique, fluid, reload-free melee combo sequence (`2–5` steps)
  * anchored to the **Medium (`0.45s/strike`)** deliberate tempo baseline with a **Moderate `±30%` band**
  * (`Light = 0.35s/strike`, `Heavy = 0.59s/strike`).
  */
@@ -1155,451 +1164,17 @@ export function buildWeaponUniqueComboSequence(
   weightClass: WeaponWeightClass,
   baseRange: number
 ): MeleeComboStepSpec[] {
-  const r = Math.max(20, baseRange || 26);
   const stepBaseSec = COMBAT_TEMPO_CONSTANTS.MELEE_COMBO_STEP_SEC[weightClass];
-  const makeTimings = (paceMult: number = 1.0) => {
-    const total = Math.max(
-      COMBAT_TEMPO_CONSTANTS.MELEE_COMBO_STEP_SEC.minFloor,
-      Math.min(
-        COMBAT_TEMPO_CONSTANTS.MELEE_COMBO_STEP_SEC.maxCap,
-        stepBaseSec * paceMult
-      )
-    );
-    const tellDurationSec = Number((total * 0.35).toFixed(2));
-    const actionDurationSec = Number((total - tellDurationSec).toFixed(2));
-    return { tellDurationSec, actionDurationSec };
-  };
-
-  const ft = functionalType.toLowerCase();
-  const idLower = weaponId.toLowerCase();
-
-  // 1. SHIELDS: 3-step Rim-Bash -> Counter-Sweep -> Fortress Slam
-  if (category === 'Shields') {
-    const isEnergyDisc = ft === 'corona' || ft === 'mote' || ft === 'disc' || ft === 'rhom';
-    return [
-      {
-        stepIndex: 0,
-        label: isEnergyDisc ? 'Phase Rim Pulse' : 'Leading Rim Check',
-        style: 'bash',
-        arcSpan: Math.PI * 0.58,
-        radius: r,
-        width: 14,
-        damageMult: 0.92,
-        ...makeTimings(0.95),
-        flipDir: false,
-        knockbackScale: 0.8,
-      },
-      {
-        stepIndex: 1,
-        label: isEnergyDisc ? 'Gyro Edge Sweep' : 'Backhand Boss Bash',
-        style: isEnergyDisc ? 'slash' : 'bash',
-        arcSpan: Math.PI * 0.72,
-        radius: r + 2,
-        width: 16,
-        damageMult: 1.08,
-        ...makeTimings(1.0),
-        flipDir: true,
-        knockbackScale: 1.0,
-      },
-      {
-        stepIndex: 2,
-        label: isEnergyDisc ? 'Aegis Nova Crush' : 'Bulwark Shock Slam',
-        style: 'slam',
-        arcSpan: Math.PI * 0.85,
-        radius: r + 4,
-        length: 14,
-        width: 20,
-        damageMult: 1.35,
-        ...makeTimings(1.18),
-        flipDir: false,
-        extraArmorDent: 4,
-        knockbackScale: 1.35,
-      },
-    ];
-  }
-
-  // 2. SPEARS: Thrust-centric & Polearm sweeping fluid combos
-  if (category === 'Spears') {
-    const isHeavyLanceOrPike =
-      ft === 'lance' || ft === 'pike' || ft === 'boar spear' || idLower.includes('lance');
-    const isPoleCleave =
-      ft === 'partisan' || ft === 'spetum' || ft === 'broad spear' || ft === 'winged spear';
-    if (isHeavyLanceOrPike) {
-      return [
-        {
-          stepIndex: 0,
-          label: 'Couched Point Probe',
-          style: 'thrust',
-          arcSpan: Math.PI * 0.22,
-          radius: r,
-          length: r + 4,
-          width: 11,
-          damageMult: 0.95,
-          ...makeTimings(0.96),
-        },
-        {
-          stepIndex: 1,
-          label: 'Haft Clearing Sweep',
-          style: 'slash',
-          arcSpan: Math.PI * 0.65,
-          radius: Math.round(r * 0.82),
-          width: 14,
-          damageMult: 1.05,
-          ...makeTimings(1.02),
-          flipDir: true,
-        },
-        {
-          stepIndex: 2,
-          label: 'Grand Breaching Drive',
-          style: 'thrust',
-          arcSpan: Math.PI * 0.28,
-          radius: r + 8,
-          length: r + 10,
-          width: 14,
-          damageMult: 1.42,
-          ...makeTimings(1.18),
-          extraArmorDent: 5,
-          knockbackScale: 1.3,
-        },
-      ];
-    }
-    return [
-      {
-        stepIndex: 0,
-        label: 'Snap Viper Thrust',
-        style: 'thrust',
-        arcSpan: Math.PI * 0.22,
-        radius: r,
-        length: r + 2,
-        width: 10,
-        damageMult: 0.9,
-        ...makeTimings(0.92),
-      },
-      {
-        stepIndex: 1,
-        label: 'Double-Tap Shaft Poke',
-        style: 'thrust',
-        arcSpan: Math.PI * 0.25,
-        radius: r + 3,
-        length: r + 5,
-        width: 11,
-        damageMult: 1.02,
-        ...makeTimings(0.96),
-        flipDir: true,
-      },
-      {
-        stepIndex: 2,
-        label: isPoleCleave ? 'Winged Halberd Arc' : 'Whirling Butt-Sweep',
-        style: 'slash',
-        arcSpan: Math.PI * 0.78,
-        radius: Math.round(r * 0.9),
-        width: 14,
-        damageMult: 1.15,
-        ...makeTimings(1.04),
-      },
-      {
-        stepIndex: 3,
-        label: 'Heart-Seeker Skewer',
-        style: 'thrust',
-        arcSpan: Math.PI * 0.28,
-        radius: r + 7,
-        length: r + 9,
-        width: 13,
-        damageMult: 1.38,
-        ...makeTimings(1.15),
-        extraArmorDent: 3,
-        knockbackScale: 1.2,
-      },
-    ];
-  }
-
-  // 3. IMPACT & AXES: Heavy blunt slams & bearded axe chops
-  if (category === 'Impact & Axes') {
-    const isAxe =
-      ft === 'tomahawk' ||
-      ft === 'parashu' ||
-      ft === 'labrys' ||
-      ft === 'battle axe' ||
-      idLower.includes('axe');
-    if (isAxe) {
-      return [
-        {
-          stepIndex: 0,
-          label: 'Bearded Forehand Hack',
-          style: 'chop',
-          arcSpan: Math.PI * 0.58,
-          radius: r,
-          width: 14,
-          damageMult: 0.95,
-          ...makeTimings(0.95),
-          flipDir: false,
-        },
-        {
-          stepIndex: 1,
-          label: 'Rending Back-Hook',
-          style: 'chop',
-          arcSpan: Math.PI * 0.64,
-          radius: r + 1,
-          width: 15,
-          damageMult: 1.1,
-          ...makeTimings(1.0),
-          flipDir: true,
-          extraArmorDent: 2,
-        },
-        {
-          stepIndex: 2,
-          label: 'Spinning Cleaver Arc',
-          style: 'whirlwind',
-          arcSpan: Math.PI * 0.95,
-          radius: r + 3,
-          width: 16,
-          damageMult: 1.22,
-          ...makeTimings(1.06),
-          flipDir: false,
-        },
-        {
-          stepIndex: 3,
-          label: 'Guillotine Timber-Drop',
-          style: 'slam',
-          arcSpan: Math.PI * 0.72,
-          radius: r + 4,
-          length: 16,
-          width: 20,
-          damageMult: 1.48,
-          ...makeTimings(1.18),
-          extraArmorDent: 5,
-          knockbackScale: 1.35,
-        },
-      ];
-    }
-    // Maces, Hammers, Cudgels, Spikes, Mallets
-    return [
-      {
-        stepIndex: 0,
-        label: 'Flanged Rib-Cracker',
-        style: 'chop',
-        arcSpan: Math.PI * 0.56,
-        radius: r,
-        width: 15,
-        damageMult: 0.96,
-        ...makeTimings(0.98),
-        flipDir: false,
-        extraArmorDent: 2,
-      },
-      {
-        stepIndex: 1,
-        label: 'Rising Pommel Uppercut',
-        style: 'chop',
-        arcSpan: Math.PI * 0.62,
-        radius: r + 1,
-        width: 16,
-        damageMult: 1.12,
-        ...makeTimings(1.04),
-        flipDir: true,
-        extraArmorDent: 3,
-      },
-      {
-        stepIndex: 2,
-        label: 'Anvil-Breaker Overhead Slam',
-        style: 'slam',
-        arcSpan: Math.PI * 0.78,
-        radius: r + 4,
-        length: 16,
-        width: 22,
-        damageMult: 1.45,
-        ...makeTimings(1.2),
-        extraArmorDent: 6,
-        knockbackScale: 1.4,
-      },
-    ];
-  }
-
-  // 4. BLADES: CURVED — Fluid 4-to-5 step draw-cuts, hooks, and whirling arcs
-  if (category === 'Blades: Curved') {
-    const isHookBlade = ft === 'khopesh' || ft === 'shotel' || ft === 'falx';
-    const isFastCurved =
-      ft === 'wakizashi' || ft === 'katana' || ft === 'kilij' || weightClass === 'light';
-    const baseSteps: MeleeComboStepSpec[] = [
-      {
-        stepIndex: 0,
-        label: isHookBlade ? 'Sickle Rim Draw' : 'Iai Quick-Draw Cut',
-        style: 'slash',
-        arcSpan: Math.PI * 0.66,
-        radius: r,
-        width: 12,
-        damageMult: 0.88,
-        ...makeTimings(0.92),
-        flipDir: false,
-      },
-      {
-        stepIndex: 1,
-        label: isHookBlade ? 'Reverse Hook Wrench' : 'Ascending Swallow Slash',
-        style: isHookBlade ? 'chop' : 'slash',
-        arcSpan: Math.PI * 0.72,
-        radius: r + 1,
-        width: 13,
-        damageMult: 1.0,
-        ...makeTimings(0.96),
-        flipDir: true,
-      },
-      {
-        stepIndex: 2,
-        label: 'Whirling Crescent Spin',
-        style: 'whirlwind',
-        arcSpan: Math.PI * 1.1,
-        radius: r + 2,
-        width: 14,
-        damageMult: 1.14,
-        ...makeTimings(1.04),
-        flipDir: false,
-      },
-      {
-        stepIndex: 3,
-        label: isHookBlade ? 'Turbine Tendon Ripper' : 'Crimson Moon Finisher',
-        style: isHookBlade ? 'chop' : 'slash',
-        arcSpan: Math.PI * 0.92,
-        radius: r + 4,
-        width: 16,
-        damageMult: 1.38,
-        ...makeTimings(1.14),
-        flipDir: true,
-        extraArmorDent: 3,
-        knockbackScale: 1.15,
-      },
-    ];
-    if (isFastCurved) {
-      baseSteps.splice(3, 0, {
-        stepIndex: 3,
-        label: 'Reverse-Grip Flurry',
-        style: 'slash',
-        arcSpan: Math.PI * 0.78,
-        radius: r + 2,
-        width: 13,
-        damageMult: 1.18,
-        ...makeTimings(0.95),
-        flipDir: true,
-      });
-      baseSteps[4].stepIndex = 4;
-    }
-    return baseSteps;
-  }
-
-  // 5. BLADES: STRAIGHT (and default Melee) — Slash -> Cross-Cut -> Point Thrust -> Execution Cleave
-  const isGreatsword =
-    ft === 'zweihander' || ft === 'flamberge' || ft === 'executioner sword';
-  const isDaggerOrShort =
-    ft === 'cinquedea' || idLower.includes('whisper') || idLower.includes('phantom');
-  if (isDaggerOrShort) {
-    return [
-      {
-        stepIndex: 0,
-        label: 'Viper Cross-Slice',
-        style: 'slash',
-        arcSpan: Math.PI * 0.55,
-        radius: r,
-        width: 10,
-        damageMult: 0.85,
-        ...makeTimings(0.9),
-        flipDir: false,
-      },
-      {
-        stepIndex: 1,
-        label: 'Backhand Seam Cut',
-        style: 'slash',
-        arcSpan: Math.PI * 0.6,
-        radius: r,
-        width: 10,
-        damageMult: 0.95,
-        ...makeTimings(0.92),
-        flipDir: true,
-      },
-      {
-        stepIndex: 2,
-        label: 'Stiletto Joint Puncture',
-        style: 'thrust',
-        arcSpan: Math.PI * 0.22,
-        radius: r + 4,
-        length: r + 6,
-        width: 9,
-        damageMult: 1.1,
-        ...makeTimings(0.96),
-      },
-      {
-        stepIndex: 3,
-        label: 'Spinning Twin-Edge Lacerate',
-        style: 'whirlwind',
-        arcSpan: Math.PI * 1.0,
-        radius: r + 2,
-        width: 12,
-        damageMult: 1.18,
-        ...makeTimings(1.02),
-        flipDir: true,
-      },
-      {
-        stepIndex: 4,
-        label: 'Mercy-Stroke Vital Thrust',
-        style: 'thrust',
-        arcSpan: Math.PI * 0.25,
-        radius: r + 6,
-        length: r + 8,
-        width: 11,
-        damageMult: 1.4,
-        ...makeTimings(1.12),
-        extraArmorDent: 3,
-      },
-    ];
-  }
-
-  return [
-    {
-      stepIndex: 0,
-      label: isGreatsword ? 'Wide Montante Sweep' : 'Diagonal Ward Slash',
-      style: 'slash',
-      arcSpan: isGreatsword ? Math.PI * 0.85 : Math.PI * 0.68,
-      radius: r,
-      width: isGreatsword ? 16 : 13,
-      damageMult: 0.92,
-      ...makeTimings(0.95),
-      flipDir: false,
-    },
-    {
-      stepIndex: 1,
-      label: isGreatsword ? 'Returning Zwerchhau' : 'Backhand Cross-Cut',
-      style: 'slash',
-      arcSpan: isGreatsword ? Math.PI * 0.9 : Math.PI * 0.72,
-      radius: r + 1,
-      width: isGreatsword ? 17 : 13,
-      damageMult: 1.05,
-      ...makeTimings(1.0),
-      flipDir: true,
-    },
-    {
-      stepIndex: 2,
-      label: 'Half-Sword Estoc Thrust',
-      style: 'thrust',
-      arcSpan: Math.PI * 0.24,
-      radius: r + 5,
-      length: r + 7,
-      width: 12,
-      damageMult: 1.18,
-      ...makeTimings(1.04),
-      extraArmorDent: 2,
-    },
-    {
-      stepIndex: 3,
-      label: isGreatsword ? 'Executioner Wrath Cleave' : 'High-Guard Wrath Finisher',
-      style: isGreatsword ? 'slam' : 'chop',
-      arcSpan: Math.PI * 0.82,
-      radius: r + 4,
-      length: isGreatsword ? 16 : undefined,
-      width: isGreatsword ? 20 : 16,
-      damageMult: 1.42,
-      ...makeTimings(1.18),
-      flipDir: false,
-      extraArmorDent: 4,
-      knockbackScale: 1.25,
-    },
-  ];
+  return buildFunctionalTypeComboSequence(
+    weaponId,
+    category,
+    functionalType,
+    weightClass,
+    baseRange,
+    stepBaseSec,
+    COMBAT_TEMPO_CONSTANTS.MELEE_COMBO_STEP_SEC.minFloor,
+    COMBAT_TEMPO_CONSTANTS.MELEE_COMBO_STEP_SEC.maxCap
+  );
 }
 
 /**
@@ -1665,10 +1240,72 @@ export function resolveSkillAmmoAndCharges(
 }
 
 /**
- * Normalizes any `WeaponDefinition` to enforce the canonical combat overhaul and deliberate tempo rules:
- * 1. `Bows`: Single-shot hold-to-charge weapons (`shotsPerChain = 1`, `isChargeable = true` on Slot 0, Medium draw = `1.15s` with `±30%` spread).
- * 2. `Melee & Shields`: Never reload (`noReload = true`, `reloadDurationSec = 0`), fluid weapon-unique combo sequence anchored to Medium (`0.45s/strike`) with `±30%` spread.
- * 3. `Ranged Weapons`: 100% increase (`2×`) on Basic Attack (`Slot 0`) ammo (`shotsPerChain`), per-shot cadence decoupled from magazine size and anchored to Medium (`0.34s/shot` with `±30%` spread), reload strictly on Slot 0 (`noReload = true` on Slots 1–4).
+ * Normalizes tactical skill damage, cooldowns, and heat costs (`Slots 1..4` / Actions 2–5)
+ * against the canonical **Base Combat Unit (`1× BCU = 54`)** budget with weight-class and reach scaling.
+ */
+function normalizeSkillBcuParameters(
+  slotIdx: 1 | 2 | 3 | 4,
+  weightClass: WeaponWeightClass,
+  rawSkill: ActionDefinition,
+  normalizedBaseRange: number
+): { damage: number; cooldownSec: number; heatCost: number; range: number } {
+  const wScale = weightClass === 'heavy' ? 1.12 : weightClass === 'light' ? 0.92 : 1.0;
+
+  if (slotIdx === 3 && rawSkill.isBlock) {
+    const riposteDmg = Math.round(WEAPON_BCU_REFERENCE * 0.5 * wScale);
+    return {
+      damage: riposteDmg,
+      cooldownSec: 0,
+      heatCost: weightClass === 'heavy' ? 5 : 4,
+      range: 24,
+    };
+  }
+
+  // Canonical BCU budget per tactical skill slot:
+  // Slot 1 (Action 2 — Quick Tactical, [Y] Tap): ~0.62× BCU (31 Light / 34 Medium / 38 Heavy)
+  // Slot 2 (Action 3 — Heavy Lunge / Control / AoE, [R] Tap): ~0.81× BCU (40 Light / 44 Medium / 49 Heavy)
+  // Slot 3 (Action 4 — Ranged Evasive Counter-Step, [Y] Hold): ~0.52× BCU (26 Light / 28 Medium / 31 Heavy)
+  // Slot 4 (Action 5 — Signature Finisher, [R] Hold): ~1.06× BCU (52 Light / 57 Medium / 64 Heavy)
+  const targetBcuMult =
+    slotIdx === 1 ? 0.63 : slotIdx === 2 ? 0.81 : slotIdx === 3 ? 0.52 : 1.06;
+  const bcuTargetDmg = Math.round(WEAPON_BCU_REFERENCE * targetBcuMult * wScale);
+  // Blend authored skill damage with strict BCU target (75% strict BCU target + 25% authored nuance, clamped to ±10%)
+  const blendedDmg = Math.round(bcuTargetDmg * 0.75 + rawSkill.damage * 0.25);
+  const minDmg = Math.round(bcuTargetDmg * 0.9);
+  const maxDmg = Math.round(bcuTargetDmg * 1.12);
+  const damage = Math.max(minDmg, Math.min(maxDmg, blendedDmg));
+
+  const cdBounds: Record<1 | 2 | 3 | 4, [number, number]> = {
+    1: [4.2, 6.2],
+    2: [7.2, 10.2],
+    3: [5.2, 6.8],
+    4: [11.8, 15.5],
+  };
+  const [cdMin, cdMax] = cdBounds[slotIdx];
+  const scaledCd = Number((rawSkill.cooldownSec * 1.25).toFixed(2));
+  const cooldownSec = Math.max(cdMin, Math.min(cdMax, scaledCd));
+
+  const heatBounds: Record<1 | 2 | 3 | 4, [number, number]> = {
+    1: [10, 15],
+    2: [16, 22],
+    3: [10, 13],
+    4: [22, 28],
+  };
+  const [heatMin, heatMax] = heatBounds[slotIdx];
+  const heatCost = Math.max(heatMin, Math.min(heatMax, Math.round(rawSkill.heatCost)));
+
+  const rangeScale = slotIdx === 1 ? 1.12 : slotIdx === 2 ? 1.2 : slotIdx === 3 ? 0.9 : 1.28;
+  const range = Math.max(20, Math.round(normalizedBaseRange * rangeScale));
+
+  return { damage, cooldownSec, heatCost, range };
+}
+
+/**
+ * Normalizes any `WeaponDefinition` to enforce the canonical combat overhaul, deliberate tempo rules,
+ * and strict **Base Combat Unit (`1× BCU = 54`)** parity across all 101 weapons:
+ * 1. `Bows`: Single-shot hold-to-charge weapons (`shotsPerChain = 1`, `isChargeable = true` on Slot 0, Medium draw = `1.15s` with `±30%` spread, Full Draw = `1.85×` base damage).
+ * 2. `Melee & Shields`: Never reload (`noReload = true`, `reloadDurationSec = 0`), fluid functional-type combo sequence anchored to Medium (`0.45s/strike`) with `±30%` spread, full chain normalized to BCU budget.
+ * 3. `Ranged Weapons`: 100% increase (`2×`) on Basic Attack (`Slot 0`) ammo (`shotsPerChain`), per-shot cadence decoupled from magazine size and anchored to Medium (`0.34s/shot` with `±30%` spread), reference salvo normalized to BCU budget, reload strictly on Slot 0 (`noReload = true` on Slots 1–4).
  */
 export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): WeaponDefinition {
   if (
@@ -1680,29 +1317,31 @@ export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): Weapon
   }
 
   const arch = classifyWeaponCombatArchetype(weapon);
-  const { category, functionalType, weightClass, isBow, isMeleeOrShield } = arch;
+  const { category, functionalType, weightClass, isBow, isMeleeOrShield, isShield } = arch;
   const skillTellBase = COMBAT_TEMPO_CONSTANTS.SKILL_TELL_SEC[weightClass];
   const skillActionBase = COMBAT_TEMPO_CONSTANTS.SKILL_ACTION_SEC[weightClass];
+  const baseRange = weapon.moveset[0]?.range || 28;
 
   // 1. BOWS: Single-shot charge-up weapon (Medium = 1.15s draw, 0.95s nock; Light = 0.88s / 0.73s; Heavy = 1.50s / 1.24s)
+  //    Strict BCU calibration: Uncharged quick release = 34 (Light) / 37 (Medium) / 41 (Heavy),
+  //    Full Draw (1.85×) = 63 (Light) / 68 (Medium) / 76 (Heavy)
   if (isBow) {
     const maxChargeSec = COMBAT_TEMPO_CONSTANTS.BOW_FULL_DRAW_SEC[weightClass];
-    const singleShotBaseDmg = Math.max(
-      18,
-      Math.round(
-        Math.max(
-          weapon.damagePerShot * 2.1,
-          weapon.damagePerShot * Math.min(4, weapon.shotsPerChain) * 0.55
-        )
-      )
-    );
+    const singleShotBaseDmg =
+      weightClass === 'light' ? 34 : weightClass === 'heavy' ? 41 : 37;
     const singleArrowNockSec = COMBAT_TEMPO_CONSTANTS.BOW_NOCK_RELOAD_SEC[weightClass];
+    const bowRange = Math.max(
+      weightClass === 'light' ? 98 : weightClass === 'heavy' ? 132 : 114,
+      Math.min(148, baseRange)
+    );
 
     const updatedMoveset: ActionDefinition[] = weapon.moveset.map((m, idx) => {
       if (idx === 0) {
         return {
           ...m,
           damage: singleShotBaseDmg,
+          range: bowRange,
+          heatCost: weightClass === 'heavy' ? 9 : weightClass === 'medium' ? 7 : 6,
           tellDurationSec: 0.06,
           actionDurationSec: 0.32,
           isChain: true,
@@ -1714,19 +1353,24 @@ export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): Weapon
           description: `${m.description} [Single-Shot Charge: Hold [X] up to ${maxChargeSec.toFixed(2)}s for 1.85× DMG & 1.45× Velocity at 1.65× Heat]`,
         };
       }
+      const slotIdx = idx as 1 | 2 | 3 | 4;
       const { ammoCount, internalCharges, internalCycleSec } = resolveSkillAmmoAndCharges(
         category,
         functionalType,
-        idx as 1 | 2 | 3 | 4,
+        slotIdx,
         m.name,
         m.description,
         m.isBlock
       );
+      const bcuSkill = normalizeSkillBcuParameters(slotIdx, weightClass, m, bowRange);
       return {
         ...m,
+        damage: bcuSkill.damage,
+        range: bcuSkill.range,
+        heatCost: bcuSkill.heatCost,
         tellDurationSec: m.isBlock ? 0.04 : Number((skillTellBase * (idx === 4 ? 1.25 : 1.0)).toFixed(2)),
         actionDurationSec: m.isBlock ? 0.24 : Number((skillActionBase * (idx === 4 ? 1.25 : 1.0)).toFixed(2)),
-        cooldownSec: m.isBlock ? 0 : Number((m.cooldownSec * 1.25).toFixed(2)),
+        cooldownSec: bcuSkill.cooldownSec,
         isChain: false,
         noReload: true,
         reloadDurationSec: undefined,
@@ -1748,14 +1392,20 @@ export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): Weapon
     };
   }
 
-  // 2. MELEE & SHIELDS: Fluid weapon-unique movesets, zero reload, internal combo reset window
+  // 2. MELEE & SHIELDS: Fluid weapon-unique movesets, zero reload, internal combo reset window, strict BCU chain parity
   if (isMeleeOrShield) {
+    const meleeRange = isShield
+      ? Math.max(22, Math.min(26, baseRange))
+      : category === 'Spears'
+        ? Math.max(32, Math.min(44, baseRange))
+        : Math.max(22, Math.min(36, baseRange));
+
     const comboSequence = buildWeaponUniqueComboSequence(
       weapon.id,
       category,
       functionalType,
       weightClass,
-      weapon.moveset[0]?.range || 26
+      meleeRange
     );
     const totalComboDuration = Number(
       comboSequence
@@ -1763,10 +1413,32 @@ export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): Weapon
         .toFixed(2)
     );
 
+    // Full combo chain BCU budget:
+    // Shields: 45 (Light) / 48 (Medium) / 52 (Heavy)
+    // Melee:   54 (Light, 1.00× BCU) / 58 (Medium, 1.07× BCU) / 64 (Heavy, 1.18× BCU)
+    const targetChainBcu = isShield
+      ? weightClass === 'light'
+        ? 45
+        : weightClass === 'heavy'
+          ? 52
+          : 48
+      : weightClass === 'light'
+        ? WEAPON_BCU_REFERENCE
+        : weightClass === 'heavy'
+          ? 64
+          : 58;
+    const perStepDamage = Math.max(
+      10,
+      Math.round(targetChainBcu / Math.max(1, comboSequence.length))
+    );
+
     const updatedMoveset: ActionDefinition[] = weapon.moveset.map((m, idx) => {
       if (idx === 0) {
         return {
           ...m,
+          damage: perStepDamage,
+          range: meleeRange,
+          heatCost: weightClass === 'heavy' ? 8 : weightClass === 'medium' ? 6 : 5,
           tellDurationSec: comboSequence[0].tellDurationSec,
           actionDurationSec: comboSequence[0].actionDurationSec,
           isChain: false,
@@ -1777,11 +1449,16 @@ export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): Weapon
           description: `${m.description} [${comboSequence.length}-Step Fluid Combo (${comboSequence.map((s) => s.label).join(' → ')}) · No Reload]`,
         };
       }
+      const slotIdx = idx as 1 | 2 | 3 | 4;
+      const bcuSkill = normalizeSkillBcuParameters(slotIdx, weightClass, m, meleeRange);
       return {
         ...m,
+        damage: bcuSkill.damage,
+        range: bcuSkill.range,
+        heatCost: bcuSkill.heatCost,
         tellDurationSec: m.isBlock ? 0.04 : Number((skillTellBase * (idx === 4 ? 1.25 : 1.0)).toFixed(2)),
         actionDurationSec: m.isBlock ? 0.24 : Number((skillActionBase * (idx === 4 ? 1.25 : 1.0)).toFixed(2)),
-        cooldownSec: m.isBlock ? 0 : Number((m.cooldownSec * 1.25).toFixed(2)),
+        cooldownSec: bcuSkill.cooldownSec,
         isChain: false,
         noReload: true,
         reloadDurationSec: undefined,
@@ -1793,6 +1470,7 @@ export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): Weapon
       category,
       weaponClass: functionalType,
       shotsPerChain: comboSequence.length,
+      damagePerShot: perStepDamage,
       chainDurationSec: totalComboDuration,
       reloadDurationSec: 0,
       moveset: updatedMoveset,
@@ -1801,19 +1479,31 @@ export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): Weapon
 
   // 3. RANGED WEAPONS (Casters, Carriers & Munitions):
   //    - 100% increase (2×) on Basic Attack (Slot 0) ammo
-  //    - Per-shot cadence anchored to Medium (0.34s/shot) with +/-30% spread (Light 0.26s, Heavy 0.44s), decoupled from magazine size!
+  //    - Reference salvo (pre-doubled `baseShots`) strictly calibrated to BCU budget (54 Light / 58 Medium / 64 Heavy)
+  //    - Per-shot cadence anchored to Medium (0.34s/shot) with +/-30% spread (Light 0.26s, Heavy 0.44s)
   //    - Reload strictly on Basic Attack (Slot 0); Skills 1..4 have noReload = true + ammoCount / internalCharges
-  const doubledAmmo = Math.max(2, weapon.shotsPerChain * 2);
+  const baseShots = Math.max(2, weapon.shotsPerChain);
+  const doubledAmmo = baseShots * 2;
+  const targetSalvoBcu =
+    weightClass === 'light' ? WEAPON_BCU_REFERENCE : weightClass === 'heavy' ? 64 : 58;
+  const normalizedShotDmg = Math.max(5, Math.round(targetSalvoBcu / baseShots));
+  const rangedRange = Math.max(72, Math.min(142, baseRange));
+
   const perShotSec = COMBAT_TEMPO_CONSTANTS.RANGED_BASIC_SHOT_SEC[weightClass];
   const basicTellSec = Number((perShotSec * 0.34).toFixed(2));
   const basicActionSec = Number((perShotSec - basicTellSec).toFixed(2));
   const scaledChainDuration = Number((doubledAmmo * perShotSec).toFixed(2));
-  const scaledReloadSec = Number((weapon.reloadDurationSec * 1.25).toFixed(2));
+  const scaledReloadSec = Number(
+    Math.max(2.1, Math.min(4.2, weapon.reloadDurationSec * 1.25)).toFixed(2)
+  );
 
   const updatedMoveset: ActionDefinition[] = weapon.moveset.map((m, idx) => {
     if (idx === 0) {
       return {
         ...m,
+        damage: normalizedShotDmg,
+        range: rangedRange,
+        heatCost: weightClass === 'heavy' ? 9 : weightClass === 'medium' ? 6 : 5,
         tellDurationSec: basicTellSec,
         actionDurationSec: basicActionSec,
         isChain: true,
@@ -1822,19 +1512,24 @@ export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): Weapon
         reloadDurationSec: scaledReloadSec,
       };
     }
+    const slotIdx = idx as 1 | 2 | 3 | 4;
     const { ammoCount, internalCharges, internalCycleSec } = resolveSkillAmmoAndCharges(
       category,
       functionalType,
-      idx as 1 | 2 | 3 | 4,
+      slotIdx,
       m.name,
       m.description,
       m.isBlock
     );
+    const bcuSkill = normalizeSkillBcuParameters(slotIdx, weightClass, m, rangedRange);
     return {
       ...m,
+      damage: bcuSkill.damage,
+      range: bcuSkill.range,
+      heatCost: bcuSkill.heatCost,
       tellDurationSec: m.isBlock ? 0.04 : Number((skillTellBase * (idx === 4 ? 1.25 : 1.0)).toFixed(2)),
       actionDurationSec: m.isBlock ? 0.24 : Number((skillActionBase * (idx === 4 ? 1.25 : 1.0)).toFixed(2)),
-      cooldownSec: m.isBlock ? 0 : Number((m.cooldownSec * 1.25).toFixed(2)),
+      cooldownSec: bcuSkill.cooldownSec,
       isChain: false,
       noReload: true,
       reloadDurationSec: undefined,
@@ -1849,6 +1544,7 @@ export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): Weapon
     category,
     weaponClass: functionalType,
     shotsPerChain: doubledAmmo,
+    damagePerShot: normalizedShotDmg,
     chainDurationSec: scaledChainDuration,
     reloadDurationSec: scaledReloadSec,
     moveset: updatedMoveset,

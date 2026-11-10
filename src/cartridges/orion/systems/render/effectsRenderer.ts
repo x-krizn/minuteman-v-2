@@ -270,6 +270,14 @@ export function drawEnhancedProjectilesAndBladeTrails(
 
         const biteX = trail.x + Math.cos(headAng) * rOuter;
         const biteY = cy + Math.sin(headAng) * rOuter;
+        const hookInX = biteX - Math.cos(headAng - dirSign * 0.45) * 4.5;
+        const hookInY = biteY - Math.sin(headAng - dirSign * 0.45) * 4.5;
+        g.strokeStyle = coreColor;
+        g.lineWidth = 1.8;
+        g.beginPath();
+        g.moveTo(biteX, biteY);
+        g.lineTo(hookInX, hookInY);
+        g.stroke();
         g.fillStyle = coreColor;
         g.beginPath();
         g.arc(biteX, biteY, 2.5 * (1 - progress * 0.3), 0, Math.PI * 2);
@@ -288,10 +296,10 @@ export function drawEnhancedProjectilesAndBladeTrails(
         g.globalAlpha = alpha * 0.95;
         g.strokeStyle = coreColor;
         g.lineWidth = 2.2;
-        for (let b = 0; b < 2; b++) {
-          const a0 = rot + b * Math.PI;
+        for (let b = 0; b < 3; b++) {
+          const a0 = rot + (b * Math.PI * 2) / 3;
           g.beginPath();
-          g.arc(trail.x, cy, r + (b === 0 ? 1.5 : -2), a0, a0 + Math.PI * 0.78);
+          g.arc(trail.x, cy, r + (b % 2 === 0 ? 1.5 : -2), a0, a0 + Math.PI * 0.62);
           g.stroke();
         }
       } else if (style === 'shockwave') {
@@ -410,7 +418,17 @@ export function drawEnhancedProjectilesAndBladeTrails(
     const speed = Math.hypot(p.vx, p.vy) || 1;
     const nx = p.vx / speed;
     const ny = p.vy / speed;
-    const tailLen = Math.min(12, Math.max(4, speed * 0.055));
+    const tailLen = Math.min(13, Math.max(4, speed * 0.06));
+
+    // Ground shadow for airborne lobbed mortars, bolides, or thrown spears
+    if (p.z > 8) {
+      g.save();
+      g.fillStyle = 'rgba(2, 6, 23, 0.42)';
+      g.beginPath();
+      g.ellipse(p.x, p.y, Math.max(2, p.radius * 0.85), Math.max(1.2, p.radius * 0.45), 0, 0, Math.PI * 2);
+      g.fill();
+      g.restore();
+    }
 
     g.strokeStyle = p.trailColor || p.color;
     g.globalAlpha = 0.65;
@@ -431,15 +449,27 @@ export function drawEnhancedProjectilesAndBladeTrails(
     g.restore();
 
     g.globalAlpha = 1.0;
-    g.fillStyle = p.color;
-    g.beginPath();
-    g.arc(p.x, py, p.radius, 0, Math.PI * 2);
-    g.fill();
+    if (p.damageType === 'Pierce' && p.isPlayer && p.radius >= 3.4) {
+      // Arrow / Javelin / Bolt shaft silhouette with fletching
+      g.strokeStyle = p.color;
+      g.lineWidth = 2.0;
+      g.beginPath();
+      g.moveTo(p.x + nx * 3.5, py + ny * 3.5);
+      g.lineTo(p.x - nx * 5.5, py - ny * 5.5);
+      g.stroke();
+      g.fillStyle = '#ffffff';
+      g.fillRect(Math.round(p.x + nx * 2) - 1, Math.round(py + ny * 2) - 1, 2, 2);
+    } else {
+      g.fillStyle = p.color;
+      g.beginPath();
+      g.arc(p.x, py, p.radius, 0, Math.PI * 2);
+      g.fill();
 
-    g.fillStyle = '#ffffff';
-    g.beginPath();
-    g.arc(p.x, py, Math.max(1, p.radius * 0.45), 0, Math.PI * 2);
-    g.fill();
+      g.fillStyle = '#ffffff';
+      g.beginPath();
+      g.arc(p.x, py, Math.max(1, p.radius * 0.45), 0, Math.PI * 2);
+      g.fill();
+    }
   }
   g.restore();
 }

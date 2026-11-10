@@ -61,6 +61,12 @@ import {
   triggerEntityFlash,
 } from './combatHelpers';
 import { DamageLayerOptions, PERFECT_BLOCK_WINDOW_SEC } from './damageSystem';
+import {
+  applySkillMovementAndSupportImpulse,
+  executeSpecializedSkillPayload,
+  ResolvedSkillBehaviorProfile,
+  resolveSkillBehaviorProfile,
+} from './skillBehaviors';
 
 // ─── 1. ASSIGNABLE [L] & [R] MULTI-SOURCE ACTIONS ────────────────────────────
 
@@ -315,6 +321,17 @@ export function executeActionPayload(
     }
   }
 
+  const activeSkillProfile: ResolvedSkillBehaviorProfile | null =
+    desc.sourceCategory === 'weapon' && desc.weaponSkillSlot
+      ? resolveSkillBehaviorProfile(
+          weapon,
+          (weapon?.moveset[desc.weaponSkillSlot] || desc) as Parameters<
+            typeof resolveSkillBehaviorProfile
+          >[1],
+          desc.weaponSkillSlot
+        )
+      : null;
+
   let skillHitGrantedBonus = false;
   const applyHitToEnemy = (
     e: (typeof state.enemies)[number],
@@ -336,9 +353,23 @@ export function executeActionPayload(
       e.y,
       false
     );
-    const totalArmorDent = extraArmorDent + gemCombatMods.extraArmorDentOnHit;
+    const profileDent = activeSkillProfile?.extraArmorDent || 0;
+    const totalArmorDent =
+      Math.max(extraArmorDent, profileDent) + gemCombatMods.extraArmorDentOnHit;
     if (totalArmorDent > 0 && e.armor.durability > 0) {
       e.armor.durability = Math.max(0, e.armor.durability - totalArmorDent);
+    }
+
+    // Apply guard-breaking shield strip on Hook/Wrench/Snag skills
+    if (
+      activeSkillProfile &&
+      activeSkillProfile.guardBreakShieldMult > 1.0 &&
+      e.shields.capacity > 0
+    ) {
+      const bonusStrip = Math.round(
+        baseDmg * (activeSkillProfile.guardBreakShieldMult - 1.0) * 0.55
+      );
+      e.shields.capacity = Math.max(0, e.shields.capacity - bonusStrip);
     }
 
     // Resolve Melee Inertia (`J_melee = (attack_weight + m_attacker * μ_attacker * commitment) * attack_speed`, §4)
@@ -354,9 +385,15 @@ export function executeActionPayload(
       impDx,
       impDy
     );
+    const effectiveKbDist =
+      activeSkillProfile?.displacementKind === 'hook_pull'
+        ? -Math.max(12, Math.abs(knockbackDist))
+        : activeSkillProfile?.displacementKind === 'heavy_shove'
+          ? Math.max(14, Math.round(Math.abs(knockbackDist) * 1.5))
+          : knockbackDist;
     const scaleMult = Math.max(
       0.75,
-      Math.min(1.6, stunSec / 0.45 + Math.abs(knockbackDist) * 0.03)
+      Math.min(1.6, stunSec / 0.45 + Math.abs(effectiveKbDist) * 0.03)
     );
     const impulseJ = computeMeleeImpulse(
       weaponInertiaSpec.attackWeight * scaleMult * (hitEval.quality === 'sweet' ? 1.2 : 1.0),
@@ -378,7 +415,7 @@ export function executeActionPayload(
       existingKnockbackSpeedPx: existingSpeed,
     });
 
-    const pullSign = knockbackDist < 0 ? -1 : 1;
+    const pullSign = effectiveKbDist < 0 ? -1 : 1;
     let nextKvx =
       (e.knockbackVx || 0) + impDx * pullSign * inertiaRes.displacementSpeedPx;
     let nextKvy =
@@ -463,23 +500,61 @@ export function executeActionPayload(
         : weapon.adaptiveDamageTypes[1]
       : dmgType;
     const adaptiveBonusMult = weapon?.adaptiveDamageTypes ? 1.12 : 1.0;
-    applyDamageFn(
-      e.shields,
-      e.armor,
-      e.frame,
-      Math.round(
-        computeEnemyDamage(baseDmg, e.faction, e, resolvedDmgType) *
-          adaptiveBonusMult *
-          hitEval.damageMult
-      ),
-      resolvedDmgType,
-      (count, color) => ctx.spawnParticles(e.x, e.y, e.z + 8, count, color, ''),
-      {
-        armorBypassRatio: hitEval.armorBypassRatio,
-        hitQuality: hitEval.quality,
-        onFlash: (color, dur, kind) => triggerEntityFlash(e, color, dur, kind),
-      }
+    const totalSkillHitDmg = Math.round(
+      computeEnemyDamage(baseDmg, e.faction, e, resolvedDmgType) *
+        adaptiveBonusMult *
+        hitEval.damageMult
     );
+    const shieldBypassRatio = activeSkillProfile?.shieldBypassRatio || 0;
+    if (shieldBypassRatio > 0 && e.shields.capacity > 0) {
+      const bypassedPortion = Math.max(1, Math.round(totalSkillHitDmg * shieldBypassRatio));
+      const normalPortion = Math.max(0, totalSkillHitDmg - bypassedPortion);
+      if (normalPortion > 0) {
+        applyDamageFn(
+          e.shields,
+          e.armor,
+          e.frame,
+          normalPortion,
+          resolvedDmgType,
+          undefined,
+          {
+            armorBypassRatio: hitEval.armorBypassRatio,
+            hitQuality: hitEval.quality,
+            onFlash: (color, dur, kind) => triggerEntityFlash(e, color, dur, kind),
+          }
+        );
+      }
+      const savedShield = e.shields.capacity;
+      e.shields.capacity = 0;
+      applyDamageFn(
+        e.shields,
+        e.armor,
+        e.frame,
+        bypassedPortion,
+        resolvedDmgType,
+        (count, color) => ctx.spawnParticles(e.x, e.y, e.z + 8, count, color, ''),
+        {
+          armorBypassRatio: hitEval.armorBypassRatio,
+          hitQuality: hitEval.quality,
+          onFlash: (color, dur, kind) => triggerEntityFlash(e, color, dur, kind),
+        }
+      );
+      e.shields.capacity = savedShield;
+    } else {
+      applyDamageFn(
+        e.shields,
+        e.armor,
+        e.frame,
+        totalSkillHitDmg,
+        resolvedDmgType,
+        (count, color) => ctx.spawnParticles(e.x, e.y, e.z + 8, count, color, ''),
+        {
+          armorBypassRatio: hitEval.armorBypassRatio,
+          hitQuality: hitEval.quality,
+          onFlash: (color, dur, kind) => triggerEntityFlash(e, color, dur, kind),
+        }
+      );
+    }
     if (hitEval.quality === 'sweet') {
       soundSystem.playPowerup();
     }
@@ -505,6 +580,17 @@ export function executeActionPayload(
     const action = weapon?.moveset[slot] || desc;
     state.bladeTrails = state.bladeTrails || [];
 
+    if (activeSkillProfile && !action.isBlock) {
+      applySkillMovementAndSupportImpulse(
+        state,
+        ctx,
+        activeSkillProfile,
+        aim.dx,
+        aim.dy,
+        trailColor
+      );
+    }
+
     if (isAuxiliaryEquipment(weapon) && !action.isBlock && weapon?.supportPulseOnHit) {
       skillHitGrantedBonus = true;
       const sp = weapon.supportPulseOnHit;
@@ -524,6 +610,69 @@ export function executeActionPayload(
       if (sp.heatVent) {
         state.heat = Math.max(0, state.heat - Math.round(sp.heatVent * (slot === 4 ? 1.5 : 1)));
       }
+    }
+
+    // Specialized description-driven payloads (Thrown Spear/Axe, Returning Chakram/Disc, Piercing Beam, Mortar/Meteoric Lob)
+    if (
+      activeSkillProfile &&
+      !action.isBlock &&
+      executeSpecializedSkillPayload(
+        state,
+        ctx,
+        weapon,
+        action as Parameters<typeof executeSpecializedSkillPayload>[3],
+        activeSkillProfile,
+        Math.round((action.damage || 30) * overdriveMult),
+        trailColor,
+        coreColor
+      )
+    ) {
+      return;
+    }
+
+    // Omnidirectional 360° Whirlwind / Core Shockwave skills
+    if (
+      activeSkillProfile &&
+      !action.isBlock &&
+      activeSkillProfile.payloadKind === 'omnidirectional_nova_whirlwind'
+    ) {
+      const novaRadius = Math.max(30, Math.min(44, action.range || 36));
+      state.bladeTrails.push({
+        x: state.x,
+        y: state.y,
+        z: state.z,
+        angle: aimAngle,
+        arcSpan: Math.PI * 2,
+        radius: novaRadius,
+        innerRadius: arch.isMelee ? undefined : 8,
+        width: 18,
+        style: activeSkillProfile.visualStyle,
+        color: trailColor,
+        coreColor,
+        life: 0.34,
+        maxLife: 0.34,
+      });
+      for (const e of state.enemies) {
+        if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
+        if (Math.hypot(e.x - state.x, e.y - state.y) <= novaRadius + 4) {
+          applyHitToEnemy(
+            e,
+            action.damage || 36,
+            (action.damageType || weapon?.primaryDamageType || 'Wave') as DamageType,
+            0.85,
+            14,
+            activeSkillProfile.extraArmorDent,
+            novaRadius
+          );
+        }
+      }
+      ctx.spawnParticles(state.x, state.y, state.z + 8, 12, trailColor, action.name);
+      if (arch.isMelee) {
+        soundSystem.playSword();
+      } else {
+        soundSystem.playExplosion();
+      }
+      return;
     }
 
     // ─── SLOT 1: PRIMARY SPECIAL SKILL ───────────────────────────────────────

@@ -959,12 +959,313 @@ function resolveEquipmentCellGripPivot(
   if (isShield || isCatalyst) {
     return { gripCellX: 8.0, gripCellY: 8.0, scale: 0.72 };
   }
-  return { gripCellX: 8.0, gripCellY: 8.0, scale: handScale };
+  return { gripCellX: 6.5, gripCellY: 8.5, scale: handScale };
+}
+
+/**
+ * 2.5D perspective transform and choreography state for a single weapon hardpoint (`main`, `side`, or `aux`).
+ */
+interface HardpointProjection25D {
+  /** Horizontal hand/mount mirror (`1` = East-authored right hand, `-1` = mirrored West/left hand) */
+  flipX: number;
+  /** Local weapon rotation in radians (applied after screen-space foreshortening and flipX) */
+  rotationRad: number;
+  /** Screen-space horizontal perspective foreshortening (`1.0` in E/W profile, `0.64..0.95` in N/S) */
+  foreshortenScaleX: number;
+  /** Screen-space vertical perspective foreshortening (`1.0` in E/W profile, `0.78..0.96` in N/S) */
+  foreshortenScaleY: number;
+  /** Screen-space horizontal shear (`g.transform(1, skewY, skewX, 1, 0, 0)`) for 2.5D isometric depth */
+  skewX: number;
+  /** Screen-space vertical shear for 2.5D isometric depth */
+  skewY: number;
+  /** Atmospheric depth darkening (`0..0.28`) when recessed behind the torso in North/South facings */
+  depthShadeAlpha: number;
+  /** True when a Caster/Carrier is aimed South toward the camera and should render a foreshortened muzzle bore */
+  showSouthMuzzleCue: boolean;
+  /** Projected screen-space unit vector `(aimCos, aimSin)` along the weapon's barrel/blade axis */
+  aimCos: number;
+  aimSin: number;
+}
+
+/**
+ * Computes class-specific 2.5D angles, perspective foreshortening (`foreshortenScaleX/Y`), isometric shear (`skewX/Y`),
+ * and depth shading for East-authored weapon strips so North (`N`) and South (`S`) facings look three-dimensional
+ * rather than like flat 2D paper stickers.
+ * Does not mutate `state: OrionState`.
+ */
+function resolveClassBaseProjection25D(
+  weaponDef: ReturnType<typeof getWeaponDefinition>,
+  arch: ReturnType<typeof classifyWeaponCombatArchetype>,
+  mountRole: 'main' | 'side' | 'aux',
+  cardinalDir: 'N' | 'S' | 'E' | 'W',
+  isGuarding: boolean
+): Omit<HardpointProjection25D, 'aimCos' | 'aimSin'> {
+  const isNorth = cardinalDir === 'N';
+  const isSouth = cardinalDir === 'S';
+  const isWest = cardinalDir === 'W';
+  const isEast = cardinalDir === 'E';
+
+  const isBow = arch.isBow;
+  const isShield = arch.isShield;
+  const isSpear = arch.isSpearOrPolearm;
+  const isImpactOrAxe = arch.isImpactOrAxe || arch.isBluntOrStaff;
+  const isRangedCasterOrCarrier =
+    (weaponDef?.equipmentRole === 'ranged' || arch.isQuiverOrBandolier) && !isBow;
+
+  // 1. AUX BACK-STOWED MOUNT (slot3)
+  if (mountRole === 'aux') {
+    if (isNorth) {
+      // Back faces camera: diagonal dorsal stow across the backplate with subtle planar compression
+      return {
+        flipX: 1,
+        rotationRad: isRangedCasterOrCarrier ? -0.52 : isShield ? -0.12 : -0.26,
+        foreshortenScaleX: 0.88,
+        foreshortenScaleY: 0.92,
+        skewX: -0.08,
+        skewY: 0.04,
+        depthShadeAlpha: 0,
+        showSouthMuzzleCue: false,
+      };
+    }
+    if (isSouth) {
+      // Front faces camera: stowed behind the torso, foreshortened upper pommel/barrel peeking over shoulder
+      return {
+        flipX: 1,
+        rotationRad: isRangedCasterOrCarrier ? -0.78 : -0.18,
+        foreshortenScaleX: 0.74,
+        foreshortenScaleY: 0.78,
+        skewX: 0.1,
+        skewY: 0,
+        depthShadeAlpha: 0.24,
+        showSouthMuzzleCue: false,
+      };
+    }
+    // East / West profile back stow
+    return {
+      flipX: isWest ? -1 : 1,
+      rotationRad: isRangedCasterOrCarrier ? -1.02 : -0.15,
+      foreshortenScaleX: 0.86,
+      foreshortenScaleY: 0.94,
+      skewX: 0,
+      skewY: 0,
+      depthShadeAlpha: 0.14,
+      showSouthMuzzleCue: false,
+    };
+  }
+
+  // Handedness sign: Main Hand (Right) = +1 on S/N/E and -1 on W; Side Hand (Left) = +1 on E and -1 on S/N/W
+  const flipX = mountRole === 'main' ? (isWest ? -1 : 1) : isEast ? 1 : -1;
+  const sideSign = mountRole === 'main' ? 1 : -1;
+
+  // 2. EAST / WEST SIDE PROFILE (Native orientation for East-authored weapon strips)
+  if (isEast || isWest) {
+    const isFarArm = (mountRole === 'main' && isWest) || (mountRole === 'side' && isEast);
+    const profileRot =
+      mountRole === 'side' && isEast
+        ? isShield
+          ? 0.08
+          : isRangedCasterOrCarrier
+            ? -0.08
+            : 0.34
+        : isShield
+          ? 0
+          : isBow
+            ? 0.05
+            : isSpear
+              ? 0.22
+              : isRangedCasterOrCarrier
+                ? 0.04
+                : 0.12;
+    return {
+      flipX,
+      rotationRad: profileRot,
+      foreshortenScaleX: isFarArm ? 0.92 : 1.0,
+      foreshortenScaleY: isFarArm ? 0.94 : 1.0,
+      skewX: 0,
+      skewY: 0,
+      depthShadeAlpha: isFarArm ? 0.12 : 0,
+      showSouthMuzzleCue: false,
+    };
+  }
+
+  // 3. SOUTH FACING ('S' — Toward the Camera):
+  //    Compensates for the East-authored diagonal (-45° on melee/spears/axes, -22° on casters)
+  //    so weapons angle downward-forward toward the camera with 2.5D perspective foreshortening.
+  if (isSouth) {
+    if (isShield) {
+      return {
+        flipX,
+        rotationRad: isGuarding ? 0.06 : 0.18,
+        foreshortenScaleX: isGuarding ? 0.95 : 0.78,
+        foreshortenScaleY: 0.96,
+        skewX: -0.08 * sideSign,
+        skewY: 0.04,
+        depthShadeAlpha: 0,
+        showSouthMuzzleCue: false,
+      };
+    }
+    if (isBow) {
+      return {
+        flipX,
+        rotationRad: 0.56,
+        foreshortenScaleX: 0.68,
+        foreshortenScaleY: 0.92,
+        skewX: -0.15 * sideSign,
+        skewY: 0.06,
+        depthShadeAlpha: 0,
+        showSouthMuzzleCue: false,
+      };
+    }
+    if (isRangedCasterOrCarrier) {
+      return {
+        flipX,
+        rotationRad: 0.92,
+        foreshortenScaleX: 0.72,
+        foreshortenScaleY: 0.86,
+        skewX: -0.16 * sideSign,
+        skewY: 0.08,
+        depthShadeAlpha: 0,
+        showSouthMuzzleCue: true,
+      };
+    }
+    if (isSpear) {
+      return {
+        flipX,
+        rotationRad: 1.28,
+        foreshortenScaleX: 0.7,
+        foreshortenScaleY: 0.9,
+        skewX: -0.18 * sideSign,
+        skewY: 0.08,
+        depthShadeAlpha: 0,
+        showSouthMuzzleCue: false,
+      };
+    }
+    if (isImpactOrAxe) {
+      return {
+        flipX,
+        rotationRad: 1.08,
+        foreshortenScaleX: 0.78,
+        foreshortenScaleY: 0.88,
+        skewX: -0.12 * sideSign,
+        skewY: 0.06,
+        depthShadeAlpha: 0,
+        showSouthMuzzleCue: false,
+      };
+    }
+    // Straight & Curved Blades
+    return {
+      flipX,
+      rotationRad: 1.14,
+      foreshortenScaleX: 0.75,
+      foreshortenScaleY: 0.88,
+      skewX: -0.14 * sideSign,
+      skewY: 0.06,
+      depthShadeAlpha: 0,
+      showSouthMuzzleCue: false,
+    };
+  }
+
+  // 4. NORTH FACING ('N' — Away from the Camera, rendered in behindBody pass):
+  //    Angles weapons up-forward away from the camera with tips peeking past the shoulders,
+  //    perspective foreshortening, and a subtle atmospheric depth tint.
+  if (isShield) {
+    return {
+      flipX,
+      rotationRad: -0.16,
+      foreshortenScaleX: isGuarding ? 0.86 : 0.76,
+      foreshortenScaleY: 0.9,
+      skewX: 0.08 * sideSign,
+      skewY: -0.04,
+      depthShadeAlpha: 0.18,
+      showSouthMuzzleCue: false,
+    };
+  }
+  if (isBow) {
+    return {
+      flipX,
+      rotationRad: -0.48,
+      foreshortenScaleX: 0.68,
+      foreshortenScaleY: 0.86,
+      skewX: 0.12 * sideSign,
+      skewY: -0.05,
+      depthShadeAlpha: 0.2,
+      showSouthMuzzleCue: false,
+    };
+  }
+  if (isRangedCasterOrCarrier) {
+    return {
+      flipX,
+      rotationRad: -0.66,
+      foreshortenScaleX: 0.72,
+      foreshortenScaleY: 0.82,
+      skewX: 0.14 * sideSign,
+      skewY: -0.06,
+      depthShadeAlpha: 0.22,
+      showSouthMuzzleCue: false,
+    };
+  }
+  if (isSpear) {
+    return {
+      flipX,
+      rotationRad: -0.38,
+      foreshortenScaleX: 0.7,
+      foreshortenScaleY: 0.85,
+      skewX: 0.14 * sideSign,
+      skewY: -0.06,
+      depthShadeAlpha: 0.2,
+      showSouthMuzzleCue: false,
+    };
+  }
+  if (isImpactOrAxe) {
+    return {
+      flipX,
+      rotationRad: -0.28,
+      foreshortenScaleX: 0.76,
+      foreshortenScaleY: 0.84,
+      skewX: 0.1 * sideSign,
+      skewY: -0.05,
+      depthShadeAlpha: 0.2,
+      showSouthMuzzleCue: false,
+    };
+  }
+  // Straight & Curved Blades
+  return {
+    flipX,
+    rotationRad: -0.32,
+    foreshortenScaleX: 0.74,
+    foreshortenScaleY: 0.84,
+    skewX: 0.12 * sideSign,
+    skewY: -0.05,
+    depthShadeAlpha: 0.2,
+    showSouthMuzzleCue: false,
+  };
+}
+
+/**
+ * Finalizes the projected screen-space unit vector `(aimCos, aimSin)` of the weapon's shaft/barrel
+ * after applying `rotationRad`, `flipX`, and `foreshortenScaleX/Y` so attachment overlays and muzzle cues align.
+ */
+function finalizeHardpointProjection25D(
+  base: Omit<HardpointProjection25D, 'aimCos' | 'aimSin'>,
+  intrinsicAngleRad: number
+): HardpointProjection25D {
+  const localAngle = intrinsicAngleRad + base.rotationRad;
+  const rawX = Math.cos(localAngle) * base.flipX;
+  const rawY = Math.sin(localAngle);
+  const sx = (rawX + base.skewX * rawY) * base.foreshortenScaleX;
+  const sy = (rawY + base.skewY * rawX) * base.foreshortenScaleY;
+  const len = Math.hypot(sx, sy) || 1;
+  return {
+    ...base,
+    aimCos: sx / len,
+    aimSin: sy / len,
+  };
 }
 
 /**
  * Renders a single equipped weapon or auxiliary item at `(mx, my)` for the `'main'` (Right Hand),
- * `'side'` (Left Hand), or `'aux'` (Back Stowed) mount with a 1px post-processed silhouette outline.
+ * `'side'` (Left Hand), or `'aux'` (Back Stowed) mount with 2.5D perspective foreshortening,
+ * isometric shear, depth shading, and a 1px post-processed silhouette outline.
  * Does not mutate `state: OrionState`.
  */
 function drawSinglePlayerEquipmentMount(
@@ -974,8 +1275,7 @@ function drawSinglePlayerEquipmentMount(
   mountRole: 'main' | 'side' | 'aux',
   mx: number,
   my: number,
-  scaleX: number,
-  rotationRad: number,
+  proj: HardpointProjection25D,
   cardinalDir: 'N' | 'S' | 'E' | 'W' = 'S'
 ): void {
   if (!itemId || !isRenderableWeaponMount(itemId)) return;
@@ -1024,11 +1324,20 @@ function drawSinglePlayerEquipmentMount(
 
         g.save();
         g.translate(Math.round(mx), Math.round(my));
-        if (scaleX !== 1) {
-          g.scale(scaleX, 1);
+        if (proj.foreshortenScaleX !== 1 || proj.foreshortenScaleY !== 1) {
+          g.scale(proj.foreshortenScaleX, proj.foreshortenScaleY);
         }
-        if (rotationRad !== 0) {
-          g.rotate(rotationRad);
+        if (proj.skewX !== 0 || proj.skewY !== 0) {
+          g.transform(1, proj.skewY, proj.skewX, 1, 0, 0);
+        }
+        if (proj.flipX !== 1) {
+          g.scale(proj.flipX, 1);
+        }
+        if (proj.rotationRad !== 0) {
+          g.rotate(proj.rotationRad);
+        }
+        if (proj.depthShadeAlpha > 0) {
+          g.globalAlpha = Math.max(0.72, 1 - proj.depthShadeAlpha * 0.65);
         }
         g.drawImage(
           outlined,
@@ -1042,6 +1351,23 @@ function drawSinglePlayerEquipmentMount(
           destH
         );
         g.restore();
+
+        // Foreshortened South-facing Caster/Carrier muzzle bore cue so the barrel reads aimed at the camera
+        if (proj.showSouthMuzzleCue) {
+          const muzzleX = Math.round(mx + proj.aimCos * 4.5);
+          const muzzleY = Math.round(my + proj.aimSin * 4.5);
+          const boreGlow = gemVis.gemId
+            ? gemVis.color
+            : weaponDef?.bladeTrailColor || '#38bdf8';
+          g.save();
+          g.fillStyle = COMPONENT_OUTLINE_COLOR;
+          g.fillRect(muzzleX - 1, muzzleY - 1, 3, 3);
+          g.fillStyle = '#0f172a';
+          g.fillRect(muzzleX, muzzleY, 2, 2);
+          g.fillStyle = boreGlow;
+          g.fillRect(muzzleX, muzzleY, 1, 1);
+          g.restore();
+        }
         return;
       }
     }
@@ -1056,11 +1382,14 @@ function drawSinglePlayerEquipmentMount(
   // Fallback pixel-art hardpoint silhouette with 1px dark outline (#05070a)
   g.save();
   g.translate(Math.round(mx), Math.round(my));
-  if (scaleX !== 1) {
-    g.scale(scaleX, 1);
+  if (proj.foreshortenScaleX !== 1 || proj.foreshortenScaleY !== 1) {
+    g.scale(proj.foreshortenScaleX, proj.foreshortenScaleY);
   }
-  if (rotationRad !== 0) {
-    g.rotate(rotationRad);
+  if (proj.flipX !== 1) {
+    g.scale(proj.flipX, 1);
+  }
+  if (proj.rotationRad !== 0) {
+    g.rotate(proj.rotationRad);
   }
   if (itemId.includes('catalyst')) {
     g.fillStyle = COMPONENT_OUTLINE_COLOR;
@@ -1093,9 +1422,220 @@ function drawSinglePlayerEquipmentMount(
 }
 
 /**
+ * Renders a crisp pixel-art attachment/grip overlay (`1px` `#05070a` outline + equipped Arms/Plating palette)
+ * aligned to the weapon's 2.5D projected axis `(aimCos, aimSin)` so that:
+ * - Hand-held weapons (`main` / `side`) have the Mech's gauntlet knuckle clasp wrapped **in front of the weapon handle/hilt**,
+ *   making the sword/axe/spear handle visibly tuck behind the front arm/hand while the blade extends outward.
+ * - `2-hand` weapons and `Bows` show the secondary support hand clasping the foregrip or drawing the bowstring.
+ * - `Shields` show an armored forearm strap and boss clamp locking the shield to the arm cuff.
+ * - `Aux` (back-stowed) weapons show a dorsal magnetic holster clamp or diagonal shoulder-sling latch.
+ * Does not mutate `state: OrionState`.
+ */
+function drawEquipmentAttachmentOverlay(
+  g: CanvasRenderingContext2D,
+  state: OrionState,
+  mountRole: 'main' | 'side' | 'aux',
+  mx: number,
+  my: number,
+  cardinalDir: 'N' | 'S' | 'E' | 'W',
+  options?: {
+    isShield?: boolean;
+    isBow?: boolean;
+    isTwoHanded?: boolean;
+    bowChargePct?: number;
+    aimCos?: number;
+    aimSin?: number;
+    trailColor?: string;
+  }
+): void {
+  const { framePlatingDef, armsDef } = resolvePlayerSpriteParts(state);
+  const cuffColor = armsDef.spriteTheme?.cuffColor || '#38bdf8';
+  const armColor = armsDef.spriteTheme?.armColor || '#475569';
+  const trimColor = framePlatingDef.spriteTheme?.trimColor || '#38bdf8';
+  const coreColor = framePlatingDef.spriteTheme?.reactorGlowColor || '#ea580c';
+
+  const rx = Math.round(mx);
+  const ry = Math.round(my);
+
+  g.save();
+  if (mountRole === 'aux') {
+    if (cardinalDir === 'N') {
+      // Dorsal magnetic holster bracket clamped across the stowed weapon spine on the backplate
+      g.fillStyle = COMPONENT_OUTLINE_COLOR;
+      g.fillRect(rx - 3, ry - 2, 6, 4);
+      g.fillStyle = armColor;
+      g.fillRect(rx - 2, ry - 1, 4, 2);
+      g.fillStyle = coreColor;
+      g.fillRect(rx - 1, ry - 1, 2, 1);
+    } else {
+      // Shoulder-collar sling latch peeking over the torso armor so the back weapon looks strapped on
+      const latchX = cardinalDir === 'W' ? rx - 1 : rx + 1;
+      g.fillStyle = COMPONENT_OUTLINE_COLOR;
+      g.fillRect(latchX - 2, ry + 1, 4, 3);
+      g.fillStyle = trimColor;
+      g.fillRect(latchX - 1, ry + 2, 2, 1);
+    }
+    g.restore();
+    return;
+  }
+
+  // SHIELD FOREARM STRAP & BOSS CLAMP
+  if (options?.isShield) {
+    g.fillStyle = COMPONENT_OUTLINE_COLOR;
+    g.fillRect(rx - 2, ry - 2, 4, 4);
+    g.fillStyle = trimColor;
+    g.fillRect(rx - 1, ry - 1, 2, 2);
+    g.fillStyle = '#f8fafc';
+    g.fillRect(rx, ry - 1, 1, 1);
+    g.restore();
+    return;
+  }
+
+  // HAND GAUNTLET KNUCKLE CLASP OVER THE WEAPON HANDLE/HILT PIVOT
+  // Drawn ON TOP of the weapon hilt so the handle tucks behind the front hand/fingers!
+  if (cardinalDir !== 'N') {
+    g.fillStyle = COMPONENT_OUTLINE_COLOR;
+    g.fillRect(rx - 2, ry - 2, 4, 4);
+    g.fillStyle = armColor;
+    g.fillRect(rx - 1, ry - 1, 2, 2);
+    g.fillStyle = cuffColor;
+    g.fillRect(rx - 1, ry, 2, 1);
+  }
+
+  const dirVec = CARDINAL_MOUNT_VECTORS[cardinalDir] || CARDINAL_MOUNT_VECTORS.S;
+  const aimCos = options?.aimCos ?? dirVec.dx;
+  const aimSin = options?.aimSin ?? dirVec.dy;
+
+  // BOW DRAW-STRING, ARROW SHAFT & OFF-HAND NOCK CLASP (Foreshortened in N/S)
+  if (options?.isBow) {
+    const chargePct = Math.max(0, Math.min(1, options.bowChargePct || 0));
+    const isNS = cardinalDir === 'N' || cardinalDir === 'S';
+    const pullDist = (isNS ? 1.6 : 2.0) + chargePct * (isNS ? 2.6 : 3.5);
+    const limbSpan = isNS ? 3.0 : 4.0;
+    const perpX = -aimSin * limbSpan;
+    const perpY = aimCos * limbSpan;
+
+    const nockX = Math.round(rx - aimCos * pullDist);
+    const nockY = Math.round(ry - aimSin * pullDist);
+    const tipX = Math.round(rx + aimCos * (isNS ? 4.0 : 5.0));
+    const tipY = Math.round(ry + aimSin * (isNS ? 4.0 : 5.0));
+
+    // Taut bowstring lines from upper/lower limb tips to nock hand
+    g.strokeStyle = chargePct > 0.8 ? '#fde047' : '#cbd5e1';
+    g.lineWidth = 1;
+    g.beginPath();
+    g.moveTo(rx + perpX, ry + perpY);
+    g.lineTo(nockX, nockY);
+    g.lineTo(rx - perpX, ry - perpY);
+    g.stroke();
+
+    // Nocked arrow shaft & glowing arrowhead when charging
+    if (chargePct > 0.02) {
+      g.strokeStyle = options.trailColor || '#38bdf8';
+      g.beginPath();
+      g.moveTo(nockX, nockY);
+      g.lineTo(tipX, tipY);
+      g.stroke();
+      g.fillStyle = chargePct >= 0.85 ? '#fde047' : '#ffffff';
+      g.fillRect(tipX - 1, tipY - 1, 2, 2);
+    }
+
+    // Off-hand draw gauntlet clasp at the string nock
+    g.fillStyle = COMPONENT_OUTLINE_COLOR;
+    g.fillRect(nockX - 1, nockY - 1, 3, 3);
+    g.fillStyle = cuffColor;
+    g.fillRect(nockX, nockY, 1, 1);
+  } else if (options?.isTwoHanded && cardinalDir !== 'N') {
+    // TWO-HANDED (2H) SECONDARY FOREGRIP GAUNTLET CLASP ALONG PROJECTED SHAFT AXIS
+    const foreX = Math.round(rx + aimCos * 2.4);
+    const foreY = Math.round(ry + aimSin * 2.4);
+    g.fillStyle = COMPONENT_OUTLINE_COLOR;
+    g.fillRect(foreX - 1, foreY - 1, 3, 3);
+    g.fillStyle = cuffColor;
+    g.fillRect(foreX, foreY, 1, 1);
+  }
+
+  g.restore();
+}
+
+/**
+ * Resolves the active move style (`slash`, `chop`, `thrust`, `slam`, `bash`, `whirlwind`, `volley`, etc.)
+ * for the currently winding-up or executing weapon attack/skill so weapon hardpoints animate to match.
+ */
+function resolveActiveWeaponMoveStyle(
+  state: OrionState,
+  mainDef: ReturnType<typeof getWeaponDefinition>,
+  mainArch: ReturnType<typeof classifyWeaponCombatArchetype>
+): string {
+  const slot = state.activeSkillSlot;
+  if (slot === 0 && mainDef?.moveset[0]?.comboSequence?.length) {
+    const seq = mainDef.moveset[0].comboSequence;
+    // During windup, state.meleeComboStep is the current step; during action, executeBasicAttackShot incremented it by 1
+    const isWinding = (state.skillTellTimer || 0) > 0;
+    const rawStep = state.meleeComboStep || 0;
+    const idx = isWinding
+      ? rawStep % seq.length
+      : (rawStep - 1 + seq.length) % seq.length;
+    return seq[idx]?.style || 'slash';
+  }
+  if (slot !== null && slot >= 1 && slot <= 4 && mainDef?.moveset[slot]) {
+    const act = mainDef.moveset[slot];
+    const txt = `${act.name} ${act.description}`.toLowerCase();
+    if (
+      txt.includes('full-rotation') ||
+      txt.includes('horizon-severing') ||
+      txt.includes('whirl') ||
+      txt.includes('tempest') ||
+      txt.includes('spin')
+    ) {
+      return 'whirlwind';
+    }
+    if (
+      txt.includes('slam') ||
+      txt.includes('drop') ||
+      txt.includes('split') ||
+      txt.includes('guillotine') ||
+      txt.includes('downdraft')
+    ) {
+      return 'slam';
+    }
+    if (
+      txt.includes('thrust') ||
+      txt.includes('impale') ||
+      txt.includes('skewer') ||
+      txt.includes('stab') ||
+      txt.includes('lance') ||
+      txt.includes('beam') ||
+      txt.includes('ray')
+    ) {
+      return 'thrust';
+    }
+    if (
+      txt.includes('hook') ||
+      txt.includes('snag') ||
+      txt.includes('wrench') ||
+      txt.includes('chop') ||
+      txt.includes('hew') ||
+      txt.includes('cleave')
+    ) {
+      return 'chop';
+    }
+    if (mainArch.isShield || txt.includes('bash') || txt.includes('ram') || txt.includes('press')) {
+      return 'bash';
+    }
+  }
+  if (mainArch.isSpearOrPolearm) return 'thrust';
+  if (mainArch.isBluntOrStaff || mainArch.isImpactOrAxe) return 'chop';
+  if (mainArch.isShield) return 'bash';
+  if (!mainArch.isMeleeOrShield) return 'volley';
+  return 'slash';
+}
+
+/**
  * Renders the pilot's three weapon hardpoints (`Main Hand [Right]`, `Side Hand [Left]`, and `Aux [Back]`)
- * locked into the 4 canonical sprite facings ('N' | 'S' | 'E' | 'W') with locked-in relative coordinates.
- * Excludes consumables (flasks, potions) and aligns depth sorting with the character chassis.
+ * across three anatomical depth passes (`'behindBody'`, `'betweenPlatingAndArms'`, `'inFrontOfBody'`)
+ * with class-specific 2.5D North/South perspective foreshortening, procedural gauntlet/holster attachment overlays,
+ * and facing-aligned Main + Side Hand choreography.
  * Does not mutate `state: OrionState`.
  */
 export function drawPlayerWeaponMounts25D(
@@ -1105,7 +1645,7 @@ export function drawPlayerWeaponMounts25D(
   cy: number,
   dir: OrionDir | 'N' | 'S' | 'E' | 'W',
   timeSec: number,
-  pass: 'behindBody' | 'inFrontOfBody',
+  pass: 'behindBody' | 'betweenPlatingAndArms' | 'inFrontOfBody',
   options?: DrawCompositePlayerOptions
 ): void {
   void timeSec;
@@ -1140,15 +1680,36 @@ export function drawPlayerWeaponMounts25D(
   const isEast = cardinalDir === 'E';
   const isWest = cardinalDir === 'W';
   const isSouth = cardinalDir === 'S';
+  const isNS = isNorth || isSouth;
+
+  const isWindingUp = Boolean(
+    state.activeSkillSlot !== null && (state.skillTellTimer || 0) > 0
+  );
+  const isAttacking = Boolean(
+    options?.isAttacking ??
+      (state.activeSkillSlot !== null &&
+        (state.skillTellTimer || 0) <= 0 &&
+        (state.skillActionTimer || 0) > 0)
+  );
+  const windupMax = Math.max(0.05, state.skillTellMaxTimer || 0.14);
+  const windupPct = isWindingUp
+    ? Math.max(0, Math.min(1, 1 - (state.skillTellTimer || 0) / windupMax))
+    : 0;
+  const actionMax = Math.max(0.08, state.skillActionMaxTimer || 0.22);
+  const actionElapsedPct = isAttacking
+    ? Math.max(0, Math.min(1, 1 - (state.skillActionTimer || 0) / actionMax))
+    : 0;
+  const isFollowThrough = isAttacking && actionElapsedPct > 0.6;
+  const recoveryLerp = isFollowThrough ? 1 - (actionElapsedPct - 0.6) / 0.4 : 1.0;
+  const isGuarding = Boolean(state.isHoldingBlock || (state.blockTimer || 0) > 0);
 
   // 1. AUX (BACK — slot3):
-  //    - Facing North ('N'): back faces camera directly -> drawn inFrontOfBody centered on dorsal plate
-  //    - Facing South ('S'), East ('E'), West ('W'): back is behind body -> drawn behindBody
+  //    - Facing North ('N'): back faces camera directly -> drawn inFrontOfBody centered on dorsal plate with magnetic holster bracket
+  //    - Facing South ('S'), East ('E'), West ('W'): weapon drawn behindBody, plus shoulder sling latch in betweenPlatingAndArms
   const auxPass: 'behindBody' | 'inFrontOfBody' = isNorth ? 'inFrontOfBody' : 'behindBody';
-  if (auxId && auxPass === pass) {
+  if (auxId) {
     const auxDef = getWeaponDefinition(auxId);
     const auxArch = classifyWeaponCombatArchetype(auxDef, auxId);
-    const auxIsBolter = auxDef?.equipmentRole === 'ranged' && !auxArch.isBow;
 
     const bx = isNorth
       ? cx
@@ -1162,79 +1723,141 @@ export function drawPlayerWeaponMounts25D(
       ? cy - 8.5
       : isEast || isWest
         ? cy - 9.0
-        : cy - 10.0;
+        : cy - 9.5;
 
-    const auxScaleX = isWest ? -1 : 1;
-    const auxRotRad = auxIsBolter
-      ? isNorth
-        ? -0.45
-        : isEast || isWest
-          ? -1.05
-          : -0.85
-      : 0;
+    if (auxPass === pass) {
+      const auxBaseProj = resolveClassBaseProjection25D(
+        auxDef,
+        auxArch,
+        'aux',
+        cardinalDir,
+        false
+      );
+      const auxIntrinsic =
+        auxDef?.equipmentRole === 'melee'
+          ? -0.785
+          : auxDef?.equipmentRole === 'ranged' && !auxArch.isBow
+            ? -0.38
+            : 0;
+      const auxProj = finalizeHardpointProjection25D(auxBaseProj, auxIntrinsic);
 
-    drawSinglePlayerEquipmentMount(
-      g,
-      state,
-      auxId,
-      'aux',
-      bx,
-      by,
-      auxScaleX,
-      auxRotRad,
-      cardinalDir
-    );
+      drawSinglePlayerEquipmentMount(
+        g,
+        state,
+        auxId,
+        'aux',
+        bx,
+        by,
+        auxProj,
+        cardinalDir
+      );
+
+      if (isNorth) {
+        drawEquipmentAttachmentOverlay(g, state, 'aux', bx, by, cardinalDir);
+      }
+    } else if (!isNorth && pass === 'betweenPlatingAndArms') {
+      drawEquipmentAttachmentOverlay(g, state, 'aux', bx, by - 2, cardinalDir);
+    }
   }
 
   // 2. SIDE HAND (LEFT — slot2):
-  //    - Facing South ('S'): screen-left near hand cuff -> inFrontOfBody
-  //    - Facing North ('N'): screen-left far hand cuff (reaching forward) -> behindBody
-  //    - Facing East ('E'): far background arm -> behindBody
-  //    - Facing West ('W'): near foreground arm -> inFrontOfBody
-  const sidePass: 'behindBody' | 'inFrontOfBody' =
-    isNorth || isEast ? 'behindBody' : 'inFrontOfBody';
+  //    - Facing South ('S') or West ('W'): near foreground arm -> inFrontOfBody (with gauntlet clasp over hilt)
+  //    - Facing East ('E'): far profile arm -> betweenPlatingAndArms (sandwiched in front of torso, behind near arm!)
+  //    - Facing North ('N'): far forward-reaching arm -> behindBody (foreshortened with tip peeking past left shoulder)
+  const sidePass: 'behindBody' | 'betweenPlatingAndArms' | 'inFrontOfBody' = isNorth
+    ? 'behindBody'
+    : isEast
+      ? 'betweenPlatingAndArms'
+      : 'inFrontOfBody';
+
   if (sideId && sidePass === pass) {
     const sideDef = getWeaponDefinition(sideId);
     const sideArch = classifyWeaponCombatArchetype(sideDef, sideId);
     const sideIsMelee = sideDef?.equipmentRole === 'melee';
     const sideIsBolter = sideDef?.equipmentRole === 'ranged' && !sideArch.isBow;
+    const sideIsShield = sideArch.isShield;
+    const isOddComboStep = ((state.meleeComboStep || 0) % 2) === 1;
 
-    const lx = isEast
+    const sideBaseProj = resolveClassBaseProjection25D(
+      sideDef,
+      sideArch,
+      'side',
+      cardinalDir,
+      isGuarding
+    );
+
+    let sideThrustOffset = 0;
+    let sideSwingRot = 0;
+    let sideLiftY = 0;
+    let sideLateralSweepX = 0;
+    let sideDynamicScaleXMult = 1.0;
+
+    if (isGuarding) {
+      // Active Shield / Weapon Guard: project forward and raise into high ward stance
+      sideThrustOffset = sideIsShield ? 2.6 : 1.8;
+      sideLiftY = -1.5;
+      sideSwingRot = isNS ? -0.14 : isWest ? 0.22 : -0.22;
+      if (isSouth && sideIsShield) {
+        sideLateralSweepX = 1.6;
+      }
+    } else if (isWindingUp) {
+      if (sideIsMelee && isOddComboStep) {
+        sideSwingRot = -0.48 * windupPct;
+        sideThrustOffset = -1.2 * windupPct;
+        if (isNS) {
+          sideLateralSweepX = -1.6 * windupPct;
+        }
+      } else if (sideIsShield && state.activeSkillSlot !== null && state.activeSkillSlot >= 1) {
+        sideThrustOffset = -1.4 * windupPct;
+      }
+    } else if (isAttacking) {
+      if (sideIsMelee && (isOddComboStep || (state.activeSkillSlot || 0) >= 1)) {
+        sideSwingRot = 0.68 * recoveryLerp;
+        sideThrustOffset = 3.2 * recoveryLerp;
+        if (isNS) {
+          // Cross-body N/S off-hand slash sweeps toward centerline with perspective compression
+          sideLateralSweepX = 3.0 * recoveryLerp;
+          sideDynamicScaleXMult = 0.88;
+        }
+      } else if (sideIsShield && (state.activeSkillSlot || 0) >= 1) {
+        sideThrustOffset = 3.8 * recoveryLerp;
+        if (isNS) {
+          sideLateralSweepX = 2.0 * recoveryLerp;
+        }
+      } else if (sideIsBolter) {
+        sideThrustOffset = -1.4 * recoveryLerp;
+      }
+    }
+
+    const baseLx = isEast
       ? cx + 2.5
       : isWest
         ? cx - 2.5
-        : cx - 4.5;
+        : cx - 4.2;
 
-    const ly = isEast
+    const baseLy = isEast
       ? cy - 7.5
       : isWest
         ? cy - 6.5
         : isNorth
-          ? cy - 7.5
-          : cy - 6.5;
+          ? cy - 8.2
+          : cy - 6.2;
 
-    const sideScaleX = isEast ? 1 : -1;
-    const sideRotRad = isEast
-      ? sideIsMelee
-        ? 0.40
-        : sideIsBolter
-          ? -0.10
-          : 0
-      : isWest
-        ? sideIsMelee
-          ? 0.12
-          : 0
-        : isNorth
-          ? sideIsMelee
-            ? -0.15
-            : sideIsBolter
-              ? 0.50
-              : 0
-          : sideIsMelee
-            ? 0.15
-            : sideIsBolter
-              ? -0.22
-              : 0;
+    const sideDx =
+      (isEast ? sideThrustOffset : isWest ? -sideThrustOffset : 0) + sideLateralSweepX;
+    const sideDy = isSouth ? sideThrustOffset : isNorth ? -sideThrustOffset : 0;
+    const lx = baseLx + sideDx;
+    const ly = baseLy + sideDy + sideLiftY;
+
+    const sideIntrinsic = sideIsMelee ? -0.785 : sideIsBolter ? -0.38 : 0;
+    const sideProj = finalizeHardpointProjection25D(
+      {
+        ...sideBaseProj,
+        rotationRad: sideBaseProj.rotationRad + sideSwingRot,
+        foreshortenScaleX: sideBaseProj.foreshortenScaleX * sideDynamicScaleXMult,
+      },
+      sideIntrinsic
+    );
 
     drawSinglePlayerEquipmentMount(
       g,
@@ -1243,86 +1866,159 @@ export function drawPlayerWeaponMounts25D(
       'side',
       lx,
       ly,
-      sideScaleX,
-      sideRotRad,
+      sideProj,
       cardinalDir
     );
+
+    drawEquipmentAttachmentOverlay(g, state, 'side', lx, ly, cardinalDir, {
+      isShield: sideIsShield,
+      aimCos: sideProj.aimCos,
+      aimSin: sideProj.aimSin,
+    });
+
+    if (isGuarding && sideIsShield) {
+      g.save();
+      g.fillStyle = (state.blockHoldTimer || 0) <= 0.34 ? '#fde047' : '#38bdf8';
+      g.fillRect(Math.round(lx) - 1, Math.round(ly) - 3, 2, 2);
+      g.restore();
+    }
   }
 
   // 3. MAIN HAND (RIGHT — slot1):
-  //    - Facing South ('S'): screen-right near hand cuff -> inFrontOfBody
-  //    - Facing North ('N'): screen-right far hand cuff (reaching forward) -> behindBody
-  //    - Facing East ('E'): near foreground arm -> inFrontOfBody
-  //    - Facing West ('W'): far background arm -> behindBody
-  const mainPass: 'behindBody' | 'inFrontOfBody' =
-    isNorth || isWest ? 'behindBody' : 'inFrontOfBody';
-  if (mainId && mainPass === pass) {
-    const isWindingUp = Boolean(
-      state.activeSkillSlot !== null && (state.skillTellTimer || 0) > 0
-    );
-    const isAttacking = Boolean(
-      options?.isAttacking ??
-        (state.activeSkillSlot !== null &&
-          (state.skillTellTimer || 0) <= 0 &&
-          (state.skillActionTimer || 0) > 0)
-    );
-    const windupMax = Math.max(0.05, state.skillTellMaxTimer || 0.14);
-    const windupPct = isWindingUp
-      ? Math.max(0, Math.min(1, 1 - (state.skillTellTimer || 0) / windupMax))
-      : 0;
-    const actionMax = Math.max(0.08, state.skillActionMaxTimer || 0.22);
-    const actionElapsedPct = isAttacking
-      ? Math.max(0, Math.min(1, 1 - (state.skillActionTimer || 0) / actionMax))
-      : 0;
-    const isFollowThrough = isAttacking && actionElapsedPct > 0.6;
-    const recoveryLerp = isFollowThrough ? 1 - (actionElapsedPct - 0.6) / 0.4 : 1.0;
+  //    - Facing South ('S') or East ('E'): near foreground arm -> inFrontOfBody (with gauntlet clasp over hilt)
+  //    - Facing West ('W'): far profile arm -> betweenPlatingAndArms (sandwiched in front of torso, behind near arm!)
+  //    - Facing North ('N'): far forward-reaching arm -> behindBody (foreshortened with tip peeking past right shoulder)
+  const mainPass: 'behindBody' | 'betweenPlatingAndArms' | 'inFrontOfBody' = isNorth
+    ? 'behindBody'
+    : isWest
+      ? 'betweenPlatingAndArms'
+      : 'inFrontOfBody';
 
+  if (mainId && mainPass === pass) {
     const mainDef = getWeaponDefinition(mainId);
     const mainArch = classifyWeaponCombatArchetype(mainDef, mainId);
     const mainIsMelee = mainDef?.equipmentRole === 'melee';
-    const mainIsBolter = mainDef?.equipmentRole === 'ranged' && !mainArch.isBow;
-    const isSpearOrLance = mainArch.isSpearOrPolearm;
-    const isMaceOrHammer = mainArch.isBluntOrStaff || mainArch.isImpactOrAxe;
-    const isShield = mainArch.isShield;
+    const isBow = mainArch.isBow;
     const isRanged = mainDef?.equipmentRole === 'ranged' || mainArch.isQuiverOrBandolier;
+    const activeStyle = resolveActiveWeaponMoveStyle(state, mainDef, mainArch);
     const swingParity = ((state.meleeComboStep || state.ammo) % 2 === 0) ? 1 : -1;
 
-    // 3-Phase Multi-Frame Keyframes:
-    // Phase 1 (Windup): Pull weapon back / raise overhead
-    // Phase 2 (Active Strike, 0..60%): Full forward extension / cleave arc
-    // Phase 3 (Follow-Through, 60..100%): Smooth return to neutral locked-in hardpoint
+    const mainBaseProj = resolveClassBaseProjection25D(
+      mainDef,
+      mainArch,
+      'main',
+      cardinalDir,
+      isGuarding
+    );
+
+    const bowChargePct =
+      isBow && state.isChargingBow
+        ? Math.max(
+            0,
+            Math.min(1, (state.bowChargeTimer || 0) / Math.max(0.25, state.bowMaxChargeSec || 1.15))
+          )
+        : 0;
+
+    // Style-Specific 3-Phase Keyframes (Windup -> Active Strike -> Follow-Through)
+    // Includes dedicated N/S lateral sweep and dynamic foreshortening so N/S swings sweep across the facing axis
     let thrustOffset = 0;
     let swingRot = 0;
     let slamDropY = 0;
+    let lateralSweepX = 0;
+    let dynamicScaleXMult = 1.0;
+    let dynamicScaleYMult = 1.0;
 
-    if (isWindingUp) {
-      if (isSpearOrLance) {
-        thrustOffset = -2.5 * windupPct;
-      } else if (isMaceOrHammer) {
-        swingRot = -0.62 * windupPct;
+    if (isBow && state.isChargingBow) {
+      thrustOffset = 1.6 + bowChargePct * 1.2;
+      swingRot = isNS ? 0.08 * bowChargePct : -0.18 * bowChargePct;
+      slamDropY = -0.8 * bowChargePct;
+      if (isNS) {
+        dynamicScaleXMult = 1 - bowChargePct * 0.1;
+      }
+    } else if (isWindingUp) {
+      if (activeStyle === 'thrust') {
+        thrustOffset = -2.8 * windupPct;
+        if (isNS) {
+          // Align shaft along the N/S thrust line on windup
+          swingRot = (isSouth ? 0.22 : -0.22) * windupPct;
+          dynamicScaleXMult = 1 - 0.12 * windupPct;
+        }
+      } else if (activeStyle === 'slam') {
+        swingRot = -0.78 * windupPct;
+        slamDropY = -3.2 * windupPct;
+        if (isNS) {
+          lateralSweepX = -1.2 * windupPct;
+          dynamicScaleYMult = 1 + 0.08 * windupPct;
+        }
+      } else if (activeStyle === 'chop') {
+        swingRot = -0.66 * windupPct;
         slamDropY = -2.0 * windupPct;
-      } else if (isShield) {
-        thrustOffset = -1.5 * windupPct;
+        thrustOffset = -1.0 * windupPct;
+        if (isNS) {
+          lateralSweepX = 1.4 * windupPct;
+        }
+      } else if (activeStyle === 'whirlwind') {
+        swingRot = -swingParity * 0.85 * windupPct;
+      } else if (activeStyle === 'bash') {
+        thrustOffset = -1.8 * windupPct;
       } else if (isRanged) {
         thrustOffset = 1.0 * windupPct;
       } else {
-        swingRot = -swingParity * 0.48 * windupPct;
+        // 'slash': Wind up outward before sweeping across the facing plane
+        swingRot = -swingParity * 0.56 * windupPct;
         thrustOffset = -1.2 * windupPct;
+        if (isNS) {
+          lateralSweepX = swingParity * 2.0 * windupPct;
+        }
       }
     } else if (isAttacking) {
-      if (isSpearOrLance) {
-        thrustOffset = 5.5 * recoveryLerp;
-      } else if (isMaceOrHammer) {
-        swingRot = 0.72 * recoveryLerp;
-        slamDropY = 2.8 * recoveryLerp;
-        thrustOffset = 2.0 * recoveryLerp;
-      } else if (isShield) {
-        thrustOffset = 4.0 * recoveryLerp;
+      if (activeStyle === 'thrust') {
+        thrustOffset = 6.2 * recoveryLerp;
+        if (isNS) {
+          // Point blade/spear straight along the South (+Y) or North (-Y) vector with shaft foreshortening
+          swingRot = (isSouth ? 0.34 : -0.3) * recoveryLerp;
+          lateralSweepX = -1.2 * recoveryLerp;
+          dynamicScaleXMult = 1 - 0.16 * recoveryLerp;
+        }
+      } else if (activeStyle === 'slam') {
+        swingRot = 0.84 * recoveryLerp;
+        slamDropY = (isNorth ? -2.8 : 3.4) * recoveryLerp;
+        thrustOffset = 2.6 * recoveryLerp;
+        if (isNS) {
+          lateralSweepX = -1.8 * recoveryLerp;
+          dynamicScaleXMult = 1 - 0.18 * recoveryLerp;
+        }
+      } else if (activeStyle === 'chop') {
+        swingRot = 0.74 * recoveryLerp;
+        slamDropY = (isNorth ? -2.2 : 2.4) * recoveryLerp;
+        thrustOffset = 2.8 * recoveryLerp;
+        if (isNS) {
+          lateralSweepX = -2.2 * recoveryLerp;
+          dynamicScaleXMult = 1 - 0.15 * recoveryLerp;
+        }
+      } else if (activeStyle === 'whirlwind') {
+        swingRot = swingParity * actionElapsedPct * Math.PI * 2;
+        thrustOffset = 2.5 * recoveryLerp;
+        if (isNS) {
+          lateralSweepX = Math.cos(actionElapsedPct * Math.PI * 2) * 3.2;
+          dynamicScaleXMult = 0.78 + 0.22 * Math.abs(Math.cos(actionElapsedPct * Math.PI * 2));
+        }
+      } else if (activeStyle === 'bash') {
+        thrustOffset = 4.4 * recoveryLerp;
+        if (isNS) {
+          lateralSweepX = -1.5 * recoveryLerp;
+        }
       } else if (isRanged) {
-        thrustOffset = -2.0 * recoveryLerp;
+        thrustOffset = -2.2 * recoveryLerp;
+        swingRot = isNS ? 0.08 * recoveryLerp : -0.14 * recoveryLerp;
       } else {
-        swingRot = swingParity * 0.62 * recoveryLerp;
-        thrustOffset = 3.0 * recoveryLerp;
+        // 'slash': Sweep horizontally across the South/North facing arc with apex perspective compression
+        swingRot = swingParity * 0.78 * recoveryLerp;
+        thrustOffset = 3.2 * recoveryLerp;
+        if (isNS) {
+          lateralSweepX = -swingParity * 3.8 * recoveryLerp;
+          dynamicScaleXMult = 1 - 0.14 * recoveryLerp;
+        }
       }
     }
 
@@ -1330,40 +2026,34 @@ export function drawPlayerWeaponMounts25D(
       ? cx + 2.5
       : isWest
         ? cx - 2.5
-        : cx + 4.5;
+        : cx + 4.2;
 
     const baseRy = isEast
       ? cy - 6.5
       : isWest
         ? cy - 7.5
         : isNorth
-          ? cy - 7.5
-          : cy - 6.5;
+          ? cy - 8.2
+          : cy - 6.2;
 
-    // Locked-in cardinal thrust along the 4 cardinal axes only (no diagonal offset)
-    const thrustDx = isEast ? thrustOffset : isWest ? -thrustOffset : 0;
+    const thrustDx =
+      (isEast ? thrustOffset : isWest ? -thrustOffset : 0) + lateralSweepX;
     const thrustDy = isSouth ? thrustOffset : isNorth ? -thrustOffset : 0;
 
     const rx = baseRx + thrustDx;
     const ry = baseRy + thrustDy + slamDropY;
 
-    const mainScaleX = isWest ? -1 : 1;
-    const baseMainRot =
-      isEast || isWest
-        ? mainIsMelee
-          ? 0.12
-          : 0
-        : isNorth
-          ? mainIsMelee
-            ? -0.15
-            : mainIsBolter
-              ? -0.50
-              : 0
-          : mainIsMelee
-            ? 0.15
-            : mainIsBolter
-              ? 0.22
-              : 0;
+    const mainIntrinsic =
+      mainIsMelee ? -0.785 : isRanged && !isBow ? -0.38 : 0;
+    const mainProj = finalizeHardpointProjection25D(
+      {
+        ...mainBaseProj,
+        rotationRad: mainBaseProj.rotationRad + swingRot,
+        foreshortenScaleX: mainBaseProj.foreshortenScaleX * dynamicScaleXMult,
+        foreshortenScaleY: mainBaseProj.foreshortenScaleY * dynamicScaleYMult,
+      },
+      mainIntrinsic
+    );
 
     drawSinglePlayerEquipmentMount(
       g,
@@ -1372,25 +2062,118 @@ export function drawPlayerWeaponMounts25D(
       'main',
       rx,
       ry,
-      mainScaleX,
-      baseMainRot + swingRot,
+      mainProj,
       cardinalDir
     );
 
-    // Subtle 2px windup glint at the weapon head/tip on final windup frames
+    drawEquipmentAttachmentOverlay(g, state, 'main', rx, ry, cardinalDir, {
+      isShield: mainArch.isShield,
+      isBow,
+      isTwoHanded: (mainGrip === '2h' && !sideId) || mainDef?.handing === '2-hand',
+      bowChargePct,
+      aimCos: mainProj.aimCos,
+      aimSin: mainProj.aimSin,
+      trailColor: mainDef?.bladeTrailColor,
+    });
+
+    // Subtle 2px windup glint at the projected weapon head/tip on final windup frames
     if (isWindingUp && windupPct > 0.55) {
+      const tipGlintX = Math.round(rx + mainProj.aimCos * 5.0);
+      const tipGlintY = Math.round(ry + mainProj.aimSin * 5.0);
       g.save();
       g.fillStyle = '#fde047';
-      g.fillRect(Math.round(rx) - 1, Math.round(ry) - 4, 2, 2);
+      g.fillRect(tipGlintX - 1, tipGlintY - 1, 2, 2);
       g.restore();
     }
   }
 }
 
 /**
+ * Helper to draw a single resolved `16x16` chassis part layer (`plating`, `arms`, or `head`) with its `1px` post-outline.
+ */
+function drawSingleMechLayerSlice(
+  g: CanvasRenderingContext2D,
+  slice: ResolvedLayerSlice,
+  cx: number,
+  cy: number
+): void {
+  const outlinedPart = slice.needsPostOutline
+    ? getOutlinedSpriteCanvas(
+        slice.sourceKey,
+        slice.drawable,
+        slice.srcX,
+        slice.srcY,
+        slice.srcW,
+        slice.srcH,
+        COMPONENT_OUTLINE_COLOR
+      )
+    : null;
+
+  if (outlinedPart) {
+    if (slice.flipX) {
+      g.save();
+      g.translate(cx, cy);
+      g.scale(-1, 1);
+      g.drawImage(
+        outlinedPart,
+        0,
+        0,
+        outlinedPart.width,
+        outlinedPart.height,
+        -9,
+        -17,
+        18,
+        18
+      );
+      g.restore();
+    } else {
+      g.drawImage(
+        outlinedPart,
+        0,
+        0,
+        outlinedPart.width,
+        outlinedPart.height,
+        cx - 9,
+        cy - 17,
+        18,
+        18
+      );
+    }
+  } else if (slice.flipX) {
+    g.save();
+    g.translate(cx, cy);
+    g.scale(-1, 1);
+    g.drawImage(
+      slice.drawable,
+      slice.srcX,
+      slice.srcY,
+      slice.srcW,
+      slice.srcH,
+      -8,
+      -16,
+      16,
+      16
+    );
+    g.restore();
+  } else {
+    g.drawImage(
+      slice.drawable,
+      slice.srcX,
+      slice.srcY,
+      slice.srcW,
+      slice.srcH,
+      cx - 8,
+      cy - 16,
+      16,
+      16
+    );
+  }
+}
+
+/**
  * Renders the modular player Mech sprite composed of 3 aligned `16x16` px armor layers
- * (`plating`, `arms`, `head`) plus depth-sorted `Main Hand (Right)`, `Side Hand (Left)`,
- * and `Aux (Back)` weapon mounts, with 1px post-processed outlines around each component.
+ * (`plating`, `arms`, `head`) interleaved with 3 anatomical weapon passes
+ * (`behindBody` -> `plating` -> `betweenPlatingAndArms` -> `arms & head` -> `inFrontOfBody` + gauntlet grip clasps).
  * Locked to 4 canonical sprite facings ('N' | 'S' | 'E' | 'W') with locked-in weapon coordinates.
  * Does not mutate `state: OrionState`.
  */
@@ -1462,92 +2245,38 @@ export function drawCompositePlayerMech(
     g.restore();
   }
 
-  // Pass 1: Behind-body weapon mounts (Aux [Back] when facing South/East/West, or forward hands when facing North/East/West)
+  // Pass 1: Behind-body weapon mounts (Aux [Back] when facing South/East/West, or forward hands when facing North)
   if (!options?.hideWeaponMounts) {
     drawPlayerWeaponMounts25D(g, state, cx, cy, cardinalDir, timeSec, 'behindBody', options);
   }
 
-  // Pass 2: 3-Layer Composite Mech Chassis (Frame Plating -> Arms -> Head), each with a 1px post-processed outline
-  for (const slice of [platingSlice, armsSlice, headSlice]) {
-    const outlinedPart = slice.needsPostOutline
-      ? getOutlinedSpriteCanvas(
-          slice.sourceKey,
-          slice.drawable,
-          slice.srcX,
-          slice.srcY,
-          slice.srcW,
-          slice.srcH,
-          COMPONENT_OUTLINE_COLOR
-        )
-      : null;
+  // Pass 2: Torso & Legs Frame Plating Layer
+  drawSingleMechLayerSlice(g, platingSlice, cx, cy);
 
-    if (outlinedPart) {
-      if (slice.flipX) {
-        g.save();
-        g.translate(cx, cy);
-        g.scale(-1, 1);
-        g.drawImage(
-          outlinedPart,
-          0,
-          0,
-          outlinedPart.width,
-          outlinedPart.height,
-          -9,
-          -17,
-          18,
-          18
-        );
-        g.restore();
-      } else {
-        g.drawImage(
-          outlinedPart,
-          0,
-          0,
-          outlinedPart.width,
-          outlinedPart.height,
-          cx - 9,
-          cy - 17,
-          18,
-          18
-        );
-      }
-    } else if (slice.flipX) {
-      g.save();
-      g.translate(cx, cy);
-      g.scale(-1, 1);
-      g.drawImage(
-        slice.drawable,
-        slice.srcX,
-        slice.srcY,
-        slice.srcW,
-        slice.srcH,
-        -8,
-        -16,
-        16,
-        16
-      );
-      g.restore();
-    } else {
-      g.drawImage(
-        slice.drawable,
-        slice.srcX,
-        slice.srcY,
-        slice.srcW,
-        slice.srcH,
-        cx - 8,
-        cy - 16,
-        16,
-        16
-      );
-    }
+  // Pass 3: Between-Plating-And-Arms weapon mounts (far-side profile hand in East/West facings + Aux shoulder sling latch)
+  if (!options?.hideWeaponMounts) {
+    drawPlayerWeaponMounts25D(
+      g,
+      state,
+      cx,
+      cy,
+      cardinalDir,
+      timeSec,
+      'betweenPlatingAndArms',
+      options
+    );
   }
 
-  // Pass 3: Front-of-body weapon mounts (e.g., Main [Right] & Side [Left] when facing South, or Aux [Back] when facing North)
+  // Pass 4: Shoulders/Arms & Head/Optics Layers
+  drawSingleMechLayerSlice(g, armsSlice, cx, cy);
+  drawSingleMechLayerSlice(g, headSlice, cx, cy);
+
+  // Pass 5: Front-of-body weapon mounts + Gauntlet Knuckle Grip Clasps (sword handles tucked behind front hand)
   if (!options?.hideWeaponMounts) {
     drawPlayerWeaponMounts25D(g, state, cx, cy, cardinalDir, timeSec, 'inFrontOfBody', options);
   }
 
-  // Pass 4: Fighting-Game / Souls Silhouette Flash-Frame Overlay
+  // Pass 6: Fighting-Game / Souls Silhouette Flash-Frame Overlay
   if (!options?.hideWeaponMounts && (state.flashTimer || 0) > 0) {
     const flashColor = state.flashColor || '#ffffff';
     const flashKind = state.flashKind || 'hit';

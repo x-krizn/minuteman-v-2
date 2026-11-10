@@ -120,9 +120,9 @@
 
 | Check | Result |
 |---|---|
-| `.ts` / `.tsx` files under `src/cartridges/orion` | 164 |
-| License header on every file | Yes (164 of 164) |
-| JSDoc blocks across `src/cartridges/orion` | 1,859 (1,328 / 1,328 exported symbols documented) |
+| `.ts` / `.tsx` files under `src/cartridges/orion` | 166 |
+| License header on every file | Yes (166 of 166) |
+| JSDoc blocks across `src/cartridges/orion` | 1,919 (1,339 / 1,339 exported symbols documented) |
 | Files with no JSDoc at all | 0 |
 | `// [ORION-ANCHOR: …]` anchors in code | 23 |
 | `any`, `@ts-ignore`, `@ts-expect-error`, `TODO`, `FIXME` | 0 |
@@ -130,7 +130,7 @@
 | `addEventListener` / `removeEventListener` | 0 / 0 |
 | `setTimeout` / `clearTimeout` | Paired via tracked timer refs & unmount cleanup (`ui/OrionGameMenu.tsx`) |
 | `requestAnimationFrame` / `cancelAnimationFrame` | 4 / 4 (`ui/OrionHud.tsx`, `ui/satchel/SatchelCanvases.tsx`, `ui/satchel/AetherCosmosCanvas.tsx`) |
-| Files over 1,000 lines | 18 (largest: `database/progression/index.ts`, 3,704) |
+| Files over 1,000 lines | 19 (largest: `database/progression/index.ts`, 3,704) |
 | Docs anchors missing from code | None (`0`) |
 | Code anchors missing from docs | None (`0`) |
 

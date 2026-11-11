@@ -50,6 +50,7 @@ import {
   classifyWeaponCombatArchetype,
   clampTempoMultiplier,
   getWeaponDefinition,
+  isLauncherEquipment,
   isTwoHandOnlyWeapon,
 } from '../database/equipment/weapons';
 import { getBiomeDefinition, getTileDefinition } from '../database/world';
@@ -877,15 +878,40 @@ export function syncStateGates(state: OrionState): OrionCapabilityGates {
   state.equipmentSlots.slot1 =
     state.equipmentSlots.slot1 || state.equippedWeapons[0] || 'long_sword';
   if (state.equipmentSlots.slot2 === undefined) {
-    state.equipmentSlots.slot2 = state.equippedWeapons[1] || null;
+    const candidate2 = state.equippedWeapons[1] || null;
+    state.equipmentSlots.slot2 =
+      candidate2 && !isLauncherEquipment(candidate2) && !isTwoHandOnlyWeapon(candidate2, state)
+        ? candidate2
+        : null;
   }
   if (state.equipmentSlots.slot3 === undefined) {
     state.equipmentSlots.slot3 = null;
   }
-  if (isTwoHandOnlyWeapon(state.equipmentSlots.slot1)) {
+  // Enforce: Launchers belong in Aux Back (`slot3`) only, never Side Hand (`slot2`)
+  if (state.equipmentSlots.slot2 && isLauncherEquipment(state.equipmentSlots.slot2)) {
+    if (!state.equipmentSlots.slot3) {
+      state.equipmentSlots.slot3 = state.equipmentSlots.slot2;
+    }
+    state.equipmentSlots.slot2 = null;
+  }
+  // Enforce: Non-Launcher weapons in `slot3` (from legacy saves) move to `slot2` (holstered if 2H)
+  if (state.equipmentSlots.slot3 && !isLauncherEquipment(state.equipmentSlots.slot3)) {
+    if (
+      !state.equipmentSlots.slot2 &&
+      !isTwoHandOnlyWeapon(state.equipmentSlots.slot3, state)
+    ) {
+      state.equipmentSlots.slot2 = state.equipmentSlots.slot3;
+    }
+    state.equipmentSlots.slot3 = 'carrier_01_bandolier';
+    state.equipmentSlots.auxActive = false;
+  }
+  if (!state.equipmentSlots.slot3) {
+    state.equipmentSlots.auxActive = false;
+  }
+  if (isTwoHandOnlyWeapon(state.equipmentSlots.slot1, state)) {
     state.equipmentSlots.mainGrip = '2h';
   } else if (!state.equipmentSlots.mainGrip) {
-    state.equipmentSlots.mainGrip = '1h';
+    state.equipmentSlots.mainGrip = state.equipmentSlots.slot2 ? '1h' : '2h';
   }
   state.equipmentSlots.head =
     state.equipmentSlots.head || `${profile.frameModel || 'Mark-IV'} Sensor Visor`;

@@ -1607,13 +1607,13 @@ export function buildCustomizableWeapon(seed: CustomizableWeaponSeed): WeaponDef
     seed.canBlock || seed.equipmentRole === 'melee' || seed.equipmentRole === 'shield'
   );
   const loadoutSlots =
-    seed.equipmentRole === 'shield' ||
+    seed.category === 'Carriers & Munitions' ||
     seed.equipmentRole === 'quiver' ||
     seed.equipmentRole === 'catalyst'
-      ? ['Aux 1', 'Aux 2']
-      : seed.handing === '2-hand'
-        ? ['Weapon 1', 'Weapon 2']
-        : ['Weapon 1', 'Weapon 2', 'Aux 1'];
+      ? ['Aux 1']
+      : seed.handing === '2-hand' || seed.category === 'Bows'
+        ? ['Weapon 1']
+        : ['Weapon 1', 'Weapon 2'];
 
   const trailByDamage: Record<DamageType, string> = {
     Impact: '#f8fafc',

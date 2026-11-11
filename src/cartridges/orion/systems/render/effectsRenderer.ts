@@ -418,18 +418,423 @@ export function drawEnhancedProjectilesAndBladeTrails(
     const speed = Math.hypot(p.vx, p.vy) || 1;
     const nx = p.vx / speed;
     const ny = p.vy / speed;
-    const tailLen = Math.min(13, Math.max(4, speed * 0.06));
+    const px = -ny;
+    const perpY = nx;
+    const angle = Math.atan2(ny, nx);
+    const shape =
+      p.visualShape ||
+      (p.damageType === 'Beam'
+        ? 'beam'
+        : p.damageType === 'Wave'
+          ? 'wave'
+          : p.damageType === 'Pulse'
+            ? 'pulse'
+            : p.damageType === 'Blast'
+              ? 'blast_shell'
+              : 'bolt');
 
-    // Ground shadow for airborne lobbed mortars, bolides, or thrown spears
+    // Ground shadow for airborne lobbed mortars, bolides, rockets, or thrown spears
     if (p.z > 8) {
       g.save();
       g.fillStyle = 'rgba(2, 6, 23, 0.42)';
       g.beginPath();
-      g.ellipse(p.x, p.y, Math.max(2, p.radius * 0.85), Math.max(1.2, p.radius * 0.45), 0, 0, Math.PI * 2);
+      g.ellipse(
+        p.x,
+        p.y,
+        Math.max(2, p.radius * 0.85),
+        Math.max(1.2, p.radius * 0.45),
+        0,
+        0,
+        Math.PI * 2
+      );
       g.fill();
       g.restore();
     }
 
+    // 1. BEAM WEAPONS: Coherent elongated collimated laser/plasma lance (not a round dot)
+    if (shape === 'beam') {
+      const beamLen = p.beamLengthPx || 32;
+      const tailX = p.x - nx * beamLen;
+      const tailY = py - ny * beamLen;
+
+      g.save();
+      g.lineCap = 'round';
+      g.globalCompositeOperation = 'lighter';
+      // Outer thermal/photonic bloom sheath
+      g.strokeStyle = p.trailColor || p.color;
+      g.globalAlpha = 0.42;
+      g.lineWidth = Math.max(4.5, p.radius * 2.2);
+      g.beginPath();
+      g.moveTo(p.x + nx * 2, py + ny * 2);
+      g.lineTo(tailX, tailY);
+      g.stroke();
+
+      // Coherent primary beam body
+      g.strokeStyle = p.color;
+      g.globalAlpha = 0.92;
+      g.lineWidth = Math.max(2.4, p.radius * 1.15);
+      g.beginPath();
+      g.moveTo(p.x + nx * 2, py + ny * 2);
+      g.lineTo(tailX + nx * 3, tailY + ny * 3);
+      g.stroke();
+
+      // Intense white collimated core ray
+      g.strokeStyle = '#ffffff';
+      g.globalAlpha = 0.98;
+      g.lineWidth = Math.max(1.2, p.radius * 0.48);
+      g.beginPath();
+      g.moveTo(p.x + nx * 2.5, py + ny * 2.5);
+      g.lineTo(tailX + nx * 6, tailY + ny * 6);
+      g.stroke();
+
+      // Focal lens flare cross at the beam tip
+      g.strokeStyle = '#ffffff';
+      g.lineWidth = 1.1;
+      g.beginPath();
+      g.moveTo(p.x - px * 3.5, py - perpY * 3.5);
+      g.lineTo(p.x + px * 3.5, py + perpY * 3.5);
+      g.stroke();
+      g.restore();
+      continue;
+    }
+
+    // 2. ARC WEAPONS: Crackling forked electricity bolt that zig-zags and chains between targets
+    if (shape === 'arc') {
+      const arcLen = 17;
+      const segs = 5;
+      const phase = p.life * 68;
+
+      g.save();
+      g.lineCap = 'round';
+      g.lineJoin = 'bevel';
+      g.globalCompositeOperation = 'lighter';
+
+      // Build jagged lightning vertices
+      const pts: Array<{ x: number; y: number }> = [{ x: p.x + nx * 2, y: py + ny * 2 }];
+      for (let s = 1; s < segs; s++) {
+        const t = s / segs;
+        const baseX = p.x - nx * (arcLen * t);
+        const baseY = py - ny * (arcLen * t);
+        const jitter = Math.sin(phase + s * 2.45) * (s % 2 === 0 ? 3.8 : -3.8);
+        pts.push({
+          x: baseX + px * jitter,
+          y: baseY + perpY * jitter,
+        });
+      }
+      pts.push({ x: p.x - nx * arcLen, y: py - ny * arcLen });
+
+      // Outer electric corona
+      g.strokeStyle = p.trailColor || p.color;
+      g.globalAlpha = 0.55;
+      g.lineWidth = 4.2;
+      g.beginPath();
+      g.moveTo(pts[0].x, pts[0].y);
+      for (let s = 1; s < pts.length; s++) g.lineTo(pts[s].x, pts[s].y);
+      g.stroke();
+
+      // Secondary branching fork spurs
+      const forkOrigin = pts[1];
+      const forkSign = Math.sin(phase) >= 0 ? 1 : -1;
+      g.strokeStyle = p.color;
+      g.globalAlpha = 0.82;
+      g.lineWidth = 1.4;
+      g.beginPath();
+      g.moveTo(forkOrigin.x, forkOrigin.y);
+      g.lineTo(
+        forkOrigin.x - nx * 4 + px * forkSign * 5.2,
+        forkOrigin.y - ny * 4 + perpY * forkSign * 5.2
+      );
+      g.moveTo(pts[2].x, pts[2].y);
+      g.lineTo(
+        pts[2].x - nx * 3.5 - px * forkSign * 4.4,
+        pts[2].y - ny * 3.5 - perpY * forkSign * 4.4
+      );
+      g.stroke();
+
+      // High-voltage white-hot core spine
+      g.strokeStyle = '#ffffff';
+      g.globalAlpha = 0.98;
+      g.lineWidth = 1.6;
+      g.beginPath();
+      g.moveTo(pts[0].x, pts[0].y);
+      for (let s = 1; s < pts.length; s++) g.lineTo(pts[s].x, pts[s].y);
+      g.stroke();
+      g.restore();
+      continue;
+    }
+
+    // 3. WAVE WEAPONS (Radius ≈ 6.8–7.6, Span ≈ 18–26): Wide rolling horizontal crescent wave crest (Largest in Bolt < Pulse < Wave)
+    if (shape === 'wave' || shape === 'cord_whip') {
+      const initLife = p.initialLife || 1.0;
+      const travelRatio = Math.max(0, Math.min(1, 1 - p.life / initLife));
+      const growth = 0.88 + 0.28 * travelRatio;
+      const crestRadius = Math.max(6.2, p.radius * 1.45 * growth);
+      const arcHalf = shape === 'cord_whip' ? Math.PI * 0.38 : Math.PI * 0.46;
+      const centerBackX = p.x - nx * (crestRadius * 0.55);
+      const centerBackY = py - ny * (crestRadius * 0.55);
+
+      g.save();
+      g.lineCap = 'round';
+      g.globalCompositeOperation = 'lighter';
+
+      // Outer rolling wave bloom
+      g.strokeStyle = p.trailColor || p.color;
+      g.globalAlpha = 0.45;
+      g.lineWidth = 5.4;
+      g.beginPath();
+      g.arc(centerBackX, centerBackY, crestRadius, angle - arcHalf, angle + arcHalf);
+      g.stroke();
+
+      // Primary crescent wave crest
+      g.strokeStyle = p.color;
+      g.globalAlpha = 0.94;
+      g.lineWidth = 3.0;
+      g.beginPath();
+      g.arc(centerBackX, centerBackY, crestRadius, angle - arcHalf, angle + arcHalf);
+      g.stroke();
+
+      // Bright white leading wave-front edge
+      g.strokeStyle = '#ffffff';
+      g.globalAlpha = 0.96;
+      g.lineWidth = 1.4;
+      g.beginPath();
+      g.arc(
+        centerBackX,
+        centerBackY,
+        crestRadius + 0.6,
+        angle - arcHalf * 0.78,
+        angle + arcHalf * 0.78
+      );
+      g.stroke();
+
+      // Secondary trailing harmonic wake ripple behind the main crest
+      g.strokeStyle = p.trailColor || p.color;
+      g.globalAlpha = 0.55;
+      g.lineWidth = 1.5;
+      g.beginPath();
+      g.arc(
+        centerBackX - nx * 4.5,
+        centerBackY - ny * 4.5,
+        crestRadius * 0.76,
+        angle - arcHalf * 0.7,
+        angle + arcHalf * 0.7
+      );
+      g.stroke();
+      g.restore();
+      continue;
+    }
+
+    // 4. PULSE WEAPONS (Radius ≈ 4.2): Medium concentric harmonic resonance rings (Larger than Bolt ≈ 2.3, smaller than Wave ≈ 6.8)
+    if (shape === 'pulse') {
+      const ringPulse = 1.0 + 0.16 * Math.sin(p.life * 32);
+      const outerR = Math.max(3.8, p.radius * ringPulse);
+      const innerR = outerR * 0.58;
+
+      g.save();
+      g.globalCompositeOperation = 'lighter';
+
+      // Trailing harmonic wake arc
+      g.strokeStyle = p.trailColor || p.color;
+      g.globalAlpha = 0.48;
+      g.lineWidth = 1.6;
+      g.beginPath();
+      g.arc(p.x - nx * 4.5, py - ny * 4.5, outerR * 0.85, angle + Math.PI * 0.65, angle - Math.PI * 0.65, true);
+      g.stroke();
+
+      // Outer concentric harmonic ring
+      g.strokeStyle = p.color;
+      g.globalAlpha = 0.92;
+      g.lineWidth = 1.6;
+      g.beginPath();
+      g.arc(p.x, py, outerR, 0, Math.PI * 2);
+      g.stroke();
+
+      // Inner phase ring
+      g.strokeStyle = '#ffffff';
+      g.globalAlpha = 0.85;
+      g.lineWidth = 1.1;
+      g.beginPath();
+      g.arc(p.x, py, innerR, 0, Math.PI * 2);
+      g.stroke();
+
+      // Crisp central resonance core
+      g.fillStyle = '#ffffff';
+      g.globalAlpha = 0.95;
+      g.beginPath();
+      g.arc(p.x, py, Math.max(1.2, p.radius * 0.32), 0, Math.PI * 2);
+      g.fill();
+      g.restore();
+      continue;
+    }
+
+    // 5. BOLT WEAPONS (Radius ≈ 2.1–2.6): Compact, tight, high-velocity needle/penetrator bolt (Smallest in Bolt < Pulse < Wave)
+    if (shape === 'bolt') {
+      const boltLen = Math.max(5.5, p.radius * 2.5);
+      const boltHalfW = Math.max(1.1, p.radius * 0.52);
+
+      g.save();
+      // Slim slipstream wake
+      g.strokeStyle = p.trailColor || p.color;
+      g.globalAlpha = 0.55;
+      g.lineWidth = Math.max(1.1, p.radius * 0.65);
+      g.beginPath();
+      g.moveTo(p.x, py);
+      g.lineTo(p.x - nx * (boltLen + 4), py - ny * (boltLen + 4));
+      g.stroke();
+
+      // Compact diamond/needle penetrator body
+      g.fillStyle = p.color;
+      g.globalAlpha = 0.98;
+      g.beginPath();
+      g.moveTo(p.x + nx * (boltLen * 0.55), py + ny * (boltLen * 0.55));
+      g.lineTo(p.x + px * boltHalfW, py + perpY * boltHalfW);
+      g.lineTo(p.x - nx * (boltLen * 0.55), py - ny * (boltLen * 0.55));
+      g.lineTo(p.x - px * boltHalfW, py - perpY * boltHalfW);
+      g.closePath();
+      g.fill();
+
+      // White-hot needle tip
+      g.fillStyle = '#ffffff';
+      g.fillRect(Math.round(p.x + nx * 1.2) - 1, Math.round(py + ny * 1.2) - 1, 2, 2);
+      g.restore();
+      continue;
+    }
+
+    // 6. ARROWS, JAVELINS, & PLUMBATA DARTS: Fletched shaft + metallic broadhead/bodkin point
+    if (shape === 'arrow' || shape === 'javelin' || shape === 'dart') {
+      const shaftLen = shape === 'javelin' ? 14 : shape === 'arrow' ? 10.5 : 7.5;
+      const headLen = shape === 'javelin' ? 4.2 : 3.0;
+      const headWing = shape === 'javelin' ? 2.4 : 1.8;
+      const tipX = p.x + nx * (shaftLen * 0.45);
+      const tipY = py + ny * (shaftLen * 0.45);
+      const tailX = p.x - nx * (shaftLen * 0.55);
+      const tailY = py - ny * (shaftLen * 0.55);
+
+      g.save();
+      // Slipstream line
+      g.strokeStyle = p.trailColor || p.color;
+      g.globalAlpha = 0.45;
+      g.lineWidth = 1.2;
+      g.beginPath();
+      g.moveTo(tailX, tailY);
+      g.lineTo(tailX - nx * 6, tailY - ny * 6);
+      g.stroke();
+
+      // Main shaft
+      g.strokeStyle = p.color;
+      g.globalAlpha = 0.96;
+      g.lineWidth = shape === 'javelin' ? 2.1 : 1.5;
+      g.beginPath();
+      g.moveTo(tipX, tipY);
+      g.lineTo(tailX, tailY);
+      g.stroke();
+
+      // Fletching feathers at tail (or lead weight bulb on Plumbata dart)
+      if (shape === 'dart') {
+        g.fillStyle = '#cbd5e1';
+        g.beginPath();
+        g.arc(p.x + nx * 1.2, py + ny * 1.2, 1.8, 0, Math.PI * 2);
+        g.fill();
+      } else {
+        g.strokeStyle = p.trailColor || '#e2e8f0';
+        g.lineWidth = 1.2;
+        g.beginPath();
+        g.moveTo(tailX + nx * 2.2, tailY + ny * 2.2);
+        g.lineTo(tailX - nx * 1.2 + px * 2.2, tailY - ny * 1.2 + perpY * 2.2);
+        g.moveTo(tailX + nx * 2.2, tailY + ny * 2.2);
+        g.lineTo(tailX - nx * 1.2 - px * 2.2, tailY - ny * 1.2 - perpY * 2.2);
+        g.stroke();
+      }
+
+      // Metallic broadhead / bodkin tip
+      g.fillStyle = '#ffffff';
+      g.beginPath();
+      g.moveTo(tipX + nx * 1.5, tipY + ny * 1.5);
+      g.lineTo(tipX - nx * headLen + px * headWing, tipY - ny * headLen + perpY * headWing);
+      g.lineTo(tipX - nx * headLen - px * headWing, tipY - ny * headLen - perpY * headWing);
+      g.closePath();
+      g.fill();
+      g.restore();
+      continue;
+    }
+
+    // 7. ROCKETS & GUIDED MISSILES (Rack, LN-1200 Avalanche, LG-950 Tomahawk): Finned warhead + thruster exhaust flame
+    if (shape === 'rocket') {
+      const noseX = p.x + nx * 4.5;
+      const noseY = py + ny * 4.5;
+      const rearX = p.x - nx * 5.0;
+      const rearY = py - ny * 5.0;
+
+      g.save();
+      // Thruster exhaust flame plume
+      const flameLen = 5.5 + Math.sin(p.life * 80) * 2.0;
+      g.strokeStyle = '#fb923c';
+      g.lineWidth = 3.2;
+      g.lineCap = 'round';
+      g.beginPath();
+      g.moveTo(rearX, rearY);
+      g.lineTo(rearX - nx * flameLen, rearY - ny * flameLen);
+      g.stroke();
+
+      g.strokeStyle = '#fef08a';
+      g.lineWidth = 1.6;
+      g.beginPath();
+      g.moveTo(rearX, rearY);
+      g.lineTo(rearX - nx * (flameLen * 0.65), rearY - ny * (flameLen * 0.65));
+      g.stroke();
+
+      // Stabilizer tail fins
+      g.strokeStyle = '#94a3b8';
+      g.lineWidth = 1.4;
+      g.beginPath();
+      g.moveTo(rearX + px * 2.8, rearY + perpY * 2.8);
+      g.lineTo(rearX - px * 2.8, rearY - perpY * 2.8);
+      g.stroke();
+
+      // Cylindrical rocket casing
+      g.strokeStyle = '#e2e8f0';
+      g.lineWidth = 2.8;
+      g.beginPath();
+      g.moveTo(noseX - nx * 2, noseY - ny * 2);
+      g.lineTo(rearX, rearY);
+      g.stroke();
+
+      // Colored warhead nose cone
+      g.fillStyle = p.color;
+      g.beginPath();
+      g.arc(noseX - nx * 0.5, noseY - ny * 0.5, 2.0, 0, Math.PI * 2);
+      g.fill();
+      g.restore();
+      continue;
+    }
+
+    // 8. CHAKRAM / RETURNING GYRO DISC: Spinning toothed ring
+    if (shape === 'chakram') {
+      const spin = p.life * 26;
+      const discR = Math.max(4.4, p.radius);
+
+      g.save();
+      g.strokeStyle = p.color;
+      g.lineWidth = 2.0;
+      g.beginPath();
+      g.arc(p.x, py, discR, 0, Math.PI * 2);
+      g.stroke();
+
+      g.strokeStyle = '#ffffff';
+      g.lineWidth = 1.2;
+      for (let t = 0; t < 4; t++) {
+        const ta = spin + (t * Math.PI) / 2;
+        g.beginPath();
+        g.moveTo(p.x + Math.cos(ta) * (discR - 1), py + Math.sin(ta) * (discR - 1));
+        g.lineTo(p.x + Math.cos(ta + 0.25) * (discR + 2.2), py + Math.sin(ta + 0.25) * (discR + 2.2));
+        g.stroke();
+      }
+      g.restore();
+      continue;
+    }
+
+    // 9. NOVA ORB, METEORIC BOLIDE, & BLAST SHELL
+    const tailLen = Math.min(13, Math.max(4, speed * 0.06));
     g.strokeStyle = p.trailColor || p.color;
     g.globalAlpha = 0.65;
     g.lineWidth = Math.max(1.5, p.radius * 1.1);
@@ -441,35 +846,32 @@ export function drawEnhancedProjectilesAndBladeTrails(
 
     g.save();
     g.globalCompositeOperation = 'lighter';
-    g.globalAlpha = 0.42;
+    g.globalAlpha = 0.45;
     g.fillStyle = p.trailColor || p.color;
     g.beginPath();
     g.arc(p.x, py, p.radius * 2.1, 0, Math.PI * 2);
     g.fill();
+    if (shape === 'nova_orb') {
+      // Equatorial expanding containment ring around the Nova core
+      g.strokeStyle = '#ffffff';
+      g.globalAlpha = 0.78;
+      g.lineWidth = 1.3;
+      g.beginPath();
+      g.ellipse(p.x, py, p.radius * 1.55, p.radius * 0.72, angle, 0, Math.PI * 2);
+      g.stroke();
+    }
     g.restore();
 
     g.globalAlpha = 1.0;
-    if (p.damageType === 'Pierce' && p.isPlayer && p.radius >= 3.4) {
-      // Arrow / Javelin / Bolt shaft silhouette with fletching
-      g.strokeStyle = p.color;
-      g.lineWidth = 2.0;
-      g.beginPath();
-      g.moveTo(p.x + nx * 3.5, py + ny * 3.5);
-      g.lineTo(p.x - nx * 5.5, py - ny * 5.5);
-      g.stroke();
-      g.fillStyle = '#ffffff';
-      g.fillRect(Math.round(p.x + nx * 2) - 1, Math.round(py + ny * 2) - 1, 2, 2);
-    } else {
-      g.fillStyle = p.color;
-      g.beginPath();
-      g.arc(p.x, py, p.radius, 0, Math.PI * 2);
-      g.fill();
+    g.fillStyle = p.color;
+    g.beginPath();
+    g.arc(p.x, py, p.radius, 0, Math.PI * 2);
+    g.fill();
 
-      g.fillStyle = '#ffffff';
-      g.beginPath();
-      g.arc(p.x, py, Math.max(1, p.radius * 0.45), 0, Math.PI * 2);
-      g.fill();
-    }
+    g.fillStyle = shape === 'bolide' ? '#fde047' : '#ffffff';
+    g.beginPath();
+    g.arc(p.x, py, Math.max(1.2, p.radius * 0.48), 0, Math.PI * 2);
+    g.fill();
   }
   g.restore();
 }

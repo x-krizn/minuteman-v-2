@@ -255,19 +255,24 @@ export function drawCanonicalHud(g: CanvasRenderingContext2D, state: OrionState)
   const auxWeaponId = state.equipmentSlots?.slot3 || null;
   const mainGrip = getEffectiveMainGrip(state);
   const mainShort = (getWeaponDefinition(mainWeaponId)?.name || mainWeaponId).slice(0, 7);
+  const sideRawName =
+    getWeaponDefinition(sideWeaponId || '')?.name ||
+    getItemDefinition(sideWeaponId || '')?.name ||
+    '';
   const sideShort =
-    mainGrip === '2h' && sideWeaponId === mainWeaponId
-      ? '2H'
-      : (
-          getWeaponDefinition(sideWeaponId || '')?.name ||
-          getItemDefinition(sideWeaponId || '')?.name ||
-          '—'
-        ).slice(0, 6);
-  const auxShort = (
+    mainGrip === '2h'
+      ? sideWeaponId && sideWeaponId !== mainWeaponId && sideRawName
+        ? `${sideRawName.slice(0, 4)}(H)`
+        : '2H'
+      : (sideRawName || '—').slice(0, 6);
+  const auxRawName =
     getWeaponDefinition(auxWeaponId || '')?.name ||
     getItemDefinition(auxWeaponId || '')?.name ||
-    '—'
-  ).slice(0, 6);
+    '—';
+  const auxShort =
+    state.equipmentSlots?.auxActive && auxWeaponId
+      ? `${auxRawName.slice(0, 5)}*`
+      : auxRawName.slice(0, 6);
 
   g.textAlign = 'right';
   drawOutlinedCanvasText(

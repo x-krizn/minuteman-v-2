@@ -48,6 +48,8 @@ export type SkillPayloadKind =
   | 'returning_chakram_disc'
   | 'piercing_beam_lance'
   | 'mortar_meteor_lob'
+  | 'arc_chain_lightning'
+  | 'rolling_wave_crest'
   | 'omnidirectional_nova_whirlwind'
   | 'multi_flurry';
 
@@ -91,6 +93,7 @@ export function resolveSkillBehaviorProfile(
   const arch = classifyWeaponCombatArchetype(weapon, weapon?.id);
   const text = `${skill.name} ${skill.description}`.toLowerCase();
   const ft = arch.functionalType.toLowerCase();
+  const idLower = (weapon?.id || '').toLowerCase();
 
   // 1. Movement Kind: Evasive Backstep vs Aerial Vault/Leap vs Forward Lunge/Dash
   let movementKind: SkillMovementKind = 'none';
@@ -197,7 +200,7 @@ export function resolveSkillBehaviorProfile(
     knockbackScale = 1.65;
   }
 
-  // 3. Payload Kind: Thrown Spear/Axe vs Returning Disc vs Piercing Beam vs Mortar Lob vs 360 Whirlwind vs Multi-Flurry
+  // 3. Payload Kind: Thrown Spear/Axe vs Returning Disc vs Piercing Beam vs Arc Lightning vs Wave Crest vs Mortar Lob vs 360 Whirlwind vs Multi-Flurry
   let payloadKind: SkillPayloadKind = 'standard';
   let projectileCount = skill.ammoCount || 1;
 
@@ -234,10 +237,39 @@ export function resolveSkillBehaviorProfile(
     text.includes('quasar') ||
     text.includes('moonlight crescent') ||
     text.includes('vacuum wave') ||
-    text.includes('pierce multiple targets in a line')
+    text.includes('pierce multiple targets in a line') ||
+    ft === 'beam caster' ||
+    ft === 'stellar caster' ||
+    idLower.includes('arclight') ||
+    idLower.includes('prism') ||
+    idLower.includes('radiant_projector')
   ) {
     payloadKind = 'piercing_beam_lance';
     projectileCount = slotIndex === 4 ? 2 : 1;
+  } else if (
+    ft === 'arc caster' ||
+    idLower.includes('sparkstrike') ||
+    text.includes('chain-lightning') ||
+    text.includes('chain-spark') ||
+    text.includes('forked') ||
+    text.includes('thunderclap') ||
+    text.includes('arcs secondary lightning') ||
+    text.includes('jumps between')
+  ) {
+    payloadKind = 'arc_chain_lightning';
+    projectileCount = slotIndex === 4 ? 2 : 1;
+  } else if (
+    !arch.isMeleeOrShield &&
+    (ft === 'wave caster' ||
+      idLower.includes('wave_caster') ||
+      text.includes('tidal') ||
+      text.includes('tsunami') ||
+      text.includes('rip-current') ||
+      text.includes('wave crest') ||
+      text.includes('cleansing wave'))
+  ) {
+    payloadKind = 'rolling_wave_crest';
+    projectileCount = 1;
   } else if (
     text.includes('bolide') ||
     text.includes('chondrite') ||
@@ -299,6 +331,10 @@ export function resolveSkillBehaviorProfile(
     visualStyle = arch.isShield ? 'bash' : 'slam';
   } else if (payloadKind === 'piercing_beam_lance') {
     visualStyle = 'thrust';
+  } else if (payloadKind === 'arc_chain_lightning') {
+    visualStyle = 'claw_bite';
+  } else if (payloadKind === 'rolling_wave_crest') {
+    visualStyle = 'slash';
   } else if (displacementKind === 'hook_pull') {
     visualStyle = 'chop';
   } else if (arch.isSpearOrPolearm || text.includes('thrust') || text.includes('impale') || text.includes('stab') || text.includes('peck')) {
@@ -326,11 +362,15 @@ export function resolveSkillBehaviorProfile(
                 ? 'LUNGE!'
                 : payloadKind === 'piercing_beam_lance'
                   ? 'PIERCING LANCE!'
-                  : payloadKind === 'returning_chakram_disc'
-                    ? 'GYRO RETURN!'
-                    : payloadKind === 'thrown_spear_or_axe'
-                      ? 'BALLISTIC HURL!'
-                      : undefined;
+                  : payloadKind === 'arc_chain_lightning'
+                    ? 'ARC CHAIN!'
+                    : payloadKind === 'rolling_wave_crest'
+                      ? 'TIDAL CREST!'
+                      : payloadKind === 'returning_chakram_disc'
+                        ? 'GYRO RETURN!'
+                        : payloadKind === 'thrown_spear_or_axe'
+                          ? 'BALLISTIC HURL!'
+                          : undefined;
 
   return {
     movementKind,
@@ -399,8 +439,9 @@ export function applySkillMovementAndSupportImpulse(
 
 /**
  * Executes specialized description-driven payloads (`thrown_spear_or_axe`, `returning_chakram_disc`,
- * `piercing_beam_lance`, `mortar_meteor_lob`) so skills that promise ballistic throws, returning discs,
- * piercing line beams, or high-angle mortar craters enact those exact mechanics on the battlefield.
+ * `piercing_beam_lance`, `arc_chain_lightning`, `rolling_wave_crest`, `mortar_meteor_lob`) so skills
+ * that promise ballistic throws, returning discs, piercing line beams, chaining lightning arcs,
+ * wide horizontal waves, or high-angle mortar craters enact those exact mechanics on the battlefield.
  * Returns `true` if a specialized ranged/hybrid payload was fully handled, or `false` to continue with
  * standard melee/ranged execution enhanced by `profile`.
  */
@@ -417,6 +458,8 @@ export function executeSpecializedSkillPayload(
   const aim = getCombatAimVector(state);
   const aimAngle = Math.atan2(aim.dy, aim.dx);
   state.bladeTrails = state.bladeTrails || [];
+  const arch = classifyWeaponCombatArchetype(weapon, weapon?.id);
+  const ft = arch.functionalType.toLowerCase();
 
   // 1. THROWN SPEAR OR AXE (e.g. Javelin Amentum Hurl, Sky-Spear Volley, Soft-Iron Bend Pin, Tomahawk Hurl)
   if (profile.payloadKind === 'thrown_spear_or_axe') {
@@ -455,7 +498,10 @@ export function executeSpecializedSkillPayload(
         damageType: skill.damageType,
         isPlayer: true,
         life: 0.95,
+        initialLife: 0.95,
         radius: 4.5,
+        visualShape: ft === 'tomahawk' ? 'chakram' : 'javelin',
+        pierceRemaining: 1,
         color: trailColor,
         trailColor: coreColor,
         lightRadius: 22,
@@ -514,7 +560,10 @@ export function executeSpecializedSkillPayload(
         damageType: skill.damageType,
         isPlayer: true,
         life: 0.78,
-        radius: 5.0,
+        initialLife: 0.78,
+        radius: 5.2,
+        visualShape: 'chakram',
+        pierceRemaining: 1,
         color: trailColor,
         trailColor: coreColor,
         lightRadius: 24,
@@ -536,7 +585,10 @@ export function executeSpecializedSkillPayload(
             damageType: skill.damageType,
             isPlayer: true,
             life: 0.65,
-            radius: 4.5,
+            initialLife: 0.65,
+            radius: 4.8,
+            visualShape: 'chakram',
+            pierceRemaining: 1,
             color: coreColor,
             trailColor: trailColor,
             lightRadius: 20,
@@ -551,10 +603,11 @@ export function executeSpecializedSkillPayload(
     return true;
   }
 
-  // 3. PIERCING BEAM LANCE / VACUUM WAVE (e.g. Beam Caster, Stellar Caster, Katana Moonlight Crescent)
+  // 3. PIERCING BEAM LANCE / VACUUM WAVE (e.g. Beam Caster, Stellar Caster, WZ-800 Arclight, Katana Moonlight Crescent)
   if (payloadKindIsPiercingBeam(profile, weapon)) {
     const beamLength = Math.max(54, Math.min(148, skill.range || 96));
     const beamWidth = skill.slot === 4 ? 20 : 15;
+    const isMeleeVacuumWave = arch.isMeleeOrShield && skill.damageType === 'Wave';
 
     state.bladeTrails.push({
       x: state.x,
@@ -602,24 +655,29 @@ export function executeSpecializedSkillPayload(
       }
     }
 
-    // Also emit a high-speed piercing energy wave projectile along the beam axis
+    // Also emit a high-speed collimated beam or crescent wave projectile along the axis
     state.projectiles.push({
       x: state.x + aim.dx * 12,
       y: state.y + aim.dy * 12,
       z: state.z + 6,
-      vx: aim.dx * 168,
-      vy: aim.dy * 168,
+      vx: aim.dx * (isMeleeVacuumWave ? 148 : 188),
+      vy: aim.dy * (isMeleeVacuumWave ? 148 : 188),
       vz: 0,
       damage: Math.round(skillDamage * 0.45),
       damageType: skill.damageType,
       isPlayer: true,
-      life: 0.75,
-      radius: 5.0,
+      life: 0.78,
+      initialLife: 0.78,
+      radius: isMeleeVacuumWave ? 6.8 : 4.4,
+      visualShape: isMeleeVacuumWave ? 'wave' : 'beam',
+      waveSpanPx: isMeleeVacuumWave ? 22 : undefined,
+      beamLengthPx: isMeleeVacuumWave ? undefined : skill.slot === 4 ? 46 : 36,
+      pierceRemaining: 3,
       color: '#ffffff',
       trailColor,
       lightRadius: 28,
       projectileWeight: 16,
-      projectileSpeed: 168,
+      projectileSpeed: isMeleeVacuumWave ? 148 : 188,
     });
 
     ctx.spawnParticles(
@@ -634,13 +692,130 @@ export function executeSpecializedSkillPayload(
     return true;
   }
 
-  // 4. MORTAR / METEORIC / THERMOBARIC LOB (e.g. Meteoric Caster, Blast Caster, Ordnance Rack)
+  // 4. ARC CHAIN LIGHTNING (e.g. Arc Caster, WZ-450 Sparkstrike, Chain-Lightning / Forked Overload / Thunderclap)
+  if (profile.payloadKind === 'arc_chain_lightning') {
+    const count = Math.max(1, profile.projectileCount);
+    const arcSpeed = 162;
+
+    state.bladeTrails.push({
+      x: state.x,
+      y: state.y,
+      z: state.z,
+      angle: aimAngle,
+      arcSpan: Math.PI * 0.52,
+      radius: 20,
+      style: 'claw_bite',
+      color: trailColor,
+      coreColor: '#ffffff',
+      life: 0.24,
+      maxLife: 0.24,
+    });
+
+    for (let i = 0; i < count; i++) {
+      const spread = count === 1 ? 0 : (i - (count - 1) / 2) * 0.16;
+      const ang = aimAngle + spread;
+      state.projectiles.push({
+        x: state.x + Math.cos(ang) * 10,
+        y: state.y + Math.sin(ang) * 10,
+        z: state.z + 6,
+        vx: Math.cos(ang) * arcSpeed,
+        vy: Math.sin(ang) * arcSpeed,
+        vz: 0,
+        damage: count === 1 ? skillDamage : Math.round((skillDamage * 0.72)),
+        damageType: skill.damageType || 'Pulse',
+        isPlayer: true,
+        life: 0.88,
+        initialLife: 0.88,
+        radius: 3.2,
+        visualShape: 'arc',
+        chainCount: skill.slot === 4 ? 4 : 3,
+        chainRangePx: 54,
+        color: trailColor,
+        trailColor: coreColor,
+        lightRadius: 26,
+        projectileWeight: 14,
+        projectileSpeed: arcSpeed,
+      });
+    }
+    ctx.spawnParticles(
+      state.x + aim.dx * 16,
+      state.y + aim.dy * 16,
+      state.z + 8,
+      8,
+      trailColor,
+      profile.calloutLabel || 'ARC CHAIN!'
+    );
+    soundSystem.playLaser();
+    return true;
+  }
+
+  // 5. ROLLING WAVE CREST (e.g. Wave Caster Tidal Crest, Rip-Current, Undertow, Tsunami)
+  if (profile.payloadKind === 'rolling_wave_crest') {
+    const waveSpeed = 122;
+    const waveSpan = skill.slot === 4 ? 26 : 22;
+
+    state.bladeTrails.push({
+      x: state.x,
+      y: state.y,
+      z: state.z,
+      angle: aimAngle,
+      arcSpan: Math.PI * 0.88,
+      radius: 22,
+      style: 'slash',
+      color: trailColor,
+      coreColor,
+      life: 0.26,
+      maxLife: 0.26,
+    });
+
+    state.projectiles.push({
+      x: state.x + aim.dx * 10,
+      y: state.y + aim.dy * 10,
+      z: state.z + 6,
+      vx: aim.dx * waveSpeed,
+      vy: aim.dy * waveSpeed,
+      vz: 0,
+      damage: skillDamage,
+      damageType: 'Wave',
+      isPlayer: true,
+      life: 0.96,
+      initialLife: 0.96,
+      radius: skill.slot === 4 ? 7.6 : 7.0,
+      visualShape: 'wave',
+      waveSpanPx: waveSpan,
+      pierceRemaining: skill.slot === 4 ? 4 : 3,
+      color: trailColor,
+      trailColor: coreColor,
+      lightRadius: 30,
+      projectileWeight: 20,
+      projectileSpeed: waveSpeed,
+    });
+
+    ctx.spawnParticles(
+      state.x + aim.dx * 16,
+      state.y + aim.dy * 16,
+      state.z + 6,
+      8,
+      trailColor,
+      profile.calloutLabel || 'TIDAL CREST!'
+    );
+    soundSystem.playLaser();
+    return true;
+  }
+
+  // 6. MORTAR / METEORIC / THERMOBARIC LOB (e.g. Meteoric Caster, Blast Caster, Ordnance Rack)
   if (profile.payloadKind === 'mortar_meteor_lob') {
     const count = Math.max(1, profile.projectileCount);
     const blastRadius = skill.slot === 4 ? 38 : 28;
     const impactDamage =
       count === 1 ? skillDamage : Math.max(16, Math.round((skillDamage * 1.25) / count));
     const lobSpeed = 104;
+    const lobShape =
+      ft === 'meteoric caster'
+        ? 'bolide'
+        : ft === 'rack' || (weapon?.id || '').includes('avalanche')
+          ? 'rocket'
+          : 'blast_shell';
 
     state.bladeTrails.push({
       x: state.x,
@@ -670,7 +845,9 @@ export function executeSpecializedSkillPayload(
         damageType: skill.damageType,
         isPlayer: true,
         life: 0.88,
-        radius: 5.2,
+        initialLife: 0.88,
+        radius: 5.5,
+        visualShape: lobShape,
         color: trailColor,
         trailColor: coreColor,
         lightRadius: 28,

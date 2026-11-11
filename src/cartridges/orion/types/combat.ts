@@ -150,6 +150,26 @@ export interface ActionDefinition {
 }
 
 /**
+ * Visual and geometric archetype for projectiles so each weapon's basic and skill shots
+ * match its authored description (`Bolts < Pulses < Waves`, collimated `Beams`, chaining `Arcs`, etc.).
+ */
+export type ProjectileVisualShape =
+  | 'bolt'
+  | 'pulse'
+  | 'wave'
+  | 'beam'
+  | 'arc'
+  | 'arrow'
+  | 'dart'
+  | 'rocket'
+  | 'blast_shell'
+  | 'nova_orb'
+  | 'bolide'
+  | 'cord_whip'
+  | 'chakram'
+  | 'javelin';
+
+/**
  * Projectiles.
  */
 export interface OrionProjectile {
@@ -167,6 +187,24 @@ export interface OrionProjectile {
   color: string;
   trailColor: string;
   lightRadius: number;
+  /** Visual and collision silhouette matching weapon description */
+  visualShape?: ProjectileVisualShape;
+  /** Perpendicular crest width (`px`) for rolling `wave` or `cord_whip` projectiles */
+  waveSpanPx?: number;
+  /** Collimated ray length (`px`) for coherent `beam` lances */
+  beamLengthPx?: number;
+  /** Remaining secondary lightning jumps on hit for `arc` projectiles */
+  chainCount?: number;
+  /** Search radius (`px`) for secondary `arc` jumps */
+  chainRangePx?: number;
+  /** Remaining enemies a piercing `beam`, `wave`, or `arrow` can pass through */
+  pierceRemaining?: number;
+  /** Enemy IDs already struck by this piercing/chaining projectile */
+  hitEnemyIds?: number[];
+  /** Soft-lock homing turn rate (`rad/s`) for guided `Battery` / `Tomahawk` micro-munitions */
+  homingStrength?: number;
+  /** Initial lifetime (`s`) used to compute expansion progress for `wave` and `nova_orb` projectiles */
+  initialLife?: number;
   /** Projectile mass (`m_projectile`) for ranged impulse `J = m_projectile * v_projectile` (no shooter weight term) */
   projectileWeight?: number;
   /** Projectile speed (`v_projectile`) at launch for ranged impulse calculation */

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { OrionActionTemplate, WeaponDefinition } from '../../../types';
+import { OrionActionTemplate, OrionState, WeaponDefinition } from '../../../types';
 import {
   formatModifiedEquipmentName,
   parseEquipmentInstanceId,
@@ -149,22 +149,41 @@ export function getWeaponDefinition(id: string): WeaponDefinition | undefined {
 }
 
 /**
- * Shields, Quivers, and Catalysts are all designated Auxiliaries.
- * Auxiliaries have only Skill 4 and Skill 5, and always replace Skill 4 and Skill 5.
+ * Launchers, Carriers, Quivers, and Dorsal Catalyst Arrays are Back-Mounted Auxiliaries (`slot3` only).
+ * They remain mounted on the back even when taking active skill ownership of Skills 4 and 5.
+ */
+export function isLauncherEquipment(weaponOrId?: WeaponDefinition | string | null): boolean {
+  if (!weaponOrId) return false;
+  const def = typeof weaponOrId === 'string' ? getWeaponDefinition(weaponOrId) : weaponOrId;
+  if (!def) return false;
+  const baseId = parseEquipmentInstanceId(def.id).baseId;
+  return (
+    def.category === 'Carriers & Munitions' ||
+    def.equipmentRole === 'quiver' ||
+    def.equipmentRole === 'catalyst' ||
+    baseId === 'ln1200_avalanche' ||
+    baseId === 'lg950_tomahawk' ||
+    baseId.startsWith('carrier_')
+  );
+}
+
+/**
+ * Shields, Launchers, Quivers, and Catalysts are designated Auxiliaries (own Skill 4 and Skill 5).
+ * Note: Shields are 1H weapons that equip in Main or Side slot, whereas Launchers/Carriers equip in Aux (Back) slot only.
  */
 export function isAuxiliaryEquipment(weaponOrId?: WeaponDefinition | string | null): boolean {
   if (!weaponOrId) return false;
   const def = typeof weaponOrId === 'string' ? getWeaponDefinition(weaponOrId) : weaponOrId;
   if (!def) return false;
   return (
+    isLauncherEquipment(def) ||
     def.equipmentRole === 'shield' ||
-    def.equipmentRole === 'quiver' ||
-    def.equipmentRole === 'catalyst'
+    def.category === 'Shields'
   );
 }
 
 /**
- * True WEAPONs (occupy Main Hand or Side Hand weapon slots; distinct from Auxiliaries).
+ * True WEAPONs (occupy Main Hand or Side Hand weapon slots; distinct from Auxiliaries that only provide Skills 4 & 5).
  */
 export function isTrueWeaponEquipment(weaponOrId?: WeaponDefinition | string | null): boolean {
   if (!weaponOrId) return false;
@@ -174,14 +193,141 @@ export function isTrueWeaponEquipment(weaponOrId?: WeaponDefinition | string | n
 }
 
 /**
- * Bows (`category === 'Bows'` or `great_bow`) are designated 2-handed only.
+ * 1-Handed weapons and Shields can be equipped in either Main Hand (`slot1`) or Side Hand (`slot2`).
  */
-export function isTwoHandOnlyWeapon(weaponOrId?: WeaponDefinition | string | null): boolean {
+export function isOneHandWeapon(weaponOrId?: WeaponDefinition | string | null): boolean {
+  if (!weaponOrId) return false;
+  const def = typeof weaponOrId === 'string' ? getWeaponDefinition(weaponOrId) : weaponOrId;
+  if (!def || isLauncherEquipment(def)) return false;
+  return (
+    def.handing === '1-hand' ||
+    def.category === 'Shields' ||
+    def.equipmentRole === 'shield'
+  );
+}
+
+/**
+ * 2-Handed weapons (`handing === '2-hand'` or `category === 'Bows'`).
+ * By default these are Main Slot (`slot1`) only in 2H grip unless overridden by a Feat, Unique, Legendary, or weapon variable.
+ */
+export function isTwoHandWeapon(weaponOrId?: WeaponDefinition | string | null): boolean {
+  if (!weaponOrId) return false;
+  const def = typeof weaponOrId === 'string' ? getWeaponDefinition(weaponOrId) : weaponOrId;
+  if (!def || isLauncherEquipment(def)) return false;
+  const baseId = parseEquipmentInstanceId(def.id).baseId;
+  return (
+    def.handing === '2-hand' ||
+    def.category === 'Bows' ||
+    baseId === 'great_bow' ||
+    baseId.startsWith('bow_')
+  );
+}
+
+/**
+ * Checks whether a 2-Handed weapon has a Feat, Unique, Legendary, or explicit variable override
+ * allowing it to be wielded 1-handed in Main Hand or equipped in Side Hand (`slot2`).
+ */
+export function canBypassTwoHandRestriction(
+  weaponOrId?: WeaponDefinition | string | null,
+  state?: OrionState
+): boolean {
   if (!weaponOrId) return false;
   const def = typeof weaponOrId === 'string' ? getWeaponDefinition(weaponOrId) : weaponOrId;
   if (!def) return false;
   const baseId = parseEquipmentInstanceId(def.id).baseId;
-  return def.category === 'Bows' || baseId === 'great_bow' || baseId.startsWith('bow_');
+  // Bows physically require both hands to draw the string
+  if (def.category === 'Bows' || baseId === 'great_bow' || baseId.startsWith('bow_')) {
+    return false;
+  }
+  if (def.allowOneHandGrip || def.allowSideSlot || def.isLegendary) {
+    return true;
+  }
+  // Bastard Sword is explicitly hand-and-a-half versatile
+  if (baseId === 'straight_05_bastard') {
+    return true;
+  }
+  // Counterbalanced Unique Magitech weapons can be wielded 1-handed alongside a Side weapon or Shield
+  if (
+    def.weaponTier === 'unique' &&
+    (baseId === 'ls900_swordspear' ||
+      baseId === 'm350_mauler' ||
+      baseId === 'hallowed_scepter' ||
+      baseId === 'cl700_sanctifier' ||
+      baseId === 'wz650_prism_lance')
+  ) {
+    return true;
+  }
+  // High-tier Heavy / Titan Grip feats allow 2H weapons to be wielded 1-handed or in Side slot
+  if (state?.equippedFeats && state.equippedFeats.length > 0) {
+    const hasHeavyGripFeat = state.equippedFeats.some(
+      (fid) =>
+        fid === 'feat_marauder_3' ||
+        fid === 'feat_marauder_5' ||
+        fid === 'feat_warrior_5' ||
+        fid === 'feat_guardian_5' ||
+        fid.includes('titan') ||
+        fid.includes('colossus')
+    );
+    if (hasHeavyGripFeat) return true;
+  }
+  return false;
+}
+
+/**
+ * Returns true if the weapon strictly requires a 2-Handed grip in the Main Slot (`slot1`)
+ * and does not have an active Feat, Unique, Legendary, or versatile override.
+ */
+export function isTwoHandOnlyWeapon(
+  weaponOrId?: WeaponDefinition | string | null,
+  state?: OrionState
+): boolean {
+  return isTwoHandWeapon(weaponOrId) && !canBypassTwoHandRestriction(weaponOrId, state);
+}
+
+/**
+ * Validates whether a weapon can be equipped into `slot1` (Main), `slot2` (Side), or `slot3` (Aux Back).
+ * - 2H weapons are Main Slot (`slot1`) only unless overridden by Feat, Unique, Legendary, or variable.
+ * - 1H weapons (including Shields) are Main (`slot1`) or Side (`slot2`) slot.
+ * - Launchers (`Carriers & Munitions`) are Aux Slot (`slot3`) only.
+ */
+export function canEquipWeaponInSlot(
+  weaponOrId: WeaponDefinition | string | null | undefined,
+  slot: 'slot1' | 'slot2' | 'slot3',
+  state?: OrionState
+): { allowed: boolean; reason?: string } {
+  if (!weaponOrId) return { allowed: false, reason: 'Unknown equipment.' };
+  const def = typeof weaponOrId === 'string' ? getWeaponDefinition(weaponOrId) : weaponOrId;
+  if (!def) return { allowed: false, reason: 'Unknown weapon definition.' };
+
+  if (slot === 'slot3') {
+    if (isLauncherEquipment(def)) {
+      return { allowed: true };
+    }
+    return {
+      allowed: false,
+      reason: 'AUX [BACK] slot only accepts Launchers & Carriers.',
+    };
+  }
+
+  if (isLauncherEquipment(def)) {
+    return {
+      allowed: false,
+      reason: 'Launchers & Carriers are AUX [BACK] slot only.',
+    };
+  }
+
+  if (slot === 'slot1') {
+    return { allowed: true };
+  }
+
+  // slot === 'slot2' (Side Hand)
+  if (isTwoHandOnlyWeapon(def, state)) {
+    return {
+      allowed: false,
+      reason: '2H weapons are MAIN slot only unless overridden by a Feat, Unique, or Legendary trait.',
+    };
+  }
+  return { allowed: true };
 }
 
 /**

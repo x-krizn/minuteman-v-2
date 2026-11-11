@@ -6,6 +6,7 @@
 import {
   ActionEffectStyle,
   MeleeComboStepSpec,
+  ProjectileVisualShape,
   WeaponCategory,
   WeaponWeightClass,
 } from '../../../types';
@@ -18,10 +19,11 @@ export const WEAPON_BCU_REFERENCE = 54;
 
 /**
  * Ranged Basic Attack (`Slot 0`) functional shot profile describing projectile count,
- * fan spread, velocity scale, parabolic arc (`vz`), and visual trail style.
+ * visual/collision silhouette (`Bolts < Pulses < Waves`, `Beams`, `Arcs`), fan spread,
+ * velocity scale, parabolic arc (`vz`), chain/pierce behavior, and muzzle trail style.
  */
 export interface RangedBasicShotProfile {
-  /** Number of sub-projectiles fired per basic shot (`1` for precision bolts/beams, `2–3` for scatter/cluster) */
+  /** Number of sub-projectiles fired per basic shot (`1` for precision bolts/beams/waves, `2–3` for scatter/cluster) */
   projectilesPerShot: number;
   /** Angular spread in radians between sub-projectiles (`0` for single shot) */
   spreadAngleRad: number;
@@ -31,8 +33,22 @@ export interface RangedBasicShotProfile {
   speedMult: number;
   /** Projectile lifetime multiplier */
   lifeMult: number;
-  /** Projectile collision & visual radius */
+  /** Projectile collision & visual radius (`Bolts ≈ 2.1–2.6 < Pulses ≈ 4.2 < Waves ≈ 6.8`) */
   projectileRadius: number;
+  /** Visual & geometric archetype matching the weapon's authored description */
+  visualShape: ProjectileVisualShape;
+  /** Perpendicular wave crest width (`px`) for `wave` and `cord_whip` projectiles */
+  waveSpanPx?: number;
+  /** Collimated ray length (`px`) for coherent `beam` lances */
+  beamLengthPx?: number;
+  /** Secondary lightning arc jumps on hit for `arc` weapons (`Arc Caster`, `WZ-450 Sparkstrike`) */
+  chainCount?: number;
+  /** Search radius (`px`) for secondary `arc` jumps */
+  chainRangePx?: number;
+  /** Number of enemies a `beam`, `wave`, or heavy `arrow`/`javelin` can pierce through */
+  pierceRemaining?: number;
+  /** Soft-lock homing turn rate (`rad/s`) for guided `Battery` / `LG-950 Tomahawk` munitions */
+  homingStrength?: number;
   /** Optional initial vertical velocity (`vz`) for parabolic mortar/bolide/plumbata lobs */
   lobVz?: number;
   /** Optional AoE detonation radius on impact (`px`) for Blast/Meteoric/Nova/Rack shells */
@@ -47,7 +63,9 @@ export interface RangedBasicShotProfile {
 
 /**
  * Resolves the functional-type-specific Ranged Basic Attack (`Slot 0`) shot profile
- * for any Bow, Caster, or Carrier & Munition weapon so its basic attack matches its authored description.
+ * for any Bow, Caster, Carrier & Munition, or Magitech ranged weapon so its projectiles
+ * visually and mechanically match its authored description (`Bolts < Pulses < Waves`,
+ * collimated `Beams`, chaining `Arcs`, etc.).
  * Does not mutate `state: OrionState`.
  */
 export function resolveRangedBasicShotProfile(
@@ -66,9 +84,11 @@ export function resolveRangedBasicShotProfile(
         projectilesPerShot: 1,
         spreadAngleRad: 0,
         perProjectileDamageMult: 1.0,
-        speedMult: 1.18,
+        speedMult: 1.22,
         lifeMult: 1.18,
-        projectileRadius: 4.4,
+        projectileRadius: 4.2,
+        visualShape: 'arrow',
+        pierceRemaining: 1,
         muzzleStyle: 'thrust',
         muzzleArcSpan: Math.PI * 0.28,
         muzzleRadius: 18,
@@ -79,9 +99,10 @@ export function resolveRangedBasicShotProfile(
         projectilesPerShot: 1,
         spreadAngleRad: 0,
         perProjectileDamageMult: 1.0,
-        speedMult: 1.12,
+        speedMult: 1.14,
         lifeMult: 1.1,
-        projectileRadius: 3.8,
+        projectileRadius: 3.6,
+        visualShape: 'arrow',
         muzzleStyle: 'volley',
         muzzleArcSpan: Math.PI * 0.36,
         muzzleRadius: 16,
@@ -91,140 +112,320 @@ export function resolveRangedBasicShotProfile(
       projectilesPerShot: 1,
       spreadAngleRad: 0,
       perProjectileDamageMult: 1.0,
-      speedMult: weightClass === 'light' ? 1.08 : 1.04,
+      speedMult: weightClass === 'light' ? 1.1 : 1.05,
       lifeMult: 1.0,
-      projectileRadius: 3.5,
+      projectileRadius: 3.2,
+      visualShape: 'arrow',
       muzzleStyle: 'volley',
       muzzleArcSpan: Math.PI * 0.42,
       muzzleRadius: 14,
     };
   }
 
-  // 2. CASTERS (01–09) & MAGITECH CASTERS
-  if (category === 'Casters') {
-    // 02. Beam Caster / 09. Stellar Caster: High-velocity collimated lance
-    if (ft === 'beam caster' || ft === 'stellar caster' || idLower.includes('laser') || idLower.includes('prism')) {
-      return {
-        projectilesPerShot: 1,
-        spreadAngleRad: 0,
-        perProjectileDamageMult: 1.0,
-        speedMult: ft === 'stellar caster' ? 1.32 : 1.24,
-        lifeMult: 1.15,
-        projectileRadius: ft === 'stellar caster' ? 4.5 : 3.6,
-        muzzleStyle: 'thrust',
-        muzzleArcSpan: Math.PI * 0.22,
-        muzzleRadius: 18,
-      };
-    }
-    // 03. Arc Caster: Twin forked lightning tines
-    if (ft === 'arc caster') {
-      return {
-        projectilesPerShot: 2,
-        spreadAngleRad: 0.14,
-        perProjectileDamageMult: 0.54,
-        speedMult: 1.14,
-        lifeMult: 0.92,
-        projectileRadius: 3.2,
-        muzzleStyle: 'claw_bite',
-        muzzleArcSpan: Math.PI * 0.48,
-        muzzleRadius: 14,
-      };
-    }
-    // 05. Wave Caster: Wide horizontal wave crest (3-node closely coupled wave)
-    if (ft === 'wave caster') {
-      return {
-        projectilesPerShot: 3,
-        spreadAngleRad: 0.16,
-        perProjectileDamageMult: 0.38,
-        speedMult: 0.98,
-        lifeMult: 0.95,
-        projectileRadius: 3.8,
-        muzzleStyle: 'slash',
-        muzzleArcSpan: Math.PI * 0.72,
-        muzzleRadius: 16,
-      };
-    }
-    // 06. Blast Caster / 07. Nova Caster / 08. Meteoric Caster: Explosive / Lobbed AoE shells
-    if (ft === 'blast caster' || ft === 'nova caster' || ft === 'meteoric caster') {
-      return {
-        projectilesPerShot: 1,
-        spreadAngleRad: 0,
-        perProjectileDamageMult: 1.0,
-        speedMult: ft === 'nova caster' ? 0.88 : 0.94,
-        lifeMult: ft === 'meteoric caster' ? 1.15 : 0.95,
-        projectileRadius: 4.6,
-        lobVz: ft === 'meteoric caster' ? 22 : 10,
-        impactAoERadius: ft === 'nova caster' ? 28 : 24,
-        muzzleStyle: 'shockwave',
-        muzzleArcSpan: Math.PI * 0.65,
-        muzzleRadius: 16,
-      };
-    }
-    // 01. Bolt Caster & 04. Pulse Caster (Default Caster)
+  // 2. BEAM WEAPONS (Beam Caster, Stellar Caster, WZ-800 Arclight, WZ-650 Prism Lance, RS-450 Radiant, CL-700 Sanctifier, CL-500 Absolution)
+  if (
+    ft === 'beam caster' ||
+    ft === 'stellar caster' ||
+    idLower.includes('arclight') ||
+    idLower.includes('prism') ||
+    idLower.includes('radiant_projector') ||
+    idLower.includes('sanctifier') ||
+    idLower.includes('absolution') ||
+    idLower.includes('beam')
+  ) {
+    const isHeavyBeam =
+      ft === 'stellar caster' || weightClass === 'heavy' || idLower.includes('arclight');
     return {
       projectilesPerShot: 1,
       spreadAngleRad: 0,
       perProjectileDamageMult: 1.0,
-      speedMult: ft === 'bolt caster' ? 1.12 : 1.02,
+      speedMult: isHeavyBeam ? 1.52 : 1.42,
+      lifeMult: 1.15,
+      projectileRadius: isHeavyBeam ? 4.4 : 3.4,
+      visualShape: 'beam',
+      beamLengthPx: isHeavyBeam ? 38 : 30,
+      pierceRemaining: isHeavyBeam ? 2 : 1,
+      muzzleStyle: 'thrust',
+      muzzleArcSpan: Math.PI * 0.2,
+      muzzleRadius: isHeavyBeam ? 20 : 17,
+    };
+  }
+
+  // 3. ARC WEAPONS (Arc Caster, WZ-450 Sparkstrike): Crackling forked electricity that arcs between targets
+  if (ft === 'arc caster' || idLower.includes('sparkstrike') || idLower.includes('arc_caster')) {
+    return {
+      projectilesPerShot: 1,
+      spreadAngleRad: 0,
+      perProjectileDamageMult: 1.0,
+      speedMult: 1.18,
+      lifeMult: 0.94,
+      projectileRadius: 3.0,
+      visualShape: 'arc',
+      chainCount: 2,
+      chainRangePx: 48,
+      muzzleStyle: 'claw_bite',
+      muzzleArcSpan: Math.PI * 0.48,
+      muzzleRadius: 15,
+    };
+  }
+
+  // 4. WAVE WEAPONS (Wave Caster, Sanctum Aether Catalyst, Restoration Field): Wide rolling horizontal wave crests (Radius 6.8 > Pulse 4.2 > Bolt 2.3)
+  if (
+    ft === 'wave caster' ||
+    idLower.includes('wave_caster') ||
+    idLower.includes('aether_catalyst') ||
+    idLower.includes('restoration_field')
+  ) {
+    return {
+      projectilesPerShot: 1,
+      spreadAngleRad: 0,
+      perProjectileDamageMult: 1.0,
+      speedMult: 0.96,
+      lifeMult: 1.02,
+      projectileRadius: 6.8,
+      visualShape: 'wave',
+      waveSpanPx: 20,
+      pierceRemaining: 2,
+      muzzleStyle: 'slash',
+      muzzleArcSpan: Math.PI * 0.78,
+      muzzleRadius: 18,
+    };
+  }
+
+  // 5. PULSE WEAPONS (Pulse Caster, ARC Conductor, CL-350 Litany): Medium concentric harmonic rings (Radius 4.2: larger than Bolts 2.3, smaller than Waves 6.8)
+  if (
+    ft === 'pulse caster' ||
+    idLower.includes('pulse_caster') ||
+    idLower.includes('arc_conductor') ||
+    idLower.includes('litany')
+  ) {
+    return {
+      projectilesPerShot: 1,
+      spreadAngleRad: 0,
+      perProjectileDamageMult: 1.0,
+      speedMult: 1.04,
       lifeMult: 1.0,
-      projectileRadius: ft === 'pulse caster' ? 3.8 : 3.2,
+      projectileRadius: 4.2,
+      visualShape: 'pulse',
+      muzzleStyle: 'shockwave',
+      muzzleArcSpan: Math.PI * 0.45,
+      muzzleRadius: 15,
+    };
+  }
+
+  // 6. NOVA / METEORIC / BLAST CASTERS & GRENADE CANNONS (M-350 Mauler)
+  if (ft === 'nova caster' || idLower.includes('nova_caster')) {
+    return {
+      projectilesPerShot: 1,
+      spreadAngleRad: 0,
+      perProjectileDamageMult: 1.0,
+      speedMult: 0.88,
+      lifeMult: 0.98,
+      projectileRadius: 6.0,
+      visualShape: 'nova_orb',
+      impactAoERadius: 30,
+      muzzleStyle: 'shockwave',
+      muzzleArcSpan: Math.PI * 0.7,
+      muzzleRadius: 18,
+    };
+  }
+  if (ft === 'meteoric caster' || idLower.includes('meteoric')) {
+    return {
+      projectilesPerShot: 1,
+      spreadAngleRad: 0,
+      perProjectileDamageMult: 1.0,
+      speedMult: 0.94,
+      lifeMult: 1.15,
+      projectileRadius: 5.5,
+      visualShape: 'bolide',
+      lobVz: 24,
+      impactAoERadius: 28,
+      muzzleStyle: 'slam',
+      muzzleArcSpan: Math.PI * 0.65,
+      muzzleRadius: 17,
+    };
+  }
+  if (ft === 'blast caster' || idLower.includes('blast_caster') || idLower.includes('mauler')) {
+    return {
+      projectilesPerShot: 1,
+      spreadAngleRad: 0,
+      perProjectileDamageMult: 1.0,
+      speedMult: 0.95,
+      lifeMult: 0.96,
+      projectileRadius: 4.6,
+      visualShape: 'blast_shell',
+      lobVz: 10,
+      impactAoERadius: 25,
+      muzzleStyle: 'shockwave',
+      muzzleArcSpan: Math.PI * 0.6,
+      muzzleRadius: 16,
+    };
+  }
+
+  // 7. CARRIERS & MUNITIONS & SPECIALIST MAGITECH RANGED WEAPONS
+  // 05. Sheaf: Multi-arrow fan spread
+  if (ft === 'sheaf' || idLower.includes('sheaf')) {
+    return {
+      projectilesPerShot: 3,
+      spreadAngleRad: 0.2,
+      perProjectileDamageMult: 0.38,
+      speedMult: 1.02,
+      lifeMult: 0.86,
+      projectileRadius: 3.0,
+      visualShape: 'arrow',
+      muzzleStyle: 'volley',
+      muzzleArcSpan: Math.PI * 0.62,
+      muzzleRadius: 15,
+    };
+  }
+  // 02. Quiver & 03. Yebira: Fletched / whistling arrows
+  if (ft === 'quiver' || ft === 'yebira') {
+    return {
+      projectilesPerShot: 1,
+      spreadAngleRad: 0,
+      perProjectileDamageMult: 1.0,
+      speedMult: 1.12,
+      lifeMult: 1.02,
+      projectileRadius: 3.1,
+      visualShape: 'arrow',
+      muzzleStyle: 'volley',
+      muzzleArcSpan: Math.PI * 0.38,
+      muzzleRadius: 14,
+    };
+  }
+  // 06. Rack (Ordnance Rack) & LN-1200 Avalanche: Finned rail rockets
+  if (ft === 'rack' || idLower.includes('avalanche') || idLower.includes('rocket')) {
+    return {
+      projectilesPerShot: 1,
+      spreadAngleRad: 0,
+      perProjectileDamageMult: 1.0,
+      speedMult: 1.08,
+      lifeMult: 1.12,
+      projectileRadius: 4.5,
+      visualShape: 'rocket',
+      lobVz: 6,
+      impactAoERadius: 26,
+      muzzleStyle: 'slam',
+      muzzleArcSpan: Math.PI * 0.52,
+      muzzleRadius: 16,
+    };
+  }
+  // 04. Battery & LG-950 Tomahawk: Soft-lock homing micro-munitions / missiles
+  if (ft === 'battery' || idLower.includes('tomahawk') || idLower.includes('battery')) {
+    const isMissile = idLower.includes('tomahawk');
+    return {
+      projectilesPerShot: 1,
+      spreadAngleRad: 0,
+      perProjectileDamageMult: 1.0,
+      speedMult: 1.06,
+      lifeMult: 1.14,
+      projectileRadius: isMissile ? 4.2 : 3.8,
+      visualShape: isMissile ? 'rocket' : 'pulse',
+      homingStrength: 2.8,
+      impactAoERadius: isMissile ? 22 : undefined,
+      muzzleStyle: 'volley',
+      muzzleArcSpan: Math.PI * 0.42,
+      muzzleRadius: 15,
+    };
+  }
+  // 07. Plumbata: Weighted high-angle plunging darts
+  if (ft === 'plumbata' || idLower.includes('plumbata')) {
+    return {
+      projectilesPerShot: 1,
+      spreadAngleRad: 0,
+      perProjectileDamageMult: 1.0,
+      speedMult: 0.96,
+      lifeMult: 1.06,
+      projectileRadius: 2.8,
+      visualShape: 'dart',
+      lobVz: 18,
+      impactAoERadius: 16,
+      muzzleStyle: 'thrust',
+      muzzleArcSpan: Math.PI * 0.36,
+      muzzleRadius: 14,
+    };
+  }
+  // 08. Kaad: Weighted talisman-cord lash wave
+  if (ft === 'kaad' || idLower.includes('kaad')) {
+    return {
+      projectilesPerShot: 1,
+      spreadAngleRad: 0,
+      perProjectileDamageMult: 1.0,
+      speedMult: 0.92,
+      lifeMult: 0.58,
+      projectileRadius: 5.4,
+      visualShape: 'cord_whip',
+      waveSpanPx: 16,
+      pierceRemaining: 1,
+      muzzleStyle: 'slash',
+      muzzleArcSpan: Math.PI * 0.72,
+      muzzleRadius: 16,
+    };
+  }
+  // 09. Pangao: Alchemist satchel volatile fire-flasks
+  if (ft === 'pangao' || idLower.includes('pangao')) {
+    return {
+      projectilesPerShot: 1,
+      spreadAngleRad: 0,
+      perProjectileDamageMult: 1.0,
+      speedMult: 0.92,
+      lifeMult: 1.05,
+      projectileRadius: 4.8,
+      visualShape: 'blast_shell',
+      lobVz: 18,
+      impactAoERadius: 26,
+      muzzleStyle: 'slam',
+      muzzleArcSpan: Math.PI * 0.55,
+      muzzleRadius: 15,
+    };
+  }
+  // M-450 Pilum (Heavy Ballista): Shock-core javelins
+  if (idLower.includes('pilum') || idLower.includes('ballista')) {
+    return {
+      projectilesPerShot: 1,
+      spreadAngleRad: 0,
+      perProjectileDamageMult: 1.0,
+      speedMult: 1.24,
+      lifeMult: 1.15,
+      projectileRadius: 4.4,
+      visualShape: 'javelin',
+      pierceRemaining: 1,
+      muzzleStyle: 'thrust',
+      muzzleArcSpan: Math.PI * 0.3,
+      muzzleRadius: 18,
+    };
+  }
+  // 01. Bandolier: Quick-toss percussion cartridges / throwing knives
+  if (ft === 'bandolier' || idLower.includes('bandolier')) {
+    return {
+      projectilesPerShot: 1,
+      spreadAngleRad: 0,
+      perProjectileDamageMult: 1.0,
+      speedMult: 1.15,
+      lifeMult: 0.88,
+      projectileRadius: 2.6,
+      visualShape: 'dart',
       muzzleStyle: 'volley',
       muzzleArcSpan: Math.PI * 0.35,
       muzzleRadius: 13,
     };
   }
 
-  // 3. CARRIERS & MUNITIONS (01–09) & MAGITECH LAUNCHERS / DECK SWEEPERS
-  if (
-    ft === 'sheaf' ||
-    idLower.includes('scatter') ||
-    idLower.includes('sweeper') ||
-    idLower.includes('blunder')
-  ) {
-    return {
-      projectilesPerShot: 3,
-      spreadAngleRad: 0.22,
-      perProjectileDamageMult: 0.38,
-      speedMult: 0.96,
-      lifeMult: 0.82,
-      projectileRadius: 3.0,
-      muzzleStyle: 'volley',
-      muzzleArcSpan: Math.PI * 0.62,
-      muzzleRadius: 15,
-    };
-  }
-  if (
-    ft === 'rack' ||
-    ft === 'pangao' ||
-    ft === 'plumbata' ||
-    idLower.includes('mortar') ||
-    idLower.includes('howitzer') ||
-    idLower.includes('grenade')
-  ) {
-    return {
-      projectilesPerShot: 1,
-      spreadAngleRad: 0,
-      perProjectileDamageMult: 1.0,
-      speedMult: 0.92,
-      lifeMult: 1.08,
-      projectileRadius: 4.4,
-      lobVz: 18,
-      impactAoERadius: ft === 'plumbata' ? 18 : 24,
-      muzzleStyle: 'slam',
-      muzzleArcSpan: Math.PI * 0.55,
-      muzzleRadius: 15,
-    };
-  }
-
+  // 8. BOLT WEAPONS (Bolt Caster, N-55 Gladius, B-25 Brushcutter, SV-12 Viper, SV-18 Serpent, SR-440 Shadowfang, M-300 Hasta)
+  // Compact, tight, high-velocity needle/bolt silhouette (Radius 2.1–2.6: strictly smaller than Pulses 4.2 and Waves 6.8)
+  const boltRadius =
+    weightClass === 'light' ? 2.1 : weightClass === 'heavy' || idLower.includes('shadowfang') ? 2.6 : 2.3;
   return {
     projectilesPerShot: 1,
     spreadAngleRad: 0,
     perProjectileDamageMult: 1.0,
-    speedMult: 1.05,
+    speedMult: idLower.includes('shadowfang') ? 1.38 : 1.22,
     lifeMult: 1.0,
-    projectileRadius: 3.2,
+    projectileRadius: boltRadius,
+    visualShape: 'bolt',
+    pierceRemaining: idLower.includes('shadowfang') ? 1 : 0,
     muzzleStyle: 'volley',
-    muzzleArcSpan: Math.PI * 0.35,
+    muzzleArcSpan: Math.PI * 0.3,
     muzzleRadius: 12,
   };
 }

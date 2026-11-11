@@ -244,12 +244,14 @@ export type WeaponStanceType =
 export interface OrionEquipmentSlots {
   /** Main Hand (Weapon Slot 1): 1H or 2H Weapon -> ac1, ac2, ac3 (and ac4, ac5 in Paired or 2H Power Stance) */
   slot1: string | null;
-  /** Side Hand (Weapon/Aux/Consumable Slot 2): Off-hand Weapon, Auxiliary, or Swapped Consumable */
+  /** Side Hand (Weapon Slot 2): 1H Weapon or Shield (or 2H Weapon if Feat/Unique/Legendary override is active). Holstered when Main Hand is in 2H grip. */
   slot2: string | null;
-  /** Auxiliary Slot (Slot 3): Auxiliary (Shield/Quiver/Catalyst), Consumable, or Weapon -> swaps with Side Hand via [L] */
+  /** Auxiliary Slot (Back Mount Slot 3): Back-mounted Launchers & Carriers only. Stays on the back and takes skill ownership when swapped to. */
   slot3: string | null;
-  /** Active grip for Main Hand weapon ('1h' or '2h'). Bows are strictly '2h'. Switched in Equipment Screen. */
+  /** Active grip for Main Hand weapon ('1h' or '2h'). 2H weapons default to '2h' unless overridden. */
   mainGrip?: WeaponGripMode;
+  /** True when the Back-Mounted Auxiliary Launcher (slot3) has been swapped to and holds active combat ownership of Skills 4 & 5 while remaining on the back. */
+  auxActive?: boolean;
   /** Tracks how many separate instances of each weapon ID the pilot owns (Paired stance requires 2 separate items). */
   ownedWeaponCounts?: Record<string, number>;
   /**
@@ -397,6 +399,12 @@ export interface WeaponDefinition {
   equipmentRole?: 'melee' | 'ranged' | 'shield' | 'quiver' | 'catalyst';
   /** Weapon handing classification ('1-hand' | '2-hand' | 'off-hand-only' | 'buff-accessory') */
   handing?: WeaponHanding;
+  /** True if this 2H weapon has a Unique, Legendary, or Counterbalanced property allowing 1H grip */
+  allowOneHandGrip?: boolean;
+  /** True if this 2H weapon can be equipped in the Side Hand slot (slot2) via Unique/Legendary property */
+  allowSideSlot?: boolean;
+  /** True if this weapon is a Legendary-tier relic */
+  isLegendary?: boolean;
   /** Canonical weapon weight class ('light' | 'medium' | 'heavy') for the §3.4 Load Model */
   weightClass?: WeaponWeightClass;
   /** Optional numeric attack weight (`m_attack`) for the Inertia System (`inertia-v0.md`) */

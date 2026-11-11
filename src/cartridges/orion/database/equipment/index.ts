@@ -9,6 +9,7 @@ import {
   getWeaponDefinition,
   isAuxiliaryEquipment,
   isTrueWeaponEquipment,
+  isTwoHandOnlyWeapon,
   WEAPON_SKILL_ACTIONS,
 } from './weapons';
 import {
@@ -80,19 +81,31 @@ export function getResolvedActionDescriptor(
     const slot1Id = state.equipmentSlots?.slot1 || state.equippedWeapons?.[0] || 'long_sword';
     const slot2Id = state.equipmentSlots?.slot2 || null;
     const slot3Id = state.equipmentSlots?.slot3 || null;
+    const w1 = getWeaponDefinition(slot1Id) || getWeaponDefinition('long_sword')!;
     const w2 = slot2Id ? getWeaponDefinition(slot2Id) : undefined;
     const item2 = slot2Id && !w2 ? getItemDefinition(slot2Id) : undefined;
     const w3 = slot3Id ? getWeaponDefinition(slot3Id) : undefined;
+    const isAuxActive = Boolean(state.equipmentSlots?.auxActive && slot3Id && w3);
+    const is2HGrip =
+      !isAuxActive &&
+      (state.equipmentSlots?.mainGrip === '2h' || isTwoHandOnlyWeapon(w1, state) || !slot2Id);
 
-    // When Side Hand holds a consumable (which only occupies Skill 5), Auxl auxiliary provides Skill 4
-    const targetWeaponId =
-      item2 && w3 && isAuxiliaryEquipment(w3)
-        ? slot3Id!
-        : slot2Id || slot3Id || 'buckler_shield';
-    const weapon =
-      getWeaponDefinition(targetWeaponId) || getWeaponDefinition('buckler_shield')!;
+    // 1. Back Launcher active ownership (`auxActive`): Launcher stays on back (`slot3`) and owns Skill 4
+    // 2. 2H Main Grip: Side weapon (`slot2`) is holstered; Main weapon (`slot1`) owns Skill 4
+    // 3. 1H Main Grip: Side Hand (`slot2`) owns Skill 4 (or Back Aux provides Skill 4 if Side holds a consumable)
+    const targetWeaponId = isAuxActive
+      ? slot3Id!
+      : is2HGrip
+        ? slot1Id
+        : item2 && w3 && isAuxiliaryEquipment(w3)
+          ? slot3Id!
+          : slot2Id || slot3Id || slot1Id;
+    const weapon = getWeaponDefinition(targetWeaponId) || w1;
     const isUnpairedWeapon =
-      isTrueWeaponEquipment(weapon) && targetWeaponId !== slot1Id;
+      !isAuxActive &&
+      !is2HGrip &&
+      isTrueWeaponEquipment(weapon) &&
+      targetWeaponId !== slot1Id;
     const movesetSlot: 1 | 2 | 3 | 4 = isUnpairedWeapon ? 1 : 3;
     const move =
       weapon.moveset[movesetSlot] ||
@@ -105,7 +118,9 @@ export function getResolvedActionDescriptor(
       name: move.name,
       shortLabel: move.name.slice(0, 14).toUpperCase(),
       sourceCategory: 'weapon',
-      sourceLabel: `${weapon.name} [Skill ${isUnpairedWeapon ? 2 : 4}]`,
+      sourceLabel: isAuxActive
+        ? `Back Launcher: ${weapon.name} [Skill 4]`
+        : `${weapon.name} [Skill ${isUnpairedWeapon ? 2 : 4}]`,
       weaponSkillSlot: movesetSlot,
       weaponId: weapon.id,
       description: move.description,
@@ -134,12 +149,26 @@ export function getResolvedActionDescriptor(
 
   if (actionId === 'weapon_slot2_skill5') {
     const slot1Id = state.equipmentSlots?.slot1 || state.equippedWeapons?.[0] || 'long_sword';
-    const slot2WeaponId =
-      state.equipmentSlots?.slot2 || state.equipmentSlots?.slot3 || 'buckler_shield';
-    const weapon =
-      getWeaponDefinition(slot2WeaponId) || getWeaponDefinition('buckler_shield')!;
+    const slot2Id = state.equipmentSlots?.slot2 || null;
+    const slot3Id = state.equipmentSlots?.slot3 || null;
+    const w1 = getWeaponDefinition(slot1Id) || getWeaponDefinition('long_sword')!;
+    const w3 = slot3Id ? getWeaponDefinition(slot3Id) : undefined;
+    const isAuxActive = Boolean(state.equipmentSlots?.auxActive && slot3Id && w3);
+    const is2HGrip =
+      !isAuxActive &&
+      (state.equipmentSlots?.mainGrip === '2h' || isTwoHandOnlyWeapon(w1, state) || !slot2Id);
+
+    const targetWeaponId = isAuxActive
+      ? slot3Id!
+      : is2HGrip
+        ? slot1Id
+        : slot2Id || slot3Id || slot1Id;
+    const weapon = getWeaponDefinition(targetWeaponId) || w1;
     const isUnpairedWeapon =
-      isTrueWeaponEquipment(weapon) && slot2WeaponId !== slot1Id;
+      !isAuxActive &&
+      !is2HGrip &&
+      isTrueWeaponEquipment(weapon) &&
+      targetWeaponId !== slot1Id;
     const movesetSlot: 1 | 2 | 3 | 4 = isUnpairedWeapon ? 2 : 4;
     const move =
       weapon.moveset[movesetSlot] ||
@@ -152,7 +181,9 @@ export function getResolvedActionDescriptor(
       name: move.name,
       shortLabel: move.name.slice(0, 14).toUpperCase(),
       sourceCategory: 'weapon',
-      sourceLabel: `${weapon.name} [Skill ${isUnpairedWeapon ? 3 : 5}]`,
+      sourceLabel: isAuxActive
+        ? `Back Launcher: ${weapon.name} [Skill 5]`
+        : `${weapon.name} [Skill ${isUnpairedWeapon ? 3 : 5}]`,
       weaponSkillSlot: movesetSlot,
       weaponId: weapon.id,
       description: move.description,

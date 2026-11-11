@@ -18,10 +18,12 @@ import {
   getHardwareCapacityBonus,
 } from '../../database/equipment/chassis_hardware';
 import {
+  canBypassTwoHandRestriction,
   getWeaponDefinition,
   isAuxiliaryEquipment,
-  isTrueWeaponEquipment,
+  isLauncherEquipment,
   isTwoHandOnlyWeapon,
+  isTwoHandWeapon,
   WEAPON_REGISTRY,
 } from '../../database/equipment/weapons';
 import { getItemDefinition } from '../../database/items';
@@ -91,12 +93,13 @@ export const WeaponStatReadout: React.FC<{
   const primaryAction = w.moveset?.[0];
   const primaryFamily = primaryAction?.damageFamily || 'Kinetic';
   const primaryRange = primaryAction?.range ?? 64;
-  const handingLabel =
-    w.handing === '2-hand'
-      ? '2H ONLY'
-      : w.handing === 'off-hand-only' || w.handing === 'buff-accessory'
-        ? 'OFF-HAND AUX'
-        : '1H / 2H';
+  const handingLabel = isLauncherEquipment(w)
+    ? 'AUX [BACK ONLY]'
+    : isTwoHandWeapon(w)
+      ? canBypassTwoHandRestriction(w, state)
+        ? '2H (1H OVERRIDE ACTIVE)'
+        : '2H [MAIN ONLY]'
+      : '1H [MAIN / SIDE]';
 
   const incBadges: string[] = [];
   const decBadges: string[] = [];
@@ -744,7 +747,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
       const activeWeaponClass: WeaponCategory =
         loadoutSelectedClass ||
         currentSubtypeInfo?.category ||
-        (editingSlot === 'slot3' ? 'Shields' : 'Blades: Straight');
+        (editingSlot === 'slot3' ? 'Carriers & Munitions' : 'Blades: Straight');
 
       const functionalTypesInClass = WEAPON_FUNCTIONAL_TYPES_BY_CATEGORY[activeWeaponClass] || [];
       const activeFunctionalFilter =
@@ -794,15 +797,20 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
         if (!w) return;
         soundSystem.playPowerup();
 
-        // Smart slot routing so all 8 Weapon Classes can be browsed & equipped from any weapon/auxiliary slot
+        // Groomed slot rules:
+        // - Launchers (`isLauncherEquipment`) -> Aux Slot (`slot3`, Back Mount) only.
+        // - 2H weapons (`isTwoHandOnlyWeapon(w, state)`) -> Main Slot (`slot1`) only unless overridden by Feat/Unique/Legendary.
+        // - 1H weapons & Shields -> Main (`slot1`) or Side (`slot2`) slot only.
         let targetSlot: 'slot1' | 'slot2' | 'slot3' =
           editingSlot === 'slot1' || editingSlot === 'slot2' || editingSlot === 'slot3'
             ? editingSlot
             : 'slot1';
 
-        if (targetSlot === 'slot1' && !isTrueWeaponEquipment(w)) {
-          targetSlot = isTwoHandOnlyWeapon(eq.slot1) ? 'slot3' : 'slot2';
-        } else if (targetSlot === 'slot2' && isTwoHandOnlyWeapon(w)) {
+        if (isLauncherEquipment(w)) {
+          targetSlot = 'slot3';
+        } else if (targetSlot === 'slot3') {
+          targetSlot = isTwoHandOnlyWeapon(w, state) ? 'slot1' : 'slot2';
+        } else if (targetSlot === 'slot2' && isTwoHandOnlyWeapon(w, state)) {
           targetSlot = 'slot1';
         }
 
@@ -810,36 +818,41 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
           eq.slot1 = instanceId;
           state.equippedWeapons[0] = instanceId;
           eq.weaponSet1 = [instanceId, null];
-          if (isTwoHandOnlyWeapon(w)) {
-            if (eq.slot2 && eq.slot2 !== instanceId && !eq.slot3) {
-              eq.slot3 = eq.slot2;
-            }
-            eq.slot2 = null;
+          eq.auxActive = false;
+          if (isTwoHandOnlyWeapon(w, state)) {
+            // Side weapon (`eq.slot2`) stays in `slot2` (holstered at hip) and Launcher (`eq.slot3`) stays on the back!
             eq.mainGrip = '2h';
           }
         } else if (targetSlot === 'slot2') {
-          if (isTwoHandOnlyWeapon(eq.slot1)) {
-            eq.slot3 = instanceId;
-            targetSlot = 'slot3';
+          eq.slot2 = instanceId;
+          if (state.equippedWeapons.length < 2) {
+            state.equippedWeapons.push(instanceId);
           } else {
-            eq.slot2 = instanceId;
+            state.equippedWeapons[1] = instanceId;
+          }
+          eq.weaponSet2 = [instanceId, null];
+          eq.auxActive = false;
+          if (isTwoHandOnlyWeapon(eq.slot1, state)) {
+            // Main Hand requires 2H -> newly equipped Side weapon stays in `slot2` as HOLSTERED while Launcher stays on back (`slot3`)
+            eq.mainGrip = '2h';
+          } else if (!eq.mainGrip) {
             eq.mainGrip = '1h';
-            if (state.equippedWeapons.length < 2) {
-              state.equippedWeapons.push(instanceId);
-            } else {
-              state.equippedWeapons[1] = instanceId;
-            }
-            eq.weaponSet2 = [instanceId, null];
           }
         } else if (targetSlot === 'slot3') {
           eq.slot3 = instanceId;
         }
+        const isHolsteredSideNotice =
+          targetSlot === 'slot2' && getEffectiveMainGrip(state) === '2h';
         sayCtx.say(
           `EQUIPPED ${w.name.toUpperCase()} IN ${
             targetSlot === 'slot1'
-              ? 'MAIN HAND [R]'
+              ? eq.mainGrip === '2h' && eq.slot2
+                ? 'MAIN HAND [R] (2H — SIDE HOLSTERED)'
+                : 'MAIN HAND [R]'
               : targetSlot === 'slot2'
-                ? 'SIDE HAND [L]'
+                ? isHolsteredSideNotice
+                  ? 'SIDE HAND [L] (HOLSTERED WHILE 2H)'
+                  : 'SIDE HAND [L]'
                 : 'AUXILIARY [BACK]'
           }`
         );
@@ -1613,7 +1626,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                       )}
 
                     {/* Action 3: Stance or Grip Toggle */}
-                    {contextMenuSlot === 'slot1' && !isTwoHandOnlyWeapon(slot1Id) && (
+                    {contextMenuSlot === 'slot1' && !isTwoHandOnlyWeapon(slot1Id, state) && (
                       <button
                         type="button"
                         onClick={() => {
@@ -1625,7 +1638,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                         }}
                         className="w-full px-2 py-1 bg-[#0f172a] hover:bg-[#1e293b] text-[#7dd3fc] border border-[#38bdf8]/50 rounded-xs text-[8px] font-bold text-left cursor-pointer"
                       >
-                        3. TOGGLE GRIP: {mainGrip === '2h' ? 'SWITCH TO 1H GRIP' : 'SWITCH TO 2H POWER STANCE'}
+                        3. TOGGLE GRIP: {mainGrip === '2h' ? 'SWITCH TO 1H GRIP (UNHOLSTER SIDE)' : 'SWITCH TO 2H POWER STANCE (HOLSTER SIDE)'}
                       </button>
                     )}
 
@@ -1639,7 +1652,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                         }}
                         className="w-full px-2 py-1 bg-[#0f172a] hover:bg-[#1e293b] text-[#c084fc] border border-[#c084fc]/50 rounded-xs text-[8px] font-bold text-left cursor-pointer"
                       >
-                        3. SWAP SIDE HAND ⇄ AUX [L]
+                        3. TOGGLE BACK LAUNCHER OWNERSHIP [L]
                       </button>
                     )}
 
@@ -1679,7 +1692,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
               itemName: mainWeapon?.name || getEquipmentDisplayName(slot1Id),
               subtitle: mainWeapon
                 ? `${getWeaponSubtypeInfo(mainWeapon.id).subtype} · ${mainWeapon.damagePerShot} DMG`
-                : 'Primary Weapon',
+                : 'Primary Weapon (1H or 2H)',
               wtLabel: `${getWeaponInstanceEquipWeight(slot1Id, state)} WT`,
               accentColor: '#fde047',
               badgeText: mainGrip.toUpperCase(),
@@ -1694,32 +1707,40 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                 ? sideWeapon.name
                 : mainGrip === '2h'
                   ? `${mainWeapon?.name || 'Main Hand'} (2H Grip)`
-                  : 'Empty Off-Hand',
+                  : 'Empty Off-Hand (1H / Shield)',
               subtitle: sideWeapon
-                ? `${getWeaponSubtypeInfo(sideWeapon.id).subtype}`
+                ? mainGrip === '2h'
+                  ? `${getWeaponSubtypeInfo(sideWeapon.id).subtype} · Holstered at Hip while Main is 2H`
+                  : `${getWeaponSubtypeInfo(sideWeapon.id).subtype} · Active Side Hand`
                 : 'Two-Handing Main Weapon (+Stagger / +Impulse)',
               wtLabel:
                 slot2Id && slot2Id !== slot1Id
                   ? `${getWeaponInstanceEquipWeight(slot2Id, state)} WT`
                   : '0 WT',
               accentColor: '#38bdf8',
-              badgeText: sideWeapon ? 'ACTIVE' : '2H GRIP',
+              badgeText: sideWeapon
+                ? mainGrip === '2h'
+                  ? 'HOLSTERED (2H)'
+                  : eq.auxActive
+                    ? 'STANDBY (AUX ON)'
+                    : 'ACTIVE'
+                : '2H GRIP',
             })}
 
             {renderDollSlotNode({
               slot: 'slot3',
               title: 'AUXILIARY [BACK]',
               itemId: slot3Id,
-              itemName: auxWeapon ? auxWeapon.name : 'Empty Back Mount',
+              itemName: auxWeapon ? auxWeapon.name : 'Empty Back Mount (Launcher Only)',
               subtitle: auxWeapon
-                ? `${getWeaponSubtypeInfo(auxWeapon.id).subtype} (50% Holstered WT)`
-                : 'Holstered Secondary / Shield / Quiver / Catalyst',
+                ? `${getWeaponSubtypeInfo(auxWeapon.id).subtype} · Stays on Back (50% WT)`
+                : 'Back-Mounted Launcher / Carrier / Quiver / Catalyst',
               wtLabel:
                 slot3Id && slot3Id !== slot1Id && slot3Id !== slot2Id
                   ? `${Math.round(getWeaponInstanceEquipWeight(slot3Id, state) * 0.5)} WT`
                   : '0 WT',
               accentColor: '#c084fc',
-              badgeText: 'SWAP [L]',
+              badgeText: eq.auxActive ? 'ACTIVE [AC4–5]' : 'BACK MOUNT [L]',
             })}
 
             {/* Trigger Bindings Node Pair */}

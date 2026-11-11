@@ -45,8 +45,14 @@ import {
   usesCustomSuffixBySemantics,
 } from '../equipment/mod_naming';
 import {
+  canBypassTwoHandRestriction,
+  canEquipWeaponInSlot,
   getWeaponDefinition,
   isAuxiliaryEquipment,
+  isLauncherEquipment,
+  isOneHandWeapon,
+  isTwoHandOnlyWeapon,
+  isTwoHandWeapon,
   resolveWeaponFunctionalType,
   WEAPON_FUNCTIONAL_TYPES_BY_CATEGORY,
 } from '../equipment/weapons';
@@ -58,6 +64,8 @@ export {
   buildEquipmentInstanceId,
   CANONICAL_HARDWARE_CATALOG,
   type CanonicalHardwareItemDefinition,
+  canBypassTwoHandRestriction,
+  canEquipWeaponInSlot,
   CHASSIS_HARDWARE_CATALOG,
   type ChassisHardwareItemDefinition,
   CRAFTED_SUBMODULE_HARDWARE,
@@ -68,6 +76,10 @@ export {
   getHardwareCapacityBonus,
   getHardwareGemBonusDescription,
   isCanonicalGemId,
+  isLauncherEquipment,
+  isOneHandWeapon,
+  isTwoHandOnlyWeapon,
+  isTwoHandWeapon,
   parseEquipmentInstanceId,
   resolveEquippedHardwareStats,
   usesCustomSuffixBySemantics,
@@ -1221,18 +1233,27 @@ export function createInitialEquipmentSlots(traitLine: TraitLine = 'Warrior'): O
   const hw = DEFAULT_CANONICAL_HARDWARE_BY_KIT[traitLine] || DEFAULT_CANONICAL_HARDWARE_BY_KIT.Warrior;
   const w1 = trait.startingWeapons?.[0] || 'long_sword';
   const w2 = trait.startingWeapons?.[1] || null;
-  const isBowMain = w1 === 'great_bow';
-  const defaultAuxBack = isBowMain
-    ? w2 || 'quiver'
+  const w2IsLauncher = Boolean(w2 && isLauncherEquipment(w2));
+  const defaultSide = w2IsLauncher
+    ? traitLine === 'Rogue'
+      ? 'short_spear'
+      : traitLine === 'Wizard'
+        ? 'arc_conductor'
+        : 'buckler_shield'
+    : w2 && !isTwoHandOnlyWeapon(w2)
+      ? w2
+      : 'buckler_shield';
+  const defaultAuxBack = w2IsLauncher
+    ? w2!
     : traitLine === 'Guardian'
-      ? 'aegis_charge_buckler'
+      ? 'carrier_04_battery'
       : traitLine === 'Wizard' || traitLine === 'Cleric'
         ? 'aether_catalyst'
         : traitLine === 'Marauder'
-          ? 'heater_shield'
+          ? 'ln1200_avalanche'
           : traitLine === 'Rogue'
-            ? 'short_spear'
-            : 'buckler_shield';
+            ? 'quiver'
+            : 'carrier_01_bandolier';
 
   const starterHardwareIds = [
     hw.head,
@@ -1261,6 +1282,9 @@ export function createInitialEquipmentSlots(traitLine: TraitLine = 'Warrior'): O
   if (w2) {
     initialCounts[w2] = (initialCounts[w2] || 0) + 1;
   }
+  if (defaultSide) {
+    initialCounts[defaultSide] = Math.max(1, initialCounts[defaultSide] || 1);
+  }
   if (defaultAuxBack) {
     initialCounts[defaultAuxBack] = Math.max(1, initialCounts[defaultAuxBack] || 1);
   }
@@ -1271,12 +1295,13 @@ export function createInitialEquipmentSlots(traitLine: TraitLine = 'Warrior'): O
     initialCounts[hwId] = 1;
   }
 
-  const hasSide = Boolean(!isBowMain && w2);
+  const initialGrip: '1h' | '2h' = isTwoHandOnlyWeapon(w1) ? '2h' : defaultSide ? '1h' : '2h';
   return {
     slot1: w1,
-    slot2: isBowMain ? null : w2,
+    slot2: defaultSide,
     slot3: defaultAuxBack,
-    mainGrip: hasSide ? '1h' : '2h',
+    mainGrip: initialGrip,
+    auxActive: false,
     ownedWeaponCounts: initialCounts,
     head: hw.head,
     headOptics: hw.headOptics,
@@ -1795,12 +1820,13 @@ export function acquireAdditionalWeaponCopy(
 
 /**
  * Resolves the active Main Hand weapon grip ('1h' or '2h').
- * - Bows (`great_bow`) are designated 2-handed only.
+ * - 2H weapons (`isTwoHandOnlyWeapon`) are 2H-only unless overridden by a Feat, Unique, Legendary, or variable.
  * - If no Side Hand is equipped (`!slot2`), the Main Hand is automatically 2H.
+ * - When Main Hand is 2H and Side Hand (`slot2`) is equipped, Side Hand is holstered at the hip while Launcher stays on the back (`slot3`).
  */
 export function getEffectiveMainGrip(state: OrionState): '1h' | '2h' {
   const slot1 = state.equipmentSlots?.slot1 || state.equippedWeapons?.[0] || 'long_sword';
-  if (parseEquipmentInstanceId(slot1).baseId === 'great_bow') return '2h';
+  if (isTwoHandOnlyWeapon(slot1, state)) return '2h';
   const slot2 = state.equipmentSlots?.slot2 || null;
   if (!slot2) return '2h';
   if (slot2 === slot1 && getOwnedWeaponCount(state, slot1) < 2) return '2h';
@@ -1808,10 +1834,22 @@ export function getEffectiveMainGrip(state: OrionState): '1h' | '2h' {
 }
 
 /**
+ * Returns true when a Side Hand weapon (`slot2`) is equipped while the Main Hand is in 2H grip.
+ * When holstered, the Side weapon stays in `slot2` (rendered sheathed/holstered at the hip) and the Back Launcher stays on the back (`slot3`).
+ */
+export function isSideWeaponHolstered(state: OrionState): boolean {
+  const slot1 = state.equipmentSlots?.slot1 || state.equippedWeapons?.[0] || 'long_sword';
+  const slot2 = state.equipmentSlots?.slot2 || null;
+  if (!slot2) return false;
+  if (slot2 === slot1 && getOwnedWeaponCount(state, slot1) < 2) return false;
+  return getEffectiveMainGrip(state) === '2h';
+}
+
+/**
  * Switches Main Hand weapon grip ('1h' <-> '2h') in the Equipment Screen.
- * - Bows (`great_bow`) are designated 2-handed only and cannot switch to 1H.
- * - If no Side Hand is equipped, Main Hand is automatically 2H.
- * - Switching to 2H un-slots Side Hand (moving any distinct Side Hand item into Aux if Aux is empty) so Main Hand is 2H.
+ * - 2H weapons cannot switch to 1H unless overridden by a Feat, Unique, Legendary, or versatile trait.
+ * - Switching to 2H holsters any equipped Side Hand weapon (`slot2` stays in `slot2`, holstered) while keeping the Launcher on the back (`slot3`).
+ * - Switching to 1H unholsters `slot2` into the active Side Hand (Launchers in `slot3` never move to `slot2`).
  */
 export function setMainWeaponGrip(
   state: OrionState,
@@ -1822,44 +1860,39 @@ export function setMainWeaponGrip(
     state.equipmentSlots = createInitialEquipmentSlots(state.traitLine);
   }
   const slot1 = state.equipmentSlots.slot1 || state.equippedWeapons?.[0] || 'long_sword';
-  if (parseEquipmentInstanceId(slot1).baseId === 'great_bow' && grip === '1h') {
-    ctx?.say('BOWS ARE DESIGNATED 2-HANDED ONLY');
+  if (grip === '1h' && isTwoHandOnlyWeapon(slot1, state)) {
+    ctx?.say(
+      '2H WEAPON REQUIRES TWO HANDS (FEAT, UNIQUE, OR LEGENDARY OVERRIDE REQUIRED)'
+    );
     return false;
   }
 
   if (grip === '2h') {
-    if (
-      state.equipmentSlots.slot2 &&
-      state.equipmentSlots.slot2 !== slot1 &&
-      !state.equipmentSlots.slot3
-    ) {
-      state.equipmentSlots.slot3 = state.equipmentSlots.slot2;
-    }
     state.equipmentSlots.mainGrip = '2h';
-    state.equipmentSlots.slot2 = null;
+    state.equipmentSlots.auxActive = false;
+    const hasSide = Boolean(
+      state.equipmentSlots.slot2 &&
+        (state.equipmentSlots.slot2 !== slot1 || getOwnedWeaponCount(state, slot1) >= 2)
+    );
     ctx?.say(
-      `TWO-HANDING POWER STANCE: ${getEquipmentDisplayName(slot1).toUpperCase()} (2H)`
+      hasSide
+        ? `TWO-HANDING POWER STANCE: ${getEquipmentDisplayName(slot1).toUpperCase()} (2H) — SIDE HOLSTERED`
+        : `TWO-HANDING POWER STANCE: ${getEquipmentDisplayName(slot1).toUpperCase()} (2H)`
     );
     return true;
   }
 
-  // Switching to 1H requires a Side Hand item; if Side Hand is empty but Aux has an item, swap Aux into Side Hand
+  // Switching to 1H requires a Side Hand weapon (`slot2`). Back Launchers (`slot3`) never move to Side Hand.
   if (!state.equipmentSlots.slot2) {
-    if (state.equipmentSlots.slot3) {
-      state.equipmentSlots.slot2 = state.equipmentSlots.slot3;
-      state.equipmentSlots.slot3 = null;
-      state.equipmentSlots.mainGrip = '1h';
-      ctx?.say(
-        `ONE-HANDED GRIP: EQUIPPED ${getEquipmentDisplayName(state.equipmentSlots.slot2).toUpperCase()} IN SIDE HAND`
-      );
-      return true;
-    }
-    ctx?.say('NO SIDE HAND EQUIPPED — MAIN HAND IS AUTOMATICALLY 2H');
+    ctx?.say('NO SIDE WEAPON EQUIPPED — EQUIP A 1H WEAPON OR SHIELD IN SIDE SLOT');
     return false;
   }
 
   state.equipmentSlots.mainGrip = '1h';
-  ctx?.say(`ONE-HANDED GRIP: ${getEquipmentDisplayName(slot1).toUpperCase()} (1H)`);
+  state.equipmentSlots.auxActive = false;
+  ctx?.say(
+    `ONE-HANDED GRIP: ${getEquipmentDisplayName(slot1).toUpperCase()} (1H) + ${getEquipmentDisplayName(state.equipmentSlots.slot2).toUpperCase()} UNHOLSTERED`
+  );
   return true;
 }
 
@@ -1905,10 +1938,12 @@ export function unlockEquipmentItem(
   ) {
     state.equippedWeapons.push(normKey);
     state.equipmentSlots.weaponSet2 = [normKey, null];
-    if (!state.equipmentSlots.slot2 && getEffectiveMainGrip(state) !== '2h') {
+    if (isLauncherEquipment(wDef)) {
+      if (!state.equipmentSlots.slot3) {
+        state.equipmentSlots.slot3 = normKey;
+      }
+    } else if (!isTwoHandOnlyWeapon(wDef, state) && !state.equipmentSlots.slot2) {
       state.equipmentSlots.slot2 = normKey;
-    } else if (!state.equipmentSlots.slot3) {
-      state.equipmentSlots.slot3 = normKey;
     }
   }
 
@@ -1950,13 +1985,11 @@ export function unlockLevel2SecondaryWeapon(state: OrionState): string {
     state.equippedWeapons.push(secondary);
   }
   if (state.equipmentSlots) {
-    const is2H = getEffectiveMainGrip(state) === '2h';
     state.equipmentSlots.slot1 = state.equippedWeapons[0];
-    if (is2H) {
-      state.equipmentSlots.slot2 = state.equippedWeapons[0];
+    if (isLauncherEquipment(secondary)) {
       state.equipmentSlots.slot3 = state.equipmentSlots.slot3 || secondary;
-    } else {
-      state.equipmentSlots.slot2 = state.equippedWeapons[1] || secondary;
+    } else if (!isTwoHandOnlyWeapon(secondary, state)) {
+      state.equipmentSlots.slot2 = state.equipmentSlots.slot2 || secondary;
     }
     state.equipmentSlots.weaponSet1 = [state.equippedWeapons[0], null];
     state.equipmentSlots.weaponSet2 = [state.equippedWeapons[1] || secondary, null];

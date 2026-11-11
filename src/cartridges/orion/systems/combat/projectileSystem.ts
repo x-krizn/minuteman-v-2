@@ -580,25 +580,32 @@ export function executeBasicAttackShot(
         }
       }
 
-      // Preserve hybrid projectiles on Beam lances and Wave mana staves
+      // Preserve hybrid projectiles on Beam lances and Wave mana staves/polearms
       if (arch.isLanceOrPike && weapon?.primaryDamageType === 'Beam') {
         state.projectiles.push({
           x: state.x + aim.dx * 12,
           y: state.y + aim.dy * 12,
           z: state.z + 6,
-          vx: aim.dx * 128,
-          vy: aim.dy * 128,
+          vx: aim.dx * 168,
+          vy: aim.dy * 168,
           vz: 0,
           damage: shotDmg,
           damageType: action.damageType,
           isPlayer: true,
           life: 0.72,
-          radius: 4.5,
+          initialLife: 0.72,
+          radius: 4.0,
+          visualShape: 'beam',
+          beamLengthPx: 34,
+          pierceRemaining: 1,
           color: trailColor,
           trailColor: coreColor,
-          lightRadius: 24,
+          lightRadius: 26,
         });
-      } else if (arch.isBluntOrStaff && weapon?.primaryDamageType === 'Wave') {
+      } else if (
+        (arch.isBluntOrStaff || arch.isSpearOrPolearm) &&
+        weapon?.primaryDamageType === 'Wave'
+      ) {
         state.projectiles.push({
           x: state.x + aim.dx * 10,
           y: state.y + aim.dy * 10,
@@ -610,10 +617,14 @@ export function executeBasicAttackShot(
           damageType: 'Wave',
           isPlayer: true,
           life: 0.68,
-          radius: 4.5,
+          initialLife: 0.68,
+          radius: 6.6,
+          visualShape: 'wave',
+          waveSpanPx: 18,
+          pierceRemaining: 1,
           color: trailColor,
           trailColor: coreColor,
-          lightRadius: 22,
+          lightRadius: 24,
         });
       }
 
@@ -773,9 +784,20 @@ export function executeBasicAttackShot(
         damageType: adaptiveDmgType,
         isPlayer: true,
         life: projLife,
+        initialLife: projLife,
         radius: isBowWeapon
-          ? shotProfile.projectileRadius + bowChargeRatio * 1.5
+          ? shotProfile.projectileRadius + bowChargeRatio * 1.4
           : shotProfile.projectileRadius,
+        visualShape: shotProfile.visualShape,
+        waveSpanPx: shotProfile.waveSpanPx,
+        beamLengthPx: shotProfile.beamLengthPx,
+        chainCount: shotProfile.chainCount,
+        chainRangePx: shotProfile.chainRangePx,
+        pierceRemaining:
+          isBowWeapon && bowChargeRatio >= 0.85
+            ? Math.max(1, shotProfile.pierceRemaining || 0)
+            : shotProfile.pierceRemaining,
+        homingStrength: shotProfile.homingStrength,
         color: projColor,
         trailColor: projTrail,
         lightRadius: isBowWeapon ? Math.round(18 + 10 * bowChargeRatio) : 18,
@@ -835,7 +857,8 @@ export function executeBasicAttackShot(
 }
 
 /**
- * Updates active projectiles, wall collisions, and ranged Inertia v0 impacts (`J_ranged = projectile_weight × projectile_speed`).
+ * Updates active projectiles, wall collisions, soft-lock homing, arc chaining, piercing corridors,
+ * and ranged Inertia v0 impacts (`J_ranged = projectile_weight × projectile_speed`).
  */
 export function updateProjectiles(
   rooms: Record<string, string[]>,
@@ -846,9 +869,49 @@ export function updateProjectiles(
   for (let i = state.projectiles.length - 1; i >= 0; i--) {
     const p = state.projectiles[i];
     p.life -= dt;
+
+    // Soft-lock homing guidance for Battery / LG-950 Tomahawk micro-munitions
+    if (p.isPlayer && p.homingStrength && p.homingStrength > 0) {
+      let bestTarget = getLockedTarget(state);
+      if (!bestTarget) {
+        let bestDist = 148;
+        for (const e of state.enemies) {
+          if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
+          const d = Math.hypot(e.x - p.x, e.y - p.y);
+          if (d < bestDist) {
+            bestDist = d;
+            bestTarget = e;
+          }
+        }
+      }
+      if (bestTarget) {
+        const curAng = Math.atan2(p.vy, p.vx);
+        const targetAng = Math.atan2(bestTarget.y - p.y, bestTarget.x - p.x);
+        const diff = normalizeAngleDiff(targetAng, curAng);
+        const maxTurn = p.homingStrength * dt;
+        const turn = Math.max(-maxTurn, Math.min(maxTurn, diff));
+        const nextAng = curAng + turn;
+        const spd = Math.hypot(p.vx, p.vy) || 128;
+        p.vx = Math.cos(nextAng) * spd;
+        p.vy = Math.sin(nextAng) * spd;
+      }
+    }
+
     p.x += p.vx * dt;
     p.y += p.vy * dt;
-    p.z += p.vz * dt;
+    if (
+      p.vz !== 0 ||
+      (p.z > 6 &&
+        (p.visualShape === 'bolide' ||
+          p.visualShape === 'blast_shell' ||
+          p.visualShape === 'dart' ||
+          p.visualShape === 'rocket'))
+    ) {
+      p.vz -= 34 * dt;
+      p.z = Math.max(2, p.z + p.vz * dt);
+    } else {
+      p.z += p.vz * dt;
+    }
 
     if (Math.random() < 0.6) {
       state.particles.push({
@@ -861,7 +924,7 @@ export function updateProjectiles(
         life: 0.18,
         maxLife: 0.18,
         color: p.trailColor,
-        size: 2,
+        size: p.visualShape === 'bolt' ? 1.5 : p.visualShape === 'wave' ? 2.5 : 2,
         fade: true,
       });
     }
@@ -877,21 +940,49 @@ export function updateProjectiles(
     }
 
     if (p.isPlayer) {
-      let hit = false;
+      let shouldRemoveProjectile = false;
+      const hitRadius =
+        p.visualShape === 'wave' || p.visualShape === 'cord_whip'
+          ? Math.max(15, 11 + (p.waveSpanPx || 18) * 0.45)
+          : p.visualShape === 'nova_orb'
+            ? 16
+            : p.visualShape === 'bolt'
+              ? 12.5
+              : 14;
+
       for (const e of state.enemies) {
         if (e.isSubmerged) continue;
         if (e.type === 'town_npc' && e.npcDisposition !== 'feral') continue;
+        if (p.hitEnemyIds && p.hitEnemyIds.includes(e.id)) continue;
 
-        const dist = Math.hypot(e.x - p.x, e.y - p.y);
-        if (dist < 14 && Math.abs(e.z - p.z) < 14) {
-          hit = true;
+        let dist = Math.hypot(e.x - p.x, e.y - p.y);
+        // Collimated beam lance segment check so elongated beams hit along their full ray length
+        if (p.visualShape === 'beam' && p.beamLengthPx && dist >= hitRadius) {
+          const spd = Math.hypot(p.vx, p.vy) || 1;
+          const nx = p.vx / spd;
+          const ny = p.vy / spd;
+          const tailX = p.x - nx * p.beamLengthPx;
+          const tailY = p.y - ny * p.beamLengthPx;
+          const segDx = p.x - tailX;
+          const segDy = p.y - tailY;
+          const segLenSq = segDx * segDx + segDy * segDy || 1;
+          const t = Math.max(
+            0,
+            Math.min(1, ((e.x - tailX) * segDx + (e.y - tailY) * segDy) / segLenSq)
+          );
+          const closestX = tailX + t * segDx;
+          const closestY = tailY + t * segDy;
+          dist = Math.hypot(e.x - closestX, e.y - closestY);
+        }
+
+        if (dist < hitRadius && Math.abs(e.z - p.z) < 16) {
           e.hurt = 0.2;
           const hitEval = evaluatePositionalHitQuality(
             'ranged_projectile',
             p.x,
             p.y,
             Math.atan2(p.vy, p.vx),
-            14,
+            hitRadius,
             e.x,
             e.y,
             true
@@ -1008,11 +1099,68 @@ export function updateProjectiles(
           if (p.onImpact) {
             p.onImpact(p.x, p.y, p.z, state);
           }
+
+          p.hitEnemyIds = p.hitEnemyIds || [];
+          p.hitEnemyIds.push(e.id);
+
+          // 1. Arc Chaining: Jump crackling lightning arc to nearest unhit enemy within chainRangePx
+          if (p.visualShape === 'arc' && (p.chainCount || 0) > 0) {
+            const chainRadius = p.chainRangePx || 48;
+            let nextEnemy: (typeof state.enemies)[number] | undefined;
+            let bestChainDist = chainRadius;
+            for (const cand of state.enemies) {
+              if (cand.isSubmerged) continue;
+              if (cand.type === 'town_npc' && cand.npcDisposition !== 'feral') continue;
+              if (p.hitEnemyIds.includes(cand.id)) continue;
+              const cd = Math.hypot(cand.x - e.x, cand.y - e.y);
+              if (cd <= bestChainDist) {
+                bestChainDist = cd;
+                nextEnemy = cand;
+              }
+            }
+            if (nextEnemy) {
+              const jumpAng = Math.atan2(nextEnemy.y - e.y, nextEnemy.x - e.x);
+              const spd = Math.hypot(p.vx, p.vy) || 148;
+              state.bladeTrails = state.bladeTrails || [];
+              state.bladeTrails.push({
+                x: e.x,
+                y: e.y,
+                z: e.z + 4,
+                angle: jumpAng,
+                arcSpan: Math.PI * 0.35,
+                radius: Math.max(14, Math.round(bestChainDist * 0.65)),
+                style: 'claw_bite',
+                color: p.color,
+                coreColor: '#ffffff',
+                life: 0.18,
+                maxLife: 0.18,
+              });
+              p.x = e.x;
+              p.y = e.y;
+              p.vx = Math.cos(jumpAng) * spd;
+              p.vy = Math.sin(jumpAng) * spd;
+              p.chainCount = (p.chainCount || 1) - 1;
+              p.damage = Math.max(2, Math.round(p.damage * 0.75));
+              p.life = Math.max(p.life, 0.38);
+              shouldRemoveProjectile = false;
+              break;
+            }
+          }
+
+          // 2. Piercing: Beams, Waves, Great Arrows, and Ballista Javelins pass through targets
+          if ((p.pierceRemaining || 0) > 0) {
+            p.pierceRemaining = (p.pierceRemaining || 1) - 1;
+            p.damage = Math.max(2, Math.round(p.damage * 0.78));
+            shouldRemoveProjectile = false;
+            break;
+          }
+
+          shouldRemoveProjectile = true;
           break;
         }
       }
 
-      if (hit) {
+      if (shouldRemoveProjectile) {
         state.projectiles.splice(i, 1);
         continue;
       }

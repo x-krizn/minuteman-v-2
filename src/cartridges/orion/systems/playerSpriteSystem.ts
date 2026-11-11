@@ -1442,6 +1442,8 @@ function drawEquipmentAttachmentOverlay(
     isShield?: boolean;
     isBow?: boolean;
     isTwoHanded?: boolean;
+    isHolsteredSide?: boolean;
+    isAuxActive?: boolean;
     bowChargePct?: number;
     aimCos?: number;
     aimSin?: number;
@@ -1465,16 +1467,28 @@ function drawEquipmentAttachmentOverlay(
       g.fillRect(rx - 3, ry - 2, 6, 4);
       g.fillStyle = armColor;
       g.fillRect(rx - 2, ry - 1, 4, 2);
-      g.fillStyle = coreColor;
+      g.fillStyle = options?.isAuxActive ? '#fde047' : coreColor;
       g.fillRect(rx - 1, ry - 1, 2, 1);
     } else {
       // Shoulder-collar sling latch peeking over the torso armor so the back weapon looks strapped on
       const latchX = cardinalDir === 'W' ? rx - 1 : rx + 1;
       g.fillStyle = COMPONENT_OUTLINE_COLOR;
       g.fillRect(latchX - 2, ry + 1, 4, 3);
-      g.fillStyle = trimColor;
+      g.fillStyle = options?.isAuxActive ? '#fde047' : trimColor;
       g.fillRect(latchX - 1, ry + 2, 2, 1);
     }
+    g.restore();
+    return;
+  }
+
+  // HOLSTERED SIDE WEAPON HIP-CLASP & SCABBARD STRAP (when Main Hand is 2H)
+  if (options?.isHolsteredSide) {
+    g.fillStyle = COMPONENT_OUTLINE_COLOR;
+    g.fillRect(rx - 2, ry - 2, 5, 3);
+    g.fillStyle = armColor;
+    g.fillRect(rx - 1, ry - 1, 3, 1);
+    g.fillStyle = trimColor;
+    g.fillRect(rx, ry - 1, 1, 1);
     g.restore();
     return;
   }
@@ -1704,12 +1718,24 @@ export function drawPlayerWeaponMounts25D(
   const isGuarding = Boolean(state.isHoldingBlock || (state.blockTimer || 0) > 0);
 
   // 1. AUX (BACK — slot3):
+  //    - Launchers stay on the back even when swapped to (`auxActive: true`), taking ownership of Skills 4 & 5.
   //    - Facing North ('N'): back faces camera directly -> drawn inFrontOfBody centered on dorsal plate with magnetic holster bracket
   //    - Facing South ('S'), East ('E'), West ('W'): weapon drawn behindBody, plus shoulder sling latch in betweenPlatingAndArms
   const auxPass: 'behindBody' | 'inFrontOfBody' = isNorth ? 'inFrontOfBody' : 'behindBody';
   if (auxId) {
     const auxDef = getWeaponDefinition(auxId);
     const auxArch = classifyWeaponCombatArchetype(auxDef, auxId);
+    const isAuxActive = Boolean(state.equipmentSlots?.auxActive);
+    const isFiringAux =
+      isAuxActive &&
+      (state.activeActionId === 'weapon_slot2_skill4' ||
+        state.activeActionId === 'weapon_slot2_skill5');
+    const auxRecoilY =
+      isFiringAux && isAttacking
+        ? -1.4 * recoveryLerp
+        : isFiringAux && isWindingUp
+          ? 0.6 * windupPct
+          : 0;
 
     const bx = isNorth
       ? cx
@@ -1719,11 +1745,12 @@ export function drawPlayerWeaponMounts25D(
           ? cx + 3.5
           : cx - 2.5;
 
-    const by = isNorth
-      ? cy - 8.5
-      : isEast || isWest
-        ? cy - 9.0
-        : cy - 9.5;
+    const by =
+      (isNorth
+        ? cy - 8.5
+        : isEast || isWest
+          ? cy - 9.0
+          : cy - 9.5) + auxRecoilY;
 
     if (auxPass === pass) {
       const auxBaseProj = resolveClassBaseProjection25D(
@@ -1753,22 +1780,33 @@ export function drawPlayerWeaponMounts25D(
       );
 
       if (isNorth) {
-        drawEquipmentAttachmentOverlay(g, state, 'aux', bx, by, cardinalDir);
+        drawEquipmentAttachmentOverlay(g, state, 'aux', bx, by, cardinalDir, {
+          isAuxActive,
+        });
       }
     } else if (!isNorth && pass === 'betweenPlatingAndArms') {
-      drawEquipmentAttachmentOverlay(g, state, 'aux', bx, by - 2, cardinalDir);
+      drawEquipmentAttachmentOverlay(g, state, 'aux', bx, by - 2, cardinalDir, {
+        isAuxActive,
+      });
     }
   }
 
   // 2. SIDE HAND (LEFT — slot2):
-  //    - Facing South ('S') or West ('W'): near foreground arm -> inFrontOfBody (with gauntlet clasp over hilt)
-  //    - Facing East ('E'): far profile arm -> betweenPlatingAndArms (sandwiched in front of torso, behind near arm!)
-  //    - Facing North ('N'): far forward-reaching arm -> behindBody (foreshortened with tip peeking past left shoulder)
-  const sidePass: 'behindBody' | 'betweenPlatingAndArms' | 'inFrontOfBody' = isNorth
-    ? 'behindBody'
-    : isEast
-      ? 'betweenPlatingAndArms'
-      : 'inFrontOfBody';
+  //    - When `mainGrip === '2h'`, any equipped Side weapon (`slot2`) is HOLSTERED at the hip while the Launcher stays on the back (`slot3`).
+  //    - When `mainGrip === '1h'`, the Side weapon is actively held in the left hand:
+  //      - Facing South ('S') or West ('W'): near foreground arm -> inFrontOfBody (with gauntlet clasp over hilt)
+  //      - Facing East ('E'): far profile arm -> betweenPlatingAndArms (sandwiched in front of torso, behind near arm!)
+  //      - Facing North ('N'): far forward-reaching arm -> behindBody (foreshortened with tip peeking past left shoulder)
+  const isSideHolstered = mainGrip === '2h';
+  const sidePass: 'behindBody' | 'betweenPlatingAndArms' | 'inFrontOfBody' = isSideHolstered
+    ? isEast
+      ? 'behindBody'
+      : 'betweenPlatingAndArms'
+    : isNorth
+      ? 'behindBody'
+      : isEast
+        ? 'betweenPlatingAndArms'
+        : 'inFrontOfBody';
 
   if (sideId && sidePass === pass) {
     const sideDef = getWeaponDefinition(sideId);
@@ -1776,111 +1814,152 @@ export function drawPlayerWeaponMounts25D(
     const sideIsMelee = sideDef?.equipmentRole === 'melee';
     const sideIsBolter = sideDef?.equipmentRole === 'ranged' && !sideArch.isBow;
     const sideIsShield = sideArch.isShield;
-    const isOddComboStep = ((state.meleeComboStep || 0) % 2) === 1;
-
-    const sideBaseProj = resolveClassBaseProjection25D(
-      sideDef,
-      sideArch,
-      'side',
-      cardinalDir,
-      isGuarding
-    );
-
-    let sideThrustOffset = 0;
-    let sideSwingRot = 0;
-    let sideLiftY = 0;
-    let sideLateralSweepX = 0;
-    let sideDynamicScaleXMult = 1.0;
-
-    if (isGuarding) {
-      // Active Shield / Weapon Guard: project forward and raise into high ward stance
-      sideThrustOffset = sideIsShield ? 2.6 : 1.8;
-      sideLiftY = -1.5;
-      sideSwingRot = isNS ? -0.14 : isWest ? 0.22 : -0.22;
-      if (isSouth && sideIsShield) {
-        sideLateralSweepX = 1.6;
-      }
-    } else if (isWindingUp) {
-      if (sideIsMelee && isOddComboStep) {
-        sideSwingRot = -0.48 * windupPct;
-        sideThrustOffset = -1.2 * windupPct;
-        if (isNS) {
-          sideLateralSweepX = -1.6 * windupPct;
-        }
-      } else if (sideIsShield && state.activeSkillSlot !== null && state.activeSkillSlot >= 1) {
-        sideThrustOffset = -1.4 * windupPct;
-      }
-    } else if (isAttacking) {
-      if (sideIsMelee && (isOddComboStep || (state.activeSkillSlot || 0) >= 1)) {
-        sideSwingRot = 0.68 * recoveryLerp;
-        sideThrustOffset = 3.2 * recoveryLerp;
-        if (isNS) {
-          // Cross-body N/S off-hand slash sweeps toward centerline with perspective compression
-          sideLateralSweepX = 3.0 * recoveryLerp;
-          sideDynamicScaleXMult = 0.88;
-        }
-      } else if (sideIsShield && (state.activeSkillSlot || 0) >= 1) {
-        sideThrustOffset = 3.8 * recoveryLerp;
-        if (isNS) {
-          sideLateralSweepX = 2.0 * recoveryLerp;
-        }
-      } else if (sideIsBolter) {
-        sideThrustOffset = -1.4 * recoveryLerp;
-      }
-    }
-
-    const baseLx = isEast
-      ? cx + 2.5
-      : isWest
-        ? cx - 2.5
-        : cx - 4.2;
-
-    const baseLy = isEast
-      ? cy - 7.5
-      : isWest
-        ? cy - 6.5
-        : isNorth
-          ? cy - 8.2
-          : cy - 6.2;
-
-    const sideDx =
-      (isEast ? sideThrustOffset : isWest ? -sideThrustOffset : 0) + sideLateralSweepX;
-    const sideDy = isSouth ? sideThrustOffset : isNorth ? -sideThrustOffset : 0;
-    const lx = baseLx + sideDx;
-    const ly = baseLy + sideDy + sideLiftY;
-
     const sideIntrinsic = sideIsMelee ? -0.785 : sideIsBolter ? -0.38 : 0;
-    const sideProj = finalizeHardpointProjection25D(
-      {
-        ...sideBaseProj,
-        rotationRad: sideBaseProj.rotationRad + sideSwingRot,
-        foreshortenScaleX: sideBaseProj.foreshortenScaleX * sideDynamicScaleXMult,
-      },
-      sideIntrinsic
-    );
 
-    drawSinglePlayerEquipmentMount(
-      g,
-      state,
-      sideId,
-      'side',
-      lx,
-      ly,
-      sideProj,
-      cardinalDir
-    );
+    if (isSideHolstered) {
+      // Render holstered/sheathed at the left waist/hip with a hip-holster strap clasp
+      const holsterLx = isEast
+        ? cx - 1.8
+        : isWest
+          ? cx + 1.8
+          : cx - 3.6;
+      const holsterLy = cy - 3.4;
+      const holsterProj = finalizeHardpointProjection25D(
+        {
+          flipX: isWest ? -1 : 1,
+          rotationRad: isWest ? -0.95 : 0.95,
+          foreshortenScaleX: isNS ? 0.72 : 0.8,
+          foreshortenScaleY: 0.78,
+          skewX: 0,
+          skewY: 0,
+          depthShadeAlpha: isNorth ? 0.22 : 0.08,
+          showSouthMuzzleCue: false,
+        },
+        sideIntrinsic
+      );
 
-    drawEquipmentAttachmentOverlay(g, state, 'side', lx, ly, cardinalDir, {
-      isShield: sideIsShield,
-      aimCos: sideProj.aimCos,
-      aimSin: sideProj.aimSin,
-    });
+      drawSinglePlayerEquipmentMount(
+        g,
+        state,
+        sideId,
+        'side',
+        holsterLx,
+        holsterLy,
+        holsterProj,
+        cardinalDir
+      );
 
-    if (isGuarding && sideIsShield) {
-      g.save();
-      g.fillStyle = (state.blockHoldTimer || 0) <= 0.34 ? '#fde047' : '#38bdf8';
-      g.fillRect(Math.round(lx) - 1, Math.round(ly) - 3, 2, 2);
-      g.restore();
+      drawEquipmentAttachmentOverlay(g, state, 'side', holsterLx, holsterLy, cardinalDir, {
+        isHolsteredSide: true,
+        aimCos: holsterProj.aimCos,
+        aimSin: holsterProj.aimSin,
+      });
+    } else {
+      const isOddComboStep = ((state.meleeComboStep || 0) % 2) === 1;
+
+      const sideBaseProj = resolveClassBaseProjection25D(
+        sideDef,
+        sideArch,
+        'side',
+        cardinalDir,
+        isGuarding
+      );
+
+      let sideThrustOffset = 0;
+      let sideSwingRot = 0;
+      let sideLiftY = 0;
+      let sideLateralSweepX = 0;
+      let sideDynamicScaleXMult = 1.0;
+
+      if (isGuarding) {
+        // Active Shield / Weapon Guard: project forward and raise into high ward stance
+        sideThrustOffset = sideIsShield ? 2.6 : 1.8;
+        sideLiftY = -1.5;
+        sideSwingRot = isNS ? -0.14 : isWest ? 0.22 : -0.22;
+        if (isSouth && sideIsShield) {
+          sideLateralSweepX = 1.6;
+        }
+      } else if (isWindingUp) {
+        if (sideIsMelee && isOddComboStep) {
+          sideSwingRot = -0.48 * windupPct;
+          sideThrustOffset = -1.2 * windupPct;
+          if (isNS) {
+            sideLateralSweepX = -1.6 * windupPct;
+          }
+        } else if (sideIsShield && state.activeSkillSlot !== null && state.activeSkillSlot >= 1) {
+          sideThrustOffset = -1.4 * windupPct;
+        }
+      } else if (isAttacking) {
+        if (sideIsMelee && (isOddComboStep || (state.activeSkillSlot || 0) >= 1)) {
+          sideSwingRot = 0.68 * recoveryLerp;
+          sideThrustOffset = 3.2 * recoveryLerp;
+          if (isNS) {
+            // Cross-body N/S off-hand slash sweeps toward centerline with perspective compression
+            sideLateralSweepX = 3.0 * recoveryLerp;
+            sideDynamicScaleXMult = 0.88;
+          }
+        } else if (sideIsShield && (state.activeSkillSlot || 0) >= 1) {
+          sideThrustOffset = 3.8 * recoveryLerp;
+          if (isNS) {
+            sideLateralSweepX = 2.0 * recoveryLerp;
+          }
+        } else if (sideIsBolter) {
+          sideThrustOffset = -1.4 * recoveryLerp;
+        }
+      }
+
+      const baseLx = isEast
+        ? cx + 2.5
+        : isWest
+          ? cx - 2.5
+          : cx - 4.2;
+
+      const baseLy = isEast
+        ? cy - 7.5
+        : isWest
+          ? cy - 6.5
+          : isNorth
+            ? cy - 8.2
+            : cy - 6.2;
+
+      const sideDx =
+        (isEast ? sideThrustOffset : isWest ? -sideThrustOffset : 0) + sideLateralSweepX;
+      const sideDy = isSouth ? sideThrustOffset : isNorth ? -sideThrustOffset : 0;
+      const lx = baseLx + sideDx;
+      const ly = baseLy + sideDy + sideLiftY;
+
+      const sideProj = finalizeHardpointProjection25D(
+        {
+          ...sideBaseProj,
+          rotationRad: sideBaseProj.rotationRad + sideSwingRot,
+          foreshortenScaleX: sideBaseProj.foreshortenScaleX * sideDynamicScaleXMult,
+        },
+        sideIntrinsic
+      );
+
+      drawSinglePlayerEquipmentMount(
+        g,
+        state,
+        sideId,
+        'side',
+        lx,
+        ly,
+        sideProj,
+        cardinalDir
+      );
+
+      drawEquipmentAttachmentOverlay(g, state, 'side', lx, ly, cardinalDir, {
+        isShield: sideIsShield,
+        aimCos: sideProj.aimCos,
+        aimSin: sideProj.aimSin,
+      });
+
+      if (isGuarding && sideIsShield) {
+        g.save();
+        g.fillStyle = (state.blockHoldTimer || 0) <= 0.34 ? '#fde047' : '#38bdf8';
+        g.fillRect(Math.round(lx) - 1, Math.round(ly) - 3, 2, 2);
+        g.restore();
+      }
     }
   }
 

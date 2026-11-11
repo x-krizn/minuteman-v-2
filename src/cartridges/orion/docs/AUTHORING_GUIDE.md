@@ -79,14 +79,14 @@ src/cartridges/orion/
 │   ├── combat/                   # Modular Combat Subsystem
 │   │   ├── combatHelpers.ts      # Aiming, target resolution, cooldowns & stance helpers
 │   │   ├── damageSystem.ts       # [ORION-ANCHOR: COMBAT-DEFENSE-MATH] 3 Defense Layers + Inertia hit reaction
-│   │   ├── projectileSystem.ts   # Projectile spawning, functional-type shot profiles, homing, beam/ballistic updates & enemy hits
+│   │   ├── projectileSystem.ts   # Projectile spawning, description-matched shapes (`bolt < pulse < wave`, `beam`, `arc`), homing & ray/crescent hits
 │   │   ├── skillBehaviors.ts     # Enacted tactical skill movement, displacement (hook/bypass/shove), thrown/returning & lobbed mechanics
-│   │   └── skillExecution.ts     # [ORION-ANCHOR: COMBAT-ACTION-PAYLOAD] 5-action weapon & utility execution
+│   │   └── skillExecution.ts     # [ORION-ANCHOR: COMBAT-ACTION-PAYLOAD] 5-action execution, 2H side-holstering & Back Launcher (`auxActive`) ownership
 │   ├── render/                   # Modular Render Subsystem
 │   │   ├── spriteAtlasCache.ts   # Base64 image decoding, 1px outline baking & directional transforms
 │   │   ├── worldRenderer.ts      # [ORION-ANCHOR: RENDER-CLUSTER-BAKE] 3x3 cluster auto-tiler, reflections & shadows
 │   │   ├── entityRenderer.ts     # Depth-sorted 2.5D entities, props, telegraphs & player mech rendering
-│   │   └── effectsRenderer.ts    # [ORION-ANCHOR: RENDER-POST-PROCESS] Blade trails (slash/thrust/chop/whirlwind), weather, lighting & particles
+│   │   └── effectsRenderer.ts    # [ORION-ANCHOR: RENDER-POST-PROCESS] Blade trails, description-matched projectile/beam/arc rendering, weather & lighting
 │   ├── world/                    # Modular World Subsystem
 │   │   ├── roomLoader.ts         # [ORION-ANCHOR: WORLD-COMPOSER-INIT] & [ORION-ANCHOR: WORLD-KEY-ROUTES]
 │   │   ├── worldPersistence.ts   # Persistent caches, contextual loot pools & Cathedral Door evaluator
@@ -94,8 +94,8 @@ src/cartridges/orion/
 │   │   └── tutorialSystem.ts     # Desync walls, environmental hazards, raids, bosses & world interactions
 │   ├── combatSystem.ts           # Combat orchestrator (`updateCombat`) & barrel re-export
 │   ├── renderSystem.ts           # Render orchestrator (`drawOrionGame`) & barrel re-export
-│   ├── renderHudAndFogTells.ts   # Canonical 3-Layer HUD & Aether Fog wayfinding tells
-│   ├── playerSpriteSystem.ts     # 3-pass anatomical Mech & Weapon layerer (`behindBody`, `betweenPlatingAndArms`, `inFrontOfBody`) + attachment overlays
+│   ├── renderHudAndFogTells.ts   # Canonical 3-Layer HUD (with holstered `(H)` & active Aux `*` mount tags) & Aether Fog wayfinding tells
+│   ├── playerSpriteSystem.ts     # 3-pass anatomical Mech & Weapon layerer, class-tailored 2.5D N/S perspective projection & hip-holster/gauntlet overlays
 │   ├── worldSystem.ts            # World barrel re-export
 │   ├── playerSystem.ts           # State store, save/load, 2.5D physics, player controller & state gates
 │   ├── inertiaSystem.ts          # [ORION-ANCHOR: INERTIA-PHYSICS-ENGINE] Inertia v0.1 physics & stability engine

@@ -17,6 +17,7 @@ import {
   isBlockingWeapon,
   isTrueWeaponEquipment,
   isTwoHandOnlyWeapon,
+  resolveRangedBasicShotProfile,
 } from '../../database/equipment/weapons';
 import { getItemDefinition } from '../../database/items';
 import {
@@ -574,6 +575,13 @@ export function executeActionPayload(
   const isMediumShield = arch.isShield && !arch.isBucklerOrDiscShield && !arch.isTowerOrHeavyShield;
   const isHeavyShield = arch.isTowerOrHeavyShield;
 
+  const weaponShotProfile = resolveRangedBasicShotProfile(
+    currentWeaponId,
+    arch.category,
+    arch.functionalType,
+    arch.weightClass
+  );
+
   // 1. WEAPON SKILLS (Slots 1..4)
   if (desc.sourceCategory === 'weapon' && desc.weaponSkillSlot) {
     const slot = desc.weaponSkillSlot;
@@ -967,12 +975,20 @@ export function executeActionPayload(
               z: state.z + 6,
               vx: Math.cos(ang) * (152 - idx * 4),
               vy: Math.sin(ang) * (152 - idx * 4),
-              vz: 0,
+              vz: weaponShotProfile.lobVz || 0,
               damage: Math.round(action.damage * 0.52 * overdriveMult),
               damageType: action.damageType || 'Pierce',
               isPlayer: true,
               life: 1.02,
-              radius: 3.5,
+              initialLife: 1.02,
+              radius: weaponShotProfile.projectileRadius,
+              visualShape: weaponShotProfile.visualShape,
+              waveSpanPx: weaponShotProfile.waveSpanPx,
+              beamLengthPx: weaponShotProfile.beamLengthPx,
+              chainCount: weaponShotProfile.chainCount,
+              chainRangePx: weaponShotProfile.chainRangePx,
+              pierceRemaining: weaponShotProfile.pierceRemaining,
+              homingStrength: weaponShotProfile.homingStrength,
               color: trailColor,
               trailColor: coreColor,
               lightRadius: 20,
@@ -1000,12 +1016,20 @@ export function executeActionPayload(
               z: state.z + 7,
               vx: Math.cos(ang) * ordSpeed,
               vy: Math.sin(ang) * ordSpeed,
-              vz: isMortarLob ? 14 : 0,
+              vz: isMortarLob ? 18 : weaponShotProfile.lobVz || 6,
               damage: Math.round((action.damage * overdriveMult) / Math.pow(ordCount, 0.45)),
               damageType: 'Blast',
               isPlayer: true,
               life: 1.15,
-              radius: 5.5,
+              initialLife: 1.15,
+              radius: Math.max(4.6, weaponShotProfile.projectileRadius),
+              visualShape:
+                weaponShotProfile.visualShape === 'rocket' ||
+                weaponShotProfile.visualShape === 'bolide' ||
+                weaponShotProfile.visualShape === 'nova_orb'
+                  ? weaponShotProfile.visualShape
+                  : 'blast_shell',
+              homingStrength: weaponShotProfile.homingStrength,
               color: trailColor,
               trailColor: coreColor,
               lightRadius: 30,
@@ -1061,12 +1085,20 @@ export function executeActionPayload(
               z: state.z + 6,
               vx: Math.cos(ang) * speed,
               vy: Math.sin(ang) * speed,
-              vz: 0,
+              vz: weaponShotProfile.lobVz || 0,
               damage: perRoundDmg,
               damageType: action.damageType,
               isPlayer: true,
               life: 1.18,
-              radius: isHeavyBeamOrRail ? 5.5 : salvoCount > 1 ? 4.0 : 4.5,
+              initialLife: 1.18,
+              radius: weaponShotProfile.projectileRadius * 1.12,
+              visualShape: weaponShotProfile.visualShape,
+              waveSpanPx: weaponShotProfile.waveSpanPx,
+              beamLengthPx: weaponShotProfile.beamLengthPx,
+              chainCount: weaponShotProfile.chainCount,
+              chainRangePx: weaponShotProfile.chainRangePx,
+              pierceRemaining: weaponShotProfile.pierceRemaining,
+              homingStrength: weaponShotProfile.homingStrength,
               color: trailColor,
               trailColor: coreColor,
               lightRadius: 28,
@@ -1140,7 +1172,10 @@ export function executeActionPayload(
           damageType: 'Impact',
           isPlayer: true,
           life: 0.92,
-          radius: 5,
+          initialLife: 0.92,
+          radius: 5.0,
+          visualShape: 'chakram',
+          pierceRemaining: 1,
           color: trailColor,
           trailColor: coreColor,
           lightRadius: 24,
@@ -1326,12 +1361,20 @@ export function executeActionPayload(
             z: state.z + 6,
             vx: Math.cos(ang) * speed,
             vy: Math.sin(ang) * speed,
-            vz: 0,
+            vz: weaponShotProfile.lobVz || 0,
             damage: Math.round(action.damage * 0.6 * overdriveMult),
             damageType: action.damageType || 'Pierce',
             isPlayer: true,
             life,
-            radius: 3,
+            initialLife: life,
+            radius: weaponShotProfile.projectileRadius,
+            visualShape: weaponShotProfile.visualShape,
+            waveSpanPx: weaponShotProfile.waveSpanPx,
+            beamLengthPx: weaponShotProfile.beamLengthPx,
+            chainCount: weaponShotProfile.chainCount,
+            chainRangePx: weaponShotProfile.chainRangePx,
+            pierceRemaining: weaponShotProfile.pierceRemaining,
+            homingStrength: weaponShotProfile.homingStrength,
             color: trailColor,
             trailColor: coreColor,
             lightRadius: 16,
@@ -1359,12 +1402,23 @@ export function executeActionPayload(
           z: state.z + 8,
           vx: aim.dx * (slot2DmgType === 'Beam' || slot2DmgType === 'Pulse' ? 138 : 96),
           vy: aim.dy * (slot2DmgType === 'Beam' || slot2DmgType === 'Pulse' ? 138 : 96),
-          vz: slot2DmgType === 'Blast' ? 20 : 0,
+          vz: slot2DmgType === 'Blast' ? 20 : weaponShotProfile.lobVz || 0,
           damage: Math.round(action.damage * overdriveMult),
           damageType: slot2DmgType,
           isPlayer: true,
           life: 0.88,
-          radius: 5,
+          initialLife: 0.88,
+          radius: slot2DmgType === 'Blast' ? 5.0 : weaponShotProfile.projectileRadius * 1.15,
+          visualShape:
+            slot2DmgType === 'Blast' && weaponShotProfile.visualShape === 'bolt'
+              ? 'blast_shell'
+              : weaponShotProfile.visualShape,
+          waveSpanPx: weaponShotProfile.waveSpanPx,
+          beamLengthPx: weaponShotProfile.beamLengthPx,
+          chainCount: weaponShotProfile.chainCount,
+          chainRangePx: weaponShotProfile.chainRangePx,
+          pierceRemaining: weaponShotProfile.pierceRemaining,
+          homingStrength: weaponShotProfile.homingStrength,
           color: gemVis.gemId ? trailColor : slot2DmgType === 'Blast' ? '#ea580c' : trailColor,
           trailColor: gemVis.gemId ? coreColor : slot2DmgType === 'Blast' ? '#f97316' : coreColor,
           lightRadius: 30,
@@ -1465,12 +1519,20 @@ export function executeActionPayload(
           z: state.z + 6,
           vx: aim.dx * 145,
           vy: aim.dy * 145,
-          vz: 0,
+          vz: weaponShotProfile.lobVz || 0,
           damage: Math.round(action.damage * overdriveMult),
           damageType: action.damageType || 'Pierce',
           isPlayer: true,
           life: 1.05,
-          radius: 4,
+          initialLife: 1.05,
+          radius: weaponShotProfile.projectileRadius,
+          visualShape: weaponShotProfile.visualShape,
+          waveSpanPx: weaponShotProfile.waveSpanPx,
+          beamLengthPx: weaponShotProfile.beamLengthPx,
+          chainCount: weaponShotProfile.chainCount,
+          chainRangePx: weaponShotProfile.chainRangePx,
+          pierceRemaining: weaponShotProfile.pierceRemaining,
+          homingStrength: weaponShotProfile.homingStrength,
           color: trailColor,
           trailColor: coreColor,
           lightRadius: 24,
@@ -1506,12 +1568,20 @@ export function executeActionPayload(
             z: state.z + 6,
             vx: Math.cos(ang) * 124,
             vy: Math.sin(ang) * 124,
-            vz: 0,
+            vz: weaponShotProfile.lobVz || 0,
             damage: Math.round(action.damage * overdriveMult),
             damageType: action.damageType || 'Pierce',
             isPlayer: true,
             life: 0.92,
-            radius: 3,
+            initialLife: 0.92,
+            radius: weaponShotProfile.projectileRadius,
+            visualShape: weaponShotProfile.visualShape,
+            waveSpanPx: weaponShotProfile.waveSpanPx,
+            beamLengthPx: weaponShotProfile.beamLengthPx,
+            chainCount: weaponShotProfile.chainCount,
+            chainRangePx: weaponShotProfile.chainRangePx,
+            pierceRemaining: weaponShotProfile.pierceRemaining,
+            homingStrength: weaponShotProfile.homingStrength,
             color: trailColor,
             trailColor: coreColor,
             lightRadius: 16,
@@ -1552,7 +1622,10 @@ export function executeActionPayload(
           damageType: 'Pierce',
           isPlayer: true,
           life: 1.12,
-          radius: 5,
+          initialLife: 1.12,
+          radius: 4.6,
+          visualShape: 'javelin',
+          pierceRemaining: 2,
           color: trailColor,
           trailColor: coreColor,
           lightRadius: 28,
@@ -1634,7 +1707,11 @@ export function executeActionPayload(
           damageType: 'Wave',
           isPlayer: true,
           life: 0.92,
-          radius: 6,
+          initialLife: 0.92,
+          radius: 7.0,
+          visualShape: 'wave',
+          waveSpanPx: 22,
+          pierceRemaining: 2,
           color: trailColor,
           trailColor: coreColor,
           lightRadius: 30,
@@ -1678,10 +1755,15 @@ export function executeActionPayload(
           vy: aim.dy * 168,
           vz: 0,
           damage: Math.round(action.damage * overdriveMult),
-          damageType: 'Wave',
+          damageType: weapon?.primaryDamageType === 'Beam' ? 'Beam' : 'Wave',
           isPlayer: true,
           life: 1.12,
-          radius: 6,
+          initialLife: 1.12,
+          radius: weapon?.primaryDamageType === 'Beam' ? 4.6 : 6.8,
+          visualShape: weapon?.primaryDamageType === 'Beam' ? 'beam' : 'wave',
+          beamLengthPx: weapon?.primaryDamageType === 'Beam' ? 42 : undefined,
+          waveSpanPx: weapon?.primaryDamageType === 'Beam' ? undefined : 22,
+          pierceRemaining: 2,
           color: trailColor,
           trailColor: coreColor,
           lightRadius: 34,
@@ -1773,12 +1855,15 @@ export function executeActionPayload(
             z: state.z + 6,
             vx: Math.cos(ang) * 148,
             vy: Math.sin(ang) * 148,
-            vz: 0,
+            vz: weaponShotProfile.lobVz || 0,
             damage: Math.round(action.damage * 0.6 * overdriveMult),
             damageType: 'Pierce',
             isPlayer: true,
             life: 1.0,
-            radius: 3,
+            initialLife: 1.0,
+            radius: weaponShotProfile.projectileRadius,
+            visualShape: weaponShotProfile.visualShape,
+            waveSpanPx: weaponShotProfile.waveSpanPx,
             color: trailColor,
             trailColor: coreColor,
             lightRadius: 18,
@@ -1805,12 +1890,20 @@ export function executeActionPayload(
           z: state.z + 6,
           vx: aim.dx * 168,
           vy: aim.dy * 168,
-          vz: 0,
+          vz: weaponShotProfile.lobVz || 0,
           damage: Math.round(action.damage * overdriveMult),
           damageType: action.damageType || 'Beam',
           isPlayer: true,
           life: 1.12,
-          radius: 5.5,
+          initialLife: 1.12,
+          radius: weaponShotProfile.projectileRadius * 1.2,
+          visualShape: weaponShotProfile.visualShape,
+          waveSpanPx: weaponShotProfile.waveSpanPx,
+          beamLengthPx: weaponShotProfile.beamLengthPx,
+          chainCount: weaponShotProfile.chainCount,
+          chainRangePx: weaponShotProfile.chainRangePx,
+          pierceRemaining: Math.max(1, weaponShotProfile.pierceRemaining || 0),
+          homingStrength: weaponShotProfile.homingStrength,
           color: trailColor,
           trailColor: coreColor,
           lightRadius: 32,
@@ -2194,10 +2287,51 @@ export function getActiveWeaponStance(state: OrionState): ActiveWeaponStanceSumm
   const w3 = slot3Id ? getWeaponDefinition(slot3Id) : undefined;
 
   const grip = getEffectiveMainGrip(state);
-  const isBow = isTwoHandOnlyWeapon(w1);
+  const is2HWeapon = isTwoHandOnlyWeapon(w1, state);
+  const isAuxActive = Boolean(state.equipmentSlots?.auxActive && w3 && slot3Id);
+
+  if (isAuxActive && w3) {
+    const sideHolsteredNote =
+      w2 && (grip === '2h' || is2HWeapon) ? ` · Side [${w2.name}] Holstered` : '';
+    return {
+      stance: 'main_aux',
+      grip,
+      label: 'BACK LAUNCHER OWNERSHIP',
+      shortTag: 'BACK AUX [AC4–5]',
+      description: `${w1?.name || slot1Id} (ac1–ac3) + Back Launcher ${w3.name} (ac4–ac5)${sideHolsteredNote}`,
+      actionGridRow: {
+        ac1: true,
+        ac2: true,
+        ac3: true,
+        ac4: true,
+        ac5: true,
+      },
+    };
+  }
+
+  if (grip === '2h' || is2HWeapon) {
+    const holsteredSuffix =
+      w2 && slot2Id !== slot1Id ? ` · Side [${w2.name}] Holstered` : '';
+    return {
+      stance: 'power_2h',
+      grip: '2h',
+      label: 'TWO-HANDING, POWER STANCE',
+      shortTag: w2 && slot2Id !== slot1Id ? '2H (SIDE HOLSTERED)' : '2H POWER',
+      description: `${w1?.name || slot1Id} (2H) → ac1–ac5 = ${
+        w1?.name || slot1Id
+      } Skill 1–5${holsteredSuffix}`,
+      actionGridRow: {
+        ac1: true,
+        ac2: true,
+        ac3: true,
+        ac4: true,
+        ac5: true,
+      },
+    };
+  }
 
   if (item2 && slot2Id) {
-    const auxProvidesAc4 = Boolean(w3 && isAuxiliaryEquipment(w3)) || grip === '2h' || isBow;
+    const auxProvidesAc4 = Boolean(w3 && isAuxiliaryEquipment(w3));
     return {
       stance: 'main_consumable',
       grip,
@@ -2220,28 +2354,9 @@ export function getActiveWeaponStance(state: OrionState): ActiveWeaponStanceSumm
     return {
       stance: 'main_aux',
       grip: '1h',
-      label: '1H + AUXILIARY STANCE',
-      shortTag: '1H + AUX',
-      description: `${w1?.name || slot1Id} (ac1–ac3) + ${w2.name} Auxiliary (ac4–ac5)`,
-      actionGridRow: {
-        ac1: true,
-        ac2: true,
-        ac3: true,
-        ac4: true,
-        ac5: true,
-      },
-    };
-  }
-
-  if (grip === '2h' || isBow) {
-    return {
-      stance: 'power_2h',
-      grip: '2h',
-      label: 'TWO-HANDING, POWER STANCE',
-      shortTag: '2H POWER',
-      description: `${w1?.name || slot1Id} (2H) occupies Main & Side → ac1–ac5 = ${
-        w1?.name || slot1Id
-      } Skill 1–5`,
+      label: '1H + SHIELD STANCE',
+      shortTag: '1H + SHIELD',
+      description: `${w1?.name || slot1Id} (ac1–ac3) + ${w2.name} (ac4–ac5)`,
       actionGridRow: {
         ac1: true,
         ac2: true,
@@ -2311,6 +2426,8 @@ export function getActiveWeaponStance(state: OrionState): ActiveWeaponStanceSumm
 
 /**
  * Executes `performAuxiliarySwap` (perform auxiliary swap) in `skillExecution.ts`. Mutates `state: OrionState`.
+ * Launchers in `slot3` (Aux Back) never move to `slot2` (Side Hand) when swapped to — they stay mounted on the back
+ * and toggle active ownership (`slots.auxActive`) of Skills 4 and 5.
  */
 export function performAuxiliarySwap(
   state: OrionState,
@@ -2337,7 +2454,6 @@ export function performAuxiliarySwap(
   const slot1 = slots.slot1 || state.equippedWeapons[0] || 'gladius_boltcaster';
   const slot2 = slots.slot2 || null;
   const slot3 = slots.slot3 || null;
-  const is2HGrip = getEffectiveMainGrip(state) === '2h';
 
   if (!slot2 && !slot3) {
     soundSystem.playMenuBeep();
@@ -2346,35 +2462,48 @@ export function performAuxiliarySwap(
     return false;
   }
 
-  if (is2HGrip && slot2 === slot1 && getOwnedWeaponCount(state, slot1) < 2) {
-    if (!slot3) {
+  let swapMessage = '';
+  if (slot3) {
+    // Back Launcher (`slot3`) stays on the back and toggles active ownership of Skills 4 & 5 (`auxActive`)
+    slots.auxActive = !slots.auxActive;
+    const auxName =
+      getWeaponDefinition(slot3)?.name || getItemDefinition(slot3)?.name || slot3;
+    if (slots.auxActive) {
+      swapMessage = `BACK LAUNCHER ACTIVE: [${auxName.toUpperCase()}] OWNS SKILLS 4 & 5 (STAYING ON BACK)`;
+    } else {
+      const is2H = getEffectiveMainGrip(state) === '2h';
+      if (is2H) {
+        const mainName = getWeaponDefinition(slot1)?.name || slot1;
+        const sideNote = slot2
+          ? ` · SIDE [${(getWeaponDefinition(slot2)?.name || slot2).toUpperCase()}] HOLSTERED`
+          : '';
+        swapMessage = `RETURNED TO 2H MAIN: [${mainName.toUpperCase()}] OWNS SKILLS 1–5${sideNote}`;
+      } else if (slot2) {
+        const sideName =
+          getWeaponDefinition(slot2)?.name || getItemDefinition(slot2)?.name || slot2;
+        swapMessage = `RETURNED TO SIDE HAND: [${sideName.toUpperCase()}] OWNS SKILLS 4 & 5 (LAUNCHER ON BACK)`;
+      } else {
+        const mainName = getWeaponDefinition(slot1)?.name || slot1;
+        swapMessage = `RETURNED TO MAIN HAND: [${mainName.toUpperCase()}]`;
+      }
+    }
+  } else if (slot2) {
+    // No Back Launcher equipped: if Main weapon supports 1H/2H toggle, toggle grip (holstering/unholstering Side weapon)
+    if (isTwoHandOnlyWeapon(slot1, state)) {
       soundSystem.playMenuBeep();
-      ctx?.say('AUXILIARY SLOT EMPTY — NO SWAP TARGET');
+      ctx?.say('BACK AUXILIARY SLOT EMPTY & MAIN WEAPON REQUIRES 2H GRIP');
       notifyOrionStateChange();
       return false;
     }
-    slots.slot2 = slot3;
-    slots.slot3 = null;
-    slots.mainGrip = isTwoHandOnlyWeapon(slot1) ? '2h' : '1h';
-  } else {
-    slots.slot2 = slot3;
-    slots.slot3 = slot2;
-    if (!slots.slot2) {
-      slots.mainGrip = '2h';
-    } else if (!isTwoHandOnlyWeapon(slot1)) {
-      slots.mainGrip = '1h';
-    }
+    slots.mainGrip = slots.mainGrip === '2h' ? '1h' : '2h';
+    slots.auxActive = false;
+    const sideName =
+      getWeaponDefinition(slot2)?.name || getItemDefinition(slot2)?.name || slot2;
+    swapMessage =
+      slots.mainGrip === '2h'
+        ? `2H POWER STANCE: SIDE [${sideName.toUpperCase()}] HOLSTERED`
+        : `1H STANCE: SIDE [${sideName.toUpperCase()}] UNHOLSTERED`;
   }
-
-  const newSideId = slots.slot2;
-  const newAuxId = slots.slot3;
-  const newSideName = newSideId
-    ? getWeaponDefinition(newSideId)?.name || getItemDefinition(newSideId)?.name || newSideId
-    : 'NONE (MAIN 2H)';
-  const newAuxName = newAuxId
-    ? getWeaponDefinition(newAuxId)?.name || getItemDefinition(newAuxId)?.name || newAuxId
-    : 'EMPTY';
-  const swapMessage = `SWAPPED SIDE ⇄ AUX: SIDE [${newSideName.toUpperCase()}] · AUX [${newAuxName.toUpperCase()}]`;
 
   state.equippedWeapons = [
     slots.slot1,
@@ -2483,9 +2612,11 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
   const w3 = slot3Id ? getWeaponDefinition(slot3Id) : undefined;
 
   const mainGrip = getEffectiveMainGrip(state);
-  const isBow = isTwoHandOnlyWeapon(w1);
-  const isPowerStance2H = mainGrip === '2h' || isBow;
+  const is2HWeapon = isTwoHandOnlyWeapon(w1, state);
+  const isAuxActive = Boolean(state.equipmentSlots?.auxActive && w3 && slot3Id);
+  const isPowerStance2H = !isAuxActive && (mainGrip === '2h' || is2HWeapon);
   const isPairedStance =
+    !isAuxActive &&
     !isPowerStance2H &&
     Boolean(
       w1 &&
@@ -2496,10 +2627,12 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
         getOwnedWeaponCount(state, slot1Id) >= 2
     );
   const isUnpairedStance =
+    !isAuxActive &&
     !isPowerStance2H &&
     !isPairedStance &&
     Boolean(w1 && w2 && isTrueWeaponEquipment(w2) && slot2Id !== slot1Id);
-  const isSideAuxiliary = Boolean(w2 && isAuxiliaryEquipment(w2));
+  const isSideAuxiliary =
+    !isAuxActive && !isPowerStance2H && Boolean(w2 && isAuxiliaryEquipment(w2));
   const isAuxlAuxiliary = Boolean(w3 && isAuxiliaryEquipment(w3));
 
   const getItemCount = (itemId: string) => {
@@ -2629,14 +2762,53 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
   let skill4: ResolvedCombatSkill | null = null;
   let skill5: ResolvedCombatSkill | null = null;
 
-  if (isSideAuxiliary && w2 && slot2Id) {
+  if (isAuxActive && w3 && slot3Id) {
+    // Back Launcher owns Skills 4 & 5 while staying mounted on the back (`slot3`)
+    skill4 = buildWeaponSkill(
+      'weapon_slot2_skill4',
+      4,
+      slot3Id,
+      w3,
+      3,
+      `Back Launcher: ${w3.name} [Skill 4]`,
+      'wpn_aux'
+    );
+    skill5 = buildWeaponSkill(
+      'weapon_slot2_skill5',
+      5,
+      slot3Id,
+      w3,
+      4,
+      `Back Launcher: ${w3.name} [Skill 5]`,
+      'wpn_aux'
+    );
+  } else if (isPowerStance2H && w1) {
+    // 2H Power Stance: any equipped Side weapon (`slot2`) is holstered; Main weapon (`slot1`) owns Skills 4 & 5
+    const holsteredSuffix = w2 && slot2Id !== slot1Id ? ` (Side Holstered)` : '';
+    skill4 = buildWeaponSkill(
+      'weapon_skill_3',
+      4,
+      slot1Id,
+      w1,
+      3,
+      `Power Stance (2H): ${w1.name} [Skill 4]${holsteredSuffix}`
+    );
+    skill5 = buildWeaponSkill(
+      'weapon_skill_4',
+      5,
+      slot1Id,
+      w1,
+      4,
+      `Power Stance (2H): ${w1.name} [Skill 5]${holsteredSuffix}`
+    );
+  } else if (isSideAuxiliary && w2 && slot2Id) {
     skill4 = buildWeaponSkill(
       'weapon_slot2_skill4',
       4,
       slot2Id,
       w2,
       3,
-      `Side Aux: ${w2.name} [Skill 4]`
+      `Side Shield: ${w2.name} [Skill 4]`
     );
     skill5 = buildWeaponSkill(
       'weapon_slot2_skill5',
@@ -2644,7 +2816,7 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
       slot2Id,
       w2,
       4,
-      `Side Aux: ${w2.name} [Skill 5]`
+      `Side Shield: ${w2.name} [Skill 5]`
     );
   } else if (item2 && slot2Id) {
     const count = getItemCount(slot2Id);
@@ -2681,16 +2853,7 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
         slot3Id,
         w3,
         3,
-        `Auxl: ${w3.name} [Skill 4]`
-      );
-    } else if (isPowerStance2H && w1) {
-      skill4 = buildWeaponSkill(
-        'weapon_skill_3',
-        4,
-        slot1Id,
-        w1,
-        3,
-        `Main (2H): ${w1.name} [Skill 4]`
+        `Back Launcher: ${w3.name} [Skill 4]`
       );
     } else {
       skill4 = {
@@ -2725,18 +2888,14 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
       `Side (Unpaired): ${w2.name} [Skill 3]`,
       'wpn_side'
     );
-  } else if ((isPairedStance || isPowerStance2H) && w1) {
-    const stanceSource = isPairedStance
-      ? `Paired: ${w1.name}`
-      : `Power Stance (2H): ${w1.name}`;
-
+  } else if (isPairedStance && w1) {
     skill4 = buildWeaponSkill(
       'weapon_skill_3',
       4,
       slot1Id,
       w1,
       3,
-      `${stanceSource} [Skill 4]`
+      `Paired: ${w1.name} [Skill 4]`
     );
     skill5 = buildWeaponSkill(
       'weapon_skill_4',
@@ -2744,7 +2903,7 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
       slot1Id,
       w1,
       4,
-      `${stanceSource} [Skill 5]`
+      `Paired: ${w1.name} [Skill 5]`
     );
   } else {
     skill4 = {
@@ -2757,7 +2916,7 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
       sourceSlotName: '1H Grip: ac4 = no',
       currentCooldown: 0,
       available: false,
-      unavailableReason: '1H GRIP: SWITCH TO 2H OR EQUIP SIDE WEAPON / AUXILIARY',
+      unavailableReason: '1H GRIP: SWITCH TO 2H OR EQUIP SIDE WEAPON / LAUNCHER [L]',
     };
     skill5 = {
       id: 'none',
@@ -2769,7 +2928,7 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
       sourceSlotName: '1H Grip: ac5 = no',
       currentCooldown: 0,
       available: false,
-      unavailableReason: '1H GRIP: SWITCH TO 2H OR SWAP SIDE/AUX WITH [L]',
+      unavailableReason: '1H GRIP: SWITCH TO 2H OR SWAP TO BACK LAUNCHER WITH [L]',
     };
   }
 

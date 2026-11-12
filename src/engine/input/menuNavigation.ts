@@ -4,6 +4,7 @@
  */
 
 import { GameInput } from '../../types/input';
+import { isInputCaptureActive } from './inputBindingsStore';
 
 /**
  * Result returned each frame by the universal menu navigator.
@@ -290,6 +291,14 @@ export class UniversalMenuNavigator {
    */
   public step(input: GameInput, dtSeconds: number): MenuNavigationStepResult {
     this.ensurePointerSync();
+
+    if (isInputCaptureActive()) {
+      return {
+        isMenuActive: true,
+        handledInput: true,
+        shouldCloseRootMenu: false,
+      };
+    }
 
     const containers = this.getActiveMenuContainers();
     if (!containers) {

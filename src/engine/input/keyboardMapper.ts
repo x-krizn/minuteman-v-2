@@ -5,47 +5,11 @@
 
 import { ButtonKey } from '../../types/input';
 import { gamepadStore } from './gamepadStore';
-
-const KEY_MAPPINGS: Record<string, ButtonKey> = {
-  // D-pad directions
-  ArrowUp: 'up',
-  KeyW: 'up',
-  ArrowDown: 'down',
-  KeyS: 'down',
-  ArrowLeft: 'left',
-  KeyA: 'left',
-  ArrowRight: 'right',
-  KeyD: 'right',
-
-  // Face Buttons
-  KeyZ: 'a', // Jump (A)
-  Space: 'a',
-  KeyX: 'b', // Dash / Sprint (B)
-  KeyK: 'b',
-  KeyC: 'x', // Attack / Charge (X)
-  KeyJ: 'x',
-  KeyV: 'y', // Block / Parry (Y)
-  KeyL: 'y',
-
-  // Bumpers / Skills
-  KeyQ: 'l', // Skill 1 (L)
-  KeyU: 'l',
-  KeyE: 'r', // Skill 2 (R)
-  KeyO: 'r',
-
-  // System Buttons
-  // START -> Game Menu (Enter, P, Escape)
-  Enter: 'start',
-  KeyP: 'start',
-  Escape: 'start',
-  // SHIFT -> Inventory / Character Screen (ShiftLeft, ShiftRight, Tab, M)
-  ShiftLeft: 'select',
-  ShiftRight: 'select',
-  Tab: 'select',
-  KeyM: 'select',
-  KeyI: 'select',
-  Backspace: 'select',
-};
+import {
+  isInputCaptureActive,
+  resolveKeyboardCodeToButton,
+  subscribeControlBindings,
+} from './inputBindingsStore';
 
 function isEditableElement(el: EventTarget | Element | null): boolean {
   if (!el || !(el instanceof HTMLElement)) return false;
@@ -59,7 +23,7 @@ function isEditableElement(el: EventTarget | Element | null): boolean {
 }
 
 /**
- * Maps physical keyboard events (`WASD`, Arrow keys, `J`/`K`/`U`/`I`, `Enter`, `Shift`) into `gamepadStore` with paired listener cleanup.
+ * Maps physical keyboard events into `gamepadStore` using customizable bindings from `inputBindingsStore`.
  */
 export class KeyboardMapper {
   private activeKeys: Set<string> = new Set();
@@ -94,7 +58,16 @@ export class KeyboardMapper {
       gamepadStore.setStick(0, 0, 'keyboard');
     };
 
+    const unsubBindings = subscribeControlBindings(() => {
+      releaseAllKeyboardInputs();
+    });
+
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isInputCaptureActive()) {
+        releaseAllKeyboardInputs();
+        return;
+      }
+
       // Do not hijack keystrokes when typing inside a text input (e.g., Pilot Callsign)
       if (isEditableElement(e.target) || isEditableElement(document.activeElement)) {
         if (e.code === 'Escape' && document.activeElement instanceof HTMLElement) {
@@ -103,8 +76,11 @@ export class KeyboardMapper {
         return;
       }
 
-      // Prevent default browser scrolling or button activation on game keys
+      const button = resolveKeyboardCodeToButton(e.code);
+
+      // Prevent default browser scrolling or button activation on bound keys or navigation keys
       if (
+        button ||
         ['Space', 'Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(
           e.code
         )
@@ -112,7 +88,6 @@ export class KeyboardMapper {
         e.preventDefault();
       }
 
-      const button = KEY_MAPPINGS[e.code];
       if (button) {
         this.activeKeys.add(e.code);
         gamepadStore.setButtonState(button, true, false, 'keyboard');
@@ -121,12 +96,17 @@ export class KeyboardMapper {
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      const button = KEY_MAPPINGS[e.code];
+      if (isInputCaptureActive()) {
+        releaseAllKeyboardInputs();
+        return;
+      }
+
+      const button = resolveKeyboardCodeToButton(e.code);
       if (button) {
         this.activeKeys.delete(e.code);
         // Only release if no other key mapping to the same button is held
         const stillHeld = Array.from(this.activeKeys).some(
-          (k) => KEY_MAPPINGS[k] === button
+          (k) => resolveKeyboardCodeToButton(k) === button
         );
         if (!stillHeld) {
           gamepadStore.setButtonState(button, false, false, 'keyboard');
@@ -151,6 +131,7 @@ export class KeyboardMapper {
     window.addEventListener('focusin', handleFocusIn);
 
     return () => {
+      unsubBindings();
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('blur', handleBlur);
@@ -163,7 +144,7 @@ export class KeyboardMapper {
     let sx = 0;
     let sy = 0;
     const isHeld = (btn: ButtonKey) =>
-      Array.from(this.activeKeys).some((k) => KEY_MAPPINGS[k] === btn);
+      Array.from(this.activeKeys).some((k) => resolveKeyboardCodeToButton(k) === btn);
 
     if (isHeld('left')) sx -= 1;
     if (isHeld('right')) sx += 1;

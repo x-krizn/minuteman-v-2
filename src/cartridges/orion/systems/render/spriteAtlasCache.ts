@@ -4,6 +4,7 @@
  */
 
 import { Base64SpriteConfig, OrionDir } from '../../types';
+import { getOrionGraphicsSettings } from '../graphicsSettingsStore';
 
 // ─── 1. BASE64 ASSET LOADER & 1PX SILHOUETTE CACHE ───────────────────────────
 
@@ -156,7 +157,9 @@ export function getOutlinedSpriteCanvas(
   outlineColor: string
 ): HTMLCanvasElement | null {
   if (typeof document === 'undefined') return null;
-  const cacheKey = `${sourceKey}:${srcX},${srcY},${cellW},${cellH}:${outlineColor}`;
+  const useOutline = getOrionGraphicsSettings().outlinePass && outlineColor !== 'none';
+  const effectiveOutlineKey = useOutline ? outlineColor : 'raw';
+  const cacheKey = `${sourceKey}:${srcX},${srcY},${cellW},${cellH}:${effectiveOutlineKey}`;
   const existing = OUTLINE_CACHE.get(cacheKey);
   if (existing) return existing;
 
@@ -169,21 +172,23 @@ export function getOutlinedSpriteCanvas(
   if (!ctx) return null;
   ctx.imageSmoothingEnabled = false;
 
-  const sil = document.createElement('canvas');
-  sil.width = cellW;
-  sil.height = cellH;
-  const sctx = sil.getContext('2d');
-  if (sctx) {
-    sctx.imageSmoothingEnabled = false;
-    sctx.drawImage(src, srcX, srcY, cellW, cellH, 0, 0, cellW, cellH);
-    sctx.globalCompositeOperation = 'source-in';
-    sctx.fillStyle = outlineColor;
-    sctx.fillRect(0, 0, cellW, cellH);
+  if (useOutline) {
+    const sil = document.createElement('canvas');
+    sil.width = cellW;
+    sil.height = cellH;
+    const sctx = sil.getContext('2d');
+    if (sctx) {
+      sctx.imageSmoothingEnabled = false;
+      sctx.drawImage(src, srcX, srcY, cellW, cellH, 0, 0, cellW, cellH);
+      sctx.globalCompositeOperation = 'source-in';
+      sctx.fillStyle = outlineColor;
+      sctx.fillRect(0, 0, cellW, cellH);
 
-    ctx.drawImage(sil, 0, 1);
-    ctx.drawImage(sil, 2, 1);
-    ctx.drawImage(sil, 1, 0);
-    ctx.drawImage(sil, 1, 2);
+      ctx.drawImage(sil, 0, 1);
+      ctx.drawImage(sil, 2, 1);
+      ctx.drawImage(sil, 1, 0);
+      ctx.drawImage(sil, 1, 2);
+    }
   }
 
   ctx.drawImage(src, srcX, srcY, cellW, cellH, 1, 1, cellW, cellH);

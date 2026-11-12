@@ -73,7 +73,9 @@ src/cartridges/orion/
 │   ├── items/                    # Consumables, 9 Gemstones, Currency & Quest Relics
 │   ├── equipment/                # Slot-organized Weapons, Hardware, Frame Plating, Reactors & Utilities
 │   ├── characters/               # 6 Classless Starting Loadout Kit profiles (Bastion, Fortress, Dawnforge, etc.)
-│   └── progression/              # [ORION-ANCHOR: PROG-FEAT-SYNERGY] 97 Canonical Feats, Hardware items & Level Gates
+│   └── progression/              # [ORION-ANCHOR: PROG-FEAT-SYNERGY] 97 Canonical Feats, 96-Node Constellation & Equipment Handling
+│       ├── index.ts              # Canonical feats, gemstone economy, and progression helpers
+│       └── featHandling.ts       # 96-node 6-arm hexagonal constellation coordinates & hybrid equipment prerequisite/handling evaluator
 │
 ├── systems/                      # Modular Domain Engine Systems
 │   ├── combat/                   # Modular Combat Subsystem
@@ -98,15 +100,17 @@ src/cartridges/orion/
 │   ├── playerSpriteSystem.ts     # 3-pass anatomical Mech & Weapon layerer, class-tailored 2.5D N/S perspective projection & hip-holster/gauntlet overlays
 │   ├── worldSystem.ts            # World barrel re-export
 │   ├── playerSystem.ts           # State store, save/load, 2.5D physics, player controller & state gates
+│   ├── graphicsSettingsStore.ts  # Persistent Graphics & Visuals settings store (presets, bloom, lighting, weather, reflections, outlines, shake)
 │   ├── inertiaSystem.ts          # [ORION-ANCHOR: INERTIA-PHYSICS-ENGINE] Inertia v0.1 physics & stability engine
 │   └── entitySystem.ts           # [ORION-ANCHOR: ENTITY-SPAWN-ROOM] Enemy spawning/AI, pickups & particles
 │
 └── ui/                           # React HUD, Satchel & Menu overlays (operable via Keyboard, Gamepad, Virtual Controls & Mouse/Touch via UniversalMenuNavigator)
     ├── OrionHud.tsx              # HUD orchestrator & Cosmic World Map modal
     ├── OrionGameMenu.tsx         # [START] Pause Menu & Roster/Options subviews
-    ├── OrionSatchel.tsx          # 7-tab Tactical Menu orchestrator (MECH STATUS, LOADOUT, ARMORY, INVENTORY, SKILLS & FEATS, WORLD MAP, CODEX; [L]/[R] tab cycling)
+    ├── OrionSatchel.tsx          # Consolidated 5-tab Tactical Menu (STATUS, LOADOUT [Slots/Armory/Inventory], FEATS [96], MAP, CODEX)
     ├── hud/                      # Modular HUD subcomponents (HudTitleModal, HudDefenseBars, HudSkillDeck)
-    └── satchel/                  # Modular Satchel subcomponents (SatchelCanvases, SatchelStatusTab, SatchelLoadoutTab, SatchelArmoryTab, SatchelFeatsTab, SatchelWorldTab, SatchelCodexTab)
+    ├── satchel/                  # Modular Satchel subcomponents (SatchelCanvases, SatchelStatusTab, SatchelLoadoutTab, SatchelArmoryTab, SatchelFeatsTab, SatchelWorldTab, SatchelCodexTab)
+    └── settings/                 # Unified Controls, Graphics & Audio settings panel (OrionSettingsPanel)
 ```
 
 ---

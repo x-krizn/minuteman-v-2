@@ -261,6 +261,11 @@ export function canBypassTwoHandRestriction(
   if (state?.equippedFeats && state.equippedFeats.length > 0) {
     const hasHeavyGripFeat = state.equippedFeats.some(
       (fid) =>
+        fid === 'main_weapon_twin_link' ||
+        fid === 'salvo_link' ||
+        fid === 'unyielding_bulwark' ||
+        fid === 'unfaltering' ||
+        fid === 'siege_stability' ||
         fid === 'feat_marauder_3' ||
         fid === 'feat_marauder_5' ||
         fid === 'feat_warrior_5' ||

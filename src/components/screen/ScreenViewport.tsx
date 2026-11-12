@@ -49,11 +49,11 @@ export const ScreenViewport: React.FC<ScreenViewportProps> = ({
         id="screen-viewport"
         className="w-full h-full max-w-[540px] bg-[#0f300f] border-4 border-[#0f35] rounded-xl flex items-center justify-center relative overflow-hidden shadow-[inset_0_0_16px_rgba(0,0,0,0.85)]"
       >
-        {/* Mobile Fullscreen Corner Toggle */}
+        {/* Mobile Fullscreen Corner Toggle (z-10 so z-20 menus cover it without button overlap) */}
         {onToggleFullscreen && (
           <button
             onClick={onToggleFullscreen}
-            className="absolute top-1.5 right-1.5 z-30 px-2 py-0.8 bg-[#122412]/85 hover:bg-[#1e3c1e] text-[#50fa7b] border border-[#2e5c2e]/60 rounded-xs font-mono text-[9.5px] tracking-wider transition-colors flex items-center gap-1 shadow-sm active:scale-95"
+            className="absolute top-1.5 right-1.5 z-10 px-2 py-0.8 bg-[#122412]/85 hover:bg-[#1e3c1e] text-[#50fa7b] border border-[#2e5c2e]/60 rounded-xs font-mono text-[9.5px] tracking-wider transition-colors flex items-center gap-1 shadow-sm active:scale-95"
             title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen (Mobile)'}
           >
             <span>{isFullscreen ? '✕' : '⛶'}</span>
@@ -64,7 +64,7 @@ export const ScreenViewport: React.FC<ScreenViewportProps> = ({
         {/* Hardware Gamepad Connected Badge */}
         {connectedGamepads.length > 0 && (
           <div
-            className="absolute top-1.5 left-1.5 z-30 px-1.5 py-0.8 bg-[#122412]/85 text-[#50fa7b] border border-[#2e5c2e]/60 rounded-xs font-mono text-[9.5px] tracking-wider flex items-center gap-1 shadow-sm"
+            className="absolute top-1.5 left-1.5 z-10 px-1.5 py-0.8 bg-[#122412]/85 text-[#50fa7b] border border-[#2e5c2e]/60 rounded-xs font-mono text-[9.5px] tracking-wider flex items-center gap-1 shadow-sm"
             title={`Physical Controller Connected: ${connectedGamepads.join(', ')}`}
           >
             <span>🎮</span>

@@ -29,6 +29,7 @@ import {
   OrionState,
   RoomLightingProfile,
 } from '../../types';
+import { getOrionGraphicsSettings } from '../graphicsSettingsStore';
 
 // ─── MULTI-PASS 2.5D POST-PROCESSING, TRAILS, WEATHER & LIGHTING ─────────────
 
@@ -55,6 +56,7 @@ export function resolveBiomePostProcess(biome: BiomeDefinition): {
   scanlines: boolean;
 } {
   const custom = biome.postProcess || {};
+  const gfx = getOrionGraphicsSettings();
   let defaultWeather: BiomeWeatherType = 'none';
   if (biome.id.includes('bog') || biome.id.includes('wetland')) {
     defaultWeather = 'rain';
@@ -70,12 +72,19 @@ export function resolveBiomePostProcess(biome: BiomeDefinition): {
   }
 
   return {
-    ambientDarkness: custom.ambientDarkness ?? 0.94,
-    bloomIntensity: custom.bloomIntensity ?? 0.38,
-    weather: custom.weather ?? defaultWeather,
-    weatherIntensity: custom.weatherIntensity ?? 0.65,
-    liquidReflection: custom.liquidReflection ?? true,
-    scanlines: custom.scanlines ?? false,
+    ambientDarkness: Math.min(
+      0.98,
+      Math.max(0.25, (custom.ambientDarkness ?? 0.94) * gfx.ambientDarknessScale)
+    ),
+    bloomIntensity: gfx.bloomEnabled
+      ? (custom.bloomIntensity ?? 0.38) * gfx.bloomIntensity
+      : 0,
+    weather: gfx.weatherEnabled ? (custom.weather ?? defaultWeather) : 'none',
+    weatherIntensity: gfx.weatherEnabled
+      ? (custom.weatherIntensity ?? 0.65) * gfx.weatherIntensityScale
+      : 0,
+    liquidReflection: gfx.liquidReflections && (custom.liquidReflection ?? true),
+    scanlines: gfx.scanlinesEnabled || (custom.scanlines ?? false),
   };
 }
 
@@ -86,7 +95,8 @@ export function drawEnhancedProjectilesAndBladeTrails(
   g: CanvasRenderingContext2D,
   state: OrionState
 ): void {
-  if (state.bladeTrails && state.bladeTrails.length > 0) {
+  const gfx = getOrionGraphicsSettings();
+  if (gfx.bladeTrails && state.bladeTrails && state.bladeTrails.length > 0) {
     g.save();
     for (const trail of state.bladeTrails) {
       const progress = 1 - Math.max(0, trail.life / Math.max(0.01, trail.maxLife));
@@ -984,13 +994,14 @@ export function drawBiomeWeatherLayer(
   // Cursed-Bog Atmospheric Depth Pass:
   // 1) Low-lying drifting corpse-slate & sickly-mire miasma ribbons across the ground plane
   // 2) Suspended spore motes that glint only when caught inside light pools or penumbra
-  if (state.room !== '-4,0') {
+  const gfx = getOrionGraphicsSettings();
+  if (state.room !== '-4,0' && gfx.weatherEnabled && gfx.weatherIntensityScale > 0) {
     const camX = state.camX || 0;
     const camY = state.camY || 0;
     const activeRoom = room;
 
     // 1. Low-lying creeping bog miasma wisps (world-space anchored, modulated by light visibility)
-    const wispCount = 16;
+    const wispCount = Math.round(16 * gfx.weatherIntensityScale);
     for (let i = 0; i < wispCount; i++) {
       const seed = (i + 1) * 83.41;
       const baseWx = camX + ((seed * 53.7 + state.t * (2.6 + (i % 3) * 0.8)) % (SCREEN_W + 64)) - 32;
@@ -1038,7 +1049,7 @@ export function drawBiomeWeatherLayer(
     }
 
     // 2. Suspended bog spore motes caught in the lantern/campfire beam
-    const sporeCount = 24;
+    const sporeCount = Math.round(24 * gfx.weatherIntensityScale);
     for (let i = 0; i < sporeCount; i++) {
       const seed = (i + 1) * 113.17;
       const driftX = Math.sin(state.t * 0.85 + seed) * 9 + state.t * 1.8;
@@ -1439,11 +1450,12 @@ export function getPointVisibilityFactor(
   state: OrionState,
   room?: string[]
 ): number {
-  const activeRoom = room;
-  const lighting = resolveRoomLightingProfile(state, activeRoom);
-  if (state.room === '-4,0') {
+  const gfx = getOrionGraphicsSettings();
+  if (!gfx.dynamicLighting || state.room === '-4,0') {
     return 1.0;
   }
+  const activeRoom = room;
+  const lighting = resolveRoomLightingProfile(state, activeRoom);
 
   // Player line-of-sight transmission: walls ('#') and trees ('P') cast shadows blocking direct sight
   const playerLos = activeRoom
@@ -1820,226 +1832,234 @@ export function drawDynamicLightingAndBloomPass(
       }
     }
 
-    const playerLightY = state.y - state.z * Z_SCALE - 6;
-    // Base 5-tile personal halo (80px at base Light = 5)
-    const playerOuterR = Math.max(
-      48,
-      roomLighting.effectiveVisionRadiusPx * 1.04 * radiusBreathMult
-    );
-    const dirInfo = DIR_VECTORS[state.dir] || DIR_VECTORS.S;
-
-    // PASS 1: Cursed Land Color Grading (Desaturated Corpse-Slate, Abyssal Indigo & Sickly Mire)
-    // Even inside the inner lantern core, we retain ~48% of the cursed grade so grass and trees
-    // look withered, cold, and blighted rather than a pleasant sunny forest.
-    const tintOverlay = getPenumbraTintContext();
-    if (tintOverlay) {
-      const { canvas: tintCvs, ctx: tg } = tintOverlay;
-      tg.save();
-      tg.globalCompositeOperation = 'source-over';
-      tg.globalAlpha = 1.0;
-      tg.clearRect(0, 0, SCREEN_W, SCREEN_H);
-
-      // Base corpse-slate & sickly-mire wash across the viewport
-      tg.fillStyle = 'rgba(14, 21, 24, 0.56)';
-      tg.fillRect(0, 0, SCREEN_W, SCREEN_H);
-
-      // Deep abyssal indigo radial wash toward the penumbra and outer perimeter
-      const pSx = state.x - camX;
-      const pSy = playerLightY - camY;
-      const indigoGrad = tg.createRadialGradient(
-        pSx,
-        pSy,
-        playerOuterR * 0.22,
-        pSx,
-        pSy,
-        playerOuterR * 1.45
+    const gfx = getOrionGraphicsSettings();
+    if (gfx.dynamicLighting) {
+      const playerLightY = state.y - state.z * Z_SCALE - 6;
+      // Base 5-tile personal halo (80px at base Light = 5)
+      const playerOuterR = Math.max(
+        48,
+        roomLighting.effectiveVisionRadiusPx * 1.04 * radiusBreathMult
       );
-      indigoGrad.addColorStop(0, 'rgba(18, 28, 25, 0.14)'); // sickly mire undertone in near-penumbra
-      indigoGrad.addColorStop(0.55, 'rgba(16, 22, 32, 0.34)'); // cold corpse-slate mid-ring
-      indigoGrad.addColorStop(1, 'rgba(8, 6, 18, 0.52)'); // abyssal indigo outer shroud
-      tg.fillStyle = indigoGrad;
-      tg.fillRect(0, 0, SCREEN_W, SCREEN_H);
+      const dirInfo = DIR_VECTORS[state.dir] || DIR_VECTORS.S;
 
-      // Partially soften the grade only in the immediate personal core (strength <= 0.54)
-      // so the world never reverts to raw ungraded forest greens
-      tg.globalCompositeOperation = 'destination-out';
-      const punchCursedCore = (wx: number, wy: number, coreR: number, strength: number) => {
-        const sx = wx - camX;
-        const sy = wy - camY;
-        if (sx + coreR < 0 || sx - coreR > SCREEN_W || sy + coreR < 0 || sy - coreR > SCREEN_H) {
-          return;
+      // PASS 1: Cursed Land Color Grading (Desaturated Corpse-Slate, Abyssal Indigo & Sickly Mire)
+      // Even inside the inner lantern core, we retain ~48% of the cursed grade so grass and trees
+      // look withered, cold, and blighted rather than a pleasant sunny forest.
+      const tintOverlay = getPenumbraTintContext();
+      if (tintOverlay) {
+        const { canvas: tintCvs, ctx: tg } = tintOverlay;
+        tg.save();
+        tg.globalCompositeOperation = 'source-over';
+        tg.globalAlpha = 1.0;
+        tg.clearRect(0, 0, SCREEN_W, SCREEN_H);
+
+        // Base corpse-slate & sickly-mire wash across the viewport
+        tg.fillStyle = `rgba(14, 21, 24, ${(0.56 * gfx.ambientDarknessScale).toFixed(3)})`;
+        tg.fillRect(0, 0, SCREEN_W, SCREEN_H);
+
+        // Deep abyssal indigo radial wash toward the penumbra and outer perimeter
+        const pSx = state.x - camX;
+        const pSy = playerLightY - camY;
+        const indigoGrad = tg.createRadialGradient(
+          pSx,
+          pSy,
+          playerOuterR * 0.22,
+          pSx,
+          pSy,
+          playerOuterR * 1.45
+        );
+        indigoGrad.addColorStop(0, 'rgba(18, 28, 25, 0.14)'); // sickly mire undertone in near-penumbra
+        indigoGrad.addColorStop(0.55, 'rgba(16, 22, 32, 0.34)'); // cold corpse-slate mid-ring
+        indigoGrad.addColorStop(1, 'rgba(8, 6, 18, 0.52)'); // abyssal indigo outer shroud
+        tg.fillStyle = indigoGrad;
+        tg.fillRect(0, 0, SCREEN_W, SCREEN_H);
+
+        // Partially soften the grade only in the immediate personal core (strength <= 0.54)
+        // so the world never reverts to raw ungraded forest greens
+        tg.globalCompositeOperation = 'destination-out';
+        const punchCursedCore = (wx: number, wy: number, coreR: number, strength: number) => {
+          const sx = wx - camX;
+          const sy = wy - camY;
+          if (
+            sx + coreR < 0 ||
+            sx - coreR > SCREEN_W ||
+            sy + coreR < 0 ||
+            sy - coreR > SCREEN_H
+          ) {
+            return;
+          }
+          const cGrad = tg.createRadialGradient(sx, sy, coreR * 0.06, sx, sy, coreR);
+          cGrad.addColorStop(0, `rgba(0, 0, 0, ${strength.toFixed(2)})`);
+          cGrad.addColorStop(0.5, `rgba(0, 0, 0, ${(strength * 0.48).toFixed(2)})`);
+          cGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          tg.fillStyle = cGrad;
+          tg.beginPath();
+          tg.arc(sx, sy, coreR, 0, Math.PI * 2);
+          tg.fill();
+        };
+
+        punchCursedCore(state.x, playerLightY, playerOuterR * 0.42, 0.52);
+        for (const anchor of roomLighting.staticLightAnchors) {
+          punchCursedCore(anchor.x, anchor.y, anchor.radius * 0.48, 0.56);
         }
-        const cGrad = tg.createRadialGradient(sx, sy, coreR * 0.06, sx, sy, coreR);
-        cGrad.addColorStop(0, `rgba(0, 0, 0, ${strength.toFixed(2)})`);
-        cGrad.addColorStop(0.5, `rgba(0, 0, 0, ${(strength * 0.48).toFixed(2)})`);
-        cGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        tg.fillStyle = cGrad;
-        tg.beginPath();
-        tg.arc(sx, sy, coreR, 0, Math.PI * 2);
-        tg.fill();
-      };
+        tg.restore();
 
-      punchCursedCore(state.x, playerLightY, playerOuterR * 0.42, 0.52);
-      for (const anchor of roomLighting.staticLightAnchors) {
-        punchCursedCore(anchor.x, anchor.y, anchor.radius * 0.48, 0.56);
+        g.save();
+        g.globalCompositeOperation = 'source-over';
+        g.drawImage(tintCvs, 0, 0);
+        g.restore();
       }
-      tg.restore();
 
-      g.save();
-      g.globalCompositeOperation = 'source-over';
-      g.drawImage(tintCvs, 0, 0);
-      g.restore();
-    }
-
-    // PASS 2: Pitch-Black Abyss (92%-97% Dark) with 5-Tile Base Halo (80px) & Steep Falloff
-    const overlay = getDarknessOverlayContext();
-    const effectiveDarkness = Math.min(
-      0.97,
-      Math.max(0.92, roomLighting.ambientDarkness)
-    );
-
-    if (overlay) {
-      const { canvas: darkCvs, ctx: dg } = overlay;
-      dg.save();
-      dg.globalCompositeOperation = 'source-over';
-      dg.globalAlpha = 1.0;
-      dg.clearRect(0, 0, SCREEN_W, SCREEN_H);
-      // Abyssal indigo-black void outside light pools
-      dg.fillStyle = `rgba(3, 3, 9, ${effectiveDarkness.toFixed(3)})`;
-      dg.fillRect(0, 0, SCREEN_W, SCREEN_H);
-
-      // Carve steep-falloff light pools: tight personal core -> steep mid-ring drop -> pitch-black abyss
-      dg.globalCompositeOperation = 'destination-out';
-
-      const punchMultiStopLightPool = (
-        worldX: number,
-        worldY: number,
-        radiusPx: number,
-        strength: number = 1.0
-      ) => {
-        const sx = worldX - camX;
-        const sy = worldY - camY;
-        const outerR = Math.max(18, radiusPx);
-        const innerR = outerR * 0.08;
-        if (
-          sx + outerR < 0 ||
-          sx - outerR > SCREEN_W ||
-          sy + outerR < 0 ||
-          sy - outerR > SCREEN_H
-        ) {
-          return;
-        }
-        const grad = dg.createRadialGradient(sx, sy, innerR, sx, sy, outerR);
-        const s = Math.min(1, strength);
-        // 0..24%: tight personal halo core (keeps a subtle 6% shadow veil even at center)
-        grad.addColorStop(0, `rgba(0, 0, 0, ${(s * 0.94).toFixed(3)})`);
-        grad.addColorStop(0.24, `rgba(0, 0, 0, ${(s * 0.80).toFixed(3)})`);
-        // 24..50%: steep falloff across the mid-ring penumbra
-        grad.addColorStop(0.50, `rgba(0, 0, 0, ${(s * 0.38).toFixed(3)})`);
-        // 50..74%: faint ghostly rim where silhouettes barely emerge from the mire
-        grad.addColorStop(0.74, `rgba(0, 0, 0, ${(s * 0.12).toFixed(3)})`);
-        // 74..100%: rapid sink into the 92-97% pitch-black abyss
-        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        dg.fillStyle = grad;
-        dg.beginPath();
-        dg.arc(sx, sy, outerR, 0, Math.PI * 2);
-        dg.fill();
-      };
-
-      // Primary player Light stat radial pool + tight forward-facing beam lobe
-      punchMultiStopLightPool(state.x, playerLightY, playerOuterR, 1.0);
-      punchMultiStopLightPool(
-        state.x + dirInfo.dx * (playerOuterR * 0.15),
-        playerLightY + dirInfo.dy * (playerOuterR * 0.15),
-        playerOuterR * 0.62,
-        0.45
+      // PASS 2: Pitch-Black Abyss (92%-97% Dark) with 5-Tile Base Halo (80px) & Steep Falloff
+      const overlay = getDarknessOverlayContext();
+      const effectiveDarkness = Math.min(
+        0.97,
+        Math.max(0.25, roomLighting.ambientDarkness * gfx.ambientDarknessScale)
       );
 
-      // Static world light anchors (campfires, Poe lanterns, shrines, beacons)
-      for (const anchor of roomLighting.staticLightAnchors) {
-        const anchorLos = computeRayLightTransmission(
+      if (overlay) {
+        const { canvas: darkCvs, ctx: dg } = overlay;
+        dg.save();
+        dg.globalCompositeOperation = 'source-over';
+        dg.globalAlpha = 1.0;
+        dg.clearRect(0, 0, SCREEN_W, SCREEN_H);
+        // Abyssal indigo-black void outside light pools
+        dg.fillStyle = `rgba(3, 3, 9, ${effectiveDarkness.toFixed(3)})`;
+        dg.fillRect(0, 0, SCREEN_W, SCREEN_H);
+
+        // Carve steep-falloff light pools: tight personal core -> steep mid-ring drop -> pitch-black abyss
+        dg.globalCompositeOperation = 'destination-out';
+
+        const punchMultiStopLightPool = (
+          worldX: number,
+          worldY: number,
+          radiusPx: number,
+          strength: number = 1.0
+        ) => {
+          const sx = worldX - camX;
+          const sy = worldY - camY;
+          const outerR = Math.max(18, radiusPx);
+          const innerR = outerR * 0.08;
+          if (
+            sx + outerR < 0 ||
+            sx - outerR > SCREEN_W ||
+            sy + outerR < 0 ||
+            sy - outerR > SCREEN_H
+          ) {
+            return;
+          }
+          const grad = dg.createRadialGradient(sx, sy, innerR, sx, sy, outerR);
+          const s = Math.min(1, strength);
+          grad.addColorStop(0, `rgba(0, 0, 0, ${(s * 0.94).toFixed(3)})`);
+          grad.addColorStop(0.24, `rgba(0, 0, 0, ${(s * 0.80).toFixed(3)})`);
+          grad.addColorStop(0.50, `rgba(0, 0, 0, ${(s * 0.38).toFixed(3)})`);
+          grad.addColorStop(0.74, `rgba(0, 0, 0, ${(s * 0.12).toFixed(3)})`);
+          grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          dg.fillStyle = grad;
+          dg.beginPath();
+          dg.arc(sx, sy, outerR, 0, Math.PI * 2);
+          dg.fill();
+        };
+
+        // Primary player Light stat radial pool + tight forward-facing beam lobe
+        punchMultiStopLightPool(state.x, playerLightY, playerOuterR, 1.0);
+        punchMultiStopLightPool(
+          state.x + dirInfo.dx * (playerOuterR * 0.15),
+          playerLightY + dirInfo.dy * (playerOuterR * 0.15),
+          playerOuterR * 0.62,
+          0.45
+        );
+
+        // Static world light anchors (campfires, Poe lanterns, shrines, beacons)
+        for (const anchor of roomLighting.staticLightAnchors) {
+          const anchorLos = computeRayLightTransmission(
+            room,
+            state,
+            state.x,
+            state.y,
+            anchor.x,
+            anchor.y
+          );
+          const anchorStrength = 0.64 + 0.24 * anchorLos;
+          punchMultiStopLightPool(
+            anchor.x,
+            anchor.y,
+            anchor.radius * 1.05 * radiusBreathMult,
+            anchorStrength
+          );
+        }
+
+        // Dynamic scene lights (projectiles, active spirits, windup glints)
+        for (const light of lights) {
+          punchMultiStopLightPool(
+            light.x,
+            light.y,
+            light.radius * 0.95,
+            Math.min(0.76, 0.30 + light.intensity)
+          );
+        }
+
+        // PASS 3: Project Oppressive Radial Shadow Cones Behind Bog Trees ('P') and Ruin Walls ('#', 'G', 'M', '%')
+        dg.globalCompositeOperation = 'source-over';
+        projectSoftOccluderShadowCones(
+          dg,
           room,
           state,
           state.x,
-          state.y,
-          anchor.x,
-          anchor.y
+          playerLightY,
+          playerOuterR,
+          camX,
+          camY,
+          effectiveDarkness * 0.92
         );
-        const anchorStrength = 0.64 + 0.24 * anchorLos;
-        punchMultiStopLightPool(
-          anchor.x,
-          anchor.y,
-          anchor.radius * 1.05 * radiusBreathMult,
-          anchorStrength
+
+        // Re-punch only a tight personal footing core around the pilot after shadow projection
+        dg.globalCompositeOperation = 'destination-out';
+        punchMultiStopLightPool(state.x, playerLightY, Math.max(18, playerOuterR * 0.32), 0.84);
+
+        // PASS 4: Heavy Claustrophobic Abyssal Vignette on the Darkness Buffer
+        dg.globalCompositeOperation = 'source-over';
+        const vigR = Math.hypot(SCREEN_W, SCREEN_H) * (0.50 + flickerWave * 0.25);
+        const vigGrad = dg.createRadialGradient(
+          SCREEN_W * 0.5,
+          SCREEN_H * 0.5,
+          SCREEN_W * 0.18,
+          SCREEN_W * 0.5,
+          SCREEN_H * 0.5,
+          vigR
         );
+        const cornerAlpha = Math.min(
+          0.92,
+          roomLighting.cornerShadowIntensity * 0.76 * gfx.ambientDarknessScale
+        );
+        vigGrad.addColorStop(0, 'rgba(2, 2, 7, 0)');
+        vigGrad.addColorStop(0.55, `rgba(3, 3, 10, ${(cornerAlpha * 0.46).toFixed(3)})`);
+        vigGrad.addColorStop(1, `rgba(1, 1, 5, ${cornerAlpha.toFixed(3)})`);
+        dg.fillStyle = vigGrad;
+        dg.fillRect(0, 0, SCREEN_W, SCREEN_H);
+
+        dg.restore();
+        g.save();
+        g.globalCompositeOperation = 'source-over';
+        g.drawImage(darkCvs, 0, 0);
+        g.restore();
       }
-
-      // Dynamic scene lights (projectiles, active spirits, windup glints)
-      for (const light of lights) {
-        punchMultiStopLightPool(
-          light.x,
-          light.y,
-          light.radius * 0.95,
-          Math.min(0.76, 0.30 + light.intensity)
-        );
-      }
-
-      // PASS 3: Project Oppressive Radial Shadow Cones Behind Bog Trees ('P') and Ruin Walls ('#', 'G', 'M', '%')
-      dg.globalCompositeOperation = 'source-over';
-      projectSoftOccluderShadowCones(
-        dg,
-        room,
-        state,
-        state.x,
-        playerLightY,
-        playerOuterR,
-        camX,
-        camY,
-        effectiveDarkness * 0.92
-      );
-
-      // Re-punch only a tight personal footing core around the pilot after shadow projection
-      // so surrounding wall/tree shadow cones creep close while keeping the pilot sprite readable
-      dg.globalCompositeOperation = 'destination-out';
-      punchMultiStopLightPool(state.x, playerLightY, Math.max(18, playerOuterR * 0.32), 0.84);
-
-      // PASS 4: Heavy Claustrophobic Abyssal Vignette on the Darkness Buffer
-      dg.globalCompositeOperation = 'source-over';
-      const vigR = Math.hypot(SCREEN_W, SCREEN_H) * (0.50 + flickerWave * 0.25);
-      const vigGrad = dg.createRadialGradient(
-        SCREEN_W * 0.5,
-        SCREEN_H * 0.5,
-        SCREEN_W * 0.18,
-        SCREEN_W * 0.5,
-        SCREEN_H * 0.5,
-        vigR
-      );
-      const cornerAlpha = Math.min(0.92, roomLighting.cornerShadowIntensity * 0.76);
-      vigGrad.addColorStop(0, 'rgba(2, 2, 7, 0)');
-      vigGrad.addColorStop(0.55, `rgba(3, 3, 10, ${(cornerAlpha * 0.46).toFixed(3)})`);
-      vigGrad.addColorStop(1, `rgba(1, 1, 5, ${cornerAlpha.toFixed(3)})`);
-      dg.fillStyle = vigGrad;
-      dg.fillRect(0, 0, SCREEN_W, SCREEN_H);
-
-      dg.restore();
-      g.save();
-      g.globalCompositeOperation = 'source-over';
-      g.drawImage(darkCvs, 0, 0);
-      g.restore();
     }
   }
 
   // PASS 5: Restrained Flickering Ember & Spirit Bloom (localized so it never washes out the cursed mire)
   if (pp.bloomIntensity > 0 && lights.length > 0) {
+    const gfx = getOrionGraphicsSettings();
     g.save();
     g.translate(-camX, -camY);
     g.globalCompositeOperation = 'lighter';
     for (const light of lights) {
-      const sourceLos = room
-        ? computeRayLightTransmission(room, state, state.x, state.y, light.x, light.y)
-        : 1.0;
+      const sourceLos =
+        room && gfx.dynamicLighting
+          ? computeRayLightTransmission(room, state, state.x, state.y, light.x, light.y)
+          : 1.0;
       if (sourceLos <= 0.05) continue;
-      const alpha = Math.min(0.22, light.intensity * pp.bloomIntensity * 0.58 * sourceLos);
+      const alpha = Math.min(0.28, light.intensity * pp.bloomIntensity * 0.58 * sourceLos);
       const grad = g.createRadialGradient(light.x, light.y, 1, light.x, light.y, light.radius);
       grad.addColorStop(0, light.color);
       grad.addColorStop(0.45, light.color);
@@ -2055,15 +2075,18 @@ export function drawDynamicLightingAndBloomPass(
 
   if (state.flickerTimer > 0) {
     state.flickerTimer = Math.max(0, state.flickerTimer - 0.016);
-    g.save();
-    g.fillStyle = 'rgba(184, 164, 255, 0.09)';
-    g.fillRect(0, 0, SCREEN_W, SCREEN_H);
-    const tearY = Math.floor((state.t * 190) % SCREEN_H);
-    g.fillStyle = 'rgba(56, 189, 248, 0.22)';
-    g.fillRect(0, tearY, SCREEN_W, 2);
-    g.fillStyle = 'rgba(232, 121, 249, 0.22)';
-    g.fillRect(0, (tearY + 37) % SCREEN_H, SCREEN_W, 2);
-    g.restore();
+    const shakeScale = getOrionGraphicsSettings().screenShakeScale;
+    if (shakeScale > 0) {
+      g.save();
+      g.fillStyle = `rgba(184, 164, 255, ${(0.09 * shakeScale).toFixed(3)})`;
+      g.fillRect(0, 0, SCREEN_W, SCREEN_H);
+      const tearY = Math.floor((state.t * 190) % SCREEN_H);
+      g.fillStyle = `rgba(56, 189, 248, ${(0.22 * shakeScale).toFixed(3)})`;
+      g.fillRect(0, tearY, SCREEN_W, 2);
+      g.fillStyle = `rgba(232, 121, 249, ${(0.22 * shakeScale).toFixed(3)})`;
+      g.fillRect(0, (tearY + 37) % SCREEN_H, SCREEN_W, 2);
+      g.restore();
+    }
   }
 
   if (pp.scanlines) {

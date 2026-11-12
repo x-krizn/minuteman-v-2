@@ -11,3 +11,4 @@ export * from './playerSpriteSystem';
 export { resolveSpriteStripSliceCoords } from './render/spriteAtlasCache';
 export * from './worldSystem';
 export * from './inertiaSystem';
+export * from './graphicsSettingsStore';

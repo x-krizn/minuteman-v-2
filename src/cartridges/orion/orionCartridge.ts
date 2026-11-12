@@ -241,9 +241,6 @@ export function createOrionCartridge(): Cartridge {
             if (p.b) {
               state.titleMenuSubView = 'root';
               soundSystem.playMenuBeep();
-            } else if (p.left || p.right || p.a) {
-              state.useStandardResolutionHud = !(state.useStandardResolutionHud ?? true);
-              soundSystem.playSelect();
             }
           }
         }

@@ -29,9 +29,11 @@ import {
 import { getItemDefinition } from '../../database/items';
 import {
   ACTION_MODIFICATION_CATALOG,
+  CANONICAL_FRAME_FEAT_REGISTRY,
   CHASSIS_HARDWARE_CATALOG,
   computePlayerLoadMetrics,
   createInitialEquipmentSlots,
+  evaluateEquipmentFeatHandling,
   GEMSTONE_REGISTRY,
   getEffectiveMainGrip,
   getEquipmentDisplayName,
@@ -88,6 +90,7 @@ export const WeaponStatReadout: React.FC<{
 }> = ({ w, instanceId, state, compact = false }) => {
   const totalWt = getWeaponInstanceEquipWeight(instanceId, state);
   const gemMods = getWeaponGemCombatModifiers(state, instanceId);
+  const handling = evaluateEquipmentFeatHandling(state, instanceId);
   const effectiveDmg = Math.round(w.damagePerShot * gemMods.damageMult);
   const effectiveChain = Math.max(1, w.shotsPerChain + gemMods.bonusMaxAmmo);
   const primaryAction = w.moveset?.[0];
@@ -103,6 +106,14 @@ export const WeaponStatReadout: React.FC<{
 
   const incBadges: string[] = [];
   const decBadges: string[] = [];
+
+  if (handling.proficiencyTier === 'mastered') {
+    incBadges.push('FEAT MASTERED: −12% WINDUP · −18% RECOIL · +12% STG');
+  } else if (handling.proficiencyTier === 'proficient') {
+    incBadges.push('FEAT PROFICIENT: −6% WINDUP · −10% RECOIL · +6% STG');
+  } else if (handling.proficiencyTier === 'locked') {
+    decBadges.push('PREREQ FEAT REQUIRED TO WIELD');
+  }
 
   if (w.passiveShieldBonus) {
     if (w.passiveShieldBonus > 0) incBadges.push(`+${w.passiveShieldBonus} SHD`);
@@ -196,6 +207,19 @@ export const WeaponStatReadout: React.FC<{
   return (
     <div className="mt-1 space-y-0.5 text-[7px]">
       <div className="flex flex-wrap items-center gap-1 tabular-nums">
+        <span
+          className={`px-1 py-0.2 rounded-[2px] font-bold border ${
+            handling.proficiencyTier === 'mastered'
+              ? 'bg-[#052e16] text-[#86efac] border-[#22c55e]/50'
+              : handling.proficiencyTier === 'proficient'
+                ? 'bg-[#0c4a6e] text-[#7dd3fc] border-[#38bdf8]/50'
+                : handling.proficiencyTier === 'locked'
+                  ? 'bg-[#450a0a] text-[#fca5a5] border-[#ef4444]/60'
+                  : 'bg-[#0f172a] text-[#cbd5e1] border-[#334155]'
+          }`}
+        >
+          {handling.badgeLabel}
+        </span>
         {w.category && (
           <span className="px-1 py-0.2 rounded-[2px] bg-[#0f172a] text-[#fde047] border border-[#fde047]/40 font-bold">
             {w.category.toUpperCase()} ▸ {(w.weaponClass || w.name).toUpperCase()}
@@ -462,13 +486,14 @@ export interface SatchelLoadoutTabProps {
   openSlotEditor: (slot: EditableLoadoutSlot) => void;
   onOpenInventoryTab: () => void;
   onOpenArmory?: (slot?: EditableLoadoutSlot, itemId?: string) => void;
+  onLocateFeat?: (featId: string) => void;
 }
 
 /**
  * Renders the Mech Doll `LOADOUT` screen:
- * - Central high-resolution Mech Doll (`HighResMechDollCanvas`) surrounded by 8 selectable anatomical hardpoint nodes.
- * - Clicking any node opens a tactical Context Menu (`Equip / Swap`, `Unequip`, `Stance / Grip Toggle`, `Modify in Armory`).
- * - Choosing `Equip / Swap` opens a high-resolution slot equipment selector with side-by-side schematic comparison.
+ * - Clean 2-pane split layout: Mech Doll & Slot Inspector on the left (`sm:col-span-5`),
+ *   Anatomical Hardpoint List on the right (`sm:col-span-7`) with zero nested scrollbars.
+ * - Integrates hybrid Feat Prerequisite gating and Handling Proficiency bonuses from the 96-feat constellation.
  */
 export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
   state,
@@ -481,6 +506,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
   openSlotEditor,
   onOpenInventoryTab,
   onOpenArmory,
+  onLocateFeat,
 }) => {
   const [contextMenuSlot, setContextMenuSlot] = useState<EditableLoadoutSlot | null>('slot1');
   const [hoveredSlot, setHoveredSlot] = useState<EditableLoadoutSlot | null>(null);
@@ -694,7 +720,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
               ✕ BACK TO MECH DOLL
             </button>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-72 overflow-y-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
             {ASSIGNABLE_ACTION_CATALOG.filter(
               (act) => isCheatMode || isActionUnlocked(state, act.id)
             ).map((act) => {
@@ -795,6 +821,13 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
       const handleEquipWeaponInSlot = (instanceId: string) => {
         const w = getWeaponDefinition(instanceId);
         if (!w) return;
+        const handlingEval = evaluateEquipmentFeatHandling(state, instanceId);
+        if (!handlingEval.canEquip) {
+          soundSystem.playMenuBeep();
+          sayCtx.say(`FEAT PREREQ REQUIRED: ${handlingEval.statusSummary.toUpperCase()}`);
+          notifyOrionStateChange();
+          return;
+        }
         soundSystem.playPowerup();
 
         // Groomed slot rules:
@@ -956,6 +989,38 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                   instanceId={inspectedId}
                   state={state}
                 />
+                {(() => {
+                  const inspectedHandling = evaluateEquipmentFeatHandling(state, inspectedId);
+                  const recFeat = inspectedHandling.recommendedFeatId
+                    ? CANONICAL_FRAME_FEAT_REGISTRY[inspectedHandling.recommendedFeatId]
+                    : undefined;
+                  return (
+                    <div className="mt-1 p-1.5 bg-[#090d14] rounded-xs border border-[#1e293b] flex flex-wrap items-center justify-between gap-1 text-[7px]">
+                      <span
+                        className={
+                          inspectedHandling.canEquip ? 'text-[#cbd5e1]' : 'text-[#fca5a5] font-bold'
+                        }
+                      >
+                        {inspectedHandling.statusSummary}
+                      </span>
+                      {recFeat && onLocateFeat && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            soundSystem.playSelect();
+                            setIsEditingLoadout(false);
+                            onLocateFeat(recFeat.id);
+                          }}
+                          className="px-1.5 py-0.5 rounded-xs bg-[#1e1b4b] hover:bg-[#312e81] text-[#e9d5ff] border border-[#818cf8]/60 font-bold cursor-pointer shrink-0"
+                        >
+                          {inspectedHandling.canEquip
+                            ? `VIEW HANDLING FEAT: ${recFeat.name.toUpperCase()} →`
+                            : `LOCATE PREREQ FEAT: ${recFeat.name.toUpperCase()} →`}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}
@@ -1112,7 +1177,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
           </div>
 
           {/* TIER 3: NESTED FUNCTIONAL CLASS GROUPS (Presenting Custom & Magitech Together) */}
-          <div className="space-y-2 max-h-72 overflow-y-auto pr-0.5">
+          <div className="space-y-2">
             {groupedByFunctionalType.length === 0 ? (
               <div className="p-3 bg-[#05070a] rounded-xs border border-[#1e293b] text-center text-[8px] text-[#94a3b8]">
                 No unlocked weapons match the selected filter in {activeWeaponClass}.
@@ -1137,6 +1202,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                       const isEquippedHere = currentId === instanceId;
                       const copies = getOwnedWeaponCount(state, instanceId);
                       const isMagitech = stInfo.variantSubtype === 'Magitech';
+                      const itemHandling = evaluateEquipmentFeatHandling(state, instanceId);
                       const slotsLabel =
                         resolvedW.weaponTier === 'unique'
                           ? '1 GEM SOCKET (FIXED PARTS)'
@@ -1148,7 +1214,9 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                           className={`p-1.5 rounded-xs border flex items-center justify-between gap-2 ${
                             isEquippedHere
                               ? 'bg-[#172554]/70 border-[#fde047]'
-                              : 'bg-[#090d14] border-[#1e293b] hover:border-[#38bdf8]'
+                              : !itemHandling.canEquip
+                                ? 'bg-[#090d14]/75 border-[#ef4444]/40'
+                                : 'bg-[#090d14] border-[#1e293b] hover:border-[#38bdf8]'
                           }`}
                         >
                           <div className="flex items-center gap-2 min-w-0">
@@ -1173,29 +1241,62 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                                 >
                                   {stInfo.variantSubtype.toUpperCase()}
                                 </span>
+                                <span
+                                  className={`px-1 py-0.1 rounded-[2px] text-[6px] font-bold ${
+                                    itemHandling.proficiencyTier === 'mastered'
+                                      ? 'bg-[#052e16] text-[#86efac]'
+                                      : itemHandling.proficiencyTier === 'proficient'
+                                        ? 'bg-[#0c4a6e] text-[#7dd3fc]'
+                                        : itemHandling.proficiencyTier === 'locked'
+                                          ? 'bg-[#450a0a] text-[#fca5a5]'
+                                          : 'bg-[#1e293b] text-[#94a3b8]'
+                                  }`}
+                                >
+                                  {itemHandling.proficiencyTier === 'locked'
+                                    ? 'PREREQ LOCKED'
+                                    : itemHandling.proficiencyTier.toUpperCase()}
+                                </span>
                               </div>
                               <div className="text-[7px] text-[#7dd3fc] truncate">
                                 {funcType} · {slotsLabel} ·{' '}
                                 {getWeaponInstanceEquipWeight(instanceId, state)} WT
                               </div>
                               <div className="text-[6.5px] text-[#94a3b8] truncate">
-                                S1: {resolvedW.moveset?.[1]?.name || '—'} · S2:{' '}
-                                {resolvedW.moveset?.[2]?.name || '—'}
+                                {!itemHandling.canEquip
+                                  ? itemHandling.statusSummary
+                                  : `S1: ${resolvedW.moveset?.[1]?.name || '—'} · S2: ${resolvedW.moveset?.[2]?.name || '—'}`}
                               </div>
                             </div>
                           </div>
-                          <button
-                            type="button"
-                            onFocus={() => setPreviewCandidateId(instanceId)}
-                            onClick={() => handleEquipWeaponInSlot(instanceId)}
-                            className={`px-2 py-1 rounded-xs text-[7.5px] font-bold border cursor-pointer shrink-0 ${
-                              isEquippedHere
-                                ? 'bg-[#1e293b] text-[#fde047] border-[#fde047]/60'
-                                : 'bg-[#052e16] hover:bg-[#14532d] text-[#86efac] border-[#22c55e]/60'
-                            }`}
-                          >
-                            {isEquippedHere ? 'EQUIPPED' : 'EQUIP'}
-                          </button>
+                          {!itemHandling.canEquip && itemHandling.recommendedFeatId && onLocateFeat ? (
+                            <button
+                              type="button"
+                              onFocus={() => setPreviewCandidateId(instanceId)}
+                              onClick={() => {
+                                soundSystem.playSelect();
+                                setIsEditingLoadout(false);
+                                if (itemHandling.recommendedFeatId) {
+                                  onLocateFeat(itemHandling.recommendedFeatId);
+                                }
+                              }}
+                              className="px-2 py-1 rounded-xs text-[7px] font-bold border bg-[#450a0a] hover:bg-[#7f1d1d] text-[#fca5a5] border-[#ef4444]/60 cursor-pointer shrink-0"
+                            >
+                              FEAT GRID →
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onFocus={() => setPreviewCandidateId(instanceId)}
+                              onClick={() => handleEquipWeaponInSlot(instanceId)}
+                              className={`px-2 py-1 rounded-xs text-[7.5px] font-bold border cursor-pointer shrink-0 ${
+                                isEquippedHere
+                                  ? 'bg-[#1e293b] text-[#fde047] border-[#fde047]/60'
+                                  : 'bg-[#052e16] hover:bg-[#14532d] text-[#86efac] border-[#22c55e]/60'
+                              }`}
+                            >
+                              {isEquippedHere ? 'EQUIPPED' : 'EQUIP'}
+                            </button>
+                          )}
                         </div>
                       );
                     })}
@@ -1240,6 +1341,13 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
     const handleEquipHardwareInSlot = (instanceId: string) => {
       const hw = findHardwareItemByNameOrId(instanceId);
       if (!hw) return;
+      const hwHandling = evaluateEquipmentFeatHandling(state, hw.id);
+      if (!hwHandling.canEquip) {
+        soundSystem.playMenuBeep();
+        sayCtx.say(`FEAT PREREQ REQUIRED: ${hwHandling.statusSummary.toUpperCase()}`);
+        notifyOrionStateChange();
+        return;
+      }
       soundSystem.playPowerup();
       switch (hwSlotKey) {
         case 'head':
@@ -1334,10 +1442,11 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-64 overflow-y-auto pr-0.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
           {hwCandidates.map(({ instanceId, resolvedHw }) => {
             const isEquippedHere =
               currentId === instanceId || currentId === resolvedHw.name;
+            const hwEval = evaluateEquipmentFeatHandling(state, resolvedHw.id);
             return (
               <div
                 key={instanceId}
@@ -1345,7 +1454,9 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                 className={`p-1.5 rounded-xs border flex items-center justify-between gap-2 ${
                   isEquippedHere
                     ? 'bg-[#172554]/70 border-[#fde047]'
-                    : 'bg-[#05070a] border-[#1e293b] hover:border-[#38bdf8]'
+                    : !hwEval.canEquip
+                      ? 'bg-[#05070a]/70 border-[#ef4444]/40'
+                      : 'bg-[#05070a] border-[#1e293b] hover:border-[#38bdf8]'
                 }`}
               >
                 <div className="flex items-center gap-2 min-w-0">
@@ -1356,26 +1467,62 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                     sizeClass="w-11 h-11"
                   />
                   <div className="min-w-0">
-                    <div className="font-bold text-[8.5px] text-[#e2e8f0] truncate">
-                      {resolvedHw.name}
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <span className="font-bold text-[8.5px] text-[#e2e8f0] truncate">
+                        {resolvedHw.name}
+                      </span>
+                      <span
+                        className={`px-1 py-0.1 rounded-[2px] text-[6px] font-bold ${
+                          hwEval.proficiencyTier === 'mastered'
+                            ? 'bg-[#052e16] text-[#86efac]'
+                            : hwEval.proficiencyTier === 'proficient'
+                              ? 'bg-[#0c4a6e] text-[#7dd3fc]'
+                              : hwEval.proficiencyTier === 'locked'
+                                ? 'bg-[#450a0a] text-[#fca5a5]'
+                                : 'bg-[#1e293b] text-[#94a3b8]'
+                        }`}
+                      >
+                        {hwEval.proficiencyTier === 'locked'
+                          ? 'PREREQ LOCKED'
+                          : hwEval.proficiencyTier.toUpperCase()}
+                      </span>
                     </div>
                     <div className="text-[7px] text-[#94a3b8] truncate">
-                      {resolvedHw.subtype} · {getHardwareBaseWeight(resolvedHw)} WT
+                      {!hwEval.canEquip
+                        ? hwEval.statusSummary
+                        : `${resolvedHw.subtype} · ${getHardwareBaseWeight(resolvedHw)} WT`}
                     </div>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onFocus={() => setPreviewCandidateId(instanceId)}
-                  onClick={() => handleEquipHardwareInSlot(instanceId)}
-                  className={`px-2 py-1 rounded-xs text-[7.5px] font-bold border cursor-pointer shrink-0 ${
-                    isEquippedHere
-                      ? 'bg-[#1e293b] text-[#fde047] border-[#fde047]/60'
-                      : 'bg-[#052e16] hover:bg-[#14532d] text-[#86efac] border-[#22c55e]/60'
-                  }`}
-                >
-                  {isEquippedHere ? 'EQUIPPED' : 'EQUIP'}
-                </button>
+                {!hwEval.canEquip && hwEval.recommendedFeatId && onLocateFeat ? (
+                  <button
+                    type="button"
+                    onFocus={() => setPreviewCandidateId(instanceId)}
+                    onClick={() => {
+                      soundSystem.playSelect();
+                      setIsEditingLoadout(false);
+                      if (hwEval.recommendedFeatId) {
+                        onLocateFeat(hwEval.recommendedFeatId);
+                      }
+                    }}
+                    className="px-2 py-1 rounded-xs text-[7px] font-bold border bg-[#450a0a] hover:bg-[#7f1d1d] text-[#fca5a5] border-[#ef4444]/60 cursor-pointer shrink-0"
+                  >
+                    FEAT GRID →
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onFocus={() => setPreviewCandidateId(instanceId)}
+                    onClick={() => handleEquipHardwareInSlot(instanceId)}
+                    className={`px-2 py-1 rounded-xs text-[7.5px] font-bold border cursor-pointer shrink-0 ${
+                      isEquippedHere
+                        ? 'bg-[#1e293b] text-[#fde047] border-[#fde047]/60'
+                        : 'bg-[#052e16] hover:bg-[#14532d] text-[#86efac] border-[#22c55e]/60'
+                    }`}
+                  >
+                    {isEquippedHere ? 'EQUIPPED' : 'EQUIP'}
+                  </button>
+                )}
               </div>
             );
           })}
@@ -1497,70 +1644,10 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
       {isEditingLoadout ? (
         renderSlotEquipmentSelector()
       ) : (
-        /* ─── MECH DOLL 3-COLUMN ANATOMICAL DIAGRAM & SLOT CONTEXT MENU ─── */
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 items-start">
-          {/* LEFT ANATOMICAL COLUMN: CHASSIS ARMOR HARDPOINTS */}
-          <div className="lg:col-span-4 space-y-1.5">
-            <div className="text-[8px] font-bold text-[#38bdf8] px-1">
-              CHASSIS ARMOR HARDPOINTS (CLICK SLOT FOR CONTEXT MENU)
-            </div>
-            {renderDollSlotNode({
-              slot: 'head',
-              title: 'HEAD · DOME PLATE',
-              itemId: headItem?.id || eq.head || null,
-              itemName: headItem?.name || eq.head || 'None',
-              subtitle: headItem
-                ? `+${headItem.armorDurability ?? 0} ARM DUR · +${headItem.armorRating ?? 0} RTG · +${headItem.armorThreshold ?? 0} THR`
-                : 'No Dome Plate',
-              wtLabel: `${loadMetrics.breakdown.headWeight} WT`,
-              accentColor: '#38bdf8',
-              subModulesSummary: `Optics: ${opticsItem?.name.split(' ').slice(-2).join(' ') || 'Std'} · Sens: ${sensoryAItem?.name.split(' ').slice(-2).join(' ') || 'Std'}`,
-            })}
-
-            {renderDollSlotNode({
-              slot: 'plating',
-              title: 'TORSO · FRAME PLATING',
-              itemId: platingItem?.id || eq.plating || null,
-              itemName: platingItem?.name || eq.plating || 'None',
-              subtitle: platingItem
-                ? `${(platingItem.armorType || 'Reactive').toUpperCase()} · +${platingItem.armorDurability ?? 0} DUR · +${platingItem.armorRating ?? 0} RTG`
-                : 'No Frame Plating',
-              wtLabel: `${loadMetrics.breakdown.frameWeight} WT`,
-              accentColor: '#a855f7',
-              subModulesSummary: `Reactor: ${reactorItem?.name || eq.reactorCore || 'Std'} (${state.reactor})`,
-            })}
-
-            {renderDollSlotNode({
-              slot: 'arms',
-              title: 'ARMS · APERTURE PLATE',
-              itemId: armsItem?.id || eq.arms || null,
-              itemName: armsItem?.name || eq.arms || 'None',
-              subtitle: armsItem
-                ? `+${armsItem.armorDurability ?? 0} ARM DUR · +${armsItem.armorRating ?? 0} RTG · +${armsItem.shieldBonus ?? 0} SHD`
-                : 'No Aperture Plate',
-              wtLabel: `${loadMetrics.breakdown.armsWeight} WT`,
-              accentColor: '#fb923c',
-              subModulesSummary: `Actuators: ${actuatorsItem?.name.split(' ').slice(-2).join(' ') || 'Std'}`,
-            })}
-
-            {renderDollSlotNode({
-              slot: 'legs',
-              title: 'LEGS · STRIDERS',
-              itemId: legsItem?.id || eq.legs || null,
-              itemName: legsItem?.name || eq.legs || 'None',
-              subtitle: legsItem
-                ? `+${getHardwareCapacityBonus(legsItem)} LOAD CAP · ${legsItem.stabilityBonus ? `+${legsItem.stabilityBonus} STB` : 'Agile Stride'}`
-                : 'No Leg Striders',
-              wtLabel: `${legsItem ? getHardwareBaseWeight(legsItem) : 12} WT`,
-              accentColor: '#4ade80',
-              subModulesSummary: eq.installedMods?.mobility
-                ? `Mobility Mod: ${ACTION_MODIFICATION_CATALOG.find((m) => m.id === eq.installedMods?.mobility)?.name || 'Active'}`
-                : 'Mobility Kit: Standard Dash',
-            })}
-          </div>
-
-          {/* CENTER COLUMN: HIGH-RES MECH DOLL & ACTIVE SLOT CONTEXT MENU */}
-          <div className="lg:col-span-4 flex flex-col items-center bg-[#090d14] p-2 rounded-xs border border-[#1e293b] space-y-2">
+        /* ─── MECH DOLL 2-PANE SPLIT LAYOUT (LEFT: MECH DOLL & INSPECTOR, RIGHT: HARDPOINTS) ─── */
+        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-start">
+          {/* LEFT PANE (5 COLS): HIGH-RES MECH DOLL & ACTIVE SLOT CONTEXT INSPECTOR */}
+          <div className="sm:col-span-5 flex flex-col items-center bg-[#090d14] p-2 rounded-xs border border-[#1e293b] space-y-2">
             <HighResMechDollCanvas
               state={state}
               selectedSlot={contextMenuSlot}
@@ -1568,12 +1655,12 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
               onSelectSlot={(s) => setContextMenuSlot(s)}
             />
 
-            {/* Contextual Action Menu for Selected Mech Doll Slot */}
+            {/* Contextual Action Menu & Feat Handling Readout for Selected Mech Doll Slot */}
             {contextMenuSlot && (
               <div className="w-full p-2 bg-[#05070a] rounded-xs border border-[#fde047]/80 space-y-1.5">
                 <div className="flex items-center justify-between border-b border-[#1e293b] pb-1">
                   <span className="text-[8.5px] font-bold text-[#fde047]">
-                    SLOT CONTEXT MENU: [{contextMenuSlot.toUpperCase()}]
+                    SLOT INSPECTOR: [{contextMenuSlot.toUpperCase()}]
                   </span>
                   <span className="text-[7.5px] text-[#7dd3fc] truncate max-w-[140px]">
                     {getEquipmentDisplayName(getEquippedIdForSlot(contextMenuSlot))}
@@ -1638,7 +1725,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                         }}
                         className="w-full px-2 py-1 bg-[#0f172a] hover:bg-[#1e293b] text-[#7dd3fc] border border-[#38bdf8]/50 rounded-xs text-[8px] font-bold text-left cursor-pointer"
                       >
-                        3. TOGGLE GRIP: {mainGrip === '2h' ? 'SWITCH TO 1H GRIP (UNHOLSTER SIDE)' : 'SWITCH TO 2H POWER STANCE (HOLSTER SIDE)'}
+                        3. TOGGLE GRIP: {mainGrip === '2h' ? 'SWITCH TO 1H' : 'SWITCH TO 2H'}
                       </button>
                     )}
 
@@ -1652,7 +1739,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                         }}
                         className="w-full px-2 py-1 bg-[#0f172a] hover:bg-[#1e293b] text-[#c084fc] border border-[#c084fc]/50 rounded-xs text-[8px] font-bold text-left cursor-pointer"
                       >
-                        3. TOGGLE BACK LAUNCHER OWNERSHIP [L]
+                        3. TOGGLE BACK LAUNCHER [L]
                       </button>
                     )}
 
@@ -1676,119 +1763,229 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                       )}
                   </div>
                 </div>
+
+                {/* Feat Handling & Prerequisite Card for Active Slot */}
+                {contextMenuSlot !== 'bind_l' &&
+                  contextMenuSlot !== 'bind_r' &&
+                  getEquippedIdForSlot(contextMenuSlot) &&
+                  (() => {
+                    const slotItemId = getEquippedIdForSlot(contextMenuSlot);
+                    const handlingEval = evaluateEquipmentFeatHandling(state, slotItemId);
+                    const recFeat = handlingEval.recommendedFeatId
+                      ? CANONICAL_FRAME_FEAT_REGISTRY[handlingEval.recommendedFeatId]
+                      : undefined;
+                    return (
+                      <div className="p-1.5 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1 text-[7px]">
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="font-bold text-[#94a3b8]">FEAT HANDLING:</span>
+                          <span
+                            className={`px-1 py-0.2 rounded-[2px] font-bold border ${
+                              handlingEval.proficiencyTier === 'mastered'
+                                ? 'bg-[#052e16] text-[#86efac] border-[#22c55e]/50'
+                                : handlingEval.proficiencyTier === 'proficient'
+                                  ? 'bg-[#0c4a6e] text-[#7dd3fc] border-[#38bdf8]/50'
+                                  : handlingEval.proficiencyTier === 'locked'
+                                    ? 'bg-[#450a0a] text-[#fca5a5] border-[#ef4444]/60'
+                                    : 'bg-[#1e293b] text-[#cbd5e1] border-[#334155]'
+                            }`}
+                          >
+                            {handlingEval.badgeLabel}
+                          </span>
+                        </div>
+                        <div className="text-[#cbd5e1] leading-snug">
+                          {handlingEval.statusSummary}
+                        </div>
+                        {recFeat && onLocateFeat && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              soundSystem.playSelect();
+                              onLocateFeat(recFeat.id);
+                            }}
+                            className="w-full px-1.5 py-0.5 rounded-xs bg-[#1e1b4b] hover:bg-[#312e81] text-[#e9d5ff] border border-[#818cf8]/50 font-bold text-center cursor-pointer"
+                          >
+                            LOCATE [{recFeat.name.toUpperCase()}] IN FEAT GRID →
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
               </div>
             )}
           </div>
 
-          {/* RIGHT ANATOMICAL COLUMN: WEAPON, AUXILIARY & TRIGGER HARDPOINTS */}
-          <div className="lg:col-span-4 space-y-1.5">
-            <div className="text-[8px] font-bold text-[#fde047] px-1">
-              ORDNANCE & TRIGGER HARDPOINTS (CLICK SLOT FOR CONTEXT MENU)
+          {/* RIGHT PANE (7 COLS): GROUPED ANATOMICAL HARDPOINT NODES */}
+          <div className="sm:col-span-7 space-y-2">
+            {/* Group A: Ordnance & Trigger Hardpoints */}
+            <div className="space-y-1">
+              <div className="text-[8px] font-bold text-[#fde047] px-1">
+                ORDNANCE &amp; TRIGGER HARDPOINTS (CLICK SLOT TO INSPECT OR SWAP)
+              </div>
+              {renderDollSlotNode({
+                slot: 'slot1',
+                title: 'MAIN HAND [RIGHT]',
+                itemId: slot1Id,
+                itemName: mainWeapon?.name || getEquipmentDisplayName(slot1Id),
+                subtitle: mainWeapon
+                  ? `${getWeaponSubtypeInfo(mainWeapon.id).subtype} · ${mainWeapon.damagePerShot} DMG`
+                  : 'Primary Weapon (1H or 2H)',
+                wtLabel: `${getWeaponInstanceEquipWeight(slot1Id, state)} WT`,
+                accentColor: '#fde047',
+                badgeText: mainGrip.toUpperCase(),
+                subModulesSummary: `Slots: [${getWeaponComponentSlots(slot1Id).join('/').toUpperCase()}]`,
+              })}
+
+              {renderDollSlotNode({
+                slot: 'slot2',
+                title: 'SIDE HAND [LEFT]',
+                itemId: slot2Id,
+                itemName: sideWeapon
+                  ? sideWeapon.name
+                  : mainGrip === '2h'
+                    ? `${mainWeapon?.name || 'Main Hand'} (2H Grip)`
+                    : 'Empty Off-Hand (1H / Shield)',
+                subtitle: sideWeapon
+                  ? mainGrip === '2h'
+                    ? `${getWeaponSubtypeInfo(sideWeapon.id).subtype} · Holstered at Hip while Main is 2H`
+                    : `${getWeaponSubtypeInfo(sideWeapon.id).subtype} · Active Side Hand`
+                  : 'Two-Handing Main Weapon (+Stagger / +Impulse)',
+                wtLabel:
+                  slot2Id && slot2Id !== slot1Id
+                    ? `${getWeaponInstanceEquipWeight(slot2Id, state)} WT`
+                    : '0 WT',
+                accentColor: '#38bdf8',
+                badgeText: sideWeapon
+                  ? mainGrip === '2h'
+                    ? 'HOLSTERED (2H)'
+                    : eq.auxActive
+                      ? 'STANDBY (AUX ON)'
+                      : 'ACTIVE'
+                  : '2H GRIP',
+              })}
+
+              {renderDollSlotNode({
+                slot: 'slot3',
+                title: 'AUXILIARY [BACK]',
+                itemId: slot3Id,
+                itemName: auxWeapon ? auxWeapon.name : 'Empty Back Mount (Launcher Only)',
+                subtitle: auxWeapon
+                  ? `${getWeaponSubtypeInfo(auxWeapon.id).subtype} · Stays on Back (50% WT)`
+                  : 'Back-Mounted Launcher / Carrier / Quiver / Catalyst',
+                wtLabel:
+                  slot3Id && slot3Id !== slot1Id && slot3Id !== slot2Id
+                    ? `${Math.round(getWeaponInstanceEquipWeight(slot3Id, state) * 0.5)} WT`
+                    : '0 WT',
+                accentColor: '#c084fc',
+                badgeText: eq.auxActive ? 'ACTIVE [AC4–5]' : 'BACK MOUNT [L]',
+              })}
+
+              {/* Trigger Bindings Node Pair */}
+              <div className="grid grid-cols-2 gap-1.5">
+                <div
+                  role="button"
+                  tabIndex={0}
+                  data-menu-focusable="true"
+                  onClick={() => {
+                    soundSystem.playSelect();
+                    setContextMenuSlot('bind_l');
+                  }}
+                  className={`p-1.5 rounded-xs border cursor-pointer ${
+                    contextMenuSlot === 'bind_l'
+                      ? 'bg-[#172554] border-[#fde047]'
+                      : 'bg-[#090d14] border-[#1e293b] hover:border-[#fde047]'
+                  }`}
+                >
+                  <div className="text-[7px] font-bold text-[#fde047]">LEFT TRIGGER [J/LMB]</div>
+                  <div className="font-bold text-[8.5px] text-[#e2e8f0] truncate">
+                    {leftAction.name}
+                  </div>
+                  <div className="text-[6.8px] text-[#94a3b8] truncate">
+                    {leftAction.sourceLabel}
+                  </div>
+                </div>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  data-menu-focusable="true"
+                  onClick={() => {
+                    soundSystem.playSelect();
+                    setContextMenuSlot('bind_r');
+                  }}
+                  className={`p-1.5 rounded-xs border cursor-pointer ${
+                    contextMenuSlot === 'bind_r'
+                      ? 'bg-[#172554] border-[#fde047]'
+                      : 'bg-[#090d14] border-[#1e293b] hover:border-[#38bdf8]'
+                  }`}
+                >
+                  <div className="text-[7px] font-bold text-[#38bdf8]">RIGHT TRIGGER [K/RMB]</div>
+                  <div className="font-bold text-[8.5px] text-[#e2e8f0] truncate">
+                    {rightAction.name}
+                  </div>
+                  <div className="text-[6.8px] text-[#94a3b8] truncate">
+                    {rightAction.sourceLabel}
+                  </div>
+                </div>
+              </div>
             </div>
-            {renderDollSlotNode({
-              slot: 'slot1',
-              title: 'MAIN HAND [RIGHT]',
-              itemId: slot1Id,
-              itemName: mainWeapon?.name || getEquipmentDisplayName(slot1Id),
-              subtitle: mainWeapon
-                ? `${getWeaponSubtypeInfo(mainWeapon.id).subtype} · ${mainWeapon.damagePerShot} DMG`
-                : 'Primary Weapon (1H or 2H)',
-              wtLabel: `${getWeaponInstanceEquipWeight(slot1Id, state)} WT`,
-              accentColor: '#fde047',
-              badgeText: mainGrip.toUpperCase(),
-              subModulesSummary: `Slots: [${getWeaponComponentSlots(slot1Id).join('/').toUpperCase()}]`,
-            })}
 
-            {renderDollSlotNode({
-              slot: 'slot2',
-              title: 'SIDE HAND [LEFT]',
-              itemId: slot2Id,
-              itemName: sideWeapon
-                ? sideWeapon.name
-                : mainGrip === '2h'
-                  ? `${mainWeapon?.name || 'Main Hand'} (2H Grip)`
-                  : 'Empty Off-Hand (1H / Shield)',
-              subtitle: sideWeapon
-                ? mainGrip === '2h'
-                  ? `${getWeaponSubtypeInfo(sideWeapon.id).subtype} · Holstered at Hip while Main is 2H`
-                  : `${getWeaponSubtypeInfo(sideWeapon.id).subtype} · Active Side Hand`
-                : 'Two-Handing Main Weapon (+Stagger / +Impulse)',
-              wtLabel:
-                slot2Id && slot2Id !== slot1Id
-                  ? `${getWeaponInstanceEquipWeight(slot2Id, state)} WT`
-                  : '0 WT',
-              accentColor: '#38bdf8',
-              badgeText: sideWeapon
-                ? mainGrip === '2h'
-                  ? 'HOLSTERED (2H)'
-                  : eq.auxActive
-                    ? 'STANDBY (AUX ON)'
-                    : 'ACTIVE'
-                : '2H GRIP',
-            })}
-
-            {renderDollSlotNode({
-              slot: 'slot3',
-              title: 'AUXILIARY [BACK]',
-              itemId: slot3Id,
-              itemName: auxWeapon ? auxWeapon.name : 'Empty Back Mount (Launcher Only)',
-              subtitle: auxWeapon
-                ? `${getWeaponSubtypeInfo(auxWeapon.id).subtype} · Stays on Back (50% WT)`
-                : 'Back-Mounted Launcher / Carrier / Quiver / Catalyst',
-              wtLabel:
-                slot3Id && slot3Id !== slot1Id && slot3Id !== slot2Id
-                  ? `${Math.round(getWeaponInstanceEquipWeight(slot3Id, state) * 0.5)} WT`
-                  : '0 WT',
-              accentColor: '#c084fc',
-              badgeText: eq.auxActive ? 'ACTIVE [AC4–5]' : 'BACK MOUNT [L]',
-            })}
-
-            {/* Trigger Bindings Node Pair */}
-            <div className="grid grid-cols-2 gap-1.5">
-              <div
-                role="button"
-                tabIndex={0}
-                data-menu-focusable="true"
-                onClick={() => {
-                  soundSystem.playSelect();
-                  setContextMenuSlot('bind_l');
-                }}
-                className={`p-1.5 rounded-xs border cursor-pointer ${
-                  contextMenuSlot === 'bind_l'
-                    ? 'bg-[#172554] border-[#fde047]'
-                    : 'bg-[#090d14] border-[#1e293b] hover:border-[#fde047]'
-                }`}
-              >
-                <div className="text-[7px] font-bold text-[#fde047]">LEFT TRIGGER [J/LMB]</div>
-                <div className="font-bold text-[8.5px] text-[#e2e8f0] truncate">
-                  {leftAction.name}
-                </div>
-                <div className="text-[6.8px] text-[#94a3b8] truncate">
-                  {leftAction.sourceLabel}
-                </div>
+            {/* Group B: Chassis Armor & Sub-Module Hardpoints */}
+            <div className="space-y-1">
+              <div className="text-[8px] font-bold text-[#38bdf8] px-1">
+                CHASSIS ARMOR &amp; INTERNAL SUB-MODULE HARDPOINTS
               </div>
-              <div
-                role="button"
-                tabIndex={0}
-                data-menu-focusable="true"
-                onClick={() => {
-                  soundSystem.playSelect();
-                  setContextMenuSlot('bind_r');
-                }}
-                className={`p-1.5 rounded-xs border cursor-pointer ${
-                  contextMenuSlot === 'bind_r'
-                    ? 'bg-[#172554] border-[#fde047]'
-                    : 'bg-[#090d14] border-[#1e293b] hover:border-[#38bdf8]'
-                }`}
-              >
-                <div className="text-[7px] font-bold text-[#38bdf8]">RIGHT TRIGGER [K/RMB]</div>
-                <div className="font-bold text-[8.5px] text-[#e2e8f0] truncate">
-                  {rightAction.name}
-                </div>
-                <div className="text-[6.8px] text-[#94a3b8] truncate">
-                  {rightAction.sourceLabel}
-                </div>
-              </div>
+              {renderDollSlotNode({
+                slot: 'head',
+                title: 'HEAD · DOME PLATE',
+                itemId: headItem?.id || eq.head || null,
+                itemName: headItem?.name || eq.head || 'None',
+                subtitle: headItem
+                  ? `+${headItem.armorDurability ?? 0} ARM DUR · +${headItem.armorRating ?? 0} RTG · +${headItem.armorThreshold ?? 0} THR`
+                  : 'No Dome Plate',
+                wtLabel: `${loadMetrics.breakdown.headWeight} WT`,
+                accentColor: '#38bdf8',
+                subModulesSummary: `Optics: ${opticsItem?.name.split(' ').slice(-2).join(' ') || 'Std'} · Sens: ${sensoryAItem?.name.split(' ').slice(-2).join(' ') || 'Std'}`,
+              })}
+
+              {renderDollSlotNode({
+                slot: 'plating',
+                title: 'TORSO · FRAME PLATING',
+                itemId: platingItem?.id || eq.plating || null,
+                itemName: platingItem?.name || eq.plating || 'None',
+                subtitle: platingItem
+                  ? `${(platingItem.armorType || 'Reactive').toUpperCase()} · +${platingItem.armorDurability ?? 0} DUR · +${platingItem.armorRating ?? 0} RTG`
+                  : 'No Frame Plating',
+                wtLabel: `${loadMetrics.breakdown.frameWeight} WT`,
+                accentColor: '#a855f7',
+                subModulesSummary: `Reactor: ${reactorItem?.name || eq.reactorCore || 'Std'} (${state.reactor})`,
+              })}
+
+              {renderDollSlotNode({
+                slot: 'arms',
+                title: 'ARMS · APERTURE PLATE',
+                itemId: armsItem?.id || eq.arms || null,
+                itemName: armsItem?.name || eq.arms || 'None',
+                subtitle: armsItem
+                  ? `+${armsItem.armorDurability ?? 0} ARM DUR · +${armsItem.armorRating ?? 0} RTG · +${armsItem.shieldBonus ?? 0} SHD`
+                  : 'No Aperture Plate',
+                wtLabel: `${loadMetrics.breakdown.armsWeight} WT`,
+                accentColor: '#fb923c',
+                subModulesSummary: `Actuators: ${actuatorsItem?.name.split(' ').slice(-2).join(' ') || 'Std'}`,
+              })}
+
+              {renderDollSlotNode({
+                slot: 'legs',
+                title: 'LEGS · STRIDERS',
+                itemId: legsItem?.id || eq.legs || null,
+                itemName: legsItem?.name || eq.legs || 'None',
+                subtitle: legsItem
+                  ? `+${getHardwareCapacityBonus(legsItem)} LOAD CAP · ${legsItem.stabilityBonus ? `+${legsItem.stabilityBonus} STB` : 'Agile Stride'}`
+                  : 'No Leg Striders',
+                wtLabel: `${legsItem ? getHardwareBaseWeight(legsItem) : 12} WT`,
+                accentColor: '#4ade80',
+                subModulesSummary: eq.installedMods?.mobility
+                  ? `Mobility Mod: ${ACTION_MODIFICATION_CATALOG.find((m) => m.id === eq.installedMods?.mobility)?.name || 'Active'}`
+                  : 'Mobility Kit: Standard Dash',
+              })}
             </div>
           </div>
         </div>

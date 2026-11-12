@@ -21,6 +21,7 @@ import { OrionSavedPilotEntry, TraitLine } from '../types';
 import { enterTrainingSandboxRoom } from './hud/HudTitleModal';
 import { SatchelCodexTab } from './satchel/SatchelCodexTab';
 import { SatchelWorldTab } from './satchel/SatchelWorldTab';
+import { OrionSettingsPanel } from './settings/OrionSettingsPanel';
 
 /**
  * Props for the `OrionGameMenu` pause overlay (`[START]` menu).
@@ -55,6 +56,7 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
   onExitCartridge,
   isFullscreen = false,
   onToggleFullscreen,
+  connectedGamepads,
 }) => {
   const activeState = getOrionStateRef();
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -466,53 +468,34 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
           />
         </div>
       ) : subView === 'controls' ? (
-        /* Subview 4: Controls & 2.5D Mech Mechanics */
-        <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-[11px] leading-snug">
-          <div className="flex items-center justify-between pb-1 border-b border-[#334155]">
-            <span className="font-bold text-[#facc15]">2.5D MECH CONTROLS & COMBAT LAWS</span>
+        /* Subview 4: Unified 3-Tab Settings (Controls, Graphics, Audio & HUD) */
+        <div className="flex-1 min-h-0 flex flex-col space-y-1.5 overflow-hidden">
+          <div className="flex items-center justify-between pb-1 border-b border-[#334155] shrink-0">
+            <span className="font-bold text-[#facc15] text-[10.5px]">
+              SYSTEM SETTINGS — CONTROLS, GRAPHICS & AUDIO
+            </span>
             <button
               data-menu-back="true"
-              onClick={() => setSubView('main')}
-              className="text-[10px] underline text-[#94a3b8] hover:text-white"
+              onClick={() => {
+                soundSystem.playMenuBeep();
+                setSubView('main');
+              }}
+              className="text-[10px] underline text-[#94a3b8] hover:text-white cursor-pointer"
             >
-              ← Back
+              ← Back to Menu [B]
             </button>
           </div>
 
-          <div className="space-y-1.5 text-[10px]">
-            <div className="p-1.5 bg-[#1e293b] rounded-xs border border-[#334155]">
-              <span className="text-[#facc15] font-bold">D-PAD / STICK:</span> 8-Way
-              directional navigation on 2.5D ground plane (strafes while target locked).
-            </div>
-            <div className="p-1.5 bg-[#1e293b] rounded-xs border border-[#334155]">
-              <span className="text-[#facc15] font-bold">[A] JUMP / EXAMINE:</span> Elevation leap
-              over abyssal sinkholes (`_`), rest at Campfires (`A`), transit Waygates (`Q`), or loot Caches (`C`).
-            </div>
-            <div className="p-1.5 bg-[#1e293b] rounded-xs border border-[#334155]">
-              <span className="text-[#facc15] font-bold">[B] TAP DODGE / HOLD CONTINUOUS BOOST:</span> Tap
-              for a quick dodge burst; hold `[B]` for continuous thruster boost until release or Reactor Overheat (`100` Heat).
-            </div>
-            <div className="p-1.5 bg-[#1e293b] rounded-xs border border-[#334155]">
-              <span className="text-[#facc15] font-bold">[X] SKILL 1 (PRIMARY CHAIN):</span> Tap for
-              manual chain attacks; hold `[X]` for continuous auto-chain; double-tap from idle to reload.
-            </div>
-            <div className="p-1.5 bg-[#1e293b] rounded-xs border border-[#334155]">
-              <span className="text-[#facc15] font-bold">[Y] TAP SKILL 2 / HOLD SKILL 4 (BLOCK):</span> Tap
-              `[Y]` for Skill 2; hold `[Y]` for Skill 4 or Shield/Blade Block (`0.25s` Perfect Block window).
-            </div>
-            <div className="p-1.5 bg-[#1e293b] rounded-xs border border-[#334155]">
-              <span className="text-[#facc15] font-bold">[R] TAP SKILL 3 / HOLD SKILL 5:</span> Tap
-              `[R]` for Skill 3; hold `[R]` for Skill 5 (Heavy/Finisher or Off-Hand/Aux Action).
-            </div>
-            <div className="p-1.5 bg-[#1e293b] rounded-xs border border-[#334155]">
-              <span className="text-[#facc15] font-bold">[L] TAP LOCK-ON / HOLD SWAP SIDE⇄AUX:</span> Tap
-              `[L]` to lock onto or cycle hostile targets (double-tap to unlock); hold `[L]` to swap Side Hand and Auxiliary slots.
-            </div>
-            <div className="p-1.5 bg-[#1e293b] rounded-xs border border-[#334155]">
-              <span className="text-[#facc15] font-bold">[SHIFT / SELECT]:</span> Open Pilot Satchel,
-              World Map, Equipment Stance & Loadout, 3-Layer Build & Feats, and Action Binder.
-            </div>
-          </div>
+          <OrionSettingsPanel
+            soundEnabled={soundEnabled}
+            scanlinesEnabled={scanlinesEnabled}
+            isFullscreen={isFullscreen}
+            connectedGamepads={connectedGamepads}
+            onToggleSound={onToggleSound}
+            onToggleScanlines={onToggleScanlines}
+            onToggleFullscreen={onToggleFullscreen}
+            onNotifyToast={(msg) => showToast(msg, 1800)}
+          />
         </div>
       ) : subView === 'codex' && activeState ? (
         /* Subview 5: Discovery-Gated In-Game Pilot Codex */
@@ -599,10 +582,10 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
                 soundSystem.playSelect();
                 setSubView('controls');
               }}
-              className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs text-[10.5px] font-bold text-left flex items-center justify-between cursor-pointer"
+              className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#facc15]/60 rounded-xs text-[10.5px] font-bold text-left flex items-center justify-between cursor-pointer"
             >
-              <span>⚙ OPTIONS & CONTROLS</span>
-              <span className="text-[8.5px] text-[#facc15]">GUIDE →</span>
+              <span className="text-[#fde047]">⚙ SETTINGS</span>
+              <span className="text-[8.5px] text-[#facc15]">CONTROLS · GFX →</span>
             </button>
 
             <button

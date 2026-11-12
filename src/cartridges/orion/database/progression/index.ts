@@ -87,6 +87,7 @@ export {
 
 export { GEMSTONE_CATALOG, GEMSTONE_REGISTRY, TRAIT_FUNDING_GEMS };
 export { resolveWeaponFunctionalType, WEAPON_FUNCTIONAL_TYPES_BY_CATEGORY };
+export * from './featHandling';
 
 /**
  * Type contract for `LevelUnlockInfo` (level unlock info) in `index.ts`.

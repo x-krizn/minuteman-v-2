@@ -2783,7 +2783,7 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
       'wpn_aux'
     );
   } else if (isPowerStance2H && w1) {
-    // 2H Power Stance: any equipped Side weapon (`slot2`) is holstered; Main weapon (`slot1`) owns Skills 4 & 5
+    // 2H Power Stance — an equipped Side weapon (`slot2`) is holstered; Main weapon (`slot1`) owns Skills 4 & 5
     const holsteredSuffix = w2 && slot2Id !== slot1Id ? ` (Side Holstered)` : '';
     skill4 = buildWeaponSkill(
       'weapon_skill_3',

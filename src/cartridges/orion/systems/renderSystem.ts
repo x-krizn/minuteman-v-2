@@ -13,6 +13,7 @@ import {
 } from '../constants';
 import { getBiomeDefinition } from '../database/world';
 import { OrionState } from '../types';
+import { getOrionGraphicsSettings } from './graphicsSettingsStore';
 import {
   drawBiomeWeatherLayer,
   drawDynamicLightingAndBloomPass,
@@ -82,8 +83,20 @@ export function drawOrionGame(
     state.camY += (targetCamY - state.camY) * 0.22;
   }
 
-  const camX = Math.round(state.camX);
-  const camY = Math.round(state.camY);
+  const gfx = getOrionGraphicsSettings();
+  let shakeOffsetX = 0;
+  let shakeOffsetY = 0;
+  if (
+    gfx.screenShakeScale > 0 &&
+    ((state.hitstopTimer || 0) > 0 || (state.flickerTimer || 0) > 0.15)
+  ) {
+    const amp = ((state.hitstopTimer || 0) > 0 ? 1.8 : 1.1) * gfx.screenShakeScale;
+    shakeOffsetX = Math.round(Math.sin((state.t || 0) * 140) * amp);
+    shakeOffsetY = Math.round(Math.cos((state.t || 0) * 115) * amp);
+  }
+
+  const camX = Math.round(state.camX) + shakeOffsetX;
+  const camY = Math.round(state.camY) + shakeOffsetY;
 
   g.save();
   g.translate(-camX, -camY);

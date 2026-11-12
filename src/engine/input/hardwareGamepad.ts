@@ -5,27 +5,11 @@
 
 import { ButtonKey } from '../../types/input';
 import { gamepadStore } from './gamepadStore';
-
-// Standard mapping according to W3C Gamepad Specification
-const STANDARD_BUTTON_MAP: Record<number, ButtonKey> = {
-  0: 'a', // Bottom button (A on Xbox, Cross on PS, B on Switch)
-  1: 'b', // Right button (B on Xbox, Circle on PS, A on Switch)
-  2: 'x', // Left button (X on Xbox, Square on PS, Y on Switch)
-  3: 'y', // Top button (Y on Xbox, Triangle on PS, X on Switch)
-  4: 'l', // Left bumper (L1 / LB)
-  5: 'r', // Right bumper (R1 / RB)
-  6: 'l', // Left trigger (L2 / LT)
-  7: 'r', // Right trigger (R2 / RT)
-  8: 'select', // Select / Share / Back / View -> SHIFT (Satchel / Inventory)
-  9: 'start', // Start / Options / Menu -> START (Game Menu)
-  12: 'up', // D-pad Up
-  13: 'down', // D-pad Down
-  14: 'left', // D-pad Left
-  15: 'right', // D-pad Right
-};
-
-const STICK_DEADZONE = 0.18;
-const TRIGGER_THRESHOLD = 0.35;
+import {
+  getControlBindings,
+  isInputCaptureActive,
+  resolveGamepadIndexToButton,
+} from './inputBindingsStore';
 
 /**
  * Connection event payload emitted when a physical W3C gamepad connects or disconnects.
@@ -50,7 +34,7 @@ export function formatGamepadName(rawId: string): string {
 
 /**
  * Singleton manager that polls physical W3C Gamepad API devices each frame,
- * normalizes axes (`STICK_DEADZONE = 0.18`) and buttons into `gamepadStore`, and dispatches rumble effects.
+ * normalizes axes and buttons into `gamepadStore` using `inputBindingsStore`, and dispatches rumble effects.
  */
 export class HardwareGamepadManager {
   private static instance: HardwareGamepadManager;
@@ -127,6 +111,36 @@ export class HardwareGamepadManager {
   }
 
   /**
+   * Returns the W3C index (`0..15`) of the first currently pressed physical gamepad button,
+   * or `null` if no button is pressed. Used during interactive button remapping.
+   */
+  public getFirstPressedRawButtonIndex(): number | null {
+    if (typeof navigator === 'undefined' || !navigator.getGamepads) {
+      return null;
+    }
+    const gamepads = navigator.getGamepads();
+    if (!gamepads) return null;
+    const threshold = getControlBindings().triggerThreshold;
+
+    for (let i = 0; i < gamepads.length; i++) {
+      const gp = gamepads[i];
+      if (!gp || !gp.connected || !gp.buttons) continue;
+      for (let bIdx = 0; bIdx < Math.min(16, gp.buttons.length); bIdx++) {
+        const btn = gp.buttons[bIdx];
+        if (!btn) continue;
+        const isPressed =
+          typeof btn === 'number'
+            ? btn > threshold
+            : Boolean(btn.pressed || (btn.value ?? 0) > threshold);
+        if (isPressed) {
+          return bIdx;
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
    * Polls all connected physical gamepads and updates gamepadStore.
    * Called once per frame in the main loop.
    */
@@ -135,8 +149,26 @@ export class HardwareGamepadManager {
       return;
     }
 
+    if (isInputCaptureActive()) {
+      if (this.prevHardwareButtons.size > 0) {
+        this.prevHardwareButtons.forEach((btn) => {
+          gamepadStore.setButtonState(btn, false, false, 'hardware');
+        });
+        this.prevHardwareButtons.clear();
+      }
+      if (this.hardwareStickActive) {
+        gamepadStore.setStick(0, 0, 'hardware');
+        this.hardwareStickActive = false;
+      }
+      return;
+    }
+
     const gamepads = navigator.getGamepads();
     if (!gamepads) return;
+
+    const bindings = getControlBindings();
+    const stickDeadzone = bindings.stickDeadzone;
+    const triggerThreshold = bindings.triggerThreshold;
 
     let foundActive = false;
     const currentHardwareButtons: Set<ButtonKey> = new Set();
@@ -164,10 +196,10 @@ export class HardwareGamepadManager {
           if (!btn) return;
           const isPressed =
             typeof btn === 'number'
-              ? btn > TRIGGER_THRESHOLD
-              : Boolean(btn.pressed || (btn.value ?? 0) > TRIGGER_THRESHOLD);
+              ? btn > triggerThreshold
+              : Boolean(btn.pressed || (btn.value ?? 0) > triggerThreshold);
 
-          const mappedKey = STANDARD_BUTTON_MAP[index];
+          const mappedKey = resolveGamepadIndexToButton(index);
           if (mappedKey && isPressed) {
             currentHardwareButtons.add(mappedKey);
           }
@@ -180,8 +212,8 @@ export class HardwareGamepadManager {
         const rawY = gp.axes[1] ?? 0;
         const dist = Math.hypot(rawX, rawY);
 
-        if (dist > STICK_DEADZONE) {
-          const clamped = Math.min(1, (dist - STICK_DEADZONE) / (1 - STICK_DEADZONE));
+        if (dist > stickDeadzone) {
+          const clamped = Math.min(1, (dist - stickDeadzone) / (1 - stickDeadzone));
           stickX = (rawX / dist) * clamped;
           stickY = (rawY / dist) * clamped;
         }
@@ -206,17 +238,30 @@ export class HardwareGamepadManager {
         }
 
         // POV Hat Axis (often axis 9 on DirectInput pads)
-        if (gp.axes.length >= 10 && (gp.axes[9] !== undefined && gp.axes[9] <= 1.05 && gp.axes[9] >= -1.05)) {
+        if (
+          gp.axes.length >= 10 &&
+          gp.axes[9] !== undefined &&
+          gp.axes[9] <= 1.05 &&
+          gp.axes[9] >= -1.05
+        ) {
           const pov = gp.axes[9];
-          // -1.00: Up, -0.71: Up-Right, -0.43: Right, -0.14: Down-Right, 0.14: Down, 0.43: Down-Left, 0.71: Left, 1.00: Up-Left
           if (pov >= -1.05 && pov < -0.85) currentHardwareButtons.add('up');
-          else if (pov >= -0.85 && pov < -0.55) { currentHardwareButtons.add('up'); currentHardwareButtons.add('right'); }
-          else if (pov >= -0.55 && pov < -0.30) currentHardwareButtons.add('right');
-          else if (pov >= -0.30 && pov < 0.0) { currentHardwareButtons.add('down'); currentHardwareButtons.add('right'); }
-          else if (pov >= 0.0 && pov < 0.30) currentHardwareButtons.add('down');
-          else if (pov >= 0.30 && pov < 0.55) { currentHardwareButtons.add('down'); currentHardwareButtons.add('left'); }
-          else if (pov >= 0.55 && pov < 0.85) currentHardwareButtons.add('left');
-          else if (pov >= 0.85 && pov <= 1.05) { currentHardwareButtons.add('up'); currentHardwareButtons.add('left'); }
+          else if (pov >= -0.85 && pov < -0.55) {
+            currentHardwareButtons.add('up');
+            currentHardwareButtons.add('right');
+          } else if (pov >= -0.55 && pov < -0.3) currentHardwareButtons.add('right');
+          else if (pov >= -0.3 && pov < 0.0) {
+            currentHardwareButtons.add('down');
+            currentHardwareButtons.add('right');
+          } else if (pov >= 0.0 && pov < 0.3) currentHardwareButtons.add('down');
+          else if (pov >= 0.3 && pov < 0.55) {
+            currentHardwareButtons.add('down');
+            currentHardwareButtons.add('left');
+          } else if (pov >= 0.55 && pov < 0.85) currentHardwareButtons.add('left');
+          else if (pov >= 0.85 && pov <= 1.05) {
+            currentHardwareButtons.add('up');
+            currentHardwareButtons.add('left');
+          }
         }
       }
     }
@@ -280,6 +325,9 @@ export class HardwareGamepadManager {
    * Triggers hardware rumble vibration actuator on connected gamepads
    */
   public rumble(durationMs = 80, weakMagnitude = 0.5, strongMagnitude = 0.5): void {
+    if (!getControlBindings().vibrationEnabled) {
+      return;
+    }
     if (typeof navigator === 'undefined' || !navigator.getGamepads) {
       return;
     }
@@ -291,15 +339,21 @@ export class HardwareGamepadManager {
       const gp = gamepads[i];
       if (!gp || !gp.connected) continue;
 
-      const actuator = (gp as unknown as { vibrationActuator?: { playEffect: (type: string, options: unknown) => Promise<unknown> } }).vibrationActuator;
+      const actuator = (
+        gp as unknown as {
+          vibrationActuator?: { playEffect: (type: string, options: unknown) => Promise<unknown> };
+        }
+      ).vibrationActuator;
       if (actuator && typeof actuator.playEffect === 'function') {
         try {
-          actuator.playEffect('dual-rumble', {
-            startDelay: 0,
-            duration: durationMs,
-            weakMagnitude,
-            strongMagnitude,
-          }).catch(() => {});
+          actuator
+            .playEffect('dual-rumble', {
+              startDelay: 0,
+              duration: durationMs,
+              weakMagnitude,
+              strongMagnitude,
+            })
+            .catch(() => {});
         } catch {
           // Ignore vibration permission errors
         }

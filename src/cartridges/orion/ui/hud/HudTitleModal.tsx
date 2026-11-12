@@ -22,6 +22,7 @@ import {
   toggleTrainingSandboxRoom,
 } from '../../systems';
 import { OrionState } from '../../types';
+import { OrionSettingsPanel } from '../settings/OrionSettingsPanel';
 import { ORION_LOGO_BASE64, ORION_MENU_BG_BASE64 } from './titleMenuAssets';
 
 /**
@@ -95,7 +96,6 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
     0,
     Math.min(Math.max(0, roster.length - 1), state.titleMenuLoadCursor ?? 0)
   );
-  const optionCursor = Math.max(0, Math.min(1, state.titleMenuOptionCursor ?? 0));
 
   // Paint the menu-example-001_6511d310.png backdrop onto a pixel canvas and seamlessly
   // reconstruct the dithered moonlit sky behind the static example text column (x: 21%..45%)
@@ -349,7 +349,7 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
                   ? 'NEW GAME — PILOT & MECH FRAME BONDING'
                   : subView === 'load'
                     ? `LOAD GAME — SAVED PILOT ROSTER (${roster.length})`
-                    : 'SYSTEM OPTIONS & 2.5D CONTROLS'}
+                    : 'SETTINGS — CONTROLS, GRAPHICS & AUDIO'}
               </span>
             </div>
           </div>
@@ -619,60 +619,13 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
           )}
 
           {subView === 'options' && (
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-[10px]">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                <div
-                  onClick={() => {
-                    state.titleMenuOptionCursor = 0;
-                    forceRerender();
-                  }}
-                  className={`p-2 rounded-xs flex items-center justify-between border ${
-                    optionCursor === 0
-                      ? 'bg-[#1e293b] border-[#3b82f6]'
-                      : 'bg-[#0b111e]/95 border-[#334155]'
-                  }`}
-                >
-                  <div>
-                    <div className="font-bold text-[#f8fafc]">HUD TELEMETRY OVERLAY</div>
-                    <div className="text-[8px] text-[#94a3b8]">Toggle high-contrast cockpit HUD</div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      state.useStandardResolutionHud = !(state.useStandardResolutionHud ?? true);
-                      soundSystem.playSelect();
-                      forceRerender();
-                    }}
-                    className="px-2 py-1 bg-[#0f172a] text-[#38bdf8] border border-[#38bdf8]/50 rounded-xs font-bold text-[9px] cursor-pointer"
-                  >
-                    {(state.useStandardResolutionHud ?? true) ? 'HI-RES ON' : 'MINIMAL'}
-                  </button>
-                </div>
-              </div>
-
-              <div className="p-2 bg-[#0b111e]/95 border border-[#334155] rounded-xs space-y-1">
-                <div className="font-bold text-[#ffd27d] text-[9.5px]">
-                  2.5D MECH CONTROLS & WORLD MAP FAST TRAVEL LAWS
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[8.5px] text-[#cbd5e1]">
-                  <div>
-                    <strong className="text-[#38bdf8]">D-PAD / WASD:</strong> 8-Way traversal
-                  </div>
-                  <div>
-                    <strong className="text-[#38bdf8]">[A] INTERACT / JUMP:</strong> Leap pits, Campfires & Waygates
-                  </div>
-                  <div>
-                    <strong className="text-[#38bdf8]">[B] DODGE / BOOST:</strong> Tap dodge, Hold continuous boost
-                  </div>
-                  <div>
-                    <strong className="text-[#38bdf8]">[X / Y / R / L]:</strong> Primary Chain, Block/Skill, Heavy, Lock-On
-                  </div>
-                  <div className="sm:col-span-2 pt-0.5 text-[#fde68a]">
-                    <strong>WORLD MAP AUTHORITY:</strong> Menu = View-Only · Campfire = Within-World Fast Travel · Waygate = World-to-World & Local Fast Travel
-                  </div>
-                </div>
-              </div>
-            </div>
+            <OrionSettingsPanel
+              onNotifyToast={(msg) => {
+                state.toastText = msg;
+                state.toastTimer = 2.0;
+                forceRerender();
+              }}
+            />
           )}
         </div>
       )}

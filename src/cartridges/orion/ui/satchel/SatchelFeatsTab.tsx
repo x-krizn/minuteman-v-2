@@ -3,13 +3,17 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { soundSystem } from '../../../../engine/core/soundSystem';
 import {
   computeEffectiveLoadCapacity,
   computeEffectivePlayerLightTiles,
   computeInterfaceFeatModifiers,
+  CONSTELLATION_DISCIPLINE_ARMS,
+  CONSTELLATION_TIER_RADII,
   doesPilotMeetFeatEquipmentRequirement,
+  FEAT_CONSTELLATION_EDGES,
+  FEAT_CONSTELLATION_NODES,
   FEAT_TIER_MAX_SLOTS,
   FRAME_FEAT_CATALOG,
   fundPilotSkillWithGem,
@@ -27,7 +31,6 @@ import { notifyOrionStateChange, syncStateGates } from '../../systems';
 import {
   FeatSynergyCategory,
   FeatTier,
-  FrameFeatDefinition,
   GemId,
   OrionState,
   PilotSkillId,
@@ -35,7 +38,11 @@ import {
 import { ORION_HEX_BLUEPRINT_BASE64 } from '../hud/titleMenuAssets';
 import { SpriteCanvasIcon } from './SatchelCanvases';
 
-interface SatchelFeatsTabProps {
+/**
+ * Props for `SatchelFeatsTab`, the interactive 96-node 6-Arm Hexagonal Feat Constellation.
+ * Supports the React overlay HUD and mutates `state: OrionState` when funding skills or socketing feats.
+ */
+export interface SatchelFeatsTabProps {
   state: OrionState;
   isCheatMode?: boolean;
   onResume?: () => void;
@@ -43,122 +50,14 @@ interface SatchelFeatsTabProps {
   setFeatTierFilter?: React.Dispatch<React.SetStateAction<FeatTier | 'ALL'>>;
   featSynergyFilter?: FeatSynergyCategory | 'ALL';
   setFeatSynergyFilter?: React.Dispatch<React.SetStateAction<FeatSynergyCategory | 'ALL'>>;
+  initialFocusFeatId?: string | null;
+  onClearFocusFeatId?: () => void;
   setToast?: (msg: string) => void;
 }
 
-const SYNERGY_CATEGORIES: FeatSynergyCategory[] = [
-  'Ballistics & Ordnance',
-  'Melee & CQC',
-  'Frame Plating & Defense',
-  'Reactor & Thermal',
-  'Mobility & Stealth',
-  'Optics & Support',
-];
-
 const FEAT_TIERS: FeatTier[] = ['I', 'II', 'III', 'IV', 'V'];
 
-interface HexNodeDescriptor {
-  index: number;
-  ring: 'inner' | 'middle' | 'outer';
-  armIndex: number;
-  armLabel: string;
-  category: FeatSynergyCategory;
-  centerQ: number;
-  centerR: number;
-  color: string;
-}
-
-// 6-Finger Hexagonal Lattice (3 rings x 6 arms = 18 '+' pentomino nodes around hollow center core)
-const SIX_ARM_AXIAL_DIRS: Array<{
-  dq: number;
-  dr: number;
-  label: string;
-  category: FeatSynergyCategory;
-  color: string;
-}> = [
-  {
-    dq: 0,
-    dr: -1,
-    label: 'N · BALLISTICS & ORDNANCE',
-    category: 'Ballistics & Ordnance',
-    color: '#38bdf8',
-  },
-  {
-    dq: 1,
-    dr: -1,
-    label: 'NE · REACTOR & THERMAL',
-    category: 'Reactor & Thermal',
-    color: '#f97316',
-  },
-  {
-    dq: 1,
-    dr: 0,
-    label: 'SE · PLATING & DEFENSE',
-    category: 'Frame Plating & Defense',
-    color: '#a855f7',
-  },
-  {
-    dq: 0,
-    dr: 1,
-    label: 'S · MOBILITY & STEALTH',
-    category: 'Mobility & Stealth',
-    color: '#22c55e',
-  },
-  {
-    dq: -1,
-    dr: 1,
-    label: 'SW · OPTICS & SUPPORT',
-    category: 'Optics & Support',
-    color: '#eab308',
-  },
-  {
-    dq: -1,
-    dr: 0,
-    label: 'NW · MELEE & CQC',
-    category: 'Melee & CQC',
-    color: '#f43f5e',
-  },
-];
-
-const PLUS_PENTOMINO_OFFSETS: Array<{ dq: number; dr: number; role: 'center' | 'petal' }> = [
-  { dq: 0, dr: 0, role: 'center' },
-  { dq: 0, dr: -1, role: 'petal' },
-  { dq: 1, dr: -1, role: 'petal' },
-  { dq: 0, dr: 1, role: 'petal' },
-  { dq: -1, dr: 1, role: 'petal' },
-];
-
-const HEX_18_NODES: HexNodeDescriptor[] = (() => {
-  const list: HexNodeDescriptor[] = [];
-  const ringRadii: Array<{ ring: 'inner' | 'middle' | 'outer'; dist: number }> = [
-    { ring: 'inner', dist: 2 },
-    { ring: 'middle', dist: 4 },
-    { ring: 'outer', dist: 6 },
-  ];
-  let idx = 0;
-  for (const rInfo of ringRadii) {
-    for (let arm = 0; arm < SIX_ARM_AXIAL_DIRS.length; arm++) {
-      const dir = SIX_ARM_AXIAL_DIRS[arm];
-      list.push({
-        index: idx++,
-        ring: rInfo.ring,
-        armIndex: arm,
-        armLabel: dir.label,
-        category: dir.category,
-        centerQ: dir.dq * rInfo.dist,
-        centerR: dir.dr * rInfo.dist,
-        color: dir.color,
-      });
-    }
-  }
-  return list;
-})();
-
-function axialToPixel(q: number, r: number, hexRadius: number): { x: number; y: number } {
-  const x = hexRadius * 1.5 * q;
-  const y = hexRadius * Math.sqrt(3) * (r + q / 2);
-  return { x, y };
-}
+type ConstellationFilterMode = 'all' | 'prereq' | 'socketed' | 'available';
 
 function getHexPolygonPoints(cx: number, cy: number, radius: number): string {
   const pts: string[] = [];
@@ -172,14 +71,47 @@ function getHexPolygonPoints(cx: number, cy: number, radius: number): string {
 }
 
 /**
- * Renders the interactive 97-node Frame Feat Constellation & Gemstone Socket tab inside the Pilot Satchel (`[SHIFT]`). Supports the React overlay HUD.
+ * Renders the unified 96-Node 6-Arm Hexagonal Feat Constellation (`[SHIFT]` -> `FEATS`).
+ * Every canonical feat lives directly on the pan-and-zoom hexagonal lattice, paired with a
+ * single-scroll side inspector for equipment prerequisites, handling proficiency, and gem socketing.
  */
-export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({ state, setToast }) => {
+export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
+  state,
+  initialFocusFeatId,
+  onClearFocusFeatId,
+  setToast,
+}) => {
   const [, setTick] = useState(0);
-  const [selectedSkillFilter, setSelectedSkillFilter] = useState<PilotSkillId | 'ALL'>('ALL');
-  const [selectedHexNodeIdx, setSelectedHexNodeIdx] = useState<number>(0);
-  const [showHexGridDiagram, setShowHexGridDiagram] = useState<boolean>(true);
-  const [showReferencePng, setShowReferencePng] = useState<boolean>(false);
+  const [selectedFeatId, setSelectedFeatId] = useState<string>(() => {
+    if (initialFocusFeatId && FRAME_FEAT_CATALOG.some((f) => f.id === initialFocusFeatId)) {
+      return initialFocusFeatId;
+    }
+    return state.equippedFeats?.[0] || 'booster_evasion';
+  });
+  const [activeArmFilter, setActiveArmFilter] = useState<PilotSkillId | 'ALL'>('ALL');
+  const [constellationFilter, setConstellationFilter] =
+    useState<ConstellationFilterMode>('all');
+  const [showSkillsDrawer, setShowSkillsDrawer] = useState<boolean>(false);
+  const [showBlueprintModal, setShowBlueprintModal] = useState<boolean>(false);
+
+  // Pan & Zoom state for the 96-node SVG constellation
+  const [zoom, setZoom] = useState<number>(1.0);
+  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const dragRef = useRef<{
+    active: boolean;
+    startX: number;
+    startY: number;
+    origPanX: number;
+    origPanY: number;
+    moved: boolean;
+  }>({
+    active: false,
+    startX: 0,
+    startY: 0,
+    origPanX: 0,
+    origPanY: 0,
+    moved: false,
+  });
 
   const forceRefresh = () => {
     notifyOrionStateChange();
@@ -203,6 +135,20 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({ state, setToas
     [setToast, state]
   );
 
+  // Focus & pan to `initialFocusFeatId` when jumping from Loadout / Inventory
+  useEffect(() => {
+    if (!initialFocusFeatId) return;
+    const targetNode = FEAT_CONSTELLATION_NODES.find(
+      (n) => n.feat.id === initialFocusFeatId
+    );
+    if (targetNode) {
+      setSelectedFeatId(targetNode.feat.id);
+      setZoom(1.45);
+      setPan({ x: -targetNode.x * 0.65, y: -targetNode.y * 0.65 });
+      if (onClearFocusFeatId) onClearFocusFeatId();
+    }
+  }, [initialFocusFeatId, onClearFocusFeatId]);
+
   const progressionUnlocked = isStandardProgressionUnlocked(state);
   const isCheatMode = state.room === '-4,0' || Boolean(state.bypassProgressionGates);
   const skillsMap = normalizePilotSkills(state.pilotSkills);
@@ -213,32 +159,112 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({ state, setToas
   );
   const featMods = computeInterfaceFeatModifiers(state.equippedFeats || []);
   const effectiveLightTiles = computeEffectivePlayerLightTiles(state);
-  const baseLightTiles = typeof state.baseLight === 'number' ? state.baseLight : 5;
 
-  const filteredFeats = useMemo(() => {
-    if (selectedSkillFilter === 'ALL') return FRAME_FEAT_CATALOG;
-    return FRAME_FEAT_CATALOG.filter((f) => f.requiredSkillId === selectedSkillFilter);
-  }, [selectedSkillFilter]);
+  // Compute node states for all 96 feats on the constellation
+  const enrichedNodes = useMemo(() => {
+    return FEAT_CONSTELLATION_NODES.map((node) => {
+      const isEquipped = (state.equippedFeats || []).includes(node.feat.id);
+      const isAvailable = isFeatNodeAvailable(state, node.feat);
+      const hwCheck = doesPilotMeetFeatEquipmentRequirement(state, node.feat);
+      const hasAllGems = node.feat.gemSockets.every(
+        (req) => getInventoryGemCount(state, req.gemId) >= req.count
+      );
+      const tierCount = getEquippedFeatCountByTier(state, node.tier);
+      const tierMax = FEAT_TIER_MAX_SLOTS[node.tier];
+      const isTierFull = !isEquipped && tierCount >= tierMax;
+      const canSocketNow =
+        !isEquipped && progressionUnlocked && isAvailable && hasAllGems && !isTierFull;
 
-  // Map the 18 Hex '+' Pentomino Nodes to Feats in the catalog
-  const hexNodeAssignments = useMemo(() => {
-    return HEX_18_NODES.map((node) => {
-      const catFeats = FRAME_FEAT_CATALOG.filter((f) => f.synergyCategory === node.category);
-      const ringIdx = node.ring === 'inner' ? 0 : node.ring === 'middle' ? 1 : 2;
-      const feat: FrameFeatDefinition | undefined =
-        catFeats[ringIdx] || FRAME_FEAT_CATALOG[node.index % FRAME_FEAT_CATALOG.length];
-      const isEquipped = feat ? state.equippedFeats.includes(feat.id) : false;
-      const isAvailable = feat ? isFeatNodeAvailable(state, feat) : false;
+      const matchesArm =
+        activeArmFilter === 'ALL' ||
+        node.skillId === activeArmFilter ||
+        node.isCoreNode;
+
+      let matchesMode = true;
+      if (constellationFilter === 'prereq') {
+        matchesMode = node.handlingRole === 'prerequisite';
+      } else if (constellationFilter === 'socketed') {
+        matchesMode = isEquipped;
+      } else if (constellationFilter === 'available') {
+        matchesMode = canSocketNow || isEquipped;
+      }
+
       return {
-        node,
-        feat,
+        ...node,
         isEquipped,
         isAvailable,
+        hwCheck,
+        hasAllGems,
+        isTierFull,
+        canSocketNow,
+        isHighlighted: matchesArm && matchesMode,
       };
     });
-  }, [state, state.equippedFeats, state.pilotSkills, state.level]);
+  }, [
+    state,
+    state.equippedFeats,
+    state.pilotSkills,
+    state.level,
+    state.inventorySlots,
+    progressionUnlocked,
+    activeArmFilter,
+    constellationFilter,
+  ]);
 
-  const activeHexAssignment = hexNodeAssignments[selectedHexNodeIdx] || hexNodeAssignments[0];
+  const nodeById = useMemo(() => {
+    const map = new Map<string, (typeof enrichedNodes)[number]>();
+    for (const n of enrichedNodes) {
+      map.set(n.feat.id, n);
+    }
+    return map;
+  }, [enrichedNodes]);
+
+  const selectedNode =
+    nodeById.get(selectedFeatId) || enrichedNodes[0];
+
+  const navigableNodes = useMemo(() => {
+    const list = enrichedNodes.filter((n) => n.isHighlighted);
+    return list.length > 0 ? list : enrichedNodes;
+  }, [enrichedNodes]);
+
+  const handleCycleNode = (delta: number) => {
+    soundSystem.playMenuBeep();
+    const curIdx = navigableNodes.findIndex((n) => n.feat.id === selectedNode.feat.id);
+    const nextIdx =
+      curIdx < 0
+        ? 0
+        : (curIdx + delta + navigableNodes.length) % navigableNodes.length;
+    const nextNode = navigableNodes[nextIdx];
+    if (nextNode) {
+      setSelectedFeatId(nextNode.feat.id);
+    }
+  };
+
+  const handleFocusArm = (skillId: PilotSkillId | 'ALL') => {
+    soundSystem.playSelect();
+    setActiveArmFilter(skillId);
+    if (skillId === 'ALL') {
+      setZoom(1.0);
+      setPan({ x: 0, y: 0 });
+      return;
+    }
+    const armMeta = CONSTELLATION_DISCIPLINE_ARMS.find((a) => a.skillId === skillId);
+    if (armMeta) {
+      const rad = (armMeta.angleDeg * Math.PI) / 180;
+      const focusR = 165;
+      setZoom(1.38);
+      setPan({
+        x: Number((-Math.cos(rad) * focusR * 0.65).toFixed(1)),
+        y: Number((-Math.sin(rad) * focusR * 0.65).toFixed(1)),
+      });
+      const firstInArm = enrichedNodes.find(
+        (n) => !n.isCoreNode && n.skillId === skillId && n.tier === 'I'
+      );
+      if (firstInArm) {
+        setSelectedFeatId(firstInArm.feat.id);
+      }
+    }
+  };
 
   const handleAdjustCheatLevel = (delta: number) => {
     const nextLevel = Math.max(1, Math.min(20, (state.level || 1) + delta));
@@ -283,697 +309,741 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({ state, setToas
     }
   };
 
+  // Compute dynamic SVG viewBox from zoom & pan
+  const baseHalfSpan = 355;
+  const halfSpan = baseHalfSpan / zoom;
+  const vbMinX = -halfSpan - pan.x;
+  const vbMinY = -halfSpan - pan.y;
+  const vbSize = halfSpan * 2;
+
+  const selectedSkillDef = PILOT_SKILL_DEFINITIONS.find(
+    (s) => s.id === selectedNode.feat.requiredSkillId
+  );
+  const selectedSkillLevel = skillsMap[selectedNode.feat.requiredSkillId]?.level || 1;
+  const selectedTierUsed = getEquippedFeatCountByTier(state, selectedNode.tier);
+  const selectedTierCap = FEAT_TIER_MAX_SLOTS[selectedNode.tier];
+
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1 pb-2">
-      {/* Header Banner: Standard Progression Gate Status */}
-      <div
-        className={`rounded-lg border p-3 ${
-          progressionUnlocked
-            ? 'border-[#38bdf8]/40 bg-[#071526]'
-            : 'border-amber-500/40 bg-amber-950/20'
-        }`}
-      >
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <div className="text-[11px] font-bold tracking-wider uppercase text-[#7dd3fc]">
-              §1.3 PILOT SKILLS &amp; 6-FINGER HEX FEAT MATRIX
-            </div>
-            <div className="text-[10px] text-[#94a3b8] mt-0.5">
-              {progressionUnlocked
-                ? 'Standard Progression ACTIVE — Spend Gems on Pilot Skills and socket Gems into the 18 Hex Feat Nodes.'
-                : 'Tutorial Phase (Levels 1–5) — Standard Skill & Feat Tree unlocks at Level 6 (after Border Town) or via Cheat Terminal 1.'}
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-[10px]">
-            <div className="px-2 py-1 rounded bg-[#0b1320] border border-[#1e293b] flex items-center gap-1.5">
-              <span className="text-[#94a3b8]">CLVL:</span>{' '}
-              {isCheatMode && (
+    <div className="flex-1 min-h-0 flex flex-col gap-1.5 overflow-hidden text-[10px]">
+      {/* Top Compact Control Bar: Tier Slot Counters + Discipline Arm Jump + Pilot Skill Drawer Toggle */}
+      <div className="shrink-0 bg-[#080d16] border border-[#1e293b] rounded-xs px-2 py-1.5 space-y-1">
+        <div className="flex flex-wrap items-center justify-between gap-1.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-bold text-[10px] text-[#f8fafc] tracking-wide">
+              96-NODE HEX FEAT CONSTELLATION
+            </span>
+            <span className="text-[8.5px] text-[#94a3b8]">
+              SOCKETED: <b className="text-[#38bdf8]">{state.equippedFeats.length}/20</b> · LOAD CAP:{' '}
+              <b className="text-[#4ade80] uppercase">{effectiveLoad}</b> · LIGHT:{' '}
+              <b className="text-[#fde047]">{effectiveLightTiles}T</b>
+            </span>
+            {isCheatMode && (
+              <span className="inline-flex items-center gap-1 text-[8.5px] text-amber-300">
+                CLVL {state.level}
                 <button
                   type="button"
                   onClick={() => handleAdjustCheatLevel(-1)}
-                  className="px-1 rounded bg-amber-500/20 border border-amber-400/50 text-amber-200 font-bold hover:bg-amber-500/30 cursor-pointer"
-                  title="Decrease Pilot Level (Cheat Mode)"
+                  className="px-1 bg-amber-950/60 border border-amber-500/40 rounded-xs cursor-pointer"
                 >
                   -
                 </button>
-              )}
-              <span className="text-[#f8fafc] font-bold">{state.level}</span>
-              {isCheatMode && (
                 <button
                   type="button"
                   onClick={() => handleAdjustCheatLevel(1)}
-                  className="px-1 rounded bg-amber-500/20 border border-amber-400/50 text-amber-200 font-bold hover:bg-amber-500/30 cursor-pointer"
-                  title="Increase Pilot Level (Cheat Mode)"
+                  className="px-1 bg-amber-950/60 border border-amber-500/40 rounded-xs cursor-pointer"
                 >
                   +
                 </button>
-              )}
-            </div>
-            <div className="px-2 py-1 rounded bg-[#0b1320] border border-[#1e293b] flex items-center gap-1.5">
-              <span className="text-[#94a3b8]">LIGHT:</span>{' '}
-              <span
-                className="text-cyan-300 font-bold"
-                title={`Base ${baseLightTiles} tiles (${effectiveLightTiles * 16}px effective radius)`}
-              >
-                {effectiveLightTiles} TILES
               </span>
-            </div>
-            <div className="px-2 py-1 rounded bg-[#0b1320] border border-[#1e293b]">
-              <span className="text-[#94a3b8]">LOAD CAP:</span>{' '}
-              <span className="text-emerald-300 font-bold uppercase">{effectiveLoad}</span>
-            </div>
+            )}
           </div>
-        </div>
 
-        {/* Per-Tier Feat Slot Caps: Tier I: 6, Tier II: 5, Tier III: 4, Tier IV: 3, Tier V: 2 */}
-        <div className="mt-2.5 pt-2 border-t border-[#1e293b] flex flex-wrap items-center justify-between gap-2">
-          <span className="text-[9.5px] font-bold uppercase tracking-wider text-[#94a3b8]">
-            PER-TIER FEAT SLOT LIMITS (MAX 20 TOTAL):
-          </span>
-          <div className="flex flex-wrap items-center gap-1.5">
+          {/* Per-Tier Capacity Summary */}
+          <div className="flex items-center gap-1 text-[8px] font-mono tabular-nums">
             {FEAT_TIERS.map((tier) => {
               const used = getEquippedFeatCountByTier(state, tier);
               const cap = FEAT_TIER_MAX_SLOTS[tier];
-              const isFull = used >= cap;
               return (
-                <div
+                <span
                   key={tier}
-                  className={`px-2 py-0.5 rounded border text-[9.5px] font-bold ${
-                    isFull
-                      ? 'border-amber-400/70 bg-amber-950/40 text-amber-200'
+                  className={`px-1.5 py-0.5 rounded-xs border ${
+                    used >= cap
+                      ? 'border-amber-400/60 bg-amber-950/30 text-amber-200 font-bold'
                       : used > 0
-                        ? 'border-[#38bdf8]/50 bg-[#0c243c] text-[#7dd3fc]'
-                        : 'border-[#1e293b] bg-[#0b1320] text-[#64748b]'
+                        ? 'border-[#38bdf8]/40 bg-[#0c243c] text-[#7dd3fc]'
+                        : 'border-[#1e293b] bg-[#05080f] text-[#64748b]'
                   }`}
                 >
-                  TIER {tier}: {used}/{cap}
-                </div>
+                  T{tier}:{used}/{cap}
+                </span>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => {
+                soundSystem.playSelect();
+                setShowSkillsDrawer((v) => !v);
+              }}
+              className={`ml-1 px-2 py-0.5 rounded-xs font-bold border cursor-pointer transition-colors whitespace-nowrap ${
+                showSkillsDrawer
+                  ? 'bg-[#38bdf8] text-[#05070a] border-[#7dd3fc]'
+                  : 'bg-[#0f172a] text-[#7dd3fc] border-[#38bdf8]/50 hover:bg-[#1e293b]'
+              }`}
+            >
+              {showSkillsDrawer ? '▾ HIDE PILOT SKILLS' : '▸ LEVEL PILOT SKILLS (GEMS)'}
+            </button>
+          </div>
+        </div>
+
+        {/* 6 Discipline Arm Quick-Focus Bar */}
+        <div className="flex items-center justify-between gap-1 pt-1 border-t border-[#1e293b]/80 overflow-x-auto">
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={() => handleFocusArm('ALL')}
+              className={`px-1.5 py-0.5 rounded-xs text-[8px] font-bold border cursor-pointer whitespace-nowrap ${
+                activeArmFilter === 'ALL'
+                  ? 'bg-[#f8fafc] text-[#05070a] border-white'
+                  : 'bg-[#05080f] text-[#94a3b8] border-[#1e293b] hover:text-white'
+              }`}
+            >
+              ALL 6 ARMS (96)
+            </button>
+            {CONSTELLATION_DISCIPLINE_ARMS.map((arm) => {
+              const lv = skillsMap[arm.skillId]?.level || 1;
+              const isSelected = activeArmFilter === arm.skillId;
+              return (
+                <button
+                  key={arm.skillId}
+                  type="button"
+                  onClick={() => handleFocusArm(arm.skillId)}
+                  className="px-1.5 py-0.5 rounded-xs text-[8px] font-bold border cursor-pointer whitespace-nowrap transition-colors"
+                  style={{
+                    backgroundColor: isSelected ? arm.color : '#05080f',
+                    color: isSelected ? '#05070a' : arm.color,
+                    borderColor: isSelected ? arm.color : `${arm.color}44`,
+                  }}
+                >
+                  {arm.compassCode} · {arm.skillId.toUpperCase()} (LV.{lv})
+                </button>
               );
             })}
           </div>
         </div>
-      </div>
 
-      {/* 6-Finger Hexagonal Lattice (18 '+' Pentomino Nodes + Hollow Center Core) */}
-      <div className="rounded-lg border border-[#1e293b] bg-[#0b1320] p-3">
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-[#38bdf8]">
-              6-FINGER HEXAGONAL FEAT LATTICE (18 &apos;+&apos; PENTOMINO NODES · HOLLOW CORE)
-            </div>
-            <div className="text-[9px] text-[#94a3b8]">
-              6 discipline arms × 3 concentric rings = 18 overlapping 5-hex &apos;+&apos; nodes surrounding the central Mech Reactor core. Click any node to inspect or socket Gems.
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setShowReferencePng((v) => !v)}
-              className={`px-2 py-1 rounded text-[9px] font-bold uppercase border cursor-pointer ${
-                showReferencePng
-                  ? 'border-amber-400 bg-amber-950/40 text-amber-200'
-                  : 'border-[#1e293b] bg-[#070b12] text-[#94a3b8] hover:text-white'
-              }`}
-            >
-              {showReferencePng ? 'HIDE BLUEPRINT PNG' : 'VIEW BLUEPRINT PNG'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowHexGridDiagram((v) => !v)}
-              className="px-2 py-1 rounded text-[9px] font-bold uppercase border border-[#1e293b] bg-[#070b12] text-[#7dd3fc] hover:text-white cursor-pointer"
-            >
-              {showHexGridDiagram ? 'COLLAPSE LATTICE' : 'EXPAND LATTICE'}
-            </button>
-          </div>
-        </div>
-
-        {showReferencePng && (
-          <div className="mb-3 rounded border border-amber-500/40 bg-[#05080f] p-2 flex flex-col items-center">
-            <div className="text-[9px] font-bold uppercase tracking-wider text-amber-300 mb-1">
-              CANONICAL 18-NODE 6-FINGER HEXAGONAL FEAT TREE BLUEPRINT
-            </div>
-            <img
-              src={ORION_HEX_BLUEPRINT_BASE64}
-              alt="18-Node 6-Finger Hexagonal Feat Grid Blueprint"
-              className="max-h-56 w-auto rounded border border-[#1e293b] bg-white/95 p-1"
-            />
-          </div>
-        )}
-
-        {showHexGridDiagram && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-center">
-            <div className="lg:col-span-7 flex flex-col items-center justify-center rounded border border-[#1e293b] bg-[#060b13] p-2">
-              <svg
-                viewBox="-175 -165 350 330"
-                className="w-full max-w-[360px] h-auto select-none"
-                role="img"
-                aria-label="6-Finger Hexagonal Feat Grid"
-              >
-                {/* Subtle radial rings */}
-                <circle
-                  cx="0"
-                  cy="0"
-                  r="46"
-                  fill="none"
-                  stroke="#1e293b"
-                  strokeWidth="0.8"
-                  strokeDasharray="3 3"
-                />
-                <circle
-                  cx="0"
-                  cy="0"
-                  r="92"
-                  fill="none"
-                  stroke="#1e293b"
-                  strokeWidth="0.8"
-                  strokeDasharray="3 3"
-                />
-                <circle
-                  cx="0"
-                  cy="0"
-                  r="138"
-                  fill="none"
-                  stroke="#1e293b"
-                  strokeWidth="0.8"
-                  strokeDasharray="3 3"
-                />
-
-                {/* Hollow Central Core (7-hex flower void) */}
-                {[
-                  { q: 0, r: 0 },
-                  { q: 0, r: -1 },
-                  { q: 1, r: -1 },
-                  { q: 1, r: 0 },
-                  { q: 0, r: 1 },
-                  { q: -1, r: 1 },
-                  { q: -1, r: 0 },
-                ].map((cell, idx) => {
-                  const pt = axialToPixel(cell.q, cell.r, 11.5);
-                  return (
-                    <polygon
-                      key={`core-${idx}`}
-                      points={getHexPolygonPoints(pt.x, pt.y, 10.8)}
-                      fill={idx === 0 ? '#0f172a' : '#090f1a'}
-                      stroke="#334155"
-                      strokeWidth="1"
-                    />
-                  );
-                })}
-                <text
-                  x="0"
-                  y="3"
-                  textAnchor="middle"
-                  fill="#94a3b8"
-                  fontSize="6.5"
-                  fontWeight="bold"
+        {/* Collapsible Pilot Skills Gemstone Funding Drawer */}
+        {showSkillsDrawer && (
+          <div className="pt-1.5 border-t border-[#1e293b] grid grid-cols-2 sm:grid-cols-3 gap-1">
+            {PILOT_SKILL_DEFINITIONS.map((skill) => {
+              const currentLv = skillsMap[skill.id]?.level || 1;
+              const armMeta = CONSTELLATION_DISCIPLINE_ARMS.find(
+                (a) => a.skillId === skill.id
+              );
+              return (
+                <div
+                  key={skill.id}
+                  className="p-1.5 rounded-xs bg-[#05080f] border border-[#1e293b] flex flex-col justify-between gap-1"
                 >
-                  CORE
-                </text>
-
-                {/* Render 18 '+' Pentomino Nodes */}
-                {hexNodeAssignments.map((item) => {
-                  const { node, feat, isEquipped, isAvailable } = item;
-                  const isSelected = selectedHexNodeIdx === node.index;
-                  const centerPt = axialToPixel(node.centerQ, node.centerR, 11.5);
-
-                  return (
-                    <g
-                      key={`hex-node-${node.index}`}
-                      onClick={() => {
-                        soundSystem.playSelect();
-                        setSelectedHexNodeIdx(node.index);
-                      }}
-                      className="cursor-pointer"
-                    >
-                      {PLUS_PENTOMINO_OFFSETS.map((off, pIdx) => {
-                        const cellQ = node.centerQ + off.dq;
-                        const cellR = node.centerR + off.dr;
-                        const pt = axialToPixel(cellQ, cellR, 11.5);
-                        const isCenterCell = off.role === 'center';
-                        const fill = isEquipped
-                          ? isCenterCell
-                            ? node.color
-                            : `${node.color}55`
-                          : isSelected
-                            ? isCenterCell
-                              ? '#1e3a5f'
-                              : '#172554'
-                            : isAvailable
-                              ? isCenterCell
-                                ? '#162235'
-                                : '#0d1624'
-                              : '#080d16';
-                        const stroke = isSelected
-                          ? '#facc15'
-                          : isEquipped
-                            ? node.color
-                            : isAvailable
-                              ? '#475569'
-                              : '#1e293b';
-
-                        return (
-                          <polygon
-                            key={`cell-${node.index}-${pIdx}`}
-                            points={getHexPolygonPoints(pt.x, pt.y, isCenterCell ? 10.6 : 9.4)}
-                            fill={fill}
-                            stroke={stroke}
-                            strokeWidth={isSelected ? '1.5' : isCenterCell ? '1.2' : '0.75'}
-                            opacity={isCenterCell ? 0.96 : 0.72}
-                          />
-                        );
-                      })}
-                      <text
-                        x={centerPt.x}
-                        y={centerPt.y + 2.5}
-                        textAnchor="middle"
-                        fill={isEquipped ? '#020617' : isSelected ? '#fef08a' : '#e2e8f0'}
-                        fontSize="6.5"
-                        fontWeight="bold"
-                      >
-                        {feat ? feat.tier : node.index + 1}
-                      </text>
-                    </g>
-                  );
-                })}
-              </svg>
-            </div>
-
-            {/* Selected Hex Node Inspector */}
-            <div className="lg:col-span-5 rounded border border-[#1e293b] bg-[#070b12] p-3 space-y-2">
-              <div className="flex items-center justify-between gap-1.5 pb-1 border-b border-[#1e293b]">
-                <button
-                  type="button"
-                  onClick={() => {
-                    soundSystem.playMenuBeep();
-                    setSelectedHexNodeIdx((prev) => (prev + 17) % 18);
-                  }}
-                  className="px-2 py-0.5 rounded bg-[#0f172a] hover:bg-[#1e293b] border border-[#334155] text-[8.5px] font-bold text-[#38bdf8] cursor-pointer"
-                >
-                  ◀ PREV NODE
-                </button>
-                <span className="text-[8.5px] font-bold text-[#94a3b8]">
-                  HEX NODE {selectedHexNodeIdx + 1} / 18
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    soundSystem.playMenuBeep();
-                    setSelectedHexNodeIdx((prev) => (prev + 1) % 18);
-                  }}
-                  className="px-2 py-0.5 rounded bg-[#0f172a] hover:bg-[#1e293b] border border-[#334155] text-[8.5px] font-bold text-[#38bdf8] cursor-pointer"
-                >
-                  NEXT NODE ▶
-                </button>
-              </div>
-              {activeHexAssignment && activeHexAssignment.feat ? (
-                <>
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-1">
                     <span
-                      className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border"
-                      style={{
-                        borderColor: `${activeHexAssignment.node.color}66`,
-                        color: activeHexAssignment.node.color,
-                        backgroundColor: `${activeHexAssignment.node.color}15`,
-                      }}
+                      className="text-[8px] font-bold truncate"
+                      style={{ color: armMeta?.color || '#38bdf8' }}
                     >
-                      NODE #{activeHexAssignment.node.index + 1} ·{' '}
-                      {activeHexAssignment.node.ring.toUpperCase()} RING
+                      {skill.id.toUpperCase()}
                     </span>
-                    <span className="text-[9px] text-[#94a3b8] font-bold">
-                      TIER {activeHexAssignment.feat.tier} (
-                      {getEquippedFeatCountByTier(state, activeHexAssignment.feat.tier)}/
-                      {FEAT_TIER_MAX_SLOTS[activeHexAssignment.feat.tier]} SLOTS)
-                    </span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {isCheatMode && (
+                        <button
+                          type="button"
+                          onClick={() => handleAdjustCheatSkillLevel(skill.id, -1)}
+                          className="px-1 bg-amber-950/60 border border-amber-500/40 text-amber-200 text-[7.5px] rounded-xs cursor-pointer"
+                        >
+                          -
+                        </button>
+                      )}
+                      <span className="text-[8px] font-bold text-[#f8fafc] tabular-nums">
+                        LV {currentLv}/20
+                      </span>
+                      {isCheatMode && (
+                        <button
+                          type="button"
+                          onClick={() => handleAdjustCheatSkillLevel(skill.id, 1)}
+                          className="px-1 bg-amber-950/60 border border-amber-500/40 text-amber-200 text-[7.5px] rounded-xs cursor-pointer"
+                        >
+                          +
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-[11px] font-bold text-[#f8fafc] uppercase">
-                    {activeHexAssignment.feat.name}
-                  </div>
-                  <div className="text-[9.5px] text-emerald-300">
-                    + {activeHexAssignment.feat.gainDescription}
-                  </div>
-                  <div className="text-[9px] text-amber-300/90">
-                    − {activeHexAssignment.feat.costDescription}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-1 pt-1">
-                    {activeHexAssignment.feat.gemSockets.map((req, idx) => {
-                      const gDef = GEMSTONE_REGISTRY[req.gemId];
-                      const have = getInventoryGemCount(state, req.gemId);
+                  <div className="flex flex-wrap items-center gap-1">
+                    {skill.fundingGems.map((gemId) => {
+                      const gDef = GEMSTONE_REGISTRY[gemId];
+                      const have = getInventoryGemCount(state, gemId);
+                      const canSpend = progressionUnlocked && currentLv < 20 && have > 0;
                       return (
-                        <span
-                          key={`${activeHexAssignment.feat!.id}-hex-req-${idx}`}
-                          className={`inline-flex items-center gap-1 text-[8.5px] px-1.5 py-0.5 rounded border ${
-                            activeHexAssignment.isEquipped || have >= req.count
-                              ? 'border-cyan-500/40 bg-cyan-950/30 text-cyan-200'
-                              : 'border-[#1e293b] bg-[#0b1320] text-[#94a3b8]'
+                        <button
+                          key={`${skill.id}-fund-${gemId}`}
+                          type="button"
+                          disabled={!canSpend}
+                          onClick={() => handleFundSkillWithGem(skill.id, gemId)}
+                          className={`px-1 py-0.5 rounded-xs text-[7.5px] font-bold inline-flex items-center gap-0.5 border ${
+                            canSpend
+                              ? 'bg-emerald-950/60 border-emerald-400/60 text-emerald-200 hover:bg-emerald-900/60 cursor-pointer'
+                              : 'bg-[#080d16] border-[#1e293b] text-[#475569] cursor-not-allowed'
                           }`}
                         >
                           {gDef?.iconBase64 && (
                             <SpriteCanvasIcon
                               base64={gDef.iconBase64}
-                              sizeClass="w-3 h-3"
+                              sizeClass="w-2.5 h-2.5"
                             />
                           )}
-                          {req.count}× {gDef?.name || req.gemId}
-                        </span>
+                          +1 ({have})
+                        </button>
                       );
                     })}
                   </div>
-                  <div className="pt-2">
-                    <button
-                      type="button"
-                      onClick={() => handleToggleFeatSocket(activeHexAssignment.feat!.id)}
-                      className={`w-full px-2.5 py-1.5 rounded text-[9.5px] font-bold uppercase tracking-wider cursor-pointer transition-colors ${
-                        activeHexAssignment.isEquipped
-                          ? 'bg-amber-500/20 border border-amber-400/60 text-amber-200 hover:bg-amber-500/30'
-                          : activeHexAssignment.isAvailable && progressionUnlocked
-                            ? 'bg-emerald-500/20 border border-emerald-400/60 text-emerald-200 hover:bg-emerald-500/30'
-                            : 'bg-[#1e293b] text-[#64748b]'
-                      }`}
-                    >
-                      {activeHexAssignment.isEquipped
-                        ? 'UNSOCKET FEAT NODE (REFUND GEMS)'
-                        : 'SOCKET GEMS INTO HEX NODE'}
-                    </button>
-                  </div>
-                </>
-              ) : null}
-            </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* 6 Combat Discipline Pilot Skills Grid */}
-      <div className="rounded-lg border border-[#1e293b] bg-[#0b1320] p-3">
-        <div className="flex items-center justify-between mb-2">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-[#38bdf8]">
-            6 COMBAT DISCIPLINE PILOT SKILLS (FUNDED BY GEMSTONES · LV 1–20)
+      {/* Main Split Workspace: Left Interactive Constellation Canvas + Right Single-Scroll Node Inspector */}
+      <div className="flex-1 min-h-0 grid grid-cols-12 gap-1.5 overflow-hidden">
+        {/* LEFT PANE (7 Columns): Pan-and-Zoom 96-Node 6-Arm Hexagonal Constellation */}
+        <div className="col-span-7 min-h-0 flex flex-col bg-[#05080f] border border-[#1e293b] rounded-xs relative overflow-hidden">
+          {/* Top-Left Filter Overlay */}
+          <div className="absolute top-1.5 left-1.5 z-10 flex flex-wrap items-center gap-1 pointer-events-auto">
+            {(
+              [
+                { id: 'all', label: 'ALL (96)' },
+                { id: 'prereq', label: 'EQP PREREQS' },
+                { id: 'socketed', label: `ACTIVE (${state.equippedFeats.length})` },
+                { id: 'available', label: 'UNLOCKABLE' },
+              ] as Array<{ id: ConstellationFilterMode; label: string }>
+            ).map((fOpt) => (
+              <button
+                key={fOpt.id}
+                type="button"
+                onClick={() => {
+                  soundSystem.playSelect();
+                  setConstellationFilter(fOpt.id);
+                }}
+                className={`px-1.5 py-0.5 rounded-xs text-[7.5px] font-bold border cursor-pointer ${
+                  constellationFilter === fOpt.id
+                    ? 'bg-[#38bdf8] text-[#05070a] border-[#7dd3fc]'
+                    : 'bg-[#080d16]/90 text-[#94a3b8] border-[#1e293b] hover:text-white'
+                }`}
+              >
+                {fOpt.label}
+              </button>
+            ))}
           </div>
-          <button
-            type="button"
-            onClick={() => setSelectedSkillFilter('ALL')}
-            className={`text-[9px] px-2 py-0.5 rounded border cursor-pointer ${
-              selectedSkillFilter === 'ALL'
-                ? 'border-[#38bdf8] bg-[#38bdf8]/20 text-[#f8fafc]'
-                : 'border-[#1e293b] text-[#94a3b8] hover:text-white'
-            }`}
-          >
-            SHOW ALL FEATS ({FRAME_FEAT_CATALOG.length})
-          </button>
-        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {PILOT_SKILL_DEFINITIONS.map((skill) => {
-            const currentLv = skillsMap[skill.id]?.level || 1;
-            const primaryGemDef = GEMSTONE_REGISTRY[skill.fundingGems[0]];
-            const isSelected = selectedSkillFilter === skill.id;
-
-            return (
-              <div
-                key={skill.id}
-                role="button"
-                tabIndex={0}
-                data-menu-focusable="true"
-                onClick={() =>
-                  setSelectedSkillFilter(isSelected ? 'ALL' : skill.id)
-                }
-                className={`rounded border p-2.5 transition-colors cursor-pointer ${
-                  isSelected
-                    ? 'border-[#38bdf8] bg-[#10233a]'
-                    : 'border-[#1e293b] bg-[#070b12] hover:border-[#334155]'
-                }`}
+          {/* Bottom-Left Zoom & Reset Controls */}
+          <div className="absolute bottom-1.5 left-1.5 right-1.5 z-10 flex items-center justify-between gap-1 pointer-events-auto">
+            <div className="flex items-center gap-1 bg-[#080d16]/90 border border-[#1e293b] rounded-xs p-0.5">
+              <button
+                type="button"
+                onClick={() => setZoom((z) => Math.max(0.65, Number((z - 0.2).toFixed(2))))}
+                className="px-1.5 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#e2e8f0] rounded-xs text-[8px] font-bold cursor-pointer"
+                title="Zoom Out"
               >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5">
-                    {primaryGemDef?.iconBase64 ? (
-                      <SpriteCanvasIcon
-                        base64={primaryGemDef.iconBase64}
-                        sizeClass="w-3.5 h-3.5 shrink-0"
-                      />
-                    ) : (
-                      <span
-                        className="w-2.5 h-2.5 rounded-full inline-block"
-                        style={{ backgroundColor: primaryGemDef?.hexColor || '#38bdf8' }}
-                      />
-                    )}
-                    <span className="text-[10px] font-bold text-[#f8fafc] uppercase">
-                      {skill.name}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    {isCheatMode && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAdjustCheatSkillLevel(skill.id, -1);
-                        }}
-                        className="px-1 py-0.5 rounded text-[8.5px] font-bold bg-amber-500/20 border border-amber-400/50 text-amber-200 hover:bg-amber-500/30 cursor-pointer"
-                        title="Decrease Skill Level (Cheat Mode)"
-                      >
-                        -
-                      </button>
-                    )}
-                    <span className="text-[9.5px] font-mono text-[#7dd3fc]">
-                      LV {currentLv}/20
-                    </span>
-                    {isCheatMode && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAdjustCheatSkillLevel(skill.id, 1);
-                        }}
-                        className="px-1 py-0.5 rounded text-[8.5px] font-bold bg-amber-500/20 border border-amber-400/50 text-amber-200 hover:bg-amber-500/30 cursor-pointer"
-                        title="Increase Skill Level (Cheat Mode)"
-                      >
-                        +
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div className="text-[9px] text-[#94a3b8] mt-1 line-clamp-1">
-                  {skill.relatedEquipment}
-                </div>
-                <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                  {skill.fundingGems.map((gemId) => {
-                    const gDef = GEMSTONE_REGISTRY[gemId];
-                    const have = getInventoryGemCount(state, gemId);
-                    const canSpend = progressionUnlocked && currentLv < 20 && have > 0;
-                    return (
-                      <button
-                        key={`${skill.id}-fund-${gemId}`}
-                        type="button"
-                        disabled={!canSpend}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleFundSkillWithGem(skill.id, gemId);
-                        }}
-                        className={`px-1.5 py-0.5 rounded text-[8.5px] font-bold uppercase inline-flex items-center gap-1 border ${
-                          canSpend
-                            ? 'bg-emerald-500/20 border-emerald-400/60 text-emerald-200 hover:bg-emerald-500/30 cursor-pointer'
-                            : 'bg-[#0b1320] border-[#1e293b] text-[#475569] cursor-not-allowed'
-                        }`}
-                      >
-                        {gDef?.iconBase64 && (
-                          <SpriteCanvasIcon
-                            base64={gDef.iconBase64}
-                            sizeClass="w-3 h-3"
-                          />
-                        )}
-                        +1 LV ({gDef?.name || gemId}: {have})
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Synergy Summary Strip & Active Stat Modifiers */}
-      <div className="rounded-lg border border-[#1e293b] bg-[#0b1320] p-3">
-        <div className="text-[10px] font-bold uppercase tracking-wider text-[#38bdf8] mb-2">
-          §2.2 FEAT SYNERGY RESONANCE &amp; ACTIVE MODIFIERS ({state.equippedFeats.length} SOCKETED)
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 mb-2">
-          {SYNERGY_CATEGORIES.map((cat) => {
-            const count = (state.equippedFeats || []).filter((id) => {
-              const f = FRAME_FEAT_CATALOG.find((item) => item.id === id);
-              return f?.synergyCategory === cat;
-            }).length;
-            return (
-              <div
-                key={cat}
-                className={`rounded border px-2 py-1.5 text-[9px] ${
-                  count > 0
-                    ? 'border-emerald-500/40 bg-emerald-950/20 text-emerald-200'
-                    : 'border-[#1e293b] bg-[#070b12] text-[#64748b]'
-                }`}
+                −
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setZoom(1.0);
+                  setPan({ x: 0, y: 0 });
+                }}
+                className="px-1.5 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#7dd3fc] rounded-xs text-[7.5px] font-bold cursor-pointer"
+                title="Reset Pan & Zoom"
               >
-                <div className="font-bold truncate">{cat.toUpperCase()}</div>
-                <div className="text-[8.5px]">{count} ACTIVE NODES</div>
-              </div>
-            );
-          })}
-        </div>
+                {Math.round(zoom * 100)}% · FIT
+              </button>
+              <button
+                type="button"
+                onClick={() => setZoom((z) => Math.min(2.4, Number((z + 0.2).toFixed(2))))}
+                className="px-1.5 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#e2e8f0] rounded-xs text-[8px] font-bold cursor-pointer"
+                title="Zoom In"
+              >
+                +
+              </button>
+            </div>
 
-        <div className="flex flex-wrap gap-2 text-[9px] text-[#cbd5e1] pt-1 border-t border-[#1e293b]">
-          <span>DMG: {(featMods.damageMult * 100).toFixed(0)}%</span>
-          <span>·</span>
-          <span>HEAT GEN: {(featMods.heatGenMult * 100).toFixed(0)}%</span>
-          <span>·</span>
-          <span>
-            SHIELD Δ:{' '}
-            {featMods.shieldCapDelta >= 0
-              ? `+${featMods.shieldCapDelta}`
-              : featMods.shieldCapDelta}
-          </span>
-          <span>·</span>
-          <span>
-            ARMOR Δ:{' '}
-            {featMods.armorDurabilityDelta >= 0
-              ? `+${featMods.armorDurabilityDelta}`
-              : featMods.armorDurabilityDelta}
-          </span>
-          <span>·</span>
-          <span>SPEED: {(featMods.moveSpeedMult * 100).toFixed(0)}%</span>
-          <span>·</span>
-          <span>CD: {(featMods.cooldownMult * 100).toFixed(0)}%</span>
-        </div>
-      </div>
-
-      {/* Feat Node Socket List */}
-      <div className="space-y-2">
-        <div className="text-[10px] font-bold uppercase tracking-wider text-[#7dd3fc]">
-          FEAT NODES — SOCKET GEMS TO UNLOCK (UNSOCKET REFUNDS GEMS TO INVENTORY)
-        </div>
-
-        {filteredFeats.map((feat) => {
-          const isEquipped = state.equippedFeats.includes(feat.id);
-          const isAvailable = isFeatNodeAvailable(state, feat);
-          const hwCheck = doesPilotMeetFeatEquipmentRequirement(state, feat);
-          const skillDef = PILOT_SKILL_DEFINITIONS.find((s) => s.id === feat.requiredSkillId);
-          const tierCount = getEquippedFeatCountByTier(state, feat.tier);
-          const tierMax = FEAT_TIER_MAX_SLOTS[feat.tier];
-          const isTierFull = !isEquipped && tierCount >= tierMax;
-
-          const hasAllGems = feat.gemSockets.every(
-            (req) => getInventoryGemCount(state, req.gemId) >= req.count
-          );
-
-          return (
-            <div
-              key={feat.id}
-              className={`rounded-lg border p-2.5 transition-colors ${
-                isEquipped
-                  ? hwCheck.met
-                    ? 'border-emerald-400/60 bg-emerald-950/20'
-                    : 'border-amber-400/60 bg-amber-950/20'
-                  : isAvailable && !isTierFull
-                    ? 'border-[#1e293b] bg-[#0b1320]'
-                    : 'border-[#1e293b]/50 bg-[#070b12]/70 opacity-75'
+            <button
+              type="button"
+              onClick={() => setShowBlueprintModal((v) => !v)}
+              className={`px-1.5 py-0.5 rounded-xs text-[7.5px] font-bold border cursor-pointer ${
+                showBlueprintModal
+                  ? 'bg-amber-400 text-[#05070a] border-amber-300'
+                  : 'bg-[#080d16]/90 text-[#94a3b8] border-[#1e293b] hover:text-white'
               }`}
             >
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#1e293b] text-[#7dd3fc]">
-                      TIER {feat.tier} ({tierCount}/{tierMax})
-                    </span>
-                    <span className="text-[10.5px] font-bold text-[#f8fafc] uppercase">
-                      {feat.name}
-                    </span>
-                    {feat.synergyCategory && (
-                      <span className="text-[8.5px] px-1.5 py-0.5 rounded bg-[#0f172a] border border-[#1e293b] text-[#94a3b8]">
-                        {feat.synergyCategory}
-                      </span>
-                    )}
-                    {feat.loadStepUp && (
-                      <span className="text-[8.5px] px-1.5 py-0.5 rounded bg-emerald-950/50 border border-emerald-500/40 text-emerald-300 font-bold">
-                        +{feat.loadStepUp} LOAD STEP
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-[9.5px] text-emerald-300 mt-1">
-                    + {feat.gainDescription}
-                  </div>
-                  <div className="text-[9px] text-amber-300/90 mt-0.5">
-                    − {feat.costDescription}
-                  </div>
-                  <div className="text-[8.5px] text-[#94a3b8] mt-1">
-                    REQ: {skillDef?.name.toUpperCase()} LV {feat.requiredSkillLevel} ·{' '}
-                    <span className={hwCheck.met ? 'text-emerald-300' : 'text-amber-300'}>
-                      {hwCheck.reason}
-                    </span>
-                  </div>
-                </div>
+              {showBlueprintModal ? 'CLOSE REF' : 'REF DIAGRAM'}
+            </button>
+          </div>
 
-                <button
-                  type="button"
-                  disabled={
-                    !isEquipped &&
-                    (!progressionUnlocked || !isAvailable || !hasAllGems || isTierFull)
-                  }
-                  onClick={() => handleToggleFeatSocket(feat.id)}
-                  className={`px-2.5 py-1 rounded text-[9px] font-bold uppercase tracking-wider shrink-0 ${
-                    isEquipped
-                      ? 'bg-amber-500/20 border border-amber-400/60 text-amber-200 hover:bg-amber-500/30 cursor-pointer'
-                      : isTierFull
-                        ? 'bg-[#1e293b] text-amber-400/70 cursor-not-allowed'
-                        : progressionUnlocked && isAvailable && hasAllGems
-                          ? 'bg-emerald-500/20 border border-emerald-400/60 text-emerald-200 hover:bg-emerald-500/30 cursor-pointer'
-                          : 'bg-[#1e293b] text-[#64748b] cursor-not-allowed'
-                  }`}
-                >
-                  {isEquipped
-                    ? 'UNSOCKET (REFUND)'
-                    : isTierFull
-                      ? `TIER ${feat.tier} FULL (${tierCount}/${tierMax})`
-                      : 'SOCKET GEMS'}
-                </button>
-              </div>
-
-              {/* Gem Socket Requirements */}
-              <div className="flex flex-wrap items-center gap-1.5 mt-2 pt-1.5 border-t border-[#1e293b]/70">
-                <span className="text-[8.5px] text-[#64748b] uppercase font-bold">
-                  SOCKET COST:
-                </span>
-                {feat.gemSockets.map((req, idx) => {
-                  const gDef = GEMSTONE_REGISTRY[req.gemId];
-                  const have = getInventoryGemCount(state, req.gemId);
-                  const enough = isEquipped || have >= req.count;
-                  return (
-                    <span
-                      key={`${feat.id}-sock-${idx}`}
-                      className={`inline-flex items-center gap-1 text-[8.5px] px-1.5 py-0.5 rounded border ${
-                        isEquipped
-                          ? 'border-emerald-500/40 bg-emerald-950/30 text-emerald-200'
-                          : enough
-                            ? 'border-cyan-500/40 bg-cyan-950/20 text-cyan-200'
-                            : 'border-rose-500/40 bg-rose-950/20 text-rose-300'
-                      }`}
-                    >
-                      {gDef?.iconBase64 ? (
-                        <SpriteCanvasIcon
-                          base64={gDef.iconBase64}
-                          sizeClass="w-3 h-3 shrink-0"
-                        />
-                      ) : (
-                        <span
-                          className="w-2 h-2 rounded-full inline-block"
-                          style={{ backgroundColor: gDef?.hexColor || '#38bdf8' }}
-                        />
-                      )}
-                      {req.count}× {gDef?.name || req.gemId}
-                      {!isEquipped && ` (${have})`}
-                    </span>
-                  );
-                })}
-              </div>
+          {showBlueprintModal ? (
+            <div className="flex-1 flex flex-col items-center justify-center p-3 bg-[#05080f]">
+              <img
+                src={ORION_HEX_BLUEPRINT_BASE64}
+                alt="6-Finger Hexagonal Feat Grid Blueprint"
+                referrerPolicy="no-referrer"
+                className="max-h-full max-w-full object-contain rounded border border-[#1e293b] bg-white/95 p-1"
+              />
             </div>
-          );
-        })}
+          ) : (
+            /* Interactive Draggable & Zoomable 96-Node Hexagonal Constellation SVG */
+            <svg
+              viewBox={`${vbMinX.toFixed(1)} ${vbMinY.toFixed(1)} ${vbSize.toFixed(1)} ${vbSize.toFixed(1)}`}
+              className="w-full h-full flex-1 select-none cursor-grab active:cursor-grabbing"
+              role="img"
+              aria-label="96-Node 6-Arm Hexagonal Feat Constellation"
+              onWheel={(e) => {
+                e.preventDefault();
+                const delta = e.deltaY < 0 ? 0.16 : -0.16;
+                setZoom((z) => Math.max(0.65, Math.min(2.4, Number((z + delta).toFixed(2)))));
+              }}
+              onPointerDown={(e) => {
+                dragRef.current = {
+                  active: true,
+                  startX: e.clientX,
+                  startY: e.clientY,
+                  origPanX: pan.x,
+                  origPanY: pan.y,
+                  moved: false,
+                };
+              }}
+              onPointerMove={(e) => {
+                if (!dragRef.current.active) return;
+                const dx = e.clientX - dragRef.current.startX;
+                const dy = e.clientY - dragRef.current.startY;
+                if (Math.hypot(dx, dy) > 4) {
+                  dragRef.current.moved = true;
+                }
+                const scaleFactor = (2.1 / zoom);
+                setPan({
+                  x: Math.max(-280, Math.min(280, dragRef.current.origPanX + dx * scaleFactor)),
+                  y: Math.max(-280, Math.min(280, dragRef.current.origPanY + dy * scaleFactor)),
+                });
+              }}
+              onPointerUp={() => {
+                dragRef.current.active = false;
+              }}
+              onPointerLeave={() => {
+                dragRef.current.active = false;
+              }}
+            >
+              {/* Concentric Tier Rings (Tier I..V) */}
+              {FEAT_TIERS.map((tier) => {
+                const r = CONSTELLATION_TIER_RADII[tier];
+                return (
+                  <g key={`ring-${tier}`}>
+                    <circle
+                      cx="0"
+                      cy="0"
+                      r={r}
+                      fill="none"
+                      stroke="#1e293b"
+                      strokeWidth="0.9"
+                      strokeDasharray="4 4"
+                    />
+                    <text
+                      x="0"
+                      y={-r + 8}
+                      textAnchor="middle"
+                      fill="#475569"
+                      fontSize="7"
+                      fontWeight="bold"
+                    >
+                      TIER {tier}
+                    </text>
+                  </g>
+                );
+              })}
+
+              {/* 6 Radial Discipline Spine Guides & Outer Sector Headers */}
+              {CONSTELLATION_DISCIPLINE_ARMS.map((arm) => {
+                const rad = (arm.angleDeg * Math.PI) / 180;
+                const x1 = Math.cos(rad) * 32;
+                const y1 = Math.sin(rad) * 32;
+                const x2 = Math.cos(rad) * 325;
+                const y2 = Math.sin(rad) * 325;
+                const labelX = Math.cos(rad) * 342;
+                const labelY = Math.sin(rad) * 342;
+                return (
+                  <g key={`arm-guide-${arm.skillId}`}>
+                    <line
+                      x1={x1}
+                      y1={y1}
+                      x2={x2}
+                      y2={y2}
+                      stroke={arm.color}
+                      strokeOpacity="0.18"
+                      strokeWidth="1.2"
+                    />
+                    <text
+                      x={labelX}
+                      y={labelY}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      fill={arm.color}
+                      fontSize="8.5"
+                      fontWeight="bold"
+                    >
+                      {arm.compassCode} · {arm.skillId.toUpperCase()}
+                    </text>
+                  </g>
+                );
+              })}
+
+              {/* Directed Constellation Edges Connecting Prerequisite & Tier Nodes */}
+              {FEAT_CONSTELLATION_EDGES.map((edge, idx) => {
+                const fromNode = nodeById.get(edge.fromFeatId);
+                const toNode = nodeById.get(edge.toFeatId);
+                if (!fromNode || !toNode) return null;
+                const bothEquipped = fromNode.isEquipped && toNode.isEquipped;
+                const touchesSelected =
+                  selectedNode.feat.id === fromNode.feat.id ||
+                  selectedNode.feat.id === toNode.feat.id;
+                const dimmed = !fromNode.isHighlighted && !toNode.isHighlighted;
+
+                return (
+                  <line
+                    key={`edge-${idx}`}
+                    x1={fromNode.x}
+                    y1={fromNode.y}
+                    x2={toNode.x}
+                    y2={toNode.y}
+                    stroke={
+                      touchesSelected
+                        ? '#fde047'
+                        : bothEquipped
+                          ? edge.color
+                          : '#1e293b'
+                    }
+                    strokeWidth={touchesSelected ? '1.8' : bothEquipped ? '1.5' : '0.85'}
+                    strokeOpacity={dimmed ? 0.15 : touchesSelected ? 0.95 : bothEquipped ? 0.85 : 0.45}
+                    strokeDasharray={edge.kind === 'bridge' ? '2 2' : undefined}
+                  />
+                );
+              })}
+
+              {/* Render All 96 Feat Hex Nodes */}
+              {enrichedNodes.map((node) => {
+                const isSelected = selectedNode.feat.id === node.feat.id;
+                const hexR = node.isCoreNode ? 18 : isSelected ? 14.5 : 12;
+                const fill = node.isEquipped
+                  ? node.armColor
+                  : isSelected
+                    ? '#1e3a8a'
+                    : node.canSocketNow
+                      ? '#0f291e'
+                      : node.isAvailable
+                        ? '#111c2d'
+                        : '#070b12';
+                const stroke = isSelected
+                  ? '#fde047'
+                  : node.isEquipped
+                    ? '#ffffff'
+                    : node.canSocketNow
+                      ? '#4ade80'
+                      : node.handlingRole === 'prerequisite'
+                        ? node.armColor
+                        : '#334155';
+
+                return (
+                  <g
+                    key={node.feat.id}
+                    transform={`translate(${node.x}, ${node.y})`}
+                    onClick={() => {
+                      if (dragRef.current.moved) return;
+                      soundSystem.playSelect();
+                      setSelectedFeatId(node.feat.id);
+                    }}
+                    className="cursor-pointer"
+                    opacity={node.isHighlighted || isSelected ? 1 : 0.22}
+                  >
+                    {/* Outer selection or prerequisite halo */}
+                    {(isSelected || node.handlingRole === 'prerequisite') && (
+                      <polygon
+                        points={getHexPolygonPoints(0, 0, hexR + 2.8)}
+                        fill="none"
+                        stroke={isSelected ? '#fde047' : node.armColor}
+                        strokeWidth={isSelected ? '1.6' : '0.8'}
+                        strokeOpacity={isSelected ? 0.95 : 0.55}
+                      />
+                    )}
+
+                    {/* Main Hex Cell */}
+                    <polygon
+                      points={getHexPolygonPoints(0, 0, hexR)}
+                      fill={fill}
+                      stroke={stroke}
+                      strokeWidth={isSelected ? '2' : node.isEquipped ? '1.5' : '1'}
+                    />
+
+                    {/* Tier Numeral or Core Star */}
+                    <text
+                      x="0"
+                      y={node.handlingRole === 'prerequisite' ? '0.5' : '2.5'}
+                      textAnchor="middle"
+                      fill={
+                        node.isEquipped
+                          ? '#020617'
+                          : isSelected
+                            ? '#fef08a'
+                            : '#f8fafc'
+                      }
+                      fontSize={node.isCoreNode ? '8' : '6.8'}
+                      fontWeight="bold"
+                    >
+                      {node.isCoreNode ? 'CORE' : node.tier}
+                    </text>
+
+                    {/* Equipment Prerequisite / Load Step Sub-tag inside hex */}
+                    {node.handlingRole === 'prerequisite' && !node.isCoreNode && (
+                      <text
+                        x="0"
+                        y="6.8"
+                        textAnchor="middle"
+                        fill={node.isEquipped ? '#020617' : '#fde047'}
+                        fontSize="4.5"
+                        fontWeight="bold"
+                      >
+                        {node.feat.loadStepUp ? `+${node.feat.loadStepUp}LD` : 'EQP'}
+                      </text>
+                    )}
+
+                    {/* Show Feat Name label when selected or zoomed in */}
+                    {(isSelected || zoom >= 1.35) && (
+                      <text
+                        x="0"
+                        y={hexR + 8}
+                        textAnchor="middle"
+                        fill={isSelected ? '#fde047' : '#cbd5e1'}
+                        fontSize="5.8"
+                        fontWeight="bold"
+                      >
+                        {node.feat.name.length > 18
+                          ? `${node.feat.name.slice(0, 16)}..`
+                          : node.feat.name}
+                      </text>
+                    )}
+                  </g>
+                );
+              })}
+            </svg>
+          )}
+        </div>
+
+        {/* RIGHT PANE (5 Columns, Single Vertical Scroll): Selected Feat Node & Equipment Handling Inspector */}
+        <div className="col-span-5 min-h-0 flex flex-col bg-[#080d16] border border-[#1e293b] rounded-xs p-2 overflow-y-auto space-y-2">
+          {/* Prev / Next Node Stepper */}
+          <div className="flex items-center justify-between gap-1 pb-1.5 border-b border-[#1e293b] shrink-0">
+            <button
+              type="button"
+              onClick={() => handleCycleNode(-1)}
+              className="px-2 py-0.5 rounded-xs bg-[#0f172a] hover:bg-[#1e293b] border border-[#334155] text-[8px] font-bold text-[#38bdf8] cursor-pointer"
+            >
+              ◀ PREV
+            </button>
+            <span className="text-[8px] font-bold text-[#94a3b8] tabular-nums">
+              NODE #{selectedNode.index + 1} / {enrichedNodes.length} · {selectedNode.compassCode}
+            </span>
+            <button
+              type="button"
+              onClick={() => handleCycleNode(1)}
+              className="px-2 py-0.5 rounded-xs bg-[#0f172a] hover:bg-[#1e293b] border border-[#334155] text-[8px] font-bold text-[#38bdf8] cursor-pointer"
+            >
+              NEXT ▶
+            </button>
+          </div>
+
+          {/* Selected Feat Header */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between gap-1 flex-wrap">
+              <span
+                className="text-[8px] font-bold uppercase"
+                style={{ color: selectedNode.armColor }}
+              >
+                {selectedNode.skillId.toUpperCase()} · TIER {selectedNode.tier} (
+                {selectedTierUsed}/{selectedTierCap} SLOTS)
+              </span>
+              <span
+                className={`text-[7.5px] font-bold px-1.5 py-0.5 rounded-xs ${
+                  selectedNode.isEquipped
+                    ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-500/50'
+                    : selectedNode.canSocketNow
+                      ? 'bg-cyan-950/60 text-cyan-200 border border-cyan-500/50'
+                      : 'bg-[#0f172a] text-[#94a3b8] border border-[#1e293b]'
+                }`}
+              >
+                {selectedNode.isEquipped
+                  ? 'SOCKETED & ACTIVE'
+                  : selectedNode.canSocketNow
+                    ? 'READY TO SOCKET'
+                    : 'LOCKED / UNSOCKETED'}
+              </span>
+            </div>
+
+            <div className="text-[11px] font-bold text-[#f8fafc] uppercase leading-tight">
+              {selectedNode.feat.name}
+            </div>
+
+            <div className="text-[8px] text-[#94a3b8]">
+              SKILL PREREQ:{' '}
+              <b
+                className={
+                  selectedSkillLevel >= selectedNode.feat.requiredSkillLevel
+                    ? 'text-emerald-300'
+                    : 'text-amber-300'
+                }
+              >
+                {selectedSkillDef?.name || selectedNode.skillId} LV{' '}
+                {selectedNode.feat.requiredSkillLevel} (CURRENT: LV {selectedSkillLevel})
+              </b>
+            </div>
+          </div>
+
+          {/* Equipment Handling & Prerequisite Unlocks Box */}
+          <div className="p-2 rounded-xs bg-[#05080f] border border-[#1e293b] space-y-1">
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-[8px] font-bold text-[#fde047] uppercase">
+                {selectedNode.handlingRole === 'prerequisite'
+                  ? '★ EQUIPMENT PREREQUISITE UNLOCK'
+                  : '⚙ EQUIPMENT HANDLING PROFICIENCY'}
+              </span>
+              {selectedNode.feat.loadStepUp && (
+                <span className="text-[7.5px] font-bold text-emerald-300">
+                  +{selectedNode.feat.loadStepUp} LOAD STEP (+22 WT)
+                </span>
+              )}
+            </div>
+            <div className="text-[8.5px] text-[#e2e8f0] leading-snug">
+              {selectedNode.handlingSummary}
+            </div>
+            <div className="text-[7.5px] text-[#94a3b8]">
+              AFFECTED GEAR:{' '}
+              <span className="text-[#7dd3fc]">
+                {selectedNode.targetEquipmentClasses.join(' · ')}
+              </span>
+            </div>
+            <div className="text-[7.5px] pt-0.5 border-t border-[#1e293b]/70">
+              LOADOUT CHECK:{' '}
+              <span
+                className={
+                  selectedNode.hwCheck.met ? 'text-emerald-300 font-bold' : 'text-amber-300'
+                }
+              >
+                {selectedNode.hwCheck.reason} ({selectedNode.hwCheck.met ? 'MET' : 'UNMET'})
+              </span>
+            </div>
+          </div>
+
+          {/* Combat Effect & Trade-Off */}
+          <div className="p-2 rounded-xs bg-[#05080f] border border-[#1e293b] space-y-1">
+            <div className="text-[8.5px] text-emerald-300 leading-snug">
+              + {selectedNode.feat.gainDescription}
+            </div>
+            <div className="text-[8px] text-amber-300/90 leading-snug">
+              − {selectedNode.feat.costDescription}
+            </div>
+          </div>
+
+          {/* Gemstone Socket Requirements */}
+          <div className="space-y-1">
+            <div className="text-[8px] font-bold text-[#94a3b8] uppercase">
+              GEM SOCKET REQUIREMENTS (REFUNDED ON UNSOCKET):
+            </div>
+            <div className="flex flex-wrap items-center gap-1">
+              {selectedNode.feat.gemSockets.map((req, idx) => {
+                const gDef = GEMSTONE_REGISTRY[req.gemId];
+                const have = getInventoryGemCount(state, req.gemId);
+                const enough = selectedNode.isEquipped || have >= req.count;
+                return (
+                  <span
+                    key={`${selectedNode.feat.id}-sock-${idx}`}
+                    className={`inline-flex items-center gap-1 text-[8px] px-1.5 py-0.5 rounded-xs border tabular-nums ${
+                      selectedNode.isEquipped
+                        ? 'border-emerald-500/40 bg-emerald-950/30 text-emerald-200'
+                        : enough
+                          ? 'border-cyan-500/40 bg-cyan-950/25 text-cyan-200'
+                          : 'border-rose-500/40 bg-rose-950/25 text-rose-300'
+                    }`}
+                  >
+                    {gDef?.iconBase64 && (
+                      <SpriteCanvasIcon
+                        base64={gDef.iconBase64}
+                        sizeClass="w-3 h-3 shrink-0"
+                      />
+                    )}
+                    {req.count}× {gDef?.name || req.gemId}
+                    {!selectedNode.isEquipped && ` (HAVE ${have})`}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Primary Action Button: Socket / Unsocket */}
+          <button
+            type="button"
+            disabled={
+              !selectedNode.isEquipped &&
+              (!progressionUnlocked ||
+                !selectedNode.isAvailable ||
+                !selectedNode.hasAllGems ||
+                selectedNode.isTierFull)
+            }
+            onClick={() => handleToggleFeatSocket(selectedNode.feat.id)}
+            className={`w-full py-1.5 px-2.5 rounded-xs text-[9px] font-bold uppercase tracking-wider transition-colors shrink-0 ${
+              selectedNode.isEquipped
+                ? 'bg-amber-500/20 border border-amber-400/70 text-amber-200 hover:bg-amber-500/30 cursor-pointer'
+                : selectedNode.isTierFull
+                  ? 'bg-[#1e293b] text-amber-400/70 border border-amber-500/30 cursor-not-allowed'
+                  : selectedNode.canSocketNow
+                    ? 'bg-emerald-500/25 border border-emerald-400/70 text-emerald-200 hover:bg-emerald-500/35 cursor-pointer'
+                    : 'bg-[#1e293b] text-[#64748b] border border-[#334155] cursor-not-allowed'
+            }`}
+          >
+            {selectedNode.isEquipped
+              ? 'UNSOCKET FEAT NODE (REFUND GEMS)'
+              : selectedNode.isTierFull
+                ? `TIER ${selectedNode.tier} SLOTS FULL (${selectedTierUsed}/${selectedTierCap})`
+                : !progressionUnlocked
+                  ? 'UNLOCKS AT LEVEL 6 (OR CHEAT MODE)'
+                  : !selectedNode.isAvailable
+                    ? `REQUIRES ${selectedNode.skillId.toUpperCase()} LV ${selectedNode.feat.requiredSkillLevel}`
+                    : !selectedNode.hasAllGems
+                      ? 'MISSING REQUIRED GEMSTONES'
+                      : 'SOCKET GEMS INTO FEAT NODE'}
+          </button>
+
+          {/* Compact Total Active Modifiers Footer */}
+          <div className="pt-1.5 border-t border-[#1e293b] text-[7.5px] text-[#94a3b8] space-y-0.5">
+            <div className="font-bold text-[#7dd3fc]">
+              ACTIVE CONSTELLATION RESONANCE ({state.equippedFeats.length} SOCKETED):
+            </div>
+            <div className="tabular-nums">
+              DMG {(featMods.damageMult * 100).toFixed(0)}% · HEAT{' '}
+              {(featMods.heatGenMult * 100).toFixed(0)}% · SHD{' '}
+              {featMods.shieldCapDelta >= 0
+                ? `+${featMods.shieldCapDelta}`
+                : featMods.shieldCapDelta}{' '}
+              · ARM{' '}
+              {featMods.armorDurabilityDelta >= 0
+                ? `+${featMods.armorDurabilityDelta}`
+                : featMods.armorDurabilityDelta}{' '}
+              · SPD {(featMods.moveSpeedMult * 100).toFixed(0)}% · CD{' '}
+              {(featMods.cooldownMult * 100).toFixed(0)}%
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

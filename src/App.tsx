@@ -5,6 +5,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { initializeCartridges } from './cartridges';
+import {
+  getOrionGraphicsSettings,
+  subscribeOrionGraphicsSettings,
+  updateOrionGraphicsSettings,
+} from './cartridges/orion/systems/graphicsSettingsStore';
 import { VirtualGamepad } from './components/gamepad/VirtualGamepad';
 import { ScreenViewport } from './components/screen/ScreenViewport';
 import { cartridgeRunner } from './engine/core/cartridgeRunner';
@@ -36,7 +41,9 @@ export default function App() {
   const [activeCartridgeName, setActiveCartridgeName] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [scanlinesEnabled, setScanlinesEnabled] = useState(false);
+  const [scanlinesEnabled, setScanlinesEnabled] = useState(
+    () => getOrionGraphicsSettings().scanlinesEnabled
+  );
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [connectedGamepads, setConnectedGamepads] = useState<string[]>(() =>
     hardwareGamepad.getConnectedNames()
@@ -62,12 +69,19 @@ export default function App() {
     shellStateMachine.getScreenContent()
   );
 
-  // Sync fullscreen state
+  // Sync fullscreen state & graphics scanlines state
   useEffect(() => {
     setIsFullscreen(isAppFullscreen());
-    return subscribeFullscreenChange((fs) => {
+    const unsubFs = subscribeFullscreenChange((fs) => {
       setIsFullscreen(fs);
     });
+    const unsubGfx = subscribeOrionGraphicsSettings((gfx) => {
+      setScanlinesEnabled(gfx.scanlinesEnabled);
+    });
+    return () => {
+      unsubFs();
+      unsubGfx();
+    };
   }, []);
 
   // Listen to physical hardware gamepad connections and display retro toasts
@@ -282,7 +296,11 @@ export default function App() {
   };
 
   const handleToggleScanlines = () => {
-    setScanlinesEnabled((prev) => !prev);
+    setScanlinesEnabled((prev) => {
+      const next = !prev;
+      updateOrionGraphicsSettings({ scanlinesEnabled: next });
+      return next;
+    });
   };
 
   const handleLineClick = (index: number) => {

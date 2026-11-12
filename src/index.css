@@ -65,3 +65,23 @@ body {
   z-index: 5;
 }
 
+/* Slim, non-overlapping tactical scrollbars inside menus */
+[data-universal-menu="true"] * {
+  scrollbar-width: thin;
+  scrollbar-color: #334155 transparent;
+}
+
+[data-universal-menu="true"] *::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+[data-universal-menu="true"] *::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+[data-universal-menu="true"] *::-webkit-scrollbar-thumb {
+  background-color: #334155;
+  border-radius: 2px;
+}
+

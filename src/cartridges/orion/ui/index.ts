@@ -6,3 +6,4 @@
 export * from './OrionGameMenu';
 export * from './OrionSatchel';
 export * from './OrionHud';
+export * from './settings/OrionSettingsPanel';

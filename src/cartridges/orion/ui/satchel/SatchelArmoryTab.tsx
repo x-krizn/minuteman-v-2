@@ -12,11 +12,13 @@ import {
 import {
   acquireAdditionalWeaponCopy,
   ACTION_MODIFICATION_CATALOG,
+  CANONICAL_FRAME_FEAT_REGISTRY,
   CanonicalHardwareItemDefinition,
   CHASSIS_HARDWARE_CATALOG,
   computePlayerLoadMetrics,
   CRAFTED_SUBMODULE_HARDWARE,
   createInitialEquipmentSlots,
+  evaluateEquipmentFeatHandling,
   findHardwareItemByNameOrId,
   formatModifiedEquipmentName,
   GEMSTONE_CATALOG,
@@ -75,6 +77,7 @@ export interface SatchelArmoryTabProps {
   initialFocusSlot?: EditableLoadoutSlot | null;
   initialFocusItemId?: string | null;
   onReturnToLoadout?: () => void;
+  onLocateFeat?: (featId: string) => void;
 }
 
 /**
@@ -91,6 +94,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
   initialFocusSlot,
   initialFocusItemId,
   onReturnToLoadout,
+  onLocateFeat,
 }) => {
   const [category, setCategory] = useState<ArmoryWorkbenchCategory>('weapons');
   const [selectedWeaponInstanceId, setSelectedWeaponInstanceId] = useState<string>(() => {
@@ -797,7 +801,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                 ))}
               </div>
             </div>
-            <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto pr-1">
+            <div className="flex flex-wrap gap-1">
               {ownedWeaponInstances
                 .filter(
                   ({ baseW }) =>
@@ -906,6 +910,46 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
               </div>
 
               <div className="text-[8px] text-[#cbd5e1]">{activeWeaponDef.description}</div>
+
+              {/* Feat Handling & Prerequisite Status Banner */}
+              {(() => {
+                const handlingEval = evaluateEquipmentFeatHandling(state, activeWeaponDef.id);
+                const recFeat = handlingEval.recommendedFeatId
+                  ? CANONICAL_FRAME_FEAT_REGISTRY[handlingEval.recommendedFeatId]
+                  : undefined;
+                return (
+                  <div className="p-1.5 bg-[#05070a] rounded-xs border border-[#1e293b] flex flex-wrap items-center justify-between gap-1.5 text-[7.5px]">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span
+                        className={`px-1.5 py-0.2 rounded-[2px] font-bold border ${
+                          handlingEval.proficiencyTier === 'mastered'
+                            ? 'bg-[#052e16] text-[#86efac] border-[#22c55e]/50'
+                            : handlingEval.proficiencyTier === 'proficient'
+                              ? 'bg-[#0c4a6e] text-[#7dd3fc] border-[#38bdf8]/50'
+                              : handlingEval.proficiencyTier === 'locked'
+                                ? 'bg-[#450a0a] text-[#fca5a5] border-[#ef4444]/60'
+                                : 'bg-[#1e293b] text-[#cbd5e1] border-[#334155]'
+                        }`}
+                      >
+                        {handlingEval.badgeLabel}
+                      </span>
+                      <span className="text-[#94a3b8]">{handlingEval.statusSummary}</span>
+                    </div>
+                    {recFeat && onLocateFeat && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          soundSystem.playSelect();
+                          onLocateFeat(recFeat.id);
+                        }}
+                        className="px-1.5 py-0.5 rounded-xs bg-[#1e1b4b] hover:bg-[#312e81] text-[#e9d5ff] border border-[#818cf8]/50 font-bold text-[7px] cursor-pointer shrink-0"
+                      >
+                        FEAT GRID: {recFeat.name.toUpperCase()} →
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Canonical Moveset & Modifiers Summary */}
               {(() => {

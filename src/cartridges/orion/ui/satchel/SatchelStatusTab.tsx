@@ -8,10 +8,11 @@ import { soundSystem } from '../../../../engine/core/soundSystem';
 import { TRAIT_REGISTRY } from '../../database/characters';
 import { getItemDefinition } from '../../database/items';
 import {
+  CANONICAL_FRAME_FEAT_REGISTRY,
   computeEffectivePlayerLightTiles,
   computePlayerLightStatBreakdown,
   computePlayerLoadMetrics,
-  getEffectiveMainGrip,
+  evaluateEquipmentFeatHandling,
   getEquipmentDisplayName,
 } from '../../database/progression';
 import { getWeaponDefinition } from '../../database/equipment/weapons';
@@ -27,6 +28,7 @@ import {
   syncStateGates,
 } from '../../systems';
 import { OrionState } from '../../types';
+import { enterTrainingSandboxRoom } from '../hud/HudTitleModal';
 import { ALL_TRAIT_LINES } from './SatchelCanvases';
 
 /**
@@ -35,14 +37,22 @@ import { ALL_TRAIT_LINES } from './SatchelCanvases';
 export interface SatchelStatusTabProps {
   state: OrionState;
   isCheatMode: boolean;
+  onResume?: () => void;
+  onLocateFeat?: (featId: string) => void;
 }
 
 /**
  * Pilot Satchel Status Tab displaying defense layer breakdowns, inertia telemetry,
- * and Main Hand (Right), Side Hand (Left), and Auxiliary (Back) progression status.
+ * equipment handling proficiency from the 96-feat constellation, and Main Hand (Right),
+ * Side Hand (Left), and Auxiliary (Back) progression status.
  * Supports both HUD modes inside the Pilot Satchel overlay. Mutates `state: OrionState` only via debug/light adjustments.
  */
-export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({ state, isCheatMode }) => {
+export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
+  state,
+  isCheatMode,
+  onResume,
+  onLocateFeat,
+}) => {
   const gates = syncStateGates(state);
   const currentWeaponId = state.equippedWeapons[state.activeWeaponIndex] || 'gladius_boltcaster';
   const trait = TRAIT_REGISTRY[state.traitLine] || TRAIT_REGISTRY.Warrior;
@@ -56,13 +66,59 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({ state, isChe
   const lanternLit = hasPoeLanternGuidance(state);
   const loadMetrics = computePlayerLoadMetrics(state);
 
+  const equippedSlotSummaries = [
+    {
+      slotLabel: 'MAIN HAND [R]',
+      itemId: state.equipmentSlots?.slot1 || state.equippedWeapons[0] || 'long_sword',
+    },
+    {
+      slotLabel: 'SIDE HAND [L]',
+      itemId: state.equipmentSlots?.slot2 || null,
+    },
+    {
+      slotLabel: 'AUXILIARY [BACK]',
+      itemId: state.equipmentSlots?.slot3 || null,
+    },
+    {
+      slotLabel: 'TORSO PLATING',
+      itemId: state.equipmentSlots?.plating || null,
+    },
+    {
+      slotLabel: 'HEAD DOME',
+      itemId: state.equipmentSlots?.head || null,
+    },
+    {
+      slotLabel: 'ARM APERTURE',
+      itemId: state.equipmentSlots?.arms || null,
+    },
+  ];
+
   return (
-    <div className="flex-1 overflow-y-auto space-y-2 pr-0.5 text-[10px]">
+    <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1 text-[10px]">
       {/* Defense Layers Breakdown */}
       <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">
-        <div className="text-[#ffd27d] font-bold text-[11px] flex justify-between">
+        <div className="text-[#ffd27d] font-bold text-[10.5px] flex flex-wrap items-center justify-between gap-1">
           <span>CANONICAL THREE DEFENSE LAYERS</span>
-          <span className="text-[#94a3b8]">LEVEL {state.level} / 20</span>
+          <div className="flex items-center gap-2">
+            <span className="text-[#94a3b8] text-[9px]">
+              CLVL {state.level} / 20 ({gates.levelBand.toUpperCase()})
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                enterTrainingSandboxRoom(state);
+                onResume?.();
+              }}
+              title="Toggle [-4,0] Training Room (Drop Pod & Waygate Sandbox)"
+              className={`px-2 py-0.5 text-[8px] font-bold rounded-xs border transition-colors cursor-pointer ${
+                state.room === '-4,0'
+                  ? 'bg-[#4c1d95] hover:bg-[#5b21b6] text-[#f0abfc] border-[#a855f7]'
+                  : 'bg-[#0f172a] hover:bg-[#1e293b] text-[#93c5fd] border-[#3b82f6]/70'
+              }`}
+            >
+              {state.room === '-4,0' ? '↩ EXIT TRAINING [-4,0]' : '⚔ TRAINING ROOM [-4,0]'}
+            </button>
+          </div>
         </div>
 
         {/* Layer 1: Shield */}
@@ -483,98 +539,83 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({ state, isChe
         </div>
       </div>
 
-      {/* §4.4 Simplified Equipment & Hardware System */}
+      {/* §4.4 Equipment Slots 1–3 & Feat Handling Proficiency Summary */}
       <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-1">
           <span className="font-bold text-[#38bdf8] text-[10px]">
-            EQUIPMENT SLOTS 1–3 & SIMPLIFIED CHASSIS:
+            EQUIPPED HARDWARE &amp; FEAT HANDLING PROFICIENCY (96-NODE CONSTELLATION):
           </span>
           <span className="text-[8px] text-[#94a3b8]">
-            BAND: <b className="text-[#c084fc]">{gates.levelBand.toUpperCase()}</b>
+            STANCE: <b className="text-[#fde047]">{getActiveWeaponStance(state).shortTag}</b> · BAND:{' '}
+            <b className="text-[#c084fc]">{gates.levelBand.toUpperCase()}</b>
           </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 text-[8px]">
-          <div className="p-1 bg-[#0f172a] rounded-xs border border-[#ffd27d]/40">
-            <div className="flex justify-between font-bold text-[#ffd27d]">
-              <span>MAIN HAND (RIGHT)</span>
-              <span className="text-[#86efac]">
-                {getEffectiveMainGrip(state) === '2h' ? 'AC1–AC5 (2H)' : 'AC1, AC2, AC3'}
-              </span>
-            </div>
-            <div className="text-[#cbd5e1] truncate mt-0.5">
-              {
-                getWeaponDefinition(
-                  state.equipmentSlots?.slot1 || state.equippedWeapons[0] || 'gladius_boltcaster'
-                )?.name
-              }
-              {getEffectiveMainGrip(state) === '2h' ? ' (2H)' : ' (1H)'}
-            </div>
-            <div className="text-[7px] text-[#94a3b8]">
-              Right Hand · Stance: {getActiveWeaponStance(state).shortTag}
-            </div>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[8px]">
+          {equippedSlotSummaries.map((slotItem) => {
+            const evalRes = evaluateEquipmentFeatHandling(state, slotItem.itemId);
+            const displayName = slotItem.itemId
+              ? getWeaponDefinition(slotItem.itemId)?.name ||
+                getItemDefinition(slotItem.itemId)?.name ||
+                getEquipmentDisplayName(slotItem.itemId)
+              : 'Empty Slot';
+            const recFeat = evalRes.recommendedFeatId
+              ? CANONICAL_FRAME_FEAT_REGISTRY[evalRes.recommendedFeatId]
+              : undefined;
 
-          <div className="p-1 bg-[#0f172a] rounded-xs border border-[#38bdf8]/40">
-            <div className="flex justify-between font-bold text-[#38bdf8]">
-              <span>SIDE HAND (LEFT)</span>
-              <span className="text-[#86efac]">AC4, AC5</span>
-            </div>
-            <div className="text-[#cbd5e1] truncate mt-0.5">
-              {getEffectiveMainGrip(state) === '2h' &&
-              state.equipmentSlots?.slot2 === state.equipmentSlots?.slot1
-                ? `${getWeaponDefinition(state.equipmentSlots?.slot1 || '')?.name} (2H)`
-                : getWeaponDefinition(state.equipmentSlots?.slot2 || '')?.name ||
-                  getItemDefinition(state.equipmentSlots?.slot2 || '')?.name ||
-                  (state.equipmentSlots?.slot2 ? state.equipmentSlots.slot2 : '—')}
-            </div>
-            <div className="text-[7px] text-[#94a3b8]">
-              Left Hand · {getActiveWeaponStance(state).label}
-            </div>
-          </div>
+            return (
+              <div
+                key={slotItem.slotLabel}
+                className="p-1.5 bg-[#0f172a] rounded-xs border border-[#1e293b] flex flex-col justify-between gap-1"
+              >
+                <div className="flex items-center justify-between gap-1">
+                  <span className="font-bold text-[#7dd3fc] text-[7.5px]">
+                    {slotItem.slotLabel}
+                  </span>
+                  {slotItem.itemId && (
+                    <span
+                      className={`px-1 py-0.2 rounded-[2px] text-[6.8px] font-bold border ${
+                        evalRes.proficiencyTier === 'mastered'
+                          ? 'bg-[#052e16] text-[#86efac] border-[#22c55e]/50'
+                          : evalRes.proficiencyTier === 'proficient'
+                            ? 'bg-[#0c4a6e] text-[#7dd3fc] border-[#38bdf8]/50'
+                            : evalRes.proficiencyTier === 'locked'
+                              ? 'bg-[#450a0a] text-[#fca5a5] border-[#ef4444]/60'
+                              : 'bg-[#1e293b] text-[#cbd5e1] border-[#334155]'
+                      }`}
+                    >
+                      {evalRes.badgeLabel}
+                    </span>
+                  )}
+                </div>
 
-          <div className="p-1 bg-[#0f172a] rounded-xs border border-[#c084fc]/40">
-            <div className="flex justify-between font-bold text-[#c084fc]">
-              <span>AUXILIARY (BACK)</span>
-              <span className="text-[#86efac]">HOLD [L] SIDE⇄AUX</span>
-            </div>
-            <div className="text-[#cbd5e1] truncate mt-0.5">
-              {getWeaponDefinition(state.equipmentSlots?.slot3 || '')?.name ||
-                getItemDefinition(state.equipmentSlots?.slot3 || '')?.name ||
-                (state.equipmentSlots?.slot3 ? state.equipmentSlots.slot3 : '—')}
-            </div>
-            <div className="text-[7px] text-[#94a3b8]">
-              Back Mount · Swaps with Side Hand via [L]
-            </div>
-          </div>
+                <div className="font-bold text-[#f8fafc] text-[8.5px] truncate">{displayName}</div>
+                {slotItem.itemId && (
+                  <div className="text-[7px] text-[#94a3b8] leading-snug">
+                    {evalRes.statusSummary}
+                  </div>
+                )}
 
-          <div className="p-1 bg-[#0f172a] rounded-xs border border-[#1e293b]">
-            <div className="flex justify-between font-bold text-[#4ade80]">
-              <span>CHASSIS HARDWARE (4)</span>
-              <span className="text-[#38bdf8]">ARMOR</span>
-            </div>
-            <div className="text-[#94a3b8] truncate mt-0.5">Head · Arms · Legs · Frame Plating</div>
-          </div>
-
-          <div className="p-1 bg-[#0f172a] rounded-xs border border-[#1e293b]">
-            <div className="flex justify-between font-bold text-[#38bdf8]">
-              <span>REACTOR & SENSORY (3)</span>
-              <span className="text-[#86efac]">MODS 1–3</span>
-            </div>
-            <div className="text-[#cbd5e1] truncate mt-0.5">
-              {getEquipmentDisplayName(state.equipmentSlots?.reactorCore || state.reactor)}
-            </div>
-          </div>
-
-          <div className="p-1 bg-[#0f172a] rounded-xs border border-[#1e293b]">
-            <div className="flex justify-between font-bold text-[#e2e8f0]">
-              <span>CONTROLS ENGINE</span>
-              <span className="text-[#86efac]">AC1–AC5</span>
-            </div>
-            <div className="text-[#94a3b8] truncate mt-0.5">
-              X: ac1 · Y: ac2/ac4 · R: ac3/ac5 · L: Lock/Swap
-            </div>
-          </div>
+                {slotItem.itemId && recFeat && onLocateFeat && (
+                  <div className="flex items-center justify-between gap-1 pt-0.5 border-t border-[#1e293b]">
+                    <span className="text-[6.8px] text-[#c084fc] truncate">
+                      Feat: <b>{recFeat.name}</b> ({recFeat.tier})
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        soundSystem.playSelect();
+                        onLocateFeat(recFeat.id);
+                      }}
+                      className="px-1.5 py-0.2 rounded-[2px] bg-[#1e1b4b] hover:bg-[#312e81] text-[#e9d5ff] border border-[#818cf8]/50 text-[6.8px] font-bold cursor-pointer shrink-0"
+                    >
+                      VIEW IN FEAT GRID →
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

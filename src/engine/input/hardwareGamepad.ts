@@ -6,6 +6,8 @@
 import { ButtonKey } from '../../types/input';
 import { gamepadStore } from './gamepadStore';
 import {
+  DEFAULT_CONTROL_BINDINGS,
+  formatCompactGamepadButtonLabel,
   getControlBindings,
   isInputCaptureActive,
   resolveGamepadIndexToButton,
@@ -172,6 +174,7 @@ export class HardwareGamepadManager {
 
     let foundActive = false;
     const currentHardwareButtons: Set<ButtonKey> = new Set();
+    const hardwareButtonLabels: Partial<Record<ButtonKey, string>> = {};
     let stickX = 0;
     let stickY = 0;
     const currentNames: string[] = [];
@@ -202,6 +205,9 @@ export class HardwareGamepadManager {
           const mappedKey = resolveGamepadIndexToButton(index);
           if (mappedKey && isPressed) {
             currentHardwareButtons.add(mappedKey);
+            if (DEFAULT_CONTROL_BINDINGS.gamepad[mappedKey] !== index) {
+              hardwareButtonLabels[mappedKey] = formatCompactGamepadButtonLabel(index);
+            }
           }
         });
       }
@@ -300,7 +306,7 @@ export class HardwareGamepadManager {
 
     // 3. Sync Buttons to gamepadStore using 'hardware' source
     currentHardwareButtons.forEach((btn) => {
-      gamepadStore.setButtonState(btn, true, false, 'hardware');
+      gamepadStore.setButtonState(btn, true, false, 'hardware', hardwareButtonLabels[btn]);
     });
 
     this.prevHardwareButtons.forEach((btn) => {

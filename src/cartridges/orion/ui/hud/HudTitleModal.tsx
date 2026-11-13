@@ -328,7 +328,9 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
         <div
           key={`title-subview-${subView}`}
           data-menu-scope="true"
-          className="relative z-10 flex-1 flex flex-col justify-between p-2.5 sm:p-3.5 overflow-y-auto"
+          className={`relative z-10 flex-1 min-h-0 flex flex-col justify-between p-2.5 sm:p-3.5 ${
+            subView === 'options' ? 'overflow-hidden' : 'overflow-y-auto'
+          }`}
         >
           {/* Subview Top Bar */}
           <div className="border-b border-[#334155] pb-2 mb-2 flex items-center justify-between gap-2">

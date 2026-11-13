@@ -10,6 +10,7 @@ import {
   hardwareGamepad,
 } from '../../../../engine/input/hardwareGamepad';
 import {
+  clearKeyboardSecondaryBinding,
   CONTROL_ACTION_DEFINITIONS,
   ControlBindingsConfig,
   formatGamepadButtonLabel,
@@ -23,10 +24,14 @@ import {
   setGamepadVibrationEnabled,
   setInputCaptureActive,
   setKeyboardBinding,
+  setVirtualGamepadLayout,
   startGamepadCaptureSession,
   startKeyboardCaptureSession,
   subscribeControlBindings,
+  VirtualGamepadLayoutMode,
 } from '../../../../engine/input/inputBindingsStore';
+import { gamepadStore } from '../../../../engine/input/gamepadStore';
+import { keyboardMapper } from '../../../../engine/input/keyboardMapper';
 import { ButtonKey } from '../../../../types/input';
 import {
   isAppFullscreen,
@@ -82,7 +87,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
   isFullscreen,
   connectedGamepads,
   onToggleSound,
-  onToggleScanlines,
+  onToggleScanlines: _onToggleScanlines,
   onToggleFullscreen,
   onNotifyToast,
 }) => {
@@ -91,7 +96,9 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
   const [bindings, setBindings] = useState<ControlBindingsConfig>(() => getControlBindings());
   const [graphics, setGraphics] = useState<OrionGraphicsSettings>(() => getOrionGraphicsSettings());
   const [kbCapture, setKbCapture] = useState<KeyboardCaptureTarget | null>(null);
+  const [kbPreviewCode, setKbPreviewCode] = useState<string | null>(null);
   const [gpCaptureAction, setGpCaptureAction] = useState<ButtonKey | null>(null);
+  const [gpPreviewBtnIdx, setGpPreviewBtnIdx] = useState<number | null>(null);
   const [localToast, setLocalToast] = useState<string | null>(null);
   const [, setTick] = useState(0);
 
@@ -126,23 +133,30 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
     };
   }, []);
 
-  // Interactive Keyboard Key Capture Session
+  // Interactive Keyboard Key Capture Session (release-gated, isolated from menus)
   useEffect(() => {
     if (!kbCapture) {
-      if (!gpCaptureAction) {
-        setInputCaptureActive(false);
-      }
+      setKbPreviewCode(null);
       return;
     }
 
-    return startKeyboardCaptureSession(
-      (code) => {
+    setKbPreviewCode(null);
+    return startKeyboardCaptureSession({
+      onFlushInputState: () => {
+        keyboardMapper.releaseAll();
+        gamepadStore.resetAll();
+      },
+      onKeyPreview: (code) => {
+        setKbPreviewCode(code);
+      },
+      onKeyCaptured: (code) => {
         const { swappedWith } = setKeyboardBinding(
           kbCapture.action,
           kbCapture.slotIndex,
           code
         );
         soundSystem.playSelect();
+        setKbPreviewCode(null);
         setKbCapture(null);
         const keyLabel = formatKeyCodeLabel(code);
         if (swappedWith) {
@@ -153,28 +167,29 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
           triggerFeedback(`BOUND ${keyLabel} TO ${kbCapture.action.toUpperCase()}`);
         }
       },
-      () => {
+      onCancel: () => {
         soundSystem.playMenuBeep();
+        setKbPreviewCode(null);
         setKbCapture(null);
         triggerFeedback('KEY BINDING CANCELLED');
-      }
-    );
-  }, [kbCapture, gpCaptureAction]);
+      },
+    });
+  }, [kbCapture]);
 
-  // Interactive Physical Gamepad Button Capture Session
+  // Interactive Physical Gamepad Button Capture Session (release-gated, isolated from menus)
   useEffect(() => {
     if (!gpCaptureAction) {
-      if (!kbCapture) {
-        setInputCaptureActive(false);
-      }
+      setGpPreviewBtnIdx(null);
       return;
     }
 
+    setGpPreviewBtnIdx(null);
     return startGamepadCaptureSession(
       () => hardwareGamepad.getFirstPressedRawButtonIndex(),
       (pressedIdx) => {
         const { swappedWith } = setGamepadBinding(gpCaptureAction, pressedIdx);
         soundSystem.playSelect();
+        setGpPreviewBtnIdx(null);
         setGpCaptureAction(null);
         const btnLabel = formatGamepadButtonLabel(pressedIdx);
         if (swappedWith) {
@@ -187,11 +202,19 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
       },
       () => {
         soundSystem.playMenuBeep();
+        setGpPreviewBtnIdx(null);
         setGpCaptureAction(null);
         triggerFeedback('CONTROLLER BINDING CANCELLED');
+      },
+      (previewIdx) => {
+        setGpPreviewBtnIdx(previewIdx);
+      },
+      () => {
+        keyboardMapper.releaseAll();
+        gamepadStore.resetAll();
       }
     );
-  }, [gpCaptureAction, kbCapture]);
+  }, [gpCaptureAction]);
 
   const activeState = getOrionStateRef();
   const effectiveSoundEnabled = soundEnabled ?? soundSystem.isEnabled();
@@ -206,9 +229,6 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
       activeState.useStandardResolutionHud = next.hudResolution === 'hires';
       notifyOrionStateChange();
     }
-    if (onToggleScanlines && next.scanlinesEnabled !== effectiveScanlines) {
-      onToggleScanlines();
-    }
     triggerFeedback(`APPLIED ${preset.toUpperCase()} GRAPHICS PRESET`);
   };
 
@@ -216,9 +236,6 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
     soundSystem.playSelect();
     const nextVal = !effectiveScanlines;
     updateOrionGraphicsSettings({ scanlinesEnabled: nextVal });
-    if (onToggleScanlines) {
-      onToggleScanlines();
-    }
     triggerFeedback(`CRT SCANLINES: ${nextVal ? 'ENABLED' : 'OFF'}`);
   };
 
@@ -264,8 +281,146 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
     setTick((t) => t + 1);
   };
 
+  const activeCaptureActionDef = kbCapture
+    ? CONTROL_ACTION_DEFINITIONS.find((a) => a.key === kbCapture.action)
+    : gpCaptureAction
+      ? CONTROL_ACTION_DEFINITIONS.find((a) => a.key === gpCaptureAction)
+      : undefined;
+
+  const handleSelectPadLayout = (mode: VirtualGamepadLayoutMode) => {
+    soundSystem.playSelect();
+    setVirtualGamepadLayout(mode);
+    const label =
+      mode === 'auto'
+        ? 'AUTO SPLIT IN LANDSCAPE'
+        : mode === 'bottom'
+          ? 'CLASSIC BOTTOM DECK'
+          : 'VIRTUAL GAMEPAD HIDDEN';
+    triggerFeedback(`PAD LAYOUT: ${label}`);
+  };
+
   return (
-    <div className="flex-1 min-h-0 flex flex-col overflow-hidden text-[10px] font-mono select-none">
+    <div className="relative flex-1 min-h-0 flex flex-col overflow-hidden text-[10px] font-mono select-none">
+      {/* Isolated Key / Button Capture Pop-Up Modal */}
+      {(kbCapture || gpCaptureAction) && activeCaptureActionDef && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          data-menu-scope="true"
+          aria-label="Remap In-Game Control"
+          className="absolute inset-0 z-50 bg-slate-950/90 backdrop-blur-xs flex items-center justify-center p-3"
+        >
+          <div className="w-full max-w-[320px] bg-slate-900 border-2 border-amber-400 rounded-xs p-3 shadow-2xl flex flex-col gap-2.5 text-center">
+            <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-800">
+              <span className="text-[9px] font-black tracking-wider text-amber-300 uppercase">
+                {kbCapture ? 'REMAP IN-GAME KEY' : 'REMAP CONTROLLER BUTTON'}
+              </span>
+              <span className="text-[8.5px] font-bold text-slate-400">
+                {kbCapture ? `SLOT ${kbCapture.slotIndex + 1}` : 'W3C PAD'}
+              </span>
+            </div>
+
+            <div className="space-y-0.5">
+              <div className="text-[11px] font-black text-white">
+                {activeCaptureActionDef.badge} · {activeCaptureActionDef.label}
+              </div>
+              <div className="text-[8.5px] text-slate-400">
+                {activeCaptureActionDef.detail}
+              </div>
+            </div>
+
+            {/* Live Key / Button Pop-Up Display */}
+            <div className="py-3 px-2 bg-slate-950 border border-sky-500/60 rounded-xs flex flex-col items-center justify-center gap-1">
+              <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">
+                {kbCapture
+                  ? kbPreviewCode
+                    ? 'KEY DETECTED (RELEASE TO BIND)'
+                    : 'PRESS ANY KEY ON KEYBOARD'
+                  : gpPreviewBtnIdx !== null
+                    ? 'BUTTON DETECTED (RELEASE TO BIND)'
+                    : 'PRESS ANY CONTROLLER BUTTON'}
+              </span>
+              <div
+                className={`px-3 py-1.5 rounded-xs border font-black text-sm tracking-wider tabular-nums ${
+                  kbPreviewCode || gpPreviewBtnIdx !== null
+                    ? 'bg-amber-400 text-slate-950 border-amber-200'
+                    : 'bg-slate-900 text-sky-300 border-slate-700 animate-pulse'
+                }`}
+              >
+                {kbCapture
+                  ? kbPreviewCode
+                    ? formatKeyCodeLabel(kbPreviewCode)
+                    : 'PRESS KEY...'
+                  : gpPreviewBtnIdx !== null
+                    ? formatGamepadButtonLabel(gpPreviewBtnIdx)
+                    : 'PRESS BUTTON...'}
+              </div>
+              {kbCapture && (
+                <span className="text-[8px] text-slate-400 tabular-nums">
+                  Current:{' '}
+                  <strong className="text-slate-200">
+                    {formatKeyCodeLabel(
+                      bindings.keyboard[kbCapture.action][kbCapture.slotIndex]
+                    )}
+                  </strong>
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center justify-center gap-1.5 flex-wrap pt-0.5">
+              {kbCapture && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setKeyboardBinding(kbCapture.action, kbCapture.slotIndex, 'Escape');
+                    soundSystem.playSelect();
+                    setKbPreviewCode(null);
+                    setKbCapture(null);
+                    triggerFeedback(`BOUND ESC TO ${kbCapture.action.toUpperCase()}`);
+                  }}
+                  className="px-2 py-1 bg-slate-950 hover:bg-slate-800 text-sky-300 border border-sky-500/60 rounded-xs font-bold text-[8.5px] whitespace-nowrap cursor-pointer"
+                >
+                  BIND ESC
+                </button>
+              )}
+
+              {kbCapture && kbCapture.slotIndex === 1 && bindings.keyboard[kbCapture.action][1] && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    clearKeyboardSecondaryBinding(kbCapture.action);
+                    soundSystem.playMenuBeep();
+                    setKbPreviewCode(null);
+                    setKbCapture(null);
+                    triggerFeedback(
+                      `CLEARED SECONDARY KEY FOR ${kbCapture.action.toUpperCase()}`
+                    );
+                  }}
+                  className="px-2 py-1 bg-slate-950 hover:bg-slate-800 text-rose-300 border border-rose-500/50 rounded-xs font-bold text-[8.5px] whitespace-nowrap cursor-pointer"
+                >
+                  UNBIND
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  soundSystem.playMenuBeep();
+                  setKbPreviewCode(null);
+                  setGpPreviewBtnIdx(null);
+                  setKbCapture(null);
+                  setGpCaptureAction(null);
+                  setInputCaptureActive(false);
+                }}
+                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 rounded-xs font-bold text-[8.5px] whitespace-nowrap cursor-pointer"
+              >
+                CANCEL [ESC]
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Top 3-Tab Bar (`[L]` / `[R]` compatible via data-menu-tabs="true") */}
       <div
         data-menu-tabs="true"
@@ -322,7 +477,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
       {activeTab === 'controls' && (
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           {/* Device Sub-Selector & Reset Defaults Bar */}
-          <div className="flex items-center justify-between gap-1.5 mb-1.5 shrink-0">
+          <div className="flex items-center justify-between gap-1.5 mb-1.5 shrink-0 flex-wrap">
             <div className="flex items-center gap-1">
               <button
                 type="button"
@@ -339,7 +494,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                     : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
                 }`}
               >
-                KEYBOARD KEYS
+                IN-GAME KEYS
               </button>
               <button
                 type="button"
@@ -369,7 +524,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                 setInputCaptureActive(false);
                 if (controlSubMode === 'keyboard') {
                   resetKeyboardBindingsToDefault();
-                  triggerFeedback('KEYBOARD BINDINGS RESET TO DEFAULT');
+                  triggerFeedback('IN-GAME KEYBOARD BINDINGS RESET TO DEFAULT');
                 } else {
                   resetGamepadBindingsToDefault();
                   triggerFeedback('GAMEPAD BINDINGS & DEADZONE RESET TO DEFAULT');
@@ -383,40 +538,35 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
 
           {controlSubMode === 'keyboard' ? (
             <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-1">
-              {kbCapture && (
-                <div className="p-1.5 bg-amber-950/60 border border-amber-400 rounded-xs flex items-center justify-between gap-2 text-[9px] text-amber-200">
-                  <span className="font-bold">
-                    PRESS ANY KEY FOR [{kbCapture.action.toUpperCase()}] (SLOT{' '}
-                    {kbCapture.slotIndex + 1}) · [ESC] TO CANCEL
-                  </span>
-                  <div className="flex items-center gap-1 shrink-0">
+              {/* Menu Isolation & Virtual Pad Layout Bar */}
+              <div className="p-1.5 bg-slate-900/95 border border-slate-800 rounded-xs flex items-center justify-between gap-2 flex-wrap">
+                <span className="text-[8px] text-slate-300">
+                  Remaps <strong className="text-sky-300">in-game controls</strong> only. Menus always use{' '}
+                  <strong className="text-amber-300">Arrows/WASD · Enter · Esc · Q/E · Tab</strong>.
+                </span>
+                <div className="flex items-center gap-1 shrink-0">
+                  {(
+                    [
+                      { id: 'auto', label: 'SPLIT WIDE' },
+                      { id: 'bottom', label: 'BOTTOM' },
+                      { id: 'hidden', label: 'HIDE PAD' },
+                    ] as const
+                  ).map((opt) => (
                     <button
+                      key={opt.id}
                       type="button"
-                      onClick={() => {
-                        setKeyboardBinding(kbCapture.action, kbCapture.slotIndex, 'Escape');
-                        soundSystem.playSelect();
-                        setKbCapture(null);
-                        setInputCaptureActive(false);
-                        triggerFeedback(`BOUND ESC TO ${kbCapture.action.toUpperCase()}`);
-                      }}
-                      className="px-1.5 py-0.5 bg-slate-900 text-sky-300 border border-sky-500/50 rounded-xs font-bold text-[8px] cursor-pointer"
+                      onClick={() => handleSelectPadLayout(opt.id)}
+                      className={`px-1.5 py-0.5 rounded-xs font-bold text-[8px] whitespace-nowrap cursor-pointer border ${
+                        bindings.virtualPadLayout === opt.id
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/60'
+                          : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'
+                      }`}
                     >
-                      BIND ESC
+                      {opt.label}
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        soundSystem.playMenuBeep();
-                        setKbCapture(null);
-                        setInputCaptureActive(false);
-                      }}
-                      className="px-1.5 py-0.5 bg-slate-900 text-slate-300 border border-slate-700 rounded-xs font-bold text-[8px] cursor-pointer"
-                    >
-                      CANCEL
-                    </button>
-                  </div>
+                  ))}
                 </div>
-              )}
+              </div>
 
               {CONTROL_ACTION_DEFINITIONS.map((act) => {
                 const [primaryCode, secondaryCode] = bindings.keyboard[act.key];
@@ -565,26 +715,6 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                   </div>
                 </div>
               </div>
-
-              {gpCaptureAction && (
-                <div className="p-1.5 bg-amber-950/60 border border-amber-400 rounded-xs flex items-center justify-between gap-2 text-[9px] text-amber-200">
-                  <span className="font-bold">
-                    PRESS ANY CONTROLLER BUTTON FOR [{gpCaptureAction.toUpperCase()}] · [ESC] TO
-                    CANCEL
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      soundSystem.playMenuBeep();
-                      setGpCaptureAction(null);
-                      setInputCaptureActive(false);
-                    }}
-                    className="px-1.5 py-0.5 bg-slate-900 text-slate-300 border border-slate-700 rounded-xs font-bold text-[8px] cursor-pointer shrink-0"
-                  >
-                    CANCEL
-                  </button>
-                </div>
-              )}
 
               {/* Gamepad Button Mapping Rows */}
               <div className="space-y-1">
@@ -1064,6 +1194,40 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                 ? 'HI-RES OVERLAY'
                 : 'PIXEL CANVAS'}
             </button>
+          </div>
+
+          {/* Virtual Gamepad Ergonomic Layout Mode */}
+          <div className="p-2 bg-slate-900/90 border border-slate-800 rounded-xs flex items-center justify-between gap-2 flex-wrap">
+            <div>
+              <div className="font-bold text-slate-100 text-[9.5px]">
+                VIRTUAL GAMEPAD SHELL LAYOUT
+              </div>
+              <div className="text-[8px] text-slate-400">
+                Split D-Pad &amp; Action buttons to screen sides in landscape (PC &amp; mobile), stack below, or hide
+              </div>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              {(
+                [
+                  { id: 'auto', label: 'AUTO SPLIT' },
+                  { id: 'bottom', label: 'BOTTOM' },
+                  { id: 'hidden', label: 'HIDDEN' },
+                ] as const
+              ).map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => handleSelectPadLayout(opt.id)}
+                  className={`px-2 py-1 rounded-xs font-bold text-[8.5px] whitespace-nowrap cursor-pointer border ${
+                    bindings.virtualPadLayout === opt.id
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/60'
+                      : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Fullscreen Display Mode */}

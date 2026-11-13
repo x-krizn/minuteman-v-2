@@ -17,15 +17,21 @@ import { frameLoop } from './engine/core/frameLoop';
 import { registry } from './engine/core/registry';
 import { shellStateMachine } from './engine/core/shellStateMachine';
 import { soundSystem } from './engine/core/soundSystem';
-import { inputReader } from './engine/input/inputReader';
-import { keyboardMapper } from './engine/input/keyboardMapper';
 import {
   formatGamepadName,
   hardwareGamepad,
 } from './engine/input/hardwareGamepad';
+import {
+  getControlBindings,
+  setVirtualGamepadLayout,
+  subscribeControlBindings,
+  VirtualGamepadLayoutMode,
+} from './engine/input/inputBindingsStore';
+import { inputReader } from './engine/input/inputReader';
+import { keyboardMapper } from './engine/input/keyboardMapper';
 import { universalMenuNavigator } from './engine/input/menuNavigation';
-import { ShellScreen } from './types/shell';
 import { CartridgeMenuMode } from './types/cartridge';
+import { ShellScreen } from './types/shell';
 import {
   isAppFullscreen,
   requestAppFullscreen,
@@ -33,8 +39,24 @@ import {
   toggleAppFullscreen,
 } from './utils/fullscreen';
 
+type EffectivePadMode = 'split' | 'bottom' | 'hidden';
+
+function resolveEffectivePadMode(
+  preference: VirtualGamepadLayoutMode,
+  vw: number,
+  vh: number
+): EffectivePadMode {
+  if (preference === 'hidden') return 'hidden';
+  if (preference === 'bottom') return 'bottom';
+  // Auto: split controls onto left and right sides in landscape viewports on both PC and mobile
+  if (vw > vh && vw >= 580 && vh >= 280) {
+    return 'split';
+  }
+  return 'bottom';
+}
+
 /**
- * Root React application component mounting the handheld console shell, `ScreenViewport` (`160x144` `px`), and `VirtualGamepad`.
+ * Root React application component mounting the handheld console shell, `ScreenViewport` (`160x144` `px`), and responsive `VirtualGamepad`.
  */
 export default function App() {
   const [screen, setScreen] = useState<ShellScreen>('splash');
@@ -50,6 +72,14 @@ export default function App() {
   );
   const [gamepadToast, setGamepadToast] = useState<string | null>(null);
   const toastTimerRef = useRef<number | null>(null);
+
+  const [virtualPadLayout, setVirtualPadLayoutState] = useState<VirtualGamepadLayoutMode>(
+    () => getControlBindings().virtualPadLayout
+  );
+  const [viewportSize, setViewportSize] = useState<{ vw: number; vh: number }>(() => ({
+    vw: typeof window !== 'undefined' ? window.innerWidth : 800,
+    vh: typeof window !== 'undefined' ? window.innerHeight : 600,
+  }));
 
   // In-game menus contained directly inside LCD screen
   const [inGameMenu, setInGameMenu] = useState<CartridgeMenuMode>('none');
@@ -69,7 +99,7 @@ export default function App() {
     shellStateMachine.getScreenContent()
   );
 
-  // Sync fullscreen state & graphics scanlines state
+  // Sync fullscreen state, graphics scanlines state, virtual pad preference, and viewport size
   useEffect(() => {
     setIsFullscreen(isAppFullscreen());
     const unsubFs = subscribeFullscreenChange((fs) => {
@@ -78,9 +108,25 @@ export default function App() {
     const unsubGfx = subscribeOrionGraphicsSettings((gfx) => {
       setScanlinesEnabled(gfx.scanlinesEnabled);
     });
+    const unsubBindings = subscribeControlBindings(() => {
+      setVirtualPadLayoutState(getControlBindings().virtualPadLayout);
+    });
+
+    const handleResize = () => {
+      setViewportSize({
+        vw: window.innerWidth,
+        vh: window.innerHeight,
+      });
+    };
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+
     return () => {
       unsubFs();
       unsubGfx();
+      unsubBindings();
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
     };
   }, []);
 
@@ -162,9 +208,16 @@ export default function App() {
         // SHIFT (Select) -> Inventory / Character Screen
         if (isCartActive) {
           const currentMenu = inGameMenuRef.current;
-          const activeTag =
-            typeof document !== 'undefined' ? document.activeElement?.tagName : undefined;
-          const isTypingInInput = activeTag === 'INPUT' || activeTag === 'TEXTAREA';
+          const activeEl = typeof document !== 'undefined' ? document.activeElement : null;
+          const activeTag = activeEl?.tagName;
+          const activeInputType =
+            activeEl instanceof HTMLInputElement ? (activeEl.type || 'text').toLowerCase() : '';
+          const isTypingInInput =
+            activeTag === 'TEXTAREA' ||
+            (activeTag === 'INPUT' &&
+              ['text', 'search', 'password', 'email', 'url', 'tel', 'number'].includes(
+                activeInputType
+              ));
           const isTitleModalOpen =
             typeof document !== 'undefined' &&
             Boolean(document.querySelector('[aria-label="Project Orion Main Menu"]'));
@@ -185,7 +238,7 @@ export default function App() {
 
           if (isTitleModalOpen) {
             // While on the Title Menu, never open the in-game pause/satchel overlay on START/SELECT.
-            // Pressing START (Enter on PC) acts as Confirm [A] on the Title Menu.
+            // Pressing START acts as Confirm [A] on the Title Menu.
             if (currentMenu !== 'none') {
               updateInGameMenu('none');
             }
@@ -296,11 +349,15 @@ export default function App() {
   };
 
   const handleToggleScanlines = () => {
-    setScanlinesEnabled((prev) => {
-      const next = !prev;
-      updateOrionGraphicsSettings({ scanlinesEnabled: next });
-      return next;
-    });
+    const next = !getOrionGraphicsSettings().scanlinesEnabled;
+    updateOrionGraphicsSettings({ scanlinesEnabled: next });
+    setScanlinesEnabled(next);
+  };
+
+  const handleCyclePadLayout = () => {
+    const order: VirtualGamepadLayoutMode[] = ['auto', 'bottom', 'hidden'];
+    const next = order[(order.indexOf(virtualPadLayout) + 1) % order.length];
+    setVirtualGamepadLayout(next);
   };
 
   const handleLineClick = (index: number) => {
@@ -314,6 +371,62 @@ export default function App() {
   };
 
   const isCartRunning = Boolean(activeCartridgeName);
+  const effectivePadMode = resolveEffectivePadMode(
+    virtualPadLayout,
+    viewportSize.vw,
+    viewportSize.vh
+  );
+
+  const containerClass =
+    effectivePadMode === 'split'
+      ? 'w-full h-full max-w-[1440px] flex flex-row bg-[#d0d0a8] relative overflow-hidden select-none touch-none items-stretch justify-between'
+      : effectivePadMode === 'hidden'
+        ? 'w-full h-full max-w-[960px] flex flex-col bg-[#242420] relative overflow-hidden select-none touch-none justify-center'
+        : 'w-full h-full max-w-[560px] flex flex-col bg-[#d0d0a8] relative overflow-hidden select-none touch-none justify-between';
+
+  const screenNode = (
+    <ScreenViewport
+      isCartridgeRunning={isCartRunning}
+      isLoading={isLoading}
+      title={screenContent.title}
+      lines={screenContent.lines}
+      selectedIndex={screenContent.selectedIndex}
+      onLineClick={handleLineClick}
+      showScanlines={scanlinesEnabled}
+      isFullscreen={isFullscreen}
+      onToggleFullscreen={() => toggleAppFullscreen()}
+      padLayoutMode={virtualPadLayout}
+      onCyclePadLayout={handleCyclePadLayout}
+      expandedLayout={effectivePadMode !== 'bottom'}
+      connectedGamepads={connectedGamepads}
+      gamepadToast={gamepadToast}
+    >
+      {/* Active Cartridge In-Game Overlay via Cartridge Interface */}
+      {isCartRunning &&
+        (() => {
+          const active = cartridgeRunner.getActive();
+          if (active?.renderOverlay) {
+            return active.renderOverlay({
+              menuMode: inGameMenu,
+              soundEnabled,
+              scanlinesEnabled,
+              isFullscreen,
+              onToggleSound: handleToggleSound,
+              onToggleScanlines: handleToggleScanlines,
+              onToggleFullscreen: () => toggleAppFullscreen(),
+              onResume: () => updateInGameMenu('none'),
+              onExitCartridge: () => {
+                cartridgeRunner.stopCart();
+                shellStateMachine.setScreen('carts');
+                updateInGameMenu('none');
+              },
+              connectedGamepads,
+            });
+          }
+          return null;
+        })()}
+    </ScreenViewport>
+  );
 
   return (
     <div
@@ -322,52 +435,19 @@ export default function App() {
         height: '100dvh',
       }}
     >
-      {/* Handheld Console Device Body: Clean Authentic Layout (Screen on Top, Gamepad on Bottom) */}
-      <main
-        id="game-container"
-        className="w-full h-full max-w-[560px] flex flex-col bg-[#d0d0a8] relative overflow-hidden select-none touch-none justify-between"
-      >
-        {/* Top: LCD Screen Viewport (takes all flexible vertical height; contains in-game menus inside) */}
-        <ScreenViewport
-          isCartridgeRunning={isCartRunning}
-          isLoading={isLoading}
-          title={screenContent.title}
-          lines={screenContent.lines}
-          selectedIndex={screenContent.selectedIndex}
-          onLineClick={handleLineClick}
-          showScanlines={scanlinesEnabled}
-          isFullscreen={isFullscreen}
-          onToggleFullscreen={() => toggleAppFullscreen()}
-          connectedGamepads={connectedGamepads}
-          gamepadToast={gamepadToast}
-        >
-          {/* Active Cartridge In-Game Overlay via Cartridge Interface */}
-          {isCartRunning && (() => {
-            const active = cartridgeRunner.getActive();
-            if (active?.renderOverlay) {
-              return active.renderOverlay({
-                menuMode: inGameMenu,
-                soundEnabled,
-                scanlinesEnabled,
-                isFullscreen,
-                onToggleSound: handleToggleSound,
-                onToggleScanlines: handleToggleScanlines,
-                onToggleFullscreen: () => toggleAppFullscreen(),
-                onResume: () => updateInGameMenu('none'),
-                onExitCartridge: () => {
-                  cartridgeRunner.stopCart();
-                  shellStateMachine.setScreen('carts');
-                  updateInGameMenu('none');
-                },
-                connectedGamepads,
-              });
-            }
-            return null;
-          })()}
-        </ScreenViewport>
-
-        {/* Bottom: Virtual Gamepad (D-Pad, Action Buttons, START & SHIFT Pills) - Dynamically Scaled */}
-        <VirtualGamepad />
+      <main id="game-container" className={containerClass}>
+        {effectivePadMode === 'split' ? (
+          <>
+            <VirtualGamepad wing="left" />
+            {screenNode}
+            <VirtualGamepad wing="right" />
+          </>
+        ) : (
+          <>
+            {screenNode}
+            {effectivePadMode === 'bottom' && <VirtualGamepad wing="full" />}
+          </>
+        )}
       </main>
     </div>
   );

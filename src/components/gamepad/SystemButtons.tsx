@@ -13,12 +13,22 @@ const PILL_IMG =
 interface SystemButtonsProps {
   scale: number;
   state: GamepadButtons;
+  activeKeyLabels?: Partial<Record<ButtonKey, string>>;
+  boundKeyLabels?: Partial<Record<ButtonKey, string>>;
+  compactWing?: boolean;
 }
 
 /**
- * Renders the `START`, `SHIFT`, `L`, and `R` shoulder and system buttons on the virtual handheld deck.
+ * Renders the `START` and `SELECT` system buttons on the virtual handheld deck,
+ * reflecting remapped key assignments and synchronized pop-up key indicators when pressed.
  */
-export const SystemButtons: React.FC<SystemButtonsProps> = ({ scale, state }) => {
+export const SystemButtons: React.FC<SystemButtonsProps> = ({
+  scale,
+  state,
+  activeKeyLabels = {},
+  boundKeyLabels = {},
+  compactWing = false,
+}) => {
   const s = scale;
 
   const handlePointerDown = (key: ButtonKey, e: React.PointerEvent<HTMLButtonElement>) => {
@@ -41,6 +51,15 @@ export const SystemButtons: React.FC<SystemButtonsProps> = ({ scale, state }) =>
     gamepadStore.setButtonState(key, false, false, 'touch');
   };
 
+  const startX = compactWing ? 6 : 5;
+  const startY = compactWing ? 10 : 11;
+  const selectX = compactWing ? 46 : 42;
+  const selectY = compactWing ? 10 : 11;
+  const brandX = compactWing ? 16 : 14;
+  const brandY = compactWing ? 106 : 95;
+  const startBound = boundKeyLabels.start || 'ENT';
+  const selectBound = boundKeyLabels.select || 'TAB';
+
   return (
     <>
       {/* START BUTTON */}
@@ -52,10 +71,11 @@ export const SystemButtons: React.FC<SystemButtonsProps> = ({ scale, state }) =>
         onPointerCancel={(e) => handlePointerCancel('start', e)}
         onLostPointerCapture={(e) => handlePointerCancel('start', e)}
         onContextMenu={(e) => e.preventDefault()}
+        title={`START (Key: ${startBound})`}
         className="absolute border-none bg-transparent p-0 m-0 cursor-pointer touch-none select-none pixelated"
         style={{
-          left: `${5 * s}px`,
-          top: `${11 * s}px`,
+          left: `${startX * s}px`,
+          top: `${startY * s}px`,
           width: `${24 * s}px`,
           height: `${10 * s}px`,
           backgroundImage: `url("${PILL_IMG}")`,
@@ -63,22 +83,45 @@ export const SystemButtons: React.FC<SystemButtonsProps> = ({ scale, state }) =>
           transform: state.start ? `translateY(${s}px)` : 'none',
           outline: 'none',
         }}
-      />
+      >
+        {state.start && (
+          <span
+            className="absolute left-1/2 bottom-full flex items-center justify-center pointer-events-none font-bold z-30 whitespace-nowrap"
+            style={{
+              transform: `translate(-50%, ${-2 * s}px)`,
+              minWidth: `${26 * s}px`,
+              height: `${16 * s}px`,
+              paddingLeft: `${2 * s}px`,
+              paddingRight: `${2 * s}px`,
+              border: `${1.5 * s}px solid #000`,
+              borderRadius: `${3 * s}px`,
+              backgroundColor: '#9e9e86',
+              boxShadow: `0 ${s}px 0 rgba(0,0,0,0.35)`,
+              fontSize: `${7 * s}px`,
+              color: '#000',
+              fontFamily: 'orion-font, monospace',
+              lineHeight: 1,
+            }}
+          >
+            {activeKeyLabels.start || 'START'}
+          </span>
+        )}
+      </button>
       <span
-        className="absolute pointer-events-none select-none font-bold"
+        className="absolute pointer-events-none select-none font-bold whitespace-nowrap"
         style={{
-          left: `${5 * s}px`,
-          top: `${23 * s}px`,
-          fontSize: `${6 * s}px`,
+          left: `${startX * s}px`,
+          top: `${(startY + 12) * s}px`,
+          fontSize: `${4.8 * s}px`,
           lineHeight: 1,
-          color: '#5e5e4c',
+          color: '#4e4e3d',
           fontFamily: 'orion-font, monospace',
         }}
       >
-        START
+        STR·{startBound}
       </span>
 
-      {/* SELECT (SHIFT) BUTTON */}
+      {/* SELECT BUTTON */}
       <button
         type="button"
         data-key="select"
@@ -87,10 +130,11 @@ export const SystemButtons: React.FC<SystemButtonsProps> = ({ scale, state }) =>
         onPointerCancel={(e) => handlePointerCancel('select', e)}
         onLostPointerCapture={(e) => handlePointerCancel('select', e)}
         onContextMenu={(e) => e.preventDefault()}
+        title={`SELECT (Key: ${selectBound})`}
         className="absolute border-none bg-transparent p-0 m-0 cursor-pointer touch-none select-none pixelated"
         style={{
-          left: `${42 * s}px`,
-          top: `${11 * s}px`,
+          left: `${selectX * s}px`,
+          top: `${selectY * s}px`,
           width: `${24 * s}px`,
           height: `${10 * s}px`,
           backgroundImage: `url("${PILL_IMG}")`,
@@ -98,27 +142,50 @@ export const SystemButtons: React.FC<SystemButtonsProps> = ({ scale, state }) =>
           transform: state.select ? `translateY(${s}px)` : 'none',
           outline: 'none',
         }}
-      />
+      >
+        {state.select && (
+          <span
+            className="absolute left-1/2 bottom-full flex items-center justify-center pointer-events-none font-bold z-30 whitespace-nowrap"
+            style={{
+              transform: `translate(-50%, ${-2 * s}px)`,
+              minWidth: `${26 * s}px`,
+              height: `${16 * s}px`,
+              paddingLeft: `${2 * s}px`,
+              paddingRight: `${2 * s}px`,
+              border: `${1.5 * s}px solid #000`,
+              borderRadius: `${3 * s}px`,
+              backgroundColor: '#9e9e86',
+              boxShadow: `0 ${s}px 0 rgba(0,0,0,0.35)`,
+              fontSize: `${7 * s}px`,
+              color: '#000',
+              fontFamily: 'orion-font, monospace',
+              lineHeight: 1,
+            }}
+          >
+            {activeKeyLabels.select || 'SELECT'}
+          </span>
+        )}
+      </button>
       <span
-        className="absolute pointer-events-none select-none font-bold"
+        className="absolute pointer-events-none select-none font-bold whitespace-nowrap"
         style={{
-          left: `${42 * s}px`,
-          top: `${23 * s}px`,
-          fontSize: `${6 * s}px`,
+          left: `${selectX * s}px`,
+          top: `${(selectY + 12) * s}px`,
+          fontSize: `${4.8 * s}px`,
           lineHeight: 1,
-          color: '#5e5e4c',
+          color: '#4e4e3d',
           fontFamily: 'orion-font, monospace',
         }}
       >
-        SHIFT
+        SEL·{selectBound}
       </span>
 
       {/* BRANDING */}
       <div
         className="absolute pointer-events-none select-none tracking-wider font-extrabold"
         style={{
-          left: `${14 * s}px`,
-          top: `${95 * s}px`,
+          left: `${brandX * s}px`,
+          top: `${brandY * s}px`,
           fontSize: `${5.5 * s}px`,
           lineHeight: 1,
           color: '#5e5e4c',
@@ -130,3 +197,4 @@ export const SystemButtons: React.FC<SystemButtonsProps> = ({ scale, state }) =>
     </>
   );
 };
+

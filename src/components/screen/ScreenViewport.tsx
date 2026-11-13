@@ -4,11 +4,12 @@
  */
 
 import React from 'react';
+import { VirtualGamepadLayoutMode } from '../../engine/input/inputBindingsStore';
 import { ScreenCanvas } from './ScreenCanvas';
 import { ScreenText } from './ScreenText';
 
 /**
- * Props contract for `ScreenViewport`, specifying integer display `scale`, shell state, and cartridge overlay children.
+ * Props contract for `ScreenViewport`, specifying display layout mode, shell state, and cartridge overlay children.
  */
 export interface ScreenViewportProps {
   isCartridgeRunning: boolean;
@@ -20,9 +21,23 @@ export interface ScreenViewportProps {
   showScanlines?: boolean;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
+  padLayoutMode?: VirtualGamepadLayoutMode;
+  onCyclePadLayout?: () => void;
+  expandedLayout?: boolean;
   connectedGamepads?: string[];
   gamepadToast?: string | null;
   children?: React.ReactNode;
+}
+
+function formatPadToggleLabel(mode: VirtualGamepadLayoutMode): string {
+  switch (mode) {
+    case 'auto':
+      return 'PAD: AUTO';
+    case 'bottom':
+      return 'PAD: BTM';
+    case 'hidden':
+      return 'PAD: OFF';
+  }
 }
 
 /**
@@ -38,27 +53,47 @@ export const ScreenViewport: React.FC<ScreenViewportProps> = ({
   showScanlines = true,
   isFullscreen = false,
   onToggleFullscreen,
+  padLayoutMode = 'auto',
+  onCyclePadLayout,
+  expandedLayout = false,
   connectedGamepads = [],
   gamepadToast = null,
   children,
 }) => {
   return (
-    <div className="flex-1 min-w-0 min-h-0 p-2 sm:p-3 flex items-center justify-center relative overflow-hidden w-full">
-      {/* Outer LCD Bezel Frame (Respects screen height without arbitrary cutoff) */}
+    <div className="flex-1 min-w-0 min-h-0 p-2 sm:p-3 flex items-center justify-center relative overflow-hidden w-full h-full">
+      {/* Outer LCD Bezel Frame (Expands cleanly in landscape split or hidden-pad desktop modes) */}
       <div
         id="screen-viewport"
-        className="w-full h-full max-w-[540px] bg-[#0f300f] border-4 border-[#0f35] rounded-xl flex items-center justify-center relative overflow-hidden shadow-[inset_0_0_16px_rgba(0,0,0,0.85)]"
+        className={`w-full h-full ${
+          expandedLayout ? 'max-w-[920px]' : 'max-w-[540px]'
+        } bg-[#0f300f] border-4 border-[#0f35] rounded-xl flex items-center justify-center relative overflow-hidden shadow-[inset_0_0_16px_rgba(0,0,0,0.85)]`}
       >
-        {/* Mobile Fullscreen Corner Toggle (z-10 so z-20 menus cover it without button overlap) */}
-        {onToggleFullscreen && (
-          <button
-            onClick={onToggleFullscreen}
-            className="absolute top-1.5 right-1.5 z-10 px-2 py-0.8 bg-[#122412]/85 hover:bg-[#1e3c1e] text-[#50fa7b] border border-[#2e5c2e]/60 rounded-xs font-mono text-[9.5px] tracking-wider transition-colors flex items-center gap-1 shadow-sm active:scale-95"
-            title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen (Mobile)'}
-          >
-            <span>{isFullscreen ? '✕' : '⛶'}</span>
-            <span className="hidden xs:inline">{isFullscreen ? 'WINDOW' : 'FULLSCREEN'}</span>
-          </button>
+        {/* Top-Right Shell Corner Controls (z-10 so z-20 menus cover without overlap) */}
+        {(onCyclePadLayout || onToggleFullscreen) && (
+          <div className="absolute top-1.5 right-1.5 z-10 flex items-center gap-1">
+            {onCyclePadLayout && (
+              <button
+                type="button"
+                onClick={onCyclePadLayout}
+                className="px-2 py-0.8 bg-[#122412]/85 hover:bg-[#1e3c1e] text-[#50fa7b] border border-[#2e5c2e]/60 rounded-xs font-mono text-[9.5px] tracking-wider transition-colors flex items-center gap-1 shadow-sm active:scale-95"
+                title="Cycle Virtual Gamepad Layout (Auto Split / Bottom / Hide)"
+              >
+                <span>{formatPadToggleLabel(padLayoutMode)}</span>
+              </button>
+            )}
+            {onToggleFullscreen && (
+              <button
+                type="button"
+                onClick={onToggleFullscreen}
+                className="px-2 py-0.8 bg-[#122412]/85 hover:bg-[#1e3c1e] text-[#50fa7b] border border-[#2e5c2e]/60 rounded-xs font-mono text-[9.5px] tracking-wider transition-colors flex items-center gap-1 shadow-sm active:scale-95"
+                title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen (Mobile)'}
+              >
+                <span>{isFullscreen ? '✕' : '⛶'}</span>
+                <span className="hidden xs:inline">{isFullscreen ? 'WINDOW' : 'FULLSCREEN'}</span>
+              </button>
+            )}
+          </div>
         )}
 
         {/* Hardware Gamepad Connected Badge */}
@@ -112,4 +147,3 @@ export const ScreenViewport: React.FC<ScreenViewportProps> = ({
     </div>
   );
 };
-

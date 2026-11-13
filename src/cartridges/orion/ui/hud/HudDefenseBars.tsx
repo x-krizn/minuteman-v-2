@@ -3,8 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { soundSystem } from '../../../../engine/core/soundSystem';
+import {
+  getActionPrimaryKeyBadge,
+  subscribeControlBindings,
+} from '../../../../engine/input/inputBindingsStore';
 import { getWeaponDefinition } from '../../database/equipment/weapons';
 import { getItemDefinition } from '../../database/items';
 import {
@@ -43,6 +47,13 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
   state,
   onOpenPilotModal,
 }) => {
+  const [, setBindingsTick] = useState(0);
+  useEffect(() => {
+    return subscribeControlBindings(() => {
+      setBindingsTick((t) => (t + 1) % 1000);
+    });
+  }, []);
+  const lKeyBadge = getActionPrimaryKeyBadge('l');
   // The Three Defense Layers
   const shieldCap = state.shields.capacity;
   const shieldMax = state.shields.maxCapacity || 100;
@@ -451,7 +462,7 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
                 },
               });
             }}
-            title="Side Hand (Left) · Click or Hold [L] to swap Side (Left) ⇄ Aux (Back)"
+            title={`Side Hand (Left) · Click or Hold [L · ${lKeyBadge}] to swap Side (Left) ⇄ Aux (Back)`}
             className="pointer-events-auto flex items-center justify-end gap-1 max-w-full text-[7px] font-bold leading-none hover:text-[#fbbf24] cursor-pointer bg-transparent"
           >
             <span className="text-[#38bdf8] shrink-0">L·SIDE:</span>
@@ -469,7 +480,7 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
                 },
               });
             }}
-            title="Auxiliary (Back) · Click or Hold [L] to swap Side (Left) ⇄ Aux (Back)"
+            title={`Auxiliary (Back) · Click or Hold [L · ${lKeyBadge}] to swap Side (Left) ⇄ Aux (Back)`}
             className="pointer-events-auto flex items-center justify-end gap-1 max-w-full text-[7px] font-bold leading-none hover:text-[#fbbf24] cursor-pointer bg-transparent"
           >
             <span className="text-[#c084fc] shrink-0">B·AUX:</span>

@@ -41,12 +41,24 @@ const BUTTON_CONFIGS: ButtonConfig[] = [
 interface ActionButtonsProps {
   scale: number;
   state: GamepadButtons;
+  activeKeyLabels?: Partial<Record<ButtonKey, string>>;
+  boundKeyLabels?: Partial<Record<ButtonKey, string>>;
+  originOffsetX?: number;
+  originOffsetY?: number;
 }
 
 /**
- * Renders the handheld `A`, `B`, `X`, and `Y` diamond action cluster for the virtual controller.
+ * Renders the handheld `L`, `R`, `Y`, `X`, `B`, and `A` action cluster for the virtual controller,
+ * dynamically matching tactile pop-up key displays to the physical key being input.
  */
-export const ActionButtons: React.FC<ActionButtonsProps> = ({ scale, state }) => {
+export const ActionButtons: React.FC<ActionButtonsProps> = ({
+  scale,
+  state,
+  activeKeyLabels = {},
+  boundKeyLabels = {},
+  originOffsetX = 0,
+  originOffsetY = 0,
+}) => {
   const s = scale;
 
   const handlePointerDown = (key: ButtonKey, e: React.PointerEvent<HTMLButtonElement>) => {
@@ -73,6 +85,10 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({ scale, state }) =>
     <>
       {BUTTON_CONFIGS.map((btn) => {
         const isActive = Boolean(state[btn.key]);
+        const popupLabel = activeKeyLabels[btn.key] || btn.label;
+        const boundHint = boundKeyLabels[btn.key];
+        const popupFontSize =
+          popupLabel.length >= 3 ? 7.5 * s : popupLabel.length === 2 ? 9.5 * s : 12 * s;
 
         return (
           <button
@@ -84,10 +100,11 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({ scale, state }) =>
             onPointerCancel={(e) => handlePointerCancel(btn.key, e)}
             onLostPointerCapture={(e) => handlePointerCancel(btn.key, e)}
             onContextMenu={(e) => e.preventDefault()}
+            title={boundHint ? `${btn.label} (Key: ${boundHint})` : btn.label}
             className="absolute border-none bg-transparent p-0 m-0 cursor-pointer touch-none select-none pixelated"
             style={{
-              left: `${btn.x * s}px`,
-              top: `${btn.y * s}px`,
+              left: `${(btn.x - originOffsetX) * s}px`,
+              top: `${(btn.y - originOffsetY) * s}px`,
               width: `${22 * s}px`,
               height: `${22 * s}px`,
               backgroundImage: `url("${btn.faceImg}")`,
@@ -110,24 +127,51 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({ scale, state }) =>
               {btn.label}
             </span>
 
-            {/* Tactile Popup Bubble (Active indicator visible above user's thumb) */}
+            {/* Bound Physical Keycap Badge (Syncs immediately when user remaps controls) */}
+            {boundHint && (
+              <span
+                className="absolute flex items-center justify-center pointer-events-none font-bold whitespace-nowrap"
+                style={{
+                  right: `${-2 * s}px`,
+                  bottom: `${-1.5 * s}px`,
+                  minWidth: `${9 * s}px`,
+                  height: `${7.2 * s}px`,
+                  paddingLeft: `${1.4 * s}px`,
+                  paddingRight: `${1.4 * s}px`,
+                  backgroundColor: '#1f211c',
+                  color: '#e8f0d8',
+                  border: `${0.8 * s}px solid #525746`,
+                  borderRadius: `${1.8 * s}px`,
+                  fontSize: `${(boundHint.length >= 3 ? 3.5 : 4.2) * s}px`,
+                  fontFamily: 'orion-font, monospace',
+                  lineHeight: 1,
+                }}
+              >
+                {boundHint}
+              </span>
+            )}
+
+            {/* Tactile Popup Bubble (Matches the exact physical key or button being input) */}
             {isActive && (
               <span
-                className="absolute left-1/2 bottom-full flex items-center justify-center pointer-events-none font-bold z-20"
+                className="absolute left-1/2 bottom-full flex items-center justify-center pointer-events-none font-bold z-30 whitespace-nowrap"
                 style={{
                   transform: `translate(-50%, ${-3 * s}px)`,
-                  width: `${24 * s}px`,
+                  minWidth: `${24 * s}px`,
                   height: `${24 * s}px`,
+                  paddingLeft: `${2 * s}px`,
+                  paddingRight: `${2 * s}px`,
                   border: `${2 * s}px solid #000`,
                   borderRadius: `${4 * s}px`,
                   backgroundColor: btn.c,
                   boxShadow: `0 ${s}px 0 rgba(0,0,0,0.35)`,
-                  fontSize: `${12 * s}px`,
+                  fontSize: `${popupFontSize}px`,
                   color: '#000',
                   fontFamily: 'orion-font, monospace',
+                  lineHeight: 1,
                 }}
               >
-                {btn.label}
+                {popupLabel}
               </span>
             )}
           </button>
@@ -136,3 +180,4 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({ scale, state }) =>
     </>
   );
 };
+

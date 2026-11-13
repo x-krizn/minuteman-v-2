@@ -6,6 +6,22 @@
 import { ButtonKey, GameInput, GamepadButtons } from '../../types/input';
 import { gamepadStore } from './gamepadStore';
 import { hardwareGamepad } from './hardwareGamepad';
+import { isInputCaptureActive } from './inputBindingsStore';
+
+const NEUTRAL_BUTTONS: GamepadButtons = {
+  up: false,
+  down: false,
+  left: false,
+  right: false,
+  a: false,
+  b: false,
+  l: false,
+  r: false,
+  x: false,
+  y: false,
+  start: false,
+  select: false,
+};
 
 /**
  * Samples `gamepadStore` once per frame to compute edge-triggered `justPressed` and `justReleased` button states in `GameInput`.
@@ -19,6 +35,15 @@ export class InputReader {
   public read(): GameInput {
     // 1. Poll physical hardware gamepads via HTML5 Gamepad API
     hardwareGamepad.poll();
+
+    if (isInputCaptureActive()) {
+      this.reset();
+      return {
+        held: { ...NEUTRAL_BUTTONS },
+        pressed: { ...NEUTRAL_BUTTONS },
+        stick: { x: 0, y: 0 },
+      };
+    }
 
     const held = gamepadStore.getState();
     const rawStick = gamepadStore.getStick();

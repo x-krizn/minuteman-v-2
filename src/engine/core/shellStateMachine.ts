@@ -5,6 +5,7 @@
 
 import { GameInput } from '../../types/input';
 import { MenuItem, ShellScreen } from '../../types/shell';
+import { getActionPrimaryKeyBadge } from '../input/inputBindingsStore';
 import { cartridgeRunner } from './cartridgeRunner';
 import { registry } from './registry';
 import { soundSystem } from './soundSystem';
@@ -227,7 +228,15 @@ export class ShellStateMachine {
       case 'howto':
         return {
           title: 'How-To',
-          lines: [...HOWTO_LINES, '', 'B: BACK'],
+          lines: [
+            `MOVE: ${getActionPrimaryKeyBadge('up')}/${getActionPrimaryKeyBadge('left')}/${getActionPrimaryKeyBadge('down')}/${getActionPrimaryKeyBadge('right')}`,
+            `A/B: ${getActionPrimaryKeyBadge('a')} / ${getActionPrimaryKeyBadge('b')}`,
+            `X/Y: ${getActionPrimaryKeyBadge('x')} / ${getActionPrimaryKeyBadge('y')}`,
+            `L/R: ${getActionPrimaryKeyBadge('l')} / ${getActionPrimaryKeyBadge('r')}`,
+            `START/SEL: ${getActionPrimaryKeyBadge('start')}/${getActionPrimaryKeyBadge('select')}`,
+            '',
+            'B: BACK',
+          ],
           selectedIndex: -1,
         };
 

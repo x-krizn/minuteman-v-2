@@ -43,8 +43,15 @@ export class GamepadStore {
   private stick: StickVector = { x: 0, y: 0 };
   private stickSources: Map<string, StickVector> = new Map();
   private buttonSources: Map<ButtonKey, Set<string>> = new Map();
+  private activeKeyLabels: Partial<Record<ButtonKey, string>> = {};
   private latchedPresses: Set<ButtonKey> = new Set();
-  private listeners: Set<(state: GamepadButtons, stick: StickVector) => void> = new Set();
+  private listeners: Set<
+    (
+      state: GamepadButtons,
+      stick: StickVector,
+      keyLabels: Partial<Record<ButtonKey, string>>
+    ) => void
+  > = new Set();
 
   private constructor() {}
 
@@ -63,6 +70,13 @@ export class GamepadStore {
     return { ...this.stick };
   }
 
+  /**
+   * Returns a snapshot of currently active physical key labels keyed by virtual `ButtonKey`.
+   */
+  public getActiveKeyLabels(): Partial<Record<ButtonKey, string>> {
+    return { ...this.activeKeyLabels };
+  }
+
   public consumeLatchedPresses(): Set<ButtonKey> {
     if (this.latchedPresses.size === 0) {
       return new Set();
@@ -76,7 +90,8 @@ export class GamepadStore {
     key: ButtonKey,
     isActive: boolean,
     vibrate = true,
-    source = 'default'
+    source = 'default',
+    keyLabel?: string
   ): void {
     let sources = this.buttonSources.get(key);
     if (!sources) {
@@ -85,10 +100,19 @@ export class GamepadStore {
     }
 
     const wasActive = sources.size > 0;
+    const prevLabel = this.activeKeyLabels[key];
     if (isActive) {
       sources.add(source);
+      if (keyLabel) {
+        this.activeKeyLabels[key] = keyLabel;
+      } else if (source === 'touch' || source === 'hardware') {
+        delete this.activeKeyLabels[key];
+      }
     } else {
       sources.delete(source);
+      if (source === 'keyboard' || sources.size === 0) {
+        delete this.activeKeyLabels[key];
+      }
     }
 
     const nextIsActive = sources.size > 0;
@@ -96,9 +120,10 @@ export class GamepadStore {
       this.latchedPresses.add(key);
     }
 
-    if (this.state[key] !== nextIsActive) {
+    const labelChanged = prevLabel !== this.activeKeyLabels[key];
+    if (this.state[key] !== nextIsActive || labelChanged) {
       this.state[key] = nextIsActive;
-      if (nextIsActive && vibrate) {
+      if (!wasActive && nextIsActive && vibrate) {
         triggerHaptic(10);
       }
       this.notify();
@@ -145,6 +170,7 @@ export class GamepadStore {
     this.buttonSources.clear();
     this.stickSources.clear();
     this.latchedPresses.clear();
+    this.activeKeyLabels = {};
     (Object.keys(this.state) as ButtonKey[]).forEach((k) => {
       this.state[k] = false;
     });
@@ -171,9 +197,15 @@ export class GamepadStore {
     };
   }
 
-  public subscribe(fn: (state: GamepadButtons, stick: StickVector) => void): () => void {
+  public subscribe(
+    fn: (
+      state: GamepadButtons,
+      stick: StickVector,
+      keyLabels: Partial<Record<ButtonKey, string>>
+    ) => void
+  ): () => void {
     this.listeners.add(fn);
-    fn(this.getState(), this.getStick());
+    fn(this.getState(), this.getStick(), this.getActiveKeyLabels());
     return () => {
       this.listeners.delete(fn);
     };
@@ -182,7 +214,8 @@ export class GamepadStore {
   private notify(): void {
     const snapshotState = this.getState();
     const snapshotStick = this.getStick();
-    this.listeners.forEach((fn) => fn(snapshotState, snapshotStick));
+    const snapshotLabels = this.getActiveKeyLabels();
+    this.listeners.forEach((fn) => fn(snapshotState, snapshotStick, snapshotLabels));
   }
 }
 
@@ -190,3 +223,4 @@ export class GamepadStore {
  * Shared singleton instance of `GamepadStore`.
  */
 export const gamepadStore = GamepadStore.getInstance();
+

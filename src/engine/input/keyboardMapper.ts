@@ -6,56 +6,88 @@
 import { ButtonKey } from '../../types/input';
 import { gamepadStore } from './gamepadStore';
 import {
+  formatCompactKeyLabel,
   isInputCaptureActive,
   resolveKeyboardCodeToButton,
+  resolveMenuKeyboardCodeToButton,
   subscribeControlBindings,
 } from './inputBindingsStore';
 
 function isEditableElement(el: EventTarget | Element | null): boolean {
   if (!el || !(el instanceof HTMLElement)) return false;
   const tag = el.tagName;
-  return (
-    tag === 'INPUT' ||
-    tag === 'TEXTAREA' ||
-    tag === 'SELECT' ||
-    el.isContentEditable
-  );
+  if (tag === 'TEXTAREA' || el.isContentEditable) return true;
+  if (tag === 'INPUT') {
+    const type = ((el as HTMLInputElement).type || 'text').toLowerCase();
+    return (
+      type === 'text' ||
+      type === 'search' ||
+      type === 'password' ||
+      type === 'email' ||
+      type === 'url' ||
+      type === 'tel' ||
+      type === 'number'
+    );
+  }
+  return false;
 }
 
 /**
- * Maps physical keyboard events into `gamepadStore` using customizable bindings from `inputBindingsStore`.
+ * Returns true when a universal menu overlay or shell screen is active so keyboard input
+ * routes through fixed menu navigation keys instead of customized in-game controls.
+ */
+function isMenuKeyboardContextActive(): boolean {
+  if (typeof document === 'undefined') return false;
+  const viewport = document.getElementById('screen-viewport');
+  if (!viewport) return true;
+  if (viewport.querySelector('[data-universal-menu="true"]')) return true;
+  const canvas = document.getElementById('screen-canvas');
+  if (!canvas || canvas.hasAttribute('hidden')) return true;
+  return false;
+}
+
+/**
+ * Maps physical keyboard events into `gamepadStore` using fixed menu navigation bindings
+ * when a menu is active and customizable bindings from `inputBindingsStore` during gameplay.
  */
 export class KeyboardMapper {
-  private activeKeys: Set<string> = new Set();
+  private activeKeyButtons: Map<string, ButtonKey> = new Map();
   private keyboardStickActive = false;
   private attached = false;
+
+  /**
+   * Clears all currently held keyboard button states and stick vectors.
+   */
+  public releaseAll(): void {
+    this.activeKeyButtons.clear();
+    this.keyboardStickActive = false;
+    (
+      [
+        'up',
+        'down',
+        'left',
+        'right',
+        'a',
+        'b',
+        'x',
+        'y',
+        'l',
+        'r',
+        'start',
+        'select',
+      ] as ButtonKey[]
+    ).forEach((btn) => {
+      gamepadStore.setButtonState(btn, false, false, 'keyboard');
+    });
+    gamepadStore.setStick(0, 0, 'keyboard');
+  }
 
   public init(): () => void {
     if (this.attached) return () => {};
     this.attached = true;
 
     const releaseAllKeyboardInputs = () => {
-      this.activeKeys.clear();
-      this.keyboardStickActive = false;
-      (
-        [
-          'up',
-          'down',
-          'left',
-          'right',
-          'a',
-          'b',
-          'x',
-          'y',
-          'l',
-          'r',
-          'start',
-          'select',
-        ] as ButtonKey[]
-      ).forEach((btn) => {
-        gamepadStore.setButtonState(btn, false, false, 'keyboard');
-      });
-      gamepadStore.setStick(0, 0, 'keyboard');
+      this.releaseAll();
     };
 
     const unsubBindings = subscribeControlBindings(() => {
@@ -76,7 +108,10 @@ export class KeyboardMapper {
         return;
       }
 
-      const button = resolveKeyboardCodeToButton(e.code);
+      const isMenu = isMenuKeyboardContextActive();
+      const button = isMenu
+        ? resolveMenuKeyboardCodeToButton(e.code)
+        : resolveKeyboardCodeToButton(e.code);
 
       // Prevent default browser scrolling or button activation on bound keys or navigation keys
       if (
@@ -89,8 +124,9 @@ export class KeyboardMapper {
       }
 
       if (button) {
-        this.activeKeys.add(e.code);
-        gamepadStore.setButtonState(button, true, false, 'keyboard');
+        this.activeKeyButtons.set(e.code, button);
+        const keyLabel = formatCompactKeyLabel(e.code);
+        gamepadStore.setButtonState(button, true, false, 'keyboard', keyLabel);
         this.updateDerivedStick();
       }
     };
@@ -101,13 +137,16 @@ export class KeyboardMapper {
         return;
       }
 
-      const button = resolveKeyboardCodeToButton(e.code);
+      const trackedButton = this.activeKeyButtons.get(e.code);
+      const fallbackButton = isMenuKeyboardContextActive()
+        ? resolveMenuKeyboardCodeToButton(e.code)
+        : resolveKeyboardCodeToButton(e.code);
+      const button = trackedButton ?? fallbackButton;
+
       if (button) {
-        this.activeKeys.delete(e.code);
-        // Only release if no other key mapping to the same button is held
-        const stillHeld = Array.from(this.activeKeys).some(
-          (k) => resolveKeyboardCodeToButton(k) === button
-        );
+        this.activeKeyButtons.delete(e.code);
+        // Only release if no other held key maps to the same button
+        const stillHeld = Array.from(this.activeKeyButtons.values()).some((b) => b === button);
         if (!stillHeld) {
           gamepadStore.setButtonState(button, false, false, 'keyboard');
         }
@@ -143,13 +182,12 @@ export class KeyboardMapper {
   private updateDerivedStick(): void {
     let sx = 0;
     let sy = 0;
-    const isHeld = (btn: ButtonKey) =>
-      Array.from(this.activeKeys).some((k) => resolveKeyboardCodeToButton(k) === btn);
+    const heldButtons = new Set(this.activeKeyButtons.values());
 
-    if (isHeld('left')) sx -= 1;
-    if (isHeld('right')) sx += 1;
-    if (isHeld('up')) sy -= 1;
-    if (isHeld('down')) sy += 1;
+    if (heldButtons.has('left')) sx -= 1;
+    if (heldButtons.has('right')) sx += 1;
+    if (heldButtons.has('up')) sy -= 1;
+    if (heldButtons.has('down')) sy += 1;
 
     // Normalize diagonal so speed doesn't exceed 1
     if (sx !== 0 && sy !== 0) {
@@ -173,3 +211,4 @@ export class KeyboardMapper {
  * Shared singleton instance of `KeyboardMapper`.
  */
 export const keyboardMapper = new KeyboardMapper();
+

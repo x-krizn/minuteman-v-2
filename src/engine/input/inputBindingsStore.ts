@@ -11,8 +11,13 @@ import { ButtonKey } from '../../types/input';
 export type KeyboardBindingPair = [string, string | null];
 
 /**
- * Persistent configuration for customizable keyboard bindings, W3C gamepad button assignments,
- * analog thumbstick deadzone, trigger actuation threshold, and haptic rumble feedback.
+ * Responsive layout preference for the on-screen virtual handheld controller.
+ */
+export type VirtualGamepadLayoutMode = 'auto' | 'bottom' | 'hidden';
+
+/**
+ * Persistent configuration for customizable in-game keyboard bindings, W3C gamepad button assignments,
+ * analog thumbstick deadzone, trigger actuation threshold, haptic rumble feedback, and virtual gamepad layout.
  */
 export interface ControlBindingsConfig {
   keyboard: Record<ButtonKey, KeyboardBindingPair>;
@@ -20,6 +25,7 @@ export interface ControlBindingsConfig {
   stickDeadzone: number;
   triggerThreshold: number;
   vibrationEnabled: boolean;
+  virtualPadLayout: VirtualGamepadLayoutMode;
 }
 
 /**
@@ -43,42 +49,42 @@ export const CONTROL_ACTION_DEFINITIONS: ControlActionDefinition[] = [
     key: 'up',
     badge: 'D-UP',
     label: 'Move Up / North',
-    detail: '8-way ground traversal & menu navigation up',
+    detail: 'In-game 8-way ground traversal North',
     category: 'movement',
   },
   {
     key: 'down',
     badge: 'D-DOWN',
     label: 'Move Down / South',
-    detail: '8-way ground traversal & menu navigation down',
+    detail: 'In-game 8-way ground traversal South',
     category: 'movement',
   },
   {
     key: 'left',
     badge: 'D-LEFT',
     label: 'Move Left / West',
-    detail: '8-way ground traversal & menu navigation left',
+    detail: 'In-game 8-way ground traversal West',
     category: 'movement',
   },
   {
     key: 'right',
     badge: 'D-RIGHT',
     label: 'Move Right / East',
-    detail: '8-way ground traversal & menu navigation right',
+    detail: 'In-game 8-way ground traversal East',
     category: 'movement',
   },
   {
     key: 'a',
     badge: '[A]',
-    label: 'Jump / Interact / Confirm',
-    detail: 'Leap sinkholes, rest at Campfires, use Waygates, confirm',
+    label: 'Jump / Interact',
+    detail: 'Leap sinkholes, rest at Campfires, use Waygates',
     category: 'combat',
   },
   {
     key: 'b',
     badge: '[B]',
-    label: 'Dodge / Boost / Cancel',
-    detail: 'Tap for dodge burst; hold for thruster boost; menu back',
+    label: 'Dodge / Boost',
+    detail: 'Tap for dodge burst; hold for thruster boost',
     category: 'combat',
   },
   {
@@ -113,14 +119,14 @@ export const CONTROL_ACTION_DEFINITIONS: ControlActionDefinition[] = [
     key: 'start',
     badge: 'START',
     label: 'Pause & System Menu',
-    detail: 'Open in-game [START] menu (Roster, World Map, Settings)',
+    detail: 'Open in-game [START] menu during gameplay',
     category: 'system',
   },
   {
     key: 'select',
     badge: 'SELECT',
     label: 'Pilot Satchel & Loadout',
-    detail: 'Open [SELECT] Satchel (Status, Loadout, Feat Constellation)',
+    detail: 'Open [SELECT] Satchel during gameplay',
     category: 'system',
   },
 ];
@@ -160,6 +166,31 @@ export const DEFAULT_CONTROL_BINDINGS: ControlBindingsConfig = {
   stickDeadzone: 0.18,
   triggerThreshold: 0.35,
   vibrationEnabled: true,
+  virtualPadLayout: 'auto',
+};
+
+/**
+ * Fixed keyboard lookup table reserved exclusively for menu navigation so custom
+ * in-game control remaps never break or alter UI menus.
+ */
+const FIXED_MENU_KEYBOARD_MAP: Record<string, ButtonKey> = {
+  ArrowUp: 'up',
+  KeyW: 'up',
+  ArrowDown: 'down',
+  KeyS: 'down',
+  ArrowLeft: 'left',
+  KeyA: 'left',
+  ArrowRight: 'right',
+  KeyD: 'right',
+  Enter: 'a',
+  Space: 'a',
+  Escape: 'b',
+  Backspace: 'b',
+  KeyQ: 'l',
+  KeyE: 'r',
+  Tab: 'select',
+  ShiftRight: 'select',
+  KeyP: 'start',
 };
 
 const ALL_BUTTON_KEYS: ButtonKey[] = [
@@ -176,6 +207,13 @@ const ALL_BUTTON_KEYS: ButtonKey[] = [
   'start',
   'select',
 ];
+
+function sanitizeVirtualPadLayout(raw: unknown): VirtualGamepadLayoutMode {
+  if (raw === 'bottom' || raw === 'hidden' || raw === 'auto') {
+    return raw;
+  }
+  return 'auto';
+}
 
 function cloneBindings(src: ControlBindingsConfig): ControlBindingsConfig {
   const keyboard = {} as Record<ButtonKey, KeyboardBindingPair>;
@@ -194,6 +232,7 @@ function cloneBindings(src: ControlBindingsConfig): ControlBindingsConfig {
     stickDeadzone: Math.max(0.05, Math.min(0.45, src.stickDeadzone ?? 0.18)),
     triggerThreshold: Math.max(0.1, Math.min(0.85, src.triggerThreshold ?? 0.35)),
     vibrationEnabled: src.vibrationEnabled ?? true,
+    virtualPadLayout: sanitizeVirtualPadLayout(src.virtualPadLayout),
   };
 }
 
@@ -226,6 +265,7 @@ function loadStoredBindings(): ControlBindingsConfig {
         typeof parsed.vibrationEnabled === 'boolean'
           ? parsed.vibrationEnabled
           : DEFAULT_CONTROL_BINDINGS.vibrationEnabled,
+      virtualPadLayout: sanitizeVirtualPadLayout(parsed.virtualPadLayout),
     });
   } catch {
     return cloneBindings(DEFAULT_CONTROL_BINDINGS);
@@ -236,17 +276,15 @@ let activeBindings: ControlBindingsConfig = loadStoredBindings();
 let keyboardLookupCache: Record<string, ButtonKey> = {};
 let gamepadLookupCache: Record<number, ButtonKey> = {};
 let inputCaptureActive = false;
+let captureCooldownUntilMs = 0;
 const listeners: Set<() => void> = new Set();
 
+function getNowMs(): number {
+  return typeof performance !== 'undefined' ? performance.now() : Date.now();
+}
+
 function rebuildLookupCaches(): void {
-  const kbMap: Record<string, ButtonKey> = {
-    // Convenient secondary system aliases if not claimed by a custom binding
-    KeyP: 'start',
-    ShiftRight: 'select',
-    KeyM: 'select',
-    KeyI: 'select',
-    Backspace: 'select',
-  };
+  const kbMap: Record<string, ButtonKey> = {};
   for (const btn of ALL_BUTTON_KEYS) {
     const [primary, secondary] = activeBindings.keyboard[btn];
     if (primary) kbMap[primary] = btn;
@@ -296,7 +334,7 @@ export function getControlBindings(): ControlBindingsConfig {
 }
 
 /**
- * Subscribes to changes in keyboard/gamepad bindings or deadzone settings.
+ * Subscribes to changes in keyboard/gamepad bindings, deadzone, or virtual gamepad layout settings.
  */
 export function subscribeControlBindings(listener: () => void): () => void {
   listeners.add(listener);
@@ -306,10 +344,19 @@ export function subscribeControlBindings(listener: () => void): () => void {
 }
 
 /**
- * Resolves a physical `KeyboardEvent.code` to its bound `ButtonKey`, or `undefined` if unbound.
+ * Resolves a physical `KeyboardEvent.code` to its custom bound **in-game** `ButtonKey`,
+ * or `undefined` if unbound.
  */
 export function resolveKeyboardCodeToButton(code: string): ButtonKey | undefined {
   return keyboardLookupCache[code];
+}
+
+/**
+ * Resolves a physical `KeyboardEvent.code` to the **fixed UI menu** `ButtonKey`
+ * (`Arrows / WASD`, `Enter / Space` -> `a`, `Esc / Backspace` -> `b`, `Q / E` -> `l / r`, `Tab` -> `select`, `P` -> `start`).
+ */
+export function resolveMenuKeyboardCodeToButton(code: string): ButtonKey | undefined {
+  return FIXED_MENU_KEYBOARD_MAP[code];
 }
 
 /**
@@ -320,21 +367,24 @@ export function resolveGamepadIndexToButton(buttonIndex: number): ButtonKey | un
 }
 
 /**
- * Returns true while the Controls UI is actively waiting for the user to press a key or gamepad button.
+ * Returns true while the Controls UI is actively capturing a key/button or within the post-capture release cooldown window.
  */
 export function isInputCaptureActive(): boolean {
-  return inputCaptureActive;
+  return inputCaptureActive || getNowMs() < captureCooldownUntilMs;
 }
 
 /**
- * Enables or disables interactive key/button capture lock so global menu navigation pauses during binding.
+ * Enables or disables interactive key/button capture lock so global menu navigation and gameplay pause during binding.
  */
 export function setInputCaptureActive(active: boolean): void {
   inputCaptureActive = active;
+  if (!active) {
+    captureCooldownUntilMs = Math.max(captureCooldownUntilMs, getNowMs() + 90);
+  }
 }
 
 /**
- * Assigns a `KeyboardEvent.code` to `action` at `slotIndex` (`0` = Primary, `1` = Secondary).
+ * Assigns a `KeyboardEvent.code` to an **in-game** `action` at `slotIndex` (`0` = Primary, `1` = Secondary).
  * Automatically swaps bindings if `newCode` was already assigned to another action.
  */
 export function setKeyboardBinding(
@@ -345,19 +395,40 @@ export function setKeyboardBinding(
   const prevCode = activeBindings.keyboard[action][slotIndex];
   let swappedWith: ButtonKey | undefined;
 
+  if (prevCode === newCode) {
+    return {};
+  }
+
   for (const otherKey of ALL_BUTTON_KEYS) {
     const pair = activeBindings.keyboard[otherKey];
     for (const s of [0, 1] as const) {
       if (pair[s] === newCode && (otherKey !== action || s !== slotIndex)) {
-        const fallbackCode =
-          prevCode || pair[0] || DEFAULT_CONTROL_BINDINGS.keyboard[otherKey][0];
-        if (s === 0) {
-          pair[0] = fallbackCode;
+        if (otherKey === action) {
+          // Same action moving key between Primary <-> Secondary slot
+          if (s === 0) {
+            pair[0] = prevCode && prevCode !== newCode ? prevCode : '';
+          } else {
+            pair[1] = prevCode && prevCode !== newCode ? prevCode : null;
+          }
         } else {
-          pair[1] = otherKey === action ? prevCode : fallbackCode;
-        }
-        if (otherKey !== action) {
           swappedWith = otherKey;
+          if (prevCode && prevCode !== newCode && pair[0] !== prevCode && pair[1] !== prevCode) {
+            if (s === 0) {
+              pair[0] = prevCode;
+            } else {
+              pair[1] = prevCode;
+            }
+          } else if (s === 0) {
+            // Lost primary key with no swap source: promote secondary if available, else UNBOUND
+            if (pair[1] && pair[1] !== newCode) {
+              pair[0] = pair[1];
+              pair[1] = null;
+            } else {
+              pair[0] = '';
+            }
+          } else {
+            pair[1] = null;
+          }
         }
       }
     }
@@ -369,6 +440,14 @@ export function setKeyboardBinding(
 }
 
 /**
+ * Clears the secondary (`slotIndex = 1`) keyboard binding for `action`.
+ */
+export function clearKeyboardSecondaryBinding(action: ButtonKey): void {
+  activeBindings.keyboard[action][1] = null;
+  persistAndNotify();
+}
+
+/**
  * Assigns a W3C gamepad button index (`0..15`) to `action`.
  * Automatically swaps with any action previously bound to `buttonIndex`.
  */
@@ -377,6 +456,9 @@ export function setGamepadBinding(
   buttonIndex: number
 ): { swappedWith?: ButtonKey } {
   const prevIndex = activeBindings.gamepad[action];
+  if (prevIndex === buttonIndex) {
+    return {};
+  }
   let swappedWith: ButtonKey | undefined;
 
   for (const otherKey of ALL_BUTTON_KEYS) {
@@ -412,6 +494,14 @@ export function setGamepadTriggerThreshold(threshold: number): void {
  */
 export function setGamepadVibrationEnabled(enabled: boolean): void {
   activeBindings.vibrationEnabled = enabled;
+  persistAndNotify();
+}
+
+/**
+ * Sets the responsive layout mode (`'auto'`, `'bottom'`, or `'hidden'`) for the on-screen virtual gamepad.
+ */
+export function setVirtualGamepadLayout(mode: VirtualGamepadLayoutMode): void {
+  activeBindings.virtualPadLayout = sanitizeVirtualPadLayout(mode);
   persistAndNotify();
 }
 
@@ -505,6 +595,71 @@ export function formatKeyCodeLabel(code: string | null | undefined): string {
 }
 
 /**
+ * Formats a `KeyboardEvent.code` into an ultra-compact key glyph (1-4 chars) suitable for virtual button pop-up bubbles.
+ */
+export function formatCompactKeyLabel(code: string | null | undefined): string {
+  if (!code) return '';
+  if (code.startsWith('Key')) return code.slice(3).toUpperCase();
+  if (code.startsWith('Digit')) return code.slice(5);
+  if (code.startsWith('Numpad')) return `N${code.slice(6).toUpperCase().slice(0, 2)}`;
+  switch (code) {
+    case 'ArrowUp':
+      return '↑';
+    case 'ArrowDown':
+      return '↓';
+    case 'ArrowLeft':
+      return '←';
+    case 'ArrowRight':
+      return '→';
+    case 'Space':
+      return 'SPC';
+    case 'Enter':
+      return 'ENT';
+    case 'Escape':
+      return 'ESC';
+    case 'Tab':
+      return 'TAB';
+    case 'ShiftLeft':
+    case 'ShiftRight':
+      return 'SHF';
+    case 'ControlLeft':
+    case 'ControlRight':
+      return 'CTL';
+    case 'AltLeft':
+    case 'AltRight':
+      return 'ALT';
+    case 'Backspace':
+      return 'BSP';
+    case 'CapsLock':
+      return 'CAP';
+    case 'BracketLeft':
+      return '[';
+    case 'BracketRight':
+      return ']';
+    case 'Semicolon':
+      return ';';
+    case 'Quote':
+      return "'";
+    case 'Comma':
+      return ',';
+    case 'Period':
+      return '.';
+    case 'Slash':
+      return '/';
+    case 'Backslash':
+      return '\\';
+    case 'Minus':
+      return '-';
+    case 'Equal':
+      return '=';
+    case 'Backquote':
+      return '`';
+    default:
+      return code.toUpperCase().slice(0, 4);
+  }
+}
+
+/**
  * Formats a W3C standard gamepad button index (`0..15`) into a clear controller button label.
  */
 export function formatGamepadButtonLabel(buttonIndex: number): string {
@@ -547,69 +702,253 @@ export function formatGamepadButtonLabel(buttonIndex: number): string {
 }
 
 /**
- * Starts a temporary capture-phase keyboard listener that intercepts the next key press
- * for interactive key remapping. Returns a cleanup function that removes the listener.
+ * Formats a W3C standard gamepad button index (`0..15`) into a compact badge (1-4 chars) for pop-up bubbles.
+ */
+export function formatCompactGamepadButtonLabel(buttonIndex: number): string {
+  switch (buttonIndex) {
+    case 0:
+      return 'A';
+    case 1:
+      return 'B';
+    case 2:
+      return 'X';
+    case 3:
+      return 'Y';
+    case 4:
+      return 'LB';
+    case 5:
+      return 'RB';
+    case 6:
+      return 'LT';
+    case 7:
+      return 'RT';
+    case 8:
+      return 'SEL';
+    case 9:
+      return 'STR';
+    case 10:
+      return 'L3';
+    case 11:
+      return 'R3';
+    case 12:
+      return '↑';
+    case 13:
+      return '↓';
+    case 14:
+      return '←';
+    case 15:
+      return '→';
+    default:
+      return `B${buttonIndex}`;
+  }
+}
+
+/**
+ * Returns the compact display key label currently assigned to an in-game `ButtonKey` (or fallback badge if unbound).
+ */
+export function getActionPrimaryKeyBadge(action: ButtonKey): string {
+  const pair = activeBindings.keyboard[action];
+  const code = pair?.[0] || pair?.[1];
+  const compact = formatCompactKeyLabel(code);
+  return compact || action.toUpperCase();
+}
+
+/**
+ * Rewrites bracketed gameplay button tags (`[A]`, `[B]`, `[X]`, `[Y]`, `[L]`, `[R]`) in floating HUD
+ * interaction prompts to reflect the player's currently bound physical keys.
+ */
+export function formatPromptControlLabels(promptText: string): string {
+  return promptText.replace(/\[(A|B|X|Y|L|R)\]/g, (_match, letter: string) => {
+    const key = letter.toLowerCase() as ButtonKey;
+    const keyBadge = getActionPrimaryKeyBadge(key);
+    return keyBadge === letter ? `[${letter}]` : `[${letter}·${keyBadge}]`;
+  });
+}
+
+/**
+ * Options passed to `startKeyboardCaptureSession` for isolated, release-gated key remapping.
+ */
+export interface KeyboardCaptureSessionOptions {
+  onKeyPreview?: (code: string) => void;
+  onKeyCaptured: (code: string) => void;
+  onCancel: () => void;
+  onFlushInputState?: () => void;
+}
+
+const IGNORED_CAPTURE_CODES = new Set([
+  'MetaLeft',
+  'MetaRight',
+  'OSLeft',
+  'OSRight',
+  'ContextMenu',
+]);
+
+/**
+ * Starts an isolated capture-phase keyboard session that previews the pressed key on `keydown`,
+ * blocks all propagation (`stopImmediatePropagation`) across `keydown`/`keypress`/`keyup`,
+ * and commits/unlocks only after `keyup` plus a brief release cooldown so no event leaks to menus.
  */
 export function startKeyboardCaptureSession(
-  onKeyCaptured: (code: string) => void,
-  onCancel: () => void
+  options: KeyboardCaptureSessionOptions
 ): () => void {
   inputCaptureActive = true;
-  const handleKeyDown = (e: KeyboardEvent) => {
+  if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+    try {
+      document.activeElement.blur();
+    } catch {
+      // Ignore blur errors
+    }
+  }
+  options.onFlushInputState?.();
+
+  let pendingCode: string | null = null;
+  let completed = false;
+
+  const swallowEvent = (e: Event) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.code === 'Escape') {
-      inputCaptureActive = false;
-      onCancel();
+    e.stopImmediatePropagation();
+  };
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    swallowEvent(e);
+    if (completed || e.repeat || IGNORED_CAPTURE_CODES.has(e.code)) return;
+    if (pendingCode === null) {
+      pendingCode = e.code;
+      if (e.code !== 'Escape') {
+        options.onKeyPreview?.(e.code);
+      }
+    }
+  };
+
+  const handleKeyPress = (e: KeyboardEvent) => {
+    swallowEvent(e);
+  };
+
+  const handleKeyUp = (e: KeyboardEvent) => {
+    swallowEvent(e);
+    if (completed || IGNORED_CAPTURE_CODES.has(e.code)) return;
+    if (pendingCode === null || e.code !== pendingCode) {
       return;
     }
-    inputCaptureActive = false;
-    onKeyCaptured(e.code);
+    completed = true;
+    const finalizedCode = pendingCode;
+    pendingCode = null;
+    options.onFlushInputState?.();
+    setInputCaptureActive(false);
+    if (finalizedCode === 'Escape') {
+      options.onCancel();
+    } else {
+      options.onKeyCaptured(finalizedCode);
+    }
   };
+
+  const handleBlur = () => {
+    pendingCode = null;
+    options.onFlushInputState?.();
+  };
+
   window.addEventListener('keydown', handleKeyDown, true);
+  window.addEventListener('keypress', handleKeyPress, true);
+  window.addEventListener('keyup', handleKeyUp, true);
+  window.addEventListener('blur', handleBlur);
+
   return () => {
     window.removeEventListener('keydown', handleKeyDown, true);
+    window.removeEventListener('keypress', handleKeyPress, true);
+    window.removeEventListener('keyup', handleKeyUp, true);
+    window.removeEventListener('blur', handleBlur);
+    options.onFlushInputState?.();
+    setInputCaptureActive(false);
   };
 }
 
 /**
  * Starts a temporary animation-frame polling session that detects the next physical
- * W3C gamepad button press (or Escape key to cancel). Returns a cleanup function.
+ * W3C gamepad button press-and-release cycle (or Escape key to cancel). Returns a cleanup function.
  */
 export function startGamepadCaptureSession(
   readFirstPressedButton: () => number | null,
   onButtonCaptured: (buttonIndex: number) => void,
-  onCancel: () => void
+  onCancel: () => void,
+  onButtonPreview?: (buttonIndex: number) => void,
+  onFlushInputState?: () => void
 ): () => void {
   inputCaptureActive = true;
-  let animId = 0;
-  let waitingForRelease = true;
+  if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+    try {
+      document.activeElement.blur();
+    } catch {
+      // Ignore blur errors
+    }
+  }
+  onFlushInputState?.();
 
-  const handleEscCancel = (e: KeyboardEvent) => {
-    if (e.code === 'Escape') {
-      e.preventDefault();
-      e.stopPropagation();
-      inputCaptureActive = false;
+  let animId = 0;
+  let waitingForInitialRelease = true;
+  let pendingButtonIdx: number | null = null;
+  let escPending = false;
+  let completed = false;
+
+  const swallowEvent = (e: Event) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+  };
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    swallowEvent(e);
+    if (e.code === 'Escape' && !e.repeat) {
+      escPending = true;
+    }
+  };
+
+  const handleKeyUp = (e: KeyboardEvent) => {
+    swallowEvent(e);
+    if (completed) return;
+    if (escPending && e.code === 'Escape') {
+      completed = true;
+      onFlushInputState?.();
+      setInputCaptureActive(false);
       onCancel();
     }
   };
 
-  window.addEventListener('keydown', handleEscCancel, true);
+  window.addEventListener('keydown', handleKeyDown, true);
+  window.addEventListener('keyup', handleKeyUp, true);
 
   const pollFrame = () => {
+    if (completed) return;
     const pressedIdx = readFirstPressedButton();
-    if (waitingForRelease) {
+
+    if (waitingForInitialRelease) {
       if (pressedIdx === null) {
-        waitingForRelease = false;
+        waitingForInitialRelease = false;
       }
       animId = requestAnimationFrame(pollFrame);
       return;
     }
-    if (pressedIdx !== null) {
-      inputCaptureActive = false;
-      onButtonCaptured(pressedIdx);
+
+    if (pendingButtonIdx === null) {
+      if (pressedIdx !== null) {
+        pendingButtonIdx = pressedIdx;
+        onButtonPreview?.(pressedIdx);
+      }
+      animId = requestAnimationFrame(pollFrame);
       return;
     }
+
+    // Commit once the captured physical gamepad button is released
+    if (pressedIdx === null) {
+      completed = true;
+      const finalizedIdx = pendingButtonIdx;
+      pendingButtonIdx = null;
+      onFlushInputState?.();
+      setInputCaptureActive(false);
+      onButtonCaptured(finalizedIdx);
+      return;
+    }
+
     animId = requestAnimationFrame(pollFrame);
   };
 
@@ -617,7 +956,11 @@ export function startGamepadCaptureSession(
 
   return () => {
     cancelAnimationFrame(animId);
-    window.removeEventListener('keydown', handleEscCancel, true);
+    window.removeEventListener('keydown', handleKeyDown, true);
+    window.removeEventListener('keyup', handleKeyUp, true);
+    onFlushInputState?.();
+    setInputCaptureActive(false);
   };
 }
+
 

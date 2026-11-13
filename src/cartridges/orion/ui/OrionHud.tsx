@@ -6,6 +6,10 @@
 import React, { useEffect, useState } from 'react';
 import { soundSystem } from '../../../engine/core/soundSystem';
 import {
+  formatPromptControlLabels,
+  subscribeControlBindings,
+} from '../../../engine/input/inputBindingsStore';
+import {
   executeContextMenuOption,
   getOrionRoomsRef,
   getOrionStateRef,
@@ -43,6 +47,11 @@ export const OrionHud: React.FC = () => {
         setTick((prev) => (prev + 1) % 10000);
       }
     });
+    const unsubBindings = subscribeControlBindings(() => {
+      if (!cancelled) {
+        setTick((prev) => (prev + 1) % 10000);
+      }
+    });
     const scheduleNextFrame = () => {
       if (!cancelled) {
         animId = requestAnimationFrame(loop);
@@ -60,6 +69,7 @@ export const OrionHud: React.FC = () => {
     return () => {
       cancelled = true;
       unsubState();
+      unsubBindings();
       cancelAnimationFrame(animId);
     };
   }, []);
@@ -246,7 +256,7 @@ export const OrionHud: React.FC = () => {
           aria-live="polite"
           className={`pointer-events-none absolute z-30 px-1.5 py-0.5 bg-transparent border border-[#facc15]/85 text-[#fef08a] rounded-xs text-[8.5px] sm:text-[9.5px] font-extrabold tracking-wider uppercase whitespace-nowrap ${OUTLINED_TEXT} ${promptPositionClass}`}
         >
-          {state.promptText}
+          {formatPromptControlLabels(state.promptText)}
         </div>
       )}
 

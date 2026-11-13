@@ -3,8 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { soundSystem } from '../../../../engine/core/soundSystem';
+import {
+  getActionPrimaryKeyBadge,
+  subscribeControlBindings,
+} from '../../../../engine/input/inputBindingsStore';
 import {
   classifyWeaponCombatArchetype,
   getWeaponDefinition,
@@ -352,6 +356,18 @@ interface HudSkillDeckProps {
  * Renders the bottom tactical skill deck (`A`, `B`, `X`, `Y`, `L`, `R`), context interaction prompts, and dialogue banners. Supports the React overlay HUD (paired with the pixel canvas HUD in `OrionHud`).
  */
 export const HudSkillDeck: React.FC<HudSkillDeckProps> = ({ state }) => {
+  const [, setBindingsTick] = useState(0);
+  useEffect(() => {
+    return subscribeControlBindings(() => {
+      setBindingsTick((t) => (t + 1) % 1000);
+    });
+  }, []);
+
+  const xKey = getActionPrimaryKeyBadge('x');
+  const yKey = getActionPrimaryKeyBadge('y');
+  const rKey = getActionPrimaryKeyBadge('r');
+  const slotKeyBadges = [xKey, yKey, rKey, `${yKey}+`, `${rKey}+`] as const;
+
   const combatSkills = getResolvedCombatSkills(state);
   const skillSlots: Array<ResolvedCombatSkill | null> = [
     combatSkills.skill1,
@@ -492,11 +508,11 @@ export const HudSkillDeck: React.FC<HudSkillDeckProps> = ({ state }) => {
               }}
               title={
                 skill
-                  ? `${skill.name}${
+                  ? `${skill.name} [${slotKeyBadges[idx]}]${
                       skill.isBlock
                         ? ' [Hold: 0.34s Perfect Block Window · No Cooldown]'
                         : isBasicBowCharge
-                          ? ' [Hold X to Charge Single Shot · Release to Fire]'
+                          ? ` [Hold ${xKey} to Charge Single Shot · Release to Fire]`
                           : isBasicNoReload
                             ? ` [Fluid ${skill.comboSequence?.length || 3}-Step Melee Combo · No Reload]`
                             : isDurationActive
@@ -507,10 +523,17 @@ export const HudSkillDeck: React.FC<HudSkillDeckProps> = ({ state }) => {
                                   ? ` (${rawCd.toFixed(1)}s)`
                                   : ''
                     }`
-                  : `Skill ${slotNum}`
+                  : `Skill ${slotNum} [${slotKeyBadges[idx]}]`
               }
               className={`pointer-events-auto relative w-7 h-7 sm:w-8 sm:h-8 rounded-xs border bg-transparent flex items-center justify-center transition-transform cursor-pointer drop-shadow-[0_1px_2px_rgba(2,6,23,0.95)] ${borderColorClass}`}
             >
+              {/* Remapped Trigger Keycap Badge */}
+              <span
+                className={`absolute top-0 left-0.5 text-[5.5px] font-black leading-none text-[#cbd5e1] ${OUTLINED_TEXT}`}
+              >
+                {slotKeyBadges[idx]}
+              </span>
+
               {/* Skill Icon SVG */}
               <span className={onCooldown ? 'opacity-35' : 'opacity-95'}>
                 {renderSkillGlyph(skill, idx)}

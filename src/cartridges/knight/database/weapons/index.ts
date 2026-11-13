@@ -5,7 +5,7 @@
 
 import { WeaponDefinition } from '../../types';
 
-// Dynamic recursive auto-discovery: any weapon file added to this directory or subdirectories is automatically registered!
+// Dynamic recursive auto-discovery — every weapon file added to this directory or subdirectories is automatically registered!
 const weaponModules = import.meta.glob('./**/*.ts', { eager: true }) as Record<
   string,
   Record<string, unknown>

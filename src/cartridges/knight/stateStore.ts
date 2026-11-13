@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { registry } from '../../engine/core/registry';
 import { soundSystem } from '../../engine/core/soundSystem';
 import { EnemyEntity, KnightState, PickupEntity, SkillId } from './types';
 import { VENDOR_ITEMS as DB_VENDOR_ITEMS, VendorItem } from './database/vendors';
@@ -87,7 +88,7 @@ export function notifyStateChange(): void {
     try {
       fn();
     } catch (err) {
-      console.error('State listener error:', err);
+      registry.logError(`State listener error: ${String(err)}`);
     }
   });
 }
@@ -268,7 +269,7 @@ export function saveKnightGame(): { success: boolean; message: string } {
     soundSystem.playKey();
     return { success: true, message: 'DUNGEON & PROGRESS SAVED!' };
   } catch (err) {
-    console.error('Save game failed:', err);
+    registry.logError(`Save game failed: ${String(err)}`);
     return { success: false, message: 'Failed to write save.' };
   }
 }
@@ -366,7 +367,7 @@ export function loadSavedKnightGame(): boolean {
 
     return false;
   } catch (err) {
-    console.error('Load game failed:', err);
+    registry.logError(`Load game failed: ${String(err)}`);
     return false;
   }
 }

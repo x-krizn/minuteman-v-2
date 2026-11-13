@@ -6,7 +6,6 @@
 import { FrameLoadCapacity, GemId, ModPartOrigin, OrionState } from '../../types';
 import { TRAIT_REGISTRY } from '../characters';
 import { CANONICAL_ARMS } from './arms';
-import { CANONICAL_AUXILIARIES } from './auxiliaries';
 import { CANONICAL_HEAD_OPTICS } from './head';
 import { CANONICAL_LEGS } from './legs';
 import {
@@ -281,7 +280,6 @@ export const CANONICAL_HARDWARE_CATALOG: CanonicalHardwareItemDefinition[] = [
   ...CANONICAL_SENSORY_ARRAYS,
   ...CANONICAL_ARMS,
   ...CANONICAL_LEGS,
-  ...CANONICAL_AUXILIARIES,
   ...CRAFTED_SUBMODULE_HARDWARE,
 ];
 

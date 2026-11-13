@@ -36,7 +36,6 @@ import { SatchelWorldTab } from './satchel/SatchelWorldTab';
 export const OrionHud: React.FC = () => {
   const [, setTick] = useState(0);
   const [showPilotModal, setShowPilotModal] = useState(false);
-  const [titleTab, setTitleTab] = useState<'new' | 'load'>('new');
 
   useEffect(() => {
     let animId = 0;
@@ -83,8 +82,6 @@ export const OrionHud: React.FC = () => {
     return (
       <HudTitleModal
         state={state}
-        titleTab={titleTab}
-        setTitleTab={setTitleTab}
         setShowPilotModal={setShowPilotModal}
         canResumeCockpit={showPilotModal}
         forceRerender={() => setTick((t) => t + 1)}

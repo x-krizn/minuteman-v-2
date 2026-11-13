@@ -5,7 +5,7 @@
 
 import { EnemyType, EnemyWikiDefinition } from '../../types';
 
-// Dynamic recursive auto-discovery: any new enemy file added is automatically detected!
+// Dynamic recursive auto-discovery — every new enemy file added is automatically detected!
 const enemyModules = import.meta.glob('./**/*.ts', { eager: true });
 const enemyMap = new Map<string, EnemyWikiDefinition>();
 

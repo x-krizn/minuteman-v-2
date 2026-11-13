@@ -43,7 +43,6 @@ for (const [path, mod] of Object.entries(modules)) {
         if (existing && existing !== exportedValue.type) {
           const msg = `[Orion ASCII Audit] Duplicate global enemy spawnChar '${exportedValue.spawnChar}' claimed by '${existing}' and '${exportedValue.type}'. Use biome.enemySpawnTypes to scope per biome.`;
           ENEMY_SPAWN_COLLISIONS.push(msg);
-          console.warn(msg);
         }
         CHAR_TO_ENEMY_TYPE[exportedValue.spawnChar] = exportedValue.type;
       }

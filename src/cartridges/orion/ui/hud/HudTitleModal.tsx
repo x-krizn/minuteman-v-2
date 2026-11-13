@@ -33,8 +33,6 @@ export type TitleMenuView = 'root' | 'new' | 'load' | 'options';
 
 interface HudTitleModalProps {
   state: OrionState;
-  titleTab: 'new' | 'load';
-  setTitleTab: (tab: 'new' | 'load') => void;
   setShowPilotModal: (show: boolean) => void;
   canResumeCockpit?: boolean;
   forceRerender: () => void;
@@ -73,8 +71,6 @@ export function enterTrainingSandboxRoom(state: OrionState): void {
  */
 export const HudTitleModal: React.FC<HudTitleModalProps> = ({
   state,
-  titleTab: _titleTab,
-  setTitleTab,
   setShowPilotModal,
   canResumeCockpit = false,
   forceRerender,
@@ -175,12 +171,10 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
     state.titleMenuCursor = idx;
     if (id === 'new') {
       soundSystem.playSelect();
-      setTitleTab('new');
       setSubView('new');
     } else if (id === 'load') {
       soundSystem.playSelect();
       state.titleMenuLoadCursor = 0;
-      setTitleTab('load');
       setSubView('load');
     } else if (id === 'training') {
       enterTrainingSandboxRoom(state);
@@ -522,7 +516,6 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
                       type="button"
                       data-menu-autofocus="true"
                       onClick={() => {
-                        setTitleTab('new');
                         setSubView('new');
                       }}
                       className="px-3 py-1 bg-[#2563eb] text-white border border-[#93c5fd] font-bold rounded-xs text-[10px] cursor-pointer"

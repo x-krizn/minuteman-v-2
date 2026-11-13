@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ALL_SKILLS } from '../database/skills';
 import { ALL_WEAPONS, getWeaponDefinition } from '../database/weapons';
 import { ALL_PROGRESSION_NODES, canPerformAction } from '../database/progression';
@@ -37,16 +37,34 @@ export const KnightSatchel: React.FC<KnightSatchelProps> = ({ onClose }) => {
   const [activeTab, setActiveTab] = useState<TabType>('loadout');
   const [knightState, setKnightState] = useState(() => getKnightState());
   const [shopFeedback, setShopFeedback] = useState<string | null>(null);
+  const feedbackTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const unsub = subscribeKnightState(() => {
       const current = getKnightState();
       setKnightState(current ? { ...current } : null);
     });
-    return unsub;
+    return () => {
+      unsub();
+      if (feedbackTimerRef.current !== null) {
+        window.clearTimeout(feedbackTimerRef.current);
+        feedbackTimerRef.current = null;
+      }
+    };
   }, []);
 
   const st = knightState;
+
+  const showShopFeedback = (msg: string, durationMs: number) => {
+    setShopFeedback(msg);
+    if (feedbackTimerRef.current !== null) {
+      window.clearTimeout(feedbackTimerRef.current);
+    }
+    feedbackTimerRef.current = window.setTimeout(() => {
+      feedbackTimerRef.current = null;
+      setShopFeedback(null);
+    }, durationMs);
+  };
 
   const handleAssign = (slot: 'L' | 'R', skillId: SkillId) => {
     assignSkill(slot, skillId);
@@ -54,22 +72,17 @@ export const KnightSatchel: React.FC<KnightSatchelProps> = ({ onClose }) => {
 
   const handleEquip = (slot: 'mainHand' | 'offHand', id: string) => {
     equipItem(slot, id);
-    setShopFeedback(`Equipped ${id} to ${slot}!`);
-    setTimeout(() => setShopFeedback(null), 1800);
+    showShopFeedback(`Equipped ${id} to ${slot}!`, 1800);
   };
 
   const handleBuy = (item: VendorItem) => {
     const res = buyVendorItem(item);
-    setShopFeedback(res.message);
-    setTimeout(() => {
-      setShopFeedback(null);
-    }, 2200);
+    showShopFeedback(res.message, 2200);
   };
 
   const handleUnlockFeat = (featId: string, cost: number) => {
     const res = unlockFeat(featId, cost);
-    setShopFeedback(res.message);
-    setTimeout(() => setShopFeedback(null), 2000);
+    showShopFeedback(res.message, 2000);
   };
 
   const mainWeapon = getWeaponDefinition(st?.loadout?.mainHand || st?.equippedWeapon || 'short_sword');
@@ -84,7 +97,6 @@ export const KnightSatchel: React.FC<KnightSatchelProps> = ({ onClose }) => {
       {/* Top Header Bar */}
       <div className="flex items-center justify-between pb-1 border-b border-[#306028]">
         <div className="flex items-center gap-1.5 font-bold text-xs sm:text-sm text-[#50fa7b]">
-          <span className="w-2 h-2 rounded-full bg-[#50fa7b] animate-pulse inline-block" />
           <span>KNIGHT SATCHEL</span>
           <span className="text-[10px] text-cyan-300 bg-[#122822] px-1 py-0.2 rounded-xs font-semibold">
             🛡️ PROTO KNIGHT
@@ -197,7 +209,7 @@ export const KnightSatchel: React.FC<KnightSatchelProps> = ({ onClose }) => {
       </div>
 
       {shopFeedback && (
-        <div className="mb-1 py-0.5 px-2 bg-[#123812] border border-[#50fa7b] text-center text-[10px] text-[#50fa7b] font-bold animate-pulse rounded-xs shadow-sm">
+        <div className="mb-1 py-0.5 px-2 bg-[#123812] border border-[#50fa7b] text-center text-[10px] text-[#50fa7b] font-bold rounded-xs shadow-sm">
           {shopFeedback}
         </div>
       )}

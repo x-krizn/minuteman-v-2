@@ -114,23 +114,23 @@
 
 ---
 
-## 9. VERIFIED BASELINE (Updated 2026-11-12)
+## 9. VERIFIED BASELINE (Updated 2026-11-13)
 
 *DERIVED — re-check after major refactors.*
 
 | Check | Result |
 |---|---|
-| `.ts` / `.tsx` files under `src/cartridges/orion` | 169 |
-| License header on every file | Yes (169 of 169) |
-| JSDoc blocks across `src/cartridges/orion` | 1,984 (100% exported symbols documented) |
+| `.ts` / `.tsx` files under `src/cartridges/orion` | 168 |
+| License header on every file | Yes (168 of 168) |
+| JSDoc blocks across `src/cartridges/orion` | 1,981 (100% exported symbols documented) |
 | Files with no JSDoc at all | 0 |
 | `// [ORION-ANCHOR: …]` anchors in code | 23 |
 | `any`, `@ts-ignore`, `@ts-expect-error`, `TODO`, `FIXME` | 0 |
 | Network calls (`fetch`, XHR, WebSocket, `http(s)://` in code) | 0 |
 | `addEventListener` / `removeEventListener` | 0 / 0 |
-| `setTimeout` / `clearTimeout` | Paired via tracked timer refs & unmount cleanup (`ui/OrionGameMenu.tsx`, `ui/settings/OrionSettingsPanel.tsx`) |
-| `requestAnimationFrame` / `cancelAnimationFrame` | 4 / 4 (`ui/OrionHud.tsx`, `ui/satchel/SatchelCanvases.tsx`, `ui/satchel/AetherCosmosCanvas.tsx`) |
-| Files over 1,000 lines | 21 (largest: `database/progression/index.ts`, 3,737) |
+| `setTimeout` / `clearTimeout` | 3 / 5 — paired via tracked timer refs & unmount cleanup (`ui/OrionGameMenu.tsx`, `ui/settings/OrionSettingsPanel.tsx`) |
+| `requestAnimationFrame` / `cancelAnimationFrame` | 3 / 3 (`ui/OrionHud.tsx`, `ui/satchel/SatchelCanvases.tsx`, `ui/satchel/AetherCosmosCanvas.tsx`) |
+| Files over 1,000 lines | 20 (largest: `database/progression/index.ts`, 3,737) |
 | Docs anchors missing from code | None (`0`) |
 | Code anchors missing from docs | None (`0`) |
 

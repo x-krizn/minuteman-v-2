@@ -5,7 +5,7 @@
 
 import { ItemWikiDefinition } from '../../types';
 
-// Dynamic recursive auto-discovery: any item file committed to this directory or any subdirectory is automatically loaded!
+// Dynamic recursive auto-discovery — every item file committed to this directory or any subdirectory is automatically loaded!
 const itemModules = import.meta.glob('./**/*.ts', { eager: true }) as Record<
   string,
   Record<string, unknown>

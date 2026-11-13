@@ -65,7 +65,6 @@ export interface OrionSettingsPanelProps {
   isFullscreen?: boolean;
   connectedGamepads?: string[];
   onToggleSound?: () => void;
-  onToggleScanlines?: () => void;
   onToggleFullscreen?: () => void;
   onNotifyToast?: (message: string) => void;
 }
@@ -87,7 +86,6 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
   isFullscreen,
   connectedGamepads,
   onToggleSound,
-  onToggleScanlines: _onToggleScanlines,
   onToggleFullscreen,
   onNotifyToast,
 }) => {

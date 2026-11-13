@@ -492,7 +492,6 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
             isFullscreen={isFullscreen}
             connectedGamepads={connectedGamepads}
             onToggleSound={onToggleSound}
-            onToggleScanlines={onToggleScanlines}
             onToggleFullscreen={onToggleFullscreen}
             onNotifyToast={(msg) => showToast(msg, 1800)}
           />

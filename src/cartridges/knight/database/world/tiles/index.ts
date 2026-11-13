@@ -5,7 +5,7 @@
 
 import { KnightState, TileDefinition } from '../../../types';
 
-// Dynamic recursive auto-discovery: any new tile file added is automatically detected!
+// Dynamic recursive auto-discovery — every new tile file added is automatically detected!
 const tileModules = import.meta.glob('./**/*.ts', { eager: true }) as Record<
   string,
   Record<string, unknown>

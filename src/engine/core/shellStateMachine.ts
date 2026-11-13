@@ -23,18 +23,6 @@ export const MENU_ITEMS: MenuItem[] = [
 ];
 
 /**
- * Instructional text lines displayed on the system shell `HOW TO PLAY` screen.
- */
-export const HOWTO_LINES = [
-  'D-PAD / STICK: MOVE & NAVIGATE',
-  'A / B: PRIMARY ACTIONS',
-  'X / Y: SECONDARY ACTIONS',
-  'L / R: SHOULDERS / TRIGGERS',
-  'START: PAUSE & SYSTEM MENU',
-  'SHIFT: CARTRIDGE SPECIAL',
-];
-
-/**
  * State machine controlling the outer handheld shell screens (`boot`, `menu`, `howto`, `credits`, `cartridge`) and audio toggles.
  */
 export class ShellStateMachine {

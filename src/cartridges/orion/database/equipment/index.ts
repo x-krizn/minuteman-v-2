@@ -28,7 +28,6 @@ export {
 };
 export * from './armor_sheets';
 export * from './arms';
-export * from './auxiliaries';
 export * from './chassis_hardware';
 export * from './head';
 export * from './legs';

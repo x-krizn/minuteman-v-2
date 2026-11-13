@@ -183,3 +183,22 @@ Project Orion uses a **weight-vs-weight classical mechanics Inertia & Stability 
 - **Melee vs. Ranged Impulse (`J`)**: Melee impulse combines attack weight + attacker body weight × `μ_attacker` × commitment factor; Ranged impulse is strictly `projectile_weight × projectile_speed` (independent of shooter weight).
 - **Ranged Recoil (`§7`)**: Uses the exact same impulse equation (`Δv_recoil = J_recoil / m_shooter_frame`) with deadband `k1·S`, so heavier and more stable frames suffer less movement restriction while firing heavy weapons.
 - **No HUD Clutter by Default**: Inertia and Stability numbers are never shown on the default HUD; full physics telemetry is available in the `MECH STATUS` Satchel tab, and live HUD readouts only appear when the **Inertial Gyro-Telemetry Array** equipment mod is installed in Sensory B (configured in `ARMORY`).
+
+---
+
+## 4. Controls Remapping, Graphics Settings & Responsive Virtual Gamepad
+
+### 4A. Isolated In-Game Control Remapping & Live Key Badges (`src/engine/input/`)
+- **Menu vs. In-Game Isolation (`keyboardMapper.ts` & `inputBindingsStore.ts`)**: Custom keyboard and physical controller bindings (`localStorage` key `minuteman_control_bindings_v1`) apply strictly to **in-game gameplay actions** (`up`, `down`, `left`, `right`, `a`, `b`, `x`, `y`, `l`, `r`, `start`, `select`). Universal menu navigation (`UniversalMenuNavigator.ts`) always uses fixed menu keys (`Arrow` / `WASD`, `Enter`, `Escape`, `Q`/`E`, `Tab`) so remapping in-game controls can never lock the player out of menus.
+- **Release-Gated Capture Modal (`OrionSettingsPanel.tsx`)**: Interactive key and controller button capture sessions set `isInputCaptureActive() = true`, flush held input states (`keyboardMapper.releaseAll()`, `gamepadStore.resetAll()`), preview the detected physical key or W3C button while held, and commit the binding only on key/button release (`keyup` / button release) so the captured input never leaks into the active menu.
+- **Live Key & Prompt Display Synchronization**: All HUD skill slots (`HudSkillDeck.tsx`, `renderHudAndFogTells.ts`), defense bar quick-triggers (`HudDefenseBars.tsx`), world interaction prompts (`formatPromptControlLabels`), Virtual Gamepad buttons (`VirtualGamepad.tsx`, `ActionButtons.tsx`, `DPad.tsx`, `SystemButtons.tsx`), and How-To guides (`shellStateMachine.ts`, `KnightGameMenu.tsx`) subscribe to `inputBindingsStore` and display the active primary key badge (`getActionPrimaryKeyBadge`) and live physical key press pop-up (`gamepadStore.activeKeyLabels`).
+
+### 4B. Responsive Landscape-Split Virtual Gamepad (`src/components/gamepad/`)
+- **Layout Modes (`VirtualGamepadLayoutMode`)**: Stored in `inputBindingsStore` (`virtualPadLayout: 'auto' | 'bottom' | 'hidden'`) and toggled via the header bar or `OrionSettingsPanel`:
+  - **`auto` (Split Wide in Landscape)**: Automatically splits the Virtual Gamepad into left (`L` shoulder, D-Pad, `SELECT`) and right (`R` shoulder, `X`/`Y`/`A`/`B` diamond, `START`) side docks flanking the 10:9 game screen whenever the viewport is in landscape (`width > height && width >= 640px`) on both PC and mobile, maximizing vertical screen height. Falls back to the bottom deck in portrait viewports.
+  - **`bottom` (Classic Bottom Deck)**: Docks the unified handheld controller deck below the screen viewport.
+  - **`hidden` (Hide Pad)**: Hides the on-screen virtual gamepad for dedicated keyboard or physical controller play while keeping the top bar quick-toggle accessible.
+
+### 4C. Real-Time Graphics & Post-Processing Store (`systems/graphicsSettingsStore.ts`)
+- **Persistent Settings (`orion_graphics_settings_v1`)**: `OrionSettingsPanel.tsx` (`GRAPHICS` tab) and `effectsRenderer.ts` synchronize real-time visual presets (`low`, `medium`, `high`, `retro`, `custom`), dynamic raycast lighting & darkness depth, additive radial bloom, biome weather/miasma particle density, water reflections, 1px tactical sprite outlines, CRT scanlines, screen shake scale, and HUD resolution mode (`hires` React overlay vs. `pixel` canvas HUD).
+

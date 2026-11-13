@@ -254,7 +254,6 @@ for (const [path, mod] of Object.entries(modules)) {
       if (existingTile && existingTile.id !== exportedValue.id) {
         const msg = `[Orion ASCII Audit] Duplicate global tile char '${exportedValue.char}' claimed by '${existingTile.id}' and '${exportedValue.id}'. Use biome.tileTypes to scope per biome.`;
         TILE_CHAR_COLLISIONS.push(msg);
-        console.warn(msg);
       }
       TILE_REGISTRY[exportedValue.char] = exportedValue;
       TILE_BY_ID_REGISTRY[exportedValue.id] = exportedValue;

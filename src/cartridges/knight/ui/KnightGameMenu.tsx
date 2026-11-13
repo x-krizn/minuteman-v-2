@@ -3,8 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { soundSystem } from '../../../engine/core/soundSystem';
+import {
+  getActionPrimaryKeyBadge,
+  subscribeControlBindings,
+} from '../../../engine/input/inputBindingsStore';
 import {
   hasSavedKnightGame,
   loadSavedKnightGame,
@@ -42,23 +46,56 @@ export const KnightGameMenu: React.FC<KnightGameMenuProps> = ({
 }) => {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [showControls, setShowControls] = useState(false);
+  const [, setTick] = useState(0);
+  const feedbackTimerRef = useRef<number | null>(null);
+  const resumeTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const unsubBindings = subscribeControlBindings(() => {
+      setTick((t) => (t + 1) % 10000);
+    });
+    return () => {
+      unsubBindings();
+      if (feedbackTimerRef.current !== null) {
+        window.clearTimeout(feedbackTimerRef.current);
+        feedbackTimerRef.current = null;
+      }
+      if (resumeTimerRef.current !== null) {
+        window.clearTimeout(resumeTimerRef.current);
+        resumeTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  const showFeedback = (msg: string, durationMs: number) => {
+    setFeedback(msg);
+    if (feedbackTimerRef.current !== null) {
+      window.clearTimeout(feedbackTimerRef.current);
+    }
+    feedbackTimerRef.current = window.setTimeout(() => {
+      feedbackTimerRef.current = null;
+      setFeedback(null);
+    }, durationMs);
+  };
 
   const handleSave = () => {
     const res = saveKnightGame();
-    setFeedback(res.message);
-    setTimeout(() => setFeedback(null), 2200);
+    showFeedback(res.message, 2200);
   };
 
   const handleLoad = () => {
     if (loadSavedKnightGame()) {
       setFeedback('DUNGEON & SAVE RESTORED!');
-      setTimeout(() => {
+      if (resumeTimerRef.current !== null) {
+        window.clearTimeout(resumeTimerRef.current);
+      }
+      resumeTimerRef.current = window.setTimeout(() => {
+        resumeTimerRef.current = null;
         setFeedback(null);
         onResume();
       }, 700);
     } else {
-      setFeedback('NO SAVE FILE FOUND');
-      setTimeout(() => setFeedback(null), 2000);
+      showFeedback('NO SAVE FILE FOUND', 2000);
     }
   };
 
@@ -75,7 +112,6 @@ export const KnightGameMenu: React.FC<KnightGameMenuProps> = ({
       {/* Top Header Bar */}
       <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-[#306028]">
         <div className="flex items-center gap-1.5 font-bold text-xs sm:text-sm text-[#50fa7b] tracking-wider">
-          <span className="w-2 h-2 rounded-full bg-[#50fa7b] animate-pulse inline-block" />
           <span>GAME MENU</span>
           <span className="text-[10px] text-[#70a860] bg-[#1a3818] px-1 py-0.2 rounded-xs">
             START
@@ -97,7 +133,7 @@ export const KnightGameMenu: React.FC<KnightGameMenuProps> = ({
       </div>
 
       {feedback && (
-        <div className="mb-2 py-1 px-2 bg-[#123812] border border-[#50fa7b] text-center text-[11px] text-[#50fa7b] font-bold animate-pulse rounded-xs shadow-sm">
+        <div className="mb-2 py-1 px-2 bg-[#123812] border border-[#50fa7b] text-center text-[11px] text-[#50fa7b] font-bold rounded-xs shadow-sm">
           {feedback}
         </div>
       )}
@@ -122,25 +158,25 @@ export const KnightGameMenu: React.FC<KnightGameMenuProps> = ({
 
           <div className="space-y-1.5 text-[10.5px]">
             <div className="bg-[#122412] p-1.5 rounded-xs border border-[#244820]">
-              <span className="font-bold text-[#f1fa8c]">A BUTTON / SPACE:</span> Jump (tap for hop, hold for high, double jump once unlocked).
+              <span className="font-bold text-[#f1fa8c]">A BUTTON / {getActionPrimaryKeyBadge('a')}:</span> Jump (tap for hop, hold for high, double jump once unlocked).
             </div>
             <div className="bg-[#122412] p-1.5 rounded-xs border border-[#244820]">
-              <span className="font-bold text-[#f1fa8c]">B BUTTON / X KEY:</span> Dash (tap with invulnerability frames) or Sprint (hold to run faster; costs SP).
+              <span className="font-bold text-[#f1fa8c]">B BUTTON / {getActionPrimaryKeyBadge('b')}:</span> Dash (tap with invulnerability frames) or Sprint (hold to run faster; costs SP).
             </div>
             <div className="bg-[#122412] p-1.5 rounded-xs border border-[#244820]">
-              <span className="font-bold text-[#f1fa8c]">X BUTTON / C KEY:</span> Attack (directional attacks, aerial slash, down pogo bounce on enemies; hold to charge heavy strike).
+              <span className="font-bold text-[#f1fa8c]">X BUTTON / {getActionPrimaryKeyBadge('x')}:</span> Attack (directional attacks, aerial slash, down pogo bounce on enemies; hold to charge heavy strike).
             </div>
             <div className="bg-[#122412] p-1.5 rounded-xs border border-[#244820]">
-              <span className="font-bold text-[#f1fa8c]">Y BUTTON / V KEY:</span> Block & Parry (hold to guard; time right before impact for parry spark & counter!).
+              <span className="font-bold text-[#f1fa8c]">Y BUTTON / {getActionPrimaryKeyBadge('y')}:</span> Block & Parry (hold to guard; time right before impact for parry spark & counter!).
             </div>
             <div className="bg-[#122412] p-1.5 rounded-xs border border-[#244820]">
-              <span className="font-bold text-[#f1fa8c]">L & R / Q & E:</span> Assignable Skills (Flask healing, Fireball projectile, Whirlwind blade, Ground slam).
+              <span className="font-bold text-[#f1fa8c]">L & R / {getActionPrimaryKeyBadge('l')} & {getActionPrimaryKeyBadge('r')}:</span> Assignable Skills (Flask healing, Fireball projectile, Whirlwind blade, Ground slam).
             </div>
             <div className="bg-[#122412] p-1.5 rounded-xs border border-[#244820]">
-              <span className="font-bold text-[#f1fa8c]">START / ENTER:</span> Game Menu (settings, options, save, exit).
+              <span className="font-bold text-[#f1fa8c]">START / {getActionPrimaryKeyBadge('start')}:</span> Game Menu (settings, options, save, exit).
             </div>
             <div className="bg-[#122412] p-1.5 rounded-xs border border-[#244820]">
-              <span className="font-bold text-[#f1fa8c]">SHIFT / TAB / M:</span> Satchel & Character Screen (Equipment L/R, Stats, Merchant).
+              <span className="font-bold text-[#f1fa8c]">SELECT / {getActionPrimaryKeyBadge('select')}:</span> Satchel & Character Screen (Equipment L/R, Stats, Merchant).
             </div>
 
             {/* Physical Gamepad Support Guide */}

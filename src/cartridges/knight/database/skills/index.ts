@@ -5,7 +5,7 @@
 
 import { SkillDef, SkillId } from '../../types';
 
-// Dynamic recursive auto-discovery: any new skill file added to this directory or subdirectories is automatically detected!
+// Dynamic recursive auto-discovery — every new skill file added to this directory or subdirectories is automatically detected!
 const skillModules = import.meta.glob('./**/*.ts', { eager: true });
 const skillMap = new Map<string, SkillDef>();
 

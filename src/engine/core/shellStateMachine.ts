@@ -269,8 +269,10 @@ export class ShellStateMachine {
         return {
           title: 'Credits',
           lines: [
-            'MINUTEMAN CONSOLE',
-            'MODULAR ENGINE v1.0',
+            'minuteman console',
+            'v2.0',
+            'i couldnt have made this',
+            'without God'
             ...(cartLines.length > 0 ? ['', 'INSTALLED CARTS:', ...cartLines] : []),
             '',
             'B: BACK',

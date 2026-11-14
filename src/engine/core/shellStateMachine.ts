@@ -272,7 +272,7 @@ export class ShellStateMachine {
             'minuteman console',
             'v2.0',
             'i couldnt have made this',
-            'without God'
+            'without God',
             ...(cartLines.length > 0 ? ['', 'INSTALLED CARTS:', ...cartLines] : []),
             '',
             'B: BACK',

@@ -11,6 +11,7 @@ const tileModules = import.meta.glob('./**/*.ts', { eager: true }) as Record<
   Record<string, unknown>
 >;
 
+/** Static tile definition registry populated once at module load from `import.meta.glob` (bounded by static files; no runtime growth). */
 const tileMap = new Map<string, TileDefinition>();
 
 for (const [path, mod] of Object.entries(tileModules)) {

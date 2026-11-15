@@ -423,8 +423,11 @@ export function stepPlayerGlideAnimation(
 
 // ─── 4-FRAME (16x16 PX PER CELL) ALIGNED PART STRIP / SHEET CACHE ─────────────
 
+/** Decoded Base64 `HTMLImageElement` cache keyed by static armor/weapon sheet URI; bounded by the finite equipment sheet catalog. */
 const decodedBase64ImageCache = new Map<string, HTMLImageElement>();
+/** Pre-baked 4-frame `HTMLCanvasElement` strip cache keyed by part ID and cell metrics; bounded by the finite canonical equipment part catalog. */
 const bakedPartStripCache = new Map<string, HTMLCanvasElement>();
+/** Active mech-sprite load subscribers; entries are evicted when their `subscribeToMechSpriteLoad` cleanup callback runs on unmount. */
 const spriteLoadListeners = new Set<() => void>();
 
 /**

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { ButtonKey } from '../../types/input';
+import type { ButtonKey } from '../../types/input';
 
 /**
  * Primary and secondary `KeyboardEvent.code` pair assigned to a virtual handheld button.
@@ -277,6 +277,7 @@ let keyboardLookupCache: Record<string, ButtonKey> = {};
 let gamepadLookupCache: Record<number, ButtonKey> = {};
 let inputCaptureActive = false;
 let captureCooldownUntilMs = 0;
+/** Active control-binding subscribers; entries are evicted when their `subscribeControlBindings` cleanup callback runs on unmount. */
 const listeners: Set<() => void> = new Set();
 
 function getNowMs(): number {
@@ -775,6 +776,7 @@ export interface KeyboardCaptureSessionOptions {
   onFlushInputState?: () => void;
 }
 
+/** Immutable 5-key allowlist of OS/modifier codes ignored during keyboard capture sessions (no runtime growth). */
 const IGNORED_CAPTURE_CODES = new Set([
   'MetaLeft',
   'MetaRight',

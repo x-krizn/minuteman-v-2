@@ -11,6 +11,7 @@ const biomeModules = import.meta.glob('./**/*.ts', { eager: true }) as Record<
   Record<string, unknown>
 >;
 
+/** Static biome definition registry populated once at module load from `import.meta.glob` (bounded by static files; no runtime growth). */
 const biomeMap = new Map<string, BiomeDefinition>();
 
 for (const [path, mod] of Object.entries(biomeModules)) {

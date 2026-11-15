@@ -80,6 +80,7 @@ export function getResolvedActionDescriptor(
     const slot1Id = state.equipmentSlots?.slot1 || state.equippedWeapons?.[0] || 'long_sword';
     const slot2Id = state.equipmentSlots?.slot2 || null;
     const slot3Id = state.equipmentSlots?.slot3 || null;
+    // Safe: `'long_sword'` is a built-in canonical weapon guaranteed in `WEAPON_REGISTRY`
     const w1 = getWeaponDefinition(slot1Id) || getWeaponDefinition('long_sword')!;
     const w2 = slot2Id ? getWeaponDefinition(slot2Id) : undefined;
     const item2 = slot2Id && !w2 ? getItemDefinition(slot2Id) : undefined;
@@ -93,11 +94,13 @@ export function getResolvedActionDescriptor(
     // 2. 2H Main Grip: Side weapon (`slot2`) is holstered; Main weapon (`slot1`) owns Skill 4
     // 3. 1H Main Grip: Side Hand (`slot2`) owns Skill 4 (or Back Aux provides Skill 4 if Side holds a consumable)
     const targetWeaponId = isAuxActive
-      ? slot3Id!
+      ? // Safe: `isAuxActive` requires `slot3Id` to be truthy
+        slot3Id!
       : is2HGrip
         ? slot1Id
         : item2 && w3 && isAuxiliaryEquipment(w3)
-          ? slot3Id!
+          ? // Safe: `w3` is defined only when `slot3Id` is truthy
+            slot3Id!
           : slot2Id || slot3Id || slot1Id;
     const weapon = getWeaponDefinition(targetWeaponId) || w1;
     const isUnpairedWeapon =
@@ -150,6 +153,7 @@ export function getResolvedActionDescriptor(
     const slot1Id = state.equipmentSlots?.slot1 || state.equippedWeapons?.[0] || 'long_sword';
     const slot2Id = state.equipmentSlots?.slot2 || null;
     const slot3Id = state.equipmentSlots?.slot3 || null;
+    // Safe: `'long_sword'` is a built-in canonical weapon guaranteed in `WEAPON_REGISTRY`
     const w1 = getWeaponDefinition(slot1Id) || getWeaponDefinition('long_sword')!;
     const w3 = slot3Id ? getWeaponDefinition(slot3Id) : undefined;
     const isAuxActive = Boolean(state.equipmentSlots?.auxActive && slot3Id && w3);
@@ -158,7 +162,8 @@ export function getResolvedActionDescriptor(
       (state.equipmentSlots?.mainGrip === '2h' || isTwoHandOnlyWeapon(w1, state) || !slot2Id);
 
     const targetWeaponId = isAuxActive
-      ? slot3Id!
+      ? // Safe: `isAuxActive` requires `slot3Id` to be truthy
+        slot3Id!
       : is2HGrip
         ? slot1Id
         : slot2Id || slot3Id || slot1Id;
@@ -242,6 +247,7 @@ export function getResolvedActionDescriptor(
       state.equipmentSlots?.slot1 ||
       state.equippedWeapons[state.activeWeaponIndex] ||
       'gladius_boltcaster';
+    // Safe: `'gladius_boltcaster'` is a built-in canonical weapon guaranteed in `WEAPON_REGISTRY`
     const weapon =
       getWeaponDefinition(currentWeaponId) ||
       getWeaponDefinition('gladius_boltcaster')!;

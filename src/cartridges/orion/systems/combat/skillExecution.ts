@@ -10,8 +10,8 @@ import {
   getResolvedActionDescriptor,
 } from '../../database/equipment';
 import {
-  classifyWeaponCombatArchetype,
   clampTempoMultiplier,
+  classifyWeaponCombatArchetype,
   getWeaponDefinition,
   isAuxiliaryEquipment,
   isBlockingWeapon,
@@ -3184,6 +3184,7 @@ export function activateResolvedCombatSkill(
   }
 
   if ((skill.internalCharges || 0) > 1) {
+    // Safe: guarded by `(skill.internalCharges || 0) > 1` on the line above
     const maxCharges = skill.internalCharges!;
     const currentCharges = state.skillInternalAmmo[skill.cooldownKey] ?? maxCharges;
     const nextCharges = currentCharges - 1;

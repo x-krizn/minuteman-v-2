@@ -15,6 +15,7 @@ export * from './sprites';
 const modules = import.meta.glob<Record<string, unknown>>('./**/*.ts', { eager: true });
 
 const discoveredPlating: FramePlatingDefinition[] = [...BASELINE_FRAME_PLATING];
+/** Static deduplication set populated once at module load from `BASELINE_FRAME_PLATING` and `import.meta.glob` (no runtime growth). */
 const seenIds = new Set<string>(discoveredPlating.map((p) => p.id));
 
 function isFramePlatingDefinition(val: unknown): val is FramePlatingDefinition {

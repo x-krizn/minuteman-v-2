@@ -3,10 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { registry } from '../../engine/core/registry';
 import { soundSystem } from '../../engine/core/soundSystem';
-import { EnemyEntity, KnightState, PickupEntity, SkillId } from './types';
 import { VENDOR_ITEMS as DB_VENDOR_ITEMS, VendorItem } from './database/vendors';
+import { EnemyEntity, KnightState, PickupEntity, SkillId } from './types';
 
 export type { VendorItem };
 /**
@@ -46,6 +45,7 @@ export interface DungeonContext {
 
 let activeKnightState: KnightState | null = null;
 let activeDungeonContext: DungeonContext | null = null;
+/** Active UI state subscribers; entries are removed when their `subscribeKnightState` cleanup callback runs on component unmount. */
 const stateListeners: Set<() => void> = new Set();
 
 /**
@@ -87,8 +87,8 @@ export function notifyStateChange(): void {
   stateListeners.forEach((fn) => {
     try {
       fn();
-    } catch (err) {
-      registry.logError(`State listener error: ${String(err)}`);
+    } catch {
+      // Ignore individual subscriber callback errors to keep remaining listeners isolated
     }
   });
 }
@@ -268,8 +268,7 @@ export function saveKnightGame(): { success: boolean; message: string } {
     localStorage.setItem(SAVE_KEY_V2, JSON.stringify(data));
     soundSystem.playKey();
     return { success: true, message: 'DUNGEON & PROGRESS SAVED!' };
-  } catch (err) {
-    registry.logError(`Save game failed: ${String(err)}`);
+  } catch {
     return { success: false, message: 'Failed to write save.' };
   }
 }
@@ -366,8 +365,7 @@ export function loadSavedKnightGame(): boolean {
     }
 
     return false;
-  } catch (err) {
-    registry.logError(`Load game failed: ${String(err)}`);
+  } catch {
     return false;
   }
 }

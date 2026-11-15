@@ -227,7 +227,8 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
               const hasRecentOutcome =
                 (state.lastInertiaOutcomeTimer || 0) > 0 && state.lastInertiaOutcome;
               const outInfo = hasRecentOutcome
-                ? formatInertiaOutcomeLabel(state.lastInertiaOutcome!)
+                ? // Safe: `hasRecentOutcome` checks `Boolean(state.lastInertiaOutcome)` on the line above
+                  formatInertiaOutcomeLabel(state.lastInertiaOutcome!)
                 : null;
               return (
                 <div className="mt-0.5 pt-0.5 border-t border-[#1e293b]/70 flex flex-col gap-0.2 text-[6.5px] font-bold leading-tight">

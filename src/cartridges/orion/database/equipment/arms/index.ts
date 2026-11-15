@@ -569,6 +569,7 @@ export const CANONICAL_ARMS: CanonicalHardwareItemDefinition[] = [
 
 // Auto-discover any standalone Shoulders/Arms (.ts) modules dropped into database/equipment/arms/
 const armModules = import.meta.glob<Record<string, unknown>>('./**/*.ts', { eager: true });
+/** Static deduplication set populated once at module load from `CANONICAL_ARMS` and `import.meta.glob` (no runtime growth). */
 const seenArmIds = new Set<string>(CANONICAL_ARMS.map((a) => a.id));
 
 function isArmsDefinition(val: unknown): val is CanonicalHardwareItemDefinition {

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { GameInput } from '../../types/input';
+import type { GameInput } from '../../types/input';
 import { isInputCaptureActive } from './inputBindingsStore';
 
 /**

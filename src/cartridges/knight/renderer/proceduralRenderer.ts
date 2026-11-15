@@ -5,6 +5,7 @@
 
 import { ItemWikiDefinition, SingleFrameAsset } from '../types';
 
+/** Decoded `HTMLImageElement` cache keyed by static Base64 URI; bounded by finite cartridge sprite definitions (capped at `64` entries with oldest-entry FIFO eviction). */
 const imageCache = new Map<string, HTMLImageElement>();
 
 /**

@@ -11,6 +11,7 @@ const itemModules = import.meta.glob('./**/*.ts', { eager: true }) as Record<
   Record<string, unknown>
 >;
 
+/** Static item definition registry populated once at module load from `import.meta.glob` (bounded by static files; no runtime growth). */
 const itemMap = new Map<string, ItemWikiDefinition>();
 
 for (const [path, mod] of Object.entries(itemModules)) {

@@ -5,12 +5,12 @@
 
 import React from 'react';
 import { soundSystem } from '../../engine/core/soundSystem';
-import {
+import type {
   Cartridge,
   CartridgeOverlayProps,
   CartridgeSurface,
 } from '../../types/cartridge';
-import { GameInput } from '../../types/input';
+import type { GameInput } from '../../types/input';
 import { EnemyEntity, KnightState, SkillId } from './types';
 import { handleAttackInput, handleBlockInput, updateCombat } from './combat';
 import { canPerformAction } from './database/progression';

@@ -159,14 +159,14 @@ Code is code. **Sections 1 to 8 apply identically to all three areas.** Orion-on
 | `requestAnimationFrame` / `cancelAnimationFrame` | 6 / 2 (two self-rescheduling loops, one cancel each) | 0 / 0 | 3 / 3 |
 | Files over 1,000 lines | 0 | 0 | 20 |
 | `import.meta.glob` uses | 0 | 9 | 14 |
-| Import statements leaving the area | 4 into cartridges (below) | 13 into Minuteman | 43 into Minuteman |
+| Import statements leaving the area | 4 into cartridges (below) | 12 into Minuteman | 43 into Minuteman |
 | Imports of another cartridge | n/a | 0 | 0 |
 | `[ORION-ANCHOR: …]` comments in code | 0 | 0 | 23 |
 
 | Cross-area fact | Result |
 |---|---|
 | Minuteman imports of cartridges | `src/cartridges/index.ts` imports both cartridge indexes. `src/App.tsx` imports `cartridges` and `cartridges/orion/systems/graphicsSettingsStore`. The second import is an exception that exists today: do not add others. |
-| Knight imports into Minuteman | `engine/core/soundSystem` 8, `types/cartridge` 2, `types/input` 1, `engine/input/inputBindingsStore` 1, `engine/core/registry` 1 (`stateStore.ts`) |
+| Knight imports into Minuteman | `engine/core/soundSystem` 8, `types/cartridge` 2, `types/input` 1, `engine/input/inputBindingsStore` 1 |
 | Orion imports into Minuteman | `engine/core/soundSystem` 31, `engine/input/inputBindingsStore` 4, `types/input` 3, `types/cartridge` 1, `engine/input/hardwareGamepad` 1, `engine/input/gamepadStore` 1, `engine/input/keyboardMapper` 1, `utils/fullscreen` 1 |
 
 ---
@@ -212,7 +212,7 @@ Use named imports of exports that already exist. Do not change the Minuteman mod
 | `types/input` | allowed | allowed | Use `import type`. |
 | `types/cartridge` | allowed | allowed | Use `import type`. |
 | `engine/input/hardwareGamepad`, `engine/input/gamepadStore`, `engine/input/keyboardMapper`, `utils/fullscreen` | not allowed | allowed | |
-| `engine/core/registry` | not allowed | not allowed | Knight's `stateStore.ts` imports it today. Do not add imports of it and do not copy the pattern. |
+| `engine/core/registry` | not allowed | not allowed | Shell-internal diagnostic registry. Do not import from a cartridge. |
 
 - **Never import** from a cartridge: `src/components/`, `src/App.tsx`, `engine/core/cartridgeRunner`, `engine/core/shellStateMachine`, `engine/core/frameLoop`, `engine/core/assetLoader`, or the other cartridge.
 - Any import that is not marked allowed for your cartridge is not allowed. Adding one requires the owner's explicit request.

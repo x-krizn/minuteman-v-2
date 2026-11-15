@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { ButtonKey, GamepadButtons } from '../../types/input';
+import type { ButtonKey, GamepadButtons } from '../../types/input';
 import { ActionButtons } from './ActionButtons';
 import { DPad } from './DPad';
 import { SystemButtons } from './SystemButtons';

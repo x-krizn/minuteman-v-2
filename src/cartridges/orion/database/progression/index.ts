@@ -1245,7 +1245,8 @@ export function createInitialEquipmentSlots(traitLine: TraitLine = 'Warrior'): O
       ? w2
       : 'buckler_shield';
   const defaultAuxBack = w2IsLauncher
-    ? w2!
+    ? // Safe: `w2IsLauncher` is true only when `w2` is a defined launcher ID
+      w2!
     : traitLine === 'Guardian'
       ? 'carrier_04_battery'
       : traitLine === 'Wizard' || traitLine === 'Cleric'
@@ -2442,6 +2443,7 @@ export function doesPilotMeetFeatEquipmentRequirement(
     ...(state.equippedWeapons || []),
   ]
     .filter(Boolean)
+    // Safe: `.filter(Boolean)` above removes null/undefined entries before mapping
     .map((id) => getWeaponDefinition(id!))
     .filter((d): d is WeaponDefinition => Boolean(d));
 

@@ -557,6 +557,7 @@ export const CANONICAL_HEAD_OPTICS: CanonicalHardwareItemDefinition[] = [
 
 // Auto-discover any standalone Head/Optics (.ts) modules dropped into database/equipment/head/
 const headModules = import.meta.glob<Record<string, unknown>>('./**/*.ts', { eager: true });
+/** Static deduplication set populated once at module load from `CANONICAL_HEAD_OPTICS` and `import.meta.glob` (no runtime growth). */
 const seenHeadIds = new Set<string>(CANONICAL_HEAD_OPTICS.map((h) => h.id));
 
 function isHeadDefinition(val: unknown): val is CanonicalHardwareItemDefinition {

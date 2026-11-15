@@ -6,8 +6,8 @@
 import { soundSystem } from '../../../../engine/core/soundSystem';
 import { TILE_SIZE } from '../../constants';
 import {
-  classifyWeaponCombatArchetype,
   clampTempoMultiplier,
+  classifyWeaponCombatArchetype,
   COMBAT_TEMPO_CONSTANTS,
   getWeaponDefinition,
   resolveRangedBasicShotProfile,

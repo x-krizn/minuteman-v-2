@@ -363,6 +363,7 @@ export function checkWorldInteractivePrompt(
   }
 }
 
+/** Immutable 4-item set of restorative consumable IDs checked during tutorial belt prompts (no runtime growth). */
 const HEALTH_CONSUMABLE_IDS = new Set([
   'demantoid_flask',
   'grail_water',

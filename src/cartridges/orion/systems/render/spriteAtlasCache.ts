@@ -31,7 +31,9 @@ export type CachedSpriteSource = HTMLImageElement | HTMLCanvasElement;
  */
 export const BASE64_ATLAS_REGISTRY: Record<string, Base64AtlasDefinition> = {};
 
+/** Decoded sprite atlas image/canvas cache keyed by static `atlasId`; bounded by `BASE64_ATLAS_REGISTRY` entries and cleared via `clearSpriteAtlasCaches()`. */
 const IMAGE_CACHE = new Map<string, CachedSpriteSource>();
+/** 1px silhouette outline canvas cache keyed by `"atlasId:sx,sy,sw,sh:color"`; bounded by finite sprite regions and cleared via `clearSpriteAtlasCaches()`. */
 const OUTLINE_CACHE = new Map<string, HTMLCanvasElement>();
 
 function getSourceDimensions(src: CachedSpriteSource): {
@@ -356,7 +358,8 @@ export function drawBase64Sprite(
     (config.orientFromEast || options?.transformFromEast) && options?.dir
   );
   const eastTransform = useEastTransform
-    ? getEastDirectionalTransform(options!.dir!)
+    ? // Safe: `useEastTransform` is true only when `options?.dir` is truthy on line 356
+      getEastDirectionalTransform(options!.dir!)
     : { scaleX: 1, scaleY: 1, rotationRad: 0 };
   const totalRotation = eastTransform.rotationRad + (options?.extraRotationRad ?? 0);
   const hasTransform =

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Cartridge } from '../../types/cartridge';
+import type { Cartridge } from '../../types/cartridge';
 
 /**
  * Maximum number of runtime error entries (`20`) retained in the `CartridgeRegistry` diagnostic ring buffer.

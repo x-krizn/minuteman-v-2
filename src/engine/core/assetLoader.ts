@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { AssetLibrary, Strip, StripSpec } from '../../types/cartridge';
+import type { AssetLibrary, Strip, StripSpec } from '../../types/cartridge';
 
 /**
  * Validation bounds (`maxWidth`, `maxHeight`, `maxFrames`) enforced when decoding cartridge sprite strips.

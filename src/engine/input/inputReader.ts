@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { ButtonKey, GameInput, GamepadButtons } from '../../types/input';
+import type { ButtonKey, GameInput, GamepadButtons } from '../../types/input';
 import { gamepadStore } from './gamepadStore';
 import { hardwareGamepad } from './hardwareGamepad';
 import { isInputCaptureActive } from './inputBindingsStore';

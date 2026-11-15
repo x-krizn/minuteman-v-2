@@ -816,7 +816,7 @@ export const SET_PATH_SPINE_COORDS: Array<{ cx: number; cy: number; title: strin
   buildSetPathSpineCoords();
 
 /**
- * Fast membership `Set` of `"cx,cy"` chunk keys belonging to the safe Set Path spine.
+ * Fast membership `Set` of `"cx,cy"` chunk keys belonging to the safe Set Path spine (immutable static set populated once at module initialization; no runtime growth).
  */
 export const SET_PATH_SPINE_SET = new Set<string>(
   SET_PATH_SPINE_COORDS.map((c) => `${c.cx},${c.cy}`)

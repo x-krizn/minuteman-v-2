@@ -5,14 +5,14 @@
 
 import React from 'react';
 import { soundSystem } from '../../engine/core/soundSystem';
-import {
+import type {
   Cartridge,
   CartridgeMenuMode,
   CartridgeOverlayProps,
   CartridgeSurface,
 } from '../../types/cartridge';
-import { GameInput } from '../../types/input';
-import { DEFAULT_CALLSIGNS, TRAIT_LIST } from './database/characters';
+import type { GameInput } from '../../types/input';
+import { DEFAULT_CALLSIGNS, TRAIT_LIST } from './database';
 import {
   applyTraitLineProfile,
   checkWorldInteractivePrompt,
@@ -88,6 +88,20 @@ export function createOrionCartridge(): Cartridge {
       spawnRoomEnemies(rooms, state);
       setOrionRoomsRef(rooms);
       setOrionStateRef(state);
+    },
+
+    destroy() {
+      currentMenuMode = 'none';
+      state.isContinuousBoosting = false;
+      state.bHoldTimer = 0;
+      state.isHoldingBlock = false;
+      state.blockTimer = 0;
+      state.blockHoldTimer = 0;
+      state.blockingWeaponId = null;
+      state.combatActiveChain = false;
+      state.combatQueuedChainShot = false;
+      state.projectiles = [];
+      state.particles = [];
     },
 
     onMenuToggle(menuMode: CartridgeMenuMode) {

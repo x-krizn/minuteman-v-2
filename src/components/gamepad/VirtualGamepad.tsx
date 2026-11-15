@@ -10,7 +10,7 @@ import {
   getControlBindings,
   subscribeControlBindings,
 } from '../../engine/input/inputBindingsStore';
-import { ButtonKey, GamepadButtons } from '../../types/input';
+import type { ButtonKey, GamepadButtons } from '../../types/input';
 import { PadBoard, PadBoardWing } from './PadBoard';
 
 interface VirtualGamepadProps {

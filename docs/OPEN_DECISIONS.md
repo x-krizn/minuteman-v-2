@@ -10,7 +10,6 @@
 | OD-ARC-06 | `scripts/build-index.mjs` defaults its root to `src/cartridges/orion` and `npm run build` runs it with `--strict`, so Minuteman's build depends on an Orion path. Keep, or give Orion its own wiki command? | CODE_RULES §11.3 |
 | OD-ARC-07 | Should cartridges declare the Minuteman capabilities and versions they use, and Minuteman the ones it offers, so a mismatch turns a feature off instead of failing? Needs a new optional contract member. | CODE_RULES §10.7 |
 | OD-ARC-08 | `engine/input/inputBindingsStore.ts` (Minuteman) stores under `orion_control_bindings_v1`, so a Minuteman file carries an Orion name. Renaming orphans saved bindings. Keep, or migrate? | CODE_RULES §4 |
-| OD-ARC-09 | Knight's `stateStore.ts` imports `engine/core/registry`. Remove it through a Knight-side change? | CODE_RULES §10.5 |
 | OD-ARC-10 | Anchors exist only for Orion. Extend an anchor convention to Knight and Minuteman, or leave them without? | CODE_RULES §1 |
 
-*Closed: OD-ARC-05 (rules are repo-wide), OD-ARC-11 (location is `docs/CODE_RULES.md`).*
+*Closed: OD-ARC-05 (rules are repo-wide), OD-ARC-09 (Knight `stateStore.ts` no longer imports `engine/core/registry`), OD-ARC-11 (location is `docs/CODE_RULES.md`).*

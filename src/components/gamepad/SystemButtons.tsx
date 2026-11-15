@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { gamepadStore } from '../../engine/input/gamepadStore';
-import { ButtonKey, GamepadButtons } from '../../types/input';
+import type { ButtonKey, GamepadButtons } from '../../types/input';
 
 const PILL_IMG =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAKCAYAAACuaZ5oAAAAfklEQVR42rWTMQ7AIAhFPx7LxQEP5MQhmDyQDC5cq12ahqbdtC9hMnmPQYCAajsALM3luKEoF+kYY2CFWitUG0Q63YEon3MuBUopjwjtlH9FCMDBzMg5YyfuDjNDws8k1QYzg7tv3161IYl02hmJcpFOr2/KzEuBKH89/nFoJ6NVeKi6LtDJAAAAAElFTkSuQmCC';

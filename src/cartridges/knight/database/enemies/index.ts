@@ -7,6 +7,7 @@ import { EnemyType, EnemyWikiDefinition } from '../../types';
 
 // Dynamic recursive auto-discovery — every new enemy file added is automatically detected!
 const enemyModules = import.meta.glob('./**/*.ts', { eager: true });
+/** Static enemy definition registry populated once at module load from `import.meta.glob` (bounded by static files; no runtime growth). */
 const enemyMap = new Map<string, EnemyWikiDefinition>();
 
 for (const path in enemyModules) {

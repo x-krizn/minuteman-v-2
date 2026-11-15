@@ -30,7 +30,7 @@ import {
 import { inputReader } from './engine/input/inputReader';
 import { keyboardMapper } from './engine/input/keyboardMapper';
 import { universalMenuNavigator } from './engine/input/menuNavigation';
-import { CartridgeMenuMode } from './types/cartridge';
+import type { CartridgeMenuMode } from './types/cartridge';
 import { ShellScreen } from './types/shell';
 import {
   isAppFullscreen,

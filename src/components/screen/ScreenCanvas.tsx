@@ -5,7 +5,7 @@
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { cartridgeRunner } from '../../engine/core/cartridgeRunner';
-import { CartridgeSurface } from '../../types/cartridge';
+import type { CartridgeSurface } from '../../types/cartridge';
 
 interface ScreenCanvasProps {
   hidden: boolean;

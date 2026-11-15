@@ -5,6 +5,7 @@
 
 import { GemId } from '../../types';
 
+/** Immutable 9-gemstone identifier set used for mod naming classification (no runtime growth). */
 const VALID_GEM_IDS: ReadonlySet<string> = new Set<GemId>([
   'moonstone',
   'spinel',

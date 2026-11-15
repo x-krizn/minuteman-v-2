@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { CartridgeSurface } from '../../types/cartridge';
+import type { CartridgeSurface } from '../../types/cartridge';
 import { KnightState, StatType } from './types';
 import {
   BG_COLOR,

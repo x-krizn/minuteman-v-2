@@ -11,6 +11,7 @@ const characterModules = import.meta.glob('./**/*.ts', { eager: true }) as Recor
   Record<string, unknown>
 >;
 
+/** Static character definition registry populated once at module load from `import.meta.glob` (bounded by static files; no runtime growth). */
 const characterMap = new Map<string, CharacterDefinition>();
 
 for (const [path, mod] of Object.entries(characterModules)) {

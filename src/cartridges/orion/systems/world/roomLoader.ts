@@ -577,6 +577,7 @@ function assembleNestedWorld(): void {
       regionId: regionDef.id,
       areaId: areaDef.id,
       mapId,
+      // Safe: `resolveWorldRoomTemplate` always populates `biomeId` from the room, map, or area fallback
       biomeId: resolvedRoom.biomeId!,
       scope: 'local',
       nodeType,
@@ -651,6 +652,7 @@ function assembleNestedWorld(): void {
             regionId: regionDef.id,
             areaId: areaDef.id,
             mapId: mapDef.id,
+            // Safe: `resolveWorldRoomTemplate` always populates `biomeId` from the room, map, or area fallback
             biomeId: stitchedRoom.biomeId!,
             scope: 'global',
             nodeType: isSlotEndRoom ? 'end' : 'general',

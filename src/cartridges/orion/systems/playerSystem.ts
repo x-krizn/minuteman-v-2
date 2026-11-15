@@ -4,7 +4,7 @@
  */
 
 import { soundSystem } from '../../../engine/core/soundSystem';
-import { GameInput } from '../../../types/input';
+import type { GameInput } from '../../../types/input';
 import {
   BOOSTER_DASH_COOLDOWN,
   BOOSTER_DASH_DURATION,
@@ -47,8 +47,8 @@ import {
   unlockLevel2SecondaryWeapon,
 } from '../database/progression';
 import {
-  classifyWeaponCombatArchetype,
   clampTempoMultiplier,
+  classifyWeaponCombatArchetype,
   getWeaponDefinition,
   isLauncherEquipment,
   isTwoHandOnlyWeapon,

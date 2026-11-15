@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Cartridge, CartridgeSurface } from '../../types/cartridge';
-import { GameInput } from '../../types/input';
+import type { Cartridge, CartridgeSurface } from '../../types/cartridge';
+import type { GameInput } from '../../types/input';
 import { loadCartridgeAssets } from './assetLoader';
 import { registry } from './registry';
 
@@ -64,6 +64,7 @@ export class CartridgeRunner {
     const proceedWithInit = () => {
       let initResult: void | Promise<void>;
       try {
+        // Safe: `if (!this.surface)` guard at startCart entry guarantees `this.surface` is non-null
         initResult = typeof cart.init === 'function' ? cart.init(this.surface!) : undefined;
       } catch (err) {
         this.failCart(cart, 'init', err);

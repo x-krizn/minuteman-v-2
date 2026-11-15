@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { ButtonKey, GamepadButtons, StickVector } from '../../types/input';
+import type { ButtonKey, GamepadButtons, StickVector } from '../../types/input';
 import { triggerHaptic } from './haptics';
 
 /**

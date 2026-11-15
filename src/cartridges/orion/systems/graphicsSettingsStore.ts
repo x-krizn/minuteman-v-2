@@ -177,6 +177,7 @@ function loadStoredGraphicsSettings(): OrionGraphicsSettings {
 }
 
 let activeGraphicsSettings: OrionGraphicsSettings = loadStoredGraphicsSettings();
+/** Active graphics-setting subscribers; entries are evicted when their `subscribeOrionGraphicsSettings` cleanup callback runs on unmount. */
 const listeners: Set<(settings: OrionGraphicsSettings) => void> = new Set();
 
 function persistAndNotify(): void {

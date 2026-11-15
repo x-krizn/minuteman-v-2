@@ -234,6 +234,7 @@ export function spawnRoomEnemies(
       });
 
       if (def.companionSpawnType) {
+        // Safe: short-circuited by `def.companionSpawnChar &&` before the `.some()` callback
         const hasExplicitCompanion =
           def.companionSpawnChar && room.some((r) => r.includes(def.companionSpawnChar!));
         const companionSpawnKey = `${enemySpawnKey}:companion`;

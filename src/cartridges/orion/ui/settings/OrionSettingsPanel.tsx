@@ -32,7 +32,7 @@ import {
 } from '../../../../engine/input/inputBindingsStore';
 import { gamepadStore } from '../../../../engine/input/gamepadStore';
 import { keyboardMapper } from '../../../../engine/input/keyboardMapper';
-import { ButtonKey } from '../../../../types/input';
+import type { ButtonKey } from '../../../../types/input';
 import {
   isAppFullscreen,
   toggleAppFullscreen,
@@ -40,6 +40,7 @@ import {
 import {
   applyOrionGraphicsPreset,
   getOrionGraphicsSettings,
+  getOrionStateRef,
   notifyOrionStateChange,
   OrionGraphicsPreset,
   OrionGraphicsSettings,
@@ -47,7 +48,6 @@ import {
   setTutorialStateActive,
   subscribeOrionGraphicsSettings,
   updateOrionGraphicsSettings,
-  getOrionStateRef,
 } from '../../systems';
 
 /**

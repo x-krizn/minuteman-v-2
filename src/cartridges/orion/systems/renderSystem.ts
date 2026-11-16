@@ -122,9 +122,4 @@ export function drawOrionGame(
 
   // 6. LAYER 5: Dynamic Light Sources, Radial Bloom, Ambient Vignette & Desync Glitch Pass
   drawDynamicLightingAndBloomPass(g, room, activeBiome, state, camX, camY);
-
-  // 7. LAYER 6: CANONICAL THREE DEFENSE LAYERS HUD
-  if (!state.useStandardResolutionHud) {
-    drawCanonicalHud(g, state);
-  }
 }

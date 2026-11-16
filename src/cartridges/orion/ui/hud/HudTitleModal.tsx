@@ -15,6 +15,8 @@ import {
   applyTraitLineProfile,
   createNewPilotGame,
   deletePilotFromRoster,
+  formatOrionLoreLabel,
+  getOrionGraphicsSettings,
   getOrionRoomsRef,
   loadPilotFromRoster,
   loadPilotRoster,
@@ -84,6 +86,7 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
   };
 
   const roster = loadPilotRoster();
+  const devMode = getOrionGraphicsSettings().devModeEnabled;
   const activeTrait = state.traitLine || 'Warrior';
   const traitProfile = TRAIT_REGISTRY[activeTrait] || TRAIT_REGISTRY.Warrior;
   const utilDef = getClassUtilityDefinition(undefined, activeTrait);
@@ -303,7 +306,7 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
                   )}
                   {item.id === 'training' && isSelected && (
                     <span className="ml-2 align-middle text-[8.5px] font-mono font-bold px-1.5 py-0.5 bg-[#1d4ed8]/90 text-white border border-[#93c5fd] rounded-xs [text-shadow:none]">
-                      SANDBOX [-4,0]
+                      {devMode ? 'SANDBOX [-4,0]' : 'SANDBOX'}
                     </span>
                   )}
                 </button>
@@ -314,7 +317,7 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
           {/* Bottom Control Legend */}
           <div className="flex items-center justify-between text-[8.5px] text-[#cbd5e1]/90 bg-[#090612]/75 border border-[#2e233d] px-2.5 py-1 rounded-xs">
             <span>[↑/↓] NAVIGATE · [A / CLICK] OPEN SELECTION</span>
-            <span>BELLDOR EXPEDITION · u00 COSMOS</span>
+            <span>{devMode ? 'BELLDOR EXPEDITION · u00 COSMOS' : 'BELLDOR EXPEDITION · COSMOS'}</span>
           </div>
         </div>
       ) : (
@@ -403,7 +406,8 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
                     FRAME: {traitProfile.frameModel} — {traitProfile.name.toUpperCase()}
                   </span>
                   <span className="text-[8px] px-1.5 py-0.5 bg-[#1e293b] text-[#facc15] rounded-xs font-bold">
-                    BASE LOAD: {(traitProfile.weightClass || 'medium').toUpperCase()} · INTEGRITY: 200 HP
+                    BASE LOAD: {(traitProfile.weightClass || 'medium').toUpperCase()}
+                    {devMode ? ' · INTEGRITY: 200 HP' : ''}
                   </span>
                 </div>
                 <div className="text-[8.5px] text-[#cbd5e1] leading-snug">
@@ -413,13 +417,17 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
                   <div className="p-1 bg-[#090d16] border border-[#1e293b] rounded-xs">
                     <div className="text-[#94a3b8]">LAYER 1 SHIELD</div>
                     <div className="text-[#7dd3fc] font-bold">
-                      {traitProfile.baseShield.capacity} ({traitProfile.baseShield.type.toUpperCase()})
+                      {devMode
+                        ? `${traitProfile.baseShield.capacity} (${traitProfile.baseShield.type.toUpperCase()})`
+                        : traitProfile.baseShield.type.toUpperCase()}
                     </div>
                   </div>
                   <div className="p-1 bg-[#090d16] border border-[#1e293b] rounded-xs">
                     <div className="text-[#94a3b8]">LAYER 2 ARMOR</div>
                     <div className="text-[#fbbf24] font-bold">
-                      {traitProfile.baseArmor.type} ({traitProfile.baseArmor.durability} DUR)
+                      {devMode
+                        ? `${traitProfile.baseArmor.type} (${traitProfile.baseArmor.durability} DUR)`
+                        : traitProfile.baseArmor.type}
                     </div>
                   </div>
                   <div className="p-1 bg-[#090d16] border border-[#1e293b] rounded-xs">
@@ -527,7 +535,7 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
                   <div className="space-y-1.5 max-h-[250px] overflow-y-auto pr-1">
                     {roster.map((entry, idx) => {
                       const isRowSel = idx === loadCursor;
-                      const zoneLabel =
+                      const rawZoneLabel =
                         entry.areaId === 'camelot_border_town'
                           ? 'Camelot Border Town'
                           : entry.areaId === 'm01_orc_encampment'
@@ -535,6 +543,7 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
                             : entry.room === '-4,0'
                               ? 'Training Sandbox [-4,0]'
                               : 'The Bog';
+                      const zoneLabel = formatOrionLoreLabel(rawZoneLabel, devMode);
                       const kitProfile = TRAIT_REGISTRY[entry.traitLine];
                       return (
                         <div
@@ -562,7 +571,8 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
                               </span>
                             </div>
                             <div className="text-[8.5px] text-[#94a3b8] mt-0.5">
-                              Zone: <span className="text-[#cbd5e1]">{zoneLabel}</span> ({entry.room}) ·{' '}
+                              Zone: <span className="text-[#cbd5e1]">{zoneLabel}</span>
+                              {devMode ? ` (${entry.room})` : ''} ·{' '}
                               {entry.tutorialActive ? 'Tutorial Onboarding' : 'Standard Progression'}
                             </div>
                           </div>

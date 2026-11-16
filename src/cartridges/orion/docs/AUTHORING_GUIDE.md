@@ -98,16 +98,16 @@ src/cartridges/orion/
 │   │   └── tutorialSystem.ts     # Desync walls, environmental hazards, raids, bosses & world interactions
 │   ├── combatSystem.ts           # Combat orchestrator (`updateCombat`) & barrel re-export
 │   ├── renderSystem.ts           # Render orchestrator (`drawOrionGame`) & barrel re-export
-│   ├── renderHudAndFogTells.ts   # Canonical 3-Layer HUD (with holstered `(H)` & active Aux `*` mount tags) & Aether Fog wayfinding tells
+│   ├── renderHudAndFogTells.ts   # In-world Aether Fog wayfinding tells (`drawAetherFogWayfindingTells`) & legacy canvas HUD helper
 │   ├── playerSpriteSystem.ts     # 3-pass anatomical Mech & Weapon layerer, class-tailored 2.5D N/S perspective projection & hip-holster/gauntlet overlays
 │   ├── worldSystem.ts            # World barrel re-export
 │   ├── playerSystem.ts           # State store, save/load, 2.5D physics, player controller & state gates
-│   ├── graphicsSettingsStore.ts  # Persistent Graphics & Visuals settings store (presets, bloom, lighting, weather, reflections, outlines, shake)
+│   ├── graphicsSettingsStore.ts  # Persistent Graphics, HUD & Developer Mode settings store (`devModeEnabled`, `toggleOrionDevMode`, `formatOrionLoreLabel`)
 │   ├── inertiaSystem.ts          # [ORION-ANCHOR: INERTIA-PHYSICS-ENGINE] Inertia v0.1 physics & stability engine
 │   └── entitySystem.ts           # [ORION-ANCHOR: ENTITY-SPAWN-ROOM] Enemy spawning/AI, pickups & particles
 │
 └── ui/                           # React HUD, Satchel & Menu overlays (operable via Keyboard, Gamepad, Virtual Controls & Mouse/Touch via UniversalMenuNavigator)
-    ├── OrionHud.tsx              # HUD orchestrator & Cosmic World Map modal
+    ├── OrionHud.tsx              # Retro-Modern React HUD orchestrator (`Full Tactical` & `Compact Retro`), `[F3 / `]` Dev Mode hotkey & Cosmic World Map modal
     ├── OrionGameMenu.tsx         # [START] Pause Menu & Roster/Options subviews
     ├── OrionSatchel.tsx          # Consolidated 5-tab Tactical Menu (STATUS, LOADOUT [Slots/Armory/Inventory], FEATS [118], MAP, CODEX)
     ├── hud/                      # Modular HUD subcomponents (HudTitleModal, HudDefenseBars, HudSkillDeck)
@@ -184,7 +184,7 @@ Project Orion uses a **weight-vs-weight classical mechanics Inertia & Stability 
 - **Stability (`S`)**: Derived from frame weight + armor + leg stabilizers + feats; controls the shrug-off deadband (`k1·S`) and hit recovery speed (`Δv_eff / (k2·S)`).
 - **Melee vs. Ranged Impulse (`J`)**: Melee impulse combines attack weight + attacker body weight × `μ_attacker` × commitment factor; Ranged impulse is strictly `projectile_weight × projectile_speed` (independent of shooter weight).
 - **Ranged Recoil (`§7`)**: Uses the exact same impulse equation (`Δv_recoil = J_recoil / m_shooter_frame`) with deadband `k1·S`, so heavier and more stable frames suffer less movement restriction while firing heavy weapons.
-- **No HUD Clutter by Default**: Inertia and Stability numbers are never shown on the default HUD; full physics telemetry is available in the `MECH STATUS` Satchel tab, and live HUD readouts only appear when the **Inertial Gyro-Telemetry Array** equipment mod is installed in Sensory B (configured in `ARMORY`).
+- **No HUD Clutter by Default**: Inertia and Stability numbers are never shown on the default HUD; full physics telemetry is available in the `MECH STATUS` Satchel tab, and live HUD readouts only appear when the **Inertial Gyro-Telemetry Array** equipment mod is installed in Sensory B (configured in `ARMORY`) or when **Developer Mode** (`devModeEnabled`) is enabled.
 
 ---
 
@@ -201,6 +201,9 @@ Project Orion uses a **weight-vs-weight classical mechanics Inertia & Stability 
   - **`bottom` (Classic Bottom Deck)**: Docks the unified handheld controller deck below the screen viewport.
   - **`hidden` (Hide Pad)**: Hides the on-screen virtual gamepad for dedicated keyboard or physical controller play while keeping the top bar quick-toggle accessible.
 
-### 4C. Real-Time Graphics & Post-Processing Store (`systems/graphicsSettingsStore.ts`)
-- **Persistent Settings (`orion_graphics_settings_v1`)**: `OrionSettingsPanel.tsx` (`GRAPHICS` tab) and `effectsRenderer.ts` synchronize real-time visual presets (`low`, `medium`, `high`, `retro`, `custom`), dynamic raycast lighting & darkness depth, additive radial bloom, biome weather/miasma particle density, water reflections, 1px tactical sprite outlines, CRT scanlines, screen shake scale, and HUD resolution mode (`hires` React overlay vs. `pixel` canvas HUD).
+### 4C. Real-Time Graphics, Retro-Modern React HUD & Developer Mode Store (`systems/graphicsSettingsStore.ts`)
+- **Persistent Settings (`orion_graphics_settings_v1`)**: `OrionSettingsPanel.tsx` (`GRAPHICS` & `AUDIO & HUD` tabs) and `effectsRenderer.ts` synchronize real-time visual presets (`low`, `medium`, `high`, `retro`, `custom`), dynamic raycast lighting & darkness depth, additive radial bloom, biome weather/miasma particle density, water reflections, 1px tactical sprite outlines, CRT scanlines, screen shake scale, HUD style (`hudResolution`), and Developer Mode (`devModeEnabled`).
+- **Modernized Retro React HUD (`Full Tactical` vs. `Compact Retro`)**: Both HUD style modes (`hires` -> **Full Tactical Retro**, `pixel` -> **Compact Retro**) render crisp, high-DPI retro-styled React HUD panels (`OrionHud.tsx`, `HudDefenseBars.tsx`, `HudSkillDeck.tsx`) over the `160 × 144` pixel canvas rather than drawing low-resolution text onto the canvas.
+- **Developer Mode (`devModeEnabled`, Hotkey `[F3]` / `` [`] ``)**: Off by default so player-facing UI presents clean lore names (`formatOrionLoreLabel`) and segmented gauge bars. When toggled on via `OrionSettingsPanel`, `OrionGameMenu`, `OrionSatchel`, or the `[F3]` / Backquote `` [`] `` shortcut, all engine testing telemetry is revealed: floating viewport `FULLSCREEN`/`PAD` controls, lantern & Poe status (`LANTERN LIT`, `☀5`, `POE LANTERN +1.0`), Æther Fog depth/loot gauges & 5-node topology diagnostics, set-path/off-path status (`SET PATH · SAFE`, `OFF-PATH · DIST`), numerical Shield/Armor/Frame/Heat/Enemy HP readouts, raw map/item/weapon/hardware/feat file IDs & internal prefixes (`M00`, `M01`, `u00`), and room/chunk/world coordinates (`[rx,ry]`, `CHK(x,y)`).
+
 

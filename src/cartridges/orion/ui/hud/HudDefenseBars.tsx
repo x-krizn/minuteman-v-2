@@ -21,6 +21,7 @@ import {
   computeChunkFogMetrics,
   cycleTargetLock,
   formatInertiaOutcomeLabel,
+  formatOrionLoreLabel,
   getActiveChunkLandmarkLabel,
   getLockedTarget,
   getRoomWorldInfo,
@@ -32,20 +33,28 @@ import {
 import { OrionState } from '../../types';
 import { OUTLINED_TEXT } from './HudSkillDeck';
 
-interface HudDefenseBarsProps {
+/**
+ * Props for `HudDefenseBars`.
+ * Supports both Full Tactical and Compact Retro React HUD modes.
+ */
+export interface HudDefenseBarsProps {
   state: OrionState;
   onOpenPilotModal: () => void;
+  compactRetro?: boolean;
+  devMode?: boolean;
 }
 
 /**
  * Renders the top cockpit telemetry bar (Three Defense Layers on the left, Sector & Æther Depth Gauge
  * in the center, and Salvage/Light plus `Main Hand (Right)`, `Side Hand (Left)`, and `Aux (Back)` weapon
- * readouts on the right). Supports the React overlay HUD (`useStandardResolutionHud !== false`) and
- * mutates `state: OrionState` when cycling target lock, adjusting base light, or swapping `Side ⇄ Aux`.
+ * readouts on the right). Supports both Full Tactical and Compact Retro React HUD modes, gates engine
+ * testing metadata behind `devMode`, and mutates `state: OrionState` when cycling target lock or swapping `Side ⇄ Aux`.
  */
 export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
   state,
   onOpenPilotModal,
+  compactRetro = false,
+  devMode = false,
 }) => {
   const [, setBindingsTick] = useState(0);
   useEffect(() => {
@@ -88,16 +97,16 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
   const mainGrip = getEffectiveMainGrip(state);
 
   const activeWeapon = getWeaponDefinition(slot1Id);
-  const activeWeaponName = `${activeWeapon?.name || 'Gladius Boltcaster'}${mainGrip === '2h' ? ' (2H)' : ' (1H)'}`;
+  const activeWeaponName = `${activeWeapon?.name || 'Gladius Boltcaster'}${mainGrip === '2h' ? ' (2H)' : ' (1H)'}${devMode ? ` [${slot1Id}]` : ''}`;
   const sideDisplayName = slot2Id
     ? `${getWeaponDefinition(slot2Id)?.name || getItemDefinition(slot2Id)?.name || slot2Id}${
         mainGrip === '2h' && slot2Id === slot1Id ? ' (2H)' : ''
-      }`
+      }${devMode ? ` [${slot2Id}]` : ''}`
     : mainGrip === '2h'
       ? '2H Grip'
       : 'Empty';
   const auxDisplayName = slot3Id
-    ? getWeaponDefinition(slot3Id)?.name || getItemDefinition(slot3Id)?.name || slot3Id
+    ? `${getWeaponDefinition(slot3Id)?.name || getItemDefinition(slot3Id)?.name || slot3Id}${devMode ? ` [${slot3Id}]` : ''}`
     : 'Empty';
 
   const isKhopesh = slot1Id === 'khopesh';
@@ -106,120 +115,152 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
   const isReloading = state.isReloading;
   const reloadTimer = state.reloadTimer;
   const lockedEnemy = getLockedTarget(state);
+  const cleanRoomTitle = formatOrionLoreLabel(
+    getActiveChunkLandmarkLabel(state) || worldInfo.roomTitle,
+    devMode
+  );
 
   return (
     <header className="w-full flex items-start justify-between gap-2 pt-5 sm:pt-1 bg-transparent">
       {/* LEFT CLUSTER: Pilot Profile & The Three Defense Layers */}
       <section
         aria-label="Defense Gauges"
-        className={`flex flex-col gap-0.5 w-[132px] sm:w-[152px] bg-transparent ${OUTLINED_TEXT}`}
+        className={`flex flex-col gap-0.5 ${
+          compactRetro ? 'w-[116px] sm:w-[132px]' : 'w-[134px] sm:w-[154px]'
+        } bg-[#05070a]/80 border border-[#1e293b]/90 px-1.5 py-1 rounded-[1px] shadow-[2px_2px_0_#020617] ${OUTLINED_TEXT}`}
       >
-        <button
-          type="button"
-          onClick={() => {
-            soundSystem.playSelect();
-            onOpenPilotModal();
-          }}
-          className="pointer-events-auto flex items-center gap-1 text-[8.5px] sm:text-[9px] tracking-wider text-[#cbd5e1] font-bold hover:text-white cursor-pointer text-left bg-transparent"
-        >
-          <span className="text-[#38bdf8] uppercase truncate max-w-[78px]">
-            {state.pilotName}
-          </span>
-          <span className="text-[#64748b]">·</span>
-          <span className="text-[#fde047] text-[8px] font-extrabold">
-            LV.{state.level}
-          </span>
-        </button>
+        <div className="flex items-center justify-between gap-1">
+          <button
+            type="button"
+            onClick={() => {
+              soundSystem.playSelect();
+              onOpenPilotModal();
+            }}
+            className="pointer-events-auto flex items-center gap-1 text-[8px] sm:text-[8.5px] tracking-wider text-[#cbd5e1] font-bold hover:text-white cursor-pointer text-left bg-transparent"
+          >
+            <span className="text-[#38bdf8] uppercase truncate max-w-[74px]">
+              {state.pilotName}
+            </span>
+            <span className="text-[#64748b]">·</span>
+            <span className="text-[#fde047] text-[7.5px] font-extrabold">
+              LV.{state.level}
+            </span>
+          </button>
+          {devMode && (
+            <span
+              title="Developer Mode Active (Press F3 or ` to toggle)"
+              className="px-1 py-0.1 rounded-[1px] bg-[#451a03] border border-[#f59e0b]/80 text-[#fde047] text-[6px] font-black tracking-wider"
+            >
+              DEV
+            </span>
+          )}
+        </div>
 
-        {/* Transparent Defense Gauges Stack */}
+        {/* Crisp Retro-Modern Segmented Defense Gauges Stack */}
         <div className="flex flex-col gap-0.5 bg-transparent">
           {/* Layer 1: Shield */}
           <div className="flex flex-col">
-            <div className="flex justify-between items-center text-[7.5px] font-bold leading-none">
-              <span className="text-[#38bdf8]">SHLD</span>
-              <span className={isShieldOverloaded ? 'text-[#ef4444] animate-pulse font-black' : 'text-[#7dd3fc]'}>
+            <div className="flex justify-between items-center text-[7px] font-bold leading-none">
+              <span className="text-[#38bdf8] tracking-wider">SHLD</span>
+              <span className={isShieldOverloaded ? 'text-[#ef4444] animate-pulse font-black' : 'text-[#7dd3fc] tabular-nums'}>
                 {isShieldOverloaded
-                  ? `OVLD ${state.shields.overloadTimer.toFixed(1)}s`
-                  : `${Math.round(shieldCap)}/${shieldMax}`}
+                  ? devMode
+                    ? `OVLD ${state.shields.overloadTimer.toFixed(1)}s`
+                    : 'OVERLOAD'
+                  : devMode
+                    ? `${Math.round(shieldCap)}/${shieldMax}`
+                    : ''}
               </span>
             </div>
-            <svg viewBox="0 0 100 4" preserveAspectRatio="none" className="w-full h-1 mt-0.5 overflow-visible">
-              <rect x="0" y="0" width="100" height="4" rx="1" fill="none" stroke="#020617" strokeWidth="1.5" />
+            <svg viewBox="0 0 100 4" preserveAspectRatio="none" className="w-full h-1.5 mt-0.5 overflow-visible">
+              <rect x="0" y="0" width="100" height="4" fill="#090d16" stroke="#020617" strokeWidth="1.2" />
               <rect
                 x="0"
                 y="0"
                 width={isShieldOverloaded ? 100 : shieldPct}
                 height="4"
-                rx="1"
                 fill={isShieldOverloaded ? '#ef4444' : '#38bdf8'}
               />
+              <line x1="25" y1="0" x2="25" y2="4" stroke="#020617" strokeWidth="0.8" />
+              <line x1="50" y1="0" x2="50" y2="4" stroke="#020617" strokeWidth="0.8" />
+              <line x1="75" y1="0" x2="75" y2="4" stroke="#020617" strokeWidth="0.8" />
             </svg>
           </div>
 
           {/* Layer 2: Armor */}
           <div className="flex flex-col">
-            <div className="flex justify-between items-center text-[7.5px] font-bold leading-none">
-              <span className="text-[#fbbf24]">ARM ({state.armor.type[0]})</span>
-              <span className="text-[#fde68a]">
-                {Math.round(armorDur)}/{armorMax}
-              </span>
+            <div className="flex justify-between items-center text-[7px] font-bold leading-none">
+              <span className="text-[#fbbf24] tracking-wider">ARM ({state.armor.type[0]})</span>
+              {devMode && (
+                <span className="text-[#fde68a] tabular-nums">
+                  {Math.round(armorDur)}/{armorMax}
+                </span>
+              )}
             </div>
-            <svg viewBox="0 0 100 4" preserveAspectRatio="none" className="w-full h-1 mt-0.5 overflow-visible">
-              <rect x="0" y="0" width="100" height="4" rx="1" fill="none" stroke="#020617" strokeWidth="1.5" />
-              <rect x="0" y="0" width={armorPct} height="4" rx="1" fill="#fbbf24" />
+            <svg viewBox="0 0 100 4" preserveAspectRatio="none" className="w-full h-1.5 mt-0.5 overflow-visible">
+              <rect x="0" y="0" width="100" height="4" fill="#090d16" stroke="#020617" strokeWidth="1.2" />
+              <rect x="0" y="0" width={armorPct} height="4" fill="#fbbf24" />
+              <line x1="25" y1="0" x2="25" y2="4" stroke="#020617" strokeWidth="0.8" />
+              <line x1="50" y1="0" x2="50" y2="4" stroke="#020617" strokeWidth="0.8" />
+              <line x1="75" y1="0" x2="75" y2="4" stroke="#020617" strokeWidth="0.8" />
             </svg>
           </div>
 
           {/* Layer 3: Frame Integrity */}
           <div className="flex flex-col">
-            <div className="flex justify-between items-center text-[7.5px] font-bold leading-none">
-              <span className={isFrameCritical ? 'text-[#ef4444] animate-pulse font-black' : 'text-[#4ade80]'}>
+            <div className="flex justify-between items-center text-[7px] font-bold leading-none">
+              <span className={isFrameCritical ? 'text-[#ef4444] animate-pulse font-black tracking-wider' : 'text-[#4ade80] tracking-wider'}>
                 FRAME {isFrameCritical ? 'CRIT' : ''}
               </span>
-              <span className={isFrameCritical ? 'text-[#ef4444] font-black' : 'text-[#86efac]'}>
-                {frameHP}/{frameMax}
-              </span>
+              {devMode && (
+                <span className={isFrameCritical ? 'text-[#ef4444] font-black tabular-nums' : 'text-[#86efac] tabular-nums'}>
+                  {frameHP}/{frameMax}
+                </span>
+              )}
             </div>
-            <svg viewBox="0 0 100 4" preserveAspectRatio="none" className="w-full h-1 mt-0.5 overflow-visible">
-              <rect x="0" y="0" width="100" height="4" rx="1" fill="none" stroke="#020617" strokeWidth="1.5" />
+            <svg viewBox="0 0 100 4" preserveAspectRatio="none" className="w-full h-1.5 mt-0.5 overflow-visible">
+              <rect x="0" y="0" width="100" height="4" fill="#090d16" stroke="#020617" strokeWidth="1.2" />
               <rect
                 x="0"
                 y="0"
                 width={framePct}
                 height="4"
-                rx="1"
                 fill={isFrameCritical ? '#ef4444' : '#4ade80'}
               />
+              <line x1="25" y1="0" x2="25" y2="4" stroke="#020617" strokeWidth="0.8" />
+              <line x1="50" y1="0" x2="50" y2="4" stroke="#020617" strokeWidth="0.8" />
+              <line x1="75" y1="0" x2="75" y2="4" stroke="#020617" strokeWidth="0.8" />
             </svg>
           </div>
 
           {/* Reactor Heat (only prominent when > 0 or boosting) */}
           {(heat > 0.5 || state.isContinuousBoosting) && (
             <div className="flex flex-col">
-              <div className="flex justify-between items-center text-[7px] font-bold leading-none">
+              <div className="flex justify-between items-center text-[6.5px] font-bold leading-none">
                 <span className={isOverheating ? 'text-[#ef4444] animate-pulse font-black' : 'text-[#f97316]'}>
-                  HEAT
+                  {isOverheating ? 'HEAT OVHT' : 'HEAT'}
                 </span>
-                <span className={isOverheating ? 'text-[#ef4444]' : 'text-[#fdba74]'}>
-                  {Math.round(heat)}%
-                </span>
+                {devMode && (
+                  <span className={isOverheating ? 'text-[#ef4444] tabular-nums' : 'text-[#fdba74] tabular-nums'}>
+                    {Math.round(heat)}%
+                  </span>
+                )}
               </div>
-              <svg viewBox="0 0 100 3" preserveAspectRatio="none" className="w-full h-0.5 mt-0.5 overflow-visible">
-                <rect x="0" y="0" width="100" height="3" rx="1" fill="none" stroke="#020617" strokeWidth="1.5" />
+              <svg viewBox="0 0 100 3" preserveAspectRatio="none" className="w-full h-1 mt-0.5 overflow-visible">
+                <rect x="0" y="0" width="100" height="3" fill="#090d16" stroke="#020617" strokeWidth="1.2" />
                 <rect
                   x="0"
                   y="0"
                   width={heatPct}
                   height="3"
-                  rx="1"
                   fill={isOverheating ? '#ef4444' : '#f97316'}
                 />
               </svg>
             </div>
           )}
 
-          {/* Conditional HUD Inertia Telemetry (ONLY rendered when Inertial Gyro-Telemetry Mod is equipped — §1, §8) */}
-          {hasInertialTelemetryModEquipped(state) &&
+          {/* Conditional HUD Inertia Telemetry (rendered when Inertial Gyro-Telemetry Mod is equipped or Dev Mode is on) */}
+          {(hasInertialTelemetryModEquipped(state) || devMode) &&
             (() => {
               const iProf = resolvePlayerInertiaProfile(state);
               const muPct = Math.round((state.currentMu || 0) * 100);
@@ -259,165 +300,179 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
         </div>
       </section>
 
-      {/* CENTER CLUSTER: Room Title & Æther Depth Gauge */}
+      {/* CENTER CLUSTER: Room Title & Developer Mode Telemetry (Coordinates, Path, Fog, Lantern) */}
       <section
         aria-label="Sector Info & Æther Gauge"
         className={`flex flex-col items-center gap-0.5 bg-transparent ${OUTLINED_TEXT}`}
       >
-        <div className="text-[8.5px] sm:text-[9px] text-[#cbd5e1] tracking-wider uppercase font-bold flex items-center gap-1 bg-transparent">
-          <span>{getActiveChunkLandmarkLabel(state) || worldInfo.roomTitle}</span>
-          <span className="text-[#64748b]">·</span>
-          <span className="text-[#94a3b8] text-[7.5px]">
-            [{state.rx},{state.ry}]
-          </span>
-          {state.activeChunkX !== undefined && state.activeChunkY !== undefined && (
+        <div className="px-2 py-0.5 bg-[#05070a]/80 border border-[#1e293b]/90 rounded-[1px] shadow-[2px_2px_0_#020617] text-[8px] sm:text-[8.5px] text-[#e2e8f0] tracking-wider uppercase font-bold flex items-center gap-1">
+          <span>{cleanRoomTitle}</span>
+          {devMode && (
             <>
               <span className="text-[#64748b]">·</span>
-              <span className="text-[#22d3ee] text-[7.5px]">
-                CHK({state.activeChunkX},{state.activeChunkY})
+              <span className="text-[#94a3b8] text-[7px] tabular-nums">
+                [{state.rx},{state.ry}]
               </span>
-            </>
-          )}
-          {isCheatMode && (
-            <>
-              <span className="text-[#64748b]">·</span>
-              <span className="text-[#fbbf24]">
-                {worldInfo.nodeType.toUpperCase()}
-              </span>
+              {state.activeChunkX !== undefined && state.activeChunkY !== undefined && (
+                <>
+                  <span className="text-[#64748b]">·</span>
+                  <span className="text-[#22d3ee] text-[7px] tabular-nums">
+                    CHK({state.activeChunkX},{state.activeChunkY})
+                  </span>
+                </>
+              )}
+              {state.mapId && (
+                <>
+                  <span className="text-[#64748b]">·</span>
+                  <span className="text-[#a855f7] text-[6.5px] lowercase">
+                    {state.mapId}
+                  </span>
+                </>
+              )}
+              {isCheatMode && (
+                <>
+                  <span className="text-[#64748b]">·</span>
+                  <span className="text-[#fbbf24]">
+                    {worldInfo.nodeType.toUpperCase()}
+                  </span>
+                </>
+              )}
             </>
           )}
         </div>
 
-        {/* Æther Fog Depth Gauge (Set-Path Spine / Off-Path Distance + clvl Fog Intensity OR Loop Depth) */}
-        {(() => {
-          if (isChunkedExpanseRoom(state.room)) {
-            const fog = computeChunkFogMetrics(state);
-            const isSetPath = fog.distFromSetPath === 0;
-            const fogPct = Math.round(fog.fogIntensity * 100);
+        {/* Æther Fog Depth Gauge, Path Status & Lantern Status (Gated behind Developer Mode) */}
+        {devMode &&
+          (() => {
+            if (isChunkedExpanseRoom(state.room)) {
+              const fog = computeChunkFogMetrics(state);
+              const isSetPath = fog.distFromSetPath === 0;
+              const fogPct = Math.round(fog.fogIntensity * 100);
+
+              return (
+                <div className="flex flex-wrap items-center justify-center gap-1 text-[6.5px] tracking-tighter font-bold bg-transparent">
+                  <span
+                    className={`px-1 rounded-[1px] border bg-[#05070a]/80 ${
+                      isSetPath
+                        ? 'text-[#4ade80] border-[#4ade80]/85 font-black'
+                        : fog.isSoftCapAbyss
+                          ? 'text-[#f43f5e] border-[#f43f5e]/85 font-black animate-pulse'
+                          : 'text-[#c084fc] border-[#c084fc]/85 font-black'
+                    }`}
+                  >
+                    {isSetPath
+                      ? 'SET PATH · SAFE'
+                      : fog.isSoftCapAbyss
+                        ? `ABYSS CAP · DIST ${fog.distFromSetPath} (SAFE ≤${fog.safeDepth})`
+                        : `OFF-PATH · DIST ${fog.distFromSetPath}/${fog.safeDepth}`}
+                  </span>
+                  {!isSetPath && (
+                    <span
+                      className={`px-1 rounded-[1px] border bg-[#05070a]/80 ${
+                        fog.isSoftCapAbyss
+                          ? 'border-[#f43f5e]/80 text-[#fda4af]'
+                          : 'border-[#38bdf8]/75 text-[#7dd3fc]'
+                      }`}
+                    >
+                      FOG {fogPct}% · LOOT ×{fog.lootMultiplier}
+                    </span>
+                  )}
+                  {fog.isLanternLit && (
+                    <span className="px-1 rounded-[1px] border border-[#22d3ee]/85 bg-[#05070a]/80 text-[#67e8f9] font-black">
+                      LANTERN LIT
+                    </span>
+                  )}
+                  {fog.hasDeepDungeon && (
+                    <span
+                      className={`px-1 rounded-[1px] border bg-[#05070a]/80 font-black ${
+                        fog.isDeepDungeonCleared
+                          ? 'border-[#4ade80]/85 text-[#86efac]'
+                          : 'border-[#fbbf24]/85 text-[#fde047]'
+                      }`}
+                    >
+                      {fog.isDeepDungeonCleared
+                        ? 'RUIN SANCTUM CLEARED'
+                        : 'SUNKEN RUIN SANCTUM'}
+                    </span>
+                  )}
+                </div>
+              );
+            }
+
+            const curStage = worldInfo.loopStage || 0;
+            const curDepth = worldInfo.loopDepth || 0;
+            const maxDepth = Math.max(2, worldInfo.loopMaxDepth || (state.level || 1) + 1);
+            const inLoop = worldInfo.nodeType === 'loop' || curDepth > 0;
+
+            const depthSteps: Array<{ label: string; depth: number }> = [
+              { label: 'SAFE', depth: 0 },
+              ...Array.from({ length: maxDepth }, (_, idx) => ({
+                label: String(idx + 1),
+                depth: idx + 1,
+              })),
+            ];
 
             return (
-              <div className="flex flex-wrap items-center justify-center gap-1 text-[6.5px] tracking-tighter font-bold bg-transparent">
-                <span
-                  className={`px-1 rounded-[1px] border ${
-                    isSetPath
-                      ? 'text-[#4ade80] border-[#4ade80]/85 font-black'
-                      : fog.isSoftCapAbyss
-                        ? 'text-[#f43f5e] border-[#f43f5e]/85 font-black animate-pulse'
-                        : 'text-[#c084fc] border-[#c084fc]/85 font-black'
-                  }`}
-                >
-                  {isSetPath
-                    ? 'SET PATH · SAFE'
-                    : fog.isSoftCapAbyss
-                      ? `ABYSS CAP · DIST ${fog.distFromSetPath} (SAFE ≤${fog.safeDepth})`
-                      : `OFF-PATH · DIST ${fog.distFromSetPath}/${fog.safeDepth}`}
-                </span>
-                {!isSetPath && (
+              <div className="flex items-center gap-0.5 text-[6.5px] tracking-tighter font-bold bg-[#05070a]/80 px-1 py-0.5 rounded-[1px] border border-[#1e293b]/80">
+                {depthSteps.map((step, i) => {
+                  const isActiveStep = inLoop
+                    ? curDepth === step.depth
+                    : step.depth === 0;
+                  const activeColor =
+                    step.depth >= maxDepth
+                      ? 'text-[#f43f5e] border-[#f43f5e]/85'
+                      : step.depth >= 2
+                        ? 'text-[#c084fc] border-[#c084fc]/85'
+                        : step.depth === 1
+                          ? 'text-[#22d3ee] border-[#22d3ee]/85'
+                          : 'text-[#4ade80] border-[#4ade80]/80';
+
+                  return (
+                    <React.Fragment key={step.depth}>
+                      <span
+                        className={`px-1 rounded-[1px] border ${
+                          isActiveStep
+                            ? `${activeColor} font-black`
+                            : 'border-transparent text-[#64748b]'
+                        }`}
+                      >
+                        {step.label}
+                      </span>
+                      {i < depthSteps.length - 1 && (
+                        <span className="text-[#475569]">·</span>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+                {inLoop && (
                   <span
-                    className={`px-1 rounded-[1px] border ${
-                      fog.isSoftCapAbyss
+                    className={`ml-0.5 px-1 rounded-[1px] border ${
+                      curDepth >= maxDepth
                         ? 'border-[#f43f5e]/80 text-[#fda4af]'
-                        : 'border-[#38bdf8]/75 text-[#7dd3fc]'
+                        : 'border-[#a855f7]/60 text-[#d8b4fe]'
                     }`}
                   >
-                    FOG {fogPct}% · LOOT ×{fog.lootMultiplier}
-                  </span>
-                )}
-                {fog.isLanternLit && (
-                  <span className="px-1 rounded-[1px] border border-[#22d3ee]/85 text-[#67e8f9] font-black">
-                    LANTERN LIT
-                  </span>
-                )}
-                {fog.hasDeepDungeon && (
-                  <span
-                    className={`px-1 rounded-[1px] border font-black ${
-                      fog.isDeepDungeonCleared
-                        ? 'border-[#4ade80]/85 text-[#86efac]'
-                        : 'border-[#fbbf24]/85 text-[#fde047]'
-                    }`}
-                  >
-                    {fog.isDeepDungeonCleared
-                      ? 'RUIN SANCTUM CLEARED'
-                      : 'SUNKEN RUIN SANCTUM'}
+                    {curDepth >= maxDepth
+                      ? worldInfo.hasFogBoss
+                        ? 'MAX·BOSS'
+                        : `MAX·1/${maxDepth}`
+                      : `RM ${Math.max(1, curStage)}/${curDepth}`}
                   </span>
                 )}
               </div>
             );
-          }
-
-          const curStage = worldInfo.loopStage || 0;
-          const curDepth = worldInfo.loopDepth || 0;
-          const maxDepth = Math.max(2, worldInfo.loopMaxDepth || (state.level || 1) + 1);
-          const inLoop = worldInfo.nodeType === 'loop' || curDepth > 0;
-
-          const depthSteps: Array<{ label: string; depth: number }> = [
-            { label: 'SAFE', depth: 0 },
-            ...Array.from({ length: maxDepth }, (_, idx) => ({
-              label: String(idx + 1),
-              depth: idx + 1,
-            })),
-          ];
-
-          return (
-            <div className="flex items-center gap-0.5 text-[6.5px] tracking-tighter font-bold bg-transparent">
-              {depthSteps.map((step, i) => {
-                const isActiveStep = inLoop
-                  ? curDepth === step.depth
-                  : step.depth === 0;
-                const activeColor =
-                  step.depth >= maxDepth
-                    ? 'text-[#f43f5e] border-[#f43f5e]/85'
-                    : step.depth >= 2
-                      ? 'text-[#c084fc] border-[#c084fc]/85'
-                      : step.depth === 1
-                        ? 'text-[#22d3ee] border-[#22d3ee]/85'
-                        : 'text-[#4ade80] border-[#4ade80]/80';
-
-                return (
-                  <React.Fragment key={step.depth}>
-                    <span
-                      className={`px-1 rounded-[1px] border ${
-                        isActiveStep
-                          ? `${activeColor} font-black`
-                          : 'border-transparent text-[#64748b]'
-                      }`}
-                    >
-                      {step.label}
-                    </span>
-                    {i < depthSteps.length - 1 && (
-                      <span className="text-[#475569]">·</span>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-              {inLoop && (
-                <span
-                  className={`ml-0.5 px-1 rounded-[1px] border ${
-                    curDepth >= maxDepth
-                      ? 'border-[#f43f5e]/80 text-[#fda4af]'
-                      : 'border-[#a855f7]/60 text-[#d8b4fe]'
-                  }`}
-                >
-                  {curDepth >= maxDepth
-                    ? worldInfo.hasFogBoss
-                      ? 'MAX·BOSS'
-                      : `MAX·1/${maxDepth}`
-                    : `RM ${Math.max(1, curStage)}/${curDepth}`}
-                </span>
-              )}
-            </div>
-          );
-        })()}
+          })()}
 
         {lockedEnemy && (
           <button
             type="button"
             onClick={() => cycleTargetLock(state)}
-            className="pointer-events-auto mt-0.5 px-1.5 py-0.2 bg-transparent border border-[#38bdf8]/80 rounded-xs text-[7.5px] text-[#7dd3fc] font-bold tracking-wider uppercase flex items-center gap-1 cursor-pointer"
+            className="pointer-events-auto mt-0.5 px-1.5 py-0.5 bg-[#05070a]/85 border border-[#38bdf8]/80 rounded-[1px] shadow-[1px_1px_0_#020617] text-[7.5px] text-[#7dd3fc] font-bold tracking-wider uppercase flex items-center gap-1 cursor-pointer"
           >
             <span className="text-[#fbbf24]">◎</span>
             <span>
-              {lockedEnemy.name || lockedEnemy.type} ({lockedEnemy.frame.integrity} HP)
+              {lockedEnemy.name || lockedEnemy.type}
+              {devMode ? ` (${lockedEnemy.frame.integrity} HP)` : ''}
             </span>
           </button>
         )}
@@ -426,70 +481,80 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
       {/* RIGHT CLUSTER: Munitions, Salvage & 3-Slot Weapon Readout (Main [R], Side [L], Aux [Back]) */}
       <section
         aria-label="Munitions & Salvage"
-        className={`flex flex-col items-end gap-0.5 max-w-[155px] bg-transparent ${OUTLINED_TEXT}`}
+        className={`flex flex-col items-end gap-0.5 ${
+          compactRetro ? 'max-w-[132px]' : 'max-w-[162px]'
+        } bg-[#05070a]/80 border border-[#1e293b]/90 px-1.5 py-1 rounded-[1px] shadow-[2px_2px_0_#020617] ${OUTLINED_TEXT}`}
       >
-        {/* Salvage Scrap, Gemstone Counter & Player Light Stat */}
-        <div className="flex items-center gap-1 text-[8.5px] font-bold bg-transparent">
+        {/* Salvage Scrap, Gemstone Counter & Dev-Mode Player Light Stat */}
+        <div className="flex items-center gap-1 text-[8px] font-bold bg-transparent tabular-nums">
           <span className="text-[#fef08a]">⚙ {state.salvageScrap}</span>
           <span className="text-[#475569]">·</span>
           <span className="text-[#7dd3fc]">
             ◆ {GEMSTONE_CATALOG.reduce((sum, g) => sum + getInventoryGemCount(state, g.id), 0)}
           </span>
-          <span className="text-[#475569]">·</span>
-          <span
-            className="text-[#fde047]"
-            title="Light Stat (Base 5 tiles; modified by feats, items, hardware, skills, and spells)"
-          >
-            ☀{computeEffectivePlayerLightTiles(state)}
-          </span>
+          {devMode && (
+            <>
+              <span className="text-[#475569]">·</span>
+              <span
+                className="text-[#fde047]"
+                title="Light Stat (Base 5 tiles; modified by feats, items, hardware, skills, and spells)"
+              >
+                ☀{computeEffectivePlayerLightTiles(state)}
+              </span>
+            </>
+          )}
         </div>
 
         {/* Main Hand (Right), Side Hand (Left), and Aux (Back) Readouts + Segmented Ammo Pips */}
         <div className="flex flex-col items-end bg-transparent w-full gap-0.5">
           {/* 1. MAIN HAND (RIGHT) */}
-          <div className="flex items-center justify-end gap-1 max-w-full text-[8px] font-bold leading-none">
-            <span className="text-[#fde047] shrink-0">R·MAIN:</span>
+          <div className="flex items-center justify-end gap-1 max-w-full text-[7.5px] font-bold leading-none">
+            {!compactRetro && <span className="text-[#fde047] shrink-0">R·MAIN:</span>}
             <span className="text-[#f8fafc] truncate">{activeWeaponName}</span>
           </div>
 
-          {/* 2. SIDE HAND (LEFT) */}
-          <button
-            type="button"
-            onClick={() => {
-              performAuxiliarySwap(state, {
-                say: (txt) => {
-                  state.toastText = txt;
-                  state.toastTimer = 2.2;
-                },
-              });
-            }}
-            title={`Side Hand (Left) · Click or Hold [L · ${lKeyBadge}] to swap Side (Left) ⇄ Aux (Back)`}
-            className="pointer-events-auto flex items-center justify-end gap-1 max-w-full text-[7px] font-bold leading-none hover:text-[#fbbf24] cursor-pointer bg-transparent"
-          >
-            <span className="text-[#38bdf8] shrink-0">L·SIDE:</span>
-            <span className="text-[#cbd5e1] truncate">{sideDisplayName}</span>
-          </button>
+          {!compactRetro && (
+            <>
+              {/* 2. SIDE HAND (LEFT) */}
+              <button
+                type="button"
+                onClick={() => {
+                  performAuxiliarySwap(state, {
+                    say: (txt) => {
+                      state.toastText = txt;
+                      state.toastTimer = 2.2;
+                    },
+                  });
+                }}
+                title={`Side Hand (Left) · Click or Hold [L · ${lKeyBadge}] to swap Side (Left) ⇄ Aux (Back)`}
+                className="pointer-events-auto flex items-center justify-end gap-1 max-w-full text-[7px] font-bold leading-none hover:text-[#fbbf24] cursor-pointer bg-transparent"
+              >
+                <span className="text-[#38bdf8] shrink-0">L·SIDE:</span>
+                <span className="text-[#cbd5e1] truncate">{sideDisplayName}</span>
+              </button>
 
-          {/* 3. AUXILIARY (BACK) */}
-          <button
-            type="button"
-            onClick={() => {
-              performAuxiliarySwap(state, {
-                say: (txt) => {
-                  state.toastText = txt;
-                  state.toastTimer = 2.2;
-                },
-              });
-            }}
-            title={`Auxiliary (Back) · Click or Hold [L · ${lKeyBadge}] to swap Side (Left) ⇄ Aux (Back)`}
-            className="pointer-events-auto flex items-center justify-end gap-1 max-w-full text-[7px] font-bold leading-none hover:text-[#fbbf24] cursor-pointer bg-transparent"
-          >
-            <span className="text-[#c084fc] shrink-0">B·AUX:</span>
-            <span className="text-[#cbd5e1] truncate">{auxDisplayName}</span>
-          </button>
+              {/* 3. AUXILIARY (BACK) */}
+              <button
+                type="button"
+                onClick={() => {
+                  performAuxiliarySwap(state, {
+                    say: (txt) => {
+                      state.toastText = txt;
+                      state.toastTimer = 2.2;
+                    },
+                  });
+                }}
+                title={`Auxiliary (Back) · Click or Hold [L · ${lKeyBadge}] to swap Side (Left) ⇄ Aux (Back)`}
+                className="pointer-events-auto flex items-center justify-end gap-1 max-w-full text-[7px] font-bold leading-none hover:text-[#fbbf24] cursor-pointer bg-transparent"
+              >
+                <span className="text-[#c084fc] shrink-0">B·AUX:</span>
+                <span className="text-[#cbd5e1] truncate">{auxDisplayName}</span>
+              </button>
+            </>
+          )}
 
           {isReloading ? (
-            <div className="text-[8.5px] text-[#f59e0b] font-black tracking-wider animate-pulse mt-0.5">
+            <div className="text-[8px] text-[#f59e0b] font-black tracking-wider animate-pulse mt-0.5">
               {isKhopesh ? 'STANCE' : 'RELOAD'} {reloadTimer.toFixed(1)}s
             </div>
           ) : (
@@ -497,14 +562,14 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
               {Array.from({ length: maxAmmo }).map((_, i) => (
                 <div
                   key={i}
-                  className={`h-1.5 rounded-xs border transition-colors ${
+                  className={`h-1.5 rounded-[1px] border transition-colors ${
                     isKhopesh ? 'w-2.5' : 'w-1.5'
                   } ${
                     i < ammo
                       ? isKhopesh
                         ? 'bg-[#e879f9] border-[#020617]'
                         : 'bg-[#38bdf8] border-[#020617]'
-                      : 'bg-transparent border-[#475569]/80'
+                      : 'bg-[#090d16] border-[#475569]/80'
                   }`}
                 />
               ))}

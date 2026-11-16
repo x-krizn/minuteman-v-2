@@ -11,10 +11,14 @@ import {
 } from '../../../engine/input/inputBindingsStore';
 import {
   executeContextMenuOption,
+  formatOrionLoreLabel,
+  getOrionGraphicsSettings,
   getOrionRoomsRef,
   getOrionStateRef,
   spawnParticles,
+  subscribeOrionGraphicsSettings,
   subscribeOrionStateChange,
+  toggleOrionDevMode,
 } from '../systems';
 import { HudDefenseBars } from './hud/HudDefenseBars';
 import {
@@ -27,15 +31,35 @@ import { HudTitleModal } from './hud/HudTitleModal';
 import { SatchelWorldTab } from './satchel/SatchelWorldTab';
 
 /**
- * Orchestrates the React overlay HUD (`useStandardResolutionHud !== false`), the Title Menu modal
- * (`atTitleMenu`), and the Cosmic World Map modal (`worldMapModalMode`).
- * Supports the React overlay HUD for live cockpit telemetry (`HudDefenseBars`, `HudSkillDeck`)
- * and both HUD modes for modal overlays (`HudTitleModal`, `SatchelWorldTab`, context menus).
- * Mutates `state: OrionState` when opening/closing modals or executing context menu options.
+ * Synchronizes the visibility of the shell's floating corner buttons (`FULLSCREEN` and `PAD`)
+ * inside `#screen-viewport` so they are hidden during standard play and revealed in Developer Mode.
+ */
+function syncViewportShellCornerControls(devMode: boolean): void {
+  if (typeof document === 'undefined') return;
+  const cornerButtons = document.querySelectorAll<HTMLElement>(
+    '#screen-viewport button[title*="Fullscreen"], #screen-viewport button[title*="Virtual Gamepad Layout"]'
+  );
+  cornerButtons.forEach((btn) => {
+    if (devMode) {
+      btn.classList.remove('hidden');
+    } else {
+      btn.classList.add('hidden');
+    }
+  });
+}
+
+/**
+ * Orchestrates the crisp retro-modern React HUD (both `Full Tactical` and `Compact Retro` modes),
+ * the Title Menu modal (`atTitleMenu`), the Cosmic World Map modal (`worldMapModalMode`),
+ * and the global Developer Mode keyboard shortcut (`F3` / `` ` ``).
+ * Supports both HUD modes and mutates `state: OrionState` when opening/closing modals or executing context menu options.
  */
 export const OrionHud: React.FC = () => {
   const [, setTick] = useState(0);
   const [showPilotModal, setShowPilotModal] = useState(false);
+  const [devMode, setDevMode] = useState<boolean>(
+    () => getOrionGraphicsSettings().devModeEnabled
+  );
 
   useEffect(() => {
     let animId = 0;
@@ -51,6 +75,43 @@ export const OrionHud: React.FC = () => {
         setTick((prev) => (prev + 1) % 10000);
       }
     });
+    const unsubGfx = subscribeOrionGraphicsSettings((next) => {
+      if (!cancelled) {
+        setDevMode(next.devModeEnabled);
+        syncViewportShellCornerControls(next.devModeEnabled);
+        setTick((prev) => (prev + 1) % 10000);
+      }
+    });
+
+    syncViewportShellCornerControls(getOrionGraphicsSettings().devModeEnabled);
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isTyping =
+        activeEl?.tagName === 'TEXTAREA' ||
+        (activeEl instanceof HTMLInputElement &&
+          ['text', 'search', 'password', 'email', 'url', 'tel', 'number'].includes(
+            (activeEl.type || 'text').toLowerCase()
+          ));
+      if (isTyping) return;
+
+      if (e.code === 'F3' || e.code === 'Backquote') {
+        e.preventDefault();
+        const nextDev = toggleOrionDevMode();
+        soundSystem.playSelect();
+        const st = getOrionStateRef();
+        if (st) {
+          st.toastText = nextDev
+            ? 'DEV TELEMETRY: ENABLED [F3 / `]'
+            : 'DEV TELEMETRY: HIDDEN [F3 / `]';
+          st.toastTimer = 2.0;
+        }
+        setTick((prev) => (prev + 1) % 10000);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
     const scheduleNextFrame = () => {
       if (!cancelled) {
         animId = requestAnimationFrame(loop);
@@ -69,6 +130,9 @@ export const OrionHud: React.FC = () => {
       cancelled = true;
       unsubState();
       unsubBindings();
+      unsubGfx();
+      window.removeEventListener('keydown', handleKeyDown);
+      syncViewportShellCornerControls(true);
       cancelAnimationFrame(animId);
     };
   }, []);
@@ -91,7 +155,8 @@ export const OrionHud: React.FC = () => {
 
   // If the Cosmic World Map modal was opened via Campfire ('campfire'), Waygate ('waygate'), or Menu ('menu')
   if (state.worldMapModalMode && state.worldMapModalMode !== 'none') {
-    const isCheatMode = state.room === '-4,0' || Boolean(state.bypassProgressionGates);
+    const isCheatMode =
+      devMode && (state.room === '-4,0' || Boolean(state.bypassProgressionGates));
     return (
       <aside
         data-universal-menu="true"
@@ -101,7 +166,7 @@ export const OrionHud: React.FC = () => {
         <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-[#1e293b]">
           <div className="flex items-center gap-2">
             <span className="text-xs sm:text-sm font-black tracking-wider text-[#e9d5ff]">
-              🪐 PROJECT ORION — u00 COSMIC WORLD MAP
+              {formatOrionLoreLabel('🪐 PROJECT ORION — u00 COSMIC WORLD MAP', devMode)}
             </span>
           </div>
           <button
@@ -112,7 +177,7 @@ export const OrionHud: React.FC = () => {
               soundSystem.playMenuBeep();
               setTick((t) => t + 1);
             }}
-            className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#facc15] border border-[#475569] rounded-xs text-[9.5px] font-bold cursor-pointer"
+            className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#facc15] border border-[#475569] rounded-xs text-[9.5px] font-bold cursor-pointer shadow-[1px_1px_0_#020617]"
           >
             ✕ CLOSE MAP [B]
           </button>
@@ -131,7 +196,7 @@ export const OrionHud: React.FC = () => {
     );
   }
 
-  if (state.useStandardResolutionHud === false) return null;
+  const isCompactRetro = state.useStandardResolutionHud === false;
 
   const toastPlacement =
     state.toastText && state.toastTimer > 0
@@ -149,9 +214,11 @@ export const OrionHud: React.FC = () => {
       aria-label="Pilot Mech Cockpit Telemetry"
       className="absolute inset-0 pointer-events-none flex flex-col justify-between p-1.5 sm:p-2 z-20 select-none font-mono text-[#e2e8f0] bg-transparent"
     >
-      {/* 1. TOP BAR HUD CLUSTER (Transparent, Outlined Readouts) */}
+      {/* 1. TOP BAR HUD CLUSTER (Retro-Modern Segmented Readouts) */}
       <HudDefenseBars
         state={state}
+        compactRetro={isCompactRetro}
+        devMode={devMode}
         onOpenPilotModal={() => {
           state.atTitleMenu = true;
           state.titleMenuSubView = 'root';
@@ -165,11 +232,11 @@ export const OrionHud: React.FC = () => {
           role="dialog"
           data-universal-menu="true"
           aria-label={contextMenu.title}
-          className="pointer-events-auto absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-40 min-w-[180px] sm:min-w-[215px] max-w-[88%] bg-[#090d16]/95 border border-[#38bdf8]/80 rounded-xs p-2 shadow-lg flex flex-col gap-1"
+          className="pointer-events-auto absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-40 min-w-[185px] sm:min-w-[225px] max-w-[88%] bg-[#090d16]/95 border-2 border-[#38bdf8]/90 rounded-xs p-2 shadow-[3px_3px_0_#020617] flex flex-col gap-1"
         >
           <div className="flex items-center justify-between gap-2 pb-1 border-b border-[#1e293b]">
-            <span className="text-[8.5px] sm:text-[9.5px] font-black tracking-wider uppercase text-[#38bdf8] truncate">
-              {contextMenu.title}
+            <span className="text-[9px] sm:text-[10px] font-black tracking-wider uppercase text-[#38bdf8] truncate">
+              {formatOrionLoreLabel(contextMenu.title, devMode)}
             </span>
             <button
               type="button"
@@ -179,7 +246,7 @@ export const OrionHud: React.FC = () => {
                 soundSystem.playMenuBeep();
                 setTick((t) => t + 1);
               }}
-              className="text-[7.5px] px-1 py-0.2 border border-[#475569] text-[#94a3b8] hover:text-white rounded-xs cursor-pointer"
+              className="text-[8px] px-1.5 py-0.5 bg-[#0f172a] border border-[#475569] text-[#94a3b8] hover:text-white rounded-xs cursor-pointer"
             >
               [B] ESC
             </button>
@@ -222,54 +289,54 @@ export const OrionHud: React.FC = () => {
                     );
                     setTick((t) => t + 1);
                   }}
-                  className={`w-full text-left px-1.5 py-1 rounded-xs text-[8px] sm:text-[9px] font-bold tracking-wider uppercase flex items-center justify-between gap-2 cursor-pointer transition-colors ${
+                  className={`w-full text-left px-2 py-1 rounded-xs text-[8.5px] sm:text-[9.5px] font-bold tracking-wider uppercase flex items-center justify-between gap-2 cursor-pointer transition-colors ${
                     isSelected
-                      ? 'bg-[#0284c7]/35 border border-[#38bdf8] text-[#fef08a]'
+                      ? 'bg-[#0284c7]/35 border border-[#38bdf8] text-[#fef08a] shadow-[1px_1px_0_#020617]'
                       : 'bg-[#0f172a]/70 border border-transparent text-[#cbd5e1] hover:border-[#475569]'
                   }`}
                 >
                   <span>
                     {isSelected ? '▸ ' : '  '}
-                    {opt.label}
+                    {formatOrionLoreLabel(opt.label, devMode)}
                   </span>
                   {isSelected && (
-                    <span className="text-[7px] text-[#7dd3fc] font-extrabold">[A]</span>
+                    <span className="text-[7.5px] text-[#7dd3fc] font-extrabold">[A]</span>
                   )}
                 </button>
               );
             })}
           </div>
 
-          <div className="pt-0.5 text-[6.5px] text-[#64748b] font-bold tracking-wider uppercase flex justify-between">
+          <div className="pt-0.5 text-[7px] text-[#64748b] font-bold tracking-wider uppercase flex justify-between">
             <span>[↑/↓] SELECT</span>
             <span>[A] CONFIRM · [B] CANCEL</span>
           </div>
         </div>
       )}
 
-      {/* 3. CONTEXTUAL OUTLINED POP-UP MESSAGES (Auto-expiring, no background container, relative to info) */}
+      {/* 3. CONTEXTUAL RETRO-MODERN POP-UP MESSAGES */}
       {!contextMenu && state.promptText && (
         <div
           aria-live="polite"
-          className={`pointer-events-none absolute z-30 px-1.5 py-0.5 bg-transparent border border-[#facc15]/85 text-[#fef08a] rounded-xs text-[8.5px] sm:text-[9.5px] font-extrabold tracking-wider uppercase whitespace-nowrap ${OUTLINED_TEXT} ${promptPositionClass}`}
+          className={`pointer-events-none absolute z-30 px-2 py-0.5 bg-[#05070a]/85 border border-[#facc15]/90 text-[#fef08a] rounded-xs text-[8.5px] sm:text-[9.5px] font-extrabold tracking-wider uppercase whitespace-nowrap shadow-[2px_2px_0_#020617] ${OUTLINED_TEXT} ${promptPositionClass}`}
         >
-          {formatPromptControlLabels(state.promptText)}
+          {formatOrionLoreLabel(formatPromptControlLabels(state.promptText), devMode)}
         </div>
       )}
 
       {state.toastText && state.toastTimer > 0 && toastPlacement && (
         <div
           aria-live="polite"
-          className={`pointer-events-none absolute z-30 px-2 py-0.5 bg-transparent border rounded-xs text-[8.5px] sm:text-[9.5px] font-extrabold tracking-wider uppercase max-w-[82%] truncate ${OUTLINED_TEXT} ${toastPlacement.positionClass} ${toastPlacement.colorClass} ${
+          className={`pointer-events-none absolute z-30 px-2 py-0.5 bg-[#05070a]/80 border rounded-xs text-[8.5px] sm:text-[9.5px] font-extrabold tracking-wider uppercase max-w-[84%] truncate shadow-[2px_2px_0_#020617] ${OUTLINED_TEXT} ${toastPlacement.positionClass} ${toastPlacement.colorClass} ${
             state.toastTimer < 0.4 ? 'opacity-50' : 'opacity-100'
           } transition-opacity duration-150`}
         >
-          {state.toastText}
+          {formatOrionLoreLabel(state.toastText, devMode)}
         </div>
       )}
 
       {/* 4. BOTTOM 5-SKILL ICON BAR */}
-      <HudSkillDeck state={state} />
+      <HudSkillDeck state={state} compactRetro={isCompactRetro} devMode={devMode} />
     </aside>
   );
 };

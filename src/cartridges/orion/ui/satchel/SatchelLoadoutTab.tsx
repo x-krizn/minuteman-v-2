@@ -59,6 +59,7 @@ import {
   assignTriggerAction,
   consolidateInventorySlots,
   getActiveWeaponStance,
+  getOrionGraphicsSettings,
   isActionUnlocked,
   notifyOrionStateChange,
   performAuxiliarySwap,
@@ -523,6 +524,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
   const loadMetrics = computePlayerLoadMetrics(state);
   const mainGrip = getEffectiveMainGrip(state);
   const activeStance = getActiveWeaponStance(state);
+  const devMode = getOrionGraphicsSettings().devModeEnabled;
 
   const sayCtx = {
     say: (txt: string) => {
@@ -1666,6 +1668,9 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                   </span>
                   <span className="text-[7.5px] text-[#7dd3fc] truncate max-w-[140px]">
                     {getEquipmentDisplayName(getEquippedIdForSlot(contextMenuSlot))}
+                    {devMode && getEquippedIdForSlot(contextMenuSlot)
+                      ? ` [${getEquippedIdForSlot(contextMenuSlot)}]`
+                      : ''}
                   </span>
                 </div>
 
@@ -2056,6 +2061,7 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
   const [invWeaponVariantFilter, setInvWeaponVariantFilter] = useState<
     'ALL' | 'Custom' | 'Magitech'
   >('ALL');
+  const devMode = getOrionGraphicsSettings().devModeEnabled;
 
   const subtypeOptionsByCat: Record<EquipmentInventoryCategory, string[]> = {
     all: ['ALL', ...WEAPON_CATEGORIES],
@@ -2334,6 +2340,11 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
                         <div className="min-w-0">
                           <div className="font-bold text-[9px] text-[#ffd27d] truncate">
                             {w.name} <span className="text-[#94a3b8]">×{copies}</span>
+                            {devMode && (
+                              <span className="ml-1 text-[7px] text-[#64748b] font-mono">
+                                [{instanceId}]
+                              </span>
+                            )}
                           </div>
                           <div className="text-[7.5px] text-[#7dd3fc] truncate">
                             {stInfo.subtype} · [{getWeaponComponentSlots(instanceId).join(' / ').toUpperCase()}]
@@ -2404,6 +2415,11 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
                         <div className="min-w-0">
                           <div className="font-bold text-[8.5px] text-[#e2e8f0] truncate">
                             {hw.name} <span className="text-[#94a3b8]">×{count}</span>
+                            {devMode && (
+                              <span className="ml-1 text-[7px] text-[#64748b] font-mono">
+                                [{instanceId}]
+                              </span>
+                            )}
                           </div>
                           <div className="text-[7px] text-[#94a3b8] truncate">
                             Hardware · {hw.slot.toUpperCase()} · {hw.subtype}
@@ -2448,7 +2464,14 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="font-bold text-[8.5px] text-[#c084fc] truncate">{m.name}</div>
+                      <div className="font-bold text-[8.5px] text-[#c084fc] truncate">
+                        {m.name}
+                        {devMode && (
+                          <span className="ml-1 text-[7px] text-[#64748b] font-mono">
+                            [{m.id}]
+                          </span>
+                        )}
+                      </div>
                       <div className="text-[7px] text-[#94a3b8] truncate">
                         Action Mod · {m.targetCategory.toUpperCase()} ·{' '}
                         {(m.weightDelta ?? 0) >= 0 ? `+${m.weightDelta ?? 0}` : m.weightDelta} WT
@@ -2526,6 +2549,11 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
                           <span className="text-[#38bdf8]">◆</span>
                         )}
                         <span>{def.name}</span>
+                        {devMode && (
+                          <span className="text-[7px] text-[#64748b] font-mono">
+                            [{slot.itemId}]
+                          </span>
+                        )}
                         <span className="text-[#94a3b8]">×{slot.count}</span>
                         <span className="text-[7.5px] px-1 py-0.2 rounded-[2px] bg-[#1e293b] text-[#7dd3fc]">
                           0 WT · {(isGem ? 'gemstone' : def.category).toUpperCase()}

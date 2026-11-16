@@ -348,14 +348,24 @@ export function renderSkillGlyph(
   );
 }
 
-interface HudSkillDeckProps {
+/**
+ * Props for `HudSkillDeck`.
+ * Supports both Full Tactical and Compact Retro React HUD modes.
+ */
+export interface HudSkillDeckProps {
   state: OrionState;
+  compactRetro?: boolean;
+  devMode?: boolean;
 }
 
 /**
- * Renders the bottom tactical skill deck (`A`, `B`, `X`, `Y`, `L`, `R`), context interaction prompts, and dialogue banners. Supports the React overlay HUD (paired with the pixel canvas HUD in `OrionHud`).
+ * Renders the bottom tactical skill deck (`A`, `B`, `X`, `Y`, `L`, `R`), context interaction prompts, and dialogue banners. Supports both Full Tactical and Compact Retro React HUD modes.
  */
-export const HudSkillDeck: React.FC<HudSkillDeckProps> = ({ state }) => {
+export const HudSkillDeck: React.FC<HudSkillDeckProps> = ({
+  state,
+  compactRetro = false,
+  devMode = false,
+}) => {
   const [, setBindingsTick] = useState(0);
   useEffect(() => {
     return subscribeControlBindings(() => {
@@ -395,7 +405,9 @@ export const HudSkillDeck: React.FC<HudSkillDeckProps> = ({ state }) => {
     <footer className="w-full flex items-center justify-center pb-0.5 bg-transparent">
       <div
         aria-label="Combat Skill Icons"
-        className="flex items-center gap-1.5 sm:gap-2 bg-transparent"
+        className={`flex items-center ${
+          compactRetro ? 'gap-1' : 'gap-1.5 sm:gap-2'
+        } bg-[#05070a]/75 border border-[#1e293b]/85 px-1.5 py-1 rounded-[1px] shadow-[2px_2px_0_#020617]`}
       >
         {skillSlots.map((skill, idx) => {
           const slotNum = (idx + 1) as 1 | 2 | 3 | 4 | 5;
@@ -508,7 +520,7 @@ export const HudSkillDeck: React.FC<HudSkillDeckProps> = ({ state }) => {
               }}
               title={
                 skill
-                  ? `${skill.name} [${slotKeyBadges[idx]}]${
+                  ? `${skill.name}${devMode ? ` (${skill.id}${skill.weaponId ? ` · ${skill.weaponId}` : ''})` : ''} [${slotKeyBadges[idx]}]${
                       skill.isBlock
                         ? ' [Hold: 0.34s Perfect Block Window · No Cooldown]'
                         : isBasicBowCharge
@@ -525,7 +537,9 @@ export const HudSkillDeck: React.FC<HudSkillDeckProps> = ({ state }) => {
                     }`
                   : `Skill ${slotNum} [${slotKeyBadges[idx]}]`
               }
-              className={`pointer-events-auto relative w-7 h-7 sm:w-8 sm:h-8 rounded-xs border bg-transparent flex items-center justify-center transition-transform cursor-pointer drop-shadow-[0_1px_2px_rgba(2,6,23,0.95)] ${borderColorClass}`}
+              className={`pointer-events-auto relative ${
+                compactRetro ? 'w-6.5 h-6.5 sm:w-7 sm:h-7' : 'w-7 h-7 sm:w-8 sm:h-8'
+              } rounded-[1px] border bg-[#090d16]/90 shadow-[1px_1px_0_#020617] flex items-center justify-center transition-transform cursor-pointer ${borderColorClass}`}
             >
               {/* Remapped Trigger Keycap Badge */}
               <span

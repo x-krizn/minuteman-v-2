@@ -10,12 +10,18 @@ import { getClassUtilityDefinition } from '../database/equipment';
 import {
   createNewPilotGame,
   deletePilotFromRoster,
+  formatOrionLoreLabel,
+  getOrionGraphicsSettings,
   getOrionStateRef,
   loadOrionGame,
   loadPilotFromRoster,
   loadPilotRoster,
+  notifyOrionStateChange,
   saveOrionGame,
   setTutorialStateActive,
+  subscribeOrionGraphicsSettings,
+  toggleOrionDevMode,
+  updateOrionGraphicsSettings,
 } from '../systems';
 import { OrionSavedPilotEntry, TraitLine } from '../types';
 import { enterTrainingSandboxRoom } from './hud/HudTitleModal';
@@ -68,11 +74,19 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
   const [roster, setRoster] = useState<OrionSavedPilotEntry[]>(() => loadPilotRoster());
   const [, setTick] = useState(0);
 
+  const [devMode, setDevMode] = useState<boolean>(
+    () => getOrionGraphicsSettings().devModeEnabled
+  );
+
   const toastTimerRef = useRef<number | null>(null);
   const resumeTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
+    const unsubGfx = subscribeOrionGraphicsSettings((next) => {
+      setDevMode(next.devModeEnabled);
+    });
     return () => {
+      unsubGfx();
       if (toastTimerRef.current !== null) {
         window.clearTimeout(toastTimerRef.current);
         toastTimerRef.current = null;
@@ -160,7 +174,9 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
     setRoster(loadPilotRoster());
     soundSystem.playPowerup();
     showToast(
-      `DEPLOYING ${finalName.toUpperCase()} (${(kit.frameModel || 'MARK-IV').toUpperCase()}) · LVL 1 M00 BOG`,
+      `DEPLOYING ${finalName.toUpperCase()} (${(kit.frameModel || 'MARK-IV').toUpperCase()}) · ${
+        devMode ? 'LVL 1 M00 BOG' : 'THE BOG'
+      }`,
       900
     );
     scheduleDelayedResume(650);
@@ -280,7 +296,8 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
                 CHASSIS: {traitProfile.frameModel} ({traitProfile.name.toUpperCase()})
               </span>
               <span className="text-[8.5px] px-1.5 py-0.5 bg-[#1e293b] text-[#facc15] rounded-xs font-bold">
-                LOAD: {(traitProfile.weightClass || 'medium').toUpperCase()} · HP: 200
+                LOAD: {(traitProfile.weightClass || 'medium').toUpperCase()}
+                {devMode ? ' · HP: 200' : ''}
               </span>
             </div>
             <div className="text-[9px] text-[#cbd5e1]">{traitProfile.identity}</div>
@@ -288,13 +305,17 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
               <div className="p-1 bg-[#090d16] border border-[#1e293b] rounded-xs">
                 <div className="text-[#94a3b8]">SHIELD (L1)</div>
                 <div className="text-[#7dd3fc] font-bold">
-                  {traitProfile.baseShield.capacity} ({traitProfile.baseShield.type.toUpperCase()})
+                  {devMode
+                    ? `${traitProfile.baseShield.capacity} (${traitProfile.baseShield.type.toUpperCase()})`
+                    : traitProfile.baseShield.type.toUpperCase()}
                 </div>
               </div>
               <div className="p-1 bg-[#090d16] border border-[#1e293b] rounded-xs">
                 <div className="text-[#94a3b8]">ARMOR (L2)</div>
                 <div className="text-[#fbbf24] font-bold">
-                  {traitProfile.baseArmor.type} · {traitProfile.baseArmor.durability} DUR
+                  {devMode
+                    ? `${traitProfile.baseArmor.type} · ${traitProfile.baseArmor.durability} DUR`
+                    : traitProfile.baseArmor.type}
                 </div>
               </div>
               <div className="p-1 bg-[#090d16] border border-[#1e293b] rounded-xs">
@@ -335,7 +356,7 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
                 onClick={handleCreateNewPilot}
                 className="px-3 py-1 bg-[#facc15] hover:bg-[#fde047] text-[#05070a] font-bold text-[10px] rounded-xs shadow-xs"
               >
-                🚀 DEPLOY LV.1 (M00 BOG)
+                🚀 DEPLOY LV.1 ({devMode ? 'M00 BOG' : 'THE BOG'})
               </button>
             </div>
           </div>
@@ -383,12 +404,13 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
             <div className="space-y-1.5">
               {roster.map((entry) => {
                 const isCurrent = activeState?.pilotId === entry.pilotId;
-                const zoneLabel =
+                const rawZoneLabel =
                   entry.areaId === 'camelot_border_town'
                     ? 'Camelot Border Town'
                     : entry.areaId === 'm01_orc_encampment'
                       ? 'M01 Orc Encampment'
                       : 'M00 The Bog';
+                const zoneLabel = formatOrionLoreLabel(rawZoneLabel, devMode);
                 const kitProfile = TRAIT_REGISTRY[entry.traitLine];
                 return (
                   <div
@@ -417,7 +439,8 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
                         )}
                       </div>
                       <div className="text-[8.5px] text-[#94a3b8] mt-0.5">
-                        Zone: <span className="text-[#cbd5e1]">{zoneLabel}</span> ({entry.room}) ·{' '}
+                        Zone: <span className="text-[#cbd5e1]">{zoneLabel}</span>
+                        {devMode ? ` (${entry.room})` : ''} ·{' '}
                         {entry.tutorialActive ? 'Tutorial Onboarding' : 'Standard Progression'}
                       </div>
                     </div>
@@ -462,7 +485,10 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
           </div>
           <SatchelWorldTab
             state={activeState}
-            isCheatMode={activeState.room === '-4,0' || Boolean(activeState.bypassProgressionGates)}
+            isCheatMode={
+              devMode &&
+              (activeState.room === '-4,0' || Boolean(activeState.bypassProgressionGates))
+            }
             onResume={onResume}
             accessMode="menu"
           />
@@ -553,7 +579,11 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
                 {activeState?.room === '-4,0' ? '↩ EXIT TRAINING' : '⚔ TRAINING ROOM'}
               </span>
               <span className="text-[8.5px] text-[#60a5fa]">
-                {activeState?.room === '-4,0' ? 'RETURN TO FIELD' : 'POD & WAYGATE [-4,0]'}
+                {activeState?.room === '-4,0'
+                  ? 'RETURN TO FIELD'
+                  : devMode
+                    ? 'POD & WAYGATE [-4,0]'
+                    : 'POD & WAYGATE'}
               </span>
             </button>
 
@@ -601,36 +631,37 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
 
           {/* Quick Options Strip */}
           <div className="space-y-1 mb-2 bg-[#020617]/40 p-1.5 rounded-xs border border-[#1e293b]">
-            {(activeState?.room === '-4,0' || Boolean(activeState?.bypassProgressionGates)) && (
-              <div className="flex items-center justify-between text-[10px]">
-                <span>TUTORIAL STATE MODE</span>
-                <button
-                  onClick={() => {
-                    const state = getOrionStateRef();
-                    if (state) {
-                      setTutorialStateActive(state, !state.tutorialActive);
-                      showToast(
-                        state.tutorialActive
-                          ? 'TUTORIAL STATE: ACTIVE (STANDARD PROGRESSION LOCKED)'
-                          : 'TUTORIAL CLEARED: STANDARD PROGRESSION UNLOCKED',
-                        1500
-                      );
-                      soundSystem.playSelect();
-                      setTick((t) => t + 1);
-                    }
-                  }}
-                  className={`px-1.5 py-0.5 rounded-xs font-bold text-[9px] ${
-                    (getOrionStateRef()?.tutorialActive ?? true)
-                      ? 'bg-[#4f46e5]/40 text-[#c7d2fe] border border-[#818cf8]/60'
-                      : 'bg-[#22c55e]/20 text-[#4ade80] border border-[#22c55e]/40'
-                  }`}
-                >
-                  {(getOrionStateRef()?.tutorialActive ?? true)
-                    ? 'TUTORIAL LOCKOUT'
-                    : 'STANDARD UNLOCKED'}
-                </button>
-              </div>
-            )}
+            {devMode &&
+              (activeState?.room === '-4,0' || Boolean(activeState?.bypassProgressionGates)) && (
+                <div className="flex items-center justify-between text-[10px]">
+                  <span>TUTORIAL STATE MODE</span>
+                  <button
+                    onClick={() => {
+                      const state = getOrionStateRef();
+                      if (state) {
+                        setTutorialStateActive(state, !state.tutorialActive);
+                        showToast(
+                          state.tutorialActive
+                            ? 'TUTORIAL STATE: ACTIVE (STANDARD PROGRESSION LOCKED)'
+                            : 'TUTORIAL CLEARED: STANDARD PROGRESSION UNLOCKED',
+                          1500
+                        );
+                        soundSystem.playSelect();
+                        setTick((t) => t + 1);
+                      }
+                    }}
+                    className={`px-1.5 py-0.5 rounded-xs font-bold text-[9px] ${
+                      (getOrionStateRef()?.tutorialActive ?? true)
+                        ? 'bg-[#4f46e5]/40 text-[#c7d2fe] border border-[#818cf8]/60'
+                        : 'bg-[#22c55e]/20 text-[#4ade80] border border-[#22c55e]/40'
+                    }`}
+                  >
+                    {(getOrionStateRef()?.tutorialActive ?? true)
+                      ? 'TUTORIAL LOCKOUT'
+                      : 'STANDARD UNLOCKED'}
+                  </button>
+                </div>
+              )}
 
             <div className="flex items-center justify-between text-[10px]">
               <span>CHIPTUNE AUDIO</span>
@@ -661,18 +692,21 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
             </div>
 
             <div className="flex items-center justify-between text-[10px]">
-              <span>HUD RESOLUTION</span>
+              <span>HUD STYLE</span>
               <button
                 onClick={() => {
                   const state = getOrionStateRef();
                   if (state) {
-                    state.useStandardResolutionHud = !(
-                      state.useStandardResolutionHud ?? true
-                    );
+                    const nextHires = !(state.useStandardResolutionHud ?? true);
+                    state.useStandardResolutionHud = nextHires;
+                    updateOrionGraphicsSettings({
+                      hudResolution: nextHires ? 'hires' : 'pixel',
+                    });
+                    notifyOrionStateChange();
                     showToast(
-                      state.useStandardResolutionHud
-                        ? 'HUD: HI-RES OVERLAY'
-                        : 'HUD: RETRO PIXEL CANVAS',
+                      nextHires
+                        ? 'HUD: TACTICAL RETRO OVERLAY'
+                        : 'HUD: COMPACT RETRO OVERLAY',
                       1500
                     );
                     soundSystem.playSelect();
@@ -682,12 +716,40 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
                 className="px-1.5 py-0.5 rounded-xs font-bold text-[9px] bg-[#0284c7]/30 text-[#38bdf8] border border-[#0284c7]/50"
               >
                 {(getOrionStateRef()?.useStandardResolutionHud ?? true)
-                  ? 'HI-RES OVERLAY'
-                  : 'PIXEL CANVAS'}
+                  ? 'TACTICAL RETRO'
+                  : 'COMPACT RETRO'}
               </button>
             </div>
 
-            {onToggleFullscreen && (
+            <div className="flex items-center justify-between text-[10px]">
+              <span className="flex items-center gap-1">
+                <span>DEVELOPER MODE</span>
+                <span className="text-[8px] text-[#94a3b8]">[F3 / `]</span>
+              </span>
+              <button
+                onClick={() => {
+                  const nextDev = toggleOrionDevMode();
+                  notifyOrionStateChange();
+                  showToast(
+                    nextDev
+                      ? 'DEVELOPER MODE: ON (ENGINE METADATA VISIBLE)'
+                      : 'DEVELOPER MODE: OFF (CLEAN UI)',
+                    1500
+                  );
+                  soundSystem.playSelect();
+                  setTick((t) => t + 1);
+                }}
+                className={`px-1.5 py-0.5 rounded-xs font-bold text-[9px] ${
+                  devMode
+                    ? 'bg-[#f59e0b]/25 text-[#fde047] border border-[#f59e0b]/70'
+                    : 'bg-[#1e293b] text-[#94a3b8] border border-[#475569]'
+                }`}
+              >
+                {devMode ? 'DEV ON' : 'OFF'}
+              </button>
+            </div>
+
+            {devMode && onToggleFullscreen && (
               <div className="flex items-center justify-between text-[10px]">
                 <span>DISPLAY MODE</span>
                 <button

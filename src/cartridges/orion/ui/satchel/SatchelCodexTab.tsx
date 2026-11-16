@@ -21,6 +21,7 @@ import {
   WEAPON_GEM_WEIGHT_DELTA,
 } from '../../database/progression';
 import { AREA_REGISTRY, LOCAL_ROOM_REGISTRY, REGION_REGISTRY } from '../../database/world';
+import { formatOrionLoreLabel, getOrionGraphicsSettings } from '../../systems';
 import {
   EnemyWikiDefinition,
   GemId,
@@ -143,6 +144,7 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
   const [arsenalClassFilter, setArsenalClassFilter] = useState<'ALL' | WeaponCategory>('ALL');
   const [arsenalSubtypeFilter, setArsenalSubtypeFilter] = useState<'ALL' | 'Custom' | 'Magitech'>('ALL');
 
+  const devMode = getOrionGraphicsSettings().devModeEnabled;
   const q = searchQuery.trim().toLowerCase();
 
   const discoveredEnemies = useMemo(() => {
@@ -275,7 +277,7 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
         entries.push({
           id: `area:${area.id}`,
           kind: 'Zone',
-          title: area.title || area.name,
+          title: formatOrionLoreLabel(area.title || area.name, devMode),
           subtitle: `Recommended Lv.${area.recommendedLevels} · ${area.world}`,
           badgeColor: '#50fa7b',
           description: area.description,
@@ -294,15 +296,18 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
         hasExplored ||
         Boolean(state.clearedRooms?.[rm.coord]);
       if (isVisited) {
+        const cleanBanner = formatOrionLoreLabel(rm.bannerTitle, devMode);
         entries.push({
           id: `room:${rm.coord}`,
           kind: 'Landmark',
-          title: rm.title,
-          subtitle: `Sector [${rm.coord}] · ${rm.bannerTitle}`,
+          title: formatOrionLoreLabel(rm.title, devMode),
+          subtitle: devMode ? `Sector [${rm.coord}] · ${rm.bannerTitle}` : cleanBanner,
           badgeColor: '#fbbf24',
           description:
             rm.landmarkLabel ||
-            `Charted sector [${rm.coord}] within ${rm.bannerTitle}.`,
+            (devMode
+              ? `Charted sector [${rm.coord}] within ${rm.bannerTitle}.`
+              : `Charted landmark within ${cleanBanner}.`),
           lore: `Safety Classification: ${(rm.lighting?.safetyTier || 'trail').toUpperCase()}. Field telemetry logged in Pilot Codex.`,
         });
       }
@@ -323,7 +328,7 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
           c.lore.toLowerCase().includes(q)
       ),
     };
-  }, [state, state.room, state.areaId, state.regionId, state.exploredTiles, state.clearedRooms, q]);
+  }, [state, state.room, state.areaId, state.regionId, state.exploredTiles, state.clearedRooms, q, devMode]);
 
   const totalDiscovered =
     discoveredEnemies.unlockedCount +
@@ -459,6 +464,11 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                         <span className="font-bold text-[#f8fafc] text-[10.5px]">
                           {enemy.name}
                         </span>
+                        {devMode && (
+                          <span className="ml-1.5 text-[8px] text-[#64748b] font-mono">
+                            [{enemy.type}]
+                          </span>
+                        )}
                         <span className="ml-2 text-[8.5px] uppercase text-[#94a3b8]">
                           {(enemy.faction || 'hostile').toUpperCase()} · {enemy.damageType} ({enemy.damage} DMG)
                         </span>
@@ -586,6 +596,11 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                         <span className="font-bold text-[#ffd27d] text-[10.5px]">
                           {w.name}
                         </span>
+                        {devMode && (
+                          <span className="ml-1.5 text-[8px] text-[#64748b] font-mono">
+                            [{w.id}]
+                          </span>
+                        )}
                         <span
                           className={`ml-1.5 px-1 py-0.1 rounded-[2px] text-[7px] font-bold ${
                             isMagitech
@@ -767,6 +782,11 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                         <span className="font-bold text-[#50fa7b] text-[10.5px]">
                           {item.name}
                         </span>
+                        {devMode && (
+                          <span className="ml-1.5 text-[8px] text-[#64748b] font-mono">
+                            [{item.id}]
+                          </span>
+                        )}
                         <span className="ml-2 text-[8.5px] uppercase text-[#94a3b8]">
                           0 WT · {isGem ? 'GEMSTONE' : item.category}
                           {item.lightBonus
@@ -838,6 +858,11 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                       >
                         {entry.title}
                       </span>
+                      {devMode && (
+                        <span className="ml-1.5 text-[8px] text-[#64748b] font-mono">
+                          [{entry.id}]
+                        </span>
+                      )}
                       <span className="ml-2 text-[8.5px] text-[#94a3b8]">
                         {entry.subtitle}
                       </span>

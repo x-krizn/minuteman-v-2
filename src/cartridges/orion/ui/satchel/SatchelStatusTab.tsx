@@ -6,6 +6,7 @@
 import React from 'react';
 import { soundSystem } from '../../../../engine/core/soundSystem';
 import { TRAIT_REGISTRY } from '../../database/characters';
+import { getWeaponDefinition } from '../../database/equipment/weapons';
 import { getItemDefinition } from '../../database/items';
 import {
   CANONICAL_FRAME_FEAT_REGISTRY,
@@ -15,10 +16,10 @@ import {
   evaluateEquipmentFeatHandling,
   getEquipmentDisplayName,
 } from '../../database/progression';
-import { getWeaponDefinition } from '../../database/equipment/weapons';
 import {
   applyTraitLineProfile,
   getActiveWeaponStance,
+  getOrionGraphicsSettings,
   hasInertialTelemetryModEquipped,
   hasPoeLanternGuidance,
   INERTIAL_TELEMETRY_SENSORY_ID,
@@ -65,6 +66,7 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
   const baseEnemyLight = state.enemyBaseLight ?? 5;
   const lanternLit = hasPoeLanternGuidance(state);
   const loadMetrics = computePlayerLoadMetrics(state);
+  const devMode = getOrionGraphicsSettings().devModeEnabled;
 
   const equippedSlotSummaries = [
     {
@@ -103,21 +105,29 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
             <span className="text-[#94a3b8] text-[9px]">
               CLVL {state.level} / 20 ({gates.levelBand.toUpperCase()})
             </span>
-            <button
-              type="button"
-              onClick={() => {
-                enterTrainingSandboxRoom(state);
-                onResume?.();
-              }}
-              title="Toggle [-4,0] Training Room (Drop Pod & Waygate Sandbox)"
-              className={`px-2 py-0.5 text-[8px] font-bold rounded-xs border transition-colors cursor-pointer ${
-                state.room === '-4,0'
-                  ? 'bg-[#4c1d95] hover:bg-[#5b21b6] text-[#f0abfc] border-[#a855f7]'
-                  : 'bg-[#0f172a] hover:bg-[#1e293b] text-[#93c5fd] border-[#3b82f6]/70'
-              }`}
-            >
-              {state.room === '-4,0' ? '↩ EXIT TRAINING [-4,0]' : '⚔ TRAINING ROOM [-4,0]'}
-            </button>
+            {(devMode || state.room === '-4,0') && (
+              <button
+                type="button"
+                onClick={() => {
+                  enterTrainingSandboxRoom(state);
+                  onResume?.();
+                }}
+                title="Toggle Training Room (Drop Pod & Waygate Sandbox)"
+                className={`px-2 py-0.5 text-[8px] font-bold rounded-xs border transition-colors cursor-pointer ${
+                  state.room === '-4,0'
+                    ? 'bg-[#4c1d95] hover:bg-[#5b21b6] text-[#f0abfc] border-[#a855f7]'
+                    : 'bg-[#0f172a] hover:bg-[#1e293b] text-[#93c5fd] border-[#3b82f6]/70'
+                }`}
+              >
+                {state.room === '-4,0'
+                  ? devMode
+                    ? '↩ EXIT TRAINING [-4,0]'
+                    : '↩ EXIT TRAINING'
+                  : devMode
+                    ? '⚔ TRAINING ROOM [-4,0]'
+                    : '⚔ TRAINING ROOM'}
+              </button>
+            )}
           </div>
         </div>
 
@@ -128,8 +138,13 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
               LAYER 1: SHIELD ({state.shields.type.toUpperCase()})
             </span>
             <span>
-              {Math.round(state.shields.capacity)} / {state.shields.maxCapacity}{' '}
-              {state.shields.overloaded ? '⚠ OVERLOADED' : ''}
+              {devMode
+                ? `${Math.round(state.shields.capacity)} / ${state.shields.maxCapacity} ${
+                    state.shields.overloaded ? '⚠ OVERLOADED' : ''
+                  }`
+                : state.shields.overloaded
+                  ? '⚠ OVERLOADED'
+                  : 'ACTIVE'}
             </span>
           </div>
           <svg
@@ -162,7 +177,11 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
               RATING {state.armor.rating}
             </span>
             <span>
-              {Math.round(state.armor.durability)} / {state.armor.maxDurability}
+              {devMode
+                ? `${Math.round(state.armor.durability)} / ${state.armor.maxDurability}`
+                : state.armor.durability <= 0
+                  ? 'BREACHED'
+                  : 'INTACT'}
             </span>
           </div>
           <svg
@@ -197,9 +216,12 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
                   : 'text-[#8dd7ad] font-bold'
               }
             >
-              LAYER 3: FRAME INTEGRITY (STATIC 200 HP) · {state.frame.state.toUpperCase()}
+              LAYER 3: FRAME INTEGRITY{devMode ? ' (STATIC 200 HP)' : ''} ·{' '}
+              {state.frame.state.toUpperCase()}
             </span>
-            <span>{state.frame.integrity} / 200</span>
+            <span>
+              {devMode ? `${state.frame.integrity} / 200` : state.frame.state.toUpperCase()}
+            </span>
           </div>
           <svg
             viewBox="0 0 100 4"
@@ -221,7 +243,11 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
           <div className="flex justify-between text-[9px]">
             <span className="text-[#f97316] font-bold">REACTOR HEAT</span>
             <span>
-              {Math.round(state.heat)} / {state.maxHeat}
+              {devMode
+                ? `${Math.round(state.heat)} / ${state.maxHeat}`
+                : state.heat >= 80
+                  ? 'OVERHEATING'
+                  : 'NOMINAL'}
             </span>
           </div>
           <svg
@@ -244,10 +270,11 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
       <div className="p-2 bg-[#090d14] rounded-xs border border-[#fbbf24]/50 space-y-1.5">
         <div className="flex items-center justify-between">
           <span className="text-[#fde047] font-bold text-[10.5px]">
-            ☀ LIGHT STAT &amp; VISION RADIUS (BASE 5 TILES)
+            ☀ LIGHT STAT &amp; VISION RADIUS{devMode ? ' (BASE 5 TILES)' : ''}
           </span>
           <span className="px-1.5 py-0.5 rounded-xs bg-[#fbbf24]/20 border border-[#fbbf24] text-[#fde047] font-black text-[9.5px]">
-            EFFECTIVE LIGHT: {effectiveLight} ({Math.round(effectiveLight * 16)}px)
+            EFFECTIVE LIGHT: {effectiveLight}
+            {devMode ? ` (${Math.round(effectiveLight * 16)}px)` : ''}
           </span>
         </div>
 
@@ -280,16 +307,18 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-1 text-[8px] text-[#94a3b8] pt-0.5">
-          <span>
-            ENEMY BASE SIGHT: <strong className="text-[#fda4af]">{baseEnemyLight} TILES</strong> ·
-            UNEXPLORED: <strong className="text-[#f8fafc]">BLACK FADE</strong> · EXPLORED:{' '}
-            <strong className="text-[#94a3b8]">SLATE FADE</strong>
-          </span>
-          <span className="text-[#67e8f9]">
-            {lanternLit ? 'POE LANTERN +1.0 ACTIVE' : 'POE LANTERN UNLIT'}
-          </span>
-        </div>
+        {devMode && (
+          <div className="flex flex-wrap items-center justify-between gap-1 text-[8px] text-[#94a3b8] pt-0.5">
+            <span>
+              ENEMY BASE SIGHT: <strong className="text-[#fda4af]">{baseEnemyLight} TILES</strong> ·
+              UNEXPLORED: <strong className="text-[#f8fafc]">BLACK FADE</strong> · EXPLORED:{' '}
+              <strong className="text-[#94a3b8]">SLATE FADE</strong>
+            </span>
+            <span className="text-[#67e8f9]">
+              {lanternLit ? 'POE LANTERN +1.0 ACTIVE' : 'POE LANTERN UNLIT'}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Active Frame Identity (Full 6-Kit Hot-Swap in Cheat Room Mode) */}
@@ -589,7 +618,12 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
                   )}
                 </div>
 
-                <div className="font-bold text-[#f8fafc] text-[8.5px] truncate">{displayName}</div>
+                <div className="font-bold text-[#f8fafc] text-[8.5px] truncate">
+                  {displayName}
+                  {devMode && slotItem.itemId ? (
+                    <span className="ml-1 text-[7px] text-[#94a3b8]">[{slotItem.itemId}]</span>
+                  ) : null}
+                </div>
                 {slotItem.itemId && (
                   <div className="text-[7px] text-[#94a3b8] leading-snug">
                     {evalRes.statusSummary}

@@ -17,8 +17,10 @@ import {
   getRetainedBuildGemCounts,
 } from '../database/progression';
 import {
+  getOrionGraphicsSettings,
   getOrionStateRef,
   notifyOrionStateChange,
+  subscribeOrionGraphicsSettings,
   subscribeOrionStateChange,
 } from '../systems';
 import {
@@ -86,7 +88,12 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
   };
 
   useEffect(() => {
-    return subscribeOrionStateChange(() => setRefresh((r) => r + 1));
+    const unsubState = subscribeOrionStateChange(() => setRefresh((r) => r + 1));
+    const unsubGfx = subscribeOrionGraphicsSettings(() => setRefresh((r) => r + 1));
+    return () => {
+      unsubState();
+      unsubGfx();
+    };
   }, []);
 
   const state = getOrionStateRef();
@@ -94,7 +101,9 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
 
   state.flags = state.flags || {};
   const trait = TRAIT_REGISTRY[state.traitLine] || TRAIT_REGISTRY.Warrior;
-  const isCheatMode = state.room === '-4,0' || Boolean(state.bypassProgressionGates);
+  const devMode = getOrionGraphicsSettings().devModeEnabled;
+  const isCheatMode =
+    devMode && (state.room === '-4,0' || Boolean(state.bypassProgressionGates));
   const loadMetrics = computePlayerLoadMetrics(state);
 
   const handleUseItem = (itemId: string) => {

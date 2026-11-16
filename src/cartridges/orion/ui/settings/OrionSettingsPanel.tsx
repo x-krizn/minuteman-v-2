@@ -47,6 +47,7 @@ import {
   resetOrionGraphicsSettings,
   setTutorialStateActive,
   subscribeOrionGraphicsSettings,
+  toggleOrionDevMode,
   updateOrionGraphicsSettings,
 } from '../../systems';
 
@@ -253,7 +254,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
     });
     setTick((t) => t + 1);
     triggerFeedback(
-      nextHires ? 'HUD MODE: HI-RES TACTICAL OVERLAY' : 'HUD MODE: RETRO PIXEL CANVAS'
+      nextHires ? 'HUD STYLE: TACTICAL RETRO OVERLAY' : 'HUD STYLE: COMPACT RETRO OVERLAY'
     );
   };
 
@@ -1173,14 +1174,14 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
             </div>
           </div>
 
-          {/* Cockpit HUD Resolution Mode */}
+          {/* Cockpit HUD Style Mode (Crisp Retro-Styled React HUD) */}
           <div className="p-2 bg-slate-900/90 border border-slate-800 rounded-xs flex items-center justify-between gap-2">
             <div>
               <div className="font-bold text-slate-100 text-[9.5px]">
-                COCKPIT HUD TELEMETRY RESOLUTION
+                COCKPIT HUD TELEMETRY STYLE
               </div>
               <div className="text-[8px] text-slate-400">
-                Switch between crisp high-resolution React overlay HUD and native 160x144 pixel HUD
+                Switch between Full Tactical Retro HUD (3-slot weapons) and Compact Retro HUD
               </div>
             </div>
             <button
@@ -1189,8 +1190,8 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
               className="px-2.5 py-1 bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-400/60 rounded-xs font-bold text-[8.5px] whitespace-nowrap shrink-0 cursor-pointer"
             >
               {(activeState?.useStandardResolutionHud ?? graphics.hudResolution === 'hires')
-                ? 'HI-RES OVERLAY'
-                : 'PIXEL CANVAS'}
+                ? 'TACTICAL RETRO'
+                : 'COMPACT RETRO'}
             </button>
           </div>
 
@@ -1228,25 +1229,64 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
             </div>
           </div>
 
-          {/* Fullscreen Display Mode */}
-          <div className="p-2 bg-slate-900/90 border border-slate-800 rounded-xs flex items-center justify-between gap-2">
+          {/* Developer Mode & Engine Telemetry Toggle (Hotkey: F3 or `) */}
+          <div className="p-2 bg-slate-900/90 border border-amber-500/40 rounded-xs flex items-center justify-between gap-2">
             <div>
-              <div className="font-bold text-slate-100 text-[9.5px]">DISPLAY VIEWPORT MODE</div>
+              <div className="font-bold text-amber-300 text-[9.5px] flex items-center gap-1.5">
+                <span>DEVELOPER MODE &amp; ENGINE TELEMETRY</span>
+                <span className="px-1 py-0.2 bg-slate-950 text-slate-300 border border-slate-700 rounded-xs text-[7.5px]">
+                  F3 / `
+                </span>
+              </div>
               <div className="text-[8px] text-slate-400">
-                Expand handheld shell to full browser screen
+                Reveal coordinates, path/fog/poe/lantern status, numeric HP, raw item/map IDs &amp; fullscreen toggle
               </div>
             </div>
             <button
               type="button"
-              onClick={handleToggleFullscreenUnified}
-              className="px-2.5 py-1 bg-slate-950 hover:bg-slate-800 text-slate-200 border border-slate-700 rounded-xs font-bold text-[8.5px] whitespace-nowrap shrink-0 cursor-pointer"
+              onClick={() => {
+                soundSystem.playSelect();
+                const nextDev = toggleOrionDevMode();
+                notifyOrionStateChange();
+                setTick((t) => t + 1);
+                triggerFeedback(
+                  nextDev
+                    ? 'DEVELOPER MODE: ACTIVE (ENGINE METADATA VISIBLE)'
+                    : 'DEVELOPER MODE: OFF (CLEAN IMMERSIVE UI)'
+                );
+              }}
+              className={`px-2.5 py-1 rounded-xs font-bold text-[8.5px] whitespace-nowrap shrink-0 cursor-pointer border ${
+                graphics.devModeEnabled
+                  ? 'bg-amber-500/25 text-amber-300 border-amber-400'
+                  : 'bg-slate-950 text-slate-400 border-slate-700 hover:text-slate-200'
+              }`}
             >
-              {effectiveFullscreen ? 'EXIT FULLSCREEN' : 'ENTER FULLSCREEN'}
+              {graphics.devModeEnabled ? 'DEV MODE: ON' : 'DEV MODE: OFF'}
             </button>
           </div>
 
-          {/* Sandbox Tutorial State Toggle (when in Training Sandbox [-4,0] or Cheat Mode) */}
-          {activeState &&
+          {/* Fullscreen Display Mode (Gated behind Developer Mode) */}
+          {graphics.devModeEnabled && (
+            <div className="p-2 bg-slate-900/90 border border-slate-800 rounded-xs flex items-center justify-between gap-2">
+              <div>
+                <div className="font-bold text-slate-100 text-[9.5px]">DISPLAY VIEWPORT MODE</div>
+                <div className="text-[8px] text-slate-400">
+                  Expand handheld shell to full browser screen
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleToggleFullscreenUnified}
+                className="px-2.5 py-1 bg-slate-950 hover:bg-slate-800 text-slate-200 border border-slate-700 rounded-xs font-bold text-[8.5px] whitespace-nowrap shrink-0 cursor-pointer"
+              >
+                {effectiveFullscreen ? 'EXIT FULLSCREEN' : 'ENTER FULLSCREEN'}
+              </button>
+            </div>
+          )}
+
+          {/* Sandbox Tutorial State Toggle (Gated behind Developer Mode or Training Sandbox) */}
+          {graphics.devModeEnabled &&
+            activeState &&
             (activeState.room === '-4,0' || Boolean(activeState.bypassProgressionGates)) && (
               <div className="p-2 bg-slate-900/90 border border-indigo-500/40 rounded-xs flex items-center justify-between gap-2">
                 <div>

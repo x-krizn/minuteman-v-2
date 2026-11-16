@@ -25,6 +25,7 @@ export interface OrionGraphicsSettings {
   screenShakeScale: number;
   scanlinesEnabled: boolean;
   hudResolution: 'hires' | 'pixel';
+  devModeEnabled: boolean;
 }
 
 const STORAGE_KEY = 'orion_graphics_settings_v1';
@@ -34,7 +35,7 @@ const STORAGE_KEY = 'orion_graphics_settings_v1';
  */
 export const ORION_GRAPHICS_PRESETS: Record<
   Exclude<OrionGraphicsPreset, 'custom'>,
-  Omit<OrionGraphicsSettings, 'preset'>
+  Omit<OrionGraphicsSettings, 'preset' | 'devModeEnabled'>
 > = {
   low: {
     bloomEnabled: false,
@@ -95,11 +96,12 @@ export const ORION_GRAPHICS_PRESETS: Record<
 };
 
 /**
- * Default graphics configuration (`high` preset).
+ * Default graphics configuration (`high` preset with `devModeEnabled: false`).
  */
 export const DEFAULT_ORION_GRAPHICS_SETTINGS: OrionGraphicsSettings = {
   preset: 'high',
   ...ORION_GRAPHICS_PRESETS.high,
+  devModeEnabled: false,
 };
 
 function sanitizeSettings(raw: Partial<OrionGraphicsSettings>): OrionGraphicsSettings {
@@ -159,6 +161,10 @@ function sanitizeSettings(raw: Partial<OrionGraphicsSettings>): OrionGraphicsSet
         ? raw.scanlinesEnabled
         : DEFAULT_ORION_GRAPHICS_SETTINGS.scanlinesEnabled,
     hudResolution: raw.hudResolution === 'pixel' ? 'pixel' : 'hires',
+    devModeEnabled:
+      typeof raw.devModeEnabled === 'boolean'
+        ? raw.devModeEnabled
+        : DEFAULT_ORION_GRAPHICS_SETTINGS.devModeEnabled,
   };
 }
 
@@ -217,7 +223,7 @@ export function subscribeOrionGraphicsSettings(
 }
 
 /**
- * Applies one of the four named quality presets (`low`, `medium`, `high`, `retro`).
+ * Applies one of the four named quality presets (`low`, `medium`, `high`, `retro`), preserving `devModeEnabled`.
  */
 export function applyOrionGraphicsPreset(
   preset: Exclude<OrionGraphicsPreset, 'custom'>
@@ -226,6 +232,7 @@ export function applyOrionGraphicsPreset(
   activeGraphicsSettings = sanitizeSettings({
     preset,
     ...template,
+    devModeEnabled: activeGraphicsSettings.devModeEnabled,
   });
   persistAndNotify();
   return activeGraphicsSettings;
@@ -233,12 +240,15 @@ export function applyOrionGraphicsPreset(
 
 /**
  * Updates one or more individual graphics properties and marks the active profile as `'custom'`
- * unless `patch.preset` is explicitly provided.
+ * unless `patch.preset` is explicitly provided or only `devModeEnabled` is updated.
  */
 export function updateOrionGraphicsSettings(
   patch: Partial<OrionGraphicsSettings>
 ): OrionGraphicsSettings {
-  const nextPreset: OrionGraphicsPreset = patch.preset ?? 'custom';
+  const isOnlyDevModeChange =
+    Object.keys(patch).length === 1 && typeof patch.devModeEnabled === 'boolean';
+  const nextPreset: OrionGraphicsPreset =
+    patch.preset ?? (isOnlyDevModeChange ? activeGraphicsSettings.preset : 'custom');
   activeGraphicsSettings = sanitizeSettings({
     ...activeGraphicsSettings,
     ...patch,
@@ -246,6 +256,38 @@ export function updateOrionGraphicsSettings(
   });
   persistAndNotify();
   return activeGraphicsSettings;
+}
+
+/**
+ * Toggles the Developer Mode telemetry flag (`devModeEnabled`) and persists it to `localStorage`.
+ */
+export function toggleOrionDevMode(): boolean {
+  const nextVal = !activeGraphicsSettings.devModeEnabled;
+  updateOrionGraphicsSettings({ devModeEnabled: nextVal });
+  return nextVal;
+}
+
+/**
+ * Formats a world, area, room, or landmark title for player-facing UI vs. Developer Mode.
+ * When `devMode` is `false`, strips internal module codes (`M00`, `M01`, `u00`), engine prefixes
+ * (`Set-Path`), and coordinate brackets (`[x,y]`).
+ */
+export function formatOrionLoreLabel(
+  rawLabel: string | undefined,
+  devMode: boolean = activeGraphicsSettings.devModeEnabled
+): string {
+  if (!rawLabel) return '';
+  if (devMode) return rawLabel;
+  return rawLabel
+    .replace(/\bu00\s+/gi, '')
+    .replace(/\bM00\s+The\s+Bog\b/gi, 'The Sunken Bog')
+    .replace(/\bM00\s+Unified\s+Bog\s+Spine\b/gi, 'Sunken Bog Causeway')
+    .replace(/\bM00\s+/gi, '')
+    .replace(/\bM01\s+/gi, '')
+    .replace(/\bSet-Path\s+Causeway\b/gi, 'Ancient Causeway')
+    .replace(/\bAbyssal\s+Fog\s+Loop\s+Dungeon\b/gi, 'Sunken Ruin Sanctum')
+    .replace(/\s*\[[-0-9,\s]+\]/g, '')
+    .trim();
 }
 
 /**

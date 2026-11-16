@@ -45,7 +45,10 @@ import {
   WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS,
   WEAPON_GEM_WEIGHT_DELTA,
 } from '../../database/progression';
-import { notifyOrionStateChange } from '../../systems';
+import {
+  getOrionGraphicsSettings,
+  notifyOrionStateChange,
+} from '../../systems';
 import {
   GemId,
   OrionState,
@@ -96,6 +99,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
   onReturnToLoadout,
   onLocateFeat,
 }) => {
+  const devMode = getOrionGraphicsSettings().devModeEnabled;
   const [category, setCategory] = useState<ArmoryWorkbenchCategory>('weapons');
   const [selectedWeaponInstanceId, setSelectedWeaponInstanceId] = useState<string>(() => {
     return (
@@ -566,6 +570,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                       <div className="flex items-center justify-between gap-1">
                         <span className="font-bold text-[8.5px] text-[#e2e8f0] truncate">
                           {part.name}
+                          {devMode ? ` [${part.id}]` : ''}
                         </span>
                         <span
                           className={`text-[6.8px] px-1 py-0.2 rounded-[2px] font-bold shrink-0 ${
@@ -885,6 +890,11 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                 <div>
                   <div className="text-[11px] font-bold text-[#fde047]">
                     {activeWeaponDef.name}{' '}
+                    {devMode && (
+                      <span className="text-[8px] font-mono text-[#64748b]">
+                        [{activeWeaponDef.id}]
+                      </span>
+                    )}{' '}
                     <span className="text-[8.5px] text-[#94a3b8]">
                       (×{getOwnedWeaponCount(state, activeWeaponDef.id)} Owned)
                     </span>
@@ -1142,6 +1152,11 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                           <div>
                             <div className="text-[11px] font-bold text-[#38bdf8]">
                               {currentHw.name}
+                              {devMode && (
+                                <span className="ml-1.5 text-[8px] font-mono text-[#64748b]">
+                                  [{currentHw.id}]
+                                </span>
+                              )}
                             </div>
                             <div className="text-[8px] text-[#94a3b8]">
                               {currentHw.canonicalSlotLabel} · {currentHw.subtype} · Weight:{' '}
@@ -1390,7 +1405,14 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                   }`}
                 >
                   <div className="flex items-center justify-between gap-1">
-                    <span className="font-bold text-[9px] text-[#e2e8f0]">{mod.name}</span>
+                    <span className="font-bold text-[9px] text-[#e2e8f0]">
+                      {mod.name}
+                      {devMode && (
+                        <span className="ml-1 text-[7.5px] font-mono text-[#64748b]">
+                          [{mod.id}]
+                        </span>
+                      )}
+                    </span>
                     <span className="text-[7px] text-[#94a3b8]">
                       {(mod.weightDelta ?? 0) >= 0
                         ? `+${mod.weightDelta ?? 0}`

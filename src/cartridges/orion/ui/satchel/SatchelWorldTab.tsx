@@ -20,7 +20,9 @@ import {
 import {
   fastTravelToWaystation,
   fastTravelViaWaygate,
+  formatOrionLoreLabel,
   getActiveAetherNode,
+  getOrionGraphicsSettings,
   getOrionRoomsRef,
   getRoomWorldInfo,
   hasPoeLanternGuidance,
@@ -121,6 +123,7 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
   const worldInfo = getRoomWorldInfo(state);
   const activeBiome = getBiomeDefinition(state.biomeId);
   const rooms = getOrionRoomsRef();
+  const devMode = getOrionGraphicsSettings().devModeEnabled;
 
   // Resolve current world definition from player's active region/area
   const currentWorldDef =
@@ -252,7 +255,7 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
             </span>
           </div>
 
-          {isCheatMode && (
+          {devMode && isCheatMode && (
             <div className="flex items-center gap-1">
               {(['menu', 'campfire', 'waygate'] as WorldMapAccessMode[]).map((m) => (
                 <button
@@ -294,22 +297,30 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
           <div className="p-1 bg-[#070a12] rounded-xs border border-[#1e293b]">
             <div className="text-[7.5px] text-[#94a3b8]">CURRENT WORLD</div>
             <div className="font-bold text-[#c084fc] truncate">
-              {currentWorldDef.name} ({currentWorldDef.tier.toUpperCase()} #{currentWorldDef.mapCoord.mapCode})
+              {currentWorldDef.name} ({currentWorldDef.tier.toUpperCase()}
+              {devMode ? ` #${currentWorldDef.mapCoord.mapCode}` : ''})
             </div>
           </div>
           <div className="p-1 bg-[#070a12] rounded-xs border border-[#1e293b]">
             <div className="text-[7.5px] text-[#94a3b8]">ACTIVE ZONE</div>
-            <div className="font-bold text-[#38bdf8] truncate">{worldInfo.areaName}</div>
+            <div className="font-bold text-[#38bdf8] truncate">
+              {formatOrionLoreLabel(worldInfo.areaName, devMode)}
+            </div>
           </div>
           <div className="p-1 bg-[#070a12] rounded-xs border border-[#1e293b]">
             <div className="text-[7.5px] text-[#94a3b8]">SECTOR</div>
-            <div className="font-bold text-[#86efac] truncate">{worldInfo.roomTitle}</div>
+            <div className="font-bold text-[#86efac] truncate">
+              {formatOrionLoreLabel(worldInfo.roomTitle, devMode)}
+            </div>
           </div>
           <div className="p-1 bg-[#070a12] rounded-xs border border-[#1e293b]">
             <div className="text-[7.5px] text-[#94a3b8]">SPAWN ANCHOR</div>
             <div className="font-bold text-[#ffd27d] truncate">
-              {ORION_ROOM_METADATA[state.spawnAnchor?.room || '-3,0']?.title ||
-                `Room [${state.spawnAnchor?.room || '-3,0'}]`}
+              {formatOrionLoreLabel(
+                ORION_ROOM_METADATA[state.spawnAnchor?.room || '-3,0']?.title ||
+                  (devMode ? `Room [${state.spawnAnchor?.room || '-3,0'}]` : 'Drop-Pod Impact Crater'),
+                devMode
+              )}
             </div>
           </div>
         </div>
@@ -348,21 +359,23 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
               ))}
             </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                soundSystem.playSelect();
-                setShowCoordOverlay((prev) => !prev);
-              }}
-              className={`px-1.5 py-0.5 rounded-xs text-[7.5px] font-bold border cursor-pointer ${
-                showCoordOverlay
-                  ? 'bg-[#7f1d1d] text-[#fecaca] border-[#f87171]'
-                  : 'bg-[#130f24] text-[#cbd5e1] border-[#3b2154] hover:border-[#a855f7]'
-              }`}
-              title="Toggle canonical alignment rings & reference coordinate labels"
-            >
-              {showCoordOverlay ? '▣ ALIGNMENT: ON' : '▢ ALIGNMENT'}
-            </button>
+            {devMode && (
+              <button
+                type="button"
+                onClick={() => {
+                  soundSystem.playSelect();
+                  setShowCoordOverlay((prev) => !prev);
+                }}
+                className={`px-1.5 py-0.5 rounded-xs text-[7.5px] font-bold border cursor-pointer ${
+                  showCoordOverlay
+                    ? 'bg-[#7f1d1d] text-[#fecaca] border-[#f87171]'
+                    : 'bg-[#130f24] text-[#cbd5e1] border-[#3b2154] hover:border-[#a855f7]'
+                }`}
+                title="Toggle canonical alignment rings & reference coordinate labels"
+              >
+                {showCoordOverlay ? '▣ ALIGNMENT: ON' : '▢ ALIGNMENT'}
+              </button>
+            )}
           </div>
 
           {/* Interactive Living Æther Cosmic Viewport */}
@@ -370,7 +383,7 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
             selectedWorldId={selectedWorld.id}
             currentWorldId={currentWorldDef.id}
             tierFilter={tierFilter}
-            showAlignmentGrid={showCoordOverlay}
+            showAlignmentGrid={devMode && showCoordOverlay}
             onSelectWorld={(id) => {
               soundSystem.playSelect();
               setSelectedWorldId(id);
@@ -413,7 +426,8 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
                         : 'bg-[#450a0a] text-[#fecaca] border-[#f87171]'
                   }`}
                 >
-                  {selectedWorld.tier} NODE #{selectedWorld.mapCoord.mapCode}
+                  {selectedWorld.tier}
+                  {devMode ? ` NODE #${selectedWorld.mapCoord.mapCode}` : ' WORLD'}
                 </span>
                 {isSelectedCurrentWorld && (
                   <span className="text-[7.5px] px-1.5 py-0.5 bg-[#083344] text-[#67e8f9] border border-[#22d3ee] rounded-xs font-bold">
@@ -422,26 +436,33 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
                 )}
               </div>
 
-              <span
-                className={`text-[7.5px] px-1.5 py-0.5 rounded-xs font-bold border ${
-                  selectedWorld.specStatus === 'LOCKED'
-                    ? 'bg-[#052e16] text-[#86efac] border-[#22c55e]/50'
-                    : 'bg-[#451a03] text-[#fcd34d] border-[#b45309]'
-                }`}
-              >
-                {selectedWorld.specStatus === 'LOCKED'
-                  ? 'ACTIVE ZONE DOCS'
-                  : 'ÆTHER FOG SEALED (UNDEFINED)'}
-              </span>
+              {devMode && (
+                <span
+                  className={`text-[7.5px] px-1.5 py-0.5 rounded-xs font-bold border ${
+                    selectedWorld.specStatus === 'LOCKED'
+                      ? 'bg-[#052e16] text-[#86efac] border-[#22c55e]/50'
+                      : 'bg-[#451a03] text-[#fcd34d] border-[#b45309]'
+                  }`}
+                >
+                  {selectedWorld.specStatus === 'LOCKED'
+                    ? 'ACTIVE ZONE DOCS'
+                    : 'ÆTHER FOG SEALED (UNDEFINED)'}
+                </span>
+              )}
             </div>
 
             <div className="text-[8.5px] text-[#94a3b8]">
               Theme: <strong className="text-[#e2e8f0]">{selectedWorld.theme}</strong> · Origin:{' '}
-              <strong className="text-[#cbd5e1]">{selectedWorld.origin.toUpperCase()}</strong> ·
-              Coord:{' '}
-              <strong className="text-[#7dd3fc]">
-                [{selectedWorld.mapCoord.xPct.toFixed(0)}%, {selectedWorld.mapCoord.yPct.toFixed(0)}%]
-              </strong>
+              <strong className="text-[#cbd5e1]">{selectedWorld.origin.toUpperCase()}</strong>
+              {devMode && (
+                <>
+                  {' '}
+                  · Coord:{' '}
+                  <strong className="text-[#7dd3fc]">
+                    [{selectedWorld.mapCoord.xPct.toFixed(0)}%, {selectedWorld.mapCoord.yPct.toFixed(0)}%]
+                  </strong>
+                </>
+              )}
             </div>
             <div className="text-[8.5px] text-[#cbd5e1] leading-snug">{selectedWorld.lore}</div>
           </div>
@@ -459,7 +480,8 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
 
             {worldCampfires.length === 0 ? (
               <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] text-[#94a3b8] text-[8.5px] italic">
-                No local campfires charted in {selectedWorld.name} yet ({selectedWorld.specStatus}).
+                No local campfires charted in {selectedWorld.name} yet
+                {devMode ? ` (${selectedWorld.specStatus})` : ''}.
               </div>
             ) : (
               <div className="space-y-1">
@@ -508,10 +530,11 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
                     >
                       <div className="min-w-0">
                         <div className="font-bold text-[#fef08a] text-[9.5px] truncate">
-                          {ws.name}
+                          {formatOrionLoreLabel(ws.name, devMode)}
                         </div>
                         <div className="text-[8px] text-[#94a3b8] truncate">
-                          {wsArea?.name || ws.areaId} · Sector [{ws.room}]
+                          {formatOrionLoreLabel(wsArea?.name || ws.areaId, devMode)}
+                          {devMode ? ` · Sector [${ws.room}]` : ''}
                         </div>
                       </div>
                       <button
@@ -556,7 +579,7 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
 
             {worldWaygates.length === 0 && selectedWorld.id !== 'world_belldor' ? (
               <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] text-[#94a3b8] text-[8.5px] italic">
-                No Colossal Waygate coordinates unlocked in {selectedWorld.name} ({selectedWorld.specStatus}).
+                No Colossal Waygate coordinates unlocked in {selectedWorld.name}.
               </div>
             ) : (
               <div className="space-y-1">
@@ -577,7 +600,7 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
 
                   let wgButtonLabel = 'WAYGATE TRANSIT';
                   if (isUndefinedSpec) {
-                    wgButtonLabel = 'SEALED (UNDEFINED)';
+                    wgButtonLabel = devMode ? 'SEALED (UNDEFINED)' : 'SEALED';
                   } else if (isHere) {
                     wgButtonLabel = 'AT WAYGATE';
                   } else if (effectiveAccessMode === 'menu') {
@@ -595,10 +618,11 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
                     >
                       <div className="min-w-0">
                         <div className="font-bold text-[#e0f2fe] text-[9.5px] truncate">
-                          {wg.name}
+                          {formatOrionLoreLabel(wg.name, devMode)}
                         </div>
                         <div className="text-[8px] text-[#94a3b8] truncate">
-                          {wg.world} · Sector [{wg.room}] · {wg.desyncStatus}
+                          {wg.world}
+                          {devMode ? ` · Sector [${wg.room}]` : ''} · {wg.desyncStatus}
                         </div>
                       </div>
                       <button
@@ -631,7 +655,9 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
                 {selectedWorld.id === 'world_belldor' && (
                   <div className="pt-1 border-t border-[#1e293b] space-y-1">
                     <div className="text-[8px] font-bold text-[#7dd3fc]">
-                      LOCAL BELLDOR WAYGATE CONDUITS (M00 UNIFIED BOG SPINE):
+                      {devMode
+                        ? 'LOCAL BELLDOR WAYGATE CONDUITS (M00 UNIFIED BOG SPINE):'
+                        : 'LOCAL BELLDOR WAYGATE CONDUITS (THE BOG):'}
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                       {BOG_LOCAL_WAYGATE_STOPS.map((stop) => {
@@ -643,10 +669,11 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
                           >
                             <div className="min-w-0">
                               <div className="font-bold text-[#bae6fd] text-[8.5px] truncate">
-                                {stop.name}
+                                {formatOrionLoreLabel(stop.name, devMode)}
                               </div>
                               <div className="text-[7.5px] text-[#94a3b8] truncate">
-                                {stop.areaName} [{stop.room}]
+                                {formatOrionLoreLabel(stop.areaName, devMode)}
+                                {devMode ? ` [${stop.room}]` : ''}
                               </div>
                             </div>
                             <button
@@ -676,7 +703,11 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
       {/* 3. QUICK WORLD SELECTOR STRIP (All 20 Worlds in Catalog) */}
       <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1">
         <div className="text-[8.5px] font-bold text-[#94a3b8] flex items-center justify-between">
-          <span>u00 UNIVERSE COORDINATE INDEX — CLICK ANY WORLD TO INSPECT LOCAL NODES</span>
+          <span>
+            {devMode
+              ? 'u00 UNIVERSE COORDINATE INDEX — CLICK ANY WORLD TO INSPECT LOCAL NODES'
+              : 'COSMIC WORLD ARCHIVE — CLICK ANY WORLD TO INSPECT LOCAL NODES'}
+          </span>
           <span className="text-[#c084fc]">
             8 Major · 7 Minor · 5 Unstable Drift Worlds
           </span>
@@ -704,7 +735,7 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
                 }`}
               >
                 <span className="truncate font-bold text-[8.5px]">
-                  {w.mapCoord.mapCode}. {w.name}
+                  {devMode ? `${w.mapCoord.mapCode}. ${w.name}` : w.name}
                 </span>
                 <span
                   className={`text-[7px] px-1 rounded-xs uppercase font-bold shrink-0 ${
@@ -723,8 +754,9 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
         </div>
       </div>
 
-      {/* 4. CHEAT / SANDBOX ROOM DIAGNOSTICS: ÆTHER FOG TOPOLOGY */}
-      {isCheatMode &&
+      {/* 4. CHEAT / SANDBOX ROOM DIAGNOSTICS: ÆTHER FOG TOPOLOGY (Gated behind Developer Mode) */}
+      {devMode &&
+        isCheatMode &&
         (() => {
           const activeNode = getActiveAetherNode(state);
           const hasLantern = hasPoeLanternGuidance(state);

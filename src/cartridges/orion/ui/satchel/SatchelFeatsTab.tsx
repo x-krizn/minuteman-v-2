@@ -27,7 +27,11 @@ import {
   syncPostTutorialFrameLevel,
   toggleFeatNodeGemSocket,
 } from '../../database/progression';
-import { notifyOrionStateChange, syncStateGates } from '../../systems';
+import {
+  getOrionGraphicsSettings,
+  notifyOrionStateChange,
+  syncStateGates,
+} from '../../systems';
 import {
   FeatTier,
   GemId,
@@ -71,10 +75,12 @@ function getHexPolygonPoints(cx: number, cy: number, radius: number): string {
  */
 export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
   state,
+  isCheatMode: propCheatMode,
   initialFocusFeatId,
   onClearFocusFeatId,
   setToast,
 }) => {
+  const devMode = getOrionGraphicsSettings().devModeEnabled;
   const [, setTick] = useState(0);
   const [selectedFeatId, setSelectedFeatId] = useState<string>(() => {
     if (initialFocusFeatId && FRAME_FEAT_CATALOG.some((f) => f.id === initialFocusFeatId)) {
@@ -144,7 +150,10 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
   }, [initialFocusFeatId, onClearFocusFeatId]);
 
   const progressionUnlocked = isStandardProgressionUnlocked(state);
-  const isCheatMode = state.room === '-4,0' || Boolean(state.bypassProgressionGates);
+  const isCheatMode =
+    propCheatMode !== undefined
+      ? propCheatMode
+      : devMode && (state.room === '-4,0' || Boolean(state.bypassProgressionGates));
   const skillsMap = normalizePilotSkills(state.pilotSkills);
   const effectiveLoad = computeEffectiveLoadCapacity(
     state.traitLine,
@@ -328,8 +337,13 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
             </span>
             <span className="text-[8.5px] text-[#94a3b8]">
               SOCKETED: <b className="text-[#38bdf8]">{state.equippedFeats.length}/20</b> · LOAD CAP:{' '}
-              <b className="text-[#4ade80] uppercase">{effectiveLoad}</b> · LIGHT:{' '}
-              <b className="text-[#fde047]">{effectiveLightTiles}T</b>
+              <b className="text-[#4ade80] uppercase">{effectiveLoad}</b>
+              {devMode && (
+                <>
+                  {' '}
+                  · LIGHT: <b className="text-[#fde047]">{effectiveLightTiles}T</b>
+                </>
+              )}
             </span>
             {isCheatMode && (
               <span className="inline-flex items-center gap-1 text-[8.5px] text-amber-300">
@@ -887,6 +901,11 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
 
             <div className="text-[11px] font-bold text-[#f8fafc] uppercase leading-tight">
               {selectedNode.feat.name}
+              {devMode && (
+                <span className="ml-1.5 text-[8px] font-mono lowercase text-[#64748b]">
+                  [{selectedNode.feat.id}]
+                </span>
+              )}
             </div>
 
             <div className="text-[8px] text-[#94a3b8]">
@@ -1010,7 +1029,9 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
               : selectedNode.isTierFull
                 ? `TIER ${selectedNode.tier} SLOTS FULL (${selectedTierUsed}/${selectedTierCap})`
                 : !progressionUnlocked
-                  ? 'UNLOCKS AT LEVEL 6 (OR CHEAT MODE)'
+                  ? devMode
+                    ? 'UNLOCKS AT LEVEL 6 (OR CHEAT MODE)'
+                    : 'UNLOCKS AT LEVEL 6'
                   : !selectedNode.isAvailable
                     ? `REQUIRES ${selectedNode.skillId.toUpperCase()} LV ${selectedNode.feat.requiredSkillLevel}`
                     : !selectedNode.hasAllGems

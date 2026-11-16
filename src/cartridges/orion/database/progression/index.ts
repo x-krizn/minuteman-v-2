@@ -59,6 +59,7 @@ import {
 import { getItemDefinition } from '../items';
 import { GEMSTONE_CATALOG, GEMSTONE_REGISTRY, TRAIT_FUNDING_GEMS } from '../items/gemstones';
 import { CANONICAL_FRAME_FEAT_CATALOG } from './canonical_feats';
+import { doesPilotMeetSpecialistFeatRequirement } from './specialistStances';
 
 export {
   buildEquipmentInstanceId,
@@ -88,6 +89,7 @@ export {
 export { GEMSTONE_CATALOG, GEMSTONE_REGISTRY, TRAIT_FUNDING_GEMS };
 export { resolveWeaponFunctionalType, WEAPON_FUNCTIONAL_TYPES_BY_CATEGORY };
 export * from './featHandling';
+export * from './specialistStances';
 
 /**
  * Type contract for `LevelUnlockInfo` (level unlock info) in `index.ts`.
@@ -348,7 +350,7 @@ export function normalizePilotSkills(
   return base;
 }
 
-// ─── LAYER 2: 97 CANONICAL FRAME FEAT NODES (Tiers I–V + Knight's Oath) ──────
+// ─── LAYER 2: 118 CANONICAL FRAME FEAT NODES (Tiers I–V + Knight's Oath) ─────
 
 /**
  * Exported const `FEAT_TIER_SKILL_THRESHOLDS` (feat tier skill thresholds) in `index.ts`.
@@ -1836,18 +1838,6 @@ export function getEffectiveMainGrip(state: OrionState): '1h' | '2h' {
 }
 
 /**
- * Returns true when a Side Hand weapon (`slot2`) is equipped while the Main Hand is in 2H grip.
- * When holstered, the Side weapon stays in `slot2` (rendered sheathed/holstered at the hip) and the Back Launcher stays on the back (`slot3`).
- */
-export function isSideWeaponHolstered(state: OrionState): boolean {
-  const slot1 = state.equipmentSlots?.slot1 || state.equippedWeapons?.[0] || 'long_sword';
-  const slot2 = state.equipmentSlots?.slot2 || null;
-  if (!slot2) return false;
-  if (slot2 === slot1 && getOwnedWeaponCount(state, slot1) < 2) return false;
-  return getEffectiveMainGrip(state) === '2h';
-}
-
-/**
  * Switches Main Hand weapon grip ('1h' <-> '2h') in the Equipment Screen.
  * - 2H weapons cannot switch to 1H unless overridden by a Feat, Unique, Legendary, or versatile trait.
  * - Switching to 2H holsters any equipped Side Hand weapon (`slot2` stays in `slot2`, holstered) while keeping the Launcher on the back (`slot3`).
@@ -1884,9 +1874,9 @@ export function setMainWeaponGrip(
     return true;
   }
 
-  // Switching to 1H requires a Side Hand weapon (`slot2`). Back Launchers (`slot3`) never move to Side Hand.
+  // Switching to 1H requires a Side Hand item (`slot2`).
   if (!state.equipmentSlots.slot2) {
-    ctx?.say('NO SIDE WEAPON EQUIPPED — EQUIP A 1H WEAPON OR SHIELD IN SIDE SLOT');
+    ctx?.say('NO SIDE WEAPON EQUIPPED — EQUIP A 1H WEAPON, SHIELD, OR CARRIER IN SIDE SLOT');
     return false;
   }
 
@@ -2097,18 +2087,6 @@ export function getWeaponInstalledGems(
 }
 
 /**
- * Resolves the primary active Gem modification (`Col 0..8`) for a given weapon/shield/quiver ID.
- * First installed Gem determines the naming convention and visual sprite column.
- */
-export function getWeaponActiveGemId(
-  state: OrionState | undefined,
-  weaponId: string
-): GemId | null {
-  const gems = getWeaponInstalledGems(state, weaponId);
-  return gems[0] || null;
-}
-
-/**
  * Computes the stone-specific combat bonus AND zero-sum physical drawbacks for a weapon, shield,
  * or auxiliary modified with 1–3 Gemstones / Component Parts.
  */
@@ -2275,27 +2253,6 @@ export function getWeaponGemVisuals(
   };
 }
 
-/**
- * Installs a Gem modification onto an equipment item (delegating to `installGemModOnEquipment` so a distinct
- * renamed item copy is produced in inventory).
- */
-export function modifyWeaponWithGem(
-  state: OrionState,
-  weaponId: string,
-  gemId: GemId | null,
-  ctx?: { say: (text: string) => void }
-): boolean {
-  if (!state.equipmentSlots) {
-    state.equipmentSlots = createInitialEquipmentSlots(state.traitLine);
-  }
-  if (gemId === null) {
-    state.equipmentSlots.weaponGemMods = state.equipmentSlots.weaponGemMods || {};
-    state.equipmentSlots.weaponGemMods[weaponId] = null;
-    return true;
-  }
-  return Boolean(installGemModOnEquipment(state, weaponId, gemId, ctx));
-}
-
 // ─── GATING CHAIN, GEM TRANSACTIONS & LOAD CAPACITY CALCULATIONS ─────────────
 
 const LOAD_ORDER: FrameLoadCapacity[] = ['light', 'medium', 'heavy', 'superheavy'];
@@ -2398,6 +2355,11 @@ export function doesPilotMeetFeatEquipmentRequirement(
   const req = (feat.requiredEquipment || '').trim();
   if (!req || req === '—' || state.bypassProgressionGates) {
     return { met: true, reason: req && req !== '—' ? req : 'Any Loadout' };
+  }
+
+  const specCheck = doesPilotMeetSpecialistFeatRequirement(state, feat.id);
+  if (specCheck.isSpecialistFeat) {
+    return { met: specCheck.met, reason: specCheck.reason };
   }
 
   const reqLower = req.toLowerCase();
@@ -3120,34 +3082,6 @@ export function computePlayerLightStatBreakdown(
  */
 export function computeEffectivePlayerLightTiles(state: OrionState): number {
   return computePlayerLightStatBreakdown(state).effectiveLight;
-}
-
-/**
- * Applies a delta to the player's base Light stat (used by effects or sandbox tools).
- * Mutates `state: OrionState` (`state.baseLight`).
- */
-export function adjustPlayerBaseLight(state: OrionState, delta: number): number {
-  const current = typeof state.baseLight === 'number' && state.baseLight > 0 ? state.baseLight : 5;
-  const next = Math.max(1, Math.min(12, Number((current + delta).toFixed(1))));
-  state.baseLight = next;
-  return next;
-}
-
-/**
- * Applies a delta to the enemy base Light / vision radius stat.
- * Mutates `state: OrionState` (`state.enemyBaseLight` and active enemy `visionRadiusTiles`).
- */
-export function adjustEnemyBaseLight(state: OrionState, delta: number): number {
-  const current =
-    typeof state.enemyBaseLight === 'number' && state.enemyBaseLight > 0
-      ? state.enemyBaseLight
-      : 5;
-  const next = Math.max(1, Math.min(12, Number((current + delta).toFixed(1))));
-  state.enemyBaseLight = next;
-  for (const e of state.enemies || []) {
-    e.visionRadiusTiles = next;
-  }
-  return next;
 }
 
 /**

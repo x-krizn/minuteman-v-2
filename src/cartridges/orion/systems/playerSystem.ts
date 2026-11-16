@@ -36,6 +36,7 @@ import {
   createInitialPilotSkills,
   createStarterFeatLoadout,
   createStarterGemPouch,
+  evaluateActiveSpecialistStance,
   GEMSTONE_REGISTRY,
   getLevelBand,
   getWeaponGemCombatModifiers,
@@ -880,19 +881,10 @@ export function syncStateGates(state: OrionState): OrionCapabilityGates {
   if (state.equipmentSlots.slot2 === undefined) {
     const candidate2 = state.equippedWeapons[1] || null;
     state.equipmentSlots.slot2 =
-      candidate2 && !isLauncherEquipment(candidate2) && !isTwoHandOnlyWeapon(candidate2, state)
-        ? candidate2
-        : null;
+      candidate2 && !isTwoHandOnlyWeapon(candidate2, state) ? candidate2 : null;
   }
   if (state.equipmentSlots.slot3 === undefined) {
     state.equipmentSlots.slot3 = null;
-  }
-  // Enforce: Launchers belong in Aux Back (`slot3`) only, never Side Hand (`slot2`)
-  if (state.equipmentSlots.slot2 && isLauncherEquipment(state.equipmentSlots.slot2)) {
-    if (!state.equipmentSlots.slot3) {
-      state.equipmentSlots.slot3 = state.equipmentSlots.slot2;
-    }
-    state.equipmentSlots.slot2 = null;
   }
   // Enforce: Non-Launcher weapons in `slot3` (from legacy saves) move to `slot2` (holstered if 2H)
   if (state.equipmentSlots.slot3 && !isLauncherEquipment(state.equipmentSlots.slot3)) {
@@ -1014,8 +1006,11 @@ export function syncStateGates(state: OrionState): OrionCapabilityGates {
     } else {
       const hasQuiverSynergy =
         activeWDef.equipmentRole === 'ranged' &&
-        (state.equippedWeapons.includes('quiver') || state.equipmentSlots.slot3 === 'quiver');
+        (state.equippedWeapons.includes('quiver') ||
+          state.equipmentSlots.slot2 === 'quiver' ||
+          state.equipmentSlots.slot3 === 'quiver');
       const activeGemMod = getWeaponGemCombatModifiers(state, activeWId);
+      const specEval = evaluateActiveSpecialistStance(state);
       const isBowSingleShot =
         activeWDef.category === 'Bows' || Boolean(activeWDef.moveset[0]?.isChargeable);
       const targetMaxAmmo = isBowSingleShot
@@ -1027,7 +1022,10 @@ export function syncStateGates(state: OrionState): OrionCapabilityGates {
         state.maxAmmo = targetMaxAmmo;
         state.ammo = Math.min(state.ammo, state.maxAmmo);
       }
-      state.reloadDuration = activeWDef.reloadDurationSec * (hasQuiverSynergy ? 0.75 : 1.0);
+      state.reloadDuration =
+        activeWDef.reloadDurationSec *
+        (hasQuiverSynergy ? 0.75 : 1.0) *
+        specEval.passiveModifiers.reloadDurationMult;
     }
   }
 
@@ -1813,6 +1811,7 @@ export function updatePlayerSystem(
   const wClass = activeArch.weightClass;
   const isAttackingOrWindingUp =
     (state.skillTellTimer || 0) > 0 || (state.skillActionTimer || 0) > 0;
+  const specEval = evaluateActiveSpecialistStance(state);
   let attackCommitmentMult = 1.0;
   if (isAttackingOrWindingUp) {
     if (activeArch.isMeleeOrShield) {
@@ -1824,11 +1823,16 @@ export function updatePlayerSystem(
     } else {
       attackCommitmentMult = wClass === 'light' ? 0.48 : wClass === 'heavy' ? 0.32 : 0.4;
     }
+    attackCommitmentMult = Math.max(
+      attackCommitmentMult,
+      specEval.passiveModifiers.attackMoveSpeedFloor
+    );
   } else if (state.isReloading && (state.reloadTimer || 0) > 0) {
-    attackCommitmentMult = 0.68;
+    attackCommitmentMult = Math.max(0.68, specEval.passiveModifiers.attackMoveSpeedFloor);
   }
   if (state.isHoldingBlock) {
-    attackCommitmentMult = Math.min(attackCommitmentMult, 0.55);
+    const guardFloor = Math.max(0.55, specEval.passiveModifiers.guardMoveSpeedFloor);
+    attackCommitmentMult = Math.min(attackCommitmentMult, guardFloor);
   }
 
   // §3.5 Critical Frame State (LOCKED): <= 40 HP (<= 20%) imposes -30% movement speed
@@ -2121,7 +2125,9 @@ export function updatePlayerSystem(
   const lockedForMu = state.enemies.find((en) => en.id === state.lockedTargetId);
   const refDirX = lockedForMu ? lockedForMu.x - state.x : state.faceX || 0;
   const refDirY = lockedForMu ? lockedForMu.y - state.y : state.faceY || 1;
-  state.currentMu = computeMomentumFraction(state.vx, state.vy, refDirX, refDirY);
+  state.currentMu =
+    computeMomentumFraction(state.vx, state.vy, refDirX, refDirY) *
+    specEval.passiveModifiers.chargeMuMultiplier;
   state.effectiveWeight = computeEffectiveWeight(state.baseWeight, state.currentMu);
 
   // Update 2.5D vertical height z physics

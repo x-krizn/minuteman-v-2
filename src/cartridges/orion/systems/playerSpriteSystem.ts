@@ -13,6 +13,7 @@ import {
 import {
   classifyWeaponCombatArchetype,
   getWeaponDefinition,
+  isLauncherEquipment,
 } from '../database/equipment/weapons';
 import { getItemDefinition } from '../database/items';
 import {
@@ -1720,15 +1721,20 @@ export function drawPlayerWeaponMounts25D(
   const recoveryLerp = isFollowThrough ? 1 - (actionElapsedPct - 0.6) / 0.4 : 1.0;
   const isGuarding = Boolean(state.isHoldingBlock || (state.blockTimer || 0) > 0);
 
-  // 1. AUX (BACK — slot3):
-  //    - Launchers stay on the back even when swapped to (`auxActive: true`), taking ownership of Skills 4 & 5.
+  // 1. AUX (BACK — slot3, or Carrier equipped in slot2):
+  //    - Launchers/Carriers always render on the dorsal back mount even when equipped in Side Hand (`slot2`) or swapped to (`auxActive: true`).
   //    - Facing North ('N'): back faces camera directly -> drawn inFrontOfBody centered on dorsal plate with magnetic holster bracket
   //    - Facing South ('S'), East ('E'), West ('W'): weapon drawn behindBody, plus shoulder sling latch in betweenPlatingAndArms
   const auxPass: 'behindBody' | 'inFrontOfBody' = isNorth ? 'inFrontOfBody' : 'behindBody';
-  if (auxId) {
-    const auxDef = getWeaponDefinition(auxId);
-    const auxArch = classifyWeaponCombatArchetype(auxDef, auxId);
-    const isAuxActive = Boolean(state.equipmentSlots?.auxActive);
+  const dorsalCarrierId =
+    auxId || (sideId && isLauncherEquipment(sideId) ? sideId : null);
+  if (dorsalCarrierId) {
+    const auxDef = getWeaponDefinition(dorsalCarrierId);
+    const auxArch = classifyWeaponCombatArchetype(auxDef, dorsalCarrierId);
+    const isAuxActive = Boolean(
+      state.equipmentSlots?.auxActive ||
+        (!auxId && sideId && isLauncherEquipment(sideId))
+    );
     const isFiringAux =
       isAuxActive &&
       (state.activeActionId === 'weapon_slot2_skill4' ||
@@ -1774,7 +1780,7 @@ export function drawPlayerWeaponMounts25D(
       drawSinglePlayerEquipmentMount(
         g,
         state,
-        auxId,
+        dorsalCarrierId,
         'aux',
         bx,
         by,
@@ -1795,7 +1801,8 @@ export function drawPlayerWeaponMounts25D(
   }
 
   // 2. SIDE HAND (LEFT — slot2):
-  //    - When `mainGrip === '2h'`, any equipped Side weapon (`slot2`) is HOLSTERED at the hip while the Launcher stays on the back (`slot3`).
+  //    - Carriers in `slot2` render dorsally above and are never drawn in the left hand or hip holster.
+  //    - When `mainGrip === '2h'`, any equipped non-Carrier Side weapon (`slot2`) is HOLSTERED at the hip while the Launcher stays on the back (`slot3`).
   //    - When `mainGrip === '1h'`, the Side weapon is actively held in the left hand:
   //      - Facing South ('S') or West ('W'): near foreground arm -> inFrontOfBody (with gauntlet clasp over hilt)
   //      - Facing East ('E'): far profile arm -> betweenPlatingAndArms (sandwiched in front of torso, behind near arm!)
@@ -1811,7 +1818,7 @@ export function drawPlayerWeaponMounts25D(
         ? 'betweenPlatingAndArms'
         : 'inFrontOfBody';
 
-  if (sideId && sidePass === pass) {
+  if (sideId && !isLauncherEquipment(sideId) && sidePass === pass) {
     const sideDef = getWeaponDefinition(sideId);
     const sideArch = classifyWeaponCombatArchetype(sideDef, sideId);
     const sideIsMelee = sideDef?.equipmentRole === 'melee';

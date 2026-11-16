@@ -244,7 +244,7 @@ export type WeaponStanceType =
 export interface OrionEquipmentSlots {
   /** Main Hand (Weapon Slot 1): 1H or 2H Weapon -> ac1, ac2, ac3 (and ac4, ac5 in Paired or 2H Power Stance) */
   slot1: string | null;
-  /** Side Hand (Weapon Slot 2): 1H Weapon or Shield (or 2H Weapon if Feat/Unique/Legendary override is active). Holstered when Main Hand is in 2H grip. */
+  /** Side Hand (Weapon Slot 2): 1H Weapon, Shield, or Carrier (or 2H Weapon if Feat/Unique/Legendary override is active). Carriers in slot2 still render dorsally on the back. */
   slot2: string | null;
   /** Auxiliary Slot (Back Mount Slot 3): Back-mounted Launchers & Carriers only. Stays on the back and takes skill ownership when swapped to. */
   slot3: string | null;
@@ -252,6 +252,8 @@ export interface OrionEquipmentSlots {
   mainGrip?: WeaponGripMode;
   /** True when the Back-Mounted Auxiliary Launcher (slot3) has been swapped to and holds active combat ownership of Skills 4 & 5 while remaining on the back. */
   auxActive?: boolean;
+  /** Active Specialist Stance override mode ('auto' = Active Specialist Doctrine when requirements met, 'base' = Base Weapon Moveset). */
+  stanceOverrideMode?: 'auto' | 'base';
   /** Tracks how many separate instances of each weapon ID the pilot owns (Paired stance requires 2 separate items). */
   ownedWeaponCounts?: Record<string, number>;
   /**

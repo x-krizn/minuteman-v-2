@@ -29,7 +29,6 @@ import {
 } from '../../database/progression';
 import { notifyOrionStateChange, syncStateGates } from '../../systems';
 import {
-  FeatSynergyCategory,
   FeatTier,
   GemId,
   OrionState,
@@ -39,17 +38,12 @@ import { ORION_HEX_BLUEPRINT_BASE64 } from '../hud/titleMenuAssets';
 import { SpriteCanvasIcon } from './SatchelCanvases';
 
 /**
- * Props for `SatchelFeatsTab`, the interactive 96-node 6-Arm Hexagonal Feat Constellation.
+ * Props for `SatchelFeatsTab`, the interactive 118-node 6-Arm Hexagonal Feat Constellation.
  * Supports the React overlay HUD and mutates `state: OrionState` when funding skills or socketing feats.
  */
 export interface SatchelFeatsTabProps {
   state: OrionState;
   isCheatMode?: boolean;
-  onResume?: () => void;
-  featTierFilter?: FeatTier | 'ALL';
-  setFeatTierFilter?: React.Dispatch<React.SetStateAction<FeatTier | 'ALL'>>;
-  featSynergyFilter?: FeatSynergyCategory | 'ALL';
-  setFeatSynergyFilter?: React.Dispatch<React.SetStateAction<FeatSynergyCategory | 'ALL'>>;
   initialFocusFeatId?: string | null;
   onClearFocusFeatId?: () => void;
   setToast?: (msg: string) => void;
@@ -71,7 +65,7 @@ function getHexPolygonPoints(cx: number, cy: number, radius: number): string {
 }
 
 /**
- * Renders the unified 96-Node 6-Arm Hexagonal Feat Constellation (`[SHIFT]` -> `FEATS`).
+ * Renders the unified 118-Node 6-Arm Hexagonal Feat Constellation (`[SHIFT]` -> `FEATS`).
  * Every canonical feat lives directly on the pan-and-zoom hexagonal lattice, paired with a
  * single-scroll side inspector for equipment prerequisites, handling proficiency, and gem socketing.
  */
@@ -94,7 +88,7 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
   const [showSkillsDrawer, setShowSkillsDrawer] = useState<boolean>(false);
   const [showBlueprintModal, setShowBlueprintModal] = useState<boolean>(false);
 
-  // Pan & Zoom state for the 96-node SVG constellation
+  // Pan & Zoom state for the 118-node SVG constellation
   const [zoom, setZoom] = useState<number>(1.0);
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const dragRef = useRef<{
@@ -330,7 +324,7 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
         <div className="flex flex-wrap items-center justify-between gap-1.5">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-bold text-[10px] text-[#f8fafc] tracking-wide">
-              96-NODE HEX FEAT CONSTELLATION
+              {enrichedNodes.length}-NODE HEX FEAT CONSTELLATION
             </span>
             <span className="text-[8.5px] text-[#94a3b8]">
               SOCKETED: <b className="text-[#38bdf8]">{state.equippedFeats.length}/20</b> · LOAD CAP:{' '}
@@ -407,7 +401,7 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
                   : 'bg-[#05080f] text-[#94a3b8] border-[#1e293b] hover:text-white'
               }`}
             >
-              ALL 6 ARMS (96)
+              ALL 6 ARMS ({enrichedNodes.length})
             </button>
             {CONSTELLATION_DISCIPLINE_ARMS.map((arm) => {
               const lv = skillsMap[arm.skillId]?.level || 1;
@@ -512,13 +506,13 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
 
       {/* Main Split Workspace: Left Interactive Constellation Canvas + Right Single-Scroll Node Inspector */}
       <div className="flex-1 min-h-0 grid grid-cols-12 gap-1.5 overflow-hidden">
-        {/* LEFT PANE (7 Columns): Pan-and-Zoom 96-Node 6-Arm Hexagonal Constellation */}
+        {/* LEFT PANE (7 Columns): Pan-and-Zoom 118-Node 6-Arm Hexagonal Constellation */}
         <div className="col-span-7 min-h-0 flex flex-col bg-[#05080f] border border-[#1e293b] rounded-xs relative overflow-hidden">
           {/* Top-Left Filter Overlay */}
           <div className="absolute top-1.5 left-1.5 z-10 flex flex-wrap items-center gap-1 pointer-events-auto">
             {(
               [
-                { id: 'all', label: 'ALL (96)' },
+                { id: 'all', label: `ALL (${enrichedNodes.length})` },
                 { id: 'prereq', label: 'EQP PREREQS' },
                 { id: 'socketed', label: `ACTIVE (${state.equippedFeats.length})` },
                 { id: 'available', label: 'UNLOCKABLE' },
@@ -597,12 +591,12 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
               />
             </div>
           ) : (
-            /* Interactive Draggable & Zoomable 96-Node Hexagonal Constellation SVG */
+            /* Interactive Draggable & Zoomable 118-Node Hexagonal Constellation SVG */
             <svg
               viewBox={`${vbMinX.toFixed(1)} ${vbMinY.toFixed(1)} ${vbSize.toFixed(1)} ${vbSize.toFixed(1)}`}
               className="w-full h-full flex-1 select-none cursor-grab active:cursor-grabbing"
               role="img"
-              aria-label="96-Node 6-Arm Hexagonal Feat Constellation"
+              aria-label="118-Node 6-Arm Hexagonal Feat Constellation"
               onWheel={(e) => {
                 e.preventDefault();
                 const delta = e.deltaY < 0 ? 0.16 : -0.16;
@@ -733,7 +727,7 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
                 );
               })}
 
-              {/* Render All 96 Feat Hex Nodes */}
+              {/* Render All 118 Feat Hex Nodes */}
               {enrichedNodes.map((node) => {
                 const isSelected = selectedNode.feat.id === node.feat.id;
                 const hexR = node.isCoreNode ? 18 : isSelected ? 14.5 : 12;

@@ -419,4 +419,7 @@ export {
   U00_UNIVERSE_CATALOG,
   UNIVERSE_WORLD_BY_ID,
 };
+/**
+ * Re-exported 5-tier world hierarchy type contracts.
+ */
 export type { AreaWikiDefinition, BiomeDefinition, MapDefinition, RegionDefinition, RoomDefinition };

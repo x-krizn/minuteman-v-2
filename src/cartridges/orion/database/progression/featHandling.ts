@@ -17,16 +17,25 @@ import {
   findHardwareItemByNameOrId,
 } from '../equipment/chassis_hardware';
 import { parseEquipmentInstanceId } from '../equipment/mod_naming';
-import { getWeaponDefinition, isLauncherEquipment, isTwoHandWeapon } from '../equipment/weapons';
+import {
+  getWeaponDefinition,
+  isLauncherEquipment,
+  isTwoHandWeapon,
+  resolveWeaponFunctionalType,
+} from '../equipment/weapons';
 import { CANONICAL_FRAME_FEAT_CATALOG } from './canonical_feats';
+import { SPECIALIST_STANCE_BY_FEAT_ID, SPECIALIST_STANCE_LIST } from './specialistStances';
 
 /**
- * Keyed lookup map of all canonical Frame Feats (`96` feats + `knights_oath`) by feat ID.
+ * Keyed lookup map of all canonical Frame Feats (`117` Tier I–V feats + `knights_oath`) by feat ID.
  */
 export const CANONICAL_FRAME_FEAT_REGISTRY: Record<string, FrameFeatDefinition> = Object.fromEntries(
   CANONICAL_FRAME_FEAT_CATALOG.map((feat) => [feat.id, feat])
 );
 
+/**
+ * Re-exported canonical Frame Feat catalog (`118` total feats).
+ */
 export { CANONICAL_FRAME_FEAT_CATALOG };
 
 /**
@@ -119,7 +128,7 @@ export const CONSTELLATION_TIER_RADII: Record<FeatTier, number> = {
 export type FeatEquipmentHandlingRole = 'prerequisite' | 'proficiency';
 
 /**
- * Plotted node descriptor for one of the 96 canonical feats on the 6-Arm Hexagonal Constellation.
+ * Plotted node descriptor for one of the canonical feats on the 6-Arm Hexagonal Constellation.
  */
 export interface FeatConstellationNode {
   index: number;
@@ -244,6 +253,16 @@ function inferEquipmentClassesForFeat(feat: FrameFeatDefinition): {
   handlingSummary: string;
   targetEquipmentClasses: string[];
 } {
+  const specialist = SPECIALIST_STANCE_BY_FEAT_ID[feat.id];
+  if (specialist) {
+    return {
+      handlingRole: 'proficiency',
+      handlingSummary: specialist.doctrineSummary,
+      targetEquipmentClasses: Array.from(
+        new Set([...specialist.mainFunctionalTypes, ...specialist.offhandFunctionalTypes])
+      ),
+    };
+  }
   const explicit = PREREQUISITE_HANDLING_FEAT_MAP[feat.id];
   if (explicit) {
     return {
@@ -307,8 +326,8 @@ function inferEquipmentClassesForFeat(feat: FrameFeatDefinition): {
 }
 
 /**
- * Deterministic 96-Node 6-Arm Hexagonal Constellation Layout.
- * Plots all 96 canonical feats (`95` Tier I–V feats + `knights_oath` at `(0,0)`) onto radial discipline arms
+ * Deterministic 118-Node 6-Arm Hexagonal Constellation Layout.
+ * Plots all 118 canonical feats (`117` Tier I–V feats + `knights_oath` at `(0,0)`) onto radial discipline arms
  * and concentric tier rings (`Tier I` inner ring to `Tier V` outer ring).
  */
 export const FEAT_CONSTELLATION_NODES: FeatConstellationNode[] = (() => {
@@ -338,7 +357,7 @@ export const FEAT_CONSTELLATION_NODES: FeatConstellationNode[] = (() => {
     });
   }
 
-  // 2. Group the remaining 95 feats by (skillId, tier) and fan them cleanly along each of the 6 arms
+  // 2. Group the remaining 117 feats by (skillId, tier) and fan them cleanly along each of the 6 arms
   for (const arm of CONSTELLATION_DISCIPLINE_ARMS) {
     for (const tier of ['I', 'II', 'III', 'IV', 'V'] as FeatTier[]) {
       const armTierFeats = CANONICAL_FRAME_FEAT_CATALOG.filter(
@@ -349,7 +368,7 @@ export const FEAT_CONSTELLATION_NODES: FeatConstellationNode[] = (() => {
 
       const baseRadius = CONSTELLATION_TIER_RADII[tier];
       // Spread nodes across the 60-degree sector (leave margin at sector borders so adjacent arms are distinct)
-      const maxSpreadDeg = count <= 2 ? 18 : count === 3 ? 34 : 44;
+      const maxSpreadDeg = count <= 2 ? 18 : count === 3 ? 34 : count <= 5 ? 44 : 50;
 
       armTierFeats.forEach((feat, localIdx) => {
         const t = count === 1 ? 0 : localIdx / (count - 1) - 0.5;
@@ -488,6 +507,16 @@ export interface EquipmentFeatHandlingEvaluation {
 function getRelevantFeatIdsForWeapon(w: WeaponDefinition): string[] {
   const cat: WeaponCategory = w.category || 'Blades: Straight';
   const ids: string[] = [];
+  const fnType = resolveWeaponFunctionalType(w.id, cat, w.weaponClass, w.name);
+
+  for (const stance of SPECIALIST_STANCE_LIST) {
+    if (
+      stance.mainFunctionalTypes.includes(fnType) ||
+      stance.offhandFunctionalTypes.includes(fnType)
+    ) {
+      ids.push(stance.featId);
+    }
+  }
 
   if (w.weightClass === 'heavy') {
     ids.push('siege_stability', 'suppression_chainfire', 'unyielding_bulwark', 'unfaltering');

@@ -77,6 +77,9 @@ export {
   SUNKEN_BOG_EXPANSE_ROOM_ID,
   UNIFIED_BOG_ROOM_PLACEMENTS,
 };
+/**
+ * Re-exported chunk fog metrics and unified bog room placement type contracts.
+ */
 export type { ChunkFogMetrics, UnifiedBogRoomPlacement };
 
 /**

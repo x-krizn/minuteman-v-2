@@ -6,6 +6,10 @@
 import { OrionActionDescriptor, OrionActionTemplate, OrionState } from '../../types';
 import { getItemDefinition } from '../items';
 import {
+  buildActionDefinitionFromStanceOverride,
+  evaluateActiveSpecialistStance,
+} from '../progression/specialistStances';
+import {
   getWeaponDefinition,
   isAuxiliaryEquipment,
   isTrueWeaponEquipment,
@@ -19,7 +23,14 @@ import {
   getDefaultClassUtilityId,
 } from './utility_and_belt_modules';
 
+/**
+ * Re-exported action descriptor and template contracts for equipment skill definitions.
+ */
 export type { OrionActionDescriptor, OrionActionTemplate } from '../../types';
+
+/**
+ * Re-exported class utility catalog and helper functions.
+ */
 export {
   CLASS_UTILITY_CATALOG,
   type ClassUtilityItemDefinition,
@@ -76,6 +87,8 @@ export function getResolvedActionDescriptor(
   state: OrionState,
   actionId: string
 ): OrionActionDescriptor {
+  const specEval = evaluateActiveSpecialistStance(state);
+
   if (actionId === 'weapon_slot2_skill4') {
     const slot1Id = state.equipmentSlots?.slot1 || state.equippedWeapons?.[0] || 'long_sword';
     const slot2Id = state.equipmentSlots?.slot2 || null;
@@ -86,6 +99,43 @@ export function getResolvedActionDescriptor(
     const item2 = slot2Id && !w2 ? getItemDefinition(slot2Id) : undefined;
     const w3 = slot3Id ? getWeaponDefinition(slot3Id) : undefined;
     const isAuxActive = Boolean(state.equipmentSlots?.auxActive && slot3Id && w3);
+
+    if (!isAuxActive && specEval.active && specEval.stance) {
+      const targetId = slot2Id || slot3Id || slot1Id;
+      const targetWpn = getWeaponDefinition(targetId) || w1;
+      const move = buildActionDefinitionFromStanceOverride(4, specEval.stance.action4);
+      return {
+        id: 'weapon_slot2_skill4',
+        name: move.name,
+        shortLabel: specEval.stance.action4.shortLabel.slice(0, 14).toUpperCase(),
+        sourceCategory: 'weapon',
+        sourceLabel: `${specEval.stance.stanceName} [Skill 4]`,
+        weaponSkillSlot: 3,
+        weaponId: targetWpn.id,
+        description: move.description,
+        tellDurationSec: move.tellDurationSec,
+        actionDurationSec: move.actionDurationSec,
+        cooldownSec: move.cooldownSec,
+        isChain: move.isChain,
+        activeDurationSec: move.activeDurationSec,
+        reloadDurationSec: move.reloadDurationSec,
+        noReload: move.noReload,
+        ammoCount: move.ammoCount,
+        internalCharges: move.internalCharges,
+        internalCycleSec: move.internalCycleSec,
+        isChargeable: move.isChargeable,
+        maxChargeSec: move.maxChargeSec,
+        comboSequence: move.comboSequence,
+        comboResetWindowSec: move.comboResetWindowSec,
+        isBlock: move.isBlock,
+        heatCost: move.heatCost,
+        damage: move.damage,
+        damageType: move.damageType,
+        damageFamily: move.damageFamily,
+        range: move.range,
+      };
+    }
+
     const is2HGrip =
       !isAuxActive &&
       (state.equipmentSlots?.mainGrip === '2h' || isTwoHandOnlyWeapon(w1, state) || !slot2Id);
@@ -157,6 +207,43 @@ export function getResolvedActionDescriptor(
     const w1 = getWeaponDefinition(slot1Id) || getWeaponDefinition('long_sword')!;
     const w3 = slot3Id ? getWeaponDefinition(slot3Id) : undefined;
     const isAuxActive = Boolean(state.equipmentSlots?.auxActive && slot3Id && w3);
+
+    if (!isAuxActive && specEval.active && specEval.stance) {
+      const targetId = slot2Id || slot3Id || slot1Id;
+      const targetWpn = getWeaponDefinition(targetId) || w1;
+      const move = buildActionDefinitionFromStanceOverride(5, specEval.stance.action5);
+      return {
+        id: 'weapon_slot2_skill5',
+        name: move.name,
+        shortLabel: specEval.stance.action5.shortLabel.slice(0, 14).toUpperCase(),
+        sourceCategory: 'weapon',
+        sourceLabel: `${specEval.stance.stanceName} [Skill 5]`,
+        weaponSkillSlot: 4,
+        weaponId: targetWpn.id,
+        description: move.description,
+        tellDurationSec: move.tellDurationSec,
+        actionDurationSec: move.actionDurationSec,
+        cooldownSec: move.cooldownSec,
+        isChain: move.isChain,
+        activeDurationSec: move.activeDurationSec,
+        reloadDurationSec: move.reloadDurationSec,
+        noReload: move.noReload,
+        ammoCount: move.ammoCount,
+        internalCharges: move.internalCharges,
+        internalCycleSec: move.internalCycleSec,
+        isChargeable: move.isChargeable,
+        maxChargeSec: move.maxChargeSec,
+        comboSequence: move.comboSequence,
+        comboResetWindowSec: move.comboResetWindowSec,
+        isBlock: move.isBlock,
+        heatCost: move.heatCost,
+        damage: move.damage,
+        damageType: move.damageType,
+        damageFamily: move.damageFamily,
+        range: move.range,
+      };
+    }
+
     const is2HGrip =
       !isAuxActive &&
       (state.equipmentSlots?.mainGrip === '2h' || isTwoHandOnlyWeapon(w1, state) || !slot2Id);
@@ -251,14 +338,28 @@ export function getResolvedActionDescriptor(
     const weapon =
       getWeaponDefinition(currentWeaponId) ||
       getWeaponDefinition('gladius_boltcaster')!;
+    const isAuxActive = Boolean(state.equipmentSlots?.auxActive && state.equipmentSlots?.slot3);
+    const stanceOverride =
+      !isAuxActive && specEval.active && specEval.stance
+        ? base.weaponSkillSlot === 1
+          ? buildActionDefinitionFromStanceOverride(2, specEval.stance.action2)
+          : base.weaponSkillSlot === 3
+            ? buildActionDefinitionFromStanceOverride(4, specEval.stance.action4)
+            : base.weaponSkillSlot === 4
+              ? buildActionDefinitionFromStanceOverride(5, specEval.stance.action5)
+              : null
+        : null;
     const move =
-      weapon.moveset[base.weaponSkillSlot] || weapon.moveset[0];
+      stanceOverride || weapon.moveset[base.weaponSkillSlot] || weapon.moveset[0];
 
     return {
       ...base,
       name: move.name,
       shortLabel: move.name.toUpperCase(),
-      sourceLabel: `${weapon.name} [Skill ${base.weaponSkillSlot}]`,
+      sourceLabel:
+        stanceOverride && specEval.stance
+          ? `${specEval.stance.stanceName} [Skill ${base.weaponSkillSlot + 1}]`
+          : `${weapon.name} [Skill ${base.weaponSkillSlot}]`,
       weaponId: weapon.id,
       description: move.description,
       tellDurationSec: move.tellDurationSec,

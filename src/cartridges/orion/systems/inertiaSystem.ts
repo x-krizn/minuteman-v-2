@@ -46,6 +46,7 @@ import {
   ACTION_MODIFICATION_CATALOG,
   computeEffectiveLoadCapacity,
   computePlayerLoadMetrics,
+  evaluateActiveSpecialistStance,
   findHardwareItemByNameOrId,
   getWeaponGemCombatModifiers,
   resolveEquippedHardwareStats,
@@ -508,6 +509,9 @@ export function resolvePlayerInertiaProfile(state: OrionState): ActorInertiaProf
     );
     stabilityFlat += isShield ? 22 : 12;
   }
+
+  const specEval = evaluateActiveSpecialistStance(state);
+  stabilityFlat += specEval.passiveModifiers.stabilityBonusFlat;
 
   const installedMods = Object.values(state.equipmentSlots?.installedMods || {});
   for (const modId of installedMods) {

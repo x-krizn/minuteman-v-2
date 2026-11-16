@@ -257,8 +257,23 @@ export function canBypassTwoHandRestriction(
   ) {
     return true;
   }
-  // High-tier Heavy / Titan Grip feats allow 2H weapons to be wielded 1-handed or in Side slot
+  // High-tier Heavy / Titan Grip feats and Specialist Feats (Phalanx / Daisho) allow qualifying 2H weapons in 1H/Paired grip
   if (state?.equippedFeats && state.equippedFeats.length > 0) {
+    const fnType = resolveWeaponFunctionalType(
+      def.id,
+      def.category || 'Blades: Straight',
+      def.weaponClass,
+      def.name
+    );
+    if (
+      state.equippedFeats.includes('phalanx_specialist') &&
+      (fnType === 'Pike' || fnType === 'Lance' || fnType === 'Broad Spear')
+    ) {
+      return true;
+    }
+    if (state.equippedFeats.includes('daisho_specialist') && fnType === 'Odachi') {
+      return true;
+    }
     const hasHeavyGripFeat = state.equippedFeats.some(
       (fid) =>
         fid === 'main_weapon_twin_link' ||
@@ -293,7 +308,8 @@ export function isTwoHandOnlyWeapon(
  * Validates whether a weapon can be equipped into `slot1` (Main), `slot2` (Side), or `slot3` (Aux Back).
  * - 2H weapons are Main Slot (`slot1`) only unless overridden by Feat, Unique, Legendary, or variable.
  * - 1H weapons (including Shields) are Main (`slot1`) or Side (`slot2`) slot.
- * - Launchers (`Carriers & Munitions`) are Aux Slot (`slot3`) only.
+ * - Launchers (`Carriers & Munitions`) can be equipped in either Side Hand (`slot2`) or Aux Back (`slot3`),
+ *   and always render dorsally on the back without altering rendered sprite positions.
  */
 export function canEquipWeaponInSlot(
   weaponOrId: WeaponDefinition | string | null | undefined,
@@ -315,9 +331,12 @@ export function canEquipWeaponInSlot(
   }
 
   if (isLauncherEquipment(def)) {
+    if (slot === 'slot2') {
+      return { allowed: true };
+    }
     return {
       allowed: false,
-      reason: 'Launchers & Carriers are AUX [BACK] slot only.',
+      reason: 'Launchers & Carriers can only be equipped in SIDE [L-HAND] or AUX [BACK] slots.',
     };
   }
 

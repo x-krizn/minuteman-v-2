@@ -33,6 +33,7 @@ import {
   CHASSIS_HARDWARE_CATALOG,
   computePlayerLoadMetrics,
   createInitialEquipmentSlots,
+  evaluateActiveSpecialistStance,
   evaluateEquipmentFeatHandling,
   GEMSTONE_REGISTRY,
   getEffectiveMainGrip,
@@ -47,6 +48,7 @@ import {
   getWeaponSubtypeInfo,
   isEquipmentUnlocked,
   setMainWeaponGrip,
+  toggleSpecialistStanceMode,
   WEAPON_FUNCTIONAL_TYPES_BY_CATEGORY,
   WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS,
   WEAPON_GEM_WEIGHT_DELTA,
@@ -97,7 +99,7 @@ export const WeaponStatReadout: React.FC<{
   const primaryFamily = primaryAction?.damageFamily || 'Kinetic';
   const primaryRange = primaryAction?.range ?? 64;
   const handingLabel = isLauncherEquipment(w)
-    ? 'AUX [BACK ONLY]'
+    ? 'SIDE / AUX [DORSAL]'
     : isTwoHandWeapon(w)
       ? canBypassTwoHandRestriction(w, state)
         ? '2H (1H OVERRIDE ACTIVE)'
@@ -493,7 +495,7 @@ export interface SatchelLoadoutTabProps {
  * Renders the Mech Doll `LOADOUT` screen:
  * - Clean 2-pane split layout: Mech Doll & Slot Inspector on the left (`sm:col-span-5`),
  *   Anatomical Hardpoint List on the right (`sm:col-span-7`) with zero nested scrollbars.
- * - Integrates hybrid Feat Prerequisite gating and Handling Proficiency bonuses from the 96-feat constellation.
+ * - Integrates hybrid Feat Prerequisite gating and Handling Proficiency bonuses from the 118-feat constellation.
  */
 export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
   state,
@@ -831,7 +833,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
         soundSystem.playPowerup();
 
         // Groomed slot rules:
-        // - Launchers (`isLauncherEquipment`) -> Aux Slot (`slot3`, Back Mount) only.
+        // - Launchers (`isLauncherEquipment`) -> Side Hand (`slot2`) or Aux Slot (`slot3`, Back Mount), always rendering dorsally on the back.
         // - 2H weapons (`isTwoHandOnlyWeapon(w, state)`) -> Main Slot (`slot1`) only unless overridden by Feat/Unique/Legendary.
         // - 1H weapons & Shields -> Main (`slot1`) or Side (`slot2`) slot only.
         let targetSlot: 'slot1' | 'slot2' | 'slot3' =
@@ -840,7 +842,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
             : 'slot1';
 
         if (isLauncherEquipment(w)) {
-          targetSlot = 'slot3';
+          targetSlot = editingSlot === 'slot2' ? 'slot2' : 'slot3';
         } else if (targetSlot === 'slot3') {
           targetSlot = isTwoHandOnlyWeapon(w, state) ? 'slot1' : 'slot2';
         } else if (targetSlot === 'slot2' && isTwoHandOnlyWeapon(w, state)) {
@@ -1743,6 +1745,29 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                       </button>
                     )}
 
+                    {(contextMenuSlot === 'slot1' ||
+                      contextMenuSlot === 'slot2' ||
+                      contextMenuSlot === 'slot3') &&
+                      (() => {
+                        const specEval = evaluateActiveSpecialistStance(state);
+                        if (!specEval.available || !specEval.stance) return null;
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              toggleSpecialistStanceMode(state, sayCtx);
+                              soundSystem.playPowerup();
+                              notifyOrionStateChange();
+                            }}
+                            className="w-full px-2 py-1 bg-[#1e1b4b] hover:bg-[#312e81] text-[#fde047] border border-[#eab308]/60 rounded-xs text-[8px] font-bold text-left cursor-pointer"
+                          >
+                            {specEval.mode === 'auto'
+                              ? `STANCE: ${specEval.stance.shortTag} (SWITCH TO BASE)`
+                              : `STANCE: BASE MOVESET (SWITCH TO ${specEval.stance.shortTag})`}
+                          </button>
+                        );
+                      })()}
+
                     {/* Action 4: Modify in Armory */}
                     {onOpenArmory &&
                       contextMenuSlot !== 'bind_l' &&
@@ -1867,7 +1892,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                 slot: 'slot3',
                 title: 'AUXILIARY [BACK]',
                 itemId: slot3Id,
-                itemName: auxWeapon ? auxWeapon.name : 'Empty Back Mount (Launcher Only)',
+                itemName: auxWeapon ? auxWeapon.name : 'Empty Back Mount (Carrier / Launcher)',
                 subtitle: auxWeapon
                   ? `${getWeaponSubtypeInfo(auxWeapon.id).subtype} · Stays on Back (50% WT)`
                   : 'Back-Mounted Launcher / Carrier / Quiver / Catalyst',

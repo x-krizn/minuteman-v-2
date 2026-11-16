@@ -21,7 +21,10 @@ import {
 } from '../../database/equipment/weapons';
 import { getItemDefinition } from '../../database/items';
 import {
+  ActiveSpecialistStanceEvaluation,
+  buildActionDefinitionFromStanceOverride,
   computeInterfaceFeatModifiers,
+  evaluateActiveSpecialistStance,
   getEffectiveMainGrip,
   getOwnedWeaponCount,
   getWeaponGemCombatModifiers,
@@ -30,6 +33,7 @@ import {
   resolveEquippedHardwareStats,
 } from '../../database/progression';
 import {
+  ActionDefinition,
   ArmorState,
   DamageType,
   FrameState,
@@ -234,10 +238,13 @@ export function executeActionPayload(
 
   const featMods = computeInterfaceFeatModifiers(state.equippedFeats || []);
   const gemCombatMods = getWeaponGemCombatModifiers(state, rawWeaponId);
+  const specEval = evaluateActiveSpecialistStance(state);
+  const specMods = specEval.passiveModifiers;
   const overdriveMult =
     ((state.overdriveTimer || 0) > 0 ? 1.3 : 1.0) *
     featMods.damageMult *
-    gemCombatMods.damageMult;
+    gemCombatMods.damageMult *
+    specMods.damageMult;
   const opticMult = (state.opticMarkTimer || 0) > 0 ? 1.25 : 1.0;
   const hasKnightsOath = state.equippedFeats.includes('knights_oath');
   const equippedFeats = state.equippedFeats || [];
@@ -322,15 +329,18 @@ export function executeActionPayload(
     }
   }
 
-  const activeSkillProfile: ResolvedSkillBehaviorProfile | null =
+  const resolvedActionDef: ActionDefinition | undefined =
     desc.sourceCategory === 'weapon' && desc.weaponSkillSlot
-      ? resolveSkillBehaviorProfile(
-          weapon,
-          (weapon?.moveset[desc.weaponSkillSlot] || desc) as Parameters<
-            typeof resolveSkillBehaviorProfile
-          >[1],
-          desc.weaponSkillSlot
-        )
+      ? {
+          ...(weapon?.moveset[desc.weaponSkillSlot] || {}),
+          ...desc,
+          slot: desc.weaponSkillSlot,
+        }
+      : undefined;
+
+  const activeSkillProfile: ResolvedSkillBehaviorProfile | null =
+    resolvedActionDef && desc.weaponSkillSlot
+      ? resolveSkillBehaviorProfile(weapon, resolvedActionDef, desc.weaponSkillSlot)
       : null;
 
   let skillHitGrantedBonus = false;
@@ -356,7 +366,9 @@ export function executeActionPayload(
     );
     const profileDent = activeSkillProfile?.extraArmorDent || 0;
     const totalArmorDent =
-      Math.max(extraArmorDent, profileDent) + gemCombatMods.extraArmorDentOnHit;
+      Math.max(extraArmorDent, profileDent) +
+      gemCombatMods.extraArmorDentOnHit +
+      specMods.extraArmorDentOnHit;
     if (totalArmorDent > 0 && e.armor.durability > 0) {
       e.armor.durability = Math.max(0, e.armor.durability - totalArmorDent);
     }
@@ -380,12 +392,13 @@ export function executeActionPayload(
     const impDx = kdx / kNorm;
     const impDy = kdy / kNorm;
 
-    const attackerMu = computeMomentumFraction(
-      state.vx + (state.isBoosterDashing ? state.boosterDirX * 95 : 0),
-      state.vy + (state.isBoosterDashing ? state.boosterDirY * 95 : 0),
-      impDx,
-      impDy
-    );
+    const attackerMu =
+      computeMomentumFraction(
+        state.vx + (state.isBoosterDashing ? state.boosterDirX * 95 : 0),
+        state.vy + (state.isBoosterDashing ? state.boosterDirY * 95 : 0),
+        impDx,
+        impDy
+      ) * specMods.chargeMuMultiplier;
     const effectiveKbDist =
       activeSkillProfile?.displacementKind === 'hook_pull'
         ? -Math.max(12, Math.abs(knockbackDist))
@@ -506,7 +519,14 @@ export function executeActionPayload(
         adaptiveBonusMult *
         hitEval.damageMult
     );
-    const shieldBypassRatio = activeSkillProfile?.shieldBypassRatio || 0;
+    const effectiveArmorBypass = Math.min(
+      0.85,
+      Math.max(hitEval.armorBypassRatio, specMods.armorThresholdBypassRatio)
+    );
+    const shieldBypassRatio = Math.max(
+      activeSkillProfile?.shieldBypassRatio || 0,
+      specMods.shieldBypassRatio
+    );
     if (shieldBypassRatio > 0 && e.shields.capacity > 0) {
       const bypassedPortion = Math.max(1, Math.round(totalSkillHitDmg * shieldBypassRatio));
       const normalPortion = Math.max(0, totalSkillHitDmg - bypassedPortion);
@@ -519,7 +539,7 @@ export function executeActionPayload(
           resolvedDmgType,
           undefined,
           {
-            armorBypassRatio: hitEval.armorBypassRatio,
+            armorBypassRatio: effectiveArmorBypass,
             hitQuality: hitEval.quality,
             onFlash: (color, dur, kind) => triggerEntityFlash(e, color, dur, kind),
           }
@@ -535,7 +555,7 @@ export function executeActionPayload(
         resolvedDmgType,
         (count, color) => ctx.spawnParticles(e.x, e.y, e.z + 8, count, color, ''),
         {
-          armorBypassRatio: hitEval.armorBypassRatio,
+          armorBypassRatio: effectiveArmorBypass,
           hitQuality: hitEval.quality,
           onFlash: (color, dur, kind) => triggerEntityFlash(e, color, dur, kind),
         }
@@ -550,7 +570,7 @@ export function executeActionPayload(
         resolvedDmgType,
         (count, color) => ctx.spawnParticles(e.x, e.y, e.z + 8, count, color, ''),
         {
-          armorBypassRatio: hitEval.armorBypassRatio,
+          armorBypassRatio: effectiveArmorBypass,
           hitQuality: hitEval.quality,
           onFlash: (color, dur, kind) => triggerEntityFlash(e, color, dur, kind),
         }
@@ -583,10 +603,14 @@ export function executeActionPayload(
   );
 
   // 1. WEAPON SKILLS (Slots 1..4)
-  if (desc.sourceCategory === 'weapon' && desc.weaponSkillSlot) {
+  if (desc.sourceCategory === 'weapon' && desc.weaponSkillSlot && resolvedActionDef) {
     const slot = desc.weaponSkillSlot;
-    const action = weapon?.moveset[slot] || desc;
+    const action = resolvedActionDef;
     state.bladeTrails = state.bladeTrails || [];
+
+    if (slot === 4 && specMods.heatVentOnAction5 > 0) {
+      state.heat = Math.max(0, state.heat - specMods.heatVentOnAction5);
+    }
 
     if (activeSkillProfile && !action.isBlock) {
       applySkillMovementAndSupportImpulse(
@@ -628,7 +652,7 @@ export function executeActionPayload(
         state,
         ctx,
         weapon,
-        action as Parameters<typeof executeSpecializedSkillPayload>[3],
+        action,
         activeSkillProfile,
         Math.round((action.damage || 30) * overdriveMult),
         trailColor,
@@ -2263,6 +2287,7 @@ export interface ActiveWeaponStanceSummary {
   label: string;
   shortTag: string;
   description: string;
+  specialistStance?: ActiveSpecialistStanceEvaluation;
   actionGridRow: {
     ac1: boolean;
     ac2: boolean;
@@ -2289,6 +2314,7 @@ export function getActiveWeaponStance(state: OrionState): ActiveWeaponStanceSumm
   const grip = getEffectiveMainGrip(state);
   const is2HWeapon = isTwoHandOnlyWeapon(w1, state);
   const isAuxActive = Boolean(state.equipmentSlots?.auxActive && w3 && slot3Id);
+  const specEval = evaluateActiveSpecialistStance(state);
 
   if (isAuxActive && w3) {
     const sideHolsteredNote =
@@ -2299,6 +2325,25 @@ export function getActiveWeaponStance(state: OrionState): ActiveWeaponStanceSumm
       label: 'BACK LAUNCHER OWNERSHIP',
       shortTag: 'BACK AUX [AC4–5]',
       description: `${w1?.name || slot1Id} (ac1–ac3) + Back Launcher ${w3.name} (ac4–ac5)${sideHolsteredNote}`,
+      specialistStance: specEval,
+      actionGridRow: {
+        ac1: true,
+        ac2: true,
+        ac3: true,
+        ac4: true,
+        ac5: true,
+      },
+    };
+  }
+
+  if (specEval.active && specEval.stance) {
+    return {
+      stance: w2 && isAuxiliaryEquipment(w2) ? 'main_aux' : 'unpaired',
+      grip: grip === '2h' ? '2h' : '1h',
+      label: specEval.stance.stanceName.toUpperCase(),
+      shortTag: specEval.stance.shortTag,
+      description: `${specEval.stance.featName}: ${specEval.stance.doctrineSummary}`,
+      specialistStance: specEval,
       actionGridRow: {
         ac1: true,
         ac2: true,
@@ -2320,6 +2365,7 @@ export function getActiveWeaponStance(state: OrionState): ActiveWeaponStanceSumm
       description: `${w1?.name || slot1Id} (2H) → ac1–ac5 = ${
         w1?.name || slot1Id
       } Skill 1–5${holsteredSuffix}`,
+      specialistStance: specEval,
       actionGridRow: {
         ac1: true,
         ac2: true,
@@ -2340,6 +2386,7 @@ export function getActiveWeaponStance(state: OrionState): ActiveWeaponStanceSumm
       description: `${w1?.name || slot1Id} (ac1–ac3)${
         w3 && isAuxiliaryEquipment(w3) ? ` + ${w3.name} (ac4)` : ''
       } + ${item2.name} (ac5)`,
+      specialistStance: specEval,
       actionGridRow: {
         ac1: true,
         ac2: true,
@@ -2357,6 +2404,7 @@ export function getActiveWeaponStance(state: OrionState): ActiveWeaponStanceSumm
       label: '1H + SHIELD STANCE',
       shortTag: '1H + SHIELD',
       description: `${w1?.name || slot1Id} (ac1–ac3) + ${w2.name} (ac4–ac5)`,
+      specialistStance: specEval,
       actionGridRow: {
         ac1: true,
         ac2: true,
@@ -2381,6 +2429,7 @@ export function getActiveWeaponStance(state: OrionState): ActiveWeaponStanceSumm
       label: 'DUAL-WIELD, PAIRED STANCE',
       shortTag: 'DW PAIRED',
       description: `Main & Side match (${w1.name}, 2 separate items) → ac1–ac5 = ${w1.name} Skill 1–5`,
+      specialistStance: specEval,
       actionGridRow: {
         ac1: true,
         ac2: true,
@@ -2398,6 +2447,7 @@ export function getActiveWeaponStance(state: OrionState): ActiveWeaponStanceSumm
       label: 'DUAL-WIELD, UNPAIRED STANCE',
       shortTag: 'DW UNPAIRED',
       description: `ac1–ac3 = ${w1.name} Skill 1–3 · ac4 = ${w2.name} Skill 2 · ac5 = ${w2.name} Skill 3`,
+      specialistStance: specEval,
       actionGridRow: {
         ac1: true,
         ac2: true,
@@ -2414,6 +2464,7 @@ export function getActiveWeaponStance(state: OrionState): ActiveWeaponStanceSumm
     label: 'ONE-HANDED GRIP (SINGLE)',
     shortTag: '1H SINGLE',
     description: `${w1?.name || slot1Id} (1H) → ac1–ac3 active, ac4–ac5 inactive`,
+    specialistStance: specEval,
     actionGridRow: {
       ac1: true,
       ac2: true,
@@ -2614,7 +2665,9 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
   const mainGrip = getEffectiveMainGrip(state);
   const is2HWeapon = isTwoHandOnlyWeapon(w1, state);
   const isAuxActive = Boolean(state.equipmentSlots?.auxActive && w3 && slot3Id);
-  const isPowerStance2H = !isAuxActive && (mainGrip === '2h' || is2HWeapon);
+  const specEval = evaluateActiveSpecialistStance(state);
+  const isPowerStance2H =
+    !isAuxActive && !specEval.active && (mainGrip === '2h' || is2HWeapon);
   const isPairedStance =
     !isAuxActive &&
     !isPowerStance2H &&
@@ -2647,12 +2700,14 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
     weaponDef: ReturnType<typeof getWeaponDefinition>,
     movesetSlot: number,
     sourceSlotName: string,
-    instancePrefix: string = 'wpn'
+    instancePrefix: string = 'wpn',
+    moveOverride?: ActionDefinition
   ): ResolvedCombatSkill => {
-    const m = weaponDef?.moveset[movesetSlot];
+    const m = moveOverride || weaponDef?.moveset[movesetSlot];
     const cooldownKey = getSkillCooldownKey(weaponId, movesetSlot, instancePrefix);
     const isBlock = Boolean(
-      m?.isBlock || (movesetSlot === 3 && isBlockingWeapon(weaponDef || weaponId))
+      m?.isBlock ||
+        (!moveOverride && movesetSlot === 3 && isBlockingWeapon(weaponDef || weaponId))
     );
     const isMeleeOrShieldWpn =
       Boolean(m?.noReload) ||
@@ -2670,7 +2725,12 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
 
     const activeRemaining = isBlock
       ? state.isHoldingBlock
-        ? Math.max(0.06, 0.34 - (state.blockHoldTimer || 0))
+        ? Math.max(
+            0.06,
+            PERFECT_BLOCK_WINDOW_SEC +
+              specEval.passiveModifiers.perfectBlockWindowBonusSec -
+              (state.blockHoldTimer || 0)
+          )
         : Math.max(0, state.blockTimer || 0)
       : Math.max(0, state.skillActiveTimers?.[cooldownKey] || 0);
     const reloadRemaining =
@@ -2698,8 +2758,12 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
       id: actionId,
       cooldownKey,
       slotIndex,
-      name: isBlock ? 'Block (Hold · 0.34s Perfect)' : m?.name || `Skill ${slotIndex}`,
-      shortLabel: (isBlock ? 'BLOCK' : m?.name || `SKILL ${slotIndex}`)
+      name: isBlock
+        ? moveOverride
+          ? `${m?.name} (Hold Guard)`
+          : 'Block (Hold · 0.34s Perfect)'
+        : m?.name || `Skill ${slotIndex}`,
+      shortLabel: (isBlock && !moveOverride ? 'BLOCK' : m?.name || `SKILL ${slotIndex}`)
         .slice(0, 12)
         .toUpperCase(),
       sourceCategory: 'weapon',
@@ -2741,14 +2805,25 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
     `Main: ${w1?.name || slot1Id} [Skill 1]`
   );
 
+  const specAction2 =
+    !isAuxActive && specEval.active && specEval.stance
+      ? buildActionDefinitionFromStanceOverride(2, specEval.stance.action2)
+      : undefined;
   const skill2 = buildWeaponSkill(
     'weapon_skill_1',
     2,
     slot1Id,
     w1,
     1,
-    `Main: ${w1?.name || slot1Id} [Skill 2]`
+    specAction2 && specEval.stance
+      ? `${specEval.stance.stanceName} [Skill 2]`
+      : `Main: ${w1?.name || slot1Id} [Skill 2]`,
+    'wpn',
+    specAction2
   );
+  if (specAction2 && specEval.stance) {
+    skill2.shortLabel = specEval.stance.action2.shortLabel.slice(0, 12).toUpperCase();
+  }
 
   const skill3 = buildWeaponSkill(
     'weapon_skill_2',
@@ -2782,6 +2857,33 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
       `Back Launcher: ${w3.name} [Skill 5]`,
       'wpn_aux'
     );
+  } else if (!isAuxActive && specEval.active && specEval.stance) {
+    const offId = slot2Id || slot3Id || slot1Id;
+    const offDef = getWeaponDefinition(offId) || w1;
+    const specAction4 = buildActionDefinitionFromStanceOverride(4, specEval.stance.action4);
+    const specAction5 = buildActionDefinitionFromStanceOverride(5, specEval.stance.action5);
+    skill4 = buildWeaponSkill(
+      'weapon_slot2_skill4',
+      4,
+      offId,
+      offDef,
+      3,
+      `${specEval.stance.stanceName} [Skill 4]`,
+      'wpn_spec',
+      specAction4
+    );
+    skill4.shortLabel = specEval.stance.action4.shortLabel.slice(0, 12).toUpperCase();
+    skill5 = buildWeaponSkill(
+      'weapon_slot2_skill5',
+      5,
+      offId,
+      offDef,
+      4,
+      `${specEval.stance.stanceName} [Skill 5]`,
+      'wpn_spec',
+      specAction5
+    );
+    skill5.shortLabel = specEval.stance.action5.shortLabel.slice(0, 12).toUpperCase();
   } else if (isPowerStance2H && w1) {
     // 2H Power Stance — an equipped Side weapon (`slot2`) is holstered; Main weapon (`slot1`) owns Skills 4 & 5
     const holsteredSuffix = w2 && slot2Id !== slot1Id ? ` (Side Holstered)` : '';
@@ -3014,11 +3116,14 @@ export function startHoldingBlock(
   const isShieldEquip = weapon?.equipmentRole === 'shield';
   const aim = getCombatAimVector(state);
   const aimAngle = Math.atan2(aim.dy, aim.dx);
+  const specEval = evaluateActiveSpecialistStance(state);
+  const effectiveBlockWindow =
+    PERFECT_BLOCK_WINDOW_SEC + specEval.passiveModifiers.perfectBlockWindowBonusSec;
 
   if (!state.isHoldingBlock) {
     state.isHoldingBlock = true;
     state.blockHoldTimer = 0;
-    state.blockTimer = PERFECT_BLOCK_WINDOW_SEC;
+    state.blockTimer = effectiveBlockWindow;
     state.blockingWeaponId = blockWpnId;
 
     soundSystem.playSword();
@@ -3035,8 +3140,8 @@ export function startHoldingBlock(
       style: 'bash',
       color: '#38bdf8',
       coreColor: '#ffffff',
-      life: PERFECT_BLOCK_WINDOW_SEC,
-      maxLife: PERFECT_BLOCK_WINDOW_SEC,
+      life: effectiveBlockWindow,
+      maxLife: effectiveBlockWindow,
     });
 
     ctx?.spawnParticles(

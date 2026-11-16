@@ -10,6 +10,7 @@ import { getItemDefinition } from '../database/items';
 import { getCoinPickupSpriteBase64 } from '../database/items/currency';
 import {
   computePlayerLoadMetrics,
+  FEAT_CONSTELLATION_NODES,
   GEMSTONE_CATALOG,
   GEMSTONE_REGISTRY,
   getInventoryGemCount,
@@ -20,7 +21,6 @@ import {
   notifyOrionStateChange,
   subscribeOrionStateChange,
 } from '../systems';
-import { FeatSynergyCategory, FeatTier } from '../types';
 import {
   EditableLoadoutSlot,
   EquipmentInventoryCategory,
@@ -44,7 +44,7 @@ export interface OrionSatchelProps {
 /**
  * Renders the consolidated 5-tab Pilot Tactical Menu (`STATUS`, `LOADOUT`, `FEATS`, `MAP`, `CODEX`)
  * with a 3-mode segmented switcher inside `LOADOUT` (`MECH DOLL & SLOTS`, `ARMORY WORKBENCH`, `CARGO INVENTORY`)
- * and direct deep-linking into the 96-node Pan-and-Zoom Hexagonal Feat Constellation.
+ * and direct deep-linking into the 118-node Pan-and-Zoom Hexagonal Feat Constellation.
  * Supports both HUD modes and mutates `state: OrionState` through its child tab components.
  */
 export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
@@ -59,8 +59,6 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
   const [armoryFocusItemId, setArmoryFocusItemId] = useState<string | null>(null);
   const [invCategory, setInvCategory] = useState<EquipmentInventoryCategory>('all');
   const [invSubtype, setInvSubtype] = useState<string>('ALL');
-  const [featTierFilter, setFeatTierFilter] = useState<'ALL' | FeatTier>('ALL');
-  const [featSynergyFilter, setFeatSynergyFilter] = useState<'ALL' | FeatSynergyCategory>('ALL');
   const [focusFeatId, setFocusFeatId] = useState<string | null>(null);
   const [, setRefresh] = useState(0);
 
@@ -181,7 +179,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                 : 'bg-[#0f172a] text-[#94a3b8] hover:bg-[#1e293b]'
             }`}
           >
-            FEATS [96]
+            FEATS [{FEAT_CONSTELLATION_NODES.length}]
           </button>
           <button
             data-tab-active={tab === 'world' ? 'true' : 'false'}
@@ -383,11 +381,6 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
         <SatchelFeatsTab
           state={state}
           isCheatMode={isCheatMode}
-          onResume={onResume}
-          featTierFilter={featTierFilter}
-          setFeatTierFilter={setFeatTierFilter}
-          featSynergyFilter={featSynergyFilter}
-          setFeatSynergyFilter={setFeatSynergyFilter}
           initialFocusFeatId={focusFeatId}
           onClearFocusFeatId={() => setFocusFeatId(null)}
         />

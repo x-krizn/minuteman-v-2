@@ -105,7 +105,14 @@ export function getOppositeCardinalDir(dir: AetherCardinalDir): AetherCardinalDi
 }
 
 // [ORION-ANCHOR: WORLD-KEY-ROUTES]
+/**
+ * Re-exported key node routes table.
+ */
 export { KEY_NODE_ROUTES };
+
+/**
+ * Re-exported key node route descriptor type contract.
+ */
 export type { KeyNodeRouteDescriptor };
 
 // [ORION-ANCHOR: U00-ZONE-SEALS]

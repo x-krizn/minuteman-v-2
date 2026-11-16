@@ -32,7 +32,8 @@ Every critical registry, world-composer boundary, and engine hook in the codebas
 | `[ORION-ANCHOR: RENDER-POST-PROCESS]` | `src/cartridges/orion/systems/render/effectsRenderer.ts` | `drawDynamicLightingAndBloomPass()` 5-pass 2.5D lighting, water reflection, 1px outline, blade trail, and weather pipeline. |
 | `[ORION-ANCHOR: PROG-LEVEL-SEQUENCE]` | `src/cartridges/orion/database/progression/index.ts` | `LEVEL_UNLOCK_SEQUENCE` (`Levels 1–20`) onboarding & expression milestones. |
 | `[ORION-ANCHOR: PROG-SKILL-SCALING]` | `src/cartridges/orion/database/progression/index.ts` | `PILOT_SKILL_DEFINITIONS` (`6 Combat Discipline Skills`, `Lv 1–20`, funded by Discipline + Reactor Gemstones). |
-| `[ORION-ANCHOR: PROG-FEAT-SYNERGY]` | `src/cartridges/orion/database/progression/index.ts` | `doesPilotMeetFeatEquipmentRequirement()` classless hardware & weapon-family prerequisite verifier for all 97 Feats. |
+| `[ORION-ANCHOR: PROG-FEAT-SYNERGY]` | `src/cartridges/orion/database/progression/index.ts` | `doesPilotMeetFeatEquipmentRequirement()` classless hardware & weapon-family prerequisite verifier for all 118 Feats (including 22 Specialist Feats & Stances). |
+| `[ORION-ANCHOR: PROG-SPECIALIST-STANCES]` | `src/cartridges/orion/database/progression/specialistStances.ts` | `SPECIALIST_FEAT_DEFINITIONS`, `evaluateActiveSpecialistStance()`, and `buildActionDefinitionFromStanceOverride()` for all 22 Specialist Feats & Stances. |
 | `[ORION-ANCHOR: COMBAT-ACTION-PAYLOAD]` | `src/cartridges/orion/systems/combat/skillExecution.ts` | `executeActionPayload()` resolving multi-source `[L]`/`[R]` actions, weapon skills, adaptive damage types, and support pulses. |
 | `[ORION-ANCHOR: COMBAT-DEFENSE-MATH]` | `src/cartridges/orion/systems/combat/damageSystem.ts` | `applyDamageToLayers()` Three Defense Layers resolution (`Layer 1 Shields → Layer 2 Armor → Layer 3 200 Frame HP`). |
 | `[ORION-ANCHOR: INERTIA-PHYSICS-ENGINE]` | `src/cartridges/orion/systems/inertiaSystem.ts` | `resolveHitInertiaReaction()` & `applyRangedRecoilImpulse()` implementing `Δv = J / m_eff`, Stability `S` deadband/recovery, directional charge `μ`, and recoil restriction. |
@@ -49,7 +50,7 @@ src/cartridges/orion/
 │   ├── INDEX.md                  # Narrative worldbuilding, Belldor stages & doc index
 │   ├── CODE_RULES.md             # Engineering & AI authoring rules (commenting, modularity, memory/network safety)
 │   ├── AUTHORING_GUIDE.md        # Technical architecture & content authoring manual
-│   ├── EQUIPMENT_AND_FEATS.md    # 101 weapons (72 Custom + 29 Magitech across 8 Classes), hardware & 97 canonical feats
+│   ├── EQUIPMENT_AND_FEATS.md    # 101 weapons (72 Custom + 29 Magitech across 8 Classes), hardware & 118 canonical feats (incl. 22 Specialist Stances)
 │   └── INERTIA_SYSTEM.md         # Inertia v0.1 physics & stability specification
 │
 ├── types/                        # Domain-Organized TypeScript Schemas
@@ -73,9 +74,10 @@ src/cartridges/orion/
 │   ├── items/                    # Consumables, 9 Gemstones, Currency & Quest Relics
 │   ├── equipment/                # Slot-organized Weapons, Hardware, Frame Plating, Reactors & Utilities
 │   ├── characters/               # 6 Classless Starting Loadout Kit profiles (Bastion, Fortress, Dawnforge, etc.)
-│   └── progression/              # [ORION-ANCHOR: PROG-FEAT-SYNERGY] 97 Canonical Feats, 96-Node Constellation & Equipment Handling
+│   └── progression/              # [ORION-ANCHOR: PROG-FEAT-SYNERGY] 118 Canonical Feats, 118-Node Constellation & Equipment Handling
 │       ├── index.ts              # Canonical feats, gemstone economy, and progression helpers
-│       └── featHandling.ts       # 96-node 6-arm hexagonal constellation coordinates & hybrid equipment prerequisite/handling evaluator
+│       ├── specialistStances.ts  # [ORION-ANCHOR: PROG-SPECIALIST-STANCES] 22 Specialist Feats & Stances (active stance resolver & skill overrides)
+│       └── featHandling.ts       # 118-node 6-arm hexagonal constellation coordinates & hybrid equipment prerequisite/handling evaluator
 │
 ├── systems/                      # Modular Domain Engine Systems
 │   ├── combat/                   # Modular Combat Subsystem
@@ -107,7 +109,7 @@ src/cartridges/orion/
 └── ui/                           # React HUD, Satchel & Menu overlays (operable via Keyboard, Gamepad, Virtual Controls & Mouse/Touch via UniversalMenuNavigator)
     ├── OrionHud.tsx              # HUD orchestrator & Cosmic World Map modal
     ├── OrionGameMenu.tsx         # [START] Pause Menu & Roster/Options subviews
-    ├── OrionSatchel.tsx          # Consolidated 5-tab Tactical Menu (STATUS, LOADOUT [Slots/Armory/Inventory], FEATS [96], MAP, CODEX)
+    ├── OrionSatchel.tsx          # Consolidated 5-tab Tactical Menu (STATUS, LOADOUT [Slots/Armory/Inventory], FEATS [118], MAP, CODEX)
     ├── hud/                      # Modular HUD subcomponents (HudTitleModal, HudDefenseBars, HudSkillDeck)
     ├── satchel/                  # Modular Satchel subcomponents (SatchelCanvases, SatchelStatusTab, SatchelLoadoutTab, SatchelArmoryTab, SatchelFeatsTab, SatchelWorldTab, SatchelCodexTab)
     └── settings/                 # Unified Controls, Graphics & Audio settings panel (OrionSettingsPanel)

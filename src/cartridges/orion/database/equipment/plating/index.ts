@@ -8,6 +8,9 @@ import {
   FramePlatingDefinition,
 } from './coreplates';
 
+/**
+ * Re-exported FramePlatingDefinition type contract.
+ */
 export type { FramePlatingDefinition };
 export * from './sprites';
 

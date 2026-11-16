@@ -43,7 +43,7 @@ export interface SatchelStatusTabProps {
 
 /**
  * Pilot Satchel Status Tab displaying defense layer breakdowns, inertia telemetry,
- * equipment handling proficiency from the 96-feat constellation, and Main Hand (Right),
+ * equipment handling proficiency from the 118-feat constellation, and Main Hand (Right),
  * Side Hand (Left), and Auxiliary (Back) progression status.
  * Supports both HUD modes inside the Pilot Satchel overlay. Mutates `state: OrionState` only via debug/light adjustments.
  */
@@ -543,7 +543,7 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
       <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">
         <div className="flex flex-wrap items-center justify-between gap-1">
           <span className="font-bold text-[#38bdf8] text-[10px]">
-            EQUIPPED HARDWARE &amp; FEAT HANDLING PROFICIENCY (96-NODE CONSTELLATION):
+            EQUIPPED HARDWARE &amp; FEAT HANDLING PROFICIENCY (118-NODE CONSTELLATION):
           </span>
           <span className="text-[8px] text-[#94a3b8]">
             STANCE: <b className="text-[#fde047]">{getActiveWeaponStance(state).shortTag}</b> · BAND:{' '}

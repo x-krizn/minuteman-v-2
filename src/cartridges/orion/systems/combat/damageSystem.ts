@@ -4,6 +4,7 @@
  */
 
 import { soundSystem } from '../../../../engine/core/soundSystem';
+import { evaluateActiveSpecialistStance } from '../../database/progression';
 import {
   ArmorState,
   DamageType,
@@ -299,12 +300,15 @@ export function resolveEnemyMeleeAttacks(
           hitDamage = Math.round(e.damage * (1 + 0.1 * (e.hitsLanded - 1)));
         }
 
-        // Active Skill 4 Held Block mitigation (0.34s Perfect Block window vs Standard Held Block)
+        // Active Skill 4 Held Block mitigation (0.34s Perfect Block window + Specialist Stance bonus vs Standard Held Block)
         if (state.isHoldingBlock || (state.blockTimer || 0) > 0) {
           const isShieldBlock = Boolean(
             state.blockingWeaponId && state.blockingWeaponId.includes('shield')
           );
-          const isPerfectBlock = (state.blockHoldTimer ?? 0) <= PERFECT_BLOCK_WINDOW_SEC;
+          const specEval = evaluateActiveSpecialistStance(state);
+          const isPerfectBlock =
+            (state.blockHoldTimer ?? 0) <=
+            PERFECT_BLOCK_WINDOW_SEC + specEval.passiveModifiers.perfectBlockWindowBonusSec;
 
           if (isPerfectBlock) {
             // 0.34s Perfect Block: 0 damage taken, heavy parry stagger, shield restore & heat vent!

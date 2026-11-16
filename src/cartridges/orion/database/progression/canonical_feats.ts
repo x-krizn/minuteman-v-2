@@ -10,6 +10,7 @@ import {
   GemId,
   PilotSkillId,
 } from "../../types";
+import { SPECIALIST_FRAME_FEATS } from "./specialistStances";
 
 // ─── 95 VERBATIM LORE FEATS (TIERS I–V) + KNIGHT'S OATH REWARD FEAT ──────────
 
@@ -1253,6 +1254,7 @@ const LORE_FEAT_SEEDS: LoreFeatSeed[] = [
  */
 export const CANONICAL_FRAME_FEAT_CATALOG: FrameFeatDefinition[] = [
   ...LORE_FEAT_SEEDS.map(buildLoreFeat),
+  ...SPECIALIST_FRAME_FEATS,
   {
     id: 'knights_oath',
     name: "Knight's Oath",

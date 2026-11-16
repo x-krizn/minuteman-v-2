@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "wiki": "node scripts/build-index.mjs --out public/wiki --strict",
-    "dev": "node scripts/build-index.mjs --out public/wiki && vite --port=3000 --host=0.0.0.0",
+    "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "node scripts/build-index.mjs --out public/wiki --strict && vite build && node scripts/build-index.mjs --out dist/wiki --strict",
     "preview": "vite preview",
     "clean": "rm -rf dist",

@@ -1149,7 +1149,14 @@ export function classifyWeaponCombatArchetype(
   };
 }
 
+/**
+ * Re-exported ranged basic shot profile resolver and BCU reference table.
+ */
 export { resolveRangedBasicShotProfile, WEAPON_BCU_REFERENCE };
+
+/**
+ * Re-exported RangedBasicShotProfile type contract.
+ */
 export type { RangedBasicShotProfile };
 
 /**

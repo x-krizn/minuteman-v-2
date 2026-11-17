@@ -47,7 +47,6 @@ function handleGrailKnightDefeat(
 export const percivalKnightEnemy: EnemyWikiDefinition = {
   type: 'percival_knight',
   name: 'Sir Percival (Grail Knight)',
-  spawnChar: 'K',
   faction: 'camelot',
   emissiveColor: '#60a5fa',
   tellRadius: 34,

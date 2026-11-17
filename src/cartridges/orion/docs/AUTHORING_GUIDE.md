@@ -13,12 +13,12 @@ Every critical registry, world-composer boundary, and engine hook in the codebas
 
 | Anchor Tag | File Path | Purpose & When to Edit |
 | :--- | :--- | :--- |
-| `[ORION-ANCHOR: TYPES-WORLD-HIERARCHY]` | `src/cartridges/orion/types/world.ts` | `BiomeDefinition` (`tileTypes`, `enemySpawnTypes`, `tileRules`, `tileAssets`), `TileDefinition`, `RoomDefinition`, `MapDefinition`, `AreaWikiDefinition`, and `RegionDefinition` schemas. |
+| `[ORION-ANCHOR: TYPES-WORLD-HIERARCHY]` | `src/cartridges/orion/types/world.ts` | `EnemySpawnOverride`, `EnemySpawnMap`, `BiomeDefinition` (`tileTypes`, `enemySpawnTypes`, `tileRules`, `tileAssets`), `TileDefinition`, `RoomDefinition`, `MapDefinition`, `AreaWikiDefinition`, and `RegionDefinition` schemas. |
 | `[ORION-ANCHOR: U00-UNIVERSE-CATALOG]` | `src/cartridges/orion/database/world/universe.ts` | The 20-World `u00` Universe catalog (`8 Major`, `7 Minor`, `5 Unstable`) and `specStatus: 'LOCKED' \| 'UNDEFINED'` world status flags. |
 | `[ORION-ANCHOR: WORLD-GLOB-REGISTRY]` | `src/cartridges/orion/database/world/index.ts` | Single polymorphic `import.meta.glob` scanner that auto-registers Regions, Areas, Maps, Rooms, Biomes, Tiles, Waystations, and Waygates. |
-| `[ORION-ANCHOR: ASCII-CHAR-REGISTRY]` | `src/cartridges/orion/database/world/index.ts` | Centralized ASCII character resolver (`getTileDefinition`, `resolveRoomEnemyTypeAtChar`) and `getMasterAsciiCharacterRegistry()` collision audit. |
+| `[ORION-ANCHOR: ASCII-CHAR-REGISTRY]` | `src/cartridges/orion/database/world/index.ts` | Centralized ASCII character resolver (`getTileDefinition`, 5-tier `resolveRoomEnemyTypeAtChar`) and `getMasterAsciiCharacterRegistry()` collision audit. |
 | `[ORION-ANCHOR: ENEMY-GLOB-REGISTRY]` | `src/cartridges/orion/database/enemies/index.ts` | Recursive auto-discovery for all Enemy, Boss, and NPC modules (`ENEMY_REGISTRY`, `CHAR_TO_ENEMY_TYPE`, `ENEMY_SPAWN_COLLISIONS`). |
-| `[ORION-ANCHOR: ENEMY-SPAWN-RESOLVER]` | `src/cartridges/orion/database/enemies/index.ts` | `resolveEnemyTypeForChar(char, biomeEnemyMap)` and `getEnemyBySpawnChar` supporting biome-scoped spawn overrides. |
+| `[ORION-ANCHOR: ENEMY-SPAWN-RESOLVER]` | `src/cartridges/orion/database/enemies/index.ts` | `resolveEnemySpawnOverride`, `resolveEnemyTypeForChar(char, biomeEnemyMap, occurrenceIndex)`, and `getEnemyBySpawnChar` supporting string or ordered array overrides. |
 | `[ORION-ANCHOR: WORLD-KEY-ROUTES]` | `src/cartridges/orion/systems/world/roomLoader.ts` | Declarative `KEY_NODE_ROUTES` graph connecting authored `key` rooms (`"rx,ry"`) across cardinal directions with `routeTotal` general nodes. |
 | `[ORION-ANCHOR: U00-ZONE-SEALS]` | `src/cartridges/orion/systems/world/worldTransitions.ts` | `getUndefinedZoneSealReason` enforcing `specStatus: 'UNDEFINED'` Æther Fog seals until a zone's canonical spec is unlocked. |
 | `[ORION-ANCHOR: WORLD-COMPOSER-INIT]` | `src/cartridges/orion/systems/world/roomLoader.ts` | `assembleNestedWorld()` 5-tier world composer (`Region → Area → Map → Room`) and automatic cardinal doorway carver. |
@@ -26,7 +26,7 @@ Every critical registry, world-composer boundary, and engine hook in the codebas
 | `[ORION-ANCHOR: ROOM-TRANSITION-GATE]` | `src/cartridges/orion/systems/world/worldTransitions.ts` | `transitionViaAetherDoor()` handling room-to-room doorway alignment, area banners, and dynamic enemy/feature spawning. |
 | `[ORION-ANCHOR: WAYSTATION-WAYGATE-TRAVEL]` | `src/cartridges/orion/systems/world/worldTransitions.ts` | `fastTravelToWaystation()` and Colossal Waygate inter-region / inter-world teleportation & armor repair. |
 | `[ORION-ANCHOR: CONTEXTUAL-LOOT-TABLES]` | `src/cartridges/orion/systems/world/worldPersistence.ts` | `ENEMY_EQUIPMENT_DROP_POOLS` and `resolveContextualEquipmentDrop()` hierarchical loot table resolution (`Enemy → Room → Area → Region`). |
-| `[ORION-ANCHOR: ENTITY-SPAWN-ROOM]` | `src/cartridges/orion/systems/entitySystem.ts` | `spawnRoomEnemies()` parsing `10 × 9` room ASCII grids using `resolveRoomEnemyTypeAtChar(char, state.biomeId)`. |
+| `[ORION-ANCHOR: ENTITY-SPAWN-ROOM]` | `src/cartridges/orion/systems/entitySystem.ts` | `spawnRoomEnemies()` parsing `10 × 9` room ASCII grids using 5-tier `resolveRoomEnemyTypeAtChar(char, context, occurrenceIndex)`. |
 | `[ORION-ANCHOR: RENDER-CLUSTER-BAKE]` | `src/cartridges/orion/systems/render/worldRenderer.ts` | `bakeBiomeClusterTileset()` offscreen sub-tile micro-composer baking 20 separated `3×3` biome clusters (`ruins_tileset` & `bog_tileset`). |
 | `[ORION-ANCHOR: RENDER-VISION-LIGHTING]` | `src/cartridges/orion/systems/render/effectsRenderer.ts` | `resolveRoomLightingProfile()` dynamic vision radius (`baseLight` tiles), raycast wall/tree shadow occlusion, and static campfire/lantern light anchors. |
 | `[ORION-ANCHOR: RENDER-POST-PROCESS]` | `src/cartridges/orion/systems/render/effectsRenderer.ts` | `drawDynamicLightingAndBloomPass()` 5-pass 2.5D lighting, water reflection, 1px outline, blade trail, and weather pipeline. |
@@ -66,10 +66,13 @@ src/cartridges/orion/
 │   ├── world/                    # Spatial World -> Region -> Area -> Map (+ Rooms) Hierarchy
 │   │   ├── index.ts              # [ORION-ANCHOR: WORLD-GLOB-REGISTRY] & [ORION-ANCHOR: ASCII-CHAR-REGISTRY]
 │   │   ├── universe.ts           # [ORION-ANCHOR: U00-UNIVERSE-CATALOG] 20-World Catalog (8 Major, 7 Minor, 5 Unstable)
-│   │   ├── belldor/              # 1. Belldor (Camelot) — Arthurian, canon (LOCKED)
-│   │   ├── tyrranus/             # 2. Tyrranus (Greek/Roman, non-canon · UNDEFINED zone docs)
-│   │   ├── global/               # Reusable procedural & inter-world templates
-│   │   └── tiles/                # Shared tile & 2.5D prop definitions + embedded 16x16 base tiles
+│   │   ├── worldAudit.ts         # Startup world registry duplicate & cross-reference verifier (`WORLD_AUDIT_ISSUES`)
+│   │   ├── global/               # Reusable procedural & inter-world templates + shared/biome tile folders
+│   │   │   ├── templates.ts      # Global regions, areas, maps, biomes & room templates
+│   │   │   └── biomes/general/tiles/ # Shared tile & 2.5D prop definitions + embedded 16x16 base tiles & atlases
+│   │   └── overworld/            # Authored Overworld hierarchies
+│   │       ├── belldor/          # 1. Belldor (Camelot) — Arthurian, canon (LOCKED)
+│   │       └── tyrranus/         # 2. Tyrranus (Greek/Roman, non-canon · UNDEFINED zone docs)
 │   ├── enemies/                  # [ORION-ANCHOR: ENEMY-GLOB-REGISTRY] Self-contained Enemy, Boss & NPC modules
 │   ├── items/                    # Consumables, 9 Gemstones, Currency & Quest Relics
 │   ├── equipment/                # Slot-organized Weapons, Hardware, Frame Plating, Reactors & Utilities
@@ -133,47 +136,58 @@ No outer room in Orion has a literal solid map border. Instead, `systems/world/w
 
 Every character in a `10 × 9` Room `grid` resolves through two passes:
 1. **Terrain / Wall / Doodad Pass (`getTileDefinition(char, biomeId)`)**: Looks up `biome.tileTypes[char]` first, then falls back to global `TILE_REGISTRY[char]`, then defaults to `.` (`floor`) so enemy spawn characters automatically sit on walkable floor tiles.
-2. **Enemy / NPC Spawn Pass (`resolveRoomEnemyTypeAtChar(char, biomeId)` at `[ORION-ANCHOR: ENTITY-SPAWN-ROOM]`)**: Looks up `biome.enemySpawnTypes?.[char]` first, then falls back to global `CHAR_TO_ENEMY_TYPE[char]`.
+2. **Enemy / NPC Spawn Pass (`resolveRoomEnemyTypeAtChar(char, context, occurrenceIndex)` at `[ORION-ANCHOR: ENTITY-SPAWN-ROOM]`)**: Conserves ASCII symbols by treating room characters as role tokens (`E`, `W`, `p`, `K`, `o`, `s`, `N`) and resolving them across the 5-tier spatial hierarchy in priority order:
+   `Room.enemySpawnTypes -> Map.enemySpawnTypes -> Area.enemySpawnTypes -> Biome.enemySpawnTypes -> Global CHAR_TO_ENEMY_TYPE[char]`.
+   An override value may be either a single enemy type ID (`string`) or an ordered array (`string[]`) indexed by the character's reading-order occurrence in the room grid (`occurrenceIndex % list.length`).
 
-#### Table 1: Reserved Global Terrain, Wall & Interactive Doodad Characters (`database/world/tiles/`)
+#### Table 1: Reserved Global Terrain, Wall & Interactive Doodad Characters (`database/world/global/biomes/general/tiles/`)
 | Char | Tile ID | Entry File | Layer & Collision | Behavior & Auto-Tiler Rules |
 | :---: | :--- | :--- | :--- | :--- |
-| `.` | `floor` | `tiles/floor.ts` | Layer 0 · Walkable | **Brown Peat / Dirt** (`07_01..09_03` in `bog_tileset`); default fallback floor under enemy spawns. |
-| `,` | `grass` | `tiles/grass.ts` | Layer 0 · Walkable | **Moss Grass** (`04_01..06_03` in `bog_tileset`); tree canopy walls connect to grass before dirt. |
-| `~` | `mud` | `tiles/mud.ts` | Layer 0 · Walkable Hazard | **Corrosive Bog Water / Aether** (`13_01..15_03`); slows movement and corrodes Layer 2 Armor when `biome.tileRules.corrosiveWater = true`. |
-| `:` | `ruins_floor` | `tiles/ruins_floor.ts` | Layer 0 · Walkable | **Pale Ruins Brick** (`10_01..12_03`); renders raised platform/bridge retaining walls when north of `~`. |
-| `;` | `mire_floor` | `tiles/mire_floor.ts` | Layer 0 · Walkable | **Dark Dungeon Stone / Mire** (`01_01..03_03`); pairs with dark stone walls. |
-| `#` | `pylon_wall` | `tiles/pylon_wall.ts` | Layer 1 · **Solid** | Terrain-matched perimeter/interior wall (Tree Canopy on grass/dirt, Ruins Stone on `:`, Dark Stone on `;`). |
-| `P` | `pylon_pillar` | `tiles/pylon_pillar.ts` | Layer 2 · **Solid** | 2.5D depth-sorted single pillar / tree trunk (`blocksHeight: 2`). |
-| `_` | `chasm` | `tiles/chasm.ts` | Layer 0 · Pitfall | Open pitfall/sinkhole (`isChasm: true`); player must Jump `[A]` or Booster Dash `[B]` across. |
-| `%` | `desync_wall` | `tiles/desync_wall.ts` | Layer 1 · **Dynamic** | Temporal barrier that phases between solid and passable every `biome.tileRules.desyncPeriodSec`. |
-| `D` | `drop_pod` | `tiles/drop_pod.ts` | Layer 2 · **Solid** | Drop-Pod Spawn Anchor (`0,0`) & initial repair/attunement point. |
-| `S` | `fallen_scout` | `tiles/fallen_scout.ts` | Layer 2 · **Solid** | Bedivere's Fallen Scout Wreckage (`-1,0`); interactive lore/loot object on `[A]`. |
-| `C` | `cache` | `tiles/cache.ts` | Layer 2 · **Solid** | Lootable Supply Cache (`room.cache` rewards on `[A]`). |
-| `V` | `chest` | `tiles/chest.ts` | Layer 2 · **Solid** | Interactive Treasure Chest (`doodads_01` sprite; rewards gemstones & equipment on `[A]`). |
-| `G` | `rusted_gate` | `tiles/rusted_gate.ts` | Layer 1 · **Dynamic** | Locked perimeter gate; opens with `rusted_gate_key` or switch trigger. |
-| `M` | `cathedral_door`| `tiles/cathedral_door.ts`| Layer 1 · **Dynamic** | Three-Way Cathedral Dungeon Entrance (opens via Key, 3 Grail Fragments, or 3 Hidden Switches). |
-| `L` | `poe_lantern` | `tiles/poe_lantern.ts` | Layer 2 · **Solid** | Decoupled Layer 2 Poe Lantern doodad (inherits neighbor terrain on Layer 0; emits radial light). |
-| `A` | `aether_waystation`| `tiles/aether_waystation.ts`| Layer 2 · **Solid** | **Æther Waystation** (`doodads_01` campfire/monolith; attunes Area fast-travel & restores Frame/Armor on `[A]`). |
-| `Q` | `colossal_waygate`| `tiles/colossal_waygate.ts` | Layer 2 · **Solid** | **Colossal Waygate** (attunes Region/World signature fast-travel on `[A]`). |
-| `1` | `hidden_switch_1` | `tiles/hidden_switch.ts` | Layer 2 · Walkable | Secret exploration floor/wall switch #1 (`[A]` to toggle). |
-| `2` | `hidden_switch_2` | `tiles/hidden_switch.ts` | Layer 2 · Walkable | Secret exploration floor/wall switch #2 (`[A]` to toggle). |
-| `3` | `hidden_switch_3` | `tiles/hidden_switch.ts` | Layer 2 · Walkable | Secret exploration floor/wall switch #3 (`[A]` to toggle). |
-| `!` | `toggle_switch` | `tiles/hidden_switch.ts` | Layer 2 · Walkable | Room mechanism / desync lock lever (`[A]` to toggle). |
+| `.` | `floor` | `global/biomes/general/tiles/floor.ts` | Layer 0 · Walkable | **Brown Peat / Dirt** (`07_01..09_03` in `bog_tileset`); default fallback floor under enemy spawns. |
+| `,` | `grass` | `global/biomes/general/tiles/grass.ts` | Layer 0 · Walkable | **Moss Grass** (`04_01..06_03` in `bog_tileset`); tree canopy walls connect to grass before dirt. |
+| `~` | `mud` | `global/biomes/general/tiles/mud.ts` | Layer 0 · Walkable Hazard | **Corrosive Bog Water / Aether** (`13_01..15_03`); slows movement and corrodes Layer 2 Armor when `biome.tileRules.corrosiveWater = true`. |
+| `:` | `ruins_floor` | `global/biomes/general/tiles/ruins_floor.ts` | Layer 0 · Walkable | **Pale Ruins Brick** (`10_01..12_03`); renders raised platform/bridge retaining walls when north of `~`. |
+| `;` | `mire_floor` | `global/biomes/general/tiles/mire_floor.ts` | Layer 0 · Walkable | **Dark Dungeon Stone / Mire** (`01_01..03_03`); pairs with dark stone walls. |
+| `#` | `pylon_wall` | `global/biomes/general/tiles/pylon_wall.ts` | Layer 1 · **Solid** | Terrain-matched perimeter/interior wall (Tree Canopy on grass/dirt, Ruins Stone on `:`, Dark Stone on `;`). |
+| `P` | `pylon_pillar` | `global/biomes/general/tiles/pylon_pillar.ts` | Layer 2 · **Solid** | 2.5D depth-sorted single pillar / tree trunk (`blocksHeight: 2`). |
+| `_` | `chasm` | `global/biomes/general/tiles/chasm.ts` | Layer 0 · Pitfall | Open pitfall/sinkhole (`isChasm: true`); player must Jump `[A]` or Booster Dash `[B]` across. |
+| `%` | `desync_wall` | `global/biomes/general/tiles/desync_wall.ts` | Layer 1 · **Dynamic** | Temporal barrier that phases between solid and passable every `biome.tileRules.desyncPeriodSec`. |
+| `D` | `drop_pod` | `global/biomes/general/tiles/drop_pod.ts` | Layer 2 · **Solid** | Drop-Pod Spawn Anchor (`0,0`) & initial repair/attunement point. |
+| `S` | `fallen_scout` | `global/biomes/general/tiles/fallen_scout.ts` | Layer 2 · **Solid** | Bedivere's Fallen Scout Wreckage (`-1,0`); interactive lore/loot object on `[A]`. |
+| `C` | `cache` | `global/biomes/general/tiles/cache.ts` | Layer 2 · **Solid** | Lootable Supply Cache (`room.cache` rewards on `[A]`). |
+| `V` | `chest` | `global/biomes/general/tiles/chest.ts` | Layer 2 · **Solid** | Interactive Treasure Chest (`doodads_01` sprite; rewards gemstones & equipment on `[A]`). |
+| `G` | `rusted_gate` | `global/biomes/general/tiles/rusted_gate.ts` | Layer 1 · **Dynamic** | Locked perimeter gate; opens with `rusted_gate_key` or switch trigger. |
+| `M` | `cathedral_door`| `global/biomes/general/tiles/cathedral_door.ts`| Layer 1 · **Dynamic** | Three-Way Cathedral Dungeon Entrance (opens via Key, 3 Grail Fragments, or 3 Hidden Switches). |
+| `L` | `poe_lantern` | `global/biomes/general/tiles/poe_lantern.ts` | Layer 2 · **Solid** | Decoupled Layer 2 Poe Lantern doodad (inherits neighbor terrain on Layer 0; emits radial light). |
+| `A` | `aether_waystation`| `global/biomes/general/tiles/aether_waystation.ts`| Layer 2 · **Solid** | **Æther Waystation** (`doodads_01` campfire/monolith; attunes Area fast-travel & restores Frame/Armor on `[A]`). |
+| `Q` | `colossal_waygate`| `global/biomes/general/tiles/colossal_waygate.ts` | Layer 2 · **Solid** | **Colossal Waygate** (attunes Region/World signature fast-travel on `[A]`). |
+| `1` | `hidden_switch_1` | `global/biomes/general/tiles/hidden_switch.ts` | Layer 2 · Walkable | Secret exploration floor/wall switch #1 (`[A]` to toggle). |
+| `2` | `hidden_switch_2` | `global/biomes/general/tiles/hidden_switch.ts` | Layer 2 · Walkable | Secret exploration floor/wall switch #2 (`[A]` to toggle). |
+| `3` | `hidden_switch_3` | `global/biomes/general/tiles/hidden_switch.ts` | Layer 2 · Walkable | Secret exploration floor/wall switch #3 (`[A]` to toggle). |
+| `!` | `toggle_switch` | `global/biomes/general/tiles/hidden_switch.ts` | Layer 2 · Walkable | Room mechanism / desync lock lever (`[A]` to toggle). |
 
-#### Table 2: Reserved Global Enemy & NPC Spawn Characters (`database/enemies/belldor/`)
-| Char | Enemy Type ID | Entry File | Faction | Role & Notes |
+#### Table 2: Conserved Role-Based Enemy & NPC Spawn Characters (`database/enemies/belldor/`)
+| Char | Default Enemy Type ID | Entry File | Faction | Conserved Role & Contextual Override Rules |
 | :---: | :--- | :--- | :--- | :--- |
-| `E` | `bog_crawler` | `enemies/belldor/bog_crawler.ts` | `hostile` | Armored Bog arthropod ambusher (`M00 The Bog`). |
-| `W` | `bog_wurm` | `enemies/belldor/bog_wurm.ts` | `hostile` | Submerged bio-machine serpent mini-boss (`M00 The Bog`). |
-| `p` | `bog_poe` | `enemies/belldor/bog_poe.ts` | `poe` | Floating Lantern Spirit (`M00 The Bog`; escort or slay). |
-| `o` | `orc_warrior` | `enemies/belldor/orc_warrior.ts` | `hostile` | Frontline Orc boarding-axe & shield raider (`Belldor` / `Novarin`). |
-| `s` | `orc_scout` | `enemies/belldor/orc_scout.ts` | `hostile` | Ranged Orc boltcaster skirmisher (`Belldor` / `Novarin`). |
-| `K` | `percival_knight` | `enemies/belldor/percival_knight.ts` | `camelot` | Sir Percival — Grail Knight phalanx boss (`Camelot Border Town`). |
-| `T` | `tristan_knight` | `enemies/belldor/tristan_knight.ts` | `camelot` | Sir Tristan — Corrupted Ranger boss (`Camelot Border Town`). |
-| `B` | `bors_knight` | `enemies/belldor/bors_knight.ts` | `camelot` | Sir Bors — Berserk Striker boss (`Camelot Border Town`). |
-| `N` | `town_npc` | `enemies/belldor/town_npc.ts` | `npc` | Border Town Survivor (`calm`, `linger`, or `feral` disposition). |
+| `E` | `bog_crawler` | `enemies/belldor/bog_crawler.ts` | `hostile` | **Generic Hostile Enemy** (defaults to `bog_crawler`; overridden to `orc_warrior` in `orc_siege_encampment`). |
+| `W` | `bog_wurm` | `enemies/belldor/bog_wurm.ts` | `hostile` | **Wurm / Serpent** (submerged bio-machine serpent mini-boss in `M00 The Bog`; reusable for non-Bog wurms). |
+| `p` | `bog_poe` | `enemies/belldor/bog_poe.ts` | `poe` | **Primary Objective / Spirit Entity** (first Bog objective — Floating Lantern Spirit; uppercase `P` remains `pylon_pillar`). |
+| `K` | `camelot_knight` | `enemies/belldor/camelot_knight.ts` | `camelot` | **Knight** (spawns generic `camelot_knight` by default; overridden in `4,-1` and `5,0` via `enemySpawnTypes` to spawn named story knights below). |
+| `o` | `orc_warrior` | `enemies/belldor/orc_warrior.ts` | `orc` | **Heavy Raider / Brawler** (frontline Orc boarding-axe & shield raider; pairs with `s`). |
+| `s` | `orc_scout` | `enemies/belldor/orc_scout.ts` | `orc` | **Ranged Scout / Skirmisher** (ranged Orc boltcaster skirmisher; pairs with `o`). |
+| `N` | `town_npc` | `enemies/belldor/town_npc.ts` | `npc` | **Settlement NPC / Citizen** (Border Town Survivor with `calm`, `linger`, or `feral` disposition). |
+| *(Override `K`)* | `percival_knight` | `enemies/belldor/percival_knight.ts` | `camelot` | Sir Percival (Grail Knight) — spawned via `enemySpawnTypes.K` in `map_border_town_barracks` (`4,-1`) & `map_border_town_cathedral` (`5,0`). |
+| *(Override `K`)* | `tristan_knight` | `enemies/belldor/tristan_knight.ts` | `camelot` | Sir Tristan (Corrupted Ranger) — spawned via `enemySpawnTypes.K` in `map_border_town_barracks` (`4,-1`) & `map_border_town_cathedral` (`5,0`). |
+| *(Override `K`)* | `bors_knight` | `enemies/belldor/bors_knight.ts` | `camelot` | Sir Bors (Berserk Striker) — spawned via `enemySpawnTypes.K` in `map_border_town_cathedral` (`5,0`). |
 | *(Event)*| `lady_of_the_lake`| `enemies/belldor/lady_of_the_lake.ts`| `hostile` | Awakened via `awakenLadyOfTheLake()` in `0,-2` when carrying Bedivere's items. |
+
+---
+
+### 2C. Startup World Registry Audit (`database/world/worldAudit.ts`)
+Immediately after `database/world/index.ts` finishes scanning `./**/*.ts`, it invokes `auditWorldRegistries(...)` from `database/world/worldAudit.ts` and exports the diagnostic array `WORLD_AUDIT_ISSUES: string[]` (also surfaced in `getMasterAsciiCharacterRegistry().collisions` alongside `TILE_CHAR_COLLISIONS` and `ENEMY_SPAWN_COLLISIONS`):
+- **Duplicate Detection**: Flags duplicate IDs or coordinates across `RegionDefinition`, `AreaWikiDefinition`, `MapDefinition`, `RoomDefinition` (`local` coord, `local` ID, `global` ID), `BiomeDefinition`, `TileDefinition`, `WaygateNode`, `WaystationNode`, and `globalRoomSlots`.
+- **Cross-Reference Verification**: Verifies that every referenced `regionId`, `areaId`, `mapId`, `biomeId`, `tileId`, `globalRoomId`, and room coordinate across `U00_UNIVERSE_CATALOG`, `REGION_REGISTRY`, `AREA_REGISTRY`, `MAP_REGISTRY`, `LOCAL_ROOM_REGISTRY`, `GLOBAL_ROOM_REGISTRY`, and `BIOME_REGISTRY` resolves to a registered definition without silent fallback.
+- **Additive & Removable**: Wired at a single call site in `database/world/index.ts`; deleting `worldAudit.ts` and its single call in `database/world/index.ts` leaves all runtime registries untouched.
 
 ---
 

@@ -266,8 +266,8 @@ export function resolveEnemyMeleeAttacks(
           // Normal Sir Bors: Heavy frontal mace/maul slam impact zone
           isHit = isTargetInImpactZone(e.x, e.y, ang, 12, 20, state.x, state.y);
         }
-      } else if (e.type === 'percival_knight') {
-        // Sir Percival: Wide directional shield-wall charge bash
+      } else if (e.type === 'percival_knight' || e.type === 'camelot_knight') {
+        // Sir Percival / Camelot Knight-Errant: Wide directional shield-wall charge bash / broadsword cleave
         isHit = isTargetInDirectionalArc(e.x, e.y, ang, 26, Math.PI * 0.8, state.x, state.y);
       } else if (e.type === 'orc_warrior') {
         // Orc Warrior: Heavy frontal boarding-axe chop & shield brawl sector

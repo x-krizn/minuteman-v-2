@@ -86,6 +86,19 @@ export interface BiomeTileAssets {
 export type ClusterTerrainType = 'dirt' | 'grass' | 'aether' | 'ruins' | 'mire';
 
 /**
+ * Type contract for `EnemySpawnOverride` (enemy spawn override) in `world.ts`.
+ * Maps a conserved ASCII role symbol (`'E'`, `'W'`, `'p'`, `'K'`, `'o'`, `'s'`, `'N'`) to a single enemy type ID
+ * or an ordered list of enemy type IDs resolved by reading-order occurrence index in a room grid.
+ */
+export type EnemySpawnOverride = string | string[];
+
+/**
+ * Type contract for `EnemySpawnMap` (enemy spawn map) in `world.ts`.
+ * Contextual lookup table mapping ASCII role characters to enemy type IDs (`Room -> Map -> Area -> Biome -> Global`).
+ */
+export type EnemySpawnMap = Record<string, EnemySpawnOverride>;
+
+/**
  * Type contract for `BiomeDefinition` (biome definition) in `world.ts`.
  */
 export interface BiomeDefinition {
@@ -96,8 +109,8 @@ export interface BiomeDefinition {
   description: string;
   /** Maps tile characters (e.g. '.', ',', '~', ':', '#') to TileDefinition IDs for rooms in this biome */
   tileTypes: Record<string, string>;
-  /** Optional biome-scoped enemy spawn character overrides (maps ASCII char -> EnemyWikiDefinition.type) */
-  enemySpawnTypes?: Record<string, string>;
+  /** Optional biome-scoped enemy spawn character overrides (maps ASCII role char -> enemy type ID or ordered ID list) */
+  enemySpawnTypes?: EnemySpawnMap;
   /** Physics and environmental rules supplied by this biome to its rooms */
   tileRules: BiomeTileRules;
   /** Visual tile asset colors and lighting supplied by this biome to its rooms */
@@ -301,6 +314,8 @@ export interface RoomDefinition {
   lighting?: RoomLightingProfile;
   /** Optional room-specific contextual loot pool override */
   lootPool?: ContextualLootPool;
+  /** Optional room-scoped enemy spawn character overrides (`Room -> Map -> Area -> Biome -> Global`) */
+  enemySpawnTypes?: EnemySpawnMap;
   /** Optional explicit grid column/row dimensions (derived automatically from grid if omitted) */
   cols?: number;
   rows?: number;
@@ -325,6 +340,8 @@ export interface MapProceduralRoomSlot {
   biomeId?: string;
   title?: string;
   bannerTitle?: string;
+  /** Optional slot-scoped enemy spawn character overrides */
+  enemySpawnTypes?: EnemySpawnMap;
 }
 
 /**
@@ -362,6 +379,8 @@ export interface MapDefinition {
   areaId: string;
   biomeId: string;
   description: string;
+  /** Optional map-scoped enemy spawn character overrides (`Room -> Map -> Area -> Biome -> Global`) */
+  enemySpawnTypes?: EnemySpawnMap;
   /** Canonical coordinates of bespoke local rooms assembled into this map */
   localRoomCoords: string[];
   /** Coordinates filled by global rooms (procedural generation / hybrid stitching) */
@@ -468,6 +487,8 @@ export interface AreaWikiDefinition {
   recommendedLevels: string;
   description: string;
   lore: string;
+  /** Optional area-scoped enemy spawn character overrides (`Room -> Map -> Area -> Biome -> Global`) */
+  enemySpawnTypes?: EnemySpawnMap;
   /** Local maps unique to this area */
   localMapIds: string[];
   /** Global maps used in procedural generation within this area */

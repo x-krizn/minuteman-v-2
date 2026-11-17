@@ -1,6 +1,6 @@
 # MINUTEMAN REPOSITORY — CODE RULES
 ### Rules for any AI or human writing code in this repo: Minuteman (the console shell), Knight and Orion (Gemini / AI Studio system instruction)
-*Version: 0.4 | Updated: 2026-11-15 | Location: `docs/CODE_RULES.md` (mirrored at `src/cartridges/orion/docs/CODE_RULES.md` for Orion Code Wiki indexing)*
+*Version: 0.4 | Updated: 2026-11-16 | Location: `docs/CODE_RULES.md` (mirrored at `src/cartridges/orion/docs/CODE_RULES.md` for Orion Code Wiki indexing)*
 
 ---
 
@@ -52,7 +52,7 @@ Code is code. **Sections 1 to 8 apply identically to all three areas.** Orion-on
   |---|---|
   | Minuteman | `engine/core/`, `engine/input/`, `components/gamepad/`, `components/screen/`, `types/`, `utils/` |
   | Knight | `database/`, `renderer/`, `ui/`, `assets/`, plus flat modules at the root (`combat.ts`, `enemies.ts`, `physics.ts`, `pickups.ts`, `particles.ts`, `skills.ts`, `stateStore.ts`) |
-  | Orion | `types/`, `database/`, `systems/combat/`, `systems/render/`, `systems/world/`, `ui/hud/`, `ui/satchel/`, `ui/settings/` |
+  | Orion | `types/`, `database/` (`database/world/global/biomes/<biome>/tiles/`, `database/world/overworld/<world>/`), `systems/combat/`, `systems/render/`, `systems/world/`, `ui/hud/`, `ui/satchel/`, `ui/settings/` |
 
 - **Import direction (all areas):**
   - `types/` imports only other types.
@@ -149,11 +149,11 @@ Code is code. **Sections 1 to 8 apply identically to all three areas.** Orion-on
 
 | Check | Minuteman | Knight | Orion |
 |---|---|---|---|
-| `.ts` / `.tsx` files | 28 | 88 | 169 |
-| License header present | 28 of 28 | 88 of 88 | 169 of 169 |
+| `.ts` / `.tsx` files | 28 | 88 | 171 |
+| License header present | 28 of 28 | 88 of 88 | 171 of 171 |
 | `any`, `@ts-ignore`, `@ts-expect-error`, `TODO`, `FIXME` | 0 | 0 | 0 |
 | Network calls (`fetch`, XHR, WebSocket, `http(s)://`) | 0 | 0 | 0 |
-| Exports with no JSDoc block immediately above | 0 of 95 | 0 of 216 | 0 of 1,389 |
+| Exports with no JSDoc block immediately above | 0 of 95 | 0 of 216 | 0 of 1,397 |
 | `addEventListener` / `removeEventListener` | 24 / 24 | 0 / 0 | 1 / 1 |
 | `setTimeout` / `clearTimeout` | 1 / 1 | 3 / 6 | 3 / 5 |
 | `requestAnimationFrame` / `cancelAnimationFrame` | 6 / 2 (two self-rescheduling loops, one cancel each) | 0 / 0 | 3 / 3 |

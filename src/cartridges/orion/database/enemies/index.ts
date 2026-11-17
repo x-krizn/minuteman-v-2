@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { EnemyWikiDefinition } from '../../types';
+import { EnemySpawnMap, EnemySpawnOverride, EnemyWikiDefinition } from '../../types';
 
 // [ORION-ANCHOR: ENEMY-GLOB-REGISTRY]
 // Auto-discover all enemy entity modules in this directory (including subfolders) via Vite import.meta.glob
@@ -59,14 +59,30 @@ export function getEnemyDefinition(type: string): EnemyWikiDefinition | undefine
 }
 
 /**
+ * Resolves a single `EnemySpawnOverride` (`string | string[]`) to an enemy type ID using `occurrenceIndex` (`0`-based).
+ */
+export function resolveEnemySpawnOverride(
+  override: EnemySpawnOverride | undefined,
+  occurrenceIndex: number = 0
+): string | undefined {
+  if (!override) return undefined;
+  if (typeof override === 'string') return override;
+  if (override.length === 0) return undefined;
+  const safeIdx = Math.max(0, Math.floor(occurrenceIndex)) % override.length;
+  return override[safeIdx];
+}
+
+/**
  * Executes `resolveEnemyTypeForChar` (resolve enemy type for char) in `index.ts`.
  */
 export function resolveEnemyTypeForChar(
   char: string,
-  biomeEnemyMap?: Record<string, string>
+  biomeEnemyMap?: EnemySpawnMap,
+  occurrenceIndex: number = 0
 ): string | undefined {
-  if (biomeEnemyMap && biomeEnemyMap[char]) {
-    return biomeEnemyMap[char];
+  const mapped = resolveEnemySpawnOverride(biomeEnemyMap?.[char], occurrenceIndex);
+  if (mapped) {
+    return mapped;
   }
   return CHAR_TO_ENEMY_TYPE[char];
 }
@@ -76,8 +92,9 @@ export function resolveEnemyTypeForChar(
  */
 export function getEnemyBySpawnChar(
   char: string,
-  biomeEnemyMap?: Record<string, string>
+  biomeEnemyMap?: EnemySpawnMap,
+  occurrenceIndex: number = 0
 ): EnemyWikiDefinition | undefined {
-  const type = resolveEnemyTypeForChar(char, biomeEnemyMap);
+  const type = resolveEnemyTypeForChar(char, biomeEnemyMap, occurrenceIndex);
   return type ? ENEMY_REGISTRY[type] : undefined;
 }

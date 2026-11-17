@@ -47,7 +47,6 @@ function handleGrailKnightDefeat(
 export const borsKnightEnemy: EnemyWikiDefinition = {
   type: 'bors_knight',
   name: 'Sir Bors (Berserk Striker)',
-  spawnChar: 'B',
   faction: 'camelot',
   emissiveColor: '#b8a4ff',
   tellRadius: 34,

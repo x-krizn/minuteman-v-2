@@ -12,6 +12,8 @@ import {
   AreaWikiDefinition,
   BiomeDefinition,
   ClusterTerrainType,
+  EnemySpawnMap,
+  EnemySpawnOverride,
   MapDefinition,
   RegionDefinition,
   RoomDefinition,
@@ -19,23 +21,25 @@ import {
   WaygateNode,
   WaystationNode,
 } from '../../types';
-import { belldorBogBiome } from './belldor/biomes';
-import { camelotBorderTownArea } from './belldor/region_belldor_camelot_heartland/camelot_border_town/area';
-import { m00TheBogArea } from './belldor/region_belldor_outskirts/m00_the_bog/area';
-import { regionBelldorOutskirts } from './belldor/region_belldor_outskirts/region';
+import { registerBogTilesetAtlases } from './global/biomes/general/tiles/bog_tileset_atlas';
+import { DOODADS_01_ATLAS_ID, DOODADS_01_BASE64 } from './global/biomes/general/tiles/doodads_atlas';
+import { dirt01, groundTile } from './global/biomes/general/tiles/floor';
+import { grass01 } from './global/biomes/general/tiles/grass';
+import { mire01 } from './global/biomes/general/tiles/mire_floor';
+import { aether01 } from './global/biomes/general/tiles/mud';
+import { ruins01 } from './global/biomes/general/tiles/ruins_floor';
+import { belldorBogBiome } from './overworld/belldor/biomes';
+import { camelotBorderTownArea } from './overworld/belldor/region_belldor_camelot_heartland/camelot_border_town/area';
+import { m00TheBogArea } from './overworld/belldor/region_belldor_outskirts/m00_the_bog/area';
+import { regionBelldorOutskirts } from './overworld/belldor/region_belldor_outskirts/region';
 import { U00_UNIVERSE_CATALOG, UNIVERSE_WORLD_BY_ID } from './universe';
-import { dirt01, groundTile } from './tiles/floor';
-import { registerBogTilesetAtlases } from './tiles/bog_tileset_atlas';
-import { DOODADS_01_ATLAS_ID, DOODADS_01_BASE64 } from './tiles/doodads_atlas';
-import { grass01 } from './tiles/grass';
-import { mire01 } from './tiles/mire_floor';
-import { aether01 } from './tiles/mud';
-import { ruins01 } from './tiles/ruins_floor';
+import { auditWorldRegistries } from './worldAudit';
 
 import {
   CHAR_TO_ENEMY_TYPE,
   ENEMY_REGISTRY,
   ENEMY_SPAWN_COLLISIONS,
+  resolveEnemySpawnOverride,
   resolveEnemyTypeForChar,
 } from '../enemies';
 
@@ -203,7 +207,7 @@ const embeddedBaseTiles: Partial<BasicFourTilesInput> = {};
 const embeddedModes: Partial<Record<ClusterTerrainType, '4x4' | '2x2'>> = {};
 
 for (const [path, mod] of Object.entries(modules)) {
-  if (path === './index.ts') continue;
+  if (path === './index.ts' || path === './worldAudit.ts') continue;
   for (const exportedValue of Object.values(mod)) {
     if (isRegionDefinition(exportedValue)) {
       REGION_REGISTRY[exportedValue.id] = exportedValue;
@@ -280,6 +284,30 @@ registerBogTilesetAtlases();
 registerBase64Atlas(DOODADS_01_ATLAS_ID, DOODADS_01_BASE64, 16, 16);
 
 /**
+ * Exported const `WORLD_AUDIT_ISSUES` (world audit issues) in `index.ts`.
+ */
+export const WORLD_AUDIT_ISSUES: string[] = auditWorldRegistries({
+  modules,
+  universeCatalog: U00_UNIVERSE_CATALOG,
+  regionRegistry: REGION_REGISTRY,
+  localRegionRegistry: LOCAL_REGION_REGISTRY,
+  globalRegionRegistry: GLOBAL_REGION_REGISTRY,
+  areaRegistry: AREA_REGISTRY,
+  localAreaRegistry: LOCAL_AREA_REGISTRY,
+  globalAreaRegistry: GLOBAL_AREA_REGISTRY,
+  mapRegistry: MAP_REGISTRY,
+  localMapRegistry: LOCAL_MAP_REGISTRY,
+  globalMapRegistry: GLOBAL_MAP_REGISTRY,
+  localRoomRegistry: LOCAL_ROOM_REGISTRY,
+  globalRoomRegistry: GLOBAL_ROOM_REGISTRY,
+  biomeRegistry: BIOME_REGISTRY,
+  tileRegistry: TILE_REGISTRY,
+  tileByIdRegistry: TILE_BY_ID_REGISTRY,
+  waygateRegistry: WAYGATE_REGISTRY,
+  waystationRegistry: WAYSTATION_REGISTRY,
+});
+
+/**
  * Executes `getRegionDefinition` (get region definition) in `index.ts`.
  */
 export function getRegionDefinition(regionId?: string): RegionDefinition {
@@ -335,17 +363,89 @@ export function getTileDefinition(char: string, biomeId?: string): TileDefinitio
 }
 
 /**
- * Resolves an ASCII room character to an Enemy type ID, honoring `biome.enemySpawnTypes` overrides
- * before falling back to the global `CHAR_TO_ENEMY_TYPE` map.
+ * Type contract for `RoomEnemyResolutionContext` (room enemy resolution context) in `index.ts`.
+ * Supplies the spatial hierarchy (`Room -> Map -> Area -> Biome -> Global`) used to resolve a conserved
+ * ASCII role character (`'E'`, `'W'`, `'p'`, `'K'`, `'o'`, `'s'`, `'N'`) to a concrete enemy archetype.
  */
-export function resolveRoomEnemyTypeAtChar(char: string, biomeId?: string): string | undefined {
-  if (biomeId) {
-    const biome = getBiomeDefinition(biomeId);
-    if (biome.enemySpawnTypes?.[char]) {
-      return biome.enemySpawnTypes[char];
+export interface RoomEnemyResolutionContext {
+  room?: string;
+  mapId?: string;
+  areaId?: string;
+  biomeId?: string;
+  roomEnemySpawnTypes?: EnemySpawnMap;
+}
+
+/**
+ * Resolves a conserved ASCII room role character (`'E'`, `'W'`, `'p'`, `'K'`, `'o'`, `'s'`, `'N'`)
+ * to a concrete Enemy type ID across the 5-tier spatial hierarchy:
+ * `Room override -> Map -> Area -> Biome -> Global fallback`.
+ */
+export function resolveRoomEnemyTypeAtChar(
+  char: string,
+  contextOrBiomeId?: string | RoomEnemyResolutionContext,
+  occurrenceIndex: number = 0
+): string | undefined {
+  const ctx: RoomEnemyResolutionContext =
+    typeof contextOrBiomeId === 'string'
+      ? { biomeId: contextOrBiomeId }
+      : contextOrBiomeId || {};
+
+  const localRoom = ctx.room ? LOCAL_ROOM_REGISTRY[ctx.room] : undefined;
+  const globalRoom = ctx.room ? GLOBAL_ROOM_REGISTRY[ctx.room] : undefined;
+
+  // 1. Room Override
+  const roomOverride =
+    ctx.roomEnemySpawnTypes?.[char] ??
+    localRoom?.enemySpawnTypes?.[char] ??
+    globalRoom?.enemySpawnTypes?.[char];
+  const resolvedFromRoom = resolveEnemySpawnOverride(roomOverride, occurrenceIndex);
+  if (resolvedFromRoom) {
+    return resolvedFromRoom;
+  }
+
+  // 2. Map Override
+  const effectiveMapId = ctx.mapId || localRoom?.mapId || globalRoom?.mapId;
+  const mapDef = effectiveMapId ? MAP_REGISTRY[effectiveMapId] : undefined;
+  const resolvedFromMap = resolveEnemySpawnOverride(
+    mapDef?.enemySpawnTypes?.[char],
+    occurrenceIndex
+  );
+  if (resolvedFromMap) {
+    return resolvedFromMap;
+  }
+
+  // 3. Area Override
+  const effectiveAreaId =
+    ctx.areaId || mapDef?.areaId || localRoom?.areaId || globalRoom?.areaId;
+  const areaDef = effectiveAreaId ? AREA_REGISTRY[effectiveAreaId] : undefined;
+  const resolvedFromArea = resolveEnemySpawnOverride(
+    areaDef?.enemySpawnTypes?.[char],
+    occurrenceIndex
+  );
+  if (resolvedFromArea) {
+    return resolvedFromArea;
+  }
+
+  // 4. Biome Default
+  const effectiveBiomeId =
+    ctx.biomeId ||
+    localRoom?.biomeId ||
+    globalRoom?.biomeId ||
+    mapDef?.biomeId ||
+    areaDef?.biomeId;
+  if (effectiveBiomeId) {
+    const biome = getBiomeDefinition(effectiveBiomeId);
+    const resolvedFromBiome = resolveEnemySpawnOverride(
+      biome.enemySpawnTypes?.[char],
+      occurrenceIndex
+    );
+    if (resolvedFromBiome) {
+      return resolvedFromBiome;
     }
   }
-  return resolveEnemyTypeForChar(char);
+
+  // 5. Global Fallback
+  return resolveEnemyTypeForChar(char, undefined, occurrenceIndex);
 }
 
 /**
@@ -402,6 +502,7 @@ export function getMasterAsciiCharacterRegistry(): {
       ...TILE_CHAR_COLLISIONS,
       ...ENEMY_SPAWN_COLLISIONS,
       ...crossDomainCollisions,
+      ...WORLD_AUDIT_ISSUES,
     ],
   };
 }
@@ -422,4 +523,12 @@ export {
 /**
  * Re-exported 5-tier world hierarchy type contracts.
  */
-export type { AreaWikiDefinition, BiomeDefinition, MapDefinition, RegionDefinition, RoomDefinition };
+export type {
+  AreaWikiDefinition,
+  BiomeDefinition,
+  EnemySpawnMap,
+  EnemySpawnOverride,
+  MapDefinition,
+  RegionDefinition,
+  RoomDefinition,
+};

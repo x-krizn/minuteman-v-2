@@ -36,6 +36,16 @@ const DEFAULT_TILE_TYPES: Record<string, string> = {
   Q: 'colossal_waygate',
 };
 
+const DEFAULT_ENEMY_SPAWN_TYPES: Record<string, string> = {
+  E: 'bog_crawler',
+  W: 'bog_wurm',
+  p: 'bog_poe',
+  K: 'camelot_knight',
+  o: 'orc_warrior',
+  s: 'orc_scout',
+  N: 'town_npc',
+};
+
 // ─── GLOBAL BIOMES ───────────────────────────────────────────────────────────
 
 /**
@@ -51,6 +61,7 @@ export const globalAetherCavernsBiome: BiomeDefinition = {
   clusterTileSheetBase64: 'bog_tileset',
   defaultClusterTerrain: 'dirt',
   tileTypes: { ...DEFAULT_TILE_TYPES },
+  enemySpawnTypes: { ...DEFAULT_ENEMY_SPAWN_TYPES },
   tileRules: {
     corrosiveWater: true,
     corrosiveDamagePerSec: 6.0,
@@ -86,6 +97,7 @@ export const globalDesyncRuinsBiome: BiomeDefinition = {
   clusterTileSheetBase64: 'bog_tileset',
   defaultClusterTerrain: 'ruins',
   tileTypes: { ...DEFAULT_TILE_TYPES },
+  enemySpawnTypes: { ...DEFAULT_ENEMY_SPAWN_TYPES },
   tileRules: {
     corrosiveWater: false,
     corrosiveDamagePerSec: 0,
@@ -121,6 +133,7 @@ export const globalToxicWetlandsBiome: BiomeDefinition = {
   clusterTileSheetBase64: 'bog_tileset',
   defaultClusterTerrain: 'grass',
   tileTypes: { ...DEFAULT_TILE_TYPES },
+  enemySpawnTypes: { ...DEFAULT_ENEMY_SPAWN_TYPES },
   tileRules: {
     corrosiveWater: true,
     corrosiveDamagePerSec: 4.5,

@@ -18,7 +18,7 @@ import {
   getCanonicalRoomPersistenceKey,
   isRoomCacheLooted,
   markRoomCacheLooted,
-} from '../../database/world/tiles/doodads_atlas';
+} from '../../database/world/global/biomes/general/tiles/doodads_atlas';
 import { OrionState } from '../../types';
 import { ORION_ROOM_METADATA, ROOM_REGISTRY } from './roomLoader';
 
@@ -95,6 +95,19 @@ export const ENEMY_EQUIPMENT_DROP_POOLS: Record<
       'reactor_rad_ichor_furnace',
     ],
     baseChance: 0.3,
+  },
+  camelot_knight: {
+    equipmentIds: [
+      'n55_gladius',
+      'aegis_charge_buckler',
+      'hl220_lightburst_lance',
+      'm300_hasta',
+      'utility_aegis_pulse',
+      'aux3_ti_aegis_hardlight',
+      'plating_ti_paladin_wardplate',
+      'arms_ti_bastion_pauldrons',
+    ],
+    baseChance: 0.36,
   },
   percival_knight: {
     equipmentIds: [
@@ -249,6 +262,7 @@ export function resolveContextualGemPool(
     bog_wurm: ['rubellite', 'kyanite', 'charoite'],
     orc_scout: ['carnelian', 'hematite', 'spinel'],
     orc_warrior: ['carnelian', 'hematite', 'spinel'],
+    camelot_knight: ['titanite', 'moonstone', 'hematite'],
     percival_knight: ['titanite', 'moonstone', 'demantoid'],
     tristan_knight: ['charoite', 'rubellite', 'moonstone'],
     bors_knight: ['titanite', 'moonstone', 'spinel'],

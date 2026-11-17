@@ -37,6 +37,7 @@ import {
   getCanonicalRoomPersistenceKey,
   getMaxAetherFogDepth,
   isChunkedExpanseRoom,
+  ORION_ROOM_METADATA,
   resolveContextualEquipmentDrop,
   resolveContextualGemPool,
   updateChunkedRoomStreaming,
@@ -199,13 +200,27 @@ export function spawnRoomEnemies(
     return;
   }
 
+  const meta = ORION_ROOM_METADATA[state.room];
+  const spawnCountsByChar: Record<string, number> = {};
   const spawnCountsByType: Record<string, number> = {};
 
   for (let y = 0; y < room.length; y++) {
     for (let x = 0; x < room[y].length; x++) {
       const char = room[y][x];
-      const type = resolveRoomEnemyTypeAtChar(char, state.biomeId);
+      const charOccurrence = spawnCountsByChar[char] || 0;
+      const type = resolveRoomEnemyTypeAtChar(
+        char,
+        {
+          room: state.room,
+          mapId: meta?.mapId || state.mapId,
+          areaId: meta?.areaId || state.areaId,
+          biomeId: meta?.biomeId || state.biomeId,
+          roomEnemySpawnTypes: meta?.enemySpawnTypes,
+        },
+        charOccurrence
+      );
       if (!type) continue;
+      spawnCountsByChar[char] = charOccurrence + 1;
 
       const def = getEnemyDefinition(type);
       if (!def) continue;
@@ -401,6 +416,7 @@ export function updateEnemies(
           bog_crawler: 0.22,
           orc_scout: 0.22,
           orc_warrior: 0.28,
+          camelot_knight: 0.45,
           bog_wurm: 0.65,
           percival_knight: 1.0,
           tristan_knight: 1.0,

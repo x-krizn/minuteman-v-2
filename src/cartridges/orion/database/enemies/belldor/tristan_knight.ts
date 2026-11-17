@@ -47,7 +47,6 @@ function handleGrailKnightDefeat(
 export const tristanKnightEnemy: EnemyWikiDefinition = {
   type: 'tristan_knight',
   name: 'Sir Tristan (Corrupted Ranger)',
-  spawnChar: 'T',
   faction: 'camelot',
   emissiveColor: '#4ade80',
   tellRadius: 34,

@@ -23,6 +23,7 @@ import {
   AetherEndFeature,
   AetherNodeType,
   ContextualLootPool,
+  EnemySpawnMap,
   RoomDefinition,
   RoomLightingProfile,
 } from '../../types';
@@ -38,6 +39,7 @@ export interface OrionRoomMetadata {
   landmarkLabel?: string;
   lighting?: RoomLightingProfile;
   lootPool?: ContextualLootPool;
+  enemySpawnTypes?: EnemySpawnMap;
   regionId: string;
   areaId: string;
   mapId: string;
@@ -387,7 +389,13 @@ export function decorateDynamicRoomGrid(
   if (nodeType === 'end') {
     for (let y = 1; y < rows - 1; y++) {
       for (let x = 1; x < cols - 1; x++) {
-        if (matrix[y][x] === 'E' || matrix[y][x] === 'o') {
+        if (
+          matrix[y][x] === 'E' ||
+          matrix[y][x] === 'W' ||
+          matrix[y][x] === 'K' ||
+          matrix[y][x] === 'o' ||
+          matrix[y][x] === 's'
+        ) {
           matrix[y][x] = '.';
         }
       }
@@ -424,7 +432,13 @@ export function decorateDynamicRoomGrid(
 
     for (let y = 1; y < rows - 1; y++) {
       for (let x = 1; x < cols - 1; x++) {
-        if (matrix[y][x] === 'E' || matrix[y][x] === 'o' || matrix[y][x] === 's') {
+        if (
+          matrix[y][x] === 'E' ||
+          matrix[y][x] === 'W' ||
+          matrix[y][x] === 'K' ||
+          matrix[y][x] === 'o' ||
+          matrix[y][x] === 's'
+        ) {
           matrix[y][x] = '.';
         }
       }
@@ -536,6 +550,9 @@ export function decorateDynamicRoomGrid(
 
 // [ORION-ANCHOR: WORLD-COMPOSER-INIT]
 function assembleNestedWorld(): void {
+  if (!LOCAL_ROOM_REGISTRY || !GLOBAL_ROOM_REGISTRY || !REGION_REGISTRY) {
+    return;
+  }
   for (const [coord, localRoom] of Object.entries(LOCAL_ROOM_REGISTRY)) {
     const areaDef = getAreaDefinition(localRoom.areaId);
     const regionDef = getRegionDefinition(localRoom.regionId || areaDef.regionId);
@@ -581,6 +598,7 @@ function assembleNestedWorld(): void {
       landmarkLabel: resolvedRoom.landmarkLabel,
       lighting: resolvedRoom.lighting,
       lootPool: resolvedRoom.lootPool,
+      enemySpawnTypes: resolvedRoom.enemySpawnTypes,
       regionId: regionDef.id,
       areaId: areaDef.id,
       mapId,
@@ -632,6 +650,7 @@ function assembleNestedWorld(): void {
             : carveRoomCardinalDoors(template.grid, ALL_CARDINAL_DIRS);
           const title = slot.title || template.title;
           const bannerTitle = slot.bannerTitle || title.toUpperCase();
+          const slotEnemySpawnTypes = slot.enemySpawnTypes || template.enemySpawnTypes;
 
           const stitchedRoom: RoomDefinition = {
             ...template,
@@ -645,6 +664,7 @@ function assembleNestedWorld(): void {
             biomeId: getBiomeDefinition(resolvedBiomeId).id,
             title,
             bannerTitle,
+            enemySpawnTypes: slotEnemySpawnTypes,
             grid: stitchedGrid,
           };
 
@@ -656,6 +676,7 @@ function assembleNestedWorld(): void {
             landmarkLabel: stitchedRoom.landmarkLabel,
             lighting: stitchedRoom.lighting,
             lootPool: stitchedRoom.lootPool,
+            enemySpawnTypes: slotEnemySpawnTypes,
             regionId: regionDef.id,
             areaId: areaDef.id,
             mapId: mapDef.id,

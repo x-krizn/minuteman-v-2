@@ -1043,13 +1043,28 @@ function spawnChunkInitialEnemies(
   }
 
   // Also support any ASCII enemy spawn characters embedded directly in an authored Bog room's grid
+  const authoredRoomCoord = blueprint.authoredRoomCoord || roomId;
+  const authoredMeta = ORION_ROOM_METADATA[authoredRoomCoord];
+  const chunkCharCounts: Record<string, number> = {};
   let embeddedIndex = 0;
   for (let r = 0; r < CHUNK_ROWS; r++) {
     for (let c = 0; c < CHUNK_COLS; c++) {
       const ch = blueprint.grid10x9[r]?.[c];
       if (!ch) continue;
-      const charEnemyType = resolveRoomEnemyTypeAtChar(ch, state.biomeId);
+      const charOccurrence = chunkCharCounts[ch] || 0;
+      const charEnemyType = resolveRoomEnemyTypeAtChar(
+        ch,
+        {
+          room: authoredRoomCoord,
+          mapId: authoredMeta?.mapId || state.mapId,
+          areaId: authoredMeta?.areaId || state.areaId,
+          biomeId: authoredMeta?.biomeId || state.biomeId,
+          roomEnemySpawnTypes: authoredMeta?.enemySpawnTypes,
+        },
+        charOccurrence
+      );
       if (!charEnemyType) continue;
+      chunkCharCounts[ch] = charOccurrence + 1;
       const gx = startCol + c;
       const gy = startRow + r;
       const enemySpawnKey = `${canonicalRoomKey}:enemy:${gx},${gy}`;

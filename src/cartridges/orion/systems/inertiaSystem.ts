@@ -735,6 +735,12 @@ export function resolveEnemyInertiaProfile(e: EnemyEntity): EnemyInertiaProfile 
       defaultAttackSpeed = 158;
       defaultCommitment = 1.0;
       break;
+    case 'camelot_knight':
+      defaultWeight = 155;
+      defaultAttackWeight = 52;
+      defaultAttackSpeed = 142;
+      defaultCommitment = 0.9;
+      break;
     case 'percival_knight':
       // Sir Percival: Heavy Guardian Shield Bash & Charging Ram
       defaultWeight = 175;

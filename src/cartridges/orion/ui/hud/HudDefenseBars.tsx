@@ -300,43 +300,19 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
         </div>
       </section>
 
-      {/* CENTER CLUSTER: Room Title & Developer Mode Telemetry (Coordinates, Path, Fog, Lantern) */}
+      {/* CENTER CLUSTER: Room Title & Optional Developer Mode Telemetry (No Coordinates on HUD) */}
       <section
         aria-label="Sector Info & Æther Gauge"
         className={`flex flex-col items-center gap-0.5 bg-transparent ${OUTLINED_TEXT}`}
       >
         <div className="px-2 py-0.5 bg-[#05070a]/80 border border-[#1e293b]/90 rounded-[1px] shadow-[2px_2px_0_#020617] text-[8px] sm:text-[8.5px] text-[#e2e8f0] tracking-wider uppercase font-bold flex items-center gap-1">
           <span>{cleanRoomTitle}</span>
-          {devMode && (
+          {devMode && isCheatMode && (
             <>
               <span className="text-[#64748b]">·</span>
-              <span className="text-[#94a3b8] text-[7px] tabular-nums">
-                [{state.rx},{state.ry}]
+              <span className="text-[#fbbf24]">
+                {worldInfo.nodeType.toUpperCase()}
               </span>
-              {state.activeChunkX !== undefined && state.activeChunkY !== undefined && (
-                <>
-                  <span className="text-[#64748b]">·</span>
-                  <span className="text-[#22d3ee] text-[7px] tabular-nums">
-                    CHK({state.activeChunkX},{state.activeChunkY})
-                  </span>
-                </>
-              )}
-              {state.mapId && (
-                <>
-                  <span className="text-[#64748b]">·</span>
-                  <span className="text-[#a855f7] text-[6.5px] lowercase">
-                    {state.mapId}
-                  </span>
-                </>
-              )}
-              {isCheatMode && (
-                <>
-                  <span className="text-[#64748b]">·</span>
-                  <span className="text-[#fbbf24]">
-                    {worldInfo.nodeType.toUpperCase()}
-                  </span>
-                </>
-              )}
             </>
           )}
         </div>

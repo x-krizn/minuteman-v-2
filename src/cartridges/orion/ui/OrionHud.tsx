@@ -153,20 +153,34 @@ export const OrionHud: React.FC = () => {
     );
   }
 
-  // If the Cosmic World Map modal was opened via Campfire ('campfire'), Waygate ('waygate'), or Menu ('menu')
+  // If the Planet Map ('campfire') or Æther Map ('waygate') modal was opened via in-world interaction
   if (state.worldMapModalMode && state.worldMapModalMode !== 'none') {
     const isCheatMode =
       devMode && (state.room === '-4,0' || Boolean(state.bypassProgressionGates));
+    const modalHeaderTitle =
+      state.worldMapModalMode === 'campfire'
+        ? 'PLANET MAP — CAMPFIRE TRAVEL NETWORK'
+        : state.worldMapModalMode === 'waygate'
+          ? 'ÆTHER MAP — COLOSSAL WAYGATE NETWORK'
+          : 'LOCAL MINI-MAP — EXPLORATION CARTOGRAPHY';
     return (
       <aside
         data-universal-menu="true"
-        aria-label="Cosmic World Map & Fast Travel Modal"
+        aria-label={modalHeaderTitle}
         className="absolute inset-0 z-40 pointer-events-auto bg-[#05070a]/95 backdrop-blur-xs flex flex-col p-2.5 sm:p-3 overflow-hidden select-none font-mono text-[#e2e8f0]"
       >
         <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-[#1e293b]">
           <div className="flex items-center gap-2">
-            <span className="text-xs sm:text-sm font-black tracking-wider text-[#e9d5ff]">
-              {formatOrionLoreLabel('🪐 PROJECT ORION — u00 COSMIC WORLD MAP', devMode)}
+            <span
+              className={`text-xs sm:text-sm font-black tracking-wider ${
+                state.worldMapModalMode === 'campfire'
+                  ? 'text-[#fde047]'
+                  : state.worldMapModalMode === 'waygate'
+                    ? 'text-[#e9d5ff]'
+                    : 'text-[#7dd3fc]'
+              }`}
+            >
+              {formatOrionLoreLabel(modalHeaderTitle, devMode)}
             </span>
           </div>
           <button

@@ -1275,7 +1275,7 @@ export function executeWorldInteraction(
     if (canUse) {
       options.push({
         id: 'world_map_campfire',
-        label: 'Gaze into the Embers (Travel)',
+        label: 'Open Planet Map (Travel)',
       });
     }
     options.push(
@@ -1314,7 +1314,7 @@ export function executeWorldInteraction(
       options: [
         {
           id: 'world_map_waygate',
-          label: 'Peer into the Æther (World Map)',
+          label: 'Open Æther Map (World Transit)',
         },
         { id: 'primary', label: 'Step Through Conduit' },
         { id: 'inspect', label: 'Inspect' },

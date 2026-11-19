@@ -850,19 +850,19 @@ export function getActiveChunkLandmarkLabel(state: OrionState): string | null {
   const { cx, cy } = getChunkCoordsFromPx(state.x, state.y);
   const bogRoom = getUnifiedBogRoomAtChunk(cx, cy);
   if (bogRoom) {
-    return `${bogRoom.title} [${bogRoom.roomCoord}]`;
+    return bogRoom.title;
   }
   const corridor = SET_PATH_CORRIDOR_BY_CHUNK[`${cx},${cy}`];
   if (corridor) {
-    return `${corridor.title}`;
+    return corridor.title;
   }
   const lm = AUTHORED_LANDMARK_CHUNKS[`${cx},${cy}`];
   if (lm) return lm.title;
   const seed = state.fogGraph?.seed || 104729;
   if (isDeepFogDungeonChunk(seed, cx, cy)) {
-    return `Abyssal Fog Loop Dungeon (${cx},${cy})`;
+    return 'Sunken Ruin Sanctum';
   }
-  return `Off-Path Wilds (${cx},${cy})`;
+  return 'Off-Path Wilds';
 }
 
 /**

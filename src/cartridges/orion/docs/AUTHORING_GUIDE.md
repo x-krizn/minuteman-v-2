@@ -112,11 +112,11 @@ src/cartridges/orion/
 │   └── entitySystem.ts           # [ORION-ANCHOR: ENTITY-SPAWN-ROOM] Enemy spawning/AI, pickups & particles
 │
 └── ui/                           # React HUD, Satchel & Menu overlays (operable via Keyboard, Gamepad, Virtual Controls & Mouse/Touch via UniversalMenuNavigator)
-    ├── OrionHud.tsx              # Retro-Modern React HUD orchestrator (`Full Tactical` & `Compact Retro`), `[F3 / `]` Dev Mode hotkey & Cosmic World Map modal
-    ├── OrionGameMenu.tsx         # [START] Pause Menu & Roster/Options subviews
-    ├── OrionSatchel.tsx          # Consolidated 5-tab Tactical Menu (STATUS, LOADOUT [Slots/Armory/Inventory], FEATS [118], MAP, CODEX)
+    ├── OrionHud.tsx              # Retro-Modern React HUD orchestrator (`Full Tactical` & `Compact Retro`), `[F3 / `]` Dev Mode hotkey & Planet/Æther Map modals
+    ├── OrionGameMenu.tsx         # [START] Pause Menu & Roster/Mini-Map/Options subviews
+    ├── OrionSatchel.tsx          # Consolidated 5-tab Tactical Menu (STATUS, LOADOUT [Slots/Armory/Inventory], FEATS [118], MAP [Local Mini-Map], CODEX)
     ├── hud/                      # Modular HUD subcomponents (HudTitleModal, HudDefenseBars, HudSkillDeck)
-    ├── satchel/                  # Modular Satchel subcomponents (SatchelCanvases, SatchelStatusTab, SatchelLoadoutTab, SatchelArmoryTab, SatchelFeatsTab, SatchelWorldTab, SatchelCodexTab)
+    ├── satchel/                  # Modular Satchel subcomponents (LocalMiniMapCanvas, PlanetMapModalView, AetherCosmosCanvas, SatchelWorldTab, SatchelStatusTab, SatchelLoadoutTab, SatchelArmoryTab, SatchelFeatsTab, SatchelCodexTab)
     └── settings/                 # Unified Controls, Graphics & Audio settings panel (OrionSettingsPanel)
 ```
 

@@ -287,6 +287,7 @@ export function formatOrionLoreLabel(
     .replace(/\bSet-Path\s+Causeway\b/gi, 'Ancient Causeway')
     .replace(/\bAbyssal\s+Fog\s+Loop\s+Dungeon\b/gi, 'Sunken Ruin Sanctum')
     .replace(/\s*\[[-0-9,\s]+\]/g, '')
+    .replace(/\s*\([-0-9]+,\s*[-0-9]+\)/g, '')
     .trim();
 }
 

@@ -466,11 +466,11 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
           )}
         </div>
       ) : subView === 'world_map' && activeState ? (
-        /* Subview 3: Cosmic World Map (View-Only from Menu) */
+        /* Subview 3: Local Mini-Map (Progressive Exploration Cartography) */
         <div className="flex-1 min-h-0 flex flex-col space-y-1.5 overflow-hidden">
           <div className="flex items-center justify-between pb-1 border-b border-[#334155]">
             <span className="font-bold text-[#22d3ee] text-[10.5px]">
-              COSMIC WORLD MAP (MENU CARTOGRAPHY VIEW)
+              LOCAL MINI-MAP (EXPLORATION CARTOGRAPHY)
             </span>
             <button
               data-menu-back="true"
@@ -594,8 +594,8 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
               }}
               className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#a855f7]/70 rounded-xs text-[10.5px] font-bold text-left flex items-center justify-between cursor-pointer"
             >
-              <span className="text-[#e9d5ff]">🪐 WORLD MAP</span>
-              <span className="text-[8.5px] text-[#c084fc]">VIEW ORB →</span>
+              <span className="text-[#e9d5ff]">🗺 MINI-MAP</span>
+              <span className="text-[8.5px] text-[#c084fc]">LOCAL MAP →</span>
             </button>
 
             <button

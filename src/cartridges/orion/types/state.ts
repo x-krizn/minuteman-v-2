@@ -344,6 +344,22 @@ export interface OrionState {
   titleMenuOptionCursor?: number; // Selected setting row inside the Options subview
   /** Active World Map modal access authority: 'menu' (view-only), 'campfire' (within world), or 'waygate' (world-to-world & within world) */
   worldMapModalMode?: 'none' | 'menu' | 'campfire' | 'waygate';
+  /** Active Campfire Rest fade-out / full-black midpoint refresh / fade-in sequence state */
+  restSequence?: OrionCampfireRestSequenceState | null;
+}
+
+/**
+ * Type contract for `OrionCampfireRestSequenceState` (orion campfire rest sequence state) in `state.ts`.
+ */
+export interface OrionCampfireRestSequenceState {
+  elapsed: number;
+  duration: number;
+  midpointTriggered: boolean;
+  effectiveRoom: string;
+  wasFirstKindle: boolean;
+  campfireX: number;
+  campfireY: number;
+  caption?: string;
 }
 
 /**

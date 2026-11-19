@@ -122,4 +122,72 @@ export function drawOrionGame(
 
   // 6. LAYER 5: Dynamic Light Sources, Radial Bloom, Ambient Vignette & Desync Glitch Pass
   drawDynamicLightingAndBloomPass(g, room, activeBiome, state, camX, camY);
+
+  // 7. LAYER 6: Campfire Rest Fade-Out / Full-Black Midpoint / Fade-In Immersion Curtain
+  drawCampfireRestFadeOverlay(g, state, camX, camY);
+}
+
+/**
+ * Draws the Campfire Rest fade-to-black and fade-in immersion curtain over the `160×144` viewport.
+ */
+export function drawCampfireRestFadeOverlay(
+  g: CanvasRenderingContext2D,
+  state: OrionState,
+  camX: number,
+  camY: number
+): void {
+  const seq = state.restSequence;
+  if (!seq) return;
+
+  const progress = Math.max(0, Math.min(1, seq.elapsed / Math.max(0.1, seq.duration)));
+  let curtainAlpha = 0;
+  if (progress < 0.42) {
+    curtainAlpha = progress / 0.42;
+  } else if (progress <= 0.62) {
+    curtainAlpha = 1.0;
+  } else {
+    curtainAlpha = Math.max(0, 1 - (progress - 0.62) / 0.38);
+  }
+
+  if (curtainAlpha <= 0.01) return;
+
+  g.save();
+  g.fillStyle = `rgba(3, 3, 9, ${curtainAlpha.toFixed(3)})`;
+  g.fillRect(0, 0, SCREEN_W, SCREEN_H);
+
+  // Soft dying/rekindling ember glow around the hearth during the fade transition
+  const emberVisibility = Math.max(0, 1 - Math.abs(progress - 0.5) * 1.4) * (1 - curtainAlpha * 0.72);
+  if (emberVisibility > 0.02) {
+    const sx = Math.max(16, Math.min(SCREEN_W - 16, seq.campfireX - camX));
+    const sy = Math.max(16, Math.min(SCREEN_H - 16, seq.campfireY - camY));
+    const grad = g.createRadialGradient(sx, sy, 2, sx, sy, 36);
+    grad.addColorStop(0, `rgba(245, 158, 11, ${(emberVisibility * 0.45).toFixed(3)})`);
+    grad.addColorStop(0.5, `rgba(217, 119, 6, ${(emberVisibility * 0.2).toFixed(3)})`);
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, SCREEN_W, SCREEN_H);
+  }
+
+  // Subtle hearth divider rule & status cue during the full-black midpoint hold
+  if (curtainAlpha > 0.72) {
+    const textAlpha = Math.min(1, (curtainAlpha - 0.72) / 0.28);
+    g.globalAlpha = textAlpha * 0.9;
+    g.strokeStyle = 'rgba(245, 158, 11, 0.45)';
+    g.lineWidth = 1;
+    g.beginPath();
+    g.moveTo(28, Math.floor(SCREEN_H * 0.5) + 6);
+    g.lineTo(SCREEN_W - 28, Math.floor(SCREEN_H * 0.5) + 6);
+    g.stroke();
+
+    drawOutlinedCanvasText(
+      g,
+      seq.midpointTriggered ? 'HEARTH RESTORED' : 'RESTING BY THE FIRE',
+      Math.floor(SCREEN_W * 0.5),
+      Math.floor(SCREEN_H * 0.5) - 2,
+      '#fde68a',
+      'center'
+    );
+  }
+
+  g.restore();
 }

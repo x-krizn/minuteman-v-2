@@ -93,6 +93,7 @@ import {
   rebootAtSpawnAnchor,
   rehydrateAetherFogRooms,
   syncRoomHierarchyState,
+  updateCampfireRestSequence,
   updateChunkedRoomStreaming,
 } from './worldSystem';
 
@@ -1761,6 +1762,13 @@ export function updatePlayerSystem(
       combatCtx,
       'FRAME DESTROYED · PILOT REBOOTED AT ANCHOR'
     );
+    return false;
+  }
+
+  // Advance active Campfire Rest fade-out / midpoint refresh / fade-in sequence
+  if (updateCampfireRestSequence(rooms, state, combatCtx, dt)) {
+    updateCompanionPoe(rooms, state, dt);
+    updateParticles(state, dt);
     return false;
   }
 

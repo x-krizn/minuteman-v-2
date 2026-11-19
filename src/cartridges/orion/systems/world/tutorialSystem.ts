@@ -27,12 +27,10 @@ import {
   unlockLevel2SecondaryWeapon,
 } from '../../database/progression';
 import {
-  AREA_REGISTRY,
   getAreaDefinition,
   getBiomeDefinition,
   getTileDefinition,
   WAYGATE_REGISTRY,
-  WAYSTATION_REGISTRY,
 } from '../../database/world';
 import { OrionCombatContext, OrionState } from '../../types';
 import { spawnEnemyByType, spawnRoomEnemies } from '../entitySystem';
@@ -51,7 +49,6 @@ import {
   resolveContextualEquipmentDrop,
 } from './worldPersistence';
 import {
-  fastTravelToWaystation,
   fastTravelViaWaygate,
   resetAetherFogGraph,
   syncRoomHierarchyState,
@@ -628,63 +625,16 @@ export function performDirectWorldInteraction(
     }
 
     const wasFirstCampfireUnlit = !state.flags.first_campfire_lit;
-    state.flags.campfire_unlocked = true;
-    state.flags.first_campfire_lit = true;
-
-    syncRoomHierarchyState(state);
-    const areaDef = getAreaDefinition(state.areaId);
-    const currentWsId = areaDef.waystation?.id;
-    state.discoveredWaystations = (state.discoveredWaystations || []).filter(
-      (id) => id !== 'ws_bog_drop_pod'
+    const isFacingCampfire = facingTile === 'A';
+    const cTx = isFacingCampfire ? ax : tx;
+    const cTy = isFacingCampfire ? ay : ty;
+    startCampfireRestSequence(
+      state,
+      effectiveRoom,
+      wasFirstCampfireUnlit,
+      cTx * TILE_SIZE + 8,
+      cTy * TILE_SIZE + 8
     );
-    if (currentWsId && !state.discoveredWaystations.includes(currentWsId)) {
-      state.discoveredWaystations.push(currentWsId);
-    }
-
-    resetAetherFogGraph(rooms, state);
-
-    state.spawnAnchor = {
-      areaId: state.areaId,
-      room: state.room,
-      x: Math.round(state.x),
-      y: Math.round(state.y),
-    };
-    state.frame.integrity = state.frame.maxIntegrity || 200;
-    state.frame.state = 'Operational';
-    state.armor.durability = state.armor.maxDurability;
-    state.shields.capacity = state.shields.maxCapacity;
-    state.shields.overloaded = false;
-    state.heat = 0;
-    state.ammo = state.maxAmmo;
-    state.isReloading = false;
-    saveOrionGame(state);
-
-    const discovered = state.discoveredWaystations.filter((wsId) => {
-      const wsNode = WAYSTATION_REGISTRY[wsId];
-      const wsArea = wsNode ? AREA_REGISTRY[wsNode.areaId] : undefined;
-      return wsArea?.specStatus !== 'UNDEFINED';
-    });
-    if (!wasFirstCampfireUnlit && discovered.length > 1 && currentWsId) {
-      const idx = discovered.indexOf(currentWsId);
-      const nextWsId = discovered[(idx + 1) % discovered.length];
-      if (nextWsId && nextWsId !== currentWsId) {
-        return fastTravelToWaystation(rooms, state, nextWsId, ctx);
-      }
-    }
-
-    state.spawnGraceTimer = 3.0;
-    if (isChunkedExpanseRoom(state.room)) {
-      updateChunkedRoomStreaming(rooms, state, true);
-    } else {
-      spawnRoomEnemies(rooms, state);
-    }
-    soundSystem.playHeal();
-    ctx.say(
-      wasFirstCampfireUnlit && effectiveRoom === '0,0'
-        ? 'WARM EMBER LIGHT CATCHES ON THE STONES, PARTING THE EASTERN MIST.'
-        : 'YOU REST BESIDE THE CRACKLING EMBERS AS THE HUM IN YOUR CHEST STEADIES.'
-    );
-    notifyOrionStateChange();
     return true;
   }
 
@@ -1605,19 +1555,6 @@ export function executeContextMenuOption(
     if (currentWsId && !state.discoveredWaystations.includes(currentWsId)) {
       state.discoveredWaystations.push(currentWsId);
     }
-    state.spawnAnchor = {
-      areaId: state.areaId,
-      room: state.room,
-      x: Math.round(state.x),
-      y: Math.round(state.y),
-    };
-    state.frame.integrity = state.frame.maxIntegrity || 200;
-    state.frame.state = 'Operational';
-    state.armor.durability = state.armor.maxDurability;
-    state.shields.capacity = state.shields.maxCapacity;
-    state.shields.overloaded = false;
-    state.heat = 0;
-    saveOrionGame(state);
     state.worldMapModalMode = 'campfire';
     soundSystem.playSelect();
     notifyOrionStateChange();
@@ -1783,4 +1720,241 @@ export function toggleTrainingSandboxRoom(
     return true;
   }
 }
+
+// ─── CAMPFIRE REST FADE-TO-BLACK SEQUENCE & POST-REST STORY HOOKS ────────────
+
+/**
+ * Type contract for `CampfireRestStoryHook` (campfire rest story hook) in `tutorialSystem.ts`.
+ */
+export interface CampfireRestStoryHook {
+  id: string;
+  onceFlag?: string;
+  condition: (
+    state: OrionState,
+    effectiveRoom: string,
+    wasFirstKindle: boolean
+  ) => boolean;
+  execute: (
+    rooms: Record<string, string[]>,
+    state: OrionState,
+    ctx: OrionCombatContext
+  ) => string | void;
+}
+
+/**
+ * Location-and-flag-keyed registry of post-rest story hooks evaluated at the full-black midpoint of a Campfire Rest sequence.
+ */
+export const CAMPFIRE_REST_STORY_HOOKS: CampfireRestStoryHook[] = [
+  {
+    id: 'first_hearth_kindled',
+    condition: (_state, effectiveRoom, wasFirstKindle) =>
+      effectiveRoom === '0,0' && wasFirstKindle,
+    execute: (_rooms, state) => {
+      state.flags = state.flags || {};
+      state.flags.first_hearth_story_seen = true;
+      return 'WARM EMBER LIGHT CATCHES ON THE STONES, PARTING THE EASTERN MIST.';
+    },
+  },
+  {
+    id: 'unmet_poe_curious_approach',
+    onceFlag: 'story_rest_poe_approached_hearth',
+    condition: (state, effectiveRoom) =>
+      effectiveRoom === '0,0' &&
+      (!state.flags?.poe_state || state.flags.poe_state === 'unmet'),
+    execute: (_rooms, state) => {
+      const existingPoe = state.enemies.find((e) => e.type === 'bog_poe');
+      const targetX = Math.round(state.x);
+      const targetY = Math.max(32, Math.round(state.y - 22));
+      if (existingPoe) {
+        existingPoe.x = targetX;
+        existingPoe.y = targetY;
+      } else {
+        spawnEnemyByType(state, 'bog_poe', targetX, targetY);
+      }
+      return 'AS THE EMBERS SETTLE, A CURIOUS PALE FLAME DRIFTS TO THE EDGE OF THE FIRELIGHT.';
+    },
+  },
+  {
+    id: 'bedivere_three_relics_resonance',
+    onceFlag: 'story_rest_lady_water_called',
+    condition: (state) =>
+      state.areaId === 'm00_the_bog' &&
+      Number(state.flags?.bedivere_list_items || 0) >= 3 &&
+      !state.flags?.lady_of_the_lake_defeated,
+    execute: (_rooms, state) => {
+      state.flags = state.flags || {};
+      state.flags.lady_water_resonance_heard = true;
+      return 'IN THE STILLNESS OF REST, THE THREE RELICS HUM—A SILVER RIPPLE CALLS FROM THE SOUTHERN WATERS.';
+    },
+  },
+  {
+    id: 'camelot_border_town_vigil',
+    onceFlag: 'story_rest_border_town_vigil',
+    condition: (state) =>
+      state.areaId === 'camelot_border_town' && !state.flags?.cathedral_door_open,
+    execute: () => {
+      return 'DISTANT BELLS ECHO BEYOND THE SEALED CATHEDRAL AS THE WATCH-FIRES BURN LOW.';
+    },
+  },
+];
+
+/**
+ * Initiates an immersive Campfire Rest fade-out / full-black midpoint refresh / fade-in sequence without fast traveling.
+ * Mutates `state: OrionState`.
+ */
+export function startCampfireRestSequence(
+  state: OrionState,
+  effectiveRoom: string,
+  wasFirstKindle: boolean,
+  campfireX: number,
+  campfireY: number
+): void {
+  state.flags = state.flags || {};
+  state.flags.campfire_unlocked = true;
+  state.flags.first_campfire_lit = true;
+
+  state.vx = 0;
+  state.vy = 0;
+  state.glideInertiaVx = 0;
+  state.glideInertiaVy = 0;
+  state.isBoosterDashing = false;
+  state.isContinuousBoosting = false;
+  state.isHoldingBlock = false;
+  state.isChargingBow = false;
+
+  state.restSequence = {
+    elapsed: 0,
+    duration: 1.6,
+    midpointTriggered: false,
+    effectiveRoom,
+    wasFirstKindle,
+    campfireX,
+    campfireY,
+    caption:
+      wasFirstKindle && effectiveRoom === '0,0'
+        ? 'KINDLING HEARTH...'
+        : 'RESTING BY THE EMBERS...',
+  };
+
+  soundSystem.playSelect();
+  notifyOrionStateChange();
+}
+
+/**
+ * Advances the active Campfire Rest fade-to-black sequence.
+ * At the full-black midpoint (`elapsed >= duration * 0.5`), restores Frame, Armor, Shields, Heat, Energy, Ammo, and Cooldowns,
+ * sets the spawn anchor, refreshes/respawns world enemies and Æther Fog, and evaluates post-rest story hooks.
+ * Returns `true` while the rest sequence is active so normal player movement and combat input are paused.
+ */
+export function updateCampfireRestSequence(
+  rooms: Record<string, string[]>,
+  state: OrionState,
+  ctx: OrionCombatContext,
+  dt: number
+): boolean {
+  const seq = state.restSequence;
+  if (!seq) return false;
+
+  seq.elapsed += dt;
+
+  if (Math.random() < 0.45) {
+    state.particles.push({
+      x: seq.campfireX + (Math.random() - 0.5) * 12,
+      y: seq.campfireY + (Math.random() - 0.5) * 8,
+      z: 2,
+      vx: (Math.random() - 0.5) * 8,
+      vy: -6 - Math.random() * 10,
+      vz: 10 + Math.random() * 12,
+      life: 0.45,
+      maxLife: 0.45,
+      color: Math.random() < 0.5 ? '#f59e0b' : '#fde047',
+      size: 2,
+      fade: true,
+    });
+  }
+
+  if (!seq.midpointTriggered && seq.elapsed >= seq.duration * 0.5) {
+    seq.midpointTriggered = true;
+    state.flags = state.flags || {};
+
+    syncRoomHierarchyState(state);
+    const areaDef = getAreaDefinition(state.areaId);
+    const currentWsId = areaDef.waystation?.id;
+    state.discoveredWaystations = (state.discoveredWaystations || []).filter(
+      (id) => id !== 'ws_bog_drop_pod'
+    );
+    if (currentWsId && !state.discoveredWaystations.includes(currentWsId)) {
+      state.discoveredWaystations.push(currentWsId);
+    }
+
+    state.spawnAnchor = {
+      areaId: state.areaId,
+      room: state.room,
+      x: Math.round(state.x),
+      y: Math.round(state.y),
+    };
+
+    // Restore Frame, Armor, Shields, Heat, Energy, Ammo, and Cooldowns at full black
+    state.frame.integrity = state.frame.maxIntegrity || 200;
+    state.frame.state = 'Operational';
+    state.armor.durability = state.armor.maxDurability;
+    state.shields.capacity = state.shields.maxCapacity;
+    state.shields.overloaded = false;
+    state.heat = 0;
+    state.energy = state.maxEnergy;
+    state.ammo = state.maxAmmo;
+    state.isReloading = false;
+    state.reloadTimer = 0;
+    if (Array.isArray(state.skillCooldowns)) {
+      state.skillCooldowns = state.skillCooldowns.map(() => 0);
+    }
+    state.actionCooldowns = {};
+
+    // Clear transient projectiles & pickups and refresh/respawn world entities
+    state.projectiles = [];
+    state.pickups = [];
+    resetAetherFogGraph(rooms, state);
+    state.spawnGraceTimer = 3.0;
+    if (isChunkedExpanseRoom(state.room)) {
+      updateChunkedRoomStreaming(rooms, state, true);
+    } else {
+      spawnRoomEnemies(rooms, state);
+    }
+
+    // Evaluate Post-Rest Story Hooks while the screen is pitch black
+    let storyMessage: string | undefined;
+    for (const hook of CAMPFIRE_REST_STORY_HOOKS) {
+      if (hook.onceFlag && state.flags[hook.onceFlag]) {
+        continue;
+      }
+      if (hook.condition(state, seq.effectiveRoom, seq.wasFirstKindle)) {
+        if (hook.onceFlag) {
+          state.flags[hook.onceFlag] = true;
+        }
+        const hookResult = hook.execute(rooms, state, ctx);
+        if (typeof hookResult === 'string' && hookResult.length > 0) {
+          storyMessage = hookResult;
+        }
+        break;
+      }
+    }
+
+    const wakeMessage =
+      storyMessage ||
+      'YOU REST BESIDE THE CRACKLING EMBERS AS THE HUM IN YOUR CHEST STEADIES.';
+    seq.caption = wakeMessage;
+    soundSystem.playHeal();
+    ctx.say(wakeMessage);
+    saveOrionGame(state);
+    notifyOrionStateChange();
+  }
+
+  if (seq.elapsed >= seq.duration) {
+    state.restSequence = null;
+    notifyOrionStateChange();
+  }
+
+  return true;
+}
+
 

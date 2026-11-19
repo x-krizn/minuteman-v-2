@@ -153,7 +153,7 @@ Code is code. **Sections 1 to 8 apply identically to all three areas.** Orion-on
 | License header present | 28 of 28 | 88 of 88 | 181 of 181 |
 | `any`, `@ts-ignore`, `@ts-expect-error`, `TODO`, `FIXME` | 0 | 0 | 0 |
 | Network calls (`fetch`, XHR, WebSocket, `http(s)://`) | 0 | 0 | 0 |
-| Exports with no JSDoc block immediately above | 0 of 95 | 0 of 216 | 0 of 1,398 |
+| Exports with no JSDoc block immediately above | 0 of 95 | 0 of 216 | 0 of 1,404 |
 | `addEventListener` / `removeEventListener` | 24 / 24 | 0 / 0 | 1 / 1 |
 | `setTimeout` / `clearTimeout` | 1 / 1 | 3 / 6 | 3 / 5 |
 | `requestAnimationFrame` / `cancelAnimationFrame` | 6 / 2 (two self-rescheduling loops, one cancel each) | 0 / 0 | 3 / 3 |

@@ -67,12 +67,14 @@ src/cartridges/orion/
 │   │   ├── index.ts              # [ORION-ANCHOR: WORLD-GLOB-REGISTRY] & [ORION-ANCHOR: ASCII-CHAR-REGISTRY]
 │   │   ├── universe.ts           # [ORION-ANCHOR: U00-UNIVERSE-CATALOG] 20-World Catalog (8 Major, 7 Minor, 5 Unstable)
 │   │   ├── worldAudit.ts         # Startup world registry duplicate & cross-reference verifier (`WORLD_AUDIT_ISSUES`)
-│   │   ├── global/               # Reusable procedural & inter-world templates + shared/biome tile folders
-│   │   │   ├── templates.ts      # Global regions, areas, maps, biomes & room templates
+│   │   ├── global/               # Shared tile defaults & general biome tile folders
+│   │   │   ├── templates.ts      # Canonical DEFAULT_BIOME_TILE_TYPES & DEFAULT_BIOME_ENEMY_SPAWN_TYPES
 │   │   │   └── biomes/general/tiles/ # Shared tile & 2.5D prop definitions + embedded 16x16 base tiles & atlases
-│   │   └── overworld/            # Authored Overworld hierarchies
-│   │       ├── belldor/          # 1. Belldor (Camelot) — Arthurian, canon (LOCKED)
-│   │       └── tyrranus/         # 2. Tyrranus (Greek/Roman, non-canon · UNDEFINED zone docs)
+│   │   └── overworld/            # Self-Contained Authored Overworld Hierarchies (<world>/<region>/<area>/map_<sector>.ts)
+│   │       ├── topology.ts       # Co-located Set-Path routes (KEY_NODE_ROUTES), Unified Bog placements & corridor chunk aggregator
+│   │       ├── aether_drift/     # Inter-world Aether Sea Expanse & procedural Aether Fog zones (shattered_wilds, drift_corridor)
+│   │       ├── belldor/          # 1. Belldor (Camelot) — Arthurian, canon (outskirts/{the_bog,orc_encampment}, camelot_heartland/{border_town,camelot_interior})
+│   │       └── tyrranus/         # 2. Tyrranus (Greek/Roman, non-canon · frontier/marble_gatehead)
 │   ├── enemies/                  # [ORION-ANCHOR: ENEMY-GLOB-REGISTRY] Self-contained Enemy, Boss & NPC modules
 │   ├── items/                    # Consumables, 9 Gemstones, Currency & Quest Relics
 │   ├── equipment/                # Slot-organized Weapons, Hardware, Frame Plating, Reactors & Utilities
@@ -122,9 +124,16 @@ src/cartridges/orion/
 
 ## 2. Authoring the 5-Tier World Hierarchy & Aether Fog Topology
 
-### 2A. Aether Fog 5-Node Topology & Depth Progression (`[ORION-ANCHOR: AETHER-FOG-TOPOLOGY]`)
+### 2A. Uniform Overworld Directory Layout & Co-Located Topology (`overworld/topology.ts`)
+All authored overworld content lives inside `src/cartridges/orion/database/world/overworld/` under a uniform four-level naming convention without redundant parent prefixes:
+- `overworld/<world>/biomes.ts`: Canonical `BiomeDefinition` records for `<world>`, spreading `DEFAULT_BIOME_TILE_TYPES` and `DEFAULT_BIOME_ENEMY_SPAWN_TYPES` from `../../global/templates`.
+- `overworld/<world>/<region>/region.ts`: Single `RegionDefinition` and optional regional `WaygateNode`.
+- `overworld/<world>/<region>/<area>/area.ts`: Single `AreaWikiDefinition` and optional area `WaystationNode`.
+- `overworld/<world>/<region>/<area>/map_<sector>.ts`: Single `MapDefinition` (plus optional `corridorChunks` for seamless chunked maps) followed by its co-located `RoomDefinition` exports (each carrying optional `routes` and `chunkPlacement` fields aggregated by `overworld/topology.ts` into `KEY_NODE_ROUTES`, `UNIFIED_BOG_ROOM_PLACEMENTS`, and `SET_PATH_CORRIDOR_CHUNKS`).
+
+### 2B. Aether Fog 5-Node Topology & Depth Progression (`[ORION-ANCHOR: AETHER-FOG-TOPOLOGY]`)
 No outer room in Orion has a literal solid map border. Instead, `systems/world/worldTransitions.ts` routes cardinal doorways (`N`, `S`, `E`, `W`) through a dynamic 5-node Æther Fog graph with real-time HUD depth gauge and in-world environmental tells:
-- **`key` Nodes**: Authored Points of Interest (Drop-Pod, Towns, Boss Sanctums, Waystations, Waygates) registered via `RoomDefinition` files and linked in `KEY_NODE_ROUTES` (`[ORION-ANCHOR: WORLD-KEY-ROUTES]`).
+- **`key` Nodes**: Authored Points of Interest (Drop-Pod, Towns, Boss Sanctums, Waystations, Waygates) registered via `RoomDefinition` files with co-located `routes` (aggregated into `KEY_NODE_ROUTES` by `overworld/topology.ts` and consumed at `[ORION-ANCHOR: WORLD-KEY-ROUTES]`).
 - **`general` Nodes**: Dynamically generated corridor chunks that advance route progress (`1/N .. N/N`) between connected `key` nodes when `routeTotal > 0` in `KEY_NODE_ROUTES`.
 - **`side` Nodes**: Off-path branches extending from `general` or `key` nodes; they do **not** advance route progress and lead either to an `end` node or a `loop` node.
 - **`end` Nodes**: Terminal single-exit pockets featuring rolled rewards (`loot_cache`, `mini_boss`, `secret_switch`, or `dead_end`).

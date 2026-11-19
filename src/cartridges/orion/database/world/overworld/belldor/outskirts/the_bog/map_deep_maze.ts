@@ -6,7 +6,8 @@
 import { MapDefinition, RoomDefinition } from '../../../../../../types';
 
 /**
- * Canonical database definition for `mapDeepBogMaze` (`Main Bog Expanse & Lady of the Lake Arena`, id `'map_deep_bog_maze'`, coord `"2,-1"`, scope `'local'`) — Expansive multi-screen Main Bog sectors featuring deep corrosive mire basins, stepping-stone ruins, submerged ....
+ * Canonical database definition for `mapDeepBogMaze` (`Main Bog Expanse & Lady of the Lake Arena`, id `'map_deep_bog_maze'`, scope `'local'`) —
+ * Expansive multi-screen Main Bog sectors featuring deep corrosive mire basins, stepping-stone ruins, submerged Bog Wurm ambushes, repeatable exploration loops back to the Poe Lantern branch, and the `20 x 15` Lady of the Lake Sanctum arena.
  */
 export const mapDeepBogMaze: MapDefinition = {
   id: 'map_deep_bog_maze',
@@ -22,6 +23,13 @@ export const mapDeepBogMaze: MapDefinition = {
     'Expansive multi-screen Main Bog sectors featuring deep corrosive mire basins, stepping-stone ruins, submerged Bog Wurm ambushes, repeatable exploration loops back to the Poe Lantern branch, and the 20x15 Lady of the Lake Sanctum arena.',
   localRoomCoords: ['2,0', '3,0', '3,-1', '2,1'],
   globalRoomSlots: [
+    {
+      coord: '1,1',
+      globalRoomId: 'global_sinkhole_bridge',
+      biomeId: 'belldor_bog',
+      title: 'Submerged Causeway',
+      bannerTitle: 'SUBMERGED CAUSEWAY · WETLAND EXPANSE',
+    },
     {
       coord: '2,-1',
       globalRoomId: 'global_marsh_crossing',
@@ -57,6 +65,7 @@ export const mapDeepBogMaze: MapDefinition = {
 export const room20DeepBogMaze: RoomDefinition = {
   id: 'room_2_0_deep_bog_maze',
   scope: 'local',
+  nodeType: 'key',
   coord: '2,0',
   mapId: 'map_deep_bog_maze',
   areaId: 'm00_the_bog',
@@ -79,6 +88,12 @@ export const room20DeepBogMaze: RoomDefinition = {
     gemIds: ['rubellite', 'kyanite', 'charoite'],
     equipmentDropChance: 0.45,
   },
+  routes: {
+    W: { targetKeyCoord: '1,0', routeTotal: 0 },
+    E: { targetKeyCoord: '3,0', routeTotal: 0 },
+    S: { targetKeyCoord: '2,1', routeTotal: 0 },
+  },
+  chunkPlacement: { rx: 2, ry: 0, startCx: 18, startCy: 9, chunksW: 2, chunksH: 2 },
   grid: [
     '#######,,,,#######',
     '#,,~~~~,,,,~~~~,,#',
@@ -102,6 +117,7 @@ export const room20DeepBogMaze: RoomDefinition = {
 export const room21LadyOfTheLakeArena: RoomDefinition = {
   id: 'room_2_1_lady_of_the_lake_arena',
   scope: 'local',
+  nodeType: 'key',
   coord: '2,1',
   mapId: 'map_deep_bog_maze',
   areaId: 'm00_the_bog',
@@ -130,6 +146,10 @@ export const room21LadyOfTheLakeArena: RoomDefinition = {
     gemIds: ['moonstone', 'rubellite', 'demantoid', 'kyanite'],
     equipmentDropChance: 1.0,
   },
+  routes: {
+    N: { targetKeyCoord: '2,0', routeTotal: 0 },
+  },
+  chunkPlacement: { rx: 2, ry: 1, startCx: 18, startCy: 12, chunksW: 2, chunksH: 2 },
   grid: [
     '########,,,,########',
     '#,,,P::::::::::P,,,#',
@@ -163,6 +183,7 @@ export const room21LadyOfTheLakeArena: RoomDefinition = {
 export const room3Neg1BogLoopHollow: RoomDefinition = {
   id: 'room_3_neg1_bog_loop_hollow',
   scope: 'local',
+  nodeType: 'key',
   coord: '3,-1',
   mapId: 'map_deep_bog_maze',
   areaId: 'm00_the_bog',
@@ -184,6 +205,12 @@ export const room3Neg1BogLoopHollow: RoomDefinition = {
     gemIds: ['charoite', 'rubellite', 'hematite'],
     equipmentDropChance: 0.5,
   },
+  routes: {
+    W: { targetKeyCoord: '0,-2', routeTotal: 0 },
+    S: { targetKeyCoord: '3,0', routeTotal: 0 },
+    N: { targetKeyCoord: '0,-1', routeTotal: 0 },
+  },
+  chunkPlacement: { rx: 3, ry: -1, startCx: 21, startCy: 6, chunksW: 2, chunksH: 2 },
   grid: [
     '######,,,,######',
     '#,,~~~~,,~~~~,,#',
@@ -211,6 +238,7 @@ export const room3Neg1BogLoopHollow: RoomDefinition = {
 export const room30BogExitPerimeter: RoomDefinition = {
   id: 'room_3_0_bog_exit_perimeter',
   scope: 'local',
+  nodeType: 'key',
   coord: '3,0',
   mapId: 'map_deep_bog_maze',
   areaId: 'm00_the_bog',
@@ -238,6 +266,12 @@ export const room30BogExitPerimeter: RoomDefinition = {
     gemIds: ['carnelian', 'titanite', 'spinel'],
     equipmentDropChance: 0.65,
   },
+  routes: {
+    W: { targetKeyCoord: '2,0', routeTotal: 0 },
+    N: { targetKeyCoord: '3,-1', routeTotal: 0 },
+    E: { targetKeyCoord: '4,0', routeTotal: 2 },
+  },
+  chunkPlacement: { rx: 3, ry: 0, startCx: 21, startCy: 9, chunksW: 2, chunksH: 2 },
   grid: [
     '#######,,,,#######',
     '#,,,..::::::..:V:#',

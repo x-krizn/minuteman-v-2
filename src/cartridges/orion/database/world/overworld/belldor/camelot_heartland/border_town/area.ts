@@ -6,7 +6,8 @@
 import { AreaWikiDefinition } from '../../../../../../types';
 
 /**
- * Canonical database definition for `camelotBorderTownArea` (`CAMELOT BORDER TOWN`, id `'camelot_border_town'`, scope `'local'`) — Locked second zone of Belldor comprising the Outer Perimeter (spawn from the Bog), Market District (central hu....
+ * Canonical database definition for `camelotBorderTownArea` (`CAMELOT BORDER TOWN`, id `'camelot_border_town'`, scope `'local'`) —
+ * Locked second zone of Belldor comprising the Outer Perimeter (spawn from the Bog), Market District (central hub), Barracks Quarter (Percival/Tristan/Bors patrols), Cathedral District (lore zone), and the Dungeon Entrance leading to the Deep Dungeon (`UNDEFINED`: `OD-BT-01`) and Camelot Waygate Key.
  */
 export const camelotBorderTownArea: AreaWikiDefinition = {
   id: 'camelot_border_town',
@@ -44,6 +45,24 @@ export const camelotBorderTownArea: AreaWikiDefinition = {
     y: 88,
     lore: 'Flickering market spire in the central hub that holds local alignment despite the town’s temporal drift.',
   },
+  lootPool: {
+    equipmentIds: [
+      'rs450_radiant_projector',
+      'hl220_lightburst_lance',
+      'tig_edge',
+      'sv18_serpent',
+      'sr440_shadowfang',
+      's6_phantom_edge',
+      'wz650_prism_lance',
+      'wz800_arclight_cannon',
+      'cl700_sanctifier',
+      'cl500_absolution',
+      'hallowed_scepter',
+    ],
+    gemIds: ['titanite', 'moonstone', 'demantoid', 'kyanite', 'charoite'],
+    consumableIds: ['demantoid_flask', 'grail_water'],
+    equipmentDropChance: 0.55,
+  },
   zoneFeatures: [
     {
       name: 'Outer Perimeter',
@@ -77,22 +96,4 @@ export const camelotBorderTownArea: AreaWikiDefinition = {
       coord: '5,0',
     },
   ],
-  lootPool: {
-    equipmentIds: [
-      'rs450_radiant_projector',
-      'hl220_lightburst_lance',
-      'tig_edge',
-      'sv18_serpent',
-      'sr440_shadowfang',
-      's6_phantom_edge',
-      'wz650_prism_lance',
-      'wz800_arclight_cannon',
-      'cl700_sanctifier',
-      'cl500_absolution',
-      'hallowed_scepter',
-    ],
-    gemIds: ['titanite', 'moonstone', 'demantoid', 'kyanite', 'charoite'],
-    consumableIds: ['demantoid_flask', 'grail_water'],
-    equipmentDropChance: 0.55,
-  },
 };

@@ -6,7 +6,8 @@
 import { MapDefinition, RoomDefinition } from '../../../../../../types';
 
 /**
- * Canonical database definition for `mapBorderTownCathedral` (`Cathedral District & Dungeon Entrance`, id `'map_border_town_cathedral'`, coord `"5,1"`, scope `'local'`) — Cathedral District lore zone and Dungeon Entrance guarded by Sir Bors. Leads toward the Deep Dungeon (UNDEFINE....
+ * Canonical database definition for `mapBorderTownCathedral` (`Cathedral District & Dungeon Entrance`, id `'map_border_town_cathedral'`, scope `'local'`) —
+ * Cathedral District lore zone and Dungeon Entrance guarded by Sir Bors. Leads toward the Deep Dungeon (`UNDEFINED`: `OD-BT-01`) and the Camelot Waygate Key.
  */
 export const mapBorderTownCathedral: MapDefinition = {
   id: 'map_border_town_cathedral',
@@ -50,11 +51,12 @@ export const mapBorderTownCathedral: MapDefinition = {
 };
 
 /**
- * Canonical database definition for `room50BorderTownCathedral` (`Cathedral District & Dungeon Entrance`, id `'room_5_0_border_town_cathedral'`, coord `"5,0"`, scope `'local'`).
+ * Canonical database definition for `room50BorderTownCathedral` (`Cathedral District & Dungeon Entrance`, id `'room_5_0_border_town_cathedral'`, coord `"5,0"`, scope `'local'`, safety tier `'abyss'`).
  */
 export const room50BorderTownCathedral: RoomDefinition = {
   id: 'room_5_0_border_town_cathedral',
   scope: 'local',
+  nodeType: 'key',
   coord: '5,0',
   mapId: 'map_border_town_cathedral',
   areaId: 'camelot_border_town',
@@ -62,11 +64,23 @@ export const room50BorderTownCathedral: RoomDefinition = {
   biomeId: 'camelot_border_town',
   title: 'Cathedral District & Dungeon Entrance',
   bannerTitle: 'THREE KNIGHTS PLAZA & DUNGEON GATE',
+  landmarkLabel: 'DEFILED GRAIL ALTAR & THREE-WAY CATHEDRAL GATE',
+  cols: 16,
+  rows: 12,
+  lighting: {
+    safetyTier: 'abyss',
+    ambientDarkness: 0.6,
+    cornerShadowIntensity: 0.8,
+    playerVisionRadiusPx: 78,
+    ambientTintColor: '#d97706',
+  },
   enemySpawnTypes: {
     K: ['percival_knight', 'tristan_knight', 'bors_knight'],
   },
-  cols: 16,
-  rows: 12,
+  routes: {
+    W: { targetKeyCoord: '4,0', routeTotal: 2 },
+    E: { targetKeyCoord: '6,0', routeTotal: 1 },
+  },
   grid: [
     '#######..#######',
     '#..3::::::::V..#',

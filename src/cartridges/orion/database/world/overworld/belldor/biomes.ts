@@ -4,44 +4,14 @@
  */
 
 import { BiomeDefinition } from '../../../../types';
-
-const DEFAULT_TILE_TYPES: Record<string, string> = {
-  '.': 'floor',
-  ',': 'grass',
-  ':': 'ruins_floor',
-  ';': 'mire_floor',
-  '#': 'pylon_wall',
-  P: 'pylon_pillar',
-  '~': 'mud',
-  _: 'chasm',
-  D: 'drop_pod',
-  S: 'fallen_scout',
-  C: 'cache',
-  V: 'chest',
-  G: 'rusted_gate',
-  '%': 'desync_wall',
-  L: 'poe_lantern',
-  '1': 'hidden_switch_1',
-  '2': 'hidden_switch_2',
-  '3': 'hidden_switch_3',
-  '!': 'toggle_switch',
-  M: 'cathedral_door',
-  A: 'aether_waystation',
-  Q: 'colossal_waygate',
-};
-
-const DEFAULT_ENEMY_SPAWN_TYPES: Record<string, string> = {
-  E: 'bog_crawler',
-  W: 'bog_wurm',
-  p: 'bog_poe',
-  K: 'camelot_knight',
-  o: 'orc_warrior',
-  s: 'orc_scout',
-  N: 'town_npc',
-};
+import {
+  DEFAULT_BIOME_ENEMY_SPAWN_TYPES,
+  DEFAULT_BIOME_TILE_TYPES,
+} from '../../global/templates';
 
 /**
- * Canonical database definition for `belldorBogBiome` (`M00 Belldor Toxic Marshes`, id `'belldor_bog'`, scope `'local'`) — Deep toxic marshlands littered with orbital impact debris, ruined monastery pylons, and armor-eating bog water....
+ * Canonical database definition for `belldorBogBiome` (`M00 Belldor Toxic Marshes`, id `'belldor_bog'`, scope `'local'`) —
+ * Deep toxic marshlands littered with orbital impact debris, ruined monastery pylons, and armor-eating bog water.
  */
 export const belldorBogBiome: BiomeDefinition = {
   id: 'belldor_bog',
@@ -52,8 +22,8 @@ export const belldorBogBiome: BiomeDefinition = {
     'Deep toxic marshlands littered with orbital impact debris, ruined monastery pylons, and armor-eating bog water.',
   clusterTileSheetBase64: 'bog_tileset',
   defaultClusterTerrain: 'dirt',
-  tileTypes: { ...DEFAULT_TILE_TYPES },
-  enemySpawnTypes: { ...DEFAULT_ENEMY_SPAWN_TYPES },
+  tileTypes: { ...DEFAULT_BIOME_TILE_TYPES },
+  enemySpawnTypes: { ...DEFAULT_BIOME_ENEMY_SPAWN_TYPES },
   tileRules: {
     corrosiveWater: true,
     corrosiveDamagePerSec: 5.0,
@@ -85,7 +55,8 @@ export const belldorBogBiome: BiomeDefinition = {
 };
 
 /**
- * Canonical database definition for `orcSiegeEncampmentBiome` (`Novarin Orc Siegeworks`, id `'orc_siege_encampment'`, scope `'local'`) — Scorched forward siege trenches and ash-choked mud plains fortified by Novarin Orc Warlords..
+ * Canonical database definition for `orcSiegeEncampmentBiome` (`Novarin Orc Siegeworks`, id `'orc_siege_encampment'`, scope `'local'`) —
+ * Scorched forward siege trenches and ash-choked mud plains fortified by Novarin Orc Warlords.
  */
 export const orcSiegeEncampmentBiome: BiomeDefinition = {
   id: 'orc_siege_encampment',
@@ -96,8 +67,8 @@ export const orcSiegeEncampmentBiome: BiomeDefinition = {
     'Scorched forward siege trenches and ash-choked mud plains fortified by Novarin Orc Warlords.',
   clusterTileSheetBase64: 'bog_tileset',
   defaultClusterTerrain: 'dirt',
-  tileTypes: { ...DEFAULT_TILE_TYPES },
-  enemySpawnTypes: { ...DEFAULT_ENEMY_SPAWN_TYPES, E: 'orc_warrior' },
+  tileTypes: { ...DEFAULT_BIOME_TILE_TYPES },
+  enemySpawnTypes: { ...DEFAULT_BIOME_ENEMY_SPAWN_TYPES, E: 'orc_warrior' },
   tileRules: {
     corrosiveWater: true,
     corrosiveDamagePerSec: 3.5,
@@ -129,7 +100,8 @@ export const orcSiegeEncampmentBiome: BiomeDefinition = {
 };
 
 /**
- * Canonical database definition for `camelotBorderTownBiome` (`Camelot Border Town Desync`, id `'camelot_border_town'`, scope `'local'`) — Half-ruined border settlement trapped in a temporal desynchronization loop between intact stone and shattered ....
+ * Canonical database definition for `camelotBorderTownBiome` (`Camelot Border Town Desync`, id `'camelot_border_town'`, scope `'local'`) —
+ * Half-ruined border settlement trapped in a temporal desynchronization loop between intact stone and shattered rubble.
  */
 export const camelotBorderTownBiome: BiomeDefinition = {
   id: 'camelot_border_town',
@@ -140,8 +112,8 @@ export const camelotBorderTownBiome: BiomeDefinition = {
     'Half-ruined border settlement trapped in a temporal desynchronization loop between intact stone and shattered rubble.',
   clusterTileSheetBase64: 'bog_tileset',
   defaultClusterTerrain: 'ruins',
-  tileTypes: { ...DEFAULT_TILE_TYPES },
-  enemySpawnTypes: { ...DEFAULT_ENEMY_SPAWN_TYPES },
+  tileTypes: { ...DEFAULT_BIOME_TILE_TYPES },
+  enemySpawnTypes: { ...DEFAULT_BIOME_ENEMY_SPAWN_TYPES },
   tileRules: {
     corrosiveWater: false,
     corrosiveDamagePerSec: 0,
@@ -173,7 +145,8 @@ export const camelotBorderTownBiome: BiomeDefinition = {
 };
 
 /**
- * Canonical database definition for `camelotWaygateSanctumBiome` (`Camelot Subterranean Waygate Vault`, id `'camelot_waygate_sanctum'`, scope `'local'`) — Ancient subterranean sanctum housing a Colossal Waygate that reads the pilot’s ætheric signature across the Se....
+ * Canonical database definition for `camelotWaygateSanctumBiome` (`Camelot Subterranean Waygate Vault`, id `'camelot_waygate_sanctum'`, scope `'local'`) —
+ * Ancient subterranean sanctum housing a Colossal Waygate that reads the pilot’s ætheric signature across the Sea of Æther.
  */
 export const camelotWaygateSanctumBiome: BiomeDefinition = {
   id: 'camelot_waygate_sanctum',
@@ -184,8 +157,8 @@ export const camelotWaygateSanctumBiome: BiomeDefinition = {
     'Ancient subterranean sanctum housing a Colossal Waygate that reads the pilot’s ætheric signature across the Sea of Æther.',
   clusterTileSheetBase64: 'bog_tileset',
   defaultClusterTerrain: 'ruins',
-  tileTypes: { ...DEFAULT_TILE_TYPES },
-  enemySpawnTypes: { ...DEFAULT_ENEMY_SPAWN_TYPES },
+  tileTypes: { ...DEFAULT_BIOME_TILE_TYPES },
+  enemySpawnTypes: { ...DEFAULT_BIOME_ENEMY_SPAWN_TYPES },
   tileRules: {
     corrosiveWater: false,
     corrosiveDamagePerSec: 0,

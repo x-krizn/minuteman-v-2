@@ -6,7 +6,8 @@
 import { MapDefinition, RoomDefinition } from '../../../../../../types';
 
 /**
- * Canonical database definition for `mapBogDropZone` (`Mire Awakening Trail, First Campfire & Poe Branch`, id `'map_bog_drop_zone'`, coord `"0,1"`, scope `'local'`) — Multi-screen opening trail of M00 The Bog: Mire Awakening Hollow (-3,0) -> 2-part Maze of Downed Trees (-2,0 &....
+ * Canonical database definition for `mapBogDropZone` (`Mire Awakening Trail, First Campfire & Poe Branch`, id `'map_bog_drop_zone'`, scope `'local'`) —
+ * Multi-screen opening trail of M00 The Bog: Mire Awakening Hollow (`-3,0`) -> 2-part Maze of Downed Trees (`-2,0` & `-1,0`) -> First Campfire Sanctuary (`0,0`) -> Drowned Monastic Colonnade (`0,-1`) & Poe Lantern Shrine (`0,-2`), or East through Sir Bedivere’s Shattered Temple (`1,0`).
  */
 export const mapBogDropZone: MapDefinition = {
   id: 'map_bog_drop_zone',
@@ -27,6 +28,7 @@ export const mapBogDropZone: MapDefinition = {
       biomeId: 'belldor_bog',
       title: 'Southern Mud Causeway',
       bannerTitle: 'SOUTHERN MUD CAUSEWAY',
+      chunkPlacement: { rx: 0, ry: 1, startCx: 12, startCy: 12, chunksW: 2, chunksH: 2 },
     },
     {
       coord: '1,-1',
@@ -34,6 +36,7 @@ export const mapBogDropZone: MapDefinition = {
       biomeId: 'belldor_bog',
       title: 'Overgrown Pylon Grove',
       bannerTitle: 'OVERGROWN PYLON GROVE',
+      chunkPlacement: { rx: 1, ry: -1, startCx: 15, startCy: 6, chunksW: 2, chunksH: 2 },
     },
   ],
   connectedMapIds: ['map_deep_bog_maze', 'map_bog_chunked_expanse', 'global_wetland_expanse_map'],
@@ -98,6 +101,7 @@ export const roomCheatPodBay: RoomDefinition = {
 export const roomDropPodCrater: RoomDefinition = {
   id: 'room_neg3_0_drop_pod_crater',
   scope: 'local',
+  nodeType: 'key',
   coord: '-3,0',
   mapId: 'map_bog_drop_zone',
   areaId: 'm00_the_bog',
@@ -120,6 +124,10 @@ export const roomDropPodCrater: RoomDefinition = {
     gemIds: ['spinel', 'hematite'],
     equipmentDropChance: 0.35,
   },
+  routes: {
+    E: { targetKeyCoord: '-2,0', routeTotal: 0 },
+  },
+  chunkPlacement: { rx: -3, ry: 0, startCx: 3, startCy: 9, chunksW: 2, chunksH: 2 },
   grid: [
     '######,,,,######',
     '#,,,,......,,,,#',
@@ -142,6 +150,7 @@ export const roomDropPodCrater: RoomDefinition = {
 export const roomDownedTreesWest: RoomDefinition = {
   id: 'room_neg2_0_downed_trees_west',
   scope: 'local',
+  nodeType: 'key',
   coord: '-2,0',
   mapId: 'map_bog_drop_zone',
   areaId: 'm00_the_bog',
@@ -163,6 +172,11 @@ export const roomDownedTreesWest: RoomDefinition = {
     gemIds: ['spinel', 'hematite', 'charoite'],
     equipmentDropChance: 0.4,
   },
+  routes: {
+    W: { targetKeyCoord: '-3,0', routeTotal: 0 },
+    E: { targetKeyCoord: '-1,0', routeTotal: 0 },
+  },
+  chunkPlacement: { rx: -2, ry: 0, startCx: 6, startCy: 9, chunksW: 2, chunksH: 2 },
   grid: [
     '######,,,,######',
     '#,,,P,,,,,,P,,,#',
@@ -190,6 +204,7 @@ export const roomDownedTreesWest: RoomDefinition = {
 export const roomDownedTreesEast: RoomDefinition = {
   id: 'room_neg1_0_downed_trees_east',
   scope: 'local',
+  nodeType: 'key',
   coord: '-1,0',
   mapId: 'map_bog_drop_zone',
   areaId: 'm00_the_bog',
@@ -206,6 +221,11 @@ export const roomDownedTreesEast: RoomDefinition = {
     cornerShadowIntensity: 0.65,
     playerVisionRadiusPx: 80,
   },
+  routes: {
+    W: { targetKeyCoord: '-2,0', routeTotal: 0 },
+    E: { targetKeyCoord: '0,0', routeTotal: 0 },
+  },
+  chunkPlacement: { rx: -1, ry: 0, startCx: 9, startCy: 9, chunksW: 2, chunksH: 2 },
   grid: [
     '######,,,,######',
     '#,,~~~~,,~~~~,,#',
@@ -228,6 +248,7 @@ export const roomDownedTreesEast: RoomDefinition = {
 export const room00DropPodCrater: RoomDefinition = {
   id: 'room_0_0_first_campfire',
   scope: 'local',
+  nodeType: 'key',
   coord: '0,0',
   mapId: 'map_bog_drop_zone',
   areaId: 'm00_the_bog',
@@ -250,6 +271,12 @@ export const room00DropPodCrater: RoomDefinition = {
     gemIds: ['moonstone', 'titanite', 'spinel'],
     equipmentDropChance: 0.5,
   },
+  routes: {
+    W: { targetKeyCoord: '-1,0', routeTotal: 0 },
+    N: { targetKeyCoord: '0,-1', routeTotal: 0 },
+    E: { targetKeyCoord: '1,0', routeTotal: 0 },
+  },
+  chunkPlacement: { rx: 0, ry: 0, startCx: 12, startCy: 9, chunksW: 2, chunksH: 2 },
   grid: [
     '######,,,,######',
     '#,,,P..::..P,p,#',
@@ -277,6 +304,7 @@ export const room00DropPodCrater: RoomDefinition = {
 export const room0Neg1RuinBranch: RoomDefinition = {
   id: 'room_0_neg1_ruin_branch',
   scope: 'local',
+  nodeType: 'key',
   coord: '0,-1',
   mapId: 'map_bog_drop_zone',
   areaId: 'm00_the_bog',
@@ -293,6 +321,12 @@ export const room0Neg1RuinBranch: RoomDefinition = {
     cornerShadowIntensity: 0.76,
     playerVisionRadiusPx: 80,
   },
+  routes: {
+    S: { targetKeyCoord: '0,0', routeTotal: 0 },
+    N: { targetKeyCoord: '0,-2', routeTotal: 0 },
+    E: { targetKeyCoord: '3,-1', routeTotal: 0 },
+  },
+  chunkPlacement: { rx: 0, ry: -1, startCx: 12, startCy: 6, chunksW: 2, chunksH: 2 },
   grid: [
     '######::::######',
     '#::::..::..::::#',
@@ -316,6 +350,7 @@ export const room0Neg1RuinBranch: RoomDefinition = {
 export const room0Neg2PoeLanternSanctuary: RoomDefinition = {
   id: 'room_0_neg2_poe_lantern_sanctuary',
   scope: 'local',
+  nodeType: 'key',
   coord: '0,-2',
   mapId: 'map_bog_drop_zone',
   areaId: 'm00_the_bog',
@@ -338,6 +373,11 @@ export const room0Neg2PoeLanternSanctuary: RoomDefinition = {
     gemIds: ['moonstone', 'kyanite', 'rubellite'],
     equipmentDropChance: 0.65,
   },
+  routes: {
+    S: { targetKeyCoord: '0,-1', routeTotal: 0 },
+    E: { targetKeyCoord: '3,-1', routeTotal: 0 },
+  },
+  chunkPlacement: { rx: 0, ry: -2, startCx: 12, startCy: 3, chunksW: 2, chunksH: 2 },
   grid: [
     '################',
     '#:::P::::::P:::#',
@@ -365,6 +405,7 @@ export const room0Neg2PoeLanternSanctuary: RoomDefinition = {
 export const room10SunkenPylonTrail: RoomDefinition = {
   id: 'room_1_0_sunken_pylon_trail',
   scope: 'local',
+  nodeType: 'key',
   coord: '1,0',
   mapId: 'map_bog_drop_zone',
   areaId: 'm00_the_bog',
@@ -386,6 +427,12 @@ export const room10SunkenPylonTrail: RoomDefinition = {
     gemIds: ['titanite', 'spinel', 'hematite'],
     equipmentDropChance: 0.55,
   },
+  routes: {
+    W: { targetKeyCoord: '0,0', routeTotal: 0 },
+    N: { targetKeyCoord: '1,-1', routeTotal: 0, isDirectEndNode: true },
+    E: { targetKeyCoord: '2,0', routeTotal: 0 },
+  },
+  chunkPlacement: { rx: 1, ry: 0, startCx: 15, startCy: 9, chunksW: 2, chunksH: 2 },
   grid: [
     '#######,,,,#######',
     '#:::P,,::::,,P:::#',

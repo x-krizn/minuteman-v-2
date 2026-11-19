@@ -3,6 +3,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import {
+  getUnifiedBogRoomAtChunk,
+  getUnifiedBogRoomPlacement,
+  KEY_NODE_ROUTES,
+  KeyNodeRouteDescriptor,
+  SET_PATH_CORRIDOR_BY_CHUNK,
+  SET_PATH_CORRIDOR_CHUNKS,
+  SET_PATH_SPINE_COORDS,
+  SET_PATH_SPINE_SET,
+  SetPathCorridorSpec,
+  SUNKEN_BOG_EXPANSE_ROOM_ID,
+  UNIFIED_BOG_ROOM_BY_COORD,
+  UNIFIED_BOG_ROOM_PLACEMENTS,
+  UnifiedBogRoomPlacement,
+} from './database/world/overworld/topology';
 import { AetherCardinalDir, AetherNodeType, OrionDir, OrionState, PilotSkillId } from './types';
 
 /**
@@ -278,86 +293,9 @@ export function getDirFromVector(dx: number, dy: number): OrionDir {
 export const AETHER_PYRAMID_DEPTHS = [0, 1, 2, 3, 2, 1, 0] as const;
 
 /**
- * Route metadata describing a canonical Set Path key room (`coord`, `title`, `exitDir`, `nextKeyCoord`).
+ * Route metadata describing a canonical Set Path key room (`coord`, `title`, `exitDir`, `nextKeyCoord`) and its progression spine `KEY_NODE_ROUTES`.
  */
-export interface KeyNodeRouteDescriptor {
-  targetKeyCoord: string;
-  routeTotal: number;
-  isDirectEndNode?: boolean;
-}
-
-/**
- * Ordered progression spine mapping Set Path room coordinates (`"0,0"` through `"5,0"`) to their `KeyNodeRouteDescriptor`.
- */
-export const KEY_NODE_ROUTES: Record<
-  string,
-  Partial<Record<AetherCardinalDir, KeyNodeRouteDescriptor>>
-> = {
-  '-3,0': {
-    E: { targetKeyCoord: '-2,0', routeTotal: 0 },
-  },
-  '-2,0': {
-    W: { targetKeyCoord: '-3,0', routeTotal: 0 },
-    E: { targetKeyCoord: '-1,0', routeTotal: 0 },
-  },
-  '-1,0': {
-    W: { targetKeyCoord: '-2,0', routeTotal: 0 },
-    E: { targetKeyCoord: '0,0', routeTotal: 0 },
-  },
-  '0,0': {
-    W: { targetKeyCoord: '-1,0', routeTotal: 0 },
-    N: { targetKeyCoord: '0,-1', routeTotal: 0 },
-    E: { targetKeyCoord: '1,0', routeTotal: 0 },
-  },
-  '0,-1': {
-    S: { targetKeyCoord: '0,0', routeTotal: 0 },
-    N: { targetKeyCoord: '0,-2', routeTotal: 0 },
-    E: { targetKeyCoord: '3,-1', routeTotal: 0 },
-  },
-  '0,-2': {
-    S: { targetKeyCoord: '0,-1', routeTotal: 0 },
-    E: { targetKeyCoord: '3,-1', routeTotal: 0 },
-  },
-  '1,0': {
-    W: { targetKeyCoord: '0,0', routeTotal: 0 },
-    N: { targetKeyCoord: '1,-1', routeTotal: 0, isDirectEndNode: true },
-    E: { targetKeyCoord: '2,0', routeTotal: 0 },
-  },
-  '2,0': {
-    W: { targetKeyCoord: '1,0', routeTotal: 0 },
-    E: { targetKeyCoord: '3,0', routeTotal: 0 },
-    S: { targetKeyCoord: '2,1', routeTotal: 0 },
-  },
-  '2,1': {
-    N: { targetKeyCoord: '2,0', routeTotal: 0 },
-  },
-  '3,-1': {
-    W: { targetKeyCoord: '0,-2', routeTotal: 0 },
-    S: { targetKeyCoord: '3,0', routeTotal: 0 },
-    N: { targetKeyCoord: '0,-1', routeTotal: 0 },
-  },
-  '3,0': {
-    W: { targetKeyCoord: '2,0', routeTotal: 0 },
-    N: { targetKeyCoord: '3,-1', routeTotal: 0 },
-    E: { targetKeyCoord: '4,0', routeTotal: 2 },
-  },
-  '4,0': {
-    W: { targetKeyCoord: '3,0', routeTotal: 2 },
-    N: { targetKeyCoord: '4,-1', routeTotal: 1 },
-    E: { targetKeyCoord: '5,0', routeTotal: 2 },
-  },
-  '4,-1': {
-    S: { targetKeyCoord: '4,0', routeTotal: 1 },
-  },
-  '5,0': {
-    W: { targetKeyCoord: '4,0', routeTotal: 2 },
-    E: { targetKeyCoord: '6,0', routeTotal: 1 },
-  },
-  '6,0': {
-    W: { targetKeyCoord: '5,0', routeTotal: 1 },
-    E: { targetKeyCoord: '7,0', routeTotal: 2 },
-  },
-};
+export { KEY_NODE_ROUTES, type KeyNodeRouteDescriptor };
 
 /**
  * Computes a deterministic 32-bit unsigned integer hash from a string seed for procedural Æther room and chunk generation.
@@ -678,179 +616,21 @@ export const EXPANSE_TOTAL_COLS = EXPANSE_CHUNKS_X * CHUNK_COLS; // 260
 export const EXPANSE_TOTAL_ROWS = EXPANSE_CHUNKS_Y * CHUNK_ROWS; // 162
 
 /**
- * Canonical room identifier (`'-3,-1'`) for the unified `26x18`-chunk Sunken Bog Expanse.
+ * Re-exported Unified Sunken Bog Expanse room placements, Set Path corridor chunks, and chunk lookup helpers sourced from `database/world/overworld/topology.ts`.
  */
-export const SUNKEN_BOG_EXPANSE_ROOM_ID = '-3,-1';
-
-/**
- * Mapping entry anchoring a canonical M00 Bog room (`"rx,ry"`) onto the Unified Sunken Bog Expanse chunk grid (`cx`, `cy`).
- */
-export interface UnifiedBogRoomPlacement {
-  roomCoord: string;
-  rx: number;
-  ry: number;
-  startCx: number;
-  startCy: number;
-  chunksW: number;
-  chunksH: number;
-  title: string;
-}
-
-/**
- * Every authored RoomDefinition in M00 The Bog is placed directly onto the 26×18 chunk grid
- * at `(startCx = 12 + rx * 3, startCy = 9 + ry * 3)` occupying a `2×2` chunk footprint (`20×18` tiles),
- * separated by 1-chunk Set-Path Corridors (`stride = 3` chunks).
- */
-export const UNIFIED_BOG_ROOM_PLACEMENTS: UnifiedBogRoomPlacement[] = [
-  { roomCoord: '-3,0', rx: -3, ry: 0, startCx: 3, startCy: 9, chunksW: 2, chunksH: 2, title: 'Mire Awakening Hollow' },
-  { roomCoord: '-2,0', rx: -2, ry: 0, startCx: 6, startCy: 9, chunksW: 2, chunksH: 2, title: 'Downed Trees West' },
-  { roomCoord: '-1,0', rx: -1, ry: 0, startCx: 9, startCy: 9, chunksW: 2, chunksH: 2, title: 'Downed Trees East' },
-  { roomCoord: '0,0', rx: 0, ry: 0, startCx: 12, startCy: 9, chunksW: 2, chunksH: 2, title: 'Bog Outskirts Campfire' },
-  { roomCoord: '0,-1', rx: 0, ry: -1, startCx: 12, startCy: 6, chunksW: 2, chunksH: 2, title: 'Overgrown Ruin Approach' },
-  { roomCoord: '0,-2', rx: 0, ry: -2, startCx: 12, startCy: 3, chunksW: 2, chunksH: 2, title: 'Poe Lantern Clearing' },
-  { roomCoord: '0,1', rx: 0, ry: 1, startCx: 12, startCy: 12, chunksW: 2, chunksH: 2, title: 'Southern Mud Causeway' },
-  { roomCoord: '1,0', rx: 1, ry: 0, startCx: 15, startCy: 9, chunksW: 2, chunksH: 2, title: "Temple Ruins & Bedivere's Corpse" },
-  { roomCoord: '1,-1', rx: 1, ry: -1, startCx: 15, startCy: 6, chunksW: 2, chunksH: 2, title: 'Overgrown Pylon Grove' },
-  { roomCoord: '2,0', rx: 2, ry: 0, startCx: 18, startCy: 9, chunksW: 2, chunksH: 2, title: 'Corrosive Marsh Trail' },
-  { roomCoord: '2,1', rx: 2, ry: 1, startCx: 18, startCy: 12, chunksW: 2, chunksH: 2, title: 'Lady of the Lake Arena' },
-  { roomCoord: '3,-1', rx: 3, ry: -1, startCx: 21, startCy: 6, chunksW: 2, chunksH: 2, title: 'Northern Bog Hollow' },
-  { roomCoord: '3,0', rx: 3, ry: 0, startCx: 21, startCy: 9, chunksW: 2, chunksH: 2, title: 'Main Bog Expanse & Exit Gate' },
-];
-
-/**
- * Lookup table mapping legacy M00 room coordinates (`"0,0"`..`"3,0"`) to their `UnifiedBogRoomPlacement`.
- */
-export const UNIFIED_BOG_ROOM_BY_COORD: Record<string, UnifiedBogRoomPlacement> =
-  Object.fromEntries(UNIFIED_BOG_ROOM_PLACEMENTS.map((p) => [p.roomCoord, p]));
-
-/**
- * Specification for a Set Path corridor chunk (`cx`, `cy`, `label`, `openings`, and lantern/hazard flags) in the Unified Bog Grid.
- */
-export interface SetPathCorridorSpec {
-  cx: number;
-  cy: number;
-  title: string;
-  orientation: 'H' | 'V' | 'CROSS';
-}
-
-/**
- * Authored list of Set Path corridor chunks connecting the Drop-Pod Sanctuary (`cx=2,cy=5`) to the Eastern Causeway.
- */
-export const SET_PATH_CORRIDOR_CHUNKS: SetPathCorridorSpec[] = [
-  // East-West Main Bog Trail Corridors (cy = 9..10)
-  { cx: 5, cy: 9, title: 'Hollow Mire Causeway (North)', orientation: 'H' },
-  { cx: 5, cy: 10, title: 'Hollow Mire Causeway (South)', orientation: 'H' },
-  { cx: 8, cy: 9, title: 'Fallen Timber Bridge (North)', orientation: 'H' },
-  { cx: 8, cy: 10, title: 'Fallen Timber Bridge (South)', orientation: 'H' },
-  { cx: 11, cy: 9, title: 'Campfire West Approach (North)', orientation: 'H' },
-  { cx: 11, cy: 10, title: 'Campfire West Approach (South)', orientation: 'H' },
-  { cx: 14, cy: 9, title: 'Temple Nave Causeway (North)', orientation: 'H' },
-  { cx: 14, cy: 10, title: 'Temple Nave Causeway (South)', orientation: 'H' },
-  { cx: 17, cy: 9, title: 'Mire Basin Crossing (North)', orientation: 'H' },
-  { cx: 17, cy: 10, title: 'Mire Basin Crossing (South)', orientation: 'H' },
-  { cx: 20, cy: 9, title: 'Gatehouse Approach (North)', orientation: 'H' },
-  { cx: 20, cy: 10, title: 'Gatehouse Approach (South)', orientation: 'H' },
-
-  // North-South Campfire <-> Ruin <-> Poe Lantern & Southern Causeway (cx = 12..13)
-  { cx: 12, cy: 8, title: 'Monastic Ruin Steps (West)', orientation: 'V' },
-  { cx: 13, cy: 8, title: 'Monastic Ruin Steps (East)', orientation: 'V' },
-  { cx: 12, cy: 5, title: 'Lantern Shrine Walk (West)', orientation: 'V' },
-  { cx: 13, cy: 5, title: 'Lantern Shrine Walk (East)', orientation: 'V' },
-  { cx: 12, cy: 11, title: 'Southern Causeway Steps (West)', orientation: 'V' },
-  { cx: 13, cy: 11, title: 'Southern Causeway Steps (East)', orientation: 'V' },
-
-  // North-South Temple <-> Pylon Grove (cx = 15..16)
-  { cx: 15, cy: 8, title: 'Pylon Sanctuary Walk (West)', orientation: 'V' },
-  { cx: 16, cy: 8, title: 'Pylon Sanctuary Walk (East)', orientation: 'V' },
-
-  // North-South Marsh <-> Lady of the Lake Sanctum (cx = 18..19)
-  { cx: 18, cy: 11, title: 'Drowned Sanctum Causeway (West)', orientation: 'V' },
-  { cx: 19, cy: 11, title: 'Drowned Sanctum Causeway (East)', orientation: 'V' },
-
-  // North-South Northern Bog Hollow <-> Exit Gate (cx = 21..22)
-  { cx: 21, cy: 8, title: 'Northern Bastion Path (West)', orientation: 'V' },
-  { cx: 22, cy: 8, title: 'Northern Bastion Path (East)', orientation: 'V' },
-
-  // Northern Loop Causeway connecting Ruin/Pylon (0,-1 & 1,-1) <-> Northern Bog Hollow (3,-1)
-  { cx: 14, cy: 6, title: 'Northern Reed Causeway', orientation: 'H' },
-  { cx: 14, cy: 7, title: 'Northern Reed Causeway', orientation: 'H' },
-  { cx: 17, cy: 6, title: 'Northern Mist Fen Trail', orientation: 'H' },
-  { cx: 17, cy: 7, title: 'Northern Mist Fen Trail', orientation: 'H' },
-  { cx: 18, cy: 6, title: 'Northern Mist Fen Trail', orientation: 'H' },
-  { cx: 18, cy: 7, title: 'Northern Mist Fen Trail', orientation: 'H' },
-  { cx: 19, cy: 6, title: 'Northern Mist Fen Trail', orientation: 'H' },
-  { cx: 19, cy: 7, title: 'Northern Mist Fen Trail', orientation: 'H' },
-  { cx: 20, cy: 6, title: 'Northern Mist Fen Trail', orientation: 'H' },
-  { cx: 20, cy: 7, title: 'Northern Mist Fen Trail', orientation: 'H' },
-];
-
-/**
- * Lookup map from chunk key `"cx,cy"` to its `SetPathCorridorSpec` along the Set Path.
- */
-export const SET_PATH_CORRIDOR_BY_CHUNK: Record<string, SetPathCorridorSpec> =
-  Object.fromEntries(SET_PATH_CORRIDOR_CHUNKS.map((c) => [`${c.cx},${c.cy}`, c]));
-
-function buildSetPathSpineCoords(): Array<{ cx: number; cy: number; title: string }> {
-  const list: Array<{ cx: number; cy: number; title: string }> = [];
-  for (const room of UNIFIED_BOG_ROOM_PLACEMENTS) {
-    for (let dy = 0; dy < room.chunksH; dy++) {
-      for (let dx = 0; dx < room.chunksW; dx++) {
-        list.push({
-          cx: room.startCx + dx,
-          cy: room.startCy + dy,
-          title: room.title,
-        });
-      }
-    }
-  }
-  for (const corr of SET_PATH_CORRIDOR_CHUNKS) {
-    list.push({ cx: corr.cx, cy: corr.cy, title: corr.title });
-  }
-  return list;
-}
-
-/**
- * Ordered list of `"cx,cy"` chunk coordinates forming the safe Set Path spine across the Sunken Bog.
- */
-export const SET_PATH_SPINE_COORDS: Array<{ cx: number; cy: number; title: string }> =
-  buildSetPathSpineCoords();
-
-/**
- * Fast membership `Set` of `"cx,cy"` chunk keys belonging to the safe Set Path spine (immutable static set populated once at module initialization; no runtime growth).
- */
-export const SET_PATH_SPINE_SET = new Set<string>(
-  SET_PATH_SPINE_COORDS.map((c) => `${c.cx},${c.cy}`)
-);
-
-/**
- * Returns the `UnifiedBogRoomPlacement` for `roomCoord` if it is embedded in the Unified Sunken Bog Expanse.
- */
-export function getUnifiedBogRoomPlacement(
-  roomCoord: string | undefined
-): UnifiedBogRoomPlacement | undefined {
-  if (!roomCoord) return undefined;
-  return UNIFIED_BOG_ROOM_BY_COORD[roomCoord];
-}
-
-/**
- * Returns the `UnifiedBogRoomPlacement` occupying chunk `(cx, cy)` on the Unified Sunken Bog Expanse, or `undefined`.
- */
-export function getUnifiedBogRoomAtChunk(
-  cx: number,
-  cy: number
-): UnifiedBogRoomPlacement | undefined {
-  for (const p of UNIFIED_BOG_ROOM_PLACEMENTS) {
-    if (
-      cx >= p.startCx &&
-      cx < p.startCx + p.chunksW &&
-      cy >= p.startCy &&
-      cy < p.startCy + p.chunksH
-    ) {
-      return p;
-    }
-  }
-  return undefined;
-}
+export {
+  getUnifiedBogRoomAtChunk,
+  getUnifiedBogRoomPlacement,
+  SET_PATH_CORRIDOR_BY_CHUNK,
+  SET_PATH_CORRIDOR_CHUNKS,
+  SET_PATH_SPINE_COORDS,
+  SET_PATH_SPINE_SET,
+  type SetPathCorridorSpec,
+  SUNKEN_BOG_EXPANSE_ROOM_ID,
+  UNIFIED_BOG_ROOM_BY_COORD,
+  UNIFIED_BOG_ROOM_PLACEMENTS,
+  type UnifiedBogRoomPlacement,
+};
 
 /**
  * Resolves a world pixel position `(x, y)` in `px` on the Unified Sunken Bog Expanse to its enclosing `UnifiedBogRoomPlacement`.

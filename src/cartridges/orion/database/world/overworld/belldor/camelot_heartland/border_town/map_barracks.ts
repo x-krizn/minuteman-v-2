@@ -6,7 +6,8 @@
 import { MapDefinition, RoomDefinition } from '../../../../../../types';
 
 /**
- * Canonical database definition for `mapBorderTownBarracks` (`Barracks Quarter`, id `'map_border_town_barracks'`, coord `"5,-1"`, scope `'local'`) — Barracks Quarter of Camelot Border Town patrolled by Percival, Tristan, and Bors..
+ * Canonical database definition for `mapBorderTownBarracks` (`Barracks Quarter`, id `'map_border_town_barracks'`, scope `'local'`) —
+ * Barracks Quarter of Camelot Border Town patrolled by Percival, Tristan, and Bors.
  */
 export const mapBorderTownBarracks: MapDefinition = {
   id: 'map_border_town_barracks',
@@ -39,11 +40,12 @@ export const mapBorderTownBarracks: MapDefinition = {
 };
 
 /**
- * Canonical database definition for `room4Neg1BorderTownBarracks` (`Barracks Quarter`, id `'room_4_neg1_border_town_barracks'`, coord `"4,-1"`, scope `'local'`).
+ * Canonical database definition for `room4Neg1BorderTownBarracks` (`Barracks Quarter`, id `'room_4_neg1_border_town_barracks'`, coord `"4,-1"`, scope `'local'`, safety tier `'hazard'`).
  */
 export const room4Neg1BorderTownBarracks: RoomDefinition = {
   id: 'room_4_neg1_border_town_barracks',
   scope: 'local',
+  nodeType: 'key',
   coord: '4,-1',
   mapId: 'map_border_town_barracks',
   areaId: 'camelot_border_town',
@@ -51,8 +53,21 @@ export const room4Neg1BorderTownBarracks: RoomDefinition = {
   biomeId: 'camelot_border_town',
   title: 'Barracks Quarter',
   bannerTitle: 'BARRACKS QUARTER',
+  landmarkLabel: 'CAMELOT KNIGHT GARRISON & SECRET ARMORY SWITCH',
+  cols: 10,
+  rows: 9,
+  lighting: {
+    safetyTier: 'hazard',
+    ambientDarkness: 0.52,
+    cornerShadowIntensity: 0.72,
+    playerVisionRadiusPx: 80,
+    ambientTintColor: '#d97706',
+  },
   enemySpawnTypes: {
     K: ['percival_knight', 'tristan_knight'],
+  },
+  routes: {
+    S: { targetKeyCoord: '4,0', routeTotal: 1 },
   },
   grid: [
     '##########',

@@ -6,7 +6,8 @@
 import { AreaWikiDefinition } from '../../../../../../types';
 
 /**
- * Canonical database definition for `m01OrcEncampmentArea` (`M01 ORC ENCAMPMENT`, id `'m01_orc_encampment'`, scope `'local'`) — Fortified siege palisade south of the Bog Perimeter where Novarin orc raiders muster war horns against Border ....
+ * Canonical database definition for `m01OrcEncampmentArea` (`M01 ORC ENCAMPMENT`, id `'m01_orc_encampment'`, scope `'local'`) —
+ * Fortified siege palisade south of the Bog Perimeter where Novarin orc raiders muster war horns against Border Town. Currently `UNDEFINED` in `mapping-v0.md` and veiled behind Æther Fog.
  */
 export const m01OrcEncampmentArea: AreaWikiDefinition = {
   id: 'm01_orc_encampment',

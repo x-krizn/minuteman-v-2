@@ -29,9 +29,9 @@ import { mire01 } from './global/biomes/general/tiles/mire_floor';
 import { aether01 } from './global/biomes/general/tiles/mud';
 import { ruins01 } from './global/biomes/general/tiles/ruins_floor';
 import { belldorBogBiome } from './overworld/belldor/biomes';
-import { camelotBorderTownArea } from './overworld/belldor/region_belldor_camelot_heartland/camelot_border_town/area';
-import { m00TheBogArea } from './overworld/belldor/region_belldor_outskirts/m00_the_bog/area';
-import { regionBelldorOutskirts } from './overworld/belldor/region_belldor_outskirts/region';
+import { camelotBorderTownArea } from './overworld/belldor/camelot_heartland/border_town/area';
+import { regionBelldorOutskirts } from './overworld/belldor/outskirts/region';
+import { m00TheBogArea } from './overworld/belldor/outskirts/the_bog/area';
 import { U00_UNIVERSE_CATALOG, UNIVERSE_WORLD_BY_ID } from './universe';
 import { auditWorldRegistries } from './worldAudit';
 

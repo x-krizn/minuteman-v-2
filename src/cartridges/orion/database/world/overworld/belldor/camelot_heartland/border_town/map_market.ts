@@ -6,7 +6,8 @@
 import { MapDefinition, RoomDefinition } from '../../../../../../types';
 
 /**
- * Canonical database definition for `mapBorderTownMarket` (`Outer Perimeter & Market District`, id `'map_border_town_market'`, coord `"4,1"`, scope `'local'`) — Outer Perimeter (spawn from M00 The Bog) and the Market District central hub where buildings flicker between i....
+ * Canonical database definition for `mapBorderTownMarket` (`Outer Perimeter & Market District`, id `'map_border_town_market'`, scope `'local'`) —
+ * Outer Perimeter (spawn from M00 The Bog) and the Market District central hub where buildings flicker between intact and ruined.
  */
 export const mapBorderTownMarket: MapDefinition = {
   id: 'map_border_town_market',
@@ -42,11 +43,12 @@ export const mapBorderTownMarket: MapDefinition = {
 };
 
 /**
- * Canonical database definition for `room40BorderTownMarket` (`Outer Perimeter & Market District`, id `'room_4_0_border_town_market'`, coord `"4,0"`, scope `'local'`).
+ * Canonical database definition for `room40BorderTownMarket` (`Outer Perimeter & Market District`, id `'room_4_0_border_town_market'`, coord `"4,0"`, scope `'local'`, safety tier `'sanctuary'`).
  */
 export const room40BorderTownMarket: RoomDefinition = {
   id: 'room_4_0_border_town_market',
   scope: 'local',
+  nodeType: 'key',
   coord: '4,0',
   mapId: 'map_border_town_market',
   areaId: 'camelot_border_town',
@@ -54,8 +56,21 @@ export const room40BorderTownMarket: RoomDefinition = {
   biomeId: 'camelot_border_town',
   title: 'Outer Perimeter & Market District',
   bannerTitle: 'OUTER PERIMETER & MARKET HUB',
+  landmarkLabel: 'FLICKERING MARKET SPIRE & CENTRAL WAYSTATION',
   cols: 16,
   rows: 12,
+  lighting: {
+    safetyTier: 'sanctuary',
+    ambientDarkness: 0.42,
+    cornerShadowIntensity: 0.64,
+    playerVisionRadiusPx: 92,
+    ambientTintColor: '#d97706',
+  },
+  routes: {
+    W: { targetKeyCoord: '3,0', routeTotal: 2 },
+    N: { targetKeyCoord: '4,-1', routeTotal: 1 },
+    E: { targetKeyCoord: '5,0', routeTotal: 2 },
+  },
   grid: [
     '#######::#######',
     '#:::1::::::C:::#',

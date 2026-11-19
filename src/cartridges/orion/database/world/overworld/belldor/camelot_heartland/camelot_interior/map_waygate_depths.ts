@@ -6,7 +6,8 @@
 import { MapDefinition, RoomDefinition } from '../../../../../../types';
 
 /**
- * Canonical database definition for `mapCamelotWaygateDepths` (`Deep Dungeon & Camelot Interior Waygate`, id `'map_camelot_waygate_depths'`, coord `"6,-1"`, scope `'local'`) — Deep Dungeon (OD-BT-01) and Camelot Interior Waygate threshold. Currently UNDEFINED in zone docs and sealed in....
+ * Canonical database definition for `mapCamelotWaygateDepths` (`Deep Dungeon & Camelot Interior Waygate`, id `'map_camelot_waygate_depths'`, scope `'local'`) —
+ * Deep Dungeon (`OD-BT-01`) and Camelot Interior Waygate threshold. Currently `UNDEFINED` in zone docs and sealed in-game.
  */
 export const mapCamelotWaygateDepths: MapDefinition = {
   id: 'map_camelot_waygate_depths',
@@ -53,11 +54,12 @@ export const mapCamelotWaygateDepths: MapDefinition = {
 };
 
 /**
- * Canonical database definition for `room60WaygateSanctum` (`Deep Dungeon & Camelot Interior (Sealed)`, id `'room_6_0_waygate_sanctum'`, coord `"6,0"`, scope `'local'`).
+ * Canonical database definition for `room60WaygateSanctum` (`Deep Dungeon & Camelot Interior (Sealed)`, id `'room_6_0_waygate_sanctum'`, coord `"6,0"`, scope `'local'`, safety tier `'sanctuary'`).
  */
 export const room60WaygateSanctum: RoomDefinition = {
   id: 'room_6_0_waygate_sanctum',
   scope: 'local',
+  nodeType: 'key',
   coord: '6,0',
   mapId: 'map_camelot_waygate_depths',
   areaId: 'camelot_interior',
@@ -65,6 +67,20 @@ export const room60WaygateSanctum: RoomDefinition = {
   biomeId: 'camelot_waygate_sanctum',
   title: 'Deep Dungeon & Camelot Interior (Sealed)',
   bannerTitle: 'CAMELOT INTERIOR · DEEP DUNGEON & WAYGATE (UNDEFINED · OD-BT-01)',
+  landmarkLabel: 'SUBTERRANEAN CAMELOT WAYGATE ARCHWAY',
+  cols: 10,
+  rows: 9,
+  lighting: {
+    safetyTier: 'sanctuary',
+    ambientDarkness: 0.45,
+    cornerShadowIntensity: 0.68,
+    playerVisionRadiusPx: 88,
+    ambientTintColor: '#38bdf8',
+  },
+  routes: {
+    W: { targetKeyCoord: '5,0', routeTotal: 1 },
+    E: { targetKeyCoord: '7,0', routeTotal: 2 },
+  },
   grid: [
     '####..####',
     '#..A..C..#',

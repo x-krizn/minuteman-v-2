@@ -4,9 +4,14 @@
  */
 
 import { BiomeDefinition } from '../../../../types';
+import {
+  DEFAULT_BIOME_ENEMY_SPAWN_TYPES,
+  DEFAULT_BIOME_TILE_TYPES,
+} from '../../global/templates';
 
 /**
- * Canonical database definition for `tyrranusColosseumOutpostBiome` (`Tyrranus Marble Gatehead`, id `'tyrranus_colosseum_outpost'`, scope `'local'`) — Imperial marble causeways and crimson-lit legionnaire bastions on the aligned world of Tyrranus..
+ * Canonical database definition for `tyrranusColosseumOutpostBiome` (`Tyrranus Marble Gatehead`, id `'tyrranus_colosseum_outpost'`, scope `'local'`) —
+ * Imperial marble causeways and crimson-lit legionnaire bastions on the aligned world of Tyrranus.
  */
 export const tyrranusColosseumOutpostBiome: BiomeDefinition = {
   id: 'tyrranus_colosseum_outpost',
@@ -17,38 +22,8 @@ export const tyrranusColosseumOutpostBiome: BiomeDefinition = {
     'Imperial marble causeways and crimson-lit legionnaire bastions on the aligned world of Tyrranus.',
   clusterTileSheetBase64: 'ruins_tileset',
   defaultClusterTerrain: 'ruins',
-  tileTypes: {
-    '.': 'floor',
-    ',': 'grass',
-    ':': 'ruins_floor',
-    '#': 'pylon_wall',
-    P: 'pylon_pillar',
-    '~': 'mud',
-    _: 'chasm',
-    D: 'drop_pod',
-    S: 'fallen_scout',
-    C: 'cache',
-    V: 'chest',
-    G: 'rusted_gate',
-    '%': 'desync_wall',
-    L: 'poe_lantern',
-    '1': 'hidden_switch_1',
-    '2': 'hidden_switch_2',
-    '3': 'hidden_switch_3',
-    '!': 'toggle_switch',
-    M: 'cathedral_door',
-    A: 'aether_waystation',
-    Q: 'colossal_waygate',
-  },
-  enemySpawnTypes: {
-    E: 'bog_crawler',
-    W: 'bog_wurm',
-    p: 'bog_poe',
-    K: 'camelot_knight',
-    o: 'orc_warrior',
-    s: 'orc_scout',
-    N: 'town_npc',
-  },
+  tileTypes: { ...DEFAULT_BIOME_TILE_TYPES },
+  enemySpawnTypes: { ...DEFAULT_BIOME_ENEMY_SPAWN_TYPES },
   tileRules: {
     corrosiveWater: false,
     corrosiveDamagePerSec: 0,
@@ -69,4 +44,12 @@ export const tyrranusColosseumOutpostBiome: BiomeDefinition = {
     lightColor: '#fb7185',
   },
   lightColor: '#fb7185',
+  postProcess: {
+    ambientDarkness: 0.93,
+    bloomIntensity: 0.35,
+    weather: 'aether_mist',
+    weatherIntensity: 0.35,
+    liquidReflection: true,
+    scanlines: false,
+  },
 };

@@ -6,7 +6,8 @@
 import { MapDefinition, RoomDefinition } from '../../../../../../types';
 
 /**
- * Canonical database definition for `mapOrcSiegeCamp` (`M01 Orc Encampment Map`, id `'map_orc_siege_camp'`, coord `"3,1"`, scope `'local'`) — M01 Orc Encampment sector (UNDEFINED in mapping-v0.md). Sealed behind an Aether Fog boundary during active tra....
+ * Canonical database definition for `mapOrcSiegeCamp` (`M01 Orc Encampment Map`, id `'map_orc_siege_camp'`, scope `'local'`) —
+ * M01 Orc Encampment sector (`UNDEFINED` in `mapping-v0.md`). Sealed behind an Æther Fog boundary during active traversal.
  */
 export const mapOrcSiegeCamp: MapDefinition = {
   id: 'map_orc_siege_camp',
@@ -33,11 +34,12 @@ export const mapOrcSiegeCamp: MapDefinition = {
 };
 
 /**
- * Canonical database definition for `room31OrcEncampmentSiege` (`M01 Orc Encampment (Sealed)`, id `'room_3_1_orc_encampment_siege'`, coord `"3,1"`, scope `'local'`).
+ * Canonical database definition for `room31OrcEncampmentSiege` (`M01 Orc Encampment (Sealed)`, id `'room_3_1_orc_encampment_siege'`, coord `"3,1"`, scope `'local'`, safety tier `'hazard'`).
  */
 export const room31OrcEncampmentSiege: RoomDefinition = {
   id: 'room_3_1_orc_encampment_siege',
   scope: 'local',
+  nodeType: 'key',
   coord: '3,1',
   mapId: 'map_orc_siege_camp',
   areaId: 'm01_orc_encampment',
@@ -45,6 +47,16 @@ export const room31OrcEncampmentSiege: RoomDefinition = {
   biomeId: 'orc_siege_encampment',
   title: 'M01 Orc Encampment (Sealed)',
   bannerTitle: 'M01 ORC ENCAMPMENT · UNDEFINED SPEC (mapping-v0.md)',
+  landmarkLabel: 'NOVARIN SIEGE PALISADE & WAR HORN BASTION',
+  cols: 10,
+  rows: 9,
+  lighting: {
+    safetyTier: 'hazard',
+    ambientDarkness: 0.56,
+    cornerShadowIntensity: 0.76,
+    playerVisionRadiusPx: 72,
+    ambientTintColor: '#f97316',
+  },
   grid: [
     '####..####',
     '#..A..C..#',

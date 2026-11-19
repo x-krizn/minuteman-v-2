@@ -6,7 +6,8 @@
 import { MapDefinition, RoomDefinition } from '../../../../../../types';
 
 /**
- * Canonical database definition for `mapTyrranusGatehead` (`Tyrranus Waygate Colonnade Map`, id `'map_tyrranus_gatehead'`, coord `"7,1"`, scope `'local'`) — Local map unique to the Tyrranus Frontier, reachable via the Camelot Waygate or on foot across the Æther Drift....
+ * Canonical database definition for `mapTyrranusGatehead` (`Tyrranus Waygate Colonnade Map`, id `'map_tyrranus_gatehead'`, scope `'local'`) —
+ * Local map unique to the Tyrranus Frontier, reachable via the Camelot Waygate or on foot across the Æther Drift Span.
  */
 export const mapTyrranusGatehead: MapDefinition = {
   id: 'map_tyrranus_gatehead',
@@ -15,6 +16,8 @@ export const mapTyrranusGatehead: MapDefinition = {
   scope: 'local',
   areaId: 'tyrranus_marble_gatehead',
   biomeId: 'tyrranus_colosseum_outpost',
+  specStatus: 'UNDEFINED',
+  docRef: 'worlds.md §1',
   description:
     'Local map unique to the Tyrranus Frontier, reachable via the Camelot Waygate or on foot across the Æther Drift Span.',
   localRoomCoords: ['7,0'],
@@ -31,11 +34,12 @@ export const mapTyrranusGatehead: MapDefinition = {
 };
 
 /**
- * Canonical database definition for `room70TyrranusWaygateLanding` (`Tyrranus Waygate Colonnade`, id `'room_7_0_tyrranus_waygate_landing'`, coord `"7,0"`, scope `'local'`).
+ * Canonical database definition for `room70TyrranusWaygateLanding` (`Tyrranus Waygate Colonnade`, id `'room_7_0_tyrranus_waygate_landing'`, coord `"7,0"`, scope `'local'`, safety tier `'sanctuary'`).
  */
 export const room70TyrranusWaygateLanding: RoomDefinition = {
   id: 'room_7_0_tyrranus_waygate_landing',
   scope: 'local',
+  nodeType: 'key',
   coord: '7,0',
   mapId: 'map_tyrranus_gatehead',
   areaId: 'tyrranus_marble_gatehead',
@@ -43,8 +47,16 @@ export const room70TyrranusWaygateLanding: RoomDefinition = {
   biomeId: 'tyrranus_colosseum_outpost',
   title: 'Tyrranus Waygate Colonnade',
   bannerTitle: 'TYRRANUS FRONTIER · IMPERIAL WAYGATE COLONNADE',
+  landmarkLabel: 'IMPERIAL MARBLE COLONNADE & COLOSSAL WAYGATE',
   cols: 14,
   rows: 12,
+  lighting: {
+    safetyTier: 'sanctuary',
+    ambientDarkness: 0.44,
+    cornerShadowIntensity: 0.66,
+    playerVisionRadiusPx: 88,
+    ambientTintColor: '#fb7185',
+  },
   grid: [
     '##############',
     '#..:::..:::..#',

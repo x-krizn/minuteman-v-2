@@ -6,7 +6,8 @@
 import { RegionDefinition } from '../../../../../types';
 
 /**
- * Canonical database definition for `regionBelldorOutskirts` (`Belldor — M00 The Bog & M01 Outskirts`, id `'region_belldor_outskirts'`, scope `'local'`) — The outer marshlands of Belldor housing the locked starting zone M00 The Bog (bog-v2.md) and the undefined M01....
+ * Canonical database definition for `regionBelldorOutskirts` (`Belldor — M00 The Bog & M01 Outskirts`, id `'region_belldor_outskirts'`, scope `'local'`) —
+ * The outer marshlands of Belldor housing the locked starting zone M00 The Bog (`bog-v2.md`) and the undefined M01 Orc Encampment (`mapping-v0.md`).
  */
 export const regionBelldorOutskirts: RegionDefinition = {
   id: 'region_belldor_outskirts',

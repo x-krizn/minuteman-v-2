@@ -295,6 +295,41 @@ export interface ContextualLootPool {
 }
 
 /**
+ * Type contract for `KeyNodeRouteDescriptor` (key node route descriptor) in `world.ts`.
+ * Route metadata describing a canonical Set Path cardinal doorway connection (`targetKeyCoord`, `routeTotal`, `isDirectEndNode`).
+ */
+export interface KeyNodeRouteDescriptor {
+  targetKeyCoord: string;
+  routeTotal: number;
+  isDirectEndNode?: boolean;
+}
+
+/**
+ * Type contract for `RoomChunkPlacementSpec` (room chunk placement spec) in `world.ts`.
+ * Chunk footprint placement (`rx`, `ry`, `startCx`, `startCy`, `chunksW`, `chunksH`) anchoring an authored room or slot onto a chunked expanse grid.
+ */
+export interface RoomChunkPlacementSpec {
+  rx: number;
+  ry: number;
+  startCx: number;
+  startCy: number;
+  chunksW: number;
+  chunksH: number;
+  title?: string;
+}
+
+/**
+ * Type contract for `SetPathCorridorSpec` (set path corridor spec) in `world.ts`.
+ * Specification for a Set Path corridor chunk (`cx`, `cy`, `title`, `orientation`) connecting room nodes on a chunked expanse grid.
+ */
+export interface SetPathCorridorSpec {
+  cx: number;
+  cy: number;
+  title: string;
+  orientation: 'H' | 'V' | 'CROSS';
+}
+
+/**
  * Type contract for `RoomDefinition` (room definition) in `world.ts`.
  */
 export interface RoomDefinition {
@@ -316,6 +351,10 @@ export interface RoomDefinition {
   lootPool?: ContextualLootPool;
   /** Optional room-scoped enemy spawn character overrides (`Room -> Map -> Area -> Biome -> Global`) */
   enemySpawnTypes?: EnemySpawnMap;
+  /** Optional cardinal Set-Path route connections originating from this key room */
+  routes?: Partial<Record<AetherCardinalDir, KeyNodeRouteDescriptor>>;
+  /** Optional 2x2 chunk footprint placement on the Unified Bog Grid */
+  chunkPlacement?: RoomChunkPlacementSpec;
   /** Optional explicit grid column/row dimensions (derived automatically from grid if omitted) */
   cols?: number;
   rows?: number;
@@ -342,6 +381,8 @@ export interface MapProceduralRoomSlot {
   bannerTitle?: string;
   /** Optional slot-scoped enemy spawn character overrides */
   enemySpawnTypes?: EnemySpawnMap;
+  /** Optional 2x2 chunk footprint placement on the Unified Bog Grid */
+  chunkPlacement?: RoomChunkPlacementSpec;
 }
 
 /**
@@ -387,6 +428,8 @@ export interface MapDefinition {
   globalRoomSlots: MapProceduralRoomSlot[];
   /** Connected neighboring Map IDs for continuous on-foot traversal */
   connectedMapIds: string[];
+  /** Optional authored Set-Path corridor chunks when this map hosts a chunked expanse */
+  corridorChunks?: SetPathCorridorSpec[];
   /** Design specification status (LOCKED vs UNDEFINED) */
   specStatus?: DesignSpecStatus;
   /** Source design document reference (e.g., bog-v2.md, border-town-v1.md, mapping-v0.md) */

@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import {
+import type { ActionDefinition, OrionExecutionContext } from './combat';
+import type {
   ArmorType,
   Base64SpriteConfig,
   DamageType,
@@ -12,7 +13,6 @@ import {
   TraitLine,
   WeaponWeightClass,
 } from './common';
-import { ActionDefinition, OrionExecutionContext } from './combat';
 import type { OrionState } from './state';
 
 /**

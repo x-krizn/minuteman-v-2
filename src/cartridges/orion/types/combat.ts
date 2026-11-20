@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { SoundSystem } from '../../../engine/core/soundSystem';
-import {
+import type { SoundSystem } from '../../../engine/core/soundSystem';
+import type {
   Base64SpriteConfig,
   DamageFamily,
   DamageType,

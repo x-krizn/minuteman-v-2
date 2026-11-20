@@ -576,7 +576,7 @@ export const LocalMiniMapCanvas: React.FC<LocalMiniMapCanvasProps> = ({ state })
       {/* 1. LOCAL MINI-MAP HEADER & LOCATION STATUS */}
       <div className="p-2 bg-[#0b101d] rounded-xs border border-[#38bdf8]/40 flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-black text-[#f8fafc] text-[10.5px] tracking-wider">
+          <span className="font-black text-[#f8fafc] text-[11px] tracking-wider">
             LOCAL MINI-MAP — PROGRESSIVE EXPLORATION CARTOGRAPHY
           </span>
           <span className="text-[#64748b]">·</span>
@@ -585,7 +585,7 @@ export const LocalMiniMapCanvas: React.FC<LocalMiniMapCanvasProps> = ({ state })
           <span className="text-[#86efac] font-bold">{activeLocationName}</span>
         </div>
 
-        <div className="flex items-center gap-2 text-[8.5px] text-[#94a3b8] tabular-nums">
+        <div className="flex items-center gap-2 text-[9px] text-[#94a3b8] tabular-nums">
           <span>Charted Tiles: {exploredSnapshot.exploredCount}</span>
           <span>·</span>
           <span>Landmarks: {exploredSnapshot.landmarks.length}</span>
@@ -599,7 +599,7 @@ export const LocalMiniMapCanvas: React.FC<LocalMiniMapCanvasProps> = ({ state })
           {/* Toolbar: Zoom & Pan Controls */}
           <div className="flex flex-wrap items-center justify-between gap-1.5">
             <div className="flex items-center gap-1">
-              <span className="text-[8px] text-[#94a3b8] font-bold mr-0.5">ZOOM</span>
+              <span className="text-[9px] text-[#94a3b8] font-bold mr-0.5">ZOOM</span>
               {([1, 2, 4] as const).map((z) => (
                 <button
                   key={z}
@@ -608,7 +608,7 @@ export const LocalMiniMapCanvas: React.FC<LocalMiniMapCanvasProps> = ({ state })
                     soundSystem.playMenuBeep();
                     setZoomLevel(z);
                   }}
-                  className={`px-2 py-0.5 rounded-xs text-[8px] font-bold border cursor-pointer tabular-nums ${
+                  className={`px-2 py-0.5 rounded-xs text-[9px] font-bold border cursor-pointer tabular-nums ${
                     zoomLevel === z
                       ? 'bg-[#38bdf8] text-[#05070a] border-[#7dd3fc]'
                       : 'bg-[#0f172a] text-[#cbd5e1] border-[#334155] hover:border-[#38bdf8]'
@@ -626,7 +626,7 @@ export const LocalMiniMapCanvas: React.FC<LocalMiniMapCanvasProps> = ({ state })
                   soundSystem.playMenuBeep();
                   setPanOffsetTiles((p) => ({ ...p, dy: p.dy - panStep }));
                 }}
-                className="px-1.5 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#cbd5e1] border border-[#334155] rounded-xs text-[8px] font-bold cursor-pointer"
+                className="px-1.5 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#cbd5e1] border border-[#334155] rounded-xs text-[9px] font-bold cursor-pointer"
                 title="Pan North"
               >
                 ▲ N
@@ -637,7 +637,7 @@ export const LocalMiniMapCanvas: React.FC<LocalMiniMapCanvasProps> = ({ state })
                   soundSystem.playMenuBeep();
                   setPanOffsetTiles((p) => ({ ...p, dy: p.dy + panStep }));
                 }}
-                className="px-1.5 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#cbd5e1] border border-[#334155] rounded-xs text-[8px] font-bold cursor-pointer"
+                className="px-1.5 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#cbd5e1] border border-[#334155] rounded-xs text-[9px] font-bold cursor-pointer"
                 title="Pan South"
               >
                 ▼ S
@@ -648,7 +648,7 @@ export const LocalMiniMapCanvas: React.FC<LocalMiniMapCanvasProps> = ({ state })
                   soundSystem.playMenuBeep();
                   setPanOffsetTiles((p) => ({ ...p, dx: p.dx - panStep }));
                 }}
-                className="px-1.5 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#cbd5e1] border border-[#334155] rounded-xs text-[8px] font-bold cursor-pointer"
+                className="px-1.5 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#cbd5e1] border border-[#334155] rounded-xs text-[9px] font-bold cursor-pointer"
                 title="Pan West"
               >
                 ◀ W
@@ -659,7 +659,7 @@ export const LocalMiniMapCanvas: React.FC<LocalMiniMapCanvasProps> = ({ state })
                   soundSystem.playMenuBeep();
                   setPanOffsetTiles((p) => ({ ...p, dx: p.dx + panStep }));
                 }}
-                className="px-1.5 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#cbd5e1] border border-[#334155] rounded-xs text-[8px] font-bold cursor-pointer"
+                className="px-1.5 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#cbd5e1] border border-[#334155] rounded-xs text-[9px] font-bold cursor-pointer"
                 title="Pan East"
               >
                 ▶ E
@@ -671,7 +671,7 @@ export const LocalMiniMapCanvas: React.FC<LocalMiniMapCanvasProps> = ({ state })
                   setPanOffsetTiles({ dx: 0, dy: 0 });
                   setSelectedLandmarkId(null);
                 }}
-                className="px-2 py-0.5 bg-[#0c4a6e] hover:bg-[#075985] text-[#e0f2fe] border border-[#38bdf8] rounded-xs text-[8px] font-bold cursor-pointer"
+                className="px-2 py-0.5 bg-[#0c4a6e] hover:bg-[#075985] text-[#e0f2fe] border border-[#38bdf8] rounded-xs text-[9px] font-bold cursor-pointer"
               >
                 CENTER ON PILOT
               </button>
@@ -715,7 +715,7 @@ export const LocalMiniMapCanvas: React.FC<LocalMiniMapCanvasProps> = ({ state })
           </div>
 
           {/* Terrain & Marker Legend */}
-          <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5 text-[7.5px] text-[#94a3b8]">
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5 text-[9px] text-[#94a3b8]">
             <div className="flex flex-wrap items-center gap-2.5">
               <span className="flex items-center gap-1">
                 <span className="inline-block w-2 h-2 bg-[#38bdf8] border border-white" />
@@ -767,7 +767,7 @@ export const LocalMiniMapCanvas: React.FC<LocalMiniMapCanvasProps> = ({ state })
         <div className="md:col-span-4 p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-2">
           {/* Selected Landmark Inspector or guidance note */}
           <div className="p-2 bg-[#0f172a] rounded-xs border border-[#334155] space-y-1">
-            <div className="text-[8px] font-bold text-[#94a3b8]">
+            <div className="text-[9px] font-bold text-[#94a3b8]">
               {selectedLandmark ? 'SELECTED LANDMARK' : 'CARTOGRAPHY NOTES'}
             </div>
             {selectedLandmark ? (
@@ -775,12 +775,12 @@ export const LocalMiniMapCanvas: React.FC<LocalMiniMapCanvasProps> = ({ state })
                 <div className="text-[10px] font-black text-[#f8fafc]">
                   {selectedLandmark.label}
                 </div>
-                <div className="text-[8.5px] text-[#7dd3fc]">
+                <div className="text-[9px] text-[#7dd3fc]">
                   Status: {selectedLandmark.statusLabel}
                 </div>
               </div>
             ) : (
-              <div className="text-[8.5px] text-[#cbd5e1] leading-snug">
+              <div className="text-[9px] text-[#cbd5e1] leading-snug">
                 Terrain and landmarks are drawn automatically as your vision illuminates the fog.
                 Rest at a Campfire to open the Planet Map, or attune a Colossal Waygate to open the
                 Æther Map.
@@ -790,7 +790,7 @@ export const LocalMiniMapCanvas: React.FC<LocalMiniMapCanvasProps> = ({ state })
 
           {/* Charted Sector Landmarks List */}
           <div className="space-y-1">
-            <div className="text-[8.5px] font-bold text-[#fde047] flex items-center justify-between">
+            <div className="text-[9px] font-bold text-[#fde047] flex items-center justify-between">
               <span>DISCOVERED LANDMARKS</span>
               <span className="text-[#94a3b8] tabular-nums">
                 {exploredSnapshot.landmarks.length}
@@ -798,7 +798,7 @@ export const LocalMiniMapCanvas: React.FC<LocalMiniMapCanvasProps> = ({ state })
             </div>
 
             {exploredSnapshot.landmarks.length === 0 ? (
-              <div className="p-2 bg-[#05070a] rounded-xs border border-[#1e293b] text-[8.5px] text-[#94a3b8]">
+              <div className="p-2 bg-[#05070a] rounded-xs border border-[#1e293b] text-[9px] text-[#94a3b8]">
                 No interactive landmarks charted in the immediate vicinity yet. Explore outward to
                 reveal campfires, shrines, gates, and caches.
               </div>
@@ -829,9 +829,9 @@ export const LocalMiniMapCanvas: React.FC<LocalMiniMapCanvasProps> = ({ state })
                           className="inline-block w-2.5 h-2.5 shrink-0 border border-[#020617]"
                           style={{ backgroundColor: lm.color }}
                         />
-                        <span className="font-bold text-[8.5px] truncate">{lm.label}</span>
+                        <span className="font-bold text-[9px] truncate">{lm.label}</span>
                       </div>
-                      <span className="text-[7.5px] text-[#94a3b8] shrink-0">
+                      <span className="text-[9px] text-[#94a3b8] shrink-0">
                         {lm.statusLabel}
                       </span>
                     </button>
@@ -844,7 +844,7 @@ export const LocalMiniMapCanvas: React.FC<LocalMiniMapCanvasProps> = ({ state })
           {/* Charted Sector Zones in the Unified Expanse */}
           {exploredSnapshot.exploredZones.length > 0 && (
             <div className="space-y-1 pt-1 border-t border-[#1e293b]">
-              <div className="text-[8.5px] font-bold text-[#7dd3fc] flex items-center justify-between">
+              <div className="text-[9px] font-bold text-[#7dd3fc] flex items-center justify-between">
                 <span>CHARTED SECTORS</span>
                 <span className="text-[#94a3b8] tabular-nums">
                   {exploredSnapshot.exploredZones.length}
@@ -862,7 +862,7 @@ export const LocalMiniMapCanvas: React.FC<LocalMiniMapCanvasProps> = ({ state })
                         dy: z.centerTy - playerTy,
                       });
                     }}
-                    className="p-1 bg-[#0b111e] hover:bg-[#1e293b] border border-[#1e293b] rounded-xs text-left text-[8px] font-bold text-[#bae6fd] truncate cursor-pointer"
+                    className="p-1 bg-[#0b111e] hover:bg-[#1e293b] border border-[#1e293b] rounded-xs text-left text-[9px] font-bold text-[#bae6fd] truncate cursor-pointer"
                   >
                     {z.title}
                   </button>

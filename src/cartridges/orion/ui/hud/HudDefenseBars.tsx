@@ -136,20 +136,20 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
               soundSystem.playSelect();
               onOpenPilotModal();
             }}
-            className="pointer-events-auto flex items-center gap-1 text-[8px] sm:text-[8.5px] tracking-wider text-[#cbd5e1] font-bold hover:text-white cursor-pointer text-left bg-transparent"
+            className="pointer-events-auto flex items-center gap-1 text-[9px] sm:text-[10px] tracking-wider text-[#cbd5e1] font-bold hover:text-white cursor-pointer text-left bg-transparent"
           >
             <span className="text-[#38bdf8] uppercase truncate max-w-[74px]">
               {state.pilotName}
             </span>
             <span className="text-[#64748b]">·</span>
-            <span className="text-[#fde047] text-[7.5px] font-extrabold">
+            <span className="text-[#fde047] text-[9px] font-extrabold">
               LV.{state.level}
             </span>
           </button>
           {devMode && (
             <span
               title="Developer Mode Active (Press F3 or ` to toggle)"
-              className="px-1 py-0.1 rounded-[1px] bg-[#451a03] border border-[#f59e0b]/80 text-[#fde047] text-[6px] font-black tracking-wider"
+              className="px-1 py-0.1 rounded-[1px] bg-[#451a03] border border-[#f59e0b]/80 text-[#fde047] text-[9px] font-black tracking-wider"
             >
               DEV
             </span>
@@ -160,7 +160,7 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
         <div className="flex flex-col gap-0.5 bg-transparent">
           {/* Layer 1: Shield */}
           <div className="flex flex-col">
-            <div className="flex justify-between items-center text-[7px] font-bold leading-none">
+            <div className="flex justify-between items-center text-[9px] font-bold leading-none">
               <span className="text-[#38bdf8] tracking-wider">SHLD</span>
               <span className={isShieldOverloaded ? 'text-[#ef4444] animate-pulse font-black' : 'text-[#7dd3fc] tabular-nums'}>
                 {isShieldOverloaded
@@ -189,7 +189,7 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
 
           {/* Layer 2: Armor */}
           <div className="flex flex-col">
-            <div className="flex justify-between items-center text-[7px] font-bold leading-none">
+            <div className="flex justify-between items-center text-[9px] font-bold leading-none">
               <span className="text-[#fbbf24] tracking-wider">ARM ({state.armor.type[0]})</span>
               {devMode && (
                 <span className="text-[#fde68a] tabular-nums">
@@ -208,7 +208,7 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
 
           {/* Layer 3: Frame Integrity */}
           <div className="flex flex-col">
-            <div className="flex justify-between items-center text-[7px] font-bold leading-none">
+            <div className="flex justify-between items-center text-[9px] font-bold leading-none">
               <span className={isFrameCritical ? 'text-[#ef4444] animate-pulse font-black tracking-wider' : 'text-[#4ade80] tracking-wider'}>
                 FRAME {isFrameCritical ? 'CRIT' : ''}
               </span>
@@ -236,7 +236,7 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
           {/* Reactor Heat (only prominent when > 0 or boosting) */}
           {(heat > 0.5 || state.isContinuousBoosting) && (
             <div className="flex flex-col">
-              <div className="flex justify-between items-center text-[6.5px] font-bold leading-none">
+              <div className="flex justify-between items-center text-[9px] font-bold leading-none">
                 <span className={isOverheating ? 'text-[#ef4444] animate-pulse font-black' : 'text-[#f97316]'}>
                   {isOverheating ? 'HEAT OVHT' : 'HEAT'}
                 </span>
@@ -272,7 +272,7 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
                   formatInertiaOutcomeLabel(state.lastInertiaOutcome!)
                 : null;
               return (
-                <div className="mt-0.5 pt-0.5 border-t border-[#1e293b]/70 flex flex-col gap-0.2 text-[6.5px] font-bold leading-tight">
+                <div className="mt-0.5 pt-0.5 border-t border-[#1e293b]/70 flex flex-col gap-0.2 text-[9px] font-bold leading-tight">
                   <div className="flex justify-between items-center text-[#7dd3fc]">
                     <span>
                       m_eff {mEff} {muPct >= 55 ? `⚡CHG ${muPct}%` : `(${muPct}% μ)`}
@@ -305,7 +305,7 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
         aria-label="Sector Info & Æther Gauge"
         className={`flex flex-col items-center gap-0.5 bg-transparent ${OUTLINED_TEXT}`}
       >
-        <div className="px-2 py-0.5 bg-[#05070a]/80 border border-[#1e293b]/90 rounded-[1px] shadow-[2px_2px_0_#020617] text-[8px] sm:text-[8.5px] text-[#e2e8f0] tracking-wider uppercase font-bold flex items-center gap-1">
+        <div className="px-2 py-0.5 bg-[#05070a]/80 border border-[#1e293b]/90 rounded-[1px] shadow-[2px_2px_0_#020617] text-[9px] sm:text-[10px] text-[#e2e8f0] tracking-wider uppercase font-bold flex items-center gap-1">
           <span>{cleanRoomTitle}</span>
           {devMode && isCheatMode && (
             <>
@@ -326,7 +326,7 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
               const fogPct = Math.round(fog.fogIntensity * 100);
 
               return (
-                <div className="flex flex-wrap items-center justify-center gap-1 text-[6.5px] tracking-tighter font-bold bg-transparent">
+                <div className="flex flex-wrap items-center justify-center gap-1 text-[9px] tracking-tighter font-bold bg-transparent">
                   <span
                     className={`px-1 rounded-[1px] border bg-[#05070a]/80 ${
                       isSetPath
@@ -389,7 +389,7 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
             ];
 
             return (
-              <div className="flex items-center gap-0.5 text-[6.5px] tracking-tighter font-bold bg-[#05070a]/80 px-1 py-0.5 rounded-[1px] border border-[#1e293b]/80">
+              <div className="flex items-center gap-0.5 text-[9px] tracking-tighter font-bold bg-[#05070a]/80 px-1 py-0.5 rounded-[1px] border border-[#1e293b]/80">
                 {depthSteps.map((step, i) => {
                   const isActiveStep = inLoop
                     ? curDepth === step.depth
@@ -443,7 +443,7 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
           <button
             type="button"
             onClick={() => cycleTargetLock(state)}
-            className="pointer-events-auto mt-0.5 px-1.5 py-0.5 bg-[#05070a]/85 border border-[#38bdf8]/80 rounded-[1px] shadow-[1px_1px_0_#020617] text-[7.5px] text-[#7dd3fc] font-bold tracking-wider uppercase flex items-center gap-1 cursor-pointer"
+            className="pointer-events-auto mt-0.5 px-1.5 py-0.5 bg-[#05070a]/85 border border-[#38bdf8]/80 rounded-[1px] shadow-[1px_1px_0_#020617] text-[9px] text-[#7dd3fc] font-bold tracking-wider uppercase flex items-center gap-1 cursor-pointer"
           >
             <span className="text-[#fbbf24]">◎</span>
             <span>
@@ -462,7 +462,7 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
         } bg-[#05070a]/80 border border-[#1e293b]/90 px-1.5 py-1 rounded-[1px] shadow-[2px_2px_0_#020617] ${OUTLINED_TEXT}`}
       >
         {/* Salvage Scrap, Gemstone Counter & Dev-Mode Player Light Stat */}
-        <div className="flex items-center gap-1 text-[8px] font-bold bg-transparent tabular-nums">
+        <div className="flex items-center gap-1 text-[9px] font-bold bg-transparent tabular-nums">
           <span className="text-[#fef08a]">⚙ {state.salvageScrap}</span>
           <span className="text-[#475569]">·</span>
           <span className="text-[#7dd3fc]">
@@ -484,7 +484,7 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
         {/* Main Hand (Right), Side Hand (Left), and Aux (Back) Readouts + Segmented Ammo Pips */}
         <div className="flex flex-col items-end bg-transparent w-full gap-0.5">
           {/* 1. MAIN HAND (RIGHT) */}
-          <div className="flex items-center justify-end gap-1 max-w-full text-[7.5px] font-bold leading-none">
+          <div className="flex items-center justify-end gap-1 max-w-full text-[9px] font-bold leading-none">
             {!compactRetro && <span className="text-[#fde047] shrink-0">R·MAIN:</span>}
             <span className="text-[#f8fafc] truncate">{activeWeaponName}</span>
           </div>
@@ -503,7 +503,7 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
                   });
                 }}
                 title={`Side Hand (Left) · Click or Hold [L · ${lKeyBadge}] to swap Side (Left) ⇄ Aux (Back)`}
-                className="pointer-events-auto flex items-center justify-end gap-1 max-w-full text-[7px] font-bold leading-none hover:text-[#fbbf24] cursor-pointer bg-transparent"
+                className="pointer-events-auto flex items-center justify-end gap-1 max-w-full text-[9px] font-bold leading-none hover:text-[#fbbf24] cursor-pointer bg-transparent"
               >
                 <span className="text-[#38bdf8] shrink-0">L·SIDE:</span>
                 <span className="text-[#cbd5e1] truncate">{sideDisplayName}</span>
@@ -521,7 +521,7 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
                   });
                 }}
                 title={`Auxiliary (Back) · Click or Hold [L · ${lKeyBadge}] to swap Side (Left) ⇄ Aux (Back)`}
-                className="pointer-events-auto flex items-center justify-end gap-1 max-w-full text-[7px] font-bold leading-none hover:text-[#fbbf24] cursor-pointer bg-transparent"
+                className="pointer-events-auto flex items-center justify-end gap-1 max-w-full text-[9px] font-bold leading-none hover:text-[#fbbf24] cursor-pointer bg-transparent"
               >
                 <span className="text-[#c084fc] shrink-0">B·AUX:</span>
                 <span className="text-[#cbd5e1] truncate">{auxDisplayName}</span>
@@ -530,7 +530,7 @@ export const HudDefenseBars: React.FC<HudDefenseBarsProps> = ({
           )}
 
           {isReloading ? (
-            <div className="text-[8px] text-[#f59e0b] font-black tracking-wider animate-pulse mt-0.5">
+            <div className="text-[9px] text-[#f59e0b] font-black tracking-wider animate-pulse mt-0.5">
               {isKhopesh ? 'STANCE' : 'RELOAD'} {reloadTimer.toFixed(1)}s
             </div>
           ) : (

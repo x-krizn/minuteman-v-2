@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import {
+import type { InertiaOutcomeBand, OrionCombatContext } from './combat';
+import type {
   ArmorState,
   ArmorType,
   Base64SpriteConfig,
@@ -14,7 +15,6 @@ import {
   OrionDir,
   ShieldState,
 } from './common';
-import { InertiaOutcomeBand, OrionCombatContext } from './combat';
 import type { OrionState } from './state';
 
 /**

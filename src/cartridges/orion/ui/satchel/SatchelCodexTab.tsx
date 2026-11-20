@@ -355,7 +355,7 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
             ONLY SIGHTED & SALVAGED ENTRIES RECORDED
           </span>
         </div>
-        <span className="text-[9.5px] font-bold text-[#38bdf8]">
+        <span className="text-[10px] font-bold text-[#38bdf8]">
           RECORDED: {totalDiscovered} / {totalCatalog}
         </span>
       </div>
@@ -402,7 +402,7 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                 setCategory(t.id);
                 setSelectedId(null);
               }}
-              className={`px-2 py-0.5 rounded-xs font-bold text-[9.5px] transition-colors cursor-pointer shrink-0 ${
+              className={`px-2 py-0.5 rounded-xs font-bold text-[10px] transition-colors cursor-pointer shrink-0 ${
                 category === t.id
                   ? t.activeCls
                   : 'bg-[#0f172a] text-[#94a3b8] hover:bg-[#1e293b] border border-[#1e293b]'
@@ -418,7 +418,7 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search recorded codex..."
-          className="px-2 py-0.5 bg-[#090d14] border border-[#334155] rounded-xs text-[9.5px] text-[#e2e8f0] placeholder-[#64748b] focus:outline-none focus:border-[#50fa7b] w-44 max-w-full"
+          className="px-2 py-0.5 bg-[#090d14] border border-[#334155] rounded-xs text-[11px] text-[#e2e8f0] placeholder-[#64748b] focus:outline-none focus:border-[#50fa7b] w-44 max-w-full"
         />
       </div>
 
@@ -461,34 +461,34 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                         />
                       )}
                       <div>
-                        <span className="font-bold text-[#f8fafc] text-[10.5px]">
+                        <span className="font-bold text-[#f8fafc] text-[11px]">
                           {enemy.name}
                         </span>
                         {devMode && (
-                          <span className="ml-1.5 text-[8px] text-[#64748b] font-mono">
+                          <span className="ml-1.5 text-[9px] text-[#64748b] font-mono">
                             [{enemy.type}]
                           </span>
                         )}
-                        <span className="ml-2 text-[8.5px] uppercase text-[#94a3b8]">
+                        <span className="ml-2 text-[9px] uppercase text-[#94a3b8]">
                           {(enemy.faction || 'hostile').toUpperCase()} · {enemy.damageType} ({enemy.damage} DMG)
                         </span>
                       </div>
                     </div>
-                    <span className="text-[8.5px] text-[#38bdf8]">
+                    <span className="text-[9px] text-[#38bdf8]">
                       SHLD {enemy.shields.capacity} · ARM {enemy.armor.threshold}/{enemy.armor.rating} · FRM {enemy.frameIntegrity}
                     </span>
                   </div>
 
-                  <p className="mt-1 text-[#cbd5e1] text-[9.5px] leading-snug">
+                  <p className="mt-1 text-[#cbd5e1] text-[10px] leading-snug">
                     {enemy.description}
                   </p>
 
                   {isExpanded && (
-                    <div className="mt-1.5 pt-1.5 border-t border-[#334155]/80 space-y-1 text-[9.5px]">
+                    <div className="mt-1.5 pt-1.5 border-t border-[#334155]/80 space-y-1 text-[10px]">
                       <div className="text-[#fde68a] italic leading-snug">
                         “{enemy.lore}”
                       </div>
-                      <div className="flex flex-wrap gap-3 text-[8.5px] text-[#94a3b8] pt-0.5">
+                      <div className="flex flex-wrap gap-3 text-[9px] text-[#94a3b8] pt-0.5">
                         <span>Armor Type: {enemy.armor.type}</span>
                         <span>Armor Durability: {enemy.armor.durability}</span>
                         <span>Weight Class: {(enemy.weightClass || 'medium').toUpperCase()}</span>
@@ -505,7 +505,7 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
           <div className="p-1.5 bg-[#090d14] border border-[#1e293b] rounded-xs space-y-1">
             <div className="flex flex-wrap items-center justify-between gap-1">
               <div className="flex flex-wrap items-center gap-1">
-                <span className="text-[7.5px] font-bold text-[#ffd27d]">8 WEAPON CLASSES:</span>
+                <span className="text-[9px] font-bold text-[#ffd27d]">8 WEAPON CLASSES:</span>
                 {(['ALL', ...WEAPON_CATEGORIES] as const).map((catOpt) => (
                   <button
                     key={catOpt}
@@ -514,7 +514,7 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                       soundSystem.playSelect();
                       setArsenalClassFilter(catOpt);
                     }}
-                    className={`px-1.5 py-0.2 rounded-xs text-[7px] font-bold border cursor-pointer ${
+                    className={`px-1.5 py-0.2 rounded-xs text-[9px] font-bold border cursor-pointer ${
                       arsenalClassFilter === catOpt
                         ? 'bg-[#ffd27d] text-[#05070a] border-[#fde047]'
                         : 'bg-[#05070a] text-[#94a3b8] border-[#1e293b]'
@@ -525,7 +525,7 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                 ))}
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-[7px] text-[#94a3b8] font-bold">SUBTYPE:</span>
+                <span className="text-[9px] text-[#94a3b8] font-bold">SUBTYPE:</span>
                 {(['ALL', 'Custom', 'Magitech'] as const).map((subOpt) => (
                   <button
                     key={subOpt}
@@ -534,7 +534,7 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                       soundSystem.playSelect();
                       setArsenalSubtypeFilter(subOpt);
                     }}
-                    className={`px-1.5 py-0.2 rounded-xs text-[7px] font-bold border cursor-pointer ${
+                    className={`px-1.5 py-0.2 rounded-xs text-[9px] font-bold border cursor-pointer ${
                       arsenalSubtypeFilter === subOpt
                         ? subOpt === 'Magitech'
                           ? 'bg-[#a21caf] text-[#f8fafc] border-[#e879f9]'
@@ -593,16 +593,16 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                         />
                       )}
                       <div>
-                        <span className="font-bold text-[#ffd27d] text-[10.5px]">
+                        <span className="font-bold text-[#ffd27d] text-[11px]">
                           {w.name}
                         </span>
                         {devMode && (
-                          <span className="ml-1.5 text-[8px] text-[#64748b] font-mono">
+                          <span className="ml-1.5 text-[9px] text-[#64748b] font-mono">
                             [{w.id}]
                           </span>
                         )}
                         <span
-                          className={`ml-1.5 px-1 py-0.1 rounded-[2px] text-[7px] font-bold ${
+                          className={`ml-1.5 px-1 py-0.1 rounded-[2px] text-[9px] font-bold ${
                             isMagitech
                               ? 'bg-[#311042] text-[#e879f9] border border-[#a21caf]/50'
                               : 'bg-[#052e16] text-[#86efac] border border-[#22c55e]/40'
@@ -610,12 +610,12 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                         >
                           {stInfo.variantSubtype.toUpperCase()}
                         </span>
-                        <span className="ml-2 text-[8.5px] text-[#94a3b8]">
+                        <span className="ml-2 text-[9px] text-[#94a3b8]">
                           {stInfo.category} ▸ {stInfo.functionalType} · {wt} WT ({(w.weightClass || 'medium').toUpperCase()}) · {w.handing || '1-hand'} · [{isMagitech ? '1 GEM SOCKET' : `3 SLOTS: ${compSlots}`}]
                         </span>
                       </div>
                     </div>
-                    <span className="text-[8.5px] text-[#4ade80] font-bold">
+                    <span className="text-[9px] text-[#4ade80] font-bold">
                       {w.damagePerShot > 0
                         ? primaryAction?.isChargeable
                           ? `${w.damagePerShot}–${Math.round(w.damagePerShot * 1.85)} ${w.primaryDamageType} (${primaryFamily}) · 1-SHOT CHARGE BOW`
@@ -626,7 +626,7 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                     </span>
                   </div>
 
-                  <div className="mt-1 flex flex-wrap items-center gap-1 text-[7.5px]">
+                  <div className="mt-1 flex flex-wrap items-center gap-1 text-[9px]">
                     <span className="px-1 py-0.2 rounded-[2px] bg-[#090d14] text-[#94a3b8] border border-[#1e293b]">
                       {primaryAction?.noReload || w.equipmentRole === 'melee' || w.equipmentRole === 'shield'
                         ? `NO RELOAD (${primaryAction?.comboResetWindowSec ?? 1.1}s RESET) · ${primaryRange}px RNG`
@@ -686,17 +686,17 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                     )}
                   </div>
 
-                  <p className="mt-1 text-[#cbd5e1] text-[9.5px] leading-snug">
+                  <p className="mt-1 text-[#cbd5e1] text-[10px] leading-snug">
                     {w.description}
                   </p>
 
                   {isExpanded && (
-                    <div className="mt-1.5 pt-1.5 border-t border-[#334155]/80 space-y-1 text-[9.5px]">
+                    <div className="mt-1.5 pt-1.5 border-t border-[#334155]/80 space-y-1 text-[10px]">
                       <div className="text-[#fde68a] italic leading-snug">
                         “{w.lore}”
                       </div>
                       {primaryAction?.comboSequence && primaryAction.comboSequence.length > 0 && (
-                        <div className="px-1.5 py-0.5 bg-[#090d14] border border-[#f472b6]/40 rounded-xs text-[8px] text-[#f472b6]">
+                        <div className="px-1.5 py-0.5 bg-[#090d14] border border-[#f472b6]/40 rounded-xs text-[9px] text-[#f472b6]">
                           <span className="font-bold">FLUID COMBO SEQUENCE: </span>
                           {primaryAction.comboSequence
                             .map((c, idx) => `${idx + 1}. ${c.label} (${Math.round(c.damageMult * 100)}% DMG)`)
@@ -720,7 +720,7 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                           return (
                             <div
                               key={`${act.name}-${idx}`}
-                              className="px-1.5 py-0.5 bg-[#090d14] border border-[#1e293b] rounded-xs flex flex-wrap items-center justify-between gap-1 text-[8.5px]"
+                              className="px-1.5 py-0.5 bg-[#090d14] border border-[#1e293b] rounded-xs flex flex-wrap items-center justify-between gap-1 text-[9px]"
                             >
                               <span className="text-[#38bdf8] font-bold">
                                 S{idx + 1}: {act.name}
@@ -779,15 +779,15 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                         />
                       )}
                       <div>
-                        <span className="font-bold text-[#50fa7b] text-[10.5px]">
+                        <span className="font-bold text-[#50fa7b] text-[11px]">
                           {item.name}
                         </span>
                         {devMode && (
-                          <span className="ml-1.5 text-[8px] text-[#64748b] font-mono">
+                          <span className="ml-1.5 text-[9px] text-[#64748b] font-mono">
                             [{item.id}]
                           </span>
                         )}
-                        <span className="ml-2 text-[8.5px] uppercase text-[#94a3b8]">
+                        <span className="ml-2 text-[9px] uppercase text-[#94a3b8]">
                           0 WT · {isGem ? 'GEMSTONE' : item.category}
                           {item.lightBonus
                             ? ` · ${item.lightBonus > 0 ? `+${item.lightBonus}` : item.lightBonus} LIGHT`
@@ -795,17 +795,17 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                         </span>
                       </div>
                     </div>
-                    <span className="text-[8.5px] text-[#ffd27d]">
+                    <span className="text-[9px] text-[#ffd27d]">
                       BUY {item.buyPrice || 0}g · SELL {item.sellPrice || 0}g
                     </span>
                   </div>
 
-                  <p className="mt-1 text-[#cbd5e1] text-[9.5px] leading-snug">
+                  <p className="mt-1 text-[#cbd5e1] text-[10px] leading-snug">
                     {item.description}
                   </p>
 
                   {isGem && (
-                    <div className="mt-1 space-y-0.5 text-[8px]">
+                    <div className="mt-1 space-y-0.5 text-[9px]">
                       <div className="text-[#86efac]">
                         + WEAPON MOD ({GEM_MOD_PREFIX_BY_ID[item.id as GemId]}):{' '}
                         {WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS[item.id as GemId]} (
@@ -821,7 +821,7 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                   )}
 
                   {isExpanded && (
-                    <div className="mt-1.5 pt-1.5 border-t border-[#334155]/80 text-[#fde68a] italic text-[9.5px] leading-snug">
+                    <div className="mt-1.5 pt-1.5 border-t border-[#334155]/80 text-[#fde68a] italic text-[10px] leading-snug">
                       “{item.lore}”
                     </div>
                   )}
@@ -853,31 +853,31 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                   <div className="flex items-center justify-between gap-2">
                     <div>
                       <span
-                        className="font-bold text-[10.5px]"
+                        className="font-bold text-[11px]"
                         style={{ color: entry.badgeColor }}
                       >
                         {entry.title}
                       </span>
                       {devMode && (
-                        <span className="ml-1.5 text-[8px] text-[#64748b] font-mono">
+                        <span className="ml-1.5 text-[9px] text-[#64748b] font-mono">
                           [{entry.id}]
                         </span>
                       )}
-                      <span className="ml-2 text-[8.5px] text-[#94a3b8]">
+                      <span className="ml-2 text-[9px] text-[#94a3b8]">
                         {entry.subtitle}
                       </span>
                     </div>
-                    <span className="text-[8.5px] uppercase text-[#64748b]">
+                    <span className="text-[9px] uppercase text-[#64748b]">
                       {entry.kind}
                     </span>
                   </div>
 
-                  <p className="mt-1 text-[#cbd5e1] text-[9.5px] leading-snug">
+                  <p className="mt-1 text-[#cbd5e1] text-[10px] leading-snug">
                     {entry.description}
                   </p>
 
                   {isExpanded && (
-                    <div className="mt-1.5 pt-1.5 border-t border-[#334155]/80 text-[#fde68a] italic text-[9.5px] leading-snug">
+                    <div className="mt-1.5 pt-1.5 border-t border-[#334155]/80 text-[#fde68a] italic text-[10px] leading-snug">
                       “{entry.lore}”
                     </div>
                   )}

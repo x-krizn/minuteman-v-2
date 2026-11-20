@@ -377,12 +377,12 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
       <div className="p-2 bg-[#070b12] rounded-xs border border-[#1e293b] space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-1 border-b border-[#1e293b] pb-1">
           <div>
-            <div className="text-[9.5px] font-bold text-[#fde047]">
+            <div className="text-[10px] font-bold text-[#fde047]">
               {isUniqueWeapon
                 ? `UNIQUE MAGITECH · FIXED COMPONENTS & 1 RESONANCE GEM SOCKET (${installedGems.length}/${maxSlots} OCCUPIED)`
                 : `ANY-ORDER MODIFICATION SLOTS (${installedGems.length}/${maxSlots} OCCUPIED)`}
             </div>
-            <div className="text-[7.5px] text-[#94a3b8]">
+            <div className="text-[9px] text-[#94a3b8]">
               {isUniqueWeapon ? (
                 <>
                   Unique Magitech ordnance features factory-sealed internal components (Hilt, Grip,
@@ -419,7 +419,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                 else soundSystem.playMenuBeep();
                 notifyOrionStateChange();
               }}
-              className="px-2 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#38bdf8] border border-[#38bdf8]/50 rounded-xs text-[7.5px] font-bold cursor-pointer"
+              className="px-2 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#38bdf8] border border-[#38bdf8]/50 rounded-xs text-[9px] font-bold cursor-pointer"
             >
               + ACQUIRE 2ND COPY (PAIRED STANCE)
             </button>
@@ -459,11 +459,11 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                 }`}
               >
                 <div className="flex items-center justify-between gap-1">
-                  <span className="text-[8px] font-bold text-[#7dd3fc]">
+                  <span className="text-[9px] font-bold text-[#7dd3fc]">
                     SLOT {idx + 1} · [{slotLabel}]
                   </span>
                   <span
-                    className={`text-[7px] px-1 py-0.2 rounded-[2px] font-bold ${
+                    className={`text-[9px] px-1 py-0.2 rounded-[2px] font-bold ${
                       sGem
                         ? 'bg-[#052e16] text-[#86efac] border border-[#22c55e]/40'
                         : 'bg-[#1e293b] text-[#94a3b8]'
@@ -481,7 +481,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                         sizeClass="w-3.5 h-3.5"
                       />
                       <span
-                        className="text-[8.5px] font-bold truncate"
+                        className="text-[9px] font-bold truncate"
                         style={{ color: gemInfo.hexColor }}
                       >
                         {partDef ? partDef.name : `${gemInfo.name} Socket`}
@@ -503,13 +503,13 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                           notifyOrionStateChange();
                         }
                       }}
-                      className="px-1.5 py-0.5 bg-[#450a0a] hover:bg-[#7f1d1d] text-[#fca5a5] border border-[#ef4444]/50 rounded-xs text-[7px] font-bold cursor-pointer shrink-0"
+                      className="px-1.5 py-0.5 bg-[#450a0a] hover:bg-[#7f1d1d] text-[#fca5a5] border border-[#ef4444]/50 rounded-xs text-[9px] font-bold cursor-pointer shrink-0"
                     >
                       REMOVE
                     </button>
                   </div>
                 ) : (
-                  <div className="text-[7.5px] text-[#64748b] italic pt-0.5">
+                  <div className="text-[9px] text-[#64748b] italic pt-0.5">
                     Click to select & install mod in Slot {idx + 1}
                   </div>
                 )}
@@ -521,7 +521,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
         {/* Active Slot Installation Options */}
         <div className="p-2 bg-[#090d14] rounded-xs border border-[#334155] space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[8.5px] font-bold text-[#fde047]">
+            <span className="text-[9px] font-bold text-[#fde047]">
               CONFIGURING SLOT {clampedSlotIdx + 1}: [
               {isWeaponItem
                 ? anatomicalSlots[clampedSlotIdx]?.toUpperCase()
@@ -536,7 +536,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
           {/* 1. Named Anatomical Weapon Component Parts (if Weapon/Auxiliary) */}
           {isWeaponItem && compatibleWeaponParts.length > 0 && (
             <div className="space-y-1">
-              <div className="text-[7.5px] font-bold text-[#7dd3fc]">
+              <div className="text-[9px] font-bold text-[#7dd3fc]">
                 A. COMPATIBLE [{activeAnatomicalSlotName.toUpperCase()}] COMPONENT PARTS (CRAFTED OR LOOTED):
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
@@ -568,12 +568,12 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                       }`}
                     >
                       <div className="flex items-center justify-between gap-1">
-                        <span className="font-bold text-[8.5px] text-[#e2e8f0] truncate">
+                        <span className="font-bold text-[9px] text-[#e2e8f0] truncate">
                           {part.name}
                           {devMode ? ` [${part.id}]` : ''}
                         </span>
                         <span
-                          className={`text-[6.8px] px-1 py-0.2 rounded-[2px] font-bold shrink-0 ${
+                          className={`text-[9px] px-1 py-0.2 rounded-[2px] font-bold shrink-0 ${
                             part.origin === 'looted'
                               ? 'bg-[#052e16] text-[#86efac]'
                               : 'bg-[#3b0764] text-[#e9d5ff]'
@@ -582,14 +582,14 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                           {part.origin.toUpperCase()} · {part.maxGemSlots}G
                         </span>
                       </div>
-                      <div className="text-[7px] text-[#86efac]">+ {part.gainDescription}</div>
-                      <div className="text-[6.8px] text-[#f87171]">
+                      <div className="text-[9px] text-[#86efac]">+ {part.gainDescription}</div>
+                      <div className="text-[9px] text-[#f87171]">
                         − {part.drawbackDescription} (
                         {part.weightDelta >= 0 ? `+${part.weightDelta}` : part.weightDelta}{' '}
                         WT)
                       </div>
                       <div className="flex items-center justify-between gap-1 pt-0.5 border-t border-[#1e293b]/70">
-                        <span className="text-[6.8px] text-[#94a3b8]">
+                        <span className="text-[9px] text-[#94a3b8]">
                           Cost: <b className="text-[#ffd27d]">{costLabel}</b> →{' '}
                           <span className="text-[#fde047]">
                             {previewNextName(part.primaryGemId)}
@@ -618,7 +618,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                               soundSystem.playMenuBeep();
                             }
                           }}
-                          className={`px-2 py-0.5 rounded-xs text-[7px] font-bold border cursor-pointer shrink-0 ${
+                          className={`px-2 py-0.5 rounded-xs text-[9px] font-bold border cursor-pointer shrink-0 ${
                             isCurrentlyInstalled
                               ? 'bg-[#1e293b] text-[#fde047] border-[#fde047]/50 cursor-default'
                               : canAfford
@@ -642,7 +642,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
 
           {/* 2. Direct Gemstone Socket Installation (Available for both Weapons and Hardware in Any Slot Order) */}
           <div className="space-y-1">
-            <div className="text-[7.5px] font-bold text-[#c084fc]">
+            <div className="text-[9px] font-bold text-[#c084fc]">
               {isWeaponItem
                 ? `B. DIRECT GEMSTONE INFUSION INTO SLOT ${clampedSlotIdx + 1} [${activeAnatomicalSlotName.toUpperCase()}]:`
                 : `SOCKET GEMSTONE INTO ${hwItem?.canonicalSlotLabel.toUpperCase() || 'HARDWARE'} SLOT ${clampedSlotIdx + 1}:`}
@@ -688,7 +688,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                   >
                     <div className="flex items-center justify-between gap-1">
                       <span
-                        className="font-bold text-[8px] flex items-center gap-1"
+                        className="font-bold text-[9px] flex items-center gap-1"
                         style={{ color: gem.hexColor }}
                       >
                         <SpriteCanvasIcon
@@ -697,15 +697,15 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                         />
                         {gem.name}
                       </span>
-                      <span className="text-[7px] text-[#94a3b8] font-bold">
+                      <span className="text-[9px] text-[#94a3b8] font-bold">
                         {isCheatMode ? '∞' : `×${invCount}`}
                       </span>
                     </div>
-                    <div className="text-[6.8px] text-[#cbd5e1] leading-tight">
+                    <div className="text-[9px] text-[#cbd5e1] leading-tight">
                       {bonusDesc}
                     </div>
                     {isWeaponItem && (
-                      <div className="text-[6.5px] text-[#fde047] truncate">
+                      <div className="text-[9px] text-[#fde047] truncate">
                         → {previewNextName(gem.id)} ({wtDelta >= 0 ? `+${wtDelta}` : wtDelta}{' '}
                         WT)
                       </div>
@@ -725,14 +725,14 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
       {/* Armory Header & Workbench Category Bar */}
       <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] flex flex-wrap items-center justify-between gap-2">
         <div>
-          <div className="text-[10.5px] font-bold text-[#fb923c] flex items-center gap-2">
+          <div className="text-[11px] font-bold text-[#fb923c] flex items-center gap-2">
             <span>⚙ ARMORY MODIFICATION WORKBENCH</span>
-            <span className="text-[8px] px-1.5 py-0.5 rounded-xs bg-[#1e293b] text-[#fde047]">
+            <span className="text-[9px] px-1.5 py-0.5 rounded-xs bg-[#1e293b] text-[#fde047]">
               LOAD: {loadMetrics.equippedWeight}/{loadMetrics.maxCapacity} WT (
               {loadMetrics.loadPct}% · {loadMetrics.loadBracket.toUpperCase()})
             </span>
           </div>
-          <div className="text-[8px] text-[#94a3b8]">
+          <div className="text-[9px] text-[#94a3b8]">
             Install weapon component parts, internal chassis sub-modules, action modifications,
             and gemstone sockets in any slot order.
           </div>
@@ -753,7 +753,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                 soundSystem.playSelect();
                 setCategory(tabItem.id);
               }}
-              className={`px-2 py-1 rounded-xs text-[8.5px] font-bold border cursor-pointer ${
+              className={`px-2 py-1 rounded-xs text-[9px] font-bold border cursor-pointer ${
                 category === tabItem.id
                   ? 'bg-[#fb923c] text-[#05070a] border-[#fdba74]'
                   : 'bg-[#0f172a] text-[#94a3b8] border-[#334155] hover:border-[#fb923c]'
@@ -769,7 +769,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                 soundSystem.playSelect();
                 onReturnToLoadout();
               }}
-              className="px-2 py-1 rounded-xs text-[8px] font-bold bg-[#1e293b] hover:bg-[#334155] text-[#ffd27d] border border-[#ffd27d]/50 cursor-pointer"
+              className="px-2 py-1 rounded-xs text-[9px] font-bold bg-[#1e293b] hover:bg-[#334155] text-[#ffd27d] border border-[#ffd27d]/50 cursor-pointer"
             >
               ↩ MECH DOLL LOADOUT
             </button>
@@ -783,7 +783,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
           {/* Quick Equipped + Owned Weapon Selector with 8-Category Filter */}
           <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">
             <div className="flex flex-wrap items-center justify-between gap-1">
-              <div className="text-[8.5px] font-bold text-[#ffd27d]">
+              <div className="text-[9px] font-bold text-[#ffd27d]">
                 SELECT WEAPON OR AUXILIARY TO MODIFY:
               </div>
               <div className="flex flex-wrap gap-1">
@@ -795,7 +795,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                       soundSystem.playSelect();
                       setWeaponCategoryFilter(catOpt);
                     }}
-                    className={`px-1.5 py-0.5 rounded-xs text-[7.5px] font-bold border cursor-pointer ${
+                    className={`px-1.5 py-0.5 rounded-xs text-[9px] font-bold border cursor-pointer ${
                       weaponCategoryFilter === catOpt
                         ? 'bg-[#ffd27d] text-[#05070a] border-[#fde047]'
                         : 'bg-[#05070a] text-[#94a3b8] border-[#1e293b] hover:border-[#ffd27d]/60'
@@ -833,7 +833,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                         setSelectedWeaponInstanceId(instanceId);
                         setSelectedModSlotIndex(0);
                       }}
-                      className={`px-2 py-1 rounded-xs border text-[8px] font-bold flex items-center gap-1.5 cursor-pointer ${
+                      className={`px-2 py-1 rounded-xs border text-[9px] font-bold flex items-center gap-1.5 cursor-pointer ${
                         isSelected
                           ? 'bg-[#172554] text-[#fde047] border-[#fde047]'
                           : 'bg-[#05070a] text-[#cbd5e1] border-[#1e293b] hover:border-[#38bdf8]'
@@ -846,28 +846,28 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                         sizeClass="w-3.5 h-3.5"
                       />
                       <span>{w.name}</span>
-                      <span className="text-[6.5px] text-[#7dd3fc]">
+                      <span className="text-[9px] text-[#7dd3fc]">
                         [{stInfo.functionalType}]
                       </span>
                       <span
-                        className={`text-[6.5px] font-mono ${
+                        className={`text-[9px] font-mono ${
                           isUnique ? 'text-[#c084fc]' : 'text-[#86efac]'
                         }`}
                       >
                         {isUnique ? '· Magitech (1G)' : '· Custom (3S)'}
                       </span>
                       {isMain && (
-                        <span className="px-1 py-0.2 bg-[#fde047]/20 text-[#fde047] rounded-[2px] text-[6.5px]">
+                        <span className="px-1 py-0.2 bg-[#fde047]/20 text-[#fde047] rounded-[2px] text-[9px]">
                           MAIN
                         </span>
                       )}
                       {isSide && (
-                        <span className="px-1 py-0.2 bg-[#38bdf8]/20 text-[#38bdf8] rounded-[2px] text-[6.5px]">
+                        <span className="px-1 py-0.2 bg-[#38bdf8]/20 text-[#38bdf8] rounded-[2px] text-[9px]">
                           SIDE
                         </span>
                       )}
                       {isAux && (
-                        <span className="px-1 py-0.2 bg-[#c084fc]/20 text-[#c084fc] rounded-[2px] text-[6.5px]">
+                        <span className="px-1 py-0.2 bg-[#c084fc]/20 text-[#c084fc] rounded-[2px] text-[9px]">
                           AUX
                         </span>
                       )}
@@ -891,15 +891,15 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                   <div className="text-[11px] font-bold text-[#fde047]">
                     {activeWeaponDef.name}{' '}
                     {devMode && (
-                      <span className="text-[8px] font-mono text-[#64748b]">
+                      <span className="text-[9px] font-mono text-[#64748b]">
                         [{activeWeaponDef.id}]
                       </span>
                     )}{' '}
-                    <span className="text-[8.5px] text-[#94a3b8]">
+                    <span className="text-[9px] text-[#94a3b8]">
                       (×{getOwnedWeaponCount(state, activeWeaponDef.id)} Owned)
                     </span>
                   </div>
-                  <div className="text-[8px] text-[#7dd3fc]">
+                  <div className="text-[9px] text-[#7dd3fc]">
                     {getWeaponSubtypeInfo(activeWeaponBaseId).subtype} · Equip Weight:{' '}
                     <b>{getWeaponInstanceEquipWeight(activeWeaponDef.id, state)} WT</b> ·{' '}
                     {activeWeaponBaseDef.weaponTier === 'unique' ? (
@@ -914,12 +914,12 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                     )}
                   </div>
                 </div>
-                <span className="px-2 py-0.5 rounded-xs bg-[#1e293b] text-[#86efac] text-[8px] font-bold">
+                <span className="px-2 py-0.5 rounded-xs bg-[#1e293b] text-[#86efac] text-[9px] font-bold">
                   {getWeaponGemVisuals(state, activeWeaponDef.id).label}
                 </span>
               </div>
 
-              <div className="text-[8px] text-[#cbd5e1]">{activeWeaponDef.description}</div>
+              <div className="text-[9px] text-[#cbd5e1]">{activeWeaponDef.description}</div>
 
               {/* Feat Handling & Prerequisite Status Banner */}
               {(() => {
@@ -928,7 +928,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                   ? CANONICAL_FRAME_FEAT_REGISTRY[handlingEval.recommendedFeatId]
                   : undefined;
                 return (
-                  <div className="p-1.5 bg-[#05070a] rounded-xs border border-[#1e293b] flex flex-wrap items-center justify-between gap-1.5 text-[7.5px]">
+                  <div className="p-1.5 bg-[#05070a] rounded-xs border border-[#1e293b] flex flex-wrap items-center justify-between gap-1.5 text-[9px]">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span
                         className={`px-1.5 py-0.2 rounded-[2px] font-bold border ${
@@ -952,7 +952,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                           soundSystem.playSelect();
                           onLocateFeat(recFeat.id);
                         }}
-                        className="px-1.5 py-0.5 rounded-xs bg-[#1e1b4b] hover:bg-[#312e81] text-[#e9d5ff] border border-[#818cf8]/50 font-bold text-[7px] cursor-pointer shrink-0"
+                        className="px-1.5 py-0.5 rounded-xs bg-[#1e1b4b] hover:bg-[#312e81] text-[#e9d5ff] border border-[#818cf8]/50 font-bold text-[9px] cursor-pointer shrink-0"
                       >
                         FEAT GRID: {recFeat.name.toUpperCase()} →
                       </button>
@@ -969,24 +969,24 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                 return (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 pt-1">
                     <div className="p-1 bg-[#05070a] rounded-xs border border-[#1e293b]">
-                      <div className="text-[6.8px] text-[#94a3b8]">PRIMARY DMG</div>
-                      <div className="text-[8.5px] font-bold text-[#fde047]">
+                      <div className="text-[9px] text-[#94a3b8]">PRIMARY DMG</div>
+                      <div className="text-[9px] font-bold text-[#fde047]">
                         {m1
                           ? `${Math.round(m1.damage * mods.damageMult)} (${m1.damageType})`
                           : 'Utility'}
                       </div>
                     </div>
                     <div className="p-1 bg-[#05070a] rounded-xs border border-[#1e293b]">
-                      <div className="text-[6.8px] text-[#94a3b8]">SECONDARY / ART</div>
-                      <div className="text-[8.5px] font-bold text-[#38bdf8]">
+                      <div className="text-[9px] text-[#94a3b8]">SECONDARY / ART</div>
+                      <div className="text-[9px] font-bold text-[#38bdf8]">
                         {m2
                           ? `${Math.round(m2.damage * mods.damageMult)} · ${(m2.cooldownSec * mods.skillCooldownMult).toFixed(1)}s`
                           : 'Passive'}
                       </div>
                     </div>
                     <div className="p-1 bg-[#05070a] rounded-xs border border-[#1e293b]">
-                      <div className="text-[6.8px] text-[#94a3b8]">PASSIVE DEFENSE</div>
-                      <div className="text-[8.5px] font-bold text-[#86efac]">
+                      <div className="text-[9px] text-[#94a3b8]">PASSIVE DEFENSE</div>
+                      <div className="text-[9px] font-bold text-[#86efac]">
                         +{ (activeWeaponDef.passiveShieldBonus || 0) + mods.maxShieldBonus } SHD
                         {activeWeaponDef.passiveArmorBonus
                           ? ` · +${activeWeaponDef.passiveArmorBonus} ARM`
@@ -994,8 +994,8 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                       </div>
                     </div>
                     <div className="p-1 bg-[#05070a] rounded-xs border border-[#1e293b]">
-                      <div className="text-[6.8px] text-[#94a3b8]">HEAT / COOLDOWN</div>
-                      <div className="text-[8.5px] font-bold text-[#c084fc]">
+                      <div className="text-[9px] text-[#94a3b8]">HEAT / COOLDOWN</div>
+                      <div className="text-[9px] font-bold text-[#c084fc]">
                         CD ×{mods.skillCooldownMult.toFixed(2)} · HEAT ×
                         {mods.skillHeatCostMult.toFixed(2)}
                       </div>
@@ -1022,7 +1022,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
           {/* Anatomical Assembly Selector */}
           <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">
             <div className="flex flex-wrap items-center justify-between gap-1">
-              <span className="text-[8.5px] font-bold text-[#38bdf8]">
+              <span className="text-[9px] font-bold text-[#38bdf8]">
                 SELECT CHASSIS ASSEMBLY & INTERNAL SUB-MODULE SLOT:
               </span>
               <div className="flex flex-wrap gap-1">
@@ -1059,7 +1059,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                       setActiveHardwareSlot(grp.defaultSlot);
                       setSelectedModSlotIndex(0);
                     }}
-                    className={`px-2 py-0.5 rounded-xs text-[8px] font-bold border cursor-pointer ${
+                    className={`px-2 py-0.5 rounded-xs text-[9px] font-bold border cursor-pointer ${
                       chassisGroup === grp.id
                         ? 'bg-[#38bdf8] text-[#05070a] border-[#7dd3fc]'
                         : 'bg-[#05070a] text-[#94a3b8] border-[#1e293b] hover:border-[#38bdf8]'
@@ -1109,8 +1109,8 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                         : 'bg-[#05070a] border-[#1e293b] text-[#cbd5e1] hover:border-[#475569]'
                     }`}
                   >
-                    <div className="text-[7.5px] font-bold">{subTab.label}</div>
-                    <div className="text-[8px] text-[#86efac] truncate max-w-[180px]">
+                    <div className="text-[9px] font-bold">{subTab.label}</div>
+                    <div className="text-[9px] text-[#86efac] truncate max-w-[180px]">
                       {eqHw?.name || eqId || 'None'}
                     </div>
                   </button>
@@ -1153,12 +1153,12 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                             <div className="text-[11px] font-bold text-[#38bdf8]">
                               {currentHw.name}
                               {devMode && (
-                                <span className="ml-1.5 text-[8px] font-mono text-[#64748b]">
+                                <span className="ml-1.5 text-[9px] font-mono text-[#64748b]">
                                   [{currentHw.id}]
                                 </span>
                               )}
                             </div>
-                            <div className="text-[8px] text-[#94a3b8]">
+                            <div className="text-[9px] text-[#94a3b8]">
                               {currentHw.canonicalSlotLabel} · {currentHw.subtype} · Weight:{' '}
                               <b className="text-[#e2e8f0]">
                                 {getHardwareBaseWeight(currentHw)} WT
@@ -1169,7 +1169,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                             </div>
                           </div>
                           <span
-                            className={`px-2 py-0.5 rounded-xs text-[7.5px] font-bold ${
+                            className={`px-2 py-0.5 rounded-xs text-[9px] font-bold ${
                               isExteriorArmor
                                 ? 'bg-[#1e293b] text-[#fde047]'
                                 : 'bg-[#172554] text-[#7dd3fc]'
@@ -1180,8 +1180,8 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                               : 'INTERNAL SUB-MODULE (NO ARMOR VALUE)'}
                           </span>
                         </div>
-                        <div className="text-[8px] text-[#cbd5e1]">{currentHw.description}</div>
-                        <div className="flex flex-wrap gap-1 pt-0.5 text-[7.5px]">
+                        <div className="text-[9px] text-[#cbd5e1]">{currentHw.description}</div>
+                        <div className="flex flex-wrap gap-1 pt-0.5 text-[9px]">
                           {isExteriorArmor && currentHw.armorDurability ? (
                             <span className="px-1.5 py-0.5 bg-[#052e16] text-[#86efac] rounded-xs font-bold">
                               +{currentHw.armorDurability} Armor Dur · Rating{' '}
@@ -1230,7 +1230,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
 
                 {/* Install / Swap Sub-Module or Hardware Piece */}
                 <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">
-                  <div className="text-[8.5px] font-bold text-[#86efac]">
+                  <div className="text-[9px] font-bold text-[#86efac]">
                     INSTALL OR CRAFT [{activeHardwareSlot.toUpperCase()}] HARDWARE / SUB-MODULE:
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
@@ -1259,21 +1259,21 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                           }`}
                         >
                           <div className="flex items-center justify-between gap-1">
-                            <span className="font-bold text-[8.5px] text-[#e2e8f0] truncate">
+                            <span className="font-bold text-[9px] text-[#e2e8f0] truncate">
                               {resolvedHw.name}
                             </span>
-                            <span className="text-[7px] text-[#94a3b8] shrink-0">
+                            <span className="text-[9px] text-[#94a3b8] shrink-0">
                               {getHardwareBaseWeight(resolvedHw)} WT
                               {getHardwareCapacityBonus(resolvedHw) > 0
                                 ? ` · +${getHardwareCapacityBonus(resolvedHw)} CAP`
                                 : ''}
                             </span>
                           </div>
-                          <div className="text-[7.2px] text-[#cbd5e1]">
+                          <div className="text-[9px] text-[#cbd5e1]">
                             {resolvedHw.description}
                           </div>
                           <div className="flex items-center justify-between gap-1 pt-0.5">
-                            <span className="text-[6.8px] text-[#7dd3fc]">
+                            <span className="text-[9px] text-[#7dd3fc]">
                               {isCrafted
                                 ? `Craft Cost: ${(hw.gemCost || [])
                                     .map(
@@ -1311,7 +1311,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                                 );
                                 notifyOrionStateChange();
                               }}
-                              className={`px-2 py-0.5 rounded-xs text-[7px] font-bold border cursor-pointer ${
+                              className={`px-2 py-0.5 rounded-xs text-[9px] font-bold border cursor-pointer ${
                                 isEquipped
                                   ? 'bg-[#1e293b] text-[#fde047] border-[#fde047]/50 cursor-default'
                                   : unlocked || canCraft
@@ -1341,7 +1341,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
       {category === 'action_mods' && (
         <div className="space-y-2">
           <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] flex flex-wrap items-center justify-between gap-2">
-            <span className="text-[8.5px] font-bold text-[#c084fc]">
+            <span className="text-[9px] font-bold text-[#c084fc]">
               SELECT ACTION MODIFICATION DOMAIN:
             </span>
             <div className="flex flex-wrap gap-1">
@@ -1359,7 +1359,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                     soundSystem.playSelect();
                     setActiveActionModCategory(dom.id);
                   }}
-                  className={`px-2 py-1 rounded-xs text-[8px] font-bold border cursor-pointer ${
+                  className={`px-2 py-1 rounded-xs text-[9px] font-bold border cursor-pointer ${
                     activeActionModCategory === dom.id
                       ? 'bg-[#c084fc] text-[#05070a] border-[#e9d5ff]'
                       : 'bg-[#05070a] text-[#94a3b8] border-[#1e293b] hover:border-[#c084fc]'
@@ -1408,12 +1408,12 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                     <span className="font-bold text-[9px] text-[#e2e8f0]">
                       {mod.name}
                       {devMode && (
-                        <span className="ml-1 text-[7.5px] font-mono text-[#64748b]">
+                        <span className="ml-1 text-[9px] font-mono text-[#64748b]">
                           [{mod.id}]
                         </span>
                       )}
                     </span>
-                    <span className="text-[7px] text-[#94a3b8]">
+                    <span className="text-[9px] text-[#94a3b8]">
                       {(mod.weightDelta ?? 0) >= 0
                         ? `+${mod.weightDelta ?? 0}`
                         : mod.weightDelta}{' '}
@@ -1423,10 +1423,10 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                         : ''}
                     </span>
                   </div>
-                  <div className="text-[7.5px] text-[#86efac]">+ {mod.gainDescription}</div>
-                  <div className="text-[7px] text-[#f87171]">− {mod.drawbackDescription}</div>
+                  <div className="text-[9px] text-[#86efac]">+ {mod.gainDescription}</div>
+                  <div className="text-[9px] text-[#f87171]">− {mod.drawbackDescription}</div>
                   <div className="flex items-center justify-between gap-1 pt-1 border-t border-[#1e293b]">
-                    <span className="text-[7px] text-[#ffd27d]">{costText}</span>
+                    <span className="text-[9px] text-[#ffd27d]">{costText}</span>
                     <div className="flex items-center gap-1">
                       {isInstalled ? (
                         <button
@@ -1439,7 +1439,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                             sayCtx.say(`UNEQUIPPED ${mod.name.toUpperCase()}`);
                             notifyOrionStateChange();
                           }}
-                          className="px-2 py-0.5 rounded-xs bg-[#450a0a] hover:bg-[#7f1d1d] text-[#fca5a5] border border-[#ef4444]/50 text-[7px] font-bold cursor-pointer"
+                          className="px-2 py-0.5 rounded-xs bg-[#450a0a] hover:bg-[#7f1d1d] text-[#fca5a5] border border-[#ef4444]/50 text-[9px] font-bold cursor-pointer"
                         >
                           UNEQUIP
                         </button>
@@ -1455,7 +1455,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                             );
                             notifyOrionStateChange();
                           }}
-                          className="px-2 py-0.5 rounded-xs bg-[#052e16] hover:bg-[#14532d] text-[#86efac] border border-[#22c55e]/60 text-[7px] font-bold cursor-pointer"
+                          className="px-2 py-0.5 rounded-xs bg-[#052e16] hover:bg-[#14532d] text-[#86efac] border border-[#22c55e]/60 text-[9px] font-bold cursor-pointer"
                         >
                           INSTALL MOD
                         </button>
@@ -1474,7 +1474,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                               soundSystem.playMenuBeep();
                             }
                           }}
-                          className={`px-2 py-0.5 rounded-xs text-[7px] font-bold border cursor-pointer ${
+                          className={`px-2 py-0.5 rounded-xs text-[9px] font-bold border cursor-pointer ${
                             canGenerate
                               ? 'bg-[#3b0764] hover:bg-[#581c87] text-[#e9d5ff] border-[#c084fc]'
                               : 'bg-[#0f172a] text-[#475569] border-[#1e293b] cursor-not-allowed'

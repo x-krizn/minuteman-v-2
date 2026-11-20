@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import {
+import type {
   AetherCardinalDir,
   KeyNodeRouteDescriptor,
   RoomChunkPlacementSpec,
@@ -23,14 +23,14 @@ import {
   mapDeepBogMaze,
   room20DeepBogMaze,
   room21LadyOfTheLakeArena,
-  room3Neg1BogLoopHollow,
   room30BogExitPerimeter,
+  room3Neg1BogLoopHollow,
 } from './belldor/outskirts/the_bog/map_deep_maze';
 import {
   mapBogDropZone,
+  room00DropPodCrater,
   room0Neg1RuinBranch,
   room0Neg2PoeLanternSanctuary,
-  room00DropPodCrater,
   room10SunkenPylonTrail,
   roomCheatPodBay,
   roomDownedTreesEast,

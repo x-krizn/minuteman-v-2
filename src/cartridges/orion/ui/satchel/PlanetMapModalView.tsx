@@ -111,33 +111,33 @@ export const PlanetMapModalView: React.FC<PlanetMapModalViewProps> = ({
       <div className="p-2 bg-[#0b101d] rounded-xs border border-[#f59e0b]/50 space-y-1.5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-black text-[#fef08a] text-[10.5px] tracking-wider">
+            <span className="font-black text-[#fef08a] text-[11px] tracking-wider">
               PLANET MAP — {currentPlanet.name.toUpperCase()}
               {currentPlanet.subtitle ? ` (${currentPlanet.subtitle.toUpperCase()})` : ''}
             </span>
             <span className="text-[#64748b]">·</span>
             <span className="text-[#cbd5e1] text-[9px]">{currentPlanet.theme}</span>
           </div>
-          <span className="text-[8.5px] font-bold text-[#fde047]">
+          <span className="text-[9px] font-bold text-[#fde047]">
             Campfire Network · Within-Planet Travel
           </span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
           <div className="p-1.5 bg-[#070a12] rounded-xs border border-[#1e293b]">
-            <div className="text-[7.5px] text-[#94a3b8]">ACTIVE REGION</div>
+            <div className="text-[9px] text-[#94a3b8]">ACTIVE REGION</div>
             <div className="font-bold text-[#f8fafc] truncate">
               {formatOrionLoreLabel(worldInfo.regionName, devMode)}
             </div>
           </div>
           <div className="p-1.5 bg-[#070a12] rounded-xs border border-[#1e293b]">
-            <div className="text-[7.5px] text-[#94a3b8]">CURRENT AREA</div>
+            <div className="text-[9px] text-[#94a3b8]">CURRENT AREA</div>
             <div className="font-bold text-[#38bdf8] truncate">
               {formatOrionLoreLabel(worldInfo.areaName, devMode)}
             </div>
           </div>
           <div className="p-1.5 bg-[#070a12] rounded-xs border border-[#1e293b]">
-            <div className="text-[7.5px] text-[#94a3b8]">ACTIVE HEARTH ANCHOR</div>
+            <div className="text-[9px] text-[#94a3b8]">ACTIVE HEARTH ANCHOR</div>
             <div className="font-bold text-[#ffd27d] truncate">
               {formatOrionLoreLabel(
                 ORION_ROOM_METADATA[state.spawnAnchor?.room || '-3,0']?.title ||
@@ -154,10 +154,10 @@ export const PlanetMapModalView: React.FC<PlanetMapModalViewProps> = ({
         {/* LEFT COLUMN (6 cols): PLANETARY REGIONS & OVERLAND AREA NODES */}
         <div className="md:col-span-6 p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-2">
           <div className="flex items-center justify-between">
-            <span className="font-bold text-[#f8fafc] text-[9.5px]">
+            <span className="font-bold text-[#f8fafc] text-[10px]">
               OVERLAND REGIONS & TERRITORIES
             </span>
-            <span className="text-[8px] text-[#94a3b8] tabular-nums">
+            <span className="text-[9px] text-[#94a3b8] tabular-nums">
               {planetRegions.length} Regions · {planetAreas.length} Areas
             </span>
           </div>
@@ -177,10 +177,10 @@ export const PlanetMapModalView: React.FC<PlanetMapModalViewProps> = ({
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-black text-[9.5px] text-[#e2e8f0]">
+                    <span className="font-black text-[10px] text-[#e2e8f0]">
                       {formatOrionLoreLabel(reg.name, devMode)}
                     </span>
-                    <span className="text-[7.5px] text-[#94a3b8]">
+                    <span className="text-[9px] text-[#94a3b8]">
                       {isCurrentRegion ? 'Current Region' : reg.culture}
                     </span>
                   </div>
@@ -217,12 +217,12 @@ export const PlanetMapModalView: React.FC<PlanetMapModalViewProps> = ({
                               {formatOrionLoreLabel(area.name, devMode)}
                             </span>
                             {isHere && (
-                              <span className="text-[7px] text-[#67e8f9] font-bold shrink-0">
+                              <span className="text-[9px] text-[#67e8f9] font-bold shrink-0">
                                 ★ HERE
                               </span>
                             )}
                           </div>
-                          <div className="text-[7.5px] text-[#94a3b8] flex items-center gap-1">
+                          <div className="text-[9px] text-[#94a3b8] flex items-center gap-1">
                             <span>
                               {hasCampfire
                                 ? isCampfireLit
@@ -249,15 +249,15 @@ export const PlanetMapModalView: React.FC<PlanetMapModalViewProps> = ({
                 <span className="font-black text-[10px] text-[#fde047]">
                   {formatOrionLoreLabel(selectedArea.name, devMode)}
                 </span>
-                <span className="text-[7.5px] text-[#94a3b8]">
+                <span className="text-[9px] text-[#94a3b8]">
                   {selectedArea.recommendedLevels}
                 </span>
               </div>
-              <div className="text-[8.5px] text-[#cbd5e1] leading-snug">
+              <div className="text-[9px] text-[#cbd5e1] leading-snug">
                 {selectedArea.description}
               </div>
               {selectedArea.lore && (
-                <div className="pt-1 border-t border-[#1e293b] text-[8px] text-[#94a3b8] leading-snug">
+                <div className="pt-1 border-t border-[#1e293b] text-[9px] text-[#94a3b8] leading-snug">
                   {selectedArea.lore}
                 </div>
               )}
@@ -268,10 +268,10 @@ export const PlanetMapModalView: React.FC<PlanetMapModalViewProps> = ({
         {/* RIGHT COLUMN (6 cols): PLANETARY CAMPFIRE FAST-TRAVEL LIST */}
         <div className="md:col-span-6 p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-2">
           <div className="flex items-center justify-between">
-            <span className="font-bold text-[#fde047] text-[9.5px]">
+            <span className="font-bold text-[#fde047] text-[10px]">
               KINDLED CAMPFIRES IN {currentPlanet.name.toUpperCase()}
             </span>
-            <span className="text-[8px] text-[#94a3b8] tabular-nums">
+            <span className="text-[9px] text-[#94a3b8] tabular-nums">
               {
                 planetCampfires.filter(
                   (ws) => discoveredWs.includes(ws.id) || isCheatMode
@@ -281,13 +281,13 @@ export const PlanetMapModalView: React.FC<PlanetMapModalViewProps> = ({
             </span>
           </div>
 
-          <div className="text-[8.5px] text-[#94a3b8] leading-snug">
+          <div className="text-[9px] text-[#94a3b8] leading-snug">
             Select any kindled hearth on {currentPlanet.name} to travel across the planet. Inter-world
             transit across the Æther Sea requires a Colossal Waygate.
           </div>
 
           {planetCampfires.length === 0 ? (
-            <div className="p-2 bg-[#05070a] rounded-xs border border-[#1e293b] text-[#94a3b8] text-[8.5px]">
+            <div className="p-2 bg-[#05070a] rounded-xs border border-[#1e293b] text-[#94a3b8] text-[9px]">
               No campfires charted on {currentPlanet.name}.
             </div>
           ) : (
@@ -327,10 +327,10 @@ export const PlanetMapModalView: React.FC<PlanetMapModalViewProps> = ({
                     }`}
                   >
                     <div className="min-w-0 space-y-0.5">
-                      <div className="font-bold text-[#fef08a] text-[9.5px] truncate">
+                      <div className="font-bold text-[#fef08a] text-[10px] truncate">
                         {formatOrionLoreLabel(ws.name, devMode)}
                       </div>
-                      <div className="text-[8px] text-[#94a3b8] truncate">
+                      <div className="text-[9px] text-[#94a3b8] truncate">
                         {formatOrionLoreLabel(wsArea?.name || ws.areaId, devMode)}
                         {' · '}
                         {isDiscovered ? 'Hearth Attuned' : 'Not Yet Kindled'}
@@ -347,7 +347,7 @@ export const PlanetMapModalView: React.FC<PlanetMapModalViewProps> = ({
                           onResume();
                         }
                       }}
-                      className={`px-2.5 py-1 rounded-xs font-bold text-[8px] shrink-0 ${
+                      className={`px-2.5 py-1 rounded-xs font-bold text-[9px] shrink-0 ${
                         canTravel
                           ? 'bg-[#ca8a04] hover:bg-[#eab308] text-[#05070a] cursor-pointer'
                           : isHere

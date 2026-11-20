@@ -292,7 +292,7 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
                     }
                   }}
                   onClick={() => handleSelectMenuItem(item.id, idx)}
-                  className={`group relative text-left font-black tracking-wide text-xl sm:text-2xl md:text-3xl leading-none px-2 py-0.5 cursor-pointer transition-transform duration-75 ${
+                  className={`group relative text-left font-black tracking-wide text-[12px] sm:text-[13px] leading-none px-2 py-0.5 cursor-pointer transition-transform duration-75 ${
                     isSelected
                       ? 'text-white translate-x-1 [text-shadow:-2px_-2px_0_#1d4ed8,2px_-2px_0_#1d4ed8,-2px_2px_0_#1d4ed8,2px_2px_0_#1d4ed8,0_3px_0_#1e3a8a]'
                       : 'text-[#d6ceb8] hover:text-white [text-shadow:-1px_-1px_0_#1e1624,2px_2px_0_#120b18]'
@@ -305,7 +305,7 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
                     </span>
                   )}
                   {item.id === 'training' && isSelected && (
-                    <span className="ml-2 align-middle text-[8.5px] font-mono font-bold px-1.5 py-0.5 bg-[#1d4ed8]/90 text-white border border-[#93c5fd] rounded-xs [text-shadow:none]">
+                    <span className="ml-2 align-middle text-[9px] font-mono font-bold px-1.5 py-0.5 bg-[#1d4ed8]/90 text-white border border-[#93c5fd] rounded-xs [text-shadow:none]">
                       {devMode ? 'SANDBOX [-4,0]' : 'SANDBOX'}
                     </span>
                   )}
@@ -315,7 +315,7 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
           </nav>
 
           {/* Bottom Control Legend */}
-          <div className="flex items-center justify-between text-[8.5px] text-[#cbd5e1]/90 bg-[#090612]/75 border border-[#2e233d] px-2.5 py-1 rounded-xs">
+          <div className="flex items-center justify-between text-[9px] text-[#cbd5e1]/90 bg-[#090612]/75 border border-[#2e233d] px-2.5 py-1 rounded-xs">
             <span>[↑/↓] NAVIGATE · [A / CLICK] OPEN SELECTION</span>
             <span>{devMode ? 'BELLDOR EXPEDITION · u00 COSMOS' : 'BELLDOR EXPEDITION · COSMOS'}</span>
           </div>
@@ -339,11 +339,11 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
                   soundSystem.playMenuBeep();
                   setSubView('root');
                 }}
-                className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#f8fafc] border border-[#475569] rounded-xs text-[9.5px] font-bold cursor-pointer"
+                className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#f8fafc] border border-[#475569] rounded-xs text-[10px] font-bold cursor-pointer"
               >
                 ← MAIN MENU [B]
               </button>
-              <span className="text-xs sm:text-sm font-black tracking-wider text-[#ffd27d]">
+              <span className="text-[12px] sm:text-[13px] font-black tracking-wider text-[#ffd27d]">
                 {subView === 'new'
                   ? 'NEW GAME — PILOT & MECH FRAME BONDING'
                   : subView === 'load'
@@ -386,11 +386,11 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
                       >
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-[#ffd27d] text-[10px]">{t.name}</span>
-                          <span className="text-[7.5px] px-1 bg-[#0f172a] text-[#38bdf8] border border-[#1e293b] rounded-xs font-bold">
+                          <span className="text-[9px] px-1 bg-[#0f172a] text-[#38bdf8] border border-[#1e293b] rounded-xs font-bold">
                             {t.reactor}
                           </span>
                         </div>
-                        <div className="text-[8px] text-[#cbd5e1] mt-0.5 truncate">
+                        <div className="text-[9px] text-[#cbd5e1] mt-0.5 truncate">
                           {t.frameModel} · {(t.weightClass || 'medium').toUpperCase()}
                         </div>
                       </button>
@@ -405,15 +405,15 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
                   <span className="font-bold text-[#38bdf8] text-[10px]">
                     FRAME: {traitProfile.frameModel} — {traitProfile.name.toUpperCase()}
                   </span>
-                  <span className="text-[8px] px-1.5 py-0.5 bg-[#1e293b] text-[#facc15] rounded-xs font-bold">
+                  <span className="text-[9px] px-1.5 py-0.5 bg-[#1e293b] text-[#facc15] rounded-xs font-bold">
                     BASE LOAD: {(traitProfile.weightClass || 'medium').toUpperCase()}
                     {devMode ? ' · INTEGRITY: 200 HP' : ''}
                   </span>
                 </div>
-                <div className="text-[8.5px] text-[#cbd5e1] leading-snug">
+                <div className="text-[9px] text-[#cbd5e1] leading-snug">
                   {traitProfile.identity}
                 </div>
-                <div className="grid grid-cols-4 gap-1 pt-0.5 text-[8px]">
+                <div className="grid grid-cols-4 gap-1 pt-0.5 text-[9px]">
                   <div className="p-1 bg-[#090d16] border border-[#1e293b] rounded-xs">
                     <div className="text-[#94a3b8]">LAYER 1 SHIELD</div>
                     <div className="text-[#7dd3fc] font-bold">
@@ -466,7 +466,7 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
                       state.pilotName = DEFAULT_CALLSIGNS[activeTrait];
                       notifyOrionStateChange();
                     }}
-                    className="text-[8px] text-[#38bdf8] hover:underline cursor-pointer"
+                    className="text-[9px] text-[#38bdf8] hover:underline cursor-pointer"
                   >
                     Reset Callsign ({DEFAULT_CALLSIGNS[activeTrait]})
                   </button>
@@ -503,7 +503,7 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
                       notifyOrionStateChange();
                       forceRerender();
                     }}
-                    className="px-3.5 py-1.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white border border-[#93c5fd] font-black text-[10.5px] rounded-xs shadow-md cursor-pointer shrink-0"
+                    className="px-3.5 py-1.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white border border-[#93c5fd] font-black text-[11px] rounded-xs shadow-md cursor-pointer shrink-0"
                   >
                     🚀 DEPLOY LV.1 (THE BOG)
                   </button>
@@ -563,14 +563,14 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
                               <span className="font-bold text-[11px] text-[#ffd27d] truncate">
                                 {entry.pilotName}
                               </span>
-                              <span className="text-[8.5px] px-1.5 py-0.2 bg-[#090d16] text-[#38bdf8] border border-[#1e293b] rounded-xs font-bold">
+                              <span className="text-[9px] px-1.5 py-0.2 bg-[#090d16] text-[#38bdf8] border border-[#1e293b] rounded-xs font-bold">
                                 LV.{entry.level} {(kitProfile?.name || entry.frameModel).toUpperCase()}
                               </span>
-                              <span className="text-[8px] text-[#94a3b8]">
+                              <span className="text-[9px] text-[#94a3b8]">
                                 [{entry.frameModel} · {entry.reactor}]
                               </span>
                             </div>
-                            <div className="text-[8.5px] text-[#94a3b8] mt-0.5">
+                            <div className="text-[9px] text-[#94a3b8] mt-0.5">
                               Zone: <span className="text-[#cbd5e1]">{zoneLabel}</span>
                               {devMode ? ` (${entry.room})` : ''} ·{' '}
                               {entry.tutorialActive ? 'Tutorial Onboarding' : 'Standard Progression'}
@@ -596,7 +596,7 @@ export const HudTitleModal: React.FC<HudTitleModalProps> = ({
                                   forceRerender();
                                 }
                               }}
-                              className="px-2.5 py-1 bg-[#2563eb] hover:bg-[#1d4ed8] text-white border border-[#93c5fd] font-bold rounded-xs text-[9.5px] cursor-pointer"
+                              className="px-2.5 py-1 bg-[#2563eb] hover:bg-[#1d4ed8] text-white border border-[#93c5fd] font-bold rounded-xs text-[10px] cursor-pointer"
                             >
                               ▶ LOAD [A]
                             </button>

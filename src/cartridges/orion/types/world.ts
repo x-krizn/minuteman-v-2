@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Base64SpriteConfig, LightSourceConfig, WorldScope } from './common';
+import type { Base64SpriteConfig, LightSourceConfig, WorldScope } from './common';
 import type { OrionState } from './state';
 
 /**

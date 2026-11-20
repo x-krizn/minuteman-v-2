@@ -198,7 +198,7 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
     >
       {/* Top Header */}
       <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-[#1e293b]">
-        <div className="flex items-center gap-1.5 font-bold text-xs sm:text-sm text-[#ffd27d] tracking-wider">
+        <div className="flex items-center gap-1.5 font-bold text-[12px] sm:text-[13px] text-[#ffd27d] tracking-wider">
           <span>PROJECT ORION — BELLDOR EXPEDITION</span>
           <span className="text-[10px] text-[#94a3b8] bg-[#1e293b] px-1 py-0.5 rounded-xs">
             START
@@ -223,7 +223,7 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
       </div>
 
       {feedback && (
-        <div className="mb-2 py-1 px-2 bg-[#1e293b] border border-[#facc15] text-center text-[10px] text-[#facc15] font-bold animate-pulse rounded-xs shadow-sm">
+        <div className="mb-2 py-1.5 px-2.5 bg-[#1e293b] border border-[#facc15] text-center text-[11px] leading-snug text-[#facc15] font-bold animate-pulse rounded-xs shadow-sm whitespace-normal break-words">
           {feedback}
         </div>
       )}
@@ -276,11 +276,11 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-[10px] text-[#ffd27d]">{t.name}</span>
-                      <span className="text-[8px] px-1 bg-[#0f172a] text-[#38bdf8] rounded-xs">
+                      <span className="text-[9px] px-1 bg-[#0f172a] text-[#38bdf8] rounded-xs">
                         {t.reactor}
                       </span>
                     </div>
-                    <div className="text-[8px] text-[#cbd5e1] mt-0.5">
+                    <div className="text-[9px] text-[#cbd5e1] mt-0.5">
                       {t.frameModel || 'Mark-IV'} · {(t.weightClass || 'medium').toUpperCase()}
                     </div>
                   </button>
@@ -295,13 +295,13 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
               <span className="font-bold text-[#38bdf8] text-[10px]">
                 CHASSIS: {traitProfile.frameModel} ({traitProfile.name.toUpperCase()})
               </span>
-              <span className="text-[8.5px] px-1.5 py-0.5 bg-[#1e293b] text-[#facc15] rounded-xs font-bold">
+              <span className="text-[9px] px-1.5 py-0.5 bg-[#1e293b] text-[#facc15] rounded-xs font-bold">
                 LOAD: {(traitProfile.weightClass || 'medium').toUpperCase()}
                 {devMode ? ' · HP: 200' : ''}
               </span>
             </div>
             <div className="text-[9px] text-[#cbd5e1]">{traitProfile.identity}</div>
-            <div className="grid grid-cols-3 gap-1 pt-1 text-[8.5px]">
+            <div className="grid grid-cols-3 gap-1 pt-1 text-[9px]">
               <div className="p-1 bg-[#090d16] border border-[#1e293b] rounded-xs">
                 <div className="text-[#94a3b8]">SHIELD (L1)</div>
                 <div className="text-[#7dd3fc] font-bold">
@@ -337,7 +337,7 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
                   soundSystem.playMenuBeep();
                   setNewPilotName(DEFAULT_CALLSIGNS[selectedTrait]);
                 }}
-                className="text-[8.5px] text-[#38bdf8] hover:underline"
+                className="text-[9px] text-[#38bdf8] hover:underline"
               >
                 Use Default ({DEFAULT_CALLSIGNS[selectedTrait]})
               </button>
@@ -426,19 +426,19 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
                         <span className="font-bold text-[11px] text-[#ffd27d] truncate">
                           {entry.pilotName}
                         </span>
-                        <span className="text-[8.5px] px-1 py-0.2 bg-[#090d16] text-[#38bdf8] border border-[#1e293b] rounded-xs font-bold">
+                        <span className="text-[9px] px-1 py-0.2 bg-[#090d16] text-[#38bdf8] border border-[#1e293b] rounded-xs font-bold">
                           LV.{entry.level} {(kitProfile?.name || entry.frameModel).toUpperCase()}
                         </span>
-                        <span className="text-[8px] text-[#94a3b8]">
+                        <span className="text-[9px] text-[#94a3b8]">
                           [{entry.frameModel} · {entry.reactor}]
                         </span>
                         {isCurrent && (
-                          <span className="text-[8px] px-1 bg-[#22c55e]/20 text-[#4ade80] rounded-xs font-bold">
+                          <span className="text-[9px] px-1 bg-[#22c55e]/20 text-[#4ade80] rounded-xs font-bold">
                             ACTIVE
                           </span>
                         )}
                       </div>
-                      <div className="text-[8.5px] text-[#94a3b8] mt-0.5">
+                      <div className="text-[9px] text-[#94a3b8] mt-0.5">
                         Zone: <span className="text-[#cbd5e1]">{zoneLabel}</span>
                         {devMode ? ` (${entry.room})` : ''} ·{' '}
                         {entry.tutorialActive ? 'Tutorial Onboarding' : 'Standard Progression'}
@@ -447,7 +447,7 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         onClick={() => handleLoadPilotEntry(entry.pilotId, entry.pilotName)}
-                        className="px-2 py-1 bg-[#0284c7] hover:bg-[#0369a1] text-white font-bold text-[9.5px] rounded-xs"
+                        className="px-2 py-1 bg-[#0284c7] hover:bg-[#0369a1] text-white font-bold text-[10px] rounded-xs"
                       >
                         LOAD
                       </button>
@@ -469,7 +469,7 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
         /* Subview 3: Local Mini-Map (Progressive Exploration Cartography) */
         <div className="flex-1 min-h-0 flex flex-col space-y-1.5 overflow-hidden">
           <div className="flex items-center justify-between pb-1 border-b border-[#334155]">
-            <span className="font-bold text-[#22d3ee] text-[10.5px]">
+            <span className="font-bold text-[#22d3ee] text-[11px]">
               LOCAL MINI-MAP (EXPLORATION CARTOGRAPHY)
             </span>
             <button
@@ -497,7 +497,7 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
         /* Subview 4: Unified 3-Tab Settings (Controls, Graphics, Audio & HUD) */
         <div className="flex-1 min-h-0 flex flex-col space-y-1.5 overflow-hidden">
           <div className="flex items-center justify-between pb-1 border-b border-[#334155] shrink-0">
-            <span className="font-bold text-[#facc15] text-[10.5px]">
+            <span className="font-bold text-[#facc15] text-[11px]">
               SYSTEM SETTINGS — CONTROLS, GRAPHICS & AUDIO
             </span>
             <button
@@ -526,7 +526,7 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
         /* Subview 5: Discovery-Gated In-Game Pilot Codex */
         <div className="flex-1 min-h-0 flex flex-col space-y-1.5 overflow-hidden">
           <div className="flex items-center justify-between pb-1 border-b border-[#334155]">
-            <span className="font-bold text-[#50fa7b] text-[10.5px]">
+            <span className="font-bold text-[#50fa7b] text-[11px]">
               PILOT FIELD CODEX (DISCOVERED ARCHIVES)
             </span>
             <button
@@ -551,18 +551,18 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
                 soundSystem.playSelect();
                 setSubView('new_pilot');
               }}
-              className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#facc15]/60 rounded-xs text-[10.5px] font-bold text-left flex items-center justify-between cursor-pointer"
+              className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#facc15]/60 rounded-xs text-[11px] font-bold text-left flex items-center justify-between cursor-pointer"
             >
               <span className="text-[#ffd27d]">✨ NEW</span>
-              <span className="text-[8.5px] text-[#94a3b8]">NEW PILOT</span>
+              <span className="text-[9px] text-[#94a3b8]">NEW PILOT</span>
             </button>
 
             <button
               onClick={handleOpenLoadRoster}
-              className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#38bdf8]/60 rounded-xs text-[10.5px] font-bold text-left flex items-center justify-between cursor-pointer"
+              className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#38bdf8]/60 rounded-xs text-[11px] font-bold text-left flex items-center justify-between cursor-pointer"
             >
               <span className="text-[#7dd3fc]">📂 LOAD</span>
-              <span className="text-[8.5px] text-[#94a3b8]">ROSTER ({roster.length})</span>
+              <span className="text-[9px] text-[#94a3b8]">ROSTER ({roster.length})</span>
             </button>
 
             <button
@@ -573,12 +573,12 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
                   onResume();
                 }
               }}
-              className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#3b82f6] rounded-xs text-[10.5px] font-bold text-left flex items-center justify-between cursor-pointer"
+              className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#3b82f6] rounded-xs text-[11px] font-bold text-left flex items-center justify-between cursor-pointer"
             >
               <span className="text-[#93c5fd]">
                 {activeState?.room === '-4,0' ? '↩ EXIT TRAINING' : '⚔ TRAINING ROOM'}
               </span>
-              <span className="text-[8.5px] text-[#60a5fa]">
+              <span className="text-[9px] text-[#60a5fa]">
                 {activeState?.room === '-4,0'
                   ? 'RETURN TO FIELD'
                   : devMode
@@ -592,18 +592,18 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
                 soundSystem.playSelect();
                 setSubView('world_map');
               }}
-              className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#a855f7]/70 rounded-xs text-[10.5px] font-bold text-left flex items-center justify-between cursor-pointer"
+              className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#a855f7]/70 rounded-xs text-[11px] font-bold text-left flex items-center justify-between cursor-pointer"
             >
               <span className="text-[#e9d5ff]">🗺 MINI-MAP</span>
-              <span className="text-[8.5px] text-[#c084fc]">LOCAL MAP →</span>
+              <span className="text-[9px] text-[#c084fc]">LOCAL MAP →</span>
             </button>
 
             <button
               onClick={handleSave}
-              className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs text-[10.5px] font-bold text-left flex items-center justify-between cursor-pointer"
+              className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs text-[11px] font-bold text-left flex items-center justify-between cursor-pointer"
             >
               <span>💾 SAVE PILOT</span>
-              <span className="text-[8.5px] text-[#4ade80]">SYNC ROSTER</span>
+              <span className="text-[9px] text-[#4ade80]">SYNC ROSTER</span>
             </button>
 
             <button
@@ -611,10 +611,10 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
                 soundSystem.playSelect();
                 setSubView('controls');
               }}
-              className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#facc15]/60 rounded-xs text-[10.5px] font-bold text-left flex items-center justify-between cursor-pointer"
+              className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#facc15]/60 rounded-xs text-[11px] font-bold text-left flex items-center justify-between cursor-pointer"
             >
               <span className="text-[#fde047]">⚙ SETTINGS</span>
-              <span className="text-[8.5px] text-[#facc15]">CONTROLS · GFX →</span>
+              <span className="text-[9px] text-[#facc15]">CONTROLS · GFX →</span>
             </button>
 
             <button
@@ -622,10 +622,10 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
                 soundSystem.playSelect();
                 setSubView('codex');
               }}
-              className="col-span-2 py-1.5 px-2 bg-[#16201a] hover:bg-[#1e2e24] border border-[#50fa7b]/50 rounded-xs text-[10.5px] font-bold text-left flex items-center justify-between cursor-pointer"
+              className="col-span-2 py-1.5 px-2 bg-[#16201a] hover:bg-[#1e2e24] border border-[#50fa7b]/50 rounded-xs text-[11px] font-bold text-left flex items-center justify-between cursor-pointer"
             >
               <span className="text-[#50fa7b]">📖 PILOT CODEX</span>
-              <span className="text-[8.5px] text-[#9aa8a0]">BESTIARY · ARSENAL · RELICS · CHRONICLES →</span>
+              <span className="text-[9px] text-[#9aa8a0]">BESTIARY · ARSENAL · RELICS · CHRONICLES →</span>
             </button>
           </div>
 
@@ -724,7 +724,7 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
             <div className="flex items-center justify-between text-[10px]">
               <span className="flex items-center gap-1">
                 <span>DEVELOPER MODE</span>
-                <span className="text-[8px] text-[#94a3b8]">[F3 / `]</span>
+                <span className="text-[9px] text-[#94a3b8]">[F3 / `]</span>
               </span>
               <button
                 onClick={() => {

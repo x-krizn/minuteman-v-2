@@ -145,7 +145,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
       {/* Consolidated 5-Tab Top Header Bar (Zero Horizontal Overflow) */}
       <div className="flex items-center justify-between gap-1.5 pb-1.5 mb-1 border-b border-[#1e293b]">
         <div data-menu-tabs="true" className="flex items-center gap-1 min-w-0">
-          <span className="text-[7.5px] font-bold text-[#64748b] px-1 py-0.5 border border-[#1e293b] rounded-xs shrink-0">
+          <span className="text-[9px] font-bold text-[#64748b] px-1 py-0.5 border border-[#1e293b] rounded-xs shrink-0">
             [L/R]
           </span>
           <button
@@ -154,7 +154,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
               soundSystem.playMenuBeep();
               setTab('status');
             }}
-            className={`px-2 py-0.5 text-[9.5px] font-bold rounded-xs transition-colors shrink-0 cursor-pointer ${
+            className={`px-2 py-0.5 text-[10px] font-bold rounded-xs transition-colors shrink-0 cursor-pointer ${
               tab === 'status'
                 ? 'bg-[#38bdf8] text-[#05070a]'
                 : 'bg-[#0f172a] text-[#94a3b8] hover:bg-[#1e293b]'
@@ -168,7 +168,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
               soundSystem.playMenuBeep();
               setTab('weapons');
             }}
-            className={`px-2 py-0.5 text-[9.5px] font-bold rounded-xs transition-colors shrink-0 cursor-pointer ${
+            className={`px-2 py-0.5 text-[10px] font-bold rounded-xs transition-colors shrink-0 cursor-pointer ${
               tab === 'weapons'
                 ? 'bg-[#ffd27d] text-[#05070a]'
                 : 'bg-[#0f172a] text-[#94a3b8] hover:bg-[#1e293b]'
@@ -182,7 +182,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
               soundSystem.playMenuBeep();
               setTab('progression');
             }}
-            className={`px-2 py-0.5 text-[9.5px] font-bold rounded-xs transition-colors shrink-0 cursor-pointer ${
+            className={`px-2 py-0.5 text-[10px] font-bold rounded-xs transition-colors shrink-0 cursor-pointer ${
               tab === 'progression'
                 ? 'bg-[#c084fc] text-[#05070a]'
                 : 'bg-[#0f172a] text-[#94a3b8] hover:bg-[#1e293b]'
@@ -196,7 +196,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
               soundSystem.playMenuBeep();
               setTab('world');
             }}
-            className={`px-2 py-0.5 text-[9.5px] font-bold rounded-xs transition-colors shrink-0 cursor-pointer ${
+            className={`px-2 py-0.5 text-[10px] font-bold rounded-xs transition-colors shrink-0 cursor-pointer ${
               tab === 'world'
                 ? 'bg-[#22d3ee] text-[#05070a]'
                 : 'bg-[#0f172a] text-[#94a3b8] hover:bg-[#1e293b]'
@@ -210,7 +210,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
               soundSystem.playMenuBeep();
               setTab('codex');
             }}
-            className={`px-2 py-0.5 text-[9.5px] font-bold rounded-xs transition-colors shrink-0 cursor-pointer ${
+            className={`px-2 py-0.5 text-[10px] font-bold rounded-xs transition-colors shrink-0 cursor-pointer ${
               tab === 'codex'
                 ? 'bg-[#50fa7b] text-[#05070a]'
                 : 'bg-[#0f172a] text-[#94a3b8] hover:bg-[#1e293b]'
@@ -225,7 +225,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
             soundSystem.playMenuBeep();
             onResume();
           }}
-          className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#e2e8f0] text-[9.5px] font-bold rounded-xs border border-[#334155] shrink-0 cursor-pointer"
+          className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#e2e8f0] text-[10px] font-bold rounded-xs border border-[#334155] shrink-0 cursor-pointer"
         >
           CLOSE [SELECT]
         </button>
@@ -292,7 +292,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                   soundSystem.playSelect();
                   setLoadoutSubMode('slots');
                 }}
-                className={`px-2 py-0.5 rounded-xs text-[8.5px] font-bold border transition-colors cursor-pointer ${
+                className={`px-2 py-0.5 rounded-xs text-[9px] font-bold border transition-colors cursor-pointer ${
                   loadoutSubMode === 'slots'
                     ? 'bg-[#ffd27d] text-[#05070a] border-[#fde047]'
                     : 'bg-[#05070a] text-[#94a3b8] border-[#1e293b] hover:border-[#ffd27d]/60'
@@ -306,7 +306,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                   soundSystem.playSelect();
                   setLoadoutSubMode('armory');
                 }}
-                className={`px-2 py-0.5 rounded-xs text-[8.5px] font-bold border transition-colors cursor-pointer ${
+                className={`px-2 py-0.5 rounded-xs text-[9px] font-bold border transition-colors cursor-pointer ${
                   loadoutSubMode === 'armory'
                     ? 'bg-[#fb923c] text-[#05070a] border-[#fdba74]'
                     : 'bg-[#05070a] text-[#94a3b8] border-[#1e293b] hover:border-[#fb923c]/60'
@@ -320,7 +320,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                   soundSystem.playSelect();
                   setLoadoutSubMode('inventory');
                 }}
-                className={`px-2 py-0.5 rounded-xs text-[8.5px] font-bold border transition-colors cursor-pointer ${
+                className={`px-2 py-0.5 rounded-xs text-[9px] font-bold border transition-colors cursor-pointer ${
                   loadoutSubMode === 'inventory'
                     ? 'bg-[#8dd7ad] text-[#05070a] border-[#6ee7b7]'
                     : 'bg-[#05070a] text-[#94a3b8] border-[#1e293b] hover:border-[#8dd7ad]/60'
@@ -335,7 +335,7 @@ export const OrionSatchel: React.FC<OrionSatchelProps> = ({ onResume }) => {
                 soundSystem.playSelect();
                 setTab('progression');
               }}
-              className="px-2 py-0.5 rounded-xs text-[8px] font-bold bg-[#1e1b4b] hover:bg-[#312e81] text-[#e9d5ff] border border-[#818cf8]/50 cursor-pointer shrink-0"
+              className="px-2 py-0.5 rounded-xs text-[9px] font-bold bg-[#1e1b4b] hover:bg-[#312e81] text-[#e9d5ff] border border-[#818cf8]/50 cursor-pointer shrink-0"
             >
               ❖ FEAT CONSTELLATION →
             </button>

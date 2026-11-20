@@ -314,7 +314,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
               <span className="text-[9px] font-black tracking-wider text-amber-300 uppercase">
                 {kbCapture ? 'REMAP IN-GAME KEY' : 'REMAP CONTROLLER BUTTON'}
               </span>
-              <span className="text-[8.5px] font-bold text-slate-400">
+              <span className="text-[9px] font-bold text-slate-400">
                 {kbCapture ? `SLOT ${kbCapture.slotIndex + 1}` : 'W3C PAD'}
               </span>
             </div>
@@ -323,14 +323,14 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
               <div className="text-[11px] font-black text-white">
                 {activeCaptureActionDef.badge} · {activeCaptureActionDef.label}
               </div>
-              <div className="text-[8.5px] text-slate-400">
+              <div className="text-[9px] text-slate-400">
                 {activeCaptureActionDef.detail}
               </div>
             </div>
 
             {/* Live Key / Button Pop-Up Display */}
             <div className="py-3 px-2 bg-slate-950 border border-sky-500/60 rounded-xs flex flex-col items-center justify-center gap-1">
-              <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
                 {kbCapture
                   ? kbPreviewCode
                     ? 'KEY DETECTED (RELEASE TO BIND)'
@@ -340,7 +340,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                     : 'PRESS ANY CONTROLLER BUTTON'}
               </span>
               <div
-                className={`px-3 py-1.5 rounded-xs border font-black text-sm tracking-wider tabular-nums ${
+                className={`px-3 py-1.5 rounded-xs border font-black text-[13px] tracking-wider tabular-nums ${
                   kbPreviewCode || gpPreviewBtnIdx !== null
                     ? 'bg-amber-400 text-slate-950 border-amber-200'
                     : 'bg-slate-900 text-sky-300 border-slate-700 animate-pulse'
@@ -355,7 +355,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                     : 'PRESS BUTTON...'}
               </div>
               {kbCapture && (
-                <span className="text-[8px] text-slate-400 tabular-nums">
+                <span className="text-[9px] text-slate-400 tabular-nums">
                   Current:{' '}
                   <strong className="text-slate-200">
                     {formatKeyCodeLabel(
@@ -377,7 +377,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                     setKbCapture(null);
                     triggerFeedback(`BOUND ESC TO ${kbCapture.action.toUpperCase()}`);
                   }}
-                  className="px-2 py-1 bg-slate-950 hover:bg-slate-800 text-sky-300 border border-sky-500/60 rounded-xs font-bold text-[8.5px] whitespace-nowrap cursor-pointer"
+                  className="px-2 py-1 bg-slate-950 hover:bg-slate-800 text-sky-300 border border-sky-500/60 rounded-xs font-bold text-[9px] whitespace-nowrap cursor-pointer"
                 >
                   BIND ESC
                 </button>
@@ -395,7 +395,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                       `CLEARED SECONDARY KEY FOR ${kbCapture.action.toUpperCase()}`
                     );
                   }}
-                  className="px-2 py-1 bg-slate-950 hover:bg-slate-800 text-rose-300 border border-rose-500/50 rounded-xs font-bold text-[8.5px] whitespace-nowrap cursor-pointer"
+                  className="px-2 py-1 bg-slate-950 hover:bg-slate-800 text-rose-300 border border-rose-500/50 rounded-xs font-bold text-[9px] whitespace-nowrap cursor-pointer"
                 >
                   UNBIND
                 </button>
@@ -411,7 +411,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                   setGpCaptureAction(null);
                   setInputCaptureActive(false);
                 }}
-                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 rounded-xs font-bold text-[8.5px] whitespace-nowrap cursor-pointer"
+                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 rounded-xs font-bold text-[9px] whitespace-nowrap cursor-pointer"
               >
                 CANCEL [ESC]
               </button>
@@ -448,7 +448,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                   setInputCaptureActive(false);
                   setActiveTab(tab.id);
                 }}
-                className={`px-2.5 py-1 rounded-xs font-bold text-[9.5px] tracking-wider whitespace-nowrap shrink-0 cursor-pointer border transition-colors ${
+                className={`px-2.5 py-1 rounded-xs font-bold text-[10px] tracking-wider whitespace-nowrap shrink-0 cursor-pointer border transition-colors ${
                   isTabActive
                     ? 'bg-amber-500/20 text-amber-300 border-amber-400/80'
                     : 'bg-slate-900/90 text-slate-400 border-slate-800 hover:text-slate-200 hover:border-slate-600'
@@ -460,14 +460,14 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
           })}
         </div>
 
-        <span className="text-[8.5px] text-slate-400 hidden sm:inline whitespace-nowrap shrink-0">
+        <span className="text-[9px] text-slate-400 hidden sm:inline whitespace-nowrap shrink-0">
           [L / R] SWITCH TAB
         </span>
       </div>
 
       {/* Inline Feedback Banner */}
       {localToast && (
-        <div className="mb-1.5 py-1 px-2 bg-slate-900 border border-amber-400/80 text-amber-300 font-bold text-[9px] text-center rounded-xs shrink-0">
+        <div className="mb-1.5 py-1.5 px-2.5 bg-slate-900 border border-amber-400/80 text-amber-300 font-bold text-[10px] leading-snug text-center rounded-xs shrink-0 whitespace-normal break-words">
           {localToast}
         </div>
       )}
@@ -529,7 +529,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                   triggerFeedback('GAMEPAD BINDINGS & DEADZONE RESET TO DEFAULT');
                 }
               }}
-              className="px-2 py-0.5 bg-slate-900 hover:bg-slate-800 text-amber-300 border border-slate-700 rounded-xs font-bold text-[8.5px] whitespace-nowrap shrink-0 cursor-pointer"
+              className="px-2 py-0.5 bg-slate-900 hover:bg-slate-800 text-amber-300 border border-slate-700 rounded-xs font-bold text-[9px] whitespace-nowrap shrink-0 cursor-pointer"
             >
               RESET DEFAULTS
             </button>
@@ -539,7 +539,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
             <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-1">
               {/* Menu Isolation & Virtual Pad Layout Bar */}
               <div className="p-1.5 bg-slate-900/95 border border-slate-800 rounded-xs flex items-center justify-between gap-2 flex-wrap">
-                <span className="text-[8px] text-slate-300">
+                <span className="text-[9px] text-slate-300">
                   Remaps <strong className="text-sky-300">in-game controls</strong> only. Menus always use{' '}
                   <strong className="text-amber-300">Arrows/WASD · Enter · Esc · Q/E · Tab</strong>.
                 </span>
@@ -555,7 +555,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                       key={opt.id}
                       type="button"
                       onClick={() => handleSelectPadLayout(opt.id)}
-                      className={`px-1.5 py-0.5 rounded-xs font-bold text-[8px] whitespace-nowrap cursor-pointer border ${
+                      className={`px-1.5 py-0.5 rounded-xs font-bold text-[9px] whitespace-nowrap cursor-pointer border ${
                         bindings.virtualPadLayout === opt.id
                           ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/60'
                           : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'
@@ -581,14 +581,14 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-bold text-amber-300 text-[9.5px] whitespace-nowrap">
+                        <span className="font-bold text-amber-300 text-[10px] whitespace-nowrap">
                           {act.badge}
                         </span>
-                        <span className="font-bold text-slate-100 text-[9.5px] truncate">
+                        <span className="font-bold text-slate-100 text-[10px] truncate">
                           {act.label}
                         </span>
                       </div>
-                      <div className="text-[8px] text-slate-400 truncate">{act.detail}</div>
+                      <div className="text-[9px] text-slate-400 truncate">{act.detail}</div>
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0 tabular-nums">
@@ -660,7 +660,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                           `CONTROLLER RUMBLE: ${nextVib ? 'ENABLED' : 'DISABLED'}`
                         );
                       }}
-                      className={`px-2 py-0.5 rounded-xs font-bold text-[8.5px] whitespace-nowrap cursor-pointer border ${
+                      className={`px-2 py-0.5 rounded-xs font-bold text-[9px] whitespace-nowrap cursor-pointer border ${
                         bindings.vibrationEnabled
                           ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
                           : 'bg-slate-800 text-slate-400 border-slate-700'
@@ -674,7 +674,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                 {/* Stick Deadzone & Trigger Threshold Sliders */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-slate-800/80">
                   <div className="space-y-0.5">
-                    <div className="flex items-center justify-between text-[8.5px] tabular-nums">
+                    <div className="flex items-center justify-between text-[9px] tabular-nums">
                       <span className="text-slate-300 font-bold">THUMBSTICK DEADZONE</span>
                       <span className="text-amber-300 font-bold">
                         {Math.round(bindings.stickDeadzone * 100)}%
@@ -694,7 +694,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                   </div>
 
                   <div className="space-y-0.5">
-                    <div className="flex items-center justify-between text-[8.5px] tabular-nums">
+                    <div className="flex items-center justify-between text-[9px] tabular-nums">
                       <span className="text-slate-300 font-bold">TRIGGER THRESHOLD (L2/R2)</span>
                       <span className="text-amber-300 font-bold">
                         {Math.round(bindings.triggerThreshold * 100)}%
@@ -728,10 +728,10 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-amber-300 text-[9.5px] whitespace-nowrap">
+                          <span className="font-bold text-amber-300 text-[10px] whitespace-nowrap">
                             {act.badge}
                           </span>
-                          <span className="font-bold text-slate-100 text-[9.5px] truncate">
+                          <span className="font-bold text-slate-100 text-[10px] truncate">
                             {act.label}
                           </span>
                         </div>
@@ -745,7 +745,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                             setGamepadBinding(act.key, prevIdx);
                             soundSystem.playMenuBeep();
                           }}
-                          className="px-1.5 py-0.5 bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 rounded-xs text-[8.5px] font-bold cursor-pointer"
+                          className="px-1.5 py-0.5 bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 rounded-xs text-[9px] font-bold cursor-pointer"
                           title="Previous Button Index"
                         >
                           ◀
@@ -758,7 +758,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                             setKbCapture(null);
                             setGpCaptureAction(isCapturing ? null : act.key);
                           }}
-                          className={`min-w-[132px] px-2 py-0.5 rounded-xs font-bold text-[8.5px] text-center whitespace-nowrap cursor-pointer border transition-colors ${
+                          className={`min-w-[132px] px-2 py-0.5 rounded-xs font-bold text-[9px] text-center whitespace-nowrap cursor-pointer border transition-colors ${
                             isCapturing
                               ? 'bg-amber-500 text-slate-950 border-amber-300'
                               : 'bg-slate-950 text-sky-300 border-slate-700 hover:border-sky-400'
@@ -777,7 +777,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                             setGamepadBinding(act.key, nextIdx);
                             soundSystem.playMenuBeep();
                           }}
-                          className="px-1.5 py-0.5 bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 rounded-xs text-[8.5px] font-bold cursor-pointer"
+                          className="px-1.5 py-0.5 bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 rounded-xs text-[9px] font-bold cursor-pointer"
                           title="Next Button Index"
                         >
                           ▶
@@ -798,7 +798,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
           {/* Quality Presets Strip */}
           <div className="flex items-center justify-between gap-1.5 mb-2 pb-1.5 border-b border-slate-800 shrink-0">
             <div className="flex items-center gap-1 flex-wrap">
-              <span className="text-[8.5px] font-bold text-slate-400 mr-1">PRESET:</span>
+              <span className="text-[9px] font-bold text-slate-400 mr-1">PRESET:</span>
               {(
                 [
                   { id: 'low', label: 'LOW' },
@@ -813,7 +813,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                     key={p.id}
                     type="button"
                     onClick={() => handleSelectPreset(p.id)}
-                    className={`px-2 py-0.5 rounded-xs font-bold text-[8.5px] whitespace-nowrap shrink-0 cursor-pointer border transition-colors ${
+                    className={`px-2 py-0.5 rounded-xs font-bold text-[9px] whitespace-nowrap shrink-0 cursor-pointer border transition-colors ${
                       isSel
                         ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400'
                         : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
@@ -824,7 +824,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                 );
               })}
               {graphics.preset === 'custom' && (
-                <span className="text-[8.5px] font-bold text-amber-300 px-1.5 py-0.5">
+                <span className="text-[9px] font-bold text-amber-300 px-1.5 py-0.5">
                   · CUSTOM
                 </span>
               )}
@@ -841,7 +841,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                 }
                 triggerFeedback('GRAPHICS RESET TO HIGH PRESET');
               }}
-              className="px-2 py-0.5 bg-slate-900 hover:bg-slate-800 text-amber-300 border border-slate-700 rounded-xs font-bold text-[8.5px] whitespace-nowrap shrink-0 cursor-pointer"
+              className="px-2 py-0.5 bg-slate-900 hover:bg-slate-800 text-amber-300 border border-slate-700 rounded-xs font-bold text-[9px] whitespace-nowrap shrink-0 cursor-pointer"
             >
               RESET HIGH
             </button>
@@ -853,10 +853,10 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
             <div className="p-2 bg-slate-900/90 border border-slate-800 rounded-xs space-y-1.5">
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <div className="font-bold text-slate-100 text-[9.5px]">
+                  <div className="font-bold text-slate-100 text-[10px]">
                     DYNAMIC LIGHTING & SHADOW OCCLUSION
                   </div>
-                  <div className="text-[8px] text-slate-400">
+                  <div className="text-[9px] text-slate-400">
                     Raycast line-of-sight shadow cones behind trees, walls, and gates
                   </div>
                 </div>
@@ -868,7 +868,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                       dynamicLighting: !graphics.dynamicLighting,
                     });
                   }}
-                  className={`px-2.5 py-0.5 rounded-xs font-bold text-[8.5px] whitespace-nowrap shrink-0 cursor-pointer border ${
+                  className={`px-2.5 py-0.5 rounded-xs font-bold text-[9px] whitespace-nowrap shrink-0 cursor-pointer border ${
                     graphics.dynamicLighting
                       ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
                       : 'bg-slate-800 text-slate-400 border-slate-700'
@@ -880,7 +880,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
 
               {graphics.dynamicLighting && (
                 <div className="space-y-0.5 pt-1 border-t border-slate-800/70">
-                  <div className="flex items-center justify-between text-[8.5px] tabular-nums">
+                  <div className="flex items-center justify-between text-[9px] tabular-nums">
                     <span className="text-slate-300">AMBIENT ABYSS DARKNESS DEPTH</span>
                     <span className="text-amber-300 font-bold">
                       {Math.round(graphics.ambientDarknessScale * 100)}%
@@ -907,10 +907,10 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
             <div className="p-2 bg-slate-900/90 border border-slate-800 rounded-xs space-y-1.5">
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <div className="font-bold text-slate-100 text-[9.5px]">
+                  <div className="font-bold text-slate-100 text-[10px]">
                     EMBER & SPIRIT RADIAL BLOOM
                   </div>
-                  <div className="text-[8px] text-slate-400">
+                  <div className="text-[9px] text-slate-400">
                     Additive light halos on campfires, lanterns, reactors, and projectiles
                   </div>
                 </div>
@@ -922,7 +922,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                       bloomEnabled: !graphics.bloomEnabled,
                     });
                   }}
-                  className={`px-2.5 py-0.5 rounded-xs font-bold text-[8.5px] whitespace-nowrap shrink-0 cursor-pointer border ${
+                  className={`px-2.5 py-0.5 rounded-xs font-bold text-[9px] whitespace-nowrap shrink-0 cursor-pointer border ${
                     graphics.bloomEnabled
                       ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
                       : 'bg-slate-800 text-slate-400 border-slate-700'
@@ -934,7 +934,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
 
               {graphics.bloomEnabled && (
                 <div className="space-y-0.5 pt-1 border-t border-slate-800/70">
-                  <div className="flex items-center justify-between text-[8.5px] tabular-nums">
+                  <div className="flex items-center justify-between text-[9px] tabular-nums">
                     <span className="text-slate-300">BLOOM GLOW INTENSITY</span>
                     <span className="text-amber-300 font-bold">
                       {Math.round(graphics.bloomIntensity * 100)}%
@@ -961,10 +961,10 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
             <div className="p-2 bg-slate-900/90 border border-slate-800 rounded-xs space-y-1.5">
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <div className="font-bold text-slate-100 text-[9.5px]">
+                  <div className="font-bold text-slate-100 text-[10px]">
                     WEATHER, MIASMA & SPORE PARTICLES
                   </div>
-                  <div className="text-[8px] text-slate-400">
+                  <div className="text-[9px] text-slate-400">
                     Biome rain, volcanic ash, Aether mist, and low-lying bog miasma wisps
                   </div>
                 </div>
@@ -976,7 +976,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                       weatherEnabled: !graphics.weatherEnabled,
                     });
                   }}
-                  className={`px-2.5 py-0.5 rounded-xs font-bold text-[8.5px] whitespace-nowrap shrink-0 cursor-pointer border ${
+                  className={`px-2.5 py-0.5 rounded-xs font-bold text-[9px] whitespace-nowrap shrink-0 cursor-pointer border ${
                     graphics.weatherEnabled
                       ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
                       : 'bg-slate-800 text-slate-400 border-slate-700'
@@ -988,7 +988,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
 
               {graphics.weatherEnabled && (
                 <div className="space-y-0.5 pt-1 border-t border-slate-800/70">
-                  <div className="flex items-center justify-between text-[8.5px] tabular-nums">
+                  <div className="flex items-center justify-between text-[9px] tabular-nums">
                     <span className="text-slate-300">PARTICLE DENSITY SCALE</span>
                     <span className="text-amber-300 font-bold">
                       {Math.round(graphics.weatherIntensityScale * 100)}%
@@ -1013,12 +1013,12 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
 
             {/* 4. Screen Shake & Hit-Stop Impulse Slider */}
             <div className="p-2 bg-slate-900/90 border border-slate-800 rounded-xs space-y-1">
-              <div className="flex items-center justify-between text-[9px] tabular-nums">
+              <div className="flex items-center justify-between text-[10px] tabular-nums">
                 <div>
                   <span className="font-bold text-slate-100">
                     SCREEN SHAKE & DESYNC GLITCH INTENSITY
                   </span>
-                  <div className="text-[8px] text-slate-400">
+                  <div className="text-[9px] text-slate-400">
                     Camera impact impulse on heavy hits and Aether loop transitions
                   </div>
                 </div>
@@ -1046,7 +1046,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
               <div className="p-2 bg-slate-900/90 border border-slate-800 rounded-xs flex items-center justify-between gap-2">
                 <div>
                   <div className="font-bold text-slate-100 text-[9px]">WATER REFLECTIONS</div>
-                  <div className="text-[7.5px] text-slate-400">Mirrored entity & ripple pass</div>
+                  <div className="text-[9px] text-slate-400">Mirrored entity & ripple pass</div>
                 </div>
                 <button
                   type="button"
@@ -1056,7 +1056,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                       liquidReflections: !graphics.liquidReflections,
                     });
                   }}
-                  className={`px-2 py-0.5 rounded-xs font-bold text-[8.5px] whitespace-nowrap shrink-0 cursor-pointer border ${
+                  className={`px-2 py-0.5 rounded-xs font-bold text-[9px] whitespace-nowrap shrink-0 cursor-pointer border ${
                     graphics.liquidReflections
                       ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
                       : 'bg-slate-800 text-slate-400 border-slate-700'
@@ -1069,7 +1069,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
               <div className="p-2 bg-slate-900/90 border border-slate-800 rounded-xs flex items-center justify-between gap-2">
                 <div>
                   <div className="font-bold text-slate-100 text-[9px]">WEAPON BLADE TRAILS</div>
-                  <div className="text-[7.5px] text-slate-400">Sweeping slash & thrust arcs</div>
+                  <div className="text-[9px] text-slate-400">Sweeping slash & thrust arcs</div>
                 </div>
                 <button
                   type="button"
@@ -1079,7 +1079,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                       bladeTrails: !graphics.bladeTrails,
                     });
                   }}
-                  className={`px-2 py-0.5 rounded-xs font-bold text-[8.5px] whitespace-nowrap shrink-0 cursor-pointer border ${
+                  className={`px-2 py-0.5 rounded-xs font-bold text-[9px] whitespace-nowrap shrink-0 cursor-pointer border ${
                     graphics.bladeTrails
                       ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
                       : 'bg-slate-800 text-slate-400 border-slate-700'
@@ -1092,7 +1092,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
               <div className="p-2 bg-slate-900/90 border border-slate-800 rounded-xs flex items-center justify-between gap-2">
                 <div>
                   <div className="font-bold text-slate-100 text-[9px]">1PX SPRITE OUTLINES</div>
-                  <div className="text-[7.5px] text-slate-400">Tactical silhouette contrast</div>
+                  <div className="text-[9px] text-slate-400">Tactical silhouette contrast</div>
                 </div>
                 <button
                   type="button"
@@ -1102,7 +1102,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                       outlinePass: !graphics.outlinePass,
                     });
                   }}
-                  className={`px-2 py-0.5 rounded-xs font-bold text-[8.5px] whitespace-nowrap shrink-0 cursor-pointer border ${
+                  className={`px-2 py-0.5 rounded-xs font-bold text-[9px] whitespace-nowrap shrink-0 cursor-pointer border ${
                     graphics.outlinePass
                       ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
                       : 'bg-slate-800 text-slate-400 border-slate-700'
@@ -1115,12 +1115,12 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
               <div className="p-2 bg-slate-900/90 border border-slate-800 rounded-xs flex items-center justify-between gap-2">
                 <div>
                   <div className="font-bold text-slate-100 text-[9px]">CRT SCANLINES</div>
-                  <div className="text-[7.5px] text-slate-400">Retro raster line overlay</div>
+                  <div className="text-[9px] text-slate-400">Retro raster line overlay</div>
                 </div>
                 <button
                   type="button"
                   onClick={handleToggleScanlinesUnified}
-                  className={`px-2 py-0.5 rounded-xs font-bold text-[8.5px] whitespace-nowrap shrink-0 cursor-pointer border ${
+                  className={`px-2 py-0.5 rounded-xs font-bold text-[9px] whitespace-nowrap shrink-0 cursor-pointer border ${
                     effectiveScanlines
                       ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
                       : 'bg-slate-800 text-slate-400 border-slate-700'
@@ -1140,10 +1140,10 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
           {/* Chiptune Audio Synthesizer */}
           <div className="p-2 bg-slate-900/90 border border-slate-800 rounded-xs flex items-center justify-between gap-2">
             <div>
-              <div className="font-bold text-slate-100 text-[9.5px]">
+              <div className="font-bold text-slate-100 text-[10px]">
                 CHIPTUNE WEBAUDIO SYNTHESIZER
               </div>
-              <div className="text-[8px] text-slate-400">
+              <div className="text-[9px] text-slate-400">
                 Procedural retro sound effects for combat, boosters, and menu telemetry
               </div>
             </div>
@@ -1156,14 +1156,14 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                   }
                   soundSystem.playPowerup();
                 }}
-                className="px-2 py-1 bg-slate-950 hover:bg-slate-800 text-sky-300 border border-slate-700 rounded-xs font-bold text-[8.5px] whitespace-nowrap cursor-pointer"
+                className="px-2 py-1 bg-slate-950 hover:bg-slate-800 text-sky-300 border border-slate-700 rounded-xs font-bold text-[9px] whitespace-nowrap cursor-pointer"
               >
                 TEST SFX
               </button>
               <button
                 type="button"
                 onClick={handleToggleSoundUnified}
-                className={`px-2.5 py-1 rounded-xs font-bold text-[8.5px] whitespace-nowrap cursor-pointer border ${
+                className={`px-2.5 py-1 rounded-xs font-bold text-[9px] whitespace-nowrap cursor-pointer border ${
                   effectiveSoundEnabled
                     ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
                     : 'bg-rose-500/20 text-rose-300 border-rose-500/50'
@@ -1177,17 +1177,17 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
           {/* Cockpit HUD Style Mode (Crisp Retro-Styled React HUD) */}
           <div className="p-2 bg-slate-900/90 border border-slate-800 rounded-xs flex items-center justify-between gap-2">
             <div>
-              <div className="font-bold text-slate-100 text-[9.5px]">
+              <div className="font-bold text-slate-100 text-[10px]">
                 COCKPIT HUD TELEMETRY STYLE
               </div>
-              <div className="text-[8px] text-slate-400">
+              <div className="text-[9px] text-slate-400">
                 Switch between Full Tactical Retro HUD (3-slot weapons) and Compact Retro HUD
               </div>
             </div>
             <button
               type="button"
               onClick={handleToggleHudResolution}
-              className="px-2.5 py-1 bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-400/60 rounded-xs font-bold text-[8.5px] whitespace-nowrap shrink-0 cursor-pointer"
+              className="px-2.5 py-1 bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-400/60 rounded-xs font-bold text-[9px] whitespace-nowrap shrink-0 cursor-pointer"
             >
               {(activeState?.useStandardResolutionHud ?? graphics.hudResolution === 'hires')
                 ? 'TACTICAL RETRO'
@@ -1198,10 +1198,10 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
           {/* Virtual Gamepad Ergonomic Layout Mode */}
           <div className="p-2 bg-slate-900/90 border border-slate-800 rounded-xs flex items-center justify-between gap-2 flex-wrap">
             <div>
-              <div className="font-bold text-slate-100 text-[9.5px]">
+              <div className="font-bold text-slate-100 text-[10px]">
                 VIRTUAL GAMEPAD SHELL LAYOUT
               </div>
-              <div className="text-[8px] text-slate-400">
+              <div className="text-[9px] text-slate-400">
                 Split D-Pad &amp; Action buttons to screen sides in landscape (PC &amp; mobile), stack below, or hide
               </div>
             </div>
@@ -1217,7 +1217,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                   key={opt.id}
                   type="button"
                   onClick={() => handleSelectPadLayout(opt.id)}
-                  className={`px-2 py-1 rounded-xs font-bold text-[8.5px] whitespace-nowrap cursor-pointer border ${
+                  className={`px-2 py-1 rounded-xs font-bold text-[9px] whitespace-nowrap cursor-pointer border ${
                     bindings.virtualPadLayout === opt.id
                       ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/60'
                       : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'
@@ -1232,13 +1232,13 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
           {/* Developer Mode & Engine Telemetry Toggle (Hotkey: F3 or `) */}
           <div className="p-2 bg-slate-900/90 border border-amber-500/40 rounded-xs flex items-center justify-between gap-2">
             <div>
-              <div className="font-bold text-amber-300 text-[9.5px] flex items-center gap-1.5">
+              <div className="font-bold text-amber-300 text-[10px] flex items-center gap-1.5">
                 <span>DEVELOPER MODE &amp; ENGINE TELEMETRY</span>
-                <span className="px-1 py-0.2 bg-slate-950 text-slate-300 border border-slate-700 rounded-xs text-[7.5px]">
+                <span className="px-1 py-0.2 bg-slate-950 text-slate-300 border border-slate-700 rounded-xs text-[9px]">
                   F3 / `
                 </span>
               </div>
-              <div className="text-[8px] text-slate-400">
+              <div className="text-[9px] text-slate-400">
                 Reveal coordinates, path/fog/poe/lantern status, numeric HP, raw item/map IDs &amp; fullscreen toggle
               </div>
             </div>
@@ -1255,7 +1255,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                     : 'DEVELOPER MODE: OFF (CLEAN IMMERSIVE UI)'
                 );
               }}
-              className={`px-2.5 py-1 rounded-xs font-bold text-[8.5px] whitespace-nowrap shrink-0 cursor-pointer border ${
+              className={`px-2.5 py-1 rounded-xs font-bold text-[9px] whitespace-nowrap shrink-0 cursor-pointer border ${
                 graphics.devModeEnabled
                   ? 'bg-amber-500/25 text-amber-300 border-amber-400'
                   : 'bg-slate-950 text-slate-400 border-slate-700 hover:text-slate-200'
@@ -1269,15 +1269,15 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
           {graphics.devModeEnabled && (
             <div className="p-2 bg-slate-900/90 border border-slate-800 rounded-xs flex items-center justify-between gap-2">
               <div>
-                <div className="font-bold text-slate-100 text-[9.5px]">DISPLAY VIEWPORT MODE</div>
-                <div className="text-[8px] text-slate-400">
+                <div className="font-bold text-slate-100 text-[10px]">DISPLAY VIEWPORT MODE</div>
+                <div className="text-[9px] text-slate-400">
                   Expand handheld shell to full browser screen
                 </div>
               </div>
               <button
                 type="button"
                 onClick={handleToggleFullscreenUnified}
-                className="px-2.5 py-1 bg-slate-950 hover:bg-slate-800 text-slate-200 border border-slate-700 rounded-xs font-bold text-[8.5px] whitespace-nowrap shrink-0 cursor-pointer"
+                className="px-2.5 py-1 bg-slate-950 hover:bg-slate-800 text-slate-200 border border-slate-700 rounded-xs font-bold text-[9px] whitespace-nowrap shrink-0 cursor-pointer"
               >
                 {effectiveFullscreen ? 'EXIT FULLSCREEN' : 'ENTER FULLSCREEN'}
               </button>
@@ -1290,10 +1290,10 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
             (activeState.room === '-4,0' || Boolean(activeState.bypassProgressionGates)) && (
               <div className="p-2 bg-slate-900/90 border border-indigo-500/40 rounded-xs flex items-center justify-between gap-2">
                 <div>
-                  <div className="font-bold text-indigo-300 text-[9.5px]">
+                  <div className="font-bold text-indigo-300 text-[10px]">
                     SANDBOX TUTORIAL PROGRESSION LOCK
                   </div>
-                  <div className="text-[8px] text-slate-400">
+                  <div className="text-[9px] text-slate-400">
                     Toggle M00 Bog onboarding tutorial state vs. unlocked standard progression
                   </div>
                 </div>
@@ -1309,7 +1309,7 @@ export const OrionSettingsPanel: React.FC<OrionSettingsPanelProps> = ({
                         : 'STANDARD PROGRESSION UNLOCKED'
                     );
                   }}
-                  className={`px-2.5 py-1 rounded-xs font-bold text-[8.5px] whitespace-nowrap shrink-0 cursor-pointer border ${
+                  className={`px-2.5 py-1 rounded-xs font-bold text-[9px] whitespace-nowrap shrink-0 cursor-pointer border ${
                     activeState.tutorialActive
                       ? 'bg-indigo-500/20 text-indigo-300 border-indigo-400/60'
                       : 'bg-emerald-500/20 text-emerald-300 border-emerald-400/60'

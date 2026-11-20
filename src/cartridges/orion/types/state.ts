@@ -3,7 +3,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import {
+import type {
+  BladeTrailEffect,
+  InertiaModifiers,
+  InertiaOutcomeBand,
+  OrionAssignedActions,
+  OrionParticle,
+  OrionProjectile,
+} from './combat';
+import type {
   ArmorState,
   FrameLoadCapacity,
   FrameState,
@@ -14,15 +22,8 @@ import {
   TraitLine,
   WeaponWeightClass,
 } from './common';
-import {
-  BladeTrailEffect,
-  InertiaModifiers,
-  InertiaOutcomeBand,
-  OrionAssignedActions,
-  OrionParticle,
-  OrionProjectile,
-} from './combat';
-import {
+import type { EnemyEntity, PickupEntity } from './entities';
+import type {
   FeatTier,
   GemId,
   LoadPenaltySummary,
@@ -30,8 +31,7 @@ import {
   PilotSkillId,
   PilotSkillProgress,
 } from './equipment';
-import { EnemyEntity, PickupEntity } from './entities';
-import { AetherFogGraphState } from './world';
+import type { AetherFogGraphState } from './world';
 
 /**
  * Type contract for `OrionSavedPilotEntry` (orion saved pilot entry) in `state.ts`.

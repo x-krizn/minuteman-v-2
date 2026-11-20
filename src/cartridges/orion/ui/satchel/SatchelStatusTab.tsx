@@ -99,7 +99,7 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
     <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1 text-[10px]">
       {/* Defense Layers Breakdown */}
       <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">
-        <div className="text-[#ffd27d] font-bold text-[10.5px] flex flex-wrap items-center justify-between gap-1">
+        <div className="text-[#ffd27d] font-bold text-[11px] flex flex-wrap items-center justify-between gap-1">
           <span>CANONICAL THREE DEFENSE LAYERS</span>
           <div className="flex items-center gap-2">
             <span className="text-[#94a3b8] text-[9px]">
@@ -113,7 +113,7 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
                   onResume?.();
                 }}
                 title="Toggle Training Room (Drop Pod & Waygate Sandbox)"
-                className={`px-2 py-0.5 text-[8px] font-bold rounded-xs border transition-colors cursor-pointer ${
+                className={`px-2 py-0.5 text-[9px] font-bold rounded-xs border transition-colors cursor-pointer ${
                   state.room === '-4,0'
                     ? 'bg-[#4c1d95] hover:bg-[#5b21b6] text-[#f0abfc] border-[#a855f7]'
                     : 'bg-[#0f172a] hover:bg-[#1e293b] text-[#93c5fd] border-[#3b82f6]/70'
@@ -269,27 +269,27 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
       {/* Light Stat & Vision Radius Breakdown */}
       <div className="p-2 bg-[#090d14] rounded-xs border border-[#fbbf24]/50 space-y-1.5">
         <div className="flex items-center justify-between">
-          <span className="text-[#fde047] font-bold text-[10.5px]">
+          <span className="text-[#fde047] font-bold text-[11px]">
             ☀ LIGHT STAT &amp; VISION RADIUS{devMode ? ' (BASE 5 TILES)' : ''}
           </span>
-          <span className="px-1.5 py-0.5 rounded-xs bg-[#fbbf24]/20 border border-[#fbbf24] text-[#fde047] font-black text-[9.5px]">
+          <span className="px-1.5 py-0.5 rounded-xs bg-[#fbbf24]/20 border border-[#fbbf24] text-[#fde047] font-black text-[10px]">
             EFFECTIVE LIGHT: {effectiveLight}
             {devMode ? ` (${Math.round(effectiveLight * 16)}px)` : ''}
           </span>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-0.5">
-          <div className="p-1.5 bg-[#06090e] rounded-xs border border-[#1e293b] flex items-center justify-between text-[8.5px]">
+          <div className="p-1.5 bg-[#06090e] rounded-xs border border-[#1e293b] flex items-center justify-between text-[9px]">
             <span className="text-[#94a3b8] font-bold">BASE</span>
             <span className="text-[#f8fafc] font-black">{lightBreakdown.baseLight.toFixed(1)}</span>
           </div>
-          <div className="p-1.5 bg-[#06090e] rounded-xs border border-[#1e293b] flex items-center justify-between text-[8.5px]">
+          <div className="p-1.5 bg-[#06090e] rounded-xs border border-[#1e293b] flex items-center justify-between text-[9px]">
             <span className="text-[#94a3b8] font-bold">FEATS / MODS</span>
             <span className="text-[#38bdf8] font-black">
               {lightBreakdown.featBonus >= 0 ? `+${lightBreakdown.featBonus}` : lightBreakdown.featBonus}
             </span>
           </div>
-          <div className="p-1.5 bg-[#06090e] rounded-xs border border-[#1e293b] flex items-center justify-between text-[8.5px]">
+          <div className="p-1.5 bg-[#06090e] rounded-xs border border-[#1e293b] flex items-center justify-between text-[9px]">
             <span className="text-[#94a3b8] font-bold">GEAR / ITEMS</span>
             <span className="text-[#67e8f9] font-black">
               {lightBreakdown.hardwareAndItemBonus >= 0
@@ -297,7 +297,7 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
                 : lightBreakdown.hardwareAndItemBonus}
             </span>
           </div>
-          <div className="p-1.5 bg-[#06090e] rounded-xs border border-[#1e293b] flex items-center justify-between text-[8.5px]">
+          <div className="p-1.5 bg-[#06090e] rounded-xs border border-[#1e293b] flex items-center justify-between text-[9px]">
             <span className="text-[#94a3b8] font-bold">SKILLS / SPELLS</span>
             <span className="text-[#c084fc] font-black">
               {lightBreakdown.skillAndSpellBonus >= 0
@@ -308,7 +308,7 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
         </div>
 
         {devMode && (
-          <div className="flex flex-wrap items-center justify-between gap-1 text-[8px] text-[#94a3b8] pt-0.5">
+          <div className="flex flex-wrap items-center justify-between gap-1 text-[9px] text-[#94a3b8] pt-0.5">
             <span>
               ENEMY BASE SIGHT: <strong className="text-[#fda4af]">{baseEnemyLight} TILES</strong> ·
               UNEXPLORED: <strong className="text-[#f8fafc]">BLACK FADE</strong> · EXPLORED:{' '}
@@ -327,7 +327,7 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
           <span className="text-[#94a3b8] font-bold text-[10px]">
             {isCheatMode ? 'CHEAT ROOM STARTING KIT SWITCHER:' : 'PILOT MECH CHASSIS:'}
           </span>
-          <span className="text-[8.5px] text-[#38bdf8] font-bold">
+          <span className="text-[9px] text-[#38bdf8] font-bold">
             FRAME: {trait.frameModel || 'PNSY W416'} · {trait.reactor.toUpperCase()} REACTOR
           </span>
         </div>
@@ -351,11 +351,11 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-[9px] text-[#ffd27d] truncate">{prof.name}</span>
-                    <span className="text-[7px] uppercase px-1 rounded-xs bg-[#1e293b] text-[#cbd5e1] shrink-0">
+                    <span className="text-[9px] uppercase px-1 rounded-xs bg-[#1e293b] text-[#cbd5e1] shrink-0">
                       {prof.weightClass || 'medium'}
                     </span>
                   </div>
-                  <div className="text-[7.5px] text-[#7dd3fc] truncate">
+                  <div className="text-[9px] text-[#7dd3fc] truncate">
                     {prof.frameModel} · {prof.reactor} · {prof.baseArmor.type}
                   </div>
                 </button>
@@ -363,7 +363,7 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
             })}
           </div>
         )}
-        <div className="text-[9.5px] text-[#cbd5e1]">{trait.identity}</div>
+        <div className="text-[10px] text-[#cbd5e1]">{trait.identity}</div>
       </div>
 
       {/* §3.4 Percentage Load Limit Matrix (0-30% Light, 31-65% Medium, 66-100% Heavy, >100% Overloaded) */}
@@ -373,7 +373,7 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
             EQUIP LOAD LIMIT &amp; WEIGHT CAPACITY (FRAME MODS + FEATS):
           </span>
           <span
-            className={`px-1.5 py-0.5 rounded-xs font-bold text-[8px] ${
+            className={`px-1.5 py-0.5 rounded-xs font-bold text-[9px] ${
               loadMetrics.loadBracket === 'light'
                 ? 'bg-[#064e3b] text-[#6ee7b7]'
                 : loadMetrics.loadBracket === 'medium'
@@ -413,7 +413,7 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
             <line x1="30" y1="0" x2="30" y2="5" stroke="#090d14" strokeWidth="0.8" />
             <line x1="65" y1="0" x2="65" y2="5" stroke="#090d14" strokeWidth="0.8" />
           </svg>
-          <div className="grid grid-cols-4 text-[7.5px] font-bold text-center">
+          <div className="grid grid-cols-4 text-[9px] font-bold text-center">
             <span
               className={
                 loadMetrics.loadBracket === 'light' ? 'text-[#6ee7b7]' : 'text-[#64748b]'
@@ -445,9 +445,9 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-1 text-[8.5px]">
+        <div className="grid grid-cols-3 gap-1 text-[9px]">
           <div className="p-1 bg-[#0f172a] rounded-xs border border-[#1e293b]">
-            <div className="text-[#94a3b8] text-[7.5px]">EQUIPPED WEIGHT BREAKDOWN</div>
+            <div className="text-[#94a3b8] text-[9px]">EQUIPPED WEIGHT BREAKDOWN</div>
             <div className="font-bold text-[#38bdf8]">
               HW{' '}
               {loadMetrics.breakdown.headWeight +
@@ -457,13 +457,13 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
             </div>
           </div>
           <div className="p-1 bg-[#0f172a] rounded-xs border border-[#1e293b]">
-            <div className="text-[#94a3b8] text-[7.5px]">MAX CAPACITY (FRAME + FEATS)</div>
+            <div className="text-[#94a3b8] text-[9px]">MAX CAPACITY (FRAME + FEATS)</div>
             <div className="font-bold text-[#ffd27d]">
               {loadMetrics.maxCapacity} WT CAP ({gates.effectiveLoadCapacity.toUpperCase()})
             </div>
           </div>
           <div className="p-1 bg-[#0f172a] rounded-xs border border-[#1e293b]">
-            <div className="text-[#94a3b8] text-[7.5px]">LOAD EFFECT &amp; CRITICAL STATE</div>
+            <div className="text-[#94a3b8] text-[9px]">LOAD EFFECT &amp; CRITICAL STATE</div>
             <div
               className={`font-bold truncate ${
                 state.frame.integrity <= 40 || loadMetrics.loadBracket === 'overloaded'
@@ -513,7 +513,7 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
               syncStateGates(state);
               notifyOrionStateChange();
             }}
-            className={`px-1.5 py-0.5 rounded-xs border font-bold text-[8px] cursor-pointer transition-colors ${
+            className={`px-1.5 py-0.5 rounded-xs border font-bold text-[9px] cursor-pointer transition-colors ${
               hudModActive
                 ? 'bg-[#0284c7] text-white border-[#38bdf8]'
                 : 'bg-[#0f172a] text-[#94a3b8] border-[#334155] hover:border-[#38bdf8]'
@@ -525,33 +525,33 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
           </button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 text-[8.5px]">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 text-[9px]">
           <div className="p-1 bg-[#0f172a] rounded-xs border border-[#1e293b]">
-            <div className="text-[#94a3b8] text-[7.5px]">WEIGHT (m → CHARGE m_eff)</div>
+            <div className="text-[#94a3b8] text-[9px]">WEIGHT (m → CHARGE m_eff)</div>
             <div className="font-bold text-[#ffd27d]">
               {inertiaProf.totalBaseWeight} → {inertiaProf.maxChargeWeight} MAX
             </div>
-            <div className="text-[7px] text-[#64748b]">Governs displacement (Δv = J / m_eff)</div>
+            <div className="text-[9px] text-[#64748b]">Governs displacement (Δv = J / m_eff)</div>
           </div>
 
           <div className="p-1 bg-[#0f172a] rounded-xs border border-[#1e293b]">
-            <div className="text-[#94a3b8] text-[7.5px]">STABILITY (S) & DEADBAND</div>
+            <div className="text-[#94a3b8] text-[9px]">STABILITY (S) & DEADBAND</div>
             <div className="font-bold text-[#4ade80]">
               S = {inertiaProf.stability} (IGNORE ≤ {inertiaProf.shrugOffDeadbandDv} Δv)
             </div>
-            <div className="text-[7px] text-[#64748b]">
+            <div className="text-[9px] text-[#64748b]">
               Governs shrug-off (k1·S) & recovery (k2·S)
             </div>
           </div>
 
           <div className="p-1 bg-[#0f172a] rounded-xs border border-[#1e293b]">
-            <div className="text-[#94a3b8] text-[7.5px]">WEAPON IMPULSE SPEC</div>
+            <div className="text-[#94a3b8] text-[9px]">WEAPON IMPULSE SPEC</div>
             <div className="font-bold text-[#7dd3fc]">
               {wpnSpec.isMelee
                 ? `ATK WT ${wpnSpec.attackWeight} · SPD ${wpnSpec.attackSpeed}`
                 : `PROJ WT ${wpnSpec.projectileWeight} · SPD ${wpnSpec.projectileSpeed}`}
             </div>
-            <div className="text-[7px] text-[#64748b]">
+            <div className="text-[9px] text-[#64748b]">
               {wpnSpec.isMelee
                 ? `Body Commit: ${Math.round(wpnSpec.commitment * 100)}%`
                 : 'Ranged J excludes shooter weight'}
@@ -559,11 +559,11 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
           </div>
 
           <div className="p-1 bg-[#0f172a] rounded-xs border border-[#1e293b]">
-            <div className="text-[#94a3b8] text-[7.5px]">RECOIL ABSORPTION (§7)</div>
+            <div className="text-[#94a3b8] text-[9px]">RECOIL ABSORPTION (§7)</div>
             <div className="font-bold text-[#c084fc] truncate">
               {inertiaProf.recoilAbsorptionLabel}
             </div>
-            <div className="text-[7px] text-[#64748b]">Δv_recoil = J_recoil / m_frame</div>
+            <div className="text-[9px] text-[#64748b]">Δv_recoil = J_recoil / m_frame</div>
           </div>
         </div>
       </div>
@@ -574,13 +574,13 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
           <span className="font-bold text-[#38bdf8] text-[10px]">
             EQUIPPED HARDWARE &amp; FEAT HANDLING PROFICIENCY (118-NODE CONSTELLATION):
           </span>
-          <span className="text-[8px] text-[#94a3b8]">
+          <span className="text-[9px] text-[#94a3b8]">
             STANCE: <b className="text-[#fde047]">{getActiveWeaponStance(state).shortTag}</b> · BAND:{' '}
             <b className="text-[#c084fc]">{gates.levelBand.toUpperCase()}</b>
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[8px]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[9px]">
           {equippedSlotSummaries.map((slotItem) => {
             const evalRes = evaluateEquipmentFeatHandling(state, slotItem.itemId);
             const displayName = slotItem.itemId
@@ -598,12 +598,12 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
                 className="p-1.5 bg-[#0f172a] rounded-xs border border-[#1e293b] flex flex-col justify-between gap-1"
               >
                 <div className="flex items-center justify-between gap-1">
-                  <span className="font-bold text-[#7dd3fc] text-[7.5px]">
+                  <span className="font-bold text-[#7dd3fc] text-[9px]">
                     {slotItem.slotLabel}
                   </span>
                   {slotItem.itemId && (
                     <span
-                      className={`px-1 py-0.2 rounded-[2px] text-[6.8px] font-bold border ${
+                      className={`px-1 py-0.2 rounded-[2px] text-[9px] font-bold border ${
                         evalRes.proficiencyTier === 'mastered'
                           ? 'bg-[#052e16] text-[#86efac] border-[#22c55e]/50'
                           : evalRes.proficiencyTier === 'proficient'
@@ -618,21 +618,21 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
                   )}
                 </div>
 
-                <div className="font-bold text-[#f8fafc] text-[8.5px] truncate">
+                <div className="font-bold text-[#f8fafc] text-[9px] truncate">
                   {displayName}
                   {devMode && slotItem.itemId ? (
-                    <span className="ml-1 text-[7px] text-[#94a3b8]">[{slotItem.itemId}]</span>
+                    <span className="ml-1 text-[9px] text-[#94a3b8]">[{slotItem.itemId}]</span>
                   ) : null}
                 </div>
                 {slotItem.itemId && (
-                  <div className="text-[7px] text-[#94a3b8] leading-snug">
+                  <div className="text-[9px] text-[#94a3b8] leading-snug">
                     {evalRes.statusSummary}
                   </div>
                 )}
 
                 {slotItem.itemId && recFeat && onLocateFeat && (
                   <div className="flex items-center justify-between gap-1 pt-0.5 border-t border-[#1e293b]">
-                    <span className="text-[6.8px] text-[#c084fc] truncate">
+                    <span className="text-[9px] text-[#c084fc] truncate">
                       Feat: <b>{recFeat.name}</b> ({recFeat.tier})
                     </span>
                     <button
@@ -641,7 +641,7 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
                         soundSystem.playSelect();
                         onLocateFeat(recFeat.id);
                       }}
-                      className="px-1.5 py-0.2 rounded-[2px] bg-[#1e1b4b] hover:bg-[#312e81] text-[#e9d5ff] border border-[#818cf8]/50 text-[6.8px] font-bold cursor-pointer shrink-0"
+                      className="px-1.5 py-0.2 rounded-[2px] bg-[#1e1b4b] hover:bg-[#312e81] text-[#e9d5ff] border border-[#818cf8]/50 text-[9px] font-bold cursor-pointer shrink-0"
                     >
                       VIEW IN FEAT GRID →
                     </button>

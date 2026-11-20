@@ -735,7 +735,7 @@ export const AetherCosmosCanvas: React.FC<AetherCosmosCanvasProps> = ({
         />
 
         {/* Bottom-left live orbital status pill */}
-        <div className="absolute bottom-1 left-1 right-1 flex items-center justify-between pointer-events-none text-[7.5px] px-1">
+        <div className="absolute bottom-1 left-1 right-1 flex items-center justify-between pointer-events-none text-[9px] px-1">
           <span className="px-1.5 py-0.5 bg-[#05030c]/85 border border-[#4c1d95]/60 rounded-xs text-[#e9d5ff]">
             {orbitActive ? '🌀 ÆTHER ORBIT AROUND SIN' : '⚓ CANONICAL ALIGNMENT'}
           </span>

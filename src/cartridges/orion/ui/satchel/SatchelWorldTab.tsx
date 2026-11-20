@@ -210,7 +210,7 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
       {/* Developer Sandbox Mode Switcher (only shown when devMode && isCheatMode) */}
       {devMode && isCheatMode && (
         <div className="p-1.5 bg-[#0b101d] rounded-xs border border-[#334155] flex flex-wrap items-center justify-between gap-1.5">
-          <span className="text-[8px] font-bold text-[#94a3b8]">
+          <span className="text-[9px] font-bold text-[#94a3b8]">
             DEV CARTOGRAPHY VIEW OVERRIDE:
           </span>
           <div className="flex items-center gap-1">
@@ -228,7 +228,7 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
                   soundSystem.playSelect();
                   setCheatAuthorityOverride(m.id);
                 }}
-                className={`px-1.5 py-0.5 rounded-xs text-[7.5px] font-bold border cursor-pointer ${
+                className={`px-1.5 py-0.5 rounded-xs text-[9px] font-bold border cursor-pointer ${
                   effectiveAccessMode === m.id
                     ? 'bg-[#2563eb] text-white border-[#93c5fd]'
                     : 'bg-[#0f172a] text-[#94a3b8] border-[#334155]'
@@ -248,7 +248,7 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
                 soundSystem.playPowerup();
                 notifyOrionStateChange();
               }}
-              className="px-1.5 py-0.5 bg-[#164e63] hover:bg-[#0e7490] text-[#e0f2fe] border border-[#22d3ee]/60 rounded-xs font-bold text-[7.5px] cursor-pointer"
+              className="px-1.5 py-0.5 bg-[#164e63] hover:bg-[#0e7490] text-[#e0f2fe] border border-[#22d3ee]/60 rounded-xs font-bold text-[9px] cursor-pointer"
             >
               ATTUNE ALL
             </button>
@@ -275,7 +275,7 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
           <div className="p-2 bg-[#0b101d] rounded-xs border border-[#c084fc]/50 space-y-1.5">
             <div className="flex flex-wrap items-center justify-between gap-1.5">
               <div className="flex items-center gap-2">
-                <span className="font-black text-[#f3e8ff] text-[10.5px] tracking-wider">
+                <span className="font-black text-[#f3e8ff] text-[11px] tracking-wider">
                   ÆTHER MAP — COSMIC WAYGATE TRANSIT NETWORK
                 </span>
                 <span className="text-[#64748b]">·</span>
@@ -283,7 +283,7 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
                   Inter-World & Local Waygate Authority Active
                 </span>
               </div>
-              <span className="text-[8px] text-[#c084fc] font-bold">
+              <span className="text-[9px] text-[#c084fc] font-bold">
                 Current World: {currentWorldDef.name}
               </span>
             </div>
@@ -310,7 +310,7 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
                         soundSystem.playMenuBeep();
                         setTierFilter(tab.id);
                       }}
-                      className={`px-1.5 py-0.5 rounded-xs text-[7.5px] font-bold border cursor-pointer ${
+                      className={`px-1.5 py-0.5 rounded-xs text-[9px] font-bold border cursor-pointer ${
                         tierFilter === tab.id
                           ? 'bg-[#581c87] text-[#f3e8ff] border-[#c084fc]'
                           : 'bg-[#130f24] text-[#94a3b8] border-[#2e1f47] hover:border-[#7e22ce]'
@@ -328,7 +328,7 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
                       soundSystem.playSelect();
                       setShowCoordOverlay((prev) => !prev);
                     }}
-                    className={`px-1.5 py-0.5 rounded-xs text-[7.5px] font-bold border cursor-pointer ${
+                    className={`px-1.5 py-0.5 rounded-xs text-[9px] font-bold border cursor-pointer ${
                       showCoordOverlay
                         ? 'bg-[#7f1d1d] text-[#fecaca] border-[#f87171]'
                         : 'bg-[#130f24] text-[#cbd5e1] border-[#3b2154] hover:border-[#a855f7]'
@@ -350,7 +350,7 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
                 }}
               />
 
-              <div className="w-full text-[7.5px] text-[#cbd5e1] flex items-center justify-between px-1">
+              <div className="w-full text-[9px] text-[#cbd5e1] flex items-center justify-between px-1">
                 <span className="flex items-center gap-1">
                   <span className="inline-block w-2 h-2 rounded-full border border-[#c084fc] bg-[#1e1b4b]" />
                   Major Worlds
@@ -375,22 +375,22 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
                       {selectedWorld.name}
                       {selectedWorld.subtitle ? ` (${selectedWorld.subtitle})` : ''}
                     </span>
-                    <span className="text-[7.5px] text-[#c084fc] font-bold uppercase">
+                    <span className="text-[9px] text-[#c084fc] font-bold uppercase">
                       · {selectedWorld.tier} World
                     </span>
                     {isSelectedCurrentWorld && (
-                      <span className="text-[7.5px] text-[#67e8f9] font-bold">
+                      <span className="text-[9px] text-[#67e8f9] font-bold">
                         · ★ Current World
                       </span>
                     )}
                   </div>
                 </div>
 
-                <div className="text-[8.5px] text-[#94a3b8]">
+                <div className="text-[9px] text-[#94a3b8]">
                   Theme: <strong className="text-[#e2e8f0]">{selectedWorld.theme}</strong> · Origin:{' '}
                   <strong className="text-[#cbd5e1]">{selectedWorld.origin.toUpperCase()}</strong>
                 </div>
-                <div className="text-[8.5px] text-[#cbd5e1] leading-snug">
+                <div className="text-[9px] text-[#cbd5e1] leading-snug">
                   {selectedWorld.lore}
                 </div>
               </div>
@@ -398,16 +398,16 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
               {/* COLOSSAL WAYGATES (WORLD-TO-WORLD & CONDUIT TRANSIT) */}
               <div className="p-2 bg-[#0b111e] rounded-xs border border-[#1e293b] space-y-1.5">
                 <div className="flex items-center justify-between gap-1">
-                  <span className="font-bold text-[#67e8f9] text-[9.5px]">
+                  <span className="font-bold text-[#67e8f9] text-[10px]">
                     COLOSSAL WAYGATES IN {selectedWorld.name.toUpperCase()}
                   </span>
-                  <span className="text-[7.5px] text-[#38bdf8]">
+                  <span className="text-[9px] text-[#38bdf8]">
                     Waygate Authority Active
                   </span>
                 </div>
 
                 {worldWaygates.length === 0 && selectedWorld.id !== 'world_belldor' ? (
-                  <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] text-[#94a3b8] text-[8.5px]">
+                  <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] text-[#94a3b8] text-[9px]">
                     No Colossal Waygate conduits unlocked in {selectedWorld.name}.
                   </div>
                 ) : (
@@ -442,10 +442,10 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
                           className="p-1.5 bg-[#090d16] rounded-xs border border-[#1e293b] flex items-center justify-between gap-2"
                         >
                           <div className="min-w-0">
-                            <div className="font-bold text-[#e0f2fe] text-[9.5px] truncate">
+                            <div className="font-bold text-[#e0f2fe] text-[10px] truncate">
                               {formatOrionLoreLabel(wg.name, devMode)}
                             </div>
-                            <div className="text-[8px] text-[#94a3b8] truncate">
+                            <div className="text-[9px] text-[#94a3b8] truncate">
                               {wg.world} · {wg.desyncStatus}
                             </div>
                           </div>
@@ -459,7 +459,7 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
                                 onResume();
                               }
                             }}
-                            className={`px-2 py-1 rounded-xs font-bold text-[8px] shrink-0 ${
+                            className={`px-2 py-1 rounded-xs font-bold text-[9px] shrink-0 ${
                               canTransit
                                 ? 'bg-[#0284c7] hover:bg-[#0369a1] text-white border border-[#38bdf8] cursor-pointer'
                                 : isUndefinedSpec
@@ -478,7 +478,7 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
                     {/* Local Bog Waygate Conduits inside Belldor */}
                     {selectedWorld.id === 'world_belldor' && (
                       <div className="pt-1 border-t border-[#1e293b] space-y-1">
-                        <div className="text-[8px] font-bold text-[#7dd3fc]">
+                        <div className="text-[9px] font-bold text-[#7dd3fc]">
                           LOCAL BELLDOR WAYGATE CONDUITS (THE SUNKEN BOG):
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
@@ -488,17 +488,17 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
                               className="p-1.5 bg-[#090d16] rounded-xs border border-[#1e293b] flex items-center justify-between gap-1.5"
                             >
                               <div className="min-w-0">
-                                <div className="font-bold text-[#bae6fd] text-[8.5px] truncate">
+                                <div className="font-bold text-[#bae6fd] text-[9px] truncate">
                                   {formatOrionLoreLabel(stop.name, devMode)}
                                 </div>
-                                <div className="text-[7.5px] text-[#94a3b8] truncate">
+                                <div className="text-[9px] text-[#94a3b8] truncate">
                                   {formatOrionLoreLabel(stop.areaName, devMode)}
                                 </div>
                               </div>
                               <button
                                 type="button"
                                 onClick={() => handleBogConduitTransit(stop)}
-                                className="px-1.5 py-0.5 rounded-xs font-bold text-[7.5px] shrink-0 bg-[#0284c7] hover:bg-[#0369a1] text-white border border-[#38bdf8] cursor-pointer"
+                                className="px-1.5 py-0.5 rounded-xs font-bold text-[9px] shrink-0 bg-[#0284c7] hover:bg-[#0369a1] text-white border border-[#38bdf8] cursor-pointer"
                               >
                                 TRANSIT
                               </button>
@@ -515,7 +515,7 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
 
           {/* 3. QUICK WORLD SELECTOR STRIP (All 20 Worlds in Catalog) */}
           <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1">
-            <div className="text-[8.5px] font-bold text-[#94a3b8] flex items-center justify-between">
+            <div className="text-[9px] font-bold text-[#94a3b8] flex items-center justify-between">
               <span>COSMIC WORLD ARCHIVE — SELECT ANY WORLD IN THE ÆTHER SEA</span>
               <span className="text-[#c084fc]">
                 8 Major · 7 Minor · 5 Unstable Drift Worlds
@@ -543,8 +543,8 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
                           : 'bg-[#0f172a] border-[#1e293b] text-[#cbd5e1] hover:border-[#475569]'
                     }`}
                   >
-                    <span className="truncate font-bold text-[8.5px]">{w.name}</span>
-                    <span className="text-[7px] text-[#94a3b8] uppercase font-bold shrink-0">
+                    <span className="truncate font-bold text-[9px]">{w.name}</span>
+                    <span className="text-[9px] text-[#94a3b8] uppercase font-bold shrink-0">
                       {w.tier === 'major' ? 'MAJ' : w.tier === 'minor' ? 'MIN' : 'DRF'}
                     </span>
                   </button>
@@ -569,7 +569,7 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
           return (
             <div className="p-2 bg-[#090d14] rounded-xs border border-[#38bdf8]/40 space-y-1.5">
               <div className="flex items-center justify-between gap-2">
-                <span className="font-bold text-[#38bdf8] text-[9.5px]">
+                <span className="font-bold text-[#38bdf8] text-[10px]">
                   TRAINING SANDBOX — ÆTHER FOG 5-NODE TOPOLOGY & STEP TELEPORTER
                 </span>
                 <button
@@ -579,13 +579,13 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
                     soundSystem.playSelect();
                     resetAetherFogGraph(rooms, state);
                   }}
-                  className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#7dd3fc] border border-[#38bdf8]/40 rounded-xs font-bold text-[8px] cursor-pointer shrink-0"
+                  className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#7dd3fc] border border-[#38bdf8]/40 rounded-xs font-bold text-[9px] cursor-pointer shrink-0"
                 >
                   RESET FOG GRAPH (SEED #{state.fogGraph?.seed || 104729})
                 </button>
               </div>
 
-              <div className="text-[8px] text-[#cbd5e1] flex flex-wrap items-center gap-2">
+              <div className="text-[9px] text-[#cbd5e1] flex flex-wrap items-center gap-2">
                 <span>
                   Node: <strong className="text-[#fbbf24]">{activeNode.nodeType.toUpperCase()}</strong>
                 </span>
@@ -605,7 +605,7 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-1.5 pt-0.5">
-                <span className="text-[8px] text-[#94a3b8]">
+                <span className="text-[9px] text-[#94a3b8]">
                   Drop-Pod → First Campfire → Poe Lantern / Main Bog Gate
                 </span>
                 <div className="flex items-center gap-1">
@@ -623,7 +623,7 @@ export const SatchelWorldTab: React.FC<SatchelWorldTabProps> = ({
                             onResume();
                           }
                         }}
-                        className={`px-1.5 py-0.5 rounded-xs font-bold text-[8px] cursor-pointer ${
+                        className={`px-1.5 py-0.5 rounded-xs font-bold text-[9px] cursor-pointer ${
                           isBlockedEnd
                             ? 'bg-[#0f172a] text-[#475569] border border-[#1e293b] cursor-not-allowed'
                             : isTrue

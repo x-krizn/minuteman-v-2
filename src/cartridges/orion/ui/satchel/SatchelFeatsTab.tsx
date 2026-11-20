@@ -335,7 +335,7 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
             <span className="font-bold text-[10px] text-[#f8fafc] tracking-wide">
               {enrichedNodes.length}-NODE HEX FEAT CONSTELLATION
             </span>
-            <span className="text-[8.5px] text-[#94a3b8]">
+            <span className="text-[9px] text-[#94a3b8]">
               SOCKETED: <b className="text-[#38bdf8]">{state.equippedFeats.length}/20</b> · LOAD CAP:{' '}
               <b className="text-[#4ade80] uppercase">{effectiveLoad}</b>
               {devMode && (
@@ -346,7 +346,7 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
               )}
             </span>
             {isCheatMode && (
-              <span className="inline-flex items-center gap-1 text-[8.5px] text-amber-300">
+              <span className="inline-flex items-center gap-1 text-[9px] text-amber-300">
                 CLVL {state.level}
                 <button
                   type="button"
@@ -367,7 +367,7 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
           </div>
 
           {/* Per-Tier Capacity Summary */}
-          <div className="flex items-center gap-1 text-[8px] font-mono tabular-nums">
+          <div className="flex items-center gap-1 text-[9px] font-mono tabular-nums">
             {FEAT_TIERS.map((tier) => {
               const used = getEquippedFeatCountByTier(state, tier);
               const cap = FEAT_TIER_MAX_SLOTS[tier];
@@ -409,7 +409,7 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
             <button
               type="button"
               onClick={() => handleFocusArm('ALL')}
-              className={`px-1.5 py-0.5 rounded-xs text-[8px] font-bold border cursor-pointer whitespace-nowrap ${
+              className={`px-1.5 py-0.5 rounded-xs text-[9px] font-bold border cursor-pointer whitespace-nowrap ${
                 activeArmFilter === 'ALL'
                   ? 'bg-[#f8fafc] text-[#05070a] border-white'
                   : 'bg-[#05080f] text-[#94a3b8] border-[#1e293b] hover:text-white'
@@ -425,7 +425,7 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
                   key={arm.skillId}
                   type="button"
                   onClick={() => handleFocusArm(arm.skillId)}
-                  className="px-1.5 py-0.5 rounded-xs text-[8px] font-bold border cursor-pointer whitespace-nowrap transition-colors"
+                  className="px-1.5 py-0.5 rounded-xs text-[9px] font-bold border cursor-pointer whitespace-nowrap transition-colors"
                   style={{
                     backgroundColor: isSelected ? arm.color : '#05080f',
                     color: isSelected ? '#05070a' : arm.color,
@@ -454,7 +454,7 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
                 >
                   <div className="flex items-center justify-between gap-1">
                     <span
-                      className="text-[8px] font-bold truncate"
+                      className="text-[9px] font-bold truncate"
                       style={{ color: armMeta?.color || '#38bdf8' }}
                     >
                       {skill.id.toUpperCase()}
@@ -464,19 +464,19 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
                         <button
                           type="button"
                           onClick={() => handleAdjustCheatSkillLevel(skill.id, -1)}
-                          className="px-1 bg-amber-950/60 border border-amber-500/40 text-amber-200 text-[7.5px] rounded-xs cursor-pointer"
+                          className="px-1 bg-amber-950/60 border border-amber-500/40 text-amber-200 text-[9px] rounded-xs cursor-pointer"
                         >
                           -
                         </button>
                       )}
-                      <span className="text-[8px] font-bold text-[#f8fafc] tabular-nums">
+                      <span className="text-[9px] font-bold text-[#f8fafc] tabular-nums">
                         LV {currentLv}/20
                       </span>
                       {isCheatMode && (
                         <button
                           type="button"
                           onClick={() => handleAdjustCheatSkillLevel(skill.id, 1)}
-                          className="px-1 bg-amber-950/60 border border-amber-500/40 text-amber-200 text-[7.5px] rounded-xs cursor-pointer"
+                          className="px-1 bg-amber-950/60 border border-amber-500/40 text-amber-200 text-[9px] rounded-xs cursor-pointer"
                         >
                           +
                         </button>
@@ -494,7 +494,7 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
                           type="button"
                           disabled={!canSpend}
                           onClick={() => handleFundSkillWithGem(skill.id, gemId)}
-                          className={`px-1 py-0.5 rounded-xs text-[7.5px] font-bold inline-flex items-center gap-0.5 border ${
+                          className={`px-1 py-0.5 rounded-xs text-[9px] font-bold inline-flex items-center gap-0.5 border ${
                             canSpend
                               ? 'bg-emerald-950/60 border-emerald-400/60 text-emerald-200 hover:bg-emerald-900/60 cursor-pointer'
                               : 'bg-[#080d16] border-[#1e293b] text-[#475569] cursor-not-allowed'
@@ -539,7 +539,7 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
                   soundSystem.playSelect();
                   setConstellationFilter(fOpt.id);
                 }}
-                className={`px-1.5 py-0.5 rounded-xs text-[7.5px] font-bold border cursor-pointer ${
+                className={`px-1.5 py-0.5 rounded-xs text-[9px] font-bold border cursor-pointer ${
                   constellationFilter === fOpt.id
                     ? 'bg-[#38bdf8] text-[#05070a] border-[#7dd3fc]'
                     : 'bg-[#080d16]/90 text-[#94a3b8] border-[#1e293b] hover:text-white'
@@ -556,7 +556,7 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
               <button
                 type="button"
                 onClick={() => setZoom((z) => Math.max(0.65, Number((z - 0.2).toFixed(2))))}
-                className="px-1.5 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#e2e8f0] rounded-xs text-[8px] font-bold cursor-pointer"
+                className="px-1.5 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#e2e8f0] rounded-xs text-[9px] font-bold cursor-pointer"
                 title="Zoom Out"
               >
                 −
@@ -567,7 +567,7 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
                   setZoom(1.0);
                   setPan({ x: 0, y: 0 });
                 }}
-                className="px-1.5 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#7dd3fc] rounded-xs text-[7.5px] font-bold cursor-pointer"
+                className="px-1.5 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#7dd3fc] rounded-xs text-[9px] font-bold cursor-pointer"
                 title="Reset Pan & Zoom"
               >
                 {Math.round(zoom * 100)}% · FIT
@@ -575,7 +575,7 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
               <button
                 type="button"
                 onClick={() => setZoom((z) => Math.min(2.4, Number((z + 0.2).toFixed(2))))}
-                className="px-1.5 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#e2e8f0] rounded-xs text-[8px] font-bold cursor-pointer"
+                className="px-1.5 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#e2e8f0] rounded-xs text-[9px] font-bold cursor-pointer"
                 title="Zoom In"
               >
                 +
@@ -585,7 +585,7 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
             <button
               type="button"
               onClick={() => setShowBlueprintModal((v) => !v)}
-              className={`px-1.5 py-0.5 rounded-xs text-[7.5px] font-bold border cursor-pointer ${
+              className={`px-1.5 py-0.5 rounded-xs text-[9px] font-bold border cursor-pointer ${
                 showBlueprintModal
                   ? 'bg-amber-400 text-[#05070a] border-amber-300'
                   : 'bg-[#080d16]/90 text-[#94a3b8] border-[#1e293b] hover:text-white'
@@ -856,17 +856,17 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
             <button
               type="button"
               onClick={() => handleCycleNode(-1)}
-              className="px-2 py-0.5 rounded-xs bg-[#0f172a] hover:bg-[#1e293b] border border-[#334155] text-[8px] font-bold text-[#38bdf8] cursor-pointer"
+              className="px-2 py-0.5 rounded-xs bg-[#0f172a] hover:bg-[#1e293b] border border-[#334155] text-[9px] font-bold text-[#38bdf8] cursor-pointer"
             >
               ◀ PREV
             </button>
-            <span className="text-[8px] font-bold text-[#94a3b8] tabular-nums">
+            <span className="text-[9px] font-bold text-[#94a3b8] tabular-nums">
               NODE #{selectedNode.index + 1} / {enrichedNodes.length} · {selectedNode.compassCode}
             </span>
             <button
               type="button"
               onClick={() => handleCycleNode(1)}
-              className="px-2 py-0.5 rounded-xs bg-[#0f172a] hover:bg-[#1e293b] border border-[#334155] text-[8px] font-bold text-[#38bdf8] cursor-pointer"
+              className="px-2 py-0.5 rounded-xs bg-[#0f172a] hover:bg-[#1e293b] border border-[#334155] text-[9px] font-bold text-[#38bdf8] cursor-pointer"
             >
               NEXT ▶
             </button>
@@ -876,14 +876,14 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
           <div className="space-y-1">
             <div className="flex items-center justify-between gap-1 flex-wrap">
               <span
-                className="text-[8px] font-bold uppercase"
+                className="text-[9px] font-bold uppercase"
                 style={{ color: selectedNode.armColor }}
               >
                 {selectedNode.skillId.toUpperCase()} · TIER {selectedNode.tier} (
                 {selectedTierUsed}/{selectedTierCap} SLOTS)
               </span>
               <span
-                className={`text-[7.5px] font-bold px-1.5 py-0.5 rounded-xs ${
+                className={`text-[9px] font-bold px-1.5 py-0.5 rounded-xs ${
                   selectedNode.isEquipped
                     ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-500/50'
                     : selectedNode.canSocketNow
@@ -902,13 +902,13 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
             <div className="text-[11px] font-bold text-[#f8fafc] uppercase leading-tight">
               {selectedNode.feat.name}
               {devMode && (
-                <span className="ml-1.5 text-[8px] font-mono lowercase text-[#64748b]">
+                <span className="ml-1.5 text-[9px] font-mono lowercase text-[#64748b]">
                   [{selectedNode.feat.id}]
                 </span>
               )}
             </div>
 
-            <div className="text-[8px] text-[#94a3b8]">
+            <div className="text-[9px] text-[#94a3b8]">
               SKILL PREREQ:{' '}
               <b
                 className={
@@ -926,27 +926,27 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
           {/* Equipment Handling & Prerequisite Unlocks Box */}
           <div className="p-2 rounded-xs bg-[#05080f] border border-[#1e293b] space-y-1">
             <div className="flex items-center justify-between gap-1">
-              <span className="text-[8px] font-bold text-[#fde047] uppercase">
+              <span className="text-[9px] font-bold text-[#fde047] uppercase">
                 {selectedNode.handlingRole === 'prerequisite'
                   ? '★ EQUIPMENT PREREQUISITE UNLOCK'
                   : '⚙ EQUIPMENT HANDLING PROFICIENCY'}
               </span>
               {selectedNode.feat.loadStepUp && (
-                <span className="text-[7.5px] font-bold text-emerald-300">
+                <span className="text-[9px] font-bold text-emerald-300">
                   +{selectedNode.feat.loadStepUp} LOAD STEP (+22 WT)
                 </span>
               )}
             </div>
-            <div className="text-[8.5px] text-[#e2e8f0] leading-snug">
+            <div className="text-[9px] text-[#e2e8f0] leading-snug">
               {selectedNode.handlingSummary}
             </div>
-            <div className="text-[7.5px] text-[#94a3b8]">
+            <div className="text-[9px] text-[#94a3b8]">
               AFFECTED GEAR:{' '}
               <span className="text-[#7dd3fc]">
                 {selectedNode.targetEquipmentClasses.join(' · ')}
               </span>
             </div>
-            <div className="text-[7.5px] pt-0.5 border-t border-[#1e293b]/70">
+            <div className="text-[9px] pt-0.5 border-t border-[#1e293b]/70">
               LOADOUT CHECK:{' '}
               <span
                 className={
@@ -960,17 +960,17 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
 
           {/* Combat Effect & Trade-Off */}
           <div className="p-2 rounded-xs bg-[#05080f] border border-[#1e293b] space-y-1">
-            <div className="text-[8.5px] text-emerald-300 leading-snug">
+            <div className="text-[9px] text-emerald-300 leading-snug">
               + {selectedNode.feat.gainDescription}
             </div>
-            <div className="text-[8px] text-amber-300/90 leading-snug">
+            <div className="text-[9px] text-amber-300/90 leading-snug">
               − {selectedNode.feat.costDescription}
             </div>
           </div>
 
           {/* Gemstone Socket Requirements */}
           <div className="space-y-1">
-            <div className="text-[8px] font-bold text-[#94a3b8] uppercase">
+            <div className="text-[9px] font-bold text-[#94a3b8] uppercase">
               GEM SOCKET REQUIREMENTS (REFUNDED ON UNSOCKET):
             </div>
             <div className="flex flex-wrap items-center gap-1">
@@ -981,7 +981,7 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
                 return (
                   <span
                     key={`${selectedNode.feat.id}-sock-${idx}`}
-                    className={`inline-flex items-center gap-1 text-[8px] px-1.5 py-0.5 rounded-xs border tabular-nums ${
+                    className={`inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-xs border tabular-nums ${
                       selectedNode.isEquipped
                         ? 'border-emerald-500/40 bg-emerald-950/30 text-emerald-200'
                         : enough
@@ -1040,7 +1040,7 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
           </button>
 
           {/* Compact Total Active Modifiers Footer */}
-          <div className="pt-1.5 border-t border-[#1e293b] text-[7.5px] text-[#94a3b8] space-y-0.5">
+          <div className="pt-1.5 border-t border-[#1e293b] text-[9px] text-[#94a3b8] space-y-0.5">
             <div className="font-bold text-[#7dd3fc]">
               ACTIVE CONSTELLATION RESONANCE ({state.equippedFeats.length} SOCKETED):
             </div>

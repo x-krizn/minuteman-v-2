@@ -843,7 +843,7 @@ export const HighResMechDollCanvas: React.FC<{
         <button
           type="button"
           onClick={() => setPreviewDirIdx((prev) => (prev + 1) % PREVIEW_DIRS.length)}
-          className="px-2 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#7dd3fc] border border-[#38bdf8]/40 rounded-xs text-[7.5px] font-bold cursor-pointer"
+          className="px-2 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#7dd3fc] border border-[#38bdf8]/40 rounded-xs text-[9px] font-bold cursor-pointer"
         >
           ↻ ROTATE VIEW ({PREVIEW_DIRS[previewDirIdx % PREVIEW_DIRS.length]})
         </button>
@@ -854,7 +854,7 @@ export const HighResMechDollCanvas: React.FC<{
               prev === null ? 0 : prev === 3 ? null : ((prev + 1) as 0 | 1 | 2 | 3)
             )
           }
-          className="px-2 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#fde047] border border-[#fde047]/40 rounded-xs text-[7.5px] font-bold cursor-pointer"
+          className="px-2 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#fde047] border border-[#fde047]/40 rounded-xs text-[9px] font-bold cursor-pointer"
         >
           {pausedFrame !== null ? `▶ POSE F${pausedFrame + 1} (STEP / ANIMATE)` : '⏸ PAUSE POSE'}
         </button>

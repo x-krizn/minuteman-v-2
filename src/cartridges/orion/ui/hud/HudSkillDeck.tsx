@@ -16,7 +16,6 @@ import {
 import {
   activateResolvedCombatSkill,
   firePrimarySalvoShot,
-  getLockedTarget,
   getResolvedCombatSkills,
   PERFECT_BLOCK_WINDOW_SEC,
   releaseHeldBlock,
@@ -80,25 +79,22 @@ export function getWorldRelativeClasses(
 }
 
 /**
- * Resolves non-overlapping vertical placement (`top` or `bottom`) for HUD notification toasts relative to the mech. Supports the React overlay HUD.
+ * Resolves unified bottom-center placement and semantic border/text color classes for HUD notification toasts. Supports the React overlay HUD.
  */
 export function resolveToastPlacement(
-  state: OrionState,
+  _state: OrionState,
   text: string
 ): { positionClass: string; colorClass: string } {
   const upper = text.toUpperCase();
+  const positionClass = 'bottom-11 left-1/2 -translate-x-1/2 text-center';
 
   if (
     upper.includes('TARGET LOCK') ||
     upper.includes('TARGET UNLOCK') ||
     upper.includes('HOSTILE TARGET')
   ) {
-    const locked = getLockedTarget(state);
-    const pos = locked
-      ? getWorldRelativeClasses(state, locked.x, locked.y, locked.z)
-      : getWorldRelativeClasses(state, state.x, state.y, state.z);
     return {
-      positionClass: pos,
+      positionClass,
       colorClass: 'text-[#38bdf8] border-[#38bdf8]/80',
     };
   }
@@ -112,7 +108,7 @@ export function resolveToastPlacement(
     upper.includes('AUXILIARY')
   ) {
     return {
-      positionClass: 'top-14 right-2 text-right',
+      positionClass,
       colorClass: 'text-[#fbbf24] border-[#fbbf24]/80',
     };
   }
@@ -128,7 +124,7 @@ export function resolveToastPlacement(
     upper.includes('REBOOTED')
   ) {
     return {
-      positionClass: 'top-16 left-2 text-left',
+      positionClass,
       colorClass:
         upper.includes('OVERHEAT') ||
         upper.includes('DESTROYED') ||
@@ -146,7 +142,7 @@ export function resolveToastPlacement(
     upper.includes('EQUIP OFF-HAND')
   ) {
     return {
-      positionClass: 'bottom-11 left-1/2 -translate-x-1/2 text-center',
+      positionClass,
       colorClass: 'text-[#fde68a] border-[#fbbf24]/75',
     };
   }
@@ -170,13 +166,13 @@ export function resolveToastPlacement(
     upper.includes('WAYSTATION')
   ) {
     return {
-      positionClass: getWorldRelativeClasses(state, state.x, state.y, state.z),
+      positionClass,
       colorClass: 'text-[#fef08a] border-[#facc15]/80',
     };
   }
 
   return {
-    positionClass: 'top-6 left-1/2 -translate-x-1/2 text-center',
+    positionClass,
     colorClass: 'text-[#7dd3fc] border-[#38bdf8]/75',
   };
 }
@@ -543,7 +539,7 @@ export const HudSkillDeck: React.FC<HudSkillDeckProps> = ({
             >
               {/* Remapped Trigger Keycap Badge */}
               <span
-                className={`absolute top-0 left-0.5 text-[5.5px] font-black leading-none text-[#cbd5e1] ${OUTLINED_TEXT}`}
+                className={`absolute top-0 left-0.5 text-[9px] font-black leading-none text-[#cbd5e1] ${OUTLINED_TEXT}`}
               >
                 {slotKeyBadges[idx]}
               </span>
@@ -556,7 +552,7 @@ export const HudSkillDeck: React.FC<HudSkillDeckProps> = ({
               {/* Basic Attack (Slot 1) Badge: Bow Charge %, Melee Combo Step, or Ranged Ammo */}
               {idx === 0 && isAvailable && !onCooldown && (
                 <span
-                  className={`absolute bottom-0 right-0.5 text-[6.5px] font-black leading-none ${
+                  className={`absolute bottom-0 right-0.5 text-[9px] font-black leading-none ${
                     isBasicBowCharge
                       ? state.isChargingBow
                         ? 'text-[#fde047]'
@@ -585,13 +581,13 @@ export const HudSkillDeck: React.FC<HudSkillDeckProps> = ({
                 typeof skill?.internalCharges === 'number' &&
                 skill.internalCharges > 1 ? (
                   <span
-                    className={`absolute bottom-0 right-0.5 text-[6.5px] font-black text-[#38bdf8] leading-none ${OUTLINED_TEXT}`}
+                    className={`absolute bottom-0 right-0.5 text-[9px] font-black text-[#38bdf8] leading-none ${OUTLINED_TEXT}`}
                   >
                     {skill.remainingCharges}/{skill.internalCharges}
                   </span>
                 ) : typeof skill?.ammoCount === 'number' && skill.ammoCount > 1 ? (
                   <span
-                    className={`absolute bottom-0 right-0.5 text-[6.5px] font-black text-[#fde047] leading-none ${OUTLINED_TEXT}`}
+                    className={`absolute bottom-0 right-0.5 text-[9px] font-black text-[#fde047] leading-none ${OUTLINED_TEXT}`}
                   >
                     ×{skill.ammoCount}
                   </span>
@@ -602,7 +598,7 @@ export const HudSkillDeck: React.FC<HudSkillDeckProps> = ({
                 typeof skill.itemCount === 'number' &&
                 !onCooldown && (
                   <span
-                    className={`absolute bottom-0 right-0.5 text-[7px] font-black text-[#fef08a] leading-none ${OUTLINED_TEXT}`}
+                    className={`absolute bottom-0 right-0.5 text-[9px] font-black text-[#fef08a] leading-none ${OUTLINED_TEXT}`}
                   >
                     {skill.itemCount}
                   </span>
@@ -611,7 +607,7 @@ export const HudSkillDeck: React.FC<HudSkillDeckProps> = ({
               {/* Overlaid Held Block / Perfect Window, Active Duration, or Cooldown/Reload Timer */}
               {isHeldBlockSlot ? (
                 <span
-                  className={`absolute inset-0 flex items-center justify-center text-[7px] font-black ${
+                  className={`absolute inset-0 flex items-center justify-center text-[9px] font-black ${
                     isPerfectBlockActive ? 'text-[#38bdf8]' : 'text-[#bae6fd]'
                   } tracking-tighter ${OUTLINED_TEXT}`}
                 >
@@ -619,13 +615,13 @@ export const HudSkillDeck: React.FC<HudSkillDeckProps> = ({
                 </span>
               ) : isDurationActive ? (
                 <span
-                  className={`absolute inset-0 flex items-center justify-center text-[8.5px] sm:text-[9px] font-black text-[#4ade80] tracking-tighter ${OUTLINED_TEXT}`}
+                  className={`absolute inset-0 flex items-center justify-center text-[9px] sm:text-[10px] font-black text-[#4ade80] tracking-tighter ${OUTLINED_TEXT}`}
                 >
                   {activeRem.toFixed(1)}
                 </span>
               ) : onCooldown ? (
                 <span
-                  className={`absolute inset-0 flex items-center justify-center text-[8.5px] sm:text-[9px] font-black ${
+                  className={`absolute inset-0 flex items-center justify-center text-[9px] sm:text-[10px] font-black ${
                     isSkillReloading ? 'text-[#fbbf24]' : 'text-white'
                   } tracking-tighter ${OUTLINED_TEXT}`}
                 >

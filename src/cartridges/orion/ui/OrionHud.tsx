@@ -172,7 +172,7 @@ export const OrionHud: React.FC = () => {
         <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-[#1e293b]">
           <div className="flex items-center gap-2">
             <span
-              className={`text-xs sm:text-sm font-black tracking-wider ${
+              className={`text-[12px] sm:text-[13px] font-black tracking-wider ${
                 state.worldMapModalMode === 'campfire'
                   ? 'text-[#fde047]'
                   : state.worldMapModalMode === 'waygate'
@@ -191,7 +191,7 @@ export const OrionHud: React.FC = () => {
               soundSystem.playMenuBeep();
               setTick((t) => t + 1);
             }}
-            className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#facc15] border border-[#475569] rounded-xs text-[9.5px] font-bold cursor-pointer shadow-[1px_1px_0_#020617]"
+            className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#facc15] border border-[#475569] rounded-xs text-[10px] font-bold cursor-pointer shadow-[1px_1px_0_#020617]"
           >
             ✕ CLOSE MAP [B]
           </button>
@@ -246,10 +246,10 @@ export const OrionHud: React.FC = () => {
           role="dialog"
           data-universal-menu="true"
           aria-label={contextMenu.title}
-          className="pointer-events-auto absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-40 min-w-[185px] sm:min-w-[225px] max-w-[88%] bg-[#090d16]/95 border-2 border-[#38bdf8]/90 rounded-xs p-2 shadow-[3px_3px_0_#020617] flex flex-col gap-1"
+          className="pointer-events-auto absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-40 min-w-[200px] sm:min-w-[240px] max-w-[90%] bg-[#090d16]/95 border-2 border-[#38bdf8]/90 rounded-xs p-2.5 shadow-[3px_3px_0_#020617] flex flex-col gap-1.5"
         >
           <div className="flex items-center justify-between gap-2 pb-1 border-b border-[#1e293b]">
-            <span className="text-[9px] sm:text-[10px] font-black tracking-wider uppercase text-[#38bdf8] truncate">
+            <span className="text-[11px] font-black tracking-wider uppercase text-[#38bdf8] truncate">
               {formatOrionLoreLabel(contextMenu.title, devMode)}
             </span>
             <button
@@ -260,13 +260,13 @@ export const OrionHud: React.FC = () => {
                 soundSystem.playMenuBeep();
                 setTick((t) => t + 1);
               }}
-              className="text-[8px] px-1.5 py-0.5 bg-[#0f172a] border border-[#475569] text-[#94a3b8] hover:text-white rounded-xs cursor-pointer"
+              className="text-[9px] px-1.5 py-0.5 bg-[#0f172a] border border-[#475569] text-[#94a3b8] hover:text-white rounded-xs cursor-pointer"
             >
               [B] ESC
             </button>
           </div>
 
-          <div className="flex flex-col gap-0.5">
+          <div className="flex flex-col gap-1">
             {contextMenu.options.map((opt, idx) => {
               const isSelected = idx === contextMenu.selectedIndex;
               return (
@@ -303,7 +303,7 @@ export const OrionHud: React.FC = () => {
                     );
                     setTick((t) => t + 1);
                   }}
-                  className={`w-full text-left px-2 py-1 rounded-xs text-[8.5px] sm:text-[9.5px] font-bold tracking-wider uppercase flex items-center justify-between gap-2 cursor-pointer transition-colors ${
+                  className={`w-full text-left px-2 py-1 rounded-xs text-[10px] font-bold tracking-wider uppercase flex items-center justify-between gap-2 cursor-pointer transition-colors ${
                     isSelected
                       ? 'bg-[#0284c7]/35 border border-[#38bdf8] text-[#fef08a] shadow-[1px_1px_0_#020617]'
                       : 'bg-[#0f172a]/70 border border-transparent text-[#cbd5e1] hover:border-[#475569]'
@@ -314,14 +314,14 @@ export const OrionHud: React.FC = () => {
                     {formatOrionLoreLabel(opt.label, devMode)}
                   </span>
                   {isSelected && (
-                    <span className="text-[7.5px] text-[#7dd3fc] font-extrabold">[A]</span>
+                    <span className="text-[9px] text-[#7dd3fc] font-extrabold">[A]</span>
                   )}
                 </button>
               );
             })}
           </div>
 
-          <div className="pt-0.5 text-[7px] text-[#64748b] font-bold tracking-wider uppercase flex justify-between">
+          <div className="pt-0.5 text-[9px] text-[#94a3b8] font-bold tracking-wider uppercase flex justify-between">
             <span>[↑/↓] SELECT</span>
             <span>[A] CONFIRM · [B] CANCEL</span>
           </div>
@@ -332,7 +332,7 @@ export const OrionHud: React.FC = () => {
       {!contextMenu && state.promptText && (
         <div
           aria-live="polite"
-          className={`pointer-events-none absolute z-30 px-2 py-0.5 bg-[#05070a]/85 border border-[#facc15]/90 text-[#fef08a] rounded-xs text-[8.5px] sm:text-[9.5px] font-extrabold tracking-wider uppercase whitespace-nowrap shadow-[2px_2px_0_#020617] ${OUTLINED_TEXT} ${promptPositionClass}`}
+          className={`pointer-events-none absolute z-30 px-2 py-0.5 bg-[#05070a]/85 border border-[#facc15]/90 text-[#fef08a] rounded-xs text-[10px] font-extrabold tracking-wider uppercase whitespace-nowrap shadow-[2px_2px_0_#020617] ${OUTLINED_TEXT} ${promptPositionClass}`}
         >
           {formatOrionLoreLabel(formatPromptControlLabels(state.promptText), devMode)}
         </div>
@@ -341,7 +341,7 @@ export const OrionHud: React.FC = () => {
       {state.toastText && state.toastTimer > 0 && toastPlacement && (
         <div
           aria-live="polite"
-          className={`pointer-events-none absolute z-30 px-2 py-0.5 bg-[#05070a]/80 border rounded-xs text-[8.5px] sm:text-[9.5px] font-extrabold tracking-wider uppercase max-w-[84%] truncate shadow-[2px_2px_0_#020617] ${OUTLINED_TEXT} ${toastPlacement.positionClass} ${toastPlacement.colorClass} ${
+          className={`pointer-events-none absolute z-30 w-fit max-w-[92%] sm:max-w-[82%] px-3 py-1.5 bg-[#05070a]/90 border rounded-xs text-[10px] sm:text-[11px] leading-snug font-extrabold tracking-wider uppercase whitespace-normal break-words shadow-[2px_2px_0_#020617] ${OUTLINED_TEXT} ${toastPlacement.positionClass} ${toastPlacement.colorClass} ${
             state.toastTimer < 0.4 ? 'opacity-50' : 'opacity-100'
           } transition-opacity duration-150`}
         >

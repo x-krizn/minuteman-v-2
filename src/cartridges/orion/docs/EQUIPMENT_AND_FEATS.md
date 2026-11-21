@@ -220,158 +220,195 @@ All weapons in Project Orion are classified into **8 broad Weapon Classes** (`We
 | Cleric | Arms | Sanctum Benediction Assemblies | Hybrid weapon integration, ally buff emitters |
 | Cleric | Legs | Sanctum Steadfast Striders | Stabilizer anchors for support positioning |
 
-## 7. FEATS — TIER I
+## 7. THE 113-NODE FEAT CONSTELLATION & FIVE GOLDEN RULES (`P-01` – `P-05`)
 
-| Feat | Trait Line | Tier | Requirement | Effect |
-|---|---|---|---|---|
-| Booster Evasion | Warrior | I | Booster kit equipped | Grants i-frames during boost |
-| Momentum Guard | Warrior/Marauder | I | Booster kit | Stagger resistance while boosting |
-| Radiant Step | Warrior/Guardian | I | Booster kit + mana core | Boost leaves radiant shimmer granting allies stagger resistance |
-| Radiant Dash | Warrior/Guardian | I | Booster kit + mana core | Boost leaves radiant afterimage that blinds enemies |
-| Siege Stability | Marauder | I | Heavy/super-heavy chassis | Outriggers grant stagger immunity while firing heavy weapons |
-| Anchored Action | Marauder/Guardian | I | Stabilizer frame + shield/booster | While anchored, evasion or shield charge gains stagger immunity |
-| Stabilizer Pulse | Marauder/Guardian | I | Stabilizer frame + energy shield | Anchored shield emits pulse reducing ranged damage for allies |
-| Shield Charge | Guardian | I | Physical shield | Charge toward enemy with shield raised; impact stuns 1.5 sec |
-| Shadow Step | Rogue | I | Mobility system | Dash grants brief invisibility (capped at stealth duration max) |
-| Phantom Strike | Rogue/Wizard | I | Cloak + energy weapon | Attacks from stealth deal bonus energy damage |
-| Surgical Precision | Rogue/Cleric | I | — | Critical hits restore small amount of ally shield within 10 m |
-| Veil of Mercy | Rogue/Cleric | I | Cloak + support reactor | Stealth applies brief ally damage reduction aura |
-| Beam Focus | Wizard | I | Energy weapon equipped | Standing still increases beam damage by 15% |
-| Radiant Overflow | Wizard/Cleric | I | Energy reactor + support system | Excess energy creates small heal-over-time zone |
-| Empowered Blessing | Wizard/Cleric | I | Energy weapon + buff system | Weapon hits extend active buff durations by 0.5 sec |
-| Reactive Healing | Cleric | I | Support reactor | Ally within 15 m below 30% HP auto-pulse heals 15% HP; cooldown 20 sec per ally |
+The **113-Node Hexagonal Feat Constellation** (`90` Groomed Core Feats + `22` Standalone Specialist Martial Stances + `1` Campaign Reward Feat) is organized into **3 Macro-Umbrellas** subdividing into the **6 Combat Discipline Sectors**:
 
-## 8. FEATS — TIER II
+- **`Fighter` Umbrella**: **`Warrior`** (Kinetic Assault, Dual-Wielding, Thermal Overclock, Rapid Ballistics) + **`Guardian`** (Aegis Shields, Radiant Barriers, Vanguard Charges, Cleave Waves)
+- **`Scholar` Umbrella**: **`Wizard`** (Sustained Beams, Stationary Focus, Phase/Spatial Geometry, Energy Reactors) + **`Cleric`** (Harmonic Wards, Triage Pulses, Sanctified Zones, Self-Sacrifice)
+- **`Rogue` Umbrella**: **`Marauder`** (Heavy Siege Ordnance, Outrigger Bracing, Kinetic Recycling, Area Suppression) + **`Rogue`** (Optical Camouflage, Backstab/Ambush Precision, Phase Evasion, Self-Only Siphon)
 
-| Feat | Trait Line | Tier | Requirement | Effect |
-|---|---|---|---|---|
-| Sidearm Twin-Link | Warrior | II | Matching sidearms | Dual strike execution |
-| Suppression Link | Warrior/Marauder | II | Matching suppression weapons | Burst or sustained fire triggers twin-link bursts |
-| Shielded Volley | Warrior/Guardian | II | Shield + sidearms | Fire sidearms while shielding |
-| Twin Guard | Warrior/Guardian | II | Shield + sidearms | Suppressive fire while defending |
-| Radiant Intercept | Warrior/Guardian | II | Intercept weapon + mana core | Intercept shots emit radiant flare that blinds enemies |
-| Suppression Chainfire | Marauder | II | Suppression/intercept weapon | Sustained fire builds suppression stacks |
-| Aura of Suppression | Marauder/Guardian | II | Mana core + suppression weapon | Aura reduces enemy accuracy and movement |
-| Guardian's Interference | Guardian/Marauder | II | Mana core + interference launcher | Aura scrambles enemy targeting |
-| Protector's Aura | Guardian | II | Mana core | Reserves energy as interference shielding for self and nearby allies; prevents ranged energy damage (except AoE); deflects but does not fully block small arms |
-| Backstab Mastery | Rogue | II | — | Attacks from behind deal +50% damage |
-| Arcane Ambush | Rogue/Wizard | II | Cloak + beam weapon | First attack from stealth overcharges beam for +100% damage |
-| Phase Beam | Rogue/Wizard | II | Phase-shift module + energy weapon | Brief intangibility allows firing through cover |
-| Healing Shadow | Rogue/Cleric | II | Stealth + support field | Allies near cloaked position receive shield restoration over time |
-| Mercy Strike | Rogue/Cleric | II | — | Critical hit on enemy applies brief ally damage buff within 10 m |
-| Sustained Channeling | Wizard | II | Beam weapon | Continuous fire on same target +5% damage per sec (max 25%) |
-| Energy Redistribution | Wizard/Cleric | II | Support reactor | Taking damage transfers energy to nearby allies |
-| Shared Resonance | Wizard/Cleric | II | Buff system + energy pool | Ally buffs reduce own energy costs by 10% |
-| Purification Beam | Cleric/Wizard | II | Support reactor + energy weapon | Beam attacks cleanse ally debuffs in path |
-| Martyr's Resolve | Cleric | II | Support reactor | When redirecting damage to self via Martyrdom effects, gain +20% damage reduction |
+### The Five Golden Rules of Feat Progression
 
-## 9. FEATS — TIER III
+| Rule ID | Rule Name | Mechanical Contract |
+|---|---|---|
+| **`Rule P-01`** | **1:1 Level-to-Feat Cap** | Active socketed feats scale **`1:1` with Character Level** (`Lv 1 = 1 feat`, `Lv 13 = 13 feats`, `Lv 20 = 20 feats max`). |
+| **`Rule P-02`** | **Tiers Measure Customization Depth** | Tiers `I–V` represent radial customization depth from the center of the hex chart, not rigid level gates. Tiers `I–IV` have **no per-tier slot caps**, and **tier-jumping is permitted** inside any chain (`Tier I → III` or `Tier I → IV` once any earlier step in that chain is socketed). |
+| **`Rule P-03`** | **Tier V Apex Ceiling (`Max = 2`)** | At most **`2` Tier V capstones** (`0`, `1`, or `2`) may be socketed per build. |
+| **`Rule P-04`** | **Selective Chain Links (No Spaghetti Web)** | Only **`18` mechanical chains (`C-01` through `C-18`)** draw prerequisite lines on the star chart. Standalone Core Feats and the `22` Specialist Martial Stances have **zero prerequisite lines**. |
+| **`Rule P-05`** | **Weapon-Agnostic Event & Geometry Triggers** | Core Feats trigger off **physical events** (`μ = 0` stationary focus for `0.75s`, off-hand parries, melee cleaves, stealth strikes, high-impulse slams) so Bows, Casters, Blades, Spears, Axes, and Shields all share the same core constellation. |
 
-| Feat | Trait Line | Tier | Requirement | Effect |
-|---|---|---|---|---|
-| Sidearm Parry | Warrior | III | Parry-capable sidearm | Enables defensive parry |
-| Attrition Riposte | Warrior/Marauder | III | Parry weapon | Successful parries restore reactor energy; once per enemy attack cycle |
-| Reactive Overload | Warrior/Marauder | III | Suppression weapon | Damage taken reduces cooldowns; stacks decay after 5 sec |
-| Overclock Guard | Warrior/Marauder | III | Overclock core + defensive plating | Overclock hardens plating, reduces damage, increases reactor heat |
-| Overload Cleave | Warrior/Guardian | III | Mana reactor + melee | Cleave builds overload stacks (cap 3); next boost restores shield energy |
-| Cleave Counter | Warrior/Guardian | III | Mana reactor + parry weapon | Parry triggers radiant cleave wave |
-| Attrition Guard | Marauder | III | Defensive plating | Converts incoming damage into reactor energy; diminishing returns per trigger |
-| Radiant Barrage | Marauder/Guardian | III | Mana reactor + heavy weapon | Cleave triggers short burst barrage |
-| Cleave Suppression | Guardian/Marauder | III | Mana reactor + suppression weapon | Cleave applies suppression stacks; suppression immunity window on enemies |
-| Radiant Cleave | Guardian | III | Mana reactor + main slot melee | Charge melee for 180° sweep releasing mana-energy wave; one secondary effect per cleave |
-| Assassinate | Rogue | III | — | Critical hit against target above 90% HP deals +200% damage |
-| Phantom Barrage | Rogue/Wizard | III | Cloak + rapid-fire weapon | Stealth attacks trigger burst fire with no heat cost |
-| Void Strike | Rogue/Wizard | III | Phase-shift + energy weapon | Intangibility attacks bypass shields and armor entirely |
-| Guardian Angel | Rogue/Cleric | III | Cloak + support field | While stealthed, redirect 50% of ally damage to self |
-| Vital Strike | Rogue/Cleric | III | — | Critical hits heal self and nearby allies for 10% of damage dealt |
-| Overcharge | Wizard | III | Energy reactor | Sacrifice 30% energy pool to boost next attack by 150% |
-| Convergence Field | Wizard/Cleric | III | Energy overflow + support system | Standing near allies boosts their energy regen by 25% |
-| Empowered Ward | Wizard/Cleric | III | Energy shield + buff system | Shields on allies reflect 25% damage back to attacker |
-| Benediction Pulse | Cleric/Wizard | III | Support system + energy weapon | Killing blows pulse heal to all allies in 20 m radius |
-| Mass Restoration | Cleric | III | Support reactor + area healing system | Healing fields 2× radius, +25% HP restored; must satisfy Law 3 HPS rule |
+---
 
-## 10. FEATS — TIER IV
+## 8. FEATS — TIER I (`15 Core Feats`)
 
-| Feat | Trait Line | Tier | Requirement | Effect |
-|---|---|---|---|---|
-| Main Weapon Twin-Link | Warrior | IV | Matching main weapons | Fire all 4 simultaneously |
-| Overclock Barrage | Warrior/Marauder | IV | Overclock core + suppression weapon | Resets cooldowns, boosts suppression fire rate; adds reactor heat each use; cannot reset Core Overclock |
-| Disruption Riposte | Warrior/Marauder | IV | Interference launcher | Activation grants brief parry window |
-| Guardian's Dash | Warrior/Guardian | IV | Booster kit + energy shield | Boost through enemies triggers shield pulse, stuns 1.5 sec and restores ally shields; 10 sec cooldown |
-| Overclocked Ward | Warrior/Guardian | IV | Overclock core + energy shield | Boosts shield recharge, grants CC immunity |
-| Suppression Ward | Warrior/Guardian | IV | Energy shield + suppression weapon | Shield activation projects suppression stacks onto enemies |
-| Disruption Field | Marauder | IV | Interference launcher | Aura doubles effect duration |
-| Unyielding Bulwark | Marauder/Guardian | IV | Heavy frame + energy shield | CC immunity while shielding allies |
-| Siege Ward | Guardian/Marauder | IV | Heavy frame + radiant sphere | Dome grants stagger/stun immunity to allies |
-| Unfaltering | Guardian | IV | Heavy or super-heavy frame | While buffing an ally, immune to CC for buff duration |
-| Perfect Ambush | Rogue | IV | — | First attack from stealth is automatic critical with +100% critical damage |
-| Dimensional Strike | Rogue/Wizard | IV | Phase-shift + energy weapon | Teleport behind target, guaranteed critical, return to origin |
-| Spectral Volley | Rogue/Wizard | IV | Cloak + energy weapon | Fire while cloaked without breaking stealth (3 sec window, consumes stealth duration) |
-| Merciful Execution | Rogue/Cleric | IV | — | Killing blow heals all allies for 25% of target's max HP |
-| Shadow Sanctuary | Rogue/Cleric | IV | — | Deploy stealth field cloaking and healing allies in 10 m radius for 5 sec |
-| Arcane Mastery | Wizard | IV | — | All beam weapons ignore 50% of target energy resistance |
-| Font of Power | Wizard/Cleric | IV | Support reactor + energy pool | Allies within 20 m gain +30% energy regeneration |
-| Barrier Network | Wizard/Cleric | IV | Energy shield | Ally shields chain together, sharing damage absorption |
-| Consecrated Ground | Cleric/Wizard | IV | — | Deployable zone heals allies and damages enemies inside it (10 sec) |
-| Selfless Sacrifice | Cleric | IV | Martyrdom system | When ally would die, redirect lethal damage to self; if self survives both gain damage immunity 3 sec; cooldown 60 sec |
-
-## 11. FEATS — TIER V
-
-| Feat | Trait Line | Tier | Requirement | Effect | Status |
+| Feat | Umbrella / Sector | Tier | Chain | Requirement | Effect |
 |---|---|---|---|---|---|
-| Core Overclock | Warrior | V | Overclock core | Resets all cooldowns, volatile heat tradeoff; cannot reset itself or other reset feats | — |
-| Salvo Link | Warrior/Marauder | V | Matching heavy weapons | Chain into twin-link salvo bursts | — |
-| Avalanche Surge | Warrior/Marauder | V | Artillery optics | Salvos overclock into rapid multi-target chains at heat cost; escalating energy cost per chain | — |
-| Lightstorm Barrage | Warrior/Guardian | V | Mana reactor + artillery optics | Radiant salvo projectiles deal cleave damage | — |
-| Lightstorm Salvo | Warrior/Guardian | V | Mana reactor + artillery optics | Radiant salvo projectiles deal suppression damage | — |
-| Multi-Lock Array | Marauder | V | Artillery optics | Salvo systems lock multiple targets | — |
-| Judgment Battery | Marauder/Guardian | V | Mana reactor + artillery optics | Cleave restores energy, boosts salvo lock speed | Pending BCU validation |
-| Radiant Convergence | Marauder/Guardian | V | Mana reactor + radiant sphere generator | Cleave/salvo inside sphere amplifies ally damage briefly | — |
-| Avalanche Light | Guardian/Marauder | V | Mana reactor + artillery optics | Radiant salvo inflicts suppression damage | — |
-| Hardening Light | Guardian | V | Energy shield | Attacks against energy shield return a portion of damage and restore that amount of energy to reactor | Pending BCU loop analysis |
-| Shadow Master | Rogue | V | — | Cloak duration doubled; can attack without breaking stealth; 8 sec cap limits attacks to 3 in window | — |
-| Quantum Assassin | Rogue/Wizard | V | — | 3-target chain teleport; each target within 20 m of last; 0.5 sec landing vulnerability after each teleport | Revised |
-| Phantom Artillery | Rogue/Wizard | V | Cloak + beam weapon | Enter stealth, plant immobile turret mode, fire sustained beam at +200% damage while invisible | Pending BCU validation |
-| Divine Veil | Rogue/Cleric | V | — | Zone cloaking all allies with status effect immunity for 8 sec | — |
-| Angel of Death | Rogue/Cleric | V | — | After stealth kill: flat BCU-validated heal and +50% damage buff for 6 sec | Revised |
-| Arcane Annihilation | Wizard | V | — | 800% damage beam, pierces all targets; requires 3 sec immobile channel with visible charge-up; interruption cancels discharge; cooldown 120 sec | Revised |
-| Infinite Wellspring | Wizard/Cleric | V | — | Team heal requiring active 10 m proximity; costs energy per heal tick; falls off if caster takes damage | Revised |
-| Empowered Singularity | Wizard/Cleric | V | Energy reactor + buff system | Deploy zone amplifying all ally damage by 60% for 12 sec | — |
-| Radiant Apocalypse | Cleric/Wizard | V | Support reactor + energy weapon | Beam heals allies and damages enemies simultaneously in path | Pending BCU validation |
-| Martyrdom Transcendent | Cleric | V | — | Redirect 60% of ally damage within 30 m for 8 sec; self HP floor 10%; redirected damage hits Cleric shield first; heal after 50% of damage absorbed; cooldown 180 sec | Revised |
+| Booster Evasion | Fighter (`Warrior`) | I | `C-01` (Step 1) | Booster kit | Grants brief `i-frames` during booster dash |
+| Momentum Guard | Fighter / Rogue (`Warrior/Marauder`) | I | `C-07` (Step 1) | Booster kit | Grants stagger resistance while boosting |
+| Radiant Dash | Fighter (`Warrior/Guardian`) | I | `C-08` (Step 1) | Booster kit + Mana core | Boost leaves a radiant shimmer (+Stagger Res) and blinds adjacent enemies (`1.0s`) |
+| Siege Stability | Rogue (`Marauder`) | I | `C-09` (Step 1) | Heavy / Super-heavy chassis | Outriggers grant stagger immunity while firing heavy weapons |
+| Anchored Action | Rogue / Fighter (`Marauder/Guardian`) | I | `C-09` (Step 2) | Stabilizer frame + Shield / Booster | While anchored, evasion or shield charge gains stagger immunity |
+| Stabilizer Pulse | Fighter / Rogue (`Guardian/Marauder`) | I | `C-14` (Step 1) | Stabilizer frame + Energy shield | Anchored shield emits a pulse reducing incoming ranged damage |
+| Shield Charge | Fighter (`Guardian`) | I | Standalone | Physical shield | Charge toward enemy with shield raised; impact stuns `1.5s` |
+| Shadow Step | Rogue (`Rogue`) | I | `C-15` (Step 1) | Mobility system | Dash grants brief invisibility (capped at max stealth window) |
+| Phantom Strike | Rogue / Scholar (`Rogue/Wizard`) | I | `C-03` (Step 1) | Cloak + Ranged / Caster weapon | Attacks from stealth deal bonus energy/precision damage |
+| Surgical Precision | Rogue / Scholar (`Rogue/Cleric`) | I | Standalone | — | Critical hits restore a small amount of shield within `10m` |
+| Veil of Mercy | Rogue / Scholar (`Rogue/Cleric`) | I | `C-02` (Step 1) | Cloak / Stealth utility | Entering stealth grants **self-only** `-15%` incoming damage reduction for `2.5s` |
+| Anchored Focus | Scholar (`Wizard`) | I | `C-04` (Step 1) | Any Ranged / Caster weapon | Remaining stationary (`μ = 0` for `0.75s`) increases ranged/beam/spell damage by `+15%` |
+| Radiant Overflow | Scholar (`Wizard/Cleric`) | I | `C-18` (Step 1) | Energy reactor + Support system | Excess energy creates a small heal-over-time zone |
+| Empowered Blessing | Scholar (`Wizard/Cleric`) | I | Standalone | Buff / Support system | Weapon hits extend active buff durations by `+0.5s` |
+| Reactive Healing | Scholar (`Cleric`) | I | `C-18` (Step 1) | Support reactor | Self or ally within `15m` below `30%` HP auto-pulse heals `15%` HP (`20s` CD) |
 
-## 12. REWARD FEATS
+## 9. FEATS — TIER II (`18 Core Feats`)
+
+| Feat | Umbrella / Sector | Tier | Chain | Requirement | Effect |
+|---|---|---|---|---|---|
+| Sidearm Twin-Link | Fighter (`Warrior`) | II | `C-06` (Step 1) | Dual 1H weapons / Matching sidearms | Synchronized dual-strike execution |
+| Suppression Link | Fighter / Rogue (`Warrior/Marauder`) | II | `C-10` (Step 2) | Paired rapid-fire / suppression weapons | Burst or sustained fire triggers twin-linked volleys |
+| Guarded Fire | Fighter (`Warrior/Guardian`) | II | Standalone | Shield + 1H weapon / sidearm | Fire 1H weapons while maintaining active guard and build minor suppression |
+| Radiant Ward Flare | Fighter (`Warrior/Guardian`) | II | `C-08` (Step 2) | Parry / Block / Intercept + Mana core | Parries, blocks, or intercept shots emit a radiant flare that blinds nearby enemies (`1.2s`) |
+| Suppression Chainfire | Rogue (`Marauder`) | II | `C-10` (Step 1) | Rapid-fire / Suppression weapon | Sustained fire builds cumulative suppression stacks |
+| Aura of Suppression | Rogue / Fighter (`Marauder/Guardian`) | II | `C-11` (Step 1) | Mana core + Suppression weapon | Aura reduces nearby enemy accuracy and movement speed |
+| Guardian's Interference | Fighter / Rogue (`Guardian/Marauder`) | II | `C-11` (Step 1) | Mana core + Interference launcher | Aura scrambles enemy targeting locks |
+| Protector's Aura | Fighter (`Guardian`) | II | `C-14` (Step 2) | Mana core | Reserves energy as interference shielding that blocks ranged energy fire and deflects small arms |
+| Backstab Mastery | Rogue (`Rogue`) | II | `C-16` (Step 1) | — | Attacks from behind deal `+50%` damage |
+| Arcane Ambush | Rogue / Scholar (`Rogue/Wizard`) | II | `C-03` (Step 2) | Cloak + Ranged / Caster weapon | First attack from stealth overcharges projectile/beam for `+100%` damage |
+| Phase Shot | Rogue / Scholar (`Rogue/Wizard`) | II | `C-17` (Step 1) | Phase-shift module + Ranged weapon | Brief intangibility allows projectiles/beams to pierce cover obstacles |
+| Healing Shadow | Rogue / Scholar (`Rogue/Cleric`) | II | `C-02` (Step 2) | Cloak / Stealth utility | While cloaked, your **own** Layer 1 Shield regenerates `+50%` faster |
+| Mercy Strike | Rogue / Scholar (`Rogue/Cleric`) | II | Standalone | — | Critical hits apply a brief damage buff within `10m` |
+| Sustained Channeling | Scholar (`Wizard`) | II | `C-04` (Step 2) | Any Ranged / Caster weapon | Consecutive hits or sustained fire on the same target ramp damage by `+5%/s` (max `+25%`) |
+| Energy Redistribution | Scholar (`Wizard/Cleric`) | II | Standalone | Support reactor | Taking damage transfers reactor energy to nearby allies / shield reserves |
+| Shared Resonance | Scholar (`Wizard/Cleric`) | II | Standalone | Buff system + Energy pool | Active buffs reduce your own energy/heat costs by `-10%` |
+| Purification Sweep | Scholar (`Cleric/Wizard`) | II | Standalone | Support reactor | Line attacks, beam sweeps, or wide melee arcs cleanse debuffs in their path |
+| Martyr's Resolve | Scholar (`Cleric`) | II | `C-05` (Step 1) | Support reactor | Gain `+20%` damage reduction when redirecting or absorbing damage via Martyrdom effects |
+
+## 10. FEATS — TIER III (`20 Core Feats`)
+
+| Feat | Umbrella / Sector | Tier | Chain | Requirement | Effect |
+|---|---|---|---|---|---|
+| Off-Hand Deflection | Fighter (`Warrior`) | III | Standalone | Any non-shield off-hand / 2H parry | Enables precision off-hand weapon parry with `+0.06s` perfect parry window |
+| Attrition Riposte | Fighter / Rogue (`Warrior/Marauder`) | III | Standalone | Parry-capable weapon | Successful parries restore reactor energy / vent `-10` heat (once per attack cycle) |
+| Reactive Overload | Fighter / Rogue (`Warrior/Marauder`) | III | `C-07` (Step 2) | Any weapon | Taking damage reduces active skill cooldowns (stacks decay after `5s`) |
+| Overclock Guard | Fighter / Rogue (`Warrior/Marauder`) | III | Standalone | Overclock core + Defensive plating | Overclock hardens plating and reduces damage at increased reactor heat |
+| Overload Cleave | Fighter (`Warrior/Guardian`) | III | `C-12` (Step 2) | Mana reactor + Melee weapon | Cleave builds overload stacks (cap `3`); next boost restores shield energy |
+| Cleave Counter | Fighter (`Warrior/Guardian`) | III | `C-12` (Step 2) | Mana reactor + Parry weapon | Successful parry triggers an automatic radiant cleave wave |
+| Attrition Guard | Rogue (`Marauder`) | III | Standalone | Defensive plating | Converts incoming damage into reactor energy with diminishing returns |
+| Radiant Barrage | Rogue / Fighter (`Marauder/Guardian`) | III | `C-13` (Step 1) | Mana reactor + Heavy weapon | Cleave or heavy slam triggers a short follow-up burst barrage |
+| Cleave Suppression | Fighter / Rogue (`Guardian/Marauder`) | III | `C-12` (Step 2) | Mana reactor + Melee / Suppression | Cleave applies suppression stacks to hit enemies |
+| Radiant Cleave | Fighter (`Guardian`) | III | `C-12` (Step 1) | Mana reactor + Main-hand melee | Charged melee unleashes a `180°` mana-energy wave |
+| Assassinate | Rogue (`Rogue`) | III | `C-16` (Step 2) | — | Critical hit against target above `90%` HP (or below `40%` execute threshold) deals massive bonus damage |
+| Phantom Barrage | Rogue / Scholar (`Rogue/Wizard`) | III | `C-03` (Step 3) | Cloak + Ranged weapon | Stealth attacks trigger rapid burst fire with zero heat cost |
+| Void Strike | Rogue / Scholar (`Rogue/Wizard`) | III | `C-17` (Step 2) | Phase-shift + Any weapon | Attacks during intangibility bypass enemy shields and armor |
+| Shadow Aegis | Rogue / Scholar (`Rogue/Cleric`) | III | Standalone | Cloak | Breaking stealth with an attack converts `20%` of damage dealt into a temporary Layer 1 Overshield (`4s`) |
+| Vital Strike | Rogue / Scholar (`Rogue/Cleric`) | III | Standalone | — | Critical hits restore `10%` of damage dealt to self |
+| Overcharge | Scholar (`Wizard`) | III | `C-04` (Step 3) | Energy reactor | Spend `30%` energy pool (or `+22` heat) to boost next attack by `+150%` |
+| Convergence Field | Scholar (`Wizard/Cleric`) | III | `C-18` (Step 2) | Energy overflow + Support system | Standing near allies / anchor boosts energy regen by `+25%` |
+| Empowered Ward | Scholar (`Wizard/Cleric`) | III | Standalone | Energy shield + Buff system | Active shields reflect `25%` of damage back to the attacker |
+| Benediction Pulse | Scholar (`Cleric/Wizard`) | III | Standalone | Support system | Killing blows pulse heal to self and allies in a `20m` radius |
+| Mass Restoration | Scholar (`Cleric`) | III | `C-18` (Step 2) | Support reactor + Area healing | Healing fields gain `2×` radius and `+25%` HP restored (obeys Law 3 HPS rule) |
+
+## 11. FEATS — TIER IV (`20 Core Feats`)
+
+| Feat | Umbrella / Sector | Tier | Chain | Requirement | Effect |
+|---|---|---|---|---|---|
+| Main Weapon Twin-Link | Fighter (`Warrior`) | IV | `C-06` (Step 2) | Dual weapons / Aux rig | Fires linked primary and off-hand/aux weapon mounts simultaneously |
+| Overclock Barrage | Fighter / Rogue (`Warrior/Marauder`) | IV | `C-07` (Step 3) | Overclock core | Resets weapon skill cooldowns and boosts fire/strike rate at heat cost (cannot reset Core Overclock) |
+| Disruption Riposte | Fighter / Rogue (`Warrior/Marauder`) | IV | Standalone | Interference / Utility module | Activating utility/interference grants a brief parry window |
+| Guardian's Dash | Fighter (`Warrior/Guardian`) | IV | `C-01` (Step 2) | Booster kit + Energy shield | Boost through enemies triggers a shield pulse that stuns `1.5s` and restores shields (`10s` CD) |
+| Overclocked Ward | Fighter (`Warrior/Guardian`) | IV | `C-08` (Step 3) | Overclock core + Energy shield | Boosts shield recharge and grants crowd-control immunity |
+| Suppression Ward | Fighter (`Warrior/Guardian`) | IV | Standalone | Energy shield | Shield activation projects suppression stacks onto nearby enemies |
+| Disruption Field | Rogue (`Marauder`) | IV | `C-11` (Step 2) | Interference launcher | Doubles interference/suppression aura duration |
+| Unyielding Bulwark | Rogue / Fighter (`Marauder/Guardian`) | IV | `C-09` (Step 3) | Heavy frame + Energy shield | Grants crowd-control immunity while shielding |
+| Siege Ward | Fighter / Rogue (`Guardian/Marauder`) | IV | `C-14` (Step 3) | Heavy frame + Radiant sphere | Protective dome grants stagger and stun immunity inside its radius |
+| Unfaltering | Fighter (`Guardian`) | IV | Standalone | Heavy / Super-heavy frame | Grants crowd-control immunity for the duration of active buffs |
+| Perfect Ambush | Rogue (`Rogue`) | IV | `C-16` (Step 3) | — | First attack from stealth is an automatic critical hit with `+100%` critical damage |
+| Dimensional Strike | Rogue / Scholar (`Rogue/Wizard`) | IV | `C-17` (Step 3) | Phase-shift | Teleport behind target for a guaranteed critical hit, then return to origin |
+| Spectral Volley | Rogue / Scholar (`Rogue/Wizard`) | IV | `C-03` (Step 4) | Cloak + Ranged weapon | Fire while cloaked without breaking stealth (`3s` window, consumes stealth duration) |
+| Shadow Siphon | Rogue / Scholar (`Rogue/Cleric`) | IV | `C-02` (Step 3) | — | Stealth attacks siphon `15%` of damage dealt directly into your **own** Shield / Frame integrity |
+| Phantom Shroud | Rogue / Scholar (`Rogue/Cleric`) | IV | `C-15` (Step 2) | Mobility / Cloak system | Dashing through an enemy attack during `i-frames` triggers `2.0s` stealth and cleanses `1` debuff |
+| Arcane Mastery | Scholar (`Wizard`) | IV | `C-04` (Step 4) | — | Sustained or charged attacks ignore `50%` of target energy/armor resistance |
+| Font of Power | Scholar (`Wizard/Cleric`) | IV | `C-18` (Step 3) | Support reactor + Energy pool | Grants `+30%` energy regeneration and heat venting within `20m` |
+| Barrier Network | Scholar (`Wizard/Cleric`) | IV | Standalone | Energy shield | Links active shields to distribute and share damage absorption |
+| Consecrated Ground | Scholar (`Cleric/Wizard`) | IV | Standalone | — | Deployable `10s` zone heals allies and damages enemies inside it |
+| Selfless Sacrifice | Scholar (`Cleric`) | IV | `C-05` (Step 2) | Martyrdom system | Intercepts lethal damage and grants `3s` damage immunity on survival (`60s` CD) |
+
+## 12. FEATS — TIER V (`17 Apex Capstones` · Rule P-03 Max 2)
+
+| Feat | Umbrella / Sector | Tier | Chain | Requirement | Effect |
+|---|---|---|---|---|---|
+| Core Overclock | Fighter (`Warrior`) | V | `C-07` (Step 4) | Overclock core | Resets all skill cooldowns at a volatile heat trade-off (cannot reset itself or other reset feats) |
+| Salvo Link | Fighter / Rogue (`Warrior/Marauder`) | V | `C-06` (Step 3) | Heavy / Dual weapons | Chains heavy or paired weapons into twin-linked salvo bursts |
+| Avalanche Surge | Fighter / Rogue (`Warrior/Marauder`) | V | `C-10` (Step 3) | Artillery optics | Salvos overclock into rapid multi-target chains at escalating heat and energy cost |
+| Multi-Lock Array | Rogue (`Marauder`) | V | `C-11` (Step 3) | Artillery optics | Salvo systems lock onto multiple targets simultaneously |
+| Judgment Battery | Rogue / Fighter (`Marauder/Guardian`) | V | `C-13` (Step 2) | Mana reactor + Artillery optics | Cleave strikes restore reactor energy and accelerate salvo lock speed |
+| Radiant Convergence | Rogue / Fighter (`Marauder/Guardian`) | V | `C-14` (Step 4) | Mana reactor + Radiant sphere | Executing cleave or salvo inside your radiant sphere amplifies damage |
+| Lightstorm Convergence | Fighter / Rogue (`Guardian/Marauder`) | V | `C-12` (Step 3) | Mana reactor + Artillery optics | Radiant salvos unleash a `3.5m` cleave shockwave on impact and apply `2` suppression stacks |
+| Hardening Light | Fighter (`Guardian`) | V | `C-08` (Step 4) | Energy shield | Hits against your energy shield reflect damage and restore reactor energy |
+| Shadow Master | Rogue (`Rogue`) | V | `C-15` (Step 3) / `C-16` (Step 4) | — | Doubles cloak duration and allows up to `3` attacks without breaking stealth (`8s` cap) |
+| Quantum Assassin | Rogue / Scholar (`Rogue/Wizard`) | V | `C-17` (Step 4) | — | `3`-target chain teleport strike within `20m` (`0.5s` landing vulnerability after each jump) |
+| Phantom Sniper | Rogue / Scholar (`Rogue/Wizard`) | V | `C-03` (Step 5) | Cloak + Any Ranged / Caster weapon | Standing still for `1.25s` engages optical camo (`+120%` next ranged shot). *Balance Rule*: Charging any weapon prevents stealth; pressing or releasing an attack input applies a `0.75s` `Revealed` debuff blocking stealth. |
+| Angel of Death | Rogue / Scholar (`Rogue/Cleric`) | V | `C-02` (Step 4) | — | Stealth kills restore `25%` of your **own** max Shield + `15%` Frame Integrity and grant `+50%` damage for `6s` |
+| Reaper's Shroud | Rogue / Scholar (`Rogue/Cleric`) | V | Standalone | — | Dropping below `35%` Frame Integrity automatically triggers a `4.0s` personal cloak, cleanses all CC/status effects, and grants `+25%` move speed (`45s` CD) |
+| Arcane Annihilation | Scholar (`Wizard`) | V | `C-04` (Step 5) | — | `3s` immobile channeled charge unleashes an `800%` damage piercing discharge (`120s` CD) |
+| Infinite Wellspring | Scholar (`Wizard/Cleric`) | V | `C-18` (Step 4) | — | Sustained `10m` proximity restoration aura fueled by energy per tick |
+| Empowered Singularity | Scholar (`Wizard/Cleric`) | V | Standalone | Energy reactor + Buff system | Deploys a `12s` zone amplifying all damage by `+60%` |
+| Martyrdom Transcendent | Scholar (`Cleric`) | V | `C-05` (Step 3) | — | Absorbs `60%` of damage within `30m` into your shield first (`10%` HP floor) for `8s`, then releases a restorative burst (`180s` CD) |
+
+## 13. REWARD FEAT, 22 SPECIALIST MARTIAL STANCES & 13 EMERGENT HISTORICAL META-CLASSES
+
+### 13.1 Campaign Reward Feat (`1 Node`)
 
 | Feat | Source | Effect |
 |---|---|---|
-| Knight's Oath | Combined boss fight (Percival, Tristan, Bors) | +10% damage vs Camelot enemies (permanent) |
+| **Knight's Oath** | Combined boss fight (**Sir Percival**, **Sir Tristan**, **Sir Bors**) | **`+10%` damage** vs Camelot enemies (permanent; `0` prerequisite lines) |
 
-## 13. SPECIALIST FEATS & STANCES (`22 HISTORICAL MARTIAL DOCTRINES` — `specialistStances.ts`)
+### 13.2 Standalone Specialist Martial Stances (`22 Nodes` — Zero Prerequisite Lines)
 
-All **22 Specialist Feats** are distributed naturally across the **6 Frame Class constellations** (`Guardian`, `Warrior`, `Rogue`, `Marauder`, `Cleric`, `Wizard`) at `Tier I`, `Tier II`, and `Tier III` alongside all other canonical feats. Both **Custom** (`72`) and **Magitech** (`29`) weapons qualify by shared **Functional Weapon Type** (`resolveWeaponFunctionalType`). When a Specialist Feat is socketed and the pilot's equipped loadout and Frame Load Bracket (`Light` / `Medium` / `Heavy`) match the doctrine, the stance overrides **Action 2**, **Action 4**, and **Action 5** and applies passive BCU/Inertia modifiers (toggleable between Specialist Doctrine and Base Moveset in the Loadout Slot Context Menu).
+All **22 Specialist Martial Stances** (`3` Tier I, `13` Tier II, `6` Tier III) are standalone weapon-mastery nodes (`Rule P-04`) distributed across the 6 Combat Discipline sectors. Both **Custom (`72`)** and **Magitech (`29`)** weapons qualify by shared **Functional Weapon Type** (`resolveWeaponFunctionalType`). When socketed and paired with matching equipment and Frame Load Bracket (`Light` / `Medium` / `Heavy`), the stance overrides **Action 2**, **Action 4**, and **Action 5** and applies passive BCU/Inertia modifiers:
 
-| Feat ID | Feat Name | Stance Name | Frame Class | Tier | Qualifying Pairing & Load Bracket |
+| Feat ID | Feat Name | Historical Martial Stance | Umbrella / Sector | Tier | Qualifying Pairing & Load Bracket |
 |---|---|---|---|---|---|
-| `legionary_specialist` | Legionary Specialist | Pilum & Scutum Stance | Guardian | II | `Spatha`/`Cinquedea`/`Arming Sword` + `Scutum`/`Tower`/`Norman` · Medium/Heavy |
-| `limitanei_specialist` | Limitanei Specialist | Plumbata & Spatha Stance | Warrior | II | `Spatha`/`Arming Sword`/`Falchion` + `Plumbata`/`Bandolier` · Light/Medium |
-| `sword_buckler_specialist` | Sword & Buckler Specialist | I.33 Ward & Bind Stance | Rogue | I | `Arming Sword`/`Spatha`/`Messer`/`Falchion` + `Buckler`/`Disc`/`Mote` · Light/Medium |
-| `spear_shield_specialist` | Spear & Shield Specialist | Hoplite Othismos Stance | Guardian | II | `Short Spear`/`Winged Spear`/`Broad Spear`/`Partisan`/`Boar Spear` + `Heater`/`Norman`/`Scutum`/`Tower`/`Corona`/`Rhom` · Medium/Heavy |
-| `spear_buckler_specialist` | Spear & Buckler Specialist | Darting Viper Stance | Warrior | I | `Short Spear`/`Winged Spear`/`Partisan`/`Spetum` + `Buckler`/`Disc`/`Mote` · Light/Medium |
-| `phalanx_specialist` | Phalanx Specialist | Syntagma Sarissa Stance | Guardian | III | `Pike`/`Lance`/`Broad Spear` + `Scutum`/`Tower`/`Norman` · Medium/Heavy |
-| `knightly_bastard_specialist` | Knightly Bastard Specialist | Fiore Posta di Donna Stance | Guardian | II | `Bastard Sword`/`Arming Sword`/`Spatha` + `Heater`/`Norman`/`Corona`/`Rhom` · Medium/Heavy |
-| `zweihander_specialist` | Zweihander Specialist | Landsknecht Doppelsöldner Stance | Marauder | III | `Zweihander`/`Flamberge`/`Executioner Sword` (2H) · Medium/Heavy |
-| `odachi_specialist` | Odachi Specialist | Nodachi Battojutsu Stance | Warrior | III | `Odachi`/`Dadao`/`Katana` (2H) · Light/Medium |
-| `daisho_specialist` | Daisho Specialist | Niten Ichi-Ryu Stance | Rogue | II | `Katana`/`Odachi`/`Dao`/`Kilij` + `Wakizashi`/`Cinquedea` · Light/Medium |
-| `rapier_dagger_specialist` | Rapier & Dagger Specialist | Destreza & Main-Gauche Stance | Rogue | II | `Spatha`/`Arming Sword`/`Messer` + `Cinquedea`/`Wakizashi` · Light/Medium |
-| `shield_breaker_specialist` | Shield-Breaker Specialist | Thracian Rhomphaia Stance | Marauder | II | `Shotel`/`Falx`/`Khopesh` (+ optional Shield/Blade/Carrier) · Light/Medium/Heavy |
-| `viking_raider_specialist` | Viking Raider Specialist | Huscarl Skjaldborg Stance | Marauder | II | `Battle Axe`/`Tomahawk`/`Parashu`/`Labrys` + `Norman`/`Heater`/`Buckler`/`Sheaf`/`Kaad` · Medium/Heavy |
-| `cataphract_specialist` | Cataphract Specialist | Contus Clibanarii Stance | Guardian | III | `Lance`/`Pike`/`Boar Spear`/`Mace`/`Hammer` (+ optional Shield/Mace) · Heavy |
-| `mounted_archer_specialist` | Mounted Archer Specialist | Parthian Cantabrian Stance | Rogue | II | `Recurve Bow`/`Reflex Bow`/`Composite Bow`/`Short Bow`/`Compound Bow` + `Quiver`/`Yebira` · Light/Medium |
-| `longbow_specialist` | Yeoman Longbow Specialist | Agincourt Stake-Line Stance | Warrior | II | `Long Bow`/`Great Bow`/`Flat Bow`/`Self Bow`/`Compound Bow` + `Quiver`/`Sheaf`/`Bandolier` · Medium/Heavy |
-| `repeating_arbalest_specialist` | Repeating Arbalest Specialist | Chu-Ko-Nu Volley Stance | Warrior | II | `Bolt Caster`/`Pulse Caster`/`Blast Caster` + `Bandolier`/`Quiver`/`Rack`/`Battery` · Light/Medium/Heavy |
-| `pistol_cutlass_specialist` | Boarder Specialist | Brace & Cutlass Stance | Rogue | I | `Falchion`/`Messer`/`Kilij`/`Dao`/`Khopesh`/`Wakizashi` ↔ `Bolt Caster`/`Pulse Caster`/`Blast Caster`/`Arc Caster` · Light/Medium |
-| `scepter_orb_specialist` | Scepter & Ward Specialist | Sanctum Hierophant Stance | Cleric | II | `Mace`/`Cudgel`/`Hammer`/`Spike` + `Corona`/`Mote`/`Rhom`/`Disc`/`Buckler` · Medium/Heavy |
-| `manacore_staff_specialist` | Archmage Staff Specialist | Astral Fulcrum Stance | Wizard | III | `Spetum`/`Partisan`/`Short Spear`/`Stellar Caster`/`Beam Caster`/`Wave Caster` (+ optional `Mote`/`Corona`/`Battery`) · Light/Medium |
-| `battlemage_specialist` | Spellblade Specialist | Aether-Conduit Edge Stance | Wizard | II | `Arming Sword`/`Bastard Sword`/`Spatha`/`Katana`/`Khopesh` ↔ `Beam Caster`/`Arc Caster`/`Wave Caster`/`Pulse Caster`/`Nova Caster` · Light/Medium |
-| `artillery_battery_specialist` | Siege Battery Specialist | Bombardier Fire-Mission Stance | Marauder | III | `Blast Caster`/`Meteoric Caster`/`Nova Caster`/`Stellar Caster`/`Beam Caster` + `Rack`/`Battery`/`Pangao`/`Plumbata` · Heavy |
+| `spear_buckler_specialist` | Spear & Buckler Specialist | Darting Viper Stance | Fighter (`Warrior`) | I | `Short Spear`/`Winged Spear`/`Partisan`/`Spetum` + `Buckler`/`Disc`/`Mote` · Light/Medium |
+| `sword_buckler_specialist` | Sword & Buckler Specialist | I.33 Ward & Bind Stance | Rogue (`Rogue`) | I | `Arming Sword`/`Spatha`/`Messer`/`Falchion` + `Buckler`/`Disc`/`Mote` · Light/Medium |
+| `pistol_cutlass_specialist` | Boarder Specialist | Brace & Cutlass Stance | Rogue (`Rogue`) | I | `Falchion`/`Messer`/`Kilij`/`Dao`/`Khopesh`/`Wakizashi` ↔ `Bolt`/`Pulse`/`Blast`/`Arc Caster` · Light/Medium |
+| `limitanei_specialist` | Limitanei Specialist | Plumbata & Spatha Stance | Fighter (`Warrior`) | II | `Spatha`/`Arming Sword`/`Falchion` + `Plumbata`/`Bandolier` · Light/Medium |
+| `longbow_specialist` | Yeoman Longbow Specialist | Agincourt Stake-Line Stance | Fighter (`Warrior`) | II | `Long Bow`/`Great Bow`/`Flat Bow`/`Self Bow`/`Compound Bow` + `Quiver`/`Sheaf`/`Bandolier` · Medium/Heavy |
+| `repeating_arbalest_specialist` | Repeating Arbalest Specialist | Chu-Ko-Nu Volley Stance | Fighter (`Warrior`) | II | `Bolt Caster`/`Pulse Caster`/`Blast Caster` + `Bandolier`/`Quiver`/`Rack`/`Battery` · Light/Medium/Heavy |
+| `legionary_specialist` | Legionary Specialist | Pilum & Scutum Stance | Fighter (`Guardian`) | II | `Spatha`/`Cinquedea`/`Arming Sword` + `Scutum`/`Tower`/`Norman` · Medium/Heavy |
+| `spear_shield_specialist` | Spear & Shield Specialist | Hoplite Othismos Stance | Fighter (`Guardian`) | II | `Short`/`Winged`/`Broad`/`Boar Spear`/`Partisan` + `Heater`/`Norman`/`Scutum`/`Tower`/`Corona`/`Rhom` · Medium/Heavy |
+| `knightly_bastard_specialist` | Knightly Bastard Specialist | Fiore Posta di Donna Stance | Fighter (`Guardian`) | II | `Bastard Sword`/`Arming Sword`/`Spatha` + `Heater`/`Norman`/`Corona`/`Rhom` · Medium/Heavy |
+| `daisho_specialist` | Daisho Specialist | Niten Ichi-Ryu Stance | Rogue (`Rogue`) | II | `Katana`/`Odachi`/`Dao`/`Kilij` + `Wakizashi`/`Cinquedea` · Light/Medium |
+| `rapier_dagger_specialist` | Rapier & Dagger Specialist | Destreza & Main-Gauche Stance | Rogue (`Rogue`) | II | `Spatha`/`Arming Sword`/`Messer` + `Cinquedea`/`Wakizashi` · Light/Medium |
+| `mounted_archer_specialist` | Mounted Archer Specialist | Parthian Cantabrian Stance | Rogue (`Rogue`) | II | `Recurve`/`Reflex`/`Composite`/`Short`/`Compound Bow` + `Quiver`/`Yebira` · Light/Medium |
+| `shield_breaker_specialist` | Shield-Breaker Specialist | Thracian Rhomphaia Stance | Rogue (`Marauder`) | II | `Shotel`/`Falx`/`Khopesh` (+ optional Shield/Blade/Carrier) · Light/Medium/Heavy |
+| `viking_raider_specialist` | Viking Raider Specialist | Huscarl Skjaldborg Stance | Rogue (`Marauder`) | II | `Battle Axe`/`Tomahawk`/`Parashu`/`Labrys` + `Norman`/`Heater`/`Buckler`/`Sheaf`/`Kaad` · Medium/Heavy |
+| `battlemage_specialist` | Spellblade Specialist | Aether-Conduit Edge Stance | Scholar (`Wizard`) | II | `Arming`/`Bastard Sword`/`Spatha`/`Katana`/`Khopesh` ↔ `Beam`/`Arc`/`Wave`/`Pulse`/`Nova Caster` · Light/Medium |
+| `scepter_orb_specialist` | Scepter & Ward Specialist | Sanctum Hierophant Stance | Scholar (`Cleric`) | II | `Mace`/`Cudgel`/`Hammer`/`Spike` + `Corona`/`Mote`/`Rhom`/`Disc`/`Buckler` · Medium/Heavy |
+| `odachi_specialist` | Odachi Specialist | Nodachi Battojutsu Stance | Fighter (`Warrior`) | III | `Odachi`/`Dadao`/`Katana` (2H) · Light/Medium |
+| `phalanx_specialist` | Phalanx Specialist | Syntagma Sarissa Stance | Fighter (`Guardian`) | III | `Pike`/`Lance`/`Broad Spear` + `Scutum`/`Tower`/`Norman` · Medium/Heavy |
+| `cataphract_specialist` | Cataphract Specialist | Contus Clibanarii Stance | Fighter (`Guardian`) | III | `Lance`/`Pike`/`Boar Spear`/`Mace`/`Hammer` (+ optional Shield/Mace) · Heavy |
+| `zweihander_specialist` | Zweihander Specialist | Landsknecht Doppelsöldner Stance | Rogue (`Marauder`) | III | `Zweihander`/`Flamberge`/`Executioner Sword` (2H) · Medium/Heavy |
+| `artillery_battery_specialist` | Siege Battery Specialist | Bombardier Fire-Mission Stance | Rogue (`Marauder`) | III | `Blast`/`Meteoric`/`Nova`/`Stellar`/`Beam Caster` + `Rack`/`Battery`/`Pangao`/`Plumbata` · Heavy |
+| `manacore_staff_specialist` | Archmage Staff Specialist | Astral Fulcrum Stance | Scholar (`Wizard`) | III | `Spetum`/`Partisan`/`Short Spear`/`Stellar`/`Beam`/`Wave Caster` (+ optional `Mote`/`Corona`/`Battery`) · Light/Medium |
+
+### 13.3 Emergent Historical Meta-Classes (`13 Archetypes` — `evaluateEmergentMetaClass`)
+
+Without locking any pilot into a permanent class, the Satchel `STATUS` and `FEATS` tabs automatically recognize **13 Emergent Historical Meta-Classes** from the pilot's socketed Umbrella combination, Specialist Stance, and signature chains:
+
+| Historical Class Title | Umbrella Synthesis | Defining Stance / Feat Combination | Historical & Mechanical Fantasy |
+|---|---|---|---|
+| **Paladin / Hospitaller** | `Fighter` (`Guardian`) + `Scholar` (`Cleric`) | `Knightly Bastard` or `Scepter & Ward` + `Radiant Cleave` + `Consecrated Ground` / `Martyr's Resolve` | Sacred heavy vanguard who cleaves with radiant waves and sanctifies ground. |
+| **Knight** | Pure `Fighter` (`Guardian` + `Warrior`) | `Knightly Bastard` or `Cataphract` + `Shield Charge` + `Unyielding Bulwark` | Armored shock lancer and sword-and-heater duelist with high Stability (`S`). |
+| **Hoplite / Phalangite** | Pure `Fighter` (`Guardian`) | `Spear & Shield` or `Phalanx` + `Anchored Action` + `Protector's Aura` | Immovable spear-and-scutum shield wall with frontal guard speed. |
+| **Samurai / Bushi** | `Fighter` (`Warrior`) + `Rogue` (`Rogue`) | `Odachi` or `Daisho` + `Off-Hand Deflection` + `Backstab Mastery` | Master of the two-sword *Niten Ichi-Ryu* parry-riposte and *Nodachi* draw-cuts. |
+| **Landsknecht** | `Rogue` (`Marauder`) + `Fighter` (`Warrior`) | `Zweihander` + `Overload Cleave` + `Attrition Guard` | Frontline *Doppelsöldner* swinging wide figure-eight greatsword arcs through pike lines. |
+| **Huscarl / Viking Raider** | `Rogue` (`Marauder`) + `Fighter` (`Guardian`) | `Viking Raider` or `Shield-Breaker` + `Shield Charge` + `Attrition Riposte` | Bearded-axe shield-hooker who rips open enemy guards and vents heat on impact. |
+| **Yeoman / Marksman** | `Fighter` (`Warrior`) + `Rogue` (`Rogue`) | `Yeoman Longbow` or `Mounted Archer` + `Anchored Focus` + `Phantom Sniper` | Stationary stake-line longbowman or cantabrian horse-archer loosing armor-piercing volleys. |
+| **Corsair / Swashbuckler** | `Rogue` (`Rogue`) + `Fighter` (`Warrior`) | `Boarder` or `Rapier & Dagger` + `Sidearm Twin-Link` + `Shadow Step` | Cutlass-and-caster deck stormer or *Destreza* duelist weaving point-blank shots into blade combos. |
+| **Inquisitor** | `Scholar` (`Cleric`) + `Rogue` (`Rogue`) | `Veil of Mercy` → `Healing Shadow` → `Shadow Siphon` → `Angel of Death` (`C-02`) | Self-sustaining shadow executioner who cloaks, siphons shield energy on strike, and purges high-value targets. |
+| **Spellblade / Battlemage** | `Scholar` (`Wizard`) + `Fighter` (`Warrior`) | `Spellblade` + `Phase Shot` + `Void Strike` + `Overcharge` | Aether-conduit swordsman who charges his blade with reactor overflow and teleports through cover. |
+| **Hierophant / Cleric** | Pure `Scholar` (`Cleric`) | `Scepter & Ward` + `Reactive Healing` + `Mass Restoration` + `Martyrdom Transcendent` | Frontline harmonic anchor who absorbs damage into layered wards and pulses restorative waves. |
+| **Archmage / Artillerist** | Pure `Scholar` (`Wizard`) | `Archmage Staff` + `Anchored Focus` → `Sustained Channeling` → `Arcane Annihilation` (`C-04`) | High-output astral fulcrum channeling sustained, resistance-piercing beam and wave artillery. |
+| **Bombardier / Siegebreaker** | `Rogue` (`Marauder`) + `Scholar` (`Wizard`) | `Siege Battery` + `Siege Stability` + `Multi-Lock Array` + `Avalanche Surge` | Anchored heavy ordnance platform saturating the battlefield with multi-lock missile and blast salvos. |
 

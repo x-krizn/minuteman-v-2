@@ -58,7 +58,14 @@ import {
 } from '../equipment/weapons';
 import { getItemDefinition } from '../items';
 import { GEMSTONE_CATALOG, GEMSTONE_REGISTRY, TRAIT_FUNDING_GEMS } from '../items/gemstones';
-import { CANONICAL_FRAME_FEAT_CATALOG } from './canonical_feats';
+import {
+  CANONICAL_FRAME_FEAT_CATALOG,
+  normalizeCanonicalFeatId,
+} from './canonical_feats';
+import {
+  evaluateFeatChainPrerequisite,
+  findDependentDownstreamChainFeats,
+} from './featHandling';
 import { doesPilotMeetSpecialistFeatRequirement } from './specialistStances';
 
 export {
@@ -376,7 +383,7 @@ export const STARTER_FEAT_LOADOUT_BY_KIT: Record<TraitLine, [string, string]> = 
   Marauder: ['siege_stability', 'anchored_action'],
   Guardian: ['shield_charge', 'stabilizer_pulse'],
   Rogue: ['shadow_step', 'phantom_strike'],
-  Wizard: ['beam_focus', 'radiant_overflow'],
+  Wizard: ['anchored_focus', 'radiant_overflow'],
   Cleric: ['reactive_healing', 'empowered_blessing'],
 };
 
@@ -2818,6 +2825,10 @@ export function isFeatNodeAvailable(
   ) {
     return true;
   }
+  const chainCheck = evaluateFeatChainPrerequisite(state, feat);
+  if (!chainCheck.met) {
+    return false;
+  }
   const skills = normalizePilotSkills(state.pilotSkills);
   const reqSkillLvl = skills[feat.requiredSkillId]?.level || 1;
   const maxSkillLvl = Math.max(1, ...Object.values(skills).map((s) => s.level));
@@ -2961,13 +2972,27 @@ export function fundPilotSkillWithGem(
 }
 
 /**
- * Exported const `FEAT_TIER_MAX_SLOTS` (feat tier max slots) in `index.ts`.
+ * Rule P-01 — 1:1 Level-to-Feat Cap:
+ * Active socketed feats scale 1:1 with Character Level (Lv 1 = 1 feat, Lv 13 = 13 feats, Lv 20 = 20 feats max).
+ */
+export function getMaxSocketedFeatsForLevel(
+  level: number,
+  bypass: boolean = false
+): number {
+  if (bypass) return 20;
+  return Math.max(1, Math.min(20, Math.floor(Number(level) || 1)));
+}
+
+/**
+ * Rule P-02 & Rule P-03 — Per-Tier Slot Ceilings:
+ * Tiers I–IV have no per-tier slot cap (bounded only by the pilot's 1:1 Level-to-Feat Cap up to 20).
+ * Tier V enforces the Apex Ceiling (Max = 2 Tier V capstones per build).
  */
 export const FEAT_TIER_MAX_SLOTS: Record<FeatTier, number> = {
-  I: 6,
-  II: 5,
-  III: 4,
-  IV: 3,
+  I: 20,
+  II: 20,
+  III: 20,
+  IV: 20,
   V: 2,
 };
 
@@ -2976,7 +3001,8 @@ export const FEAT_TIER_MAX_SLOTS: Record<FeatTier, number> = {
  */
 export function getEquippedFeatCountByTier(state: OrionState, tier: FeatTier): number {
   let count = 0;
-  for (const id of state.equippedFeats || []) {
+  for (const rawId of state.equippedFeats || []) {
+    const id = normalizeCanonicalFeatId(rawId);
     const f = FRAME_FEAT_CATALOG.find((item) => item.id === id);
     if (f?.tier === tier) count += 1;
   }
@@ -3088,23 +3114,45 @@ export function computeEffectivePlayerLightTiles(state: OrionState): number {
  * GEM USE 2 — FEAT NODE SOCKETING (Gems Removed from Inventory, Retained in Build, Refunded on Unsocket):
  * Installing the required Discipline + Reactor Gems unlocks and activates the Feat Node.
  * Unsocketing the Feat Node returns all retained gems back to the player's inventory.
- * Enforces Per-Tier Feat Limits: Tier I: 6, Tier II: 5, Tier III: 4, Tier IV: 3, Tier V: 2.
+ * Enforces the Five Golden Rules:
+ *   - Rule P-01: 1:1 Level-to-Feat Cap (Lv 1 = 1 feat .. Lv 20 = 20 feats max)
+ *   - Rule P-02: Unconstrained Tiers I–IV & Chain Tier-Jumping
+ *   - Rule P-03: Tier V Apex Ceiling (Max = 2 Tier V capstones)
+ *   - Rule P-04: Selective Chain Prerequisites (C-01 through C-18)
  */
 export function toggleFeatNodeGemSocket(
   state: OrionState,
   featId: string,
   ctx?: { say: (text: string) => void }
 ): boolean {
-  const feat = FRAME_FEAT_CATALOG.find((f) => f.id === featId);
+  const canonicalId = normalizeCanonicalFeatId(featId);
+  const feat = FRAME_FEAT_CATALOG.find((f) => f.id === canonicalId);
   if (!feat) return false;
 
   state.socketedFeatGems = state.socketedFeatGems || {};
+  state.equippedFeats = (state.equippedFeats || []).map((id) =>
+    normalizeCanonicalFeatId(id)
+  );
   const isEquipped = state.equippedFeats.includes(feat.id);
 
-  // Unsocket: deactivate node and refund retained gems back to inventory
+  // Unsocket: verify no active downstream chain feat depends on this node first
   if (isEquipped) {
+    if (!state.bypassProgressionGates) {
+      const dependents = findDependentDownstreamChainFeats(state, feat);
+      if (dependents.length > 0) {
+        const depLabel = dependents
+          .map((d) => `${d.name} [T-${d.tier}]`)
+          .join(', ');
+        ctx?.say(
+          `CANNOT UNSOCKET ${feat.name.toUpperCase()} — REQUIRED BY ACTIVE CHAIN FEAT: ${depLabel.toUpperCase()}`
+        );
+        return false;
+      }
+    }
+
     state.equippedFeats = state.equippedFeats.filter((id) => id !== feat.id);
-    const retained = state.socketedFeatGems[feat.id];
+    const retained =
+      state.socketedFeatGems[feat.id] || state.socketedFeatGems[featId];
     const refundedLabels: string[] = [];
     if (retained) {
       for (const [gId, count] of Object.entries(retained)) {
@@ -3116,6 +3164,7 @@ export function toggleFeatNodeGemSocket(
         }
       }
       delete state.socketedFeatGems[feat.id];
+      delete state.socketedFeatGems[featId];
     }
     ctx?.say(
       refundedLabels.length > 0
@@ -3132,17 +3181,42 @@ export function toggleFeatNodeGemSocket(
     return false;
   }
 
-  // Enforce per-tier feat limit (Tier I: 6, II: 5, III: 4, IV: 3, V: 2)
-  const tierCap = FEAT_TIER_MAX_SLOTS[feat.tier] ?? 6;
-  const currentTierCount = getEquippedFeatCountByTier(state, feat.tier);
-  if (currentTierCount >= tierCap) {
+  // Rule P-01: 1:1 Level-to-Feat Cap
+  const maxFeatsForLevel = getMaxSocketedFeatsForLevel(
+    state.level,
+    Boolean(state.bypassProgressionGates)
+  );
+  if (state.equippedFeats.length >= maxFeatsForLevel) {
     ctx?.say(
-      `TIER ${feat.tier} FEAT LIMIT REACHED (${currentTierCount}/${tierCap}) — UNSOCKET A TIER ${feat.tier} FEAT FIRST`
+      `RULE P-01 FEAT CAP REACHED (${state.equippedFeats.length}/${maxFeatsForLevel} AT PILOT LV ${state.level}) — UNSOCKET A FEAT OR LEVEL UP`
     );
     return false;
   }
 
-  // Socket: check skill/tier availability first
+  // Rule P-03: Tier V Apex Ceiling (Max = 2)
+  const currentTierCount = getEquippedFeatCountByTier(state, feat.tier);
+  if (feat.tier === 'V') {
+    const tierVCap = FEAT_TIER_MAX_SLOTS.V;
+    if (currentTierCount >= tierVCap) {
+      ctx?.say(
+        `RULE P-03 TIER V APEX CEILING REACHED (${currentTierCount}/${tierVCap}) — MAX 2 TIER V CAPSTONES PER BUILD`
+      );
+      return false;
+    }
+  }
+
+  // Rule P-02 & P-04: Selective Chain Prerequisite validation
+  if (!state.bypassProgressionGates) {
+    const chainCheck = evaluateFeatChainPrerequisite(state, feat);
+    if (!chainCheck.met) {
+      ctx?.say(
+        `CHAIN PREREQUISITE LOCKED (${feat.chainId || 'CHAIN'}): ${chainCheck.reason.toUpperCase()}`
+      );
+      return false;
+    }
+  }
+
+  // Socket: check skill/tier availability
   if (!isFeatNodeAvailable(state, feat)) {
     const skillDef = PILOT_SKILL_DEFINITIONS.find((s) => s.id === feat.requiredSkillId);
     const skillLabel = skillDef ? skillDef.name.toUpperCase() : 'PILOT SKILL';
@@ -3179,8 +3253,17 @@ export function toggleFeatNodeGemSocket(
   state.socketedFeatGems[feat.id] = socketRecord;
   state.equippedFeats = [...state.equippedFeats, feat.id];
   const hwStatus = doesPilotMeetFeatEquipmentRequirement(state, feat);
+  const nextTotal = state.equippedFeats.length;
+  const nextCap = getMaxSocketedFeatsForLevel(
+    state.level,
+    Boolean(state.bypassProgressionGates)
+  );
+  const tierStatusLabel =
+    feat.tier === 'V'
+      ? `TIER V APEX: ${currentTierCount + 1}/${FEAT_TIER_MAX_SLOTS.V} · ACTIVE: ${nextTotal}/${nextCap}`
+      : `TIER ${feat.tier} · ACTIVE: ${nextTotal}/${nextCap}`;
   ctx?.say(
-    `SOCKETED ${socketedLabels.join(' + ').toUpperCase()} → ${feat.name.toUpperCase()} ACTIVE [TIER ${feat.tier}: ${currentTierCount + 1}/${tierCap}]${hwStatus.met ? '' : ` (${hwStatus.reason.toUpperCase()})`}`
+    `SOCKETED ${socketedLabels.join(' + ').toUpperCase()} → ${feat.name.toUpperCase()} ACTIVE [${tierStatusLabel}]${hwStatus.met ? '' : ` (${hwStatus.reason.toUpperCase()})`}`
   );
   syncPostTutorialFrameLevel(state);
   return true;
@@ -3642,7 +3725,8 @@ export function computeInterfaceFeatModifiers(equippedFeats: string[]): {
   let accuracyMult = 1.0;
   let lightDelta = 0;
 
-  for (const featId of equippedFeats) {
+  for (const rawId of equippedFeats) {
+    const featId = normalizeCanonicalFeatId(rawId);
     const feat = FRAME_FEAT_CATALOG.find((f) => f.id === featId);
     if (!feat?.modifiers) continue;
     const m = feat.modifiers;

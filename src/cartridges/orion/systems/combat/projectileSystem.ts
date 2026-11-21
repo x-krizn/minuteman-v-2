@@ -1063,12 +1063,19 @@ export function updateProjectiles(
           const hasKnightsOath = state.equippedFeats.includes('knights_oath');
           const oathMult = hasKnightsOath && e.faction === 'camelot' ? 1.1 : 1.0;
           const opticMult = (state.opticMarkTimer || 0) > 0 ? 1.25 : 1.0;
-          const hasBeamFocus =
-            p.damageType === 'Beam' &&
+          const isStationaryFocus = Math.hypot(state.vx || 0, state.vy || 0) < 6;
+          const hasAnchoredFocus =
+            (p.damageType === 'Beam' || p.damageType === 'Wave' || isStationaryFocus) &&
             state.equippedFeats.some((f) =>
-              ['beam_focus', 'sustained_channeling', 'solar_convergence'].includes(f)
+              [
+                'anchored_focus',
+                'beam_focus',
+                'guarded_fire',
+                'sustained_channeling',
+                'solar_convergence',
+              ].includes(f)
             );
-          const beamMult = hasBeamFocus ? 1.15 : 1.0;
+          const beamMult = hasAnchoredFocus ? 1.15 : 1.0;
           const hasAssassinate =
             state.equippedFeats.some((f) => ['assassinate', 'executioners_gambit'].includes(f)) &&
             e.frame.integrity <= e.frame.maxIntegrity * 0.4;
@@ -1076,6 +1083,26 @@ export function updateProjectiles(
           const effDamage = Math.round(
             p.damage * hitEval.damageMult * oathMult * opticMult * beamMult * execMult
           );
+          if (
+            effDamage > 0 &&
+            state.equippedFeats.some((f) => ['shadow_siphon', 'mercy_in_shadow'].includes(f)) &&
+            (state.stealthDrTimer || 0) > 0
+          ) {
+            const siphonAmt = Math.max(1, Math.round(effDamage * 0.15));
+            const shieldRoom = Math.max(
+              0,
+              state.shields.maxCapacity - state.shields.capacity
+            );
+            const toShield = Math.min(shieldRoom, siphonAmt);
+            state.shields.capacity += toShield;
+            const toFrame = siphonAmt - toShield;
+            if (toFrame > 0) {
+              state.frame.integrity = Math.min(
+                state.frame.maxIntegrity,
+                state.frame.integrity + toFrame
+              );
+            }
+          }
 
           applyDamageToLayers(
             e.shields,

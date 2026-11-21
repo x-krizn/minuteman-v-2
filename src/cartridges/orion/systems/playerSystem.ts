@@ -1941,9 +1941,23 @@ export function updatePlayerSystem(
       combatCtx.say('REACTOR OVERHEATED — VENT HEAT BEFORE BOOSTING');
       notifyOrionStateChange();
     } else if (state.boosterCooldown <= 0) {
-      const hasBoosterEvasion = (state.equippedFeats || []).some((f) =>
-        ['booster_evasion', 'radiant_step', 'shadow_step', 'aerodynamic_flow'].includes(f)
+      const equipped = state.equippedFeats || [];
+      const hasBoosterEvasion = equipped.some((f) =>
+        [
+          'booster_evasion',
+          'radiant_dash',
+          'radiant_step',
+          'shadow_step',
+          'aerodynamic_flow',
+          'phantom_shroud',
+        ].includes(f)
       );
+      if (
+        equipped.includes('veil_of_mercy') &&
+        (state.revealedTimer || 0) <= 0
+      ) {
+        state.stealthDrTimer = 2.5;
+      }
       state.isBoosterDashing = true;
       state.boosterTimer =
         BOOSTER_DASH_DURATION + extraDashSec + (hasBoosterEvasion ? 0.04 : 0);

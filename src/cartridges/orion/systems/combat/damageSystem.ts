@@ -300,15 +300,27 @@ export function resolveEnemyMeleeAttacks(
           hitDamage = Math.round(e.damage * (1 + 0.1 * (e.hitsLanded - 1)));
         }
 
+        if (
+          (state.stealthDrTimer || 0) > 0 &&
+          (state.equippedFeats || []).includes('veil_of_mercy')
+        ) {
+          hitDamage = Math.max(1, Math.round(hitDamage * 0.85));
+        }
+
         // Active Skill 4 Held Block mitigation (0.34s Perfect Block window + Specialist Stance bonus vs Standard Held Block)
         if (state.isHoldingBlock || (state.blockTimer || 0) > 0) {
           const isShieldBlock = Boolean(
             state.blockingWeaponId && state.blockingWeaponId.includes('shield')
           );
+          const hasOffHandDeflection = (state.equippedFeats || []).some((f) =>
+            ['off_hand_deflection', 'cqc_deflection'].includes(f)
+          );
           const specEval = evaluateActiveSpecialistStance(state);
           const isPerfectBlock =
             (state.blockHoldTimer ?? 0) <=
-            PERFECT_BLOCK_WINDOW_SEC + specEval.passiveModifiers.perfectBlockWindowBonusSec;
+            PERFECT_BLOCK_WINDOW_SEC +
+              specEval.passiveModifiers.perfectBlockWindowBonusSec +
+              (hasOffHandDeflection ? 0.06 : 0);
 
           if (isPerfectBlock) {
             // 0.34s Perfect Block: 0 damage taken, heavy parry stagger, shield restore & heat vent!
@@ -331,10 +343,12 @@ export function resolveEnemyMeleeAttacks(
             continue;
           }
 
-          const blockedDamage = Math.max(
-            0,
-            Math.round(hitDamage * (isShieldBlock ? 0.15 : 0.28))
-          );
+          const blockMult = isShieldBlock
+            ? 0.15
+            : hasOffHandDeflection
+              ? 0.21
+              : 0.28;
+          const blockedDamage = Math.max(0, Math.round(hitDamage * blockMult));
           e.stun = Math.max(e.stun, isShieldBlock ? 0.95 : 0.7);
           triggerEntityFlash(state, '#38bdf8', 0.12, 'shield');
           soundSystem.playSword();

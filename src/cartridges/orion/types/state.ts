@@ -212,6 +212,10 @@ export interface OrionState {
   blockingWeaponId?: string | null;
   overdriveTimer?: number;
   opticMarkTimer?: number;
+  /** Remaining duration in seconds of the 0.75s Revealed debuff (Phantom Sniper: cannot enter or maintain stealth while > 0) */
+  revealedTimer?: number;
+  /** Remaining duration in seconds of the 2.5s Veil of Mercy self-only -15% incoming damage reduction after stealth entry */
+  stealthDrTimer?: number;
 
   // Target Lock-On & Multi-Function Input State
   lockedTargetId: number | null;

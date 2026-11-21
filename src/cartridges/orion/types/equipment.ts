@@ -88,6 +88,34 @@ export type FeatSynergyCategory =
   | 'Optics & Support';
 
 /**
+ * Macro-hemisphere archetype umbrella in the 113-node Feat Constellation (`Fighter`, `Scholar`, `Rogue`).
+ */
+export type ConstellationUmbrellaId = 'Fighter' | 'Scholar' | 'Rogue';
+
+/**
+ * Canonical 18 mechanical customization chain identifiers (`C-01` through `C-18`).
+ */
+export type FeatChainId =
+  | 'C-01'
+  | 'C-02'
+  | 'C-03'
+  | 'C-04'
+  | 'C-05'
+  | 'C-06'
+  | 'C-07'
+  | 'C-08'
+  | 'C-09'
+  | 'C-10'
+  | 'C-11'
+  | 'C-12'
+  | 'C-13'
+  | 'C-14'
+  | 'C-15'
+  | 'C-16'
+  | 'C-17'
+  | 'C-18';
+
+/**
  * Type contract for `FrameFeatDefinition` (frame feat definition) in `equipment.ts`.
  */
 export interface FrameFeatDefinition {
@@ -97,6 +125,18 @@ export interface FrameFeatDefinition {
   kind: FeatKind;
   requiredSkillId: PilotSkillId;
   requiredSkillLevel: number;
+  /** Macro-hemisphere umbrella ('Fighter' | 'Scholar' | 'Rogue') in the 113-node Constellation */
+  umbrella?: ConstellationUmbrellaId;
+  /** Optional mechanical customization chain ID ('C-01'..'C-18'); omitted for Standalone & Specialist Stance feats */
+  chainId?: FeatChainId;
+  /** Human-readable chain name (e.g. 'Cloak & Infiltration', 'Directional Guard & Barrier') */
+  chainName?: string;
+  /** Step index (1..5) within its mechanical customization chain (`1` = Entry node; `2..5` = unlocked when any earlier step `< chainStep` in the same `chainId` is socketed) */
+  chainStep?: 1 | 2 | 3 | 4 | 5;
+  /** True for campaign reward feats such as `Knight's Oath` */
+  isRewardFeat?: boolean;
+  /** True for the 22 Specialist Martial Stance standalone doctrines */
+  isSpecialistStance?: boolean;
   /** Functional hardware/weapon synergy category for classless UI filtering */
   synergyCategory?: FeatSynergyCategory;
   /** Canonical Weapon Family or Hardware prerequisite (e.g. 'Bolter', 'Energy Shield', 'Heavy Frame Plating') — never restricted by class */

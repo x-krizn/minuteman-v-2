@@ -266,12 +266,19 @@ export function executeActionPayload(
     const charoiteMult = isLockedOrStaggered
       ? gemCombatMods.lockedOrStaggeredDamageMult * hwStats.staggerDamageMult
       : 1.0;
-    const hasBeamFocus =
-      dmgType === 'Beam' &&
+    const isStationaryFocus = Math.hypot(state.vx || 0, state.vy || 0) < 6;
+    const hasAnchoredFocus =
+      (dmgType === 'Beam' || dmgType === 'Wave' || isStationaryFocus) &&
       equippedFeats.some((f) =>
-        ['beam_focus', 'sustained_channeling', 'solar_convergence'].includes(f)
+        [
+          'anchored_focus',
+          'beam_focus',
+          'guarded_fire',
+          'sustained_channeling',
+          'solar_convergence',
+        ].includes(f)
       );
-    const beamMult = hasBeamFocus ? 1.15 : 1.0;
+    const beamMult = hasAnchoredFocus ? 1.15 : 1.0;
     const hasAssassinate =
       target &&
       equippedFeats.some((f) => ['assassinate', 'executioners_gambit'].includes(f)) &&
@@ -290,9 +297,28 @@ export function executeActionPayload(
         backstabMult = 1.22;
       }
     }
-    return Math.round(
+    const finalDmg = Math.round(
       baseDmg * overdriveMult * opticMult * oathMult * charoiteMult * beamMult * execMult * backstabMult
     );
+    if (
+      target &&
+      finalDmg > 0 &&
+      equippedFeats.some((f) => ['shadow_siphon', 'mercy_in_shadow'].includes(f)) &&
+      ((state.stealthDrTimer || 0) > 0 || backstabMult > 1.0)
+    ) {
+      const siphonAmt = Math.max(1, Math.round(finalDmg * 0.15));
+      const shieldRoom = Math.max(0, state.shields.maxCapacity - state.shields.capacity);
+      const toShield = Math.min(shieldRoom, siphonAmt);
+      state.shields.capacity += toShield;
+      const toFrame = siphonAmt - toShield;
+      if (toFrame > 0) {
+        state.frame.integrity = Math.min(
+          state.frame.maxIntegrity,
+          state.frame.integrity + toFrame
+        );
+      }
+    }
+    return finalDmg;
   };
 
   const playerInertiaProf = resolvePlayerInertiaProfile(state);
@@ -2176,6 +2202,12 @@ export function executeActionPayload(
         utilDef.grantsOpticMarkSec
       );
     }
+    if (
+      (state.equippedFeats || []).includes('veil_of_mercy') &&
+      (state.revealedTimer || 0) <= 0
+    ) {
+      state.stealthDrTimer = 2.5;
+    }
     soundSystem.playHeal();
     ctx.spawnParticles(
       state.x,
@@ -2273,6 +2305,15 @@ export function updateActionTimers(state: OrionState, dt: number): void {
   }
   if (state.opticMarkTimer && state.opticMarkTimer > 0) {
     state.opticMarkTimer = Math.max(0, state.opticMarkTimer - dt);
+  }
+  // Phantom Sniper balance rule: charging any weapon prevents stealth; attack press/release sets 0.75s Revealed debuff
+  if (state.isChargingBow) {
+    state.revealedTimer = Math.max(state.revealedTimer || 0, 0.75);
+  } else if (state.revealedTimer && state.revealedTimer > 0) {
+    state.revealedTimer = Math.max(0, state.revealedTimer - dt);
+  }
+  if (state.stealthDrTimer && state.stealthDrTimer > 0) {
+    state.stealthDrTimer = Math.max(0, state.stealthDrTimer - dt);
   }
 }
 
@@ -3323,6 +3364,7 @@ export function activateResolvedCombatSkill(
   state.skillTellMaxTimer = state.skillTellTimer;
   state.skillActionTimer = Math.max(0.22, desc.actionDurationSec * tellScale);
   state.skillActionMaxTimer = state.skillActionTimer;
+  state.revealedTimer = 0.75;
 
   soundSystem.playCharge();
   notifyOrionStateChange();

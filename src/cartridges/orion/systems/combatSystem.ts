@@ -145,6 +145,7 @@ export function handleCombatInput(
     state.bowMaxChargeSec = maxCharge;
 
     if (p.x) {
+      state.revealedTimer = 0.75;
       if (state.ammo <= 0 && !state.isReloading) {
         firePrimarySalvoShot(state, ctx, false, 0);
       } else if (!state.isReloading && !state.activeActionId && state.activeSkillSlot === null) {
@@ -192,6 +193,7 @@ export function handleCombatInput(
       );
       state.isChargingBow = false;
       state.bowChargeTimer = 0;
+      state.revealedTimer = 0.75;
       if (!state.isReloading && !state.activeActionId) {
         firePrimarySalvoShot(state, ctx, false, chargeRatio);
       }
@@ -202,6 +204,7 @@ export function handleCombatInput(
     state.bowChargeTimer = 0;
 
     if (p.x) {
+      state.revealedTimer = 0.75;
       state.combatHoldTimers.x = 0;
       state.combatHoldTriggered.x = false;
 
@@ -428,9 +431,13 @@ export function updateCombat(
       if (state.shields.rechargeDelay > 0) {
         state.shields.rechargeDelay -= dt;
       } else {
+        const hasHealingShadow =
+          (state.equippedFeats || []).includes('healing_shadow') &&
+          (state.revealedTimer || 0) <= 0;
+        const shieldRegenRate = hasHealingShadow ? 22.5 : 15;
         state.shields.capacity = Math.min(
           state.shields.maxCapacity,
-          state.shields.capacity + 15 * dt
+          state.shields.capacity + shieldRegenRate * dt
         );
       }
     }

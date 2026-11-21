@@ -13,8 +13,12 @@ import {
   computeEffectivePlayerLightTiles,
   computePlayerLightStatBreakdown,
   computePlayerLoadMetrics,
+  evaluateEmergentMetaClass,
   evaluateEquipmentFeatHandling,
+  FEAT_TIER_MAX_SLOTS,
   getEquipmentDisplayName,
+  getEquippedFeatCountByTier,
+  getMaxSocketedFeatsForLevel,
 } from '../../database/progression';
 import {
   applyTraitLineProfile,
@@ -67,6 +71,12 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
   const lanternLit = hasPoeLanternGuidance(state);
   const loadMetrics = computePlayerLoadMetrics(state);
   const devMode = getOrionGraphicsSettings().devModeEnabled;
+  const metaClass = evaluateEmergentMetaClass(state);
+  const maxFeatsForLevel = getMaxSocketedFeatsForLevel(
+    state.level,
+    Boolean(state.bypassProgressionGates)
+  );
+  const tierVCount = getEquippedFeatCountByTier(state, 'V');
 
   const equippedSlotSummaries = [
     {
@@ -97,6 +107,91 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1 text-[10px]">
+      {/* Emergent Historical Meta-Class & 113-Node Constellation Synthesis */}
+      <div className="p-2 bg-[#090d14] rounded-xs border border-[#38bdf8]/40 space-y-1.5">
+        <div className="flex flex-wrap items-center justify-between gap-1">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[#fde047] font-bold text-[11px]">
+              ⚔ EMERGENT HISTORICAL CLASS: {metaClass.title.toUpperCase()}
+            </span>
+            <span className="px-1.5 py-0.5 rounded-xs bg-[#0c243c] border border-[#38bdf8]/40 text-[#7dd3fc] font-bold text-[9px]">
+              {metaClass.umbrellaCombination}
+            </span>
+          </div>
+          <span className="text-[9px] text-[#94a3b8] font-mono tabular-nums">
+            P-01 FEATS:{' '}
+            <b className="text-[#38bdf8]">
+              {(state.equippedFeats || []).length}/{maxFeatsForLevel}
+            </b>{' '}
+            · P-03 APEX:{' '}
+            <b className="text-[#c084fc]">
+              T-V {tierVCount}/{FEAT_TIER_MAX_SLOTS.V}
+            </b>
+          </span>
+        </div>
+
+        <div className="text-[9px] text-[#cbd5e1] leading-snug">
+          {metaClass.historicalFantasy}
+        </div>
+
+        <div className="grid grid-cols-3 gap-1 text-[9px]">
+          <div className="p-1 bg-[#0f172a] rounded-xs border border-[#1e293b] flex items-center justify-between">
+            <span className="text-[#fb923c] font-bold">FIGHTER [WAR+GRD]</span>
+            <span className="font-bold text-[#f8fafc] tabular-nums">
+              {metaClass.umbrellaCounts.Fighter} NODES
+            </span>
+          </div>
+          <div className="p-1 bg-[#0f172a] rounded-xs border border-[#1e293b] flex items-center justify-between">
+            <span className="text-[#38bdf8] font-bold">SCHOLAR [WIZ+CLR]</span>
+            <span className="font-bold text-[#f8fafc] tabular-nums">
+              {metaClass.umbrellaCounts.Scholar} NODES
+            </span>
+          </div>
+          <div className="p-1 bg-[#0f172a] rounded-xs border border-[#1e293b] flex items-center justify-between">
+            <span className="text-[#c084fc] font-bold">ROGUE [MRD+ROG]</span>
+            <span className="font-bold text-[#f8fafc] tabular-nums">
+              {metaClass.umbrellaCounts.Rogue} NODES
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-1 pt-0.5 border-t border-[#1e293b]">
+          <span className="text-[9px] text-[#94a3b8]">
+            MARTIAL STANCE:{' '}
+            <b className="text-[#fde047]">
+              {metaClass.activeSpecialistStanceName
+                ? metaClass.activeSpecialistStanceName.toUpperCase()
+                : getActiveWeaponStance(state).shortTag}
+            </b>
+          </span>
+          {metaClass.matchedFeats.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1">
+              <span className="text-[9px] text-[#94a3b8]">SIGNATURE NODES:</span>
+              {metaClass.matchedFeats.map((fName) => {
+                const matchedDef = Object.values(CANONICAL_FRAME_FEAT_REGISTRY).find(
+                  (f) => f.name === fName
+                );
+                return (
+                  <button
+                    key={fName}
+                    type="button"
+                    onClick={() => {
+                      if (matchedDef && onLocateFeat) {
+                        soundSystem.playSelect();
+                        onLocateFeat(matchedDef.id);
+                      }
+                    }}
+                    className="px-1.5 py-0.2 rounded-xs bg-emerald-950/50 border border-emerald-400/50 text-emerald-200 text-[9px] font-bold cursor-pointer"
+                  >
+                    {fName}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Defense Layers Breakdown */}
       <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">
         <div className="text-[#ffd27d] font-bold text-[11px] flex flex-wrap items-center justify-between gap-1">
@@ -572,7 +667,7 @@ export const SatchelStatusTab: React.FC<SatchelStatusTabProps> = ({
       <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">
         <div className="flex flex-wrap items-center justify-between gap-1">
           <span className="font-bold text-[#38bdf8] text-[10px]">
-            EQUIPPED HARDWARE &amp; FEAT HANDLING PROFICIENCY (118-NODE CONSTELLATION):
+            EQUIPPED HARDWARE &amp; FEAT HANDLING PROFICIENCY (113-NODE CONSTELLATION):
           </span>
           <span className="text-[9px] text-[#94a3b8]">
             STANCE: <b className="text-[#fde047]">{getActiveWeaponStance(state).shortTag}</b> · BAND:{' '}

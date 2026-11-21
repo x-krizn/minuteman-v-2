@@ -9,8 +9,8 @@
 1. **[The Short Version](#1-the-short-version)**
 2. **[Controls, HUD & Pilot Satchel Guide](#2-controls-hud--pilot-satchel-guide)**
    - [2.1 Handheld, Keyboard & Gamepad Controls](#21-handheld-keyboard--gamepad-controls)
-   - [2.2 Reading the HUD](#22-reading-the-hud)
-   - [2.3 The Pilot Satchel (7 Tactical Tabs)](#23-the-pilot-satchel-7-tactical-tabs)
+   - [2.2 Reading the Minimal HUD, Toasts & Typography Scale](#22-reading-the-minimal-hud-toasts--typography-scale)
+   - [2.3 The Pilot Satchel (5 Consolidated Tactical Tabs)](#23-the-pilot-satchel-5-consolidated-tactical-tabs)
 3. **[Combat Mechanics: Three Defense Layers & Inertia Physics](#3-combat-mechanics-three-defense-layers--inertia-physics)**
    - [3.1 The Golden Rules of Combat](#31-the-golden-rules-of-combat)
    - [3.2 The Three Defense Layers (`Shields → Armor → Frame`)](#32-the-three-defense-layers-shields--armor--frame)
@@ -23,29 +23,31 @@
    - [4.4 The Nine Gemstones & Six Combat Disciplines](#44-the-nine-gemstones--six-combat-disciplines)
    - [4.5 Load Weight Brackets & Zero-Sum Trade-Offs](#45-load-weight-brackets--zero-sum-trade-offs)
    - [4.6 Pilot Level 1–20 Unlock Sequence](#46-pilot-level-120-unlock-sequence)
-5. **[The Shattered Worlds (`u00`) & Æther Fog Navigation](#5-the-shattered-worlds-u00--æther-fog-navigation)**
+5. **[The Shattered Worlds (`u00`), Three-Tier Maps & Æther Fog Navigation](#5-the-shattered-worlds-u00-three-tier-maps--æther-fog-navigation)**
    - [5.1 Lore: Waygates, Tuning Crystals & The Pilots](#51-lore-waygates-tuning-crystals--the-pilots)
    - [5.2 The 20 Worlds of the `u00` Cosmos](#52-the-20-worlds-of-the-u00-cosmos)
-   - [5.3 Navigating the Æther Fog](#53-navigating-the-æther-fog)
+   - [5.3 Three-Tier Map Architecture (`Local Mini-Map`, `Campfire Planet Map`, `Waygate Æther Map`)](#53-three-tier-map-architecture-local-mini-map-campfire-planet-map-waygate-æther-map)
+   - [5.4 Navigating the Æther Fog & Campfire Rest Lifecycle](#54-navigating-the-æther-fog--campfire-rest-lifecycle)
 6. **[The Road Through Belldor (Campaign Field Guide)](#6-the-road-through-belldor-campaign-field-guide)**
    - [6.1 Stage 1: The Bog (Levels 1–2)](#61-stage-1-the-bog-levels-12)
    - [6.2 Stage 2: Camelot Border Town (Levels 3–6)](#62-stage-2-camelot-border-town-levels-36)
    - [6.3 The Three Grail Knights & The Dungeon Door](#63-the-three-grail-knights--the-dungeon-door)
    - [6.4 Whispers, Rumors & What Lies Ahead](#64-whispers-rumors--what-lies-ahead)
 7. **[Complete Equipment & Hardware Reference](#7-complete-equipment--hardware-reference)**
-   - [7.1 All 101 Weapons Across the 8 Canonical Categories](#71-all-101-weapons-across-the-8-canonical-categories)
+   - [7.1 All 101 Weapons Across the 8 Weapon Classes (Shared Functional Classes · Custom & Magitech Subtypes)](#71-all-101-weapons-across-the-8-weapon-classes-shared-functional-classes--custom--magitech-subtypes)
    - [7.2 Core Frame Platings (6 Coreplates)](#72-core-frame-platings-6-coreplates)
    - [7.3 Core Systems (6 Generators / Reactors)](#73-core-systems-6-generators--reactors)
    - [7.4 Auxiliary & Tactical Utility Systems (18 Modules)](#74-auxiliary--tactical-utility-systems-18-modules)
    - [7.5 Optics & Battlefield Sensors (18 Modules)](#75-optics--battlefield-sensors-18-modules)
    - [7.6 Head, Arm, Leg & Energy Storage Components](#76-head-arm-leg--energy-storage-components)
-8. **[Complete Canonical Feats Catalog (97 Feats)](#8-complete-canonical-feats-catalog-97-feats)**
+8. **[Complete Canonical Feats Catalog (118 Feats)](#8-complete-canonical-feats-catalog-118-feats)**
    - [8.1 Tier I Feats](#81-tier-i-feats)
    - [8.2 Tier II Feats](#82-tier-ii-feats)
    - [8.3 Tier III Feats](#83-tier-iii-feats)
    - [8.4 Tier IV Feats](#84-tier-iv-feats)
    - [8.5 Tier V Capstone Feats](#85-tier-v-capstone-feats)
    - [8.6 Reward Feats](#86-reward-feats)
+   - [8.7 Specialist Feats & Historical Martial Stances (22 Doctrines)](#87-specialist-feats--historical-martial-stances-22-doctrines)
 
 ---
 
@@ -69,15 +71,16 @@ Project Orion can be played using the on-screen virtual handheld pad, keyboard, 
 | **A** | Face Button A | `Z` / `Space` | **Interact / Jump**: Context interaction at Waystations, Waygates, Caches, Switches, and NPCs; vertical jump over pitfalls and hazards when clear. |
 | **B** | Face Button B | `X` / `Shift` | **Booster Dash / Continuous Boost**: Tap for a high-impulse directional dash; hold to sustain continuous boost (generates reactor heat). |
 | **X** | Face Button X | `C` / `J` | **Action 1 / Action 2**: **Ranged**: Tap/hold for primary salvo (`2×` magazine capacity) and double-tap for tactical reload/vent (Basic Attack is the *only* skill that reloads). **Bows**: Hold `[X]` to draw & charge a single high-velocity arrow (scaling damage, range, and heat), release `[X]` to fire. **Melee & Shields**: Never reload—tap/hold `[X]` to chain through fluid weapon-unique 3-to-5 step combo sequences (resets after `1.1s` idle). |
-| **Y** | Face Button Y | `V` / `K` | **Action 3 / Action 4 (Guard)**: Tap for heavy tactical skill (`Action 3`); hold to raise directional guard (`Action 4`, `0.25s` perfect block/parry window). |
+| **Y** | Face Button Y | `V` / `K` | **Action 3 / Action 4 (Guard)**: Tap for heavy tactical skill (`Action 3`); hold to raise directional guard (`Action 4`, `0.34s` perfect block/parry window). |
 | **R** | Right Trigger | `E` / `I` | **Action 5 / Utility (`Action 6`)**: Tap to trigger off-hand, paired, or tactical utility system. Ranged skills (`Actions 2–5`) fire multi-round bursts/salvos (`ammoCount`) or use per-shot internal charges (`internalCharges`) without manual reload. |
-| **L** | Left Trigger | `Q` / `U` | **Weapon Set Swap / Target Lock**: Tap to cycle target lock (`SELECT` also cycles lock); hold to swap between Weapon Set 1 and Weapon Set 2 (`5.0s` base cooldown). |
-| **SELECT / SHIFT** | Pill Button | `Tab` / `Backspace` | **Pilot Satchel**: Opens the 7-tab tactical menu (`[L]` / `[R]` cycles tabs). |
-| **START** | Pill Button | `Enter` | **System Menu**: Opens Pause Menu, HUD mode toggle (Overlay vs. Pixel Canvas), Pilot Roster Save/Load, and Options. |
+| **L** | Left Trigger | `Q` / `U` | **Back Launcher Toggle / Weapon Swap / Target Lock**: Tap to cycle target lock; hold to toggle active skill ownership (`Skills 4 & 5`) on a dorsal Back-Mounted Launcher (`slot3`) or swap weapon sets (`5.0s` base cooldown). |
+| **SELECT / SHIFT** | Pill Button | `Tab` / `Backspace` | **Pilot Satchel**: Opens the consolidated 5-tab tactical menu (`STATUS`, `LOADOUT`, `FEATS`, `MAP`, `CODEX`; `[L]` / `[R]` cycles tabs). |
+| **START** | Pill Button | `Enter` | **System Menu**: Opens Pause Menu, HUD Style toggle (`Full Tactical` vs. `Compact Retro`), Pilot Roster Save/Load, Local Mini-Map preview, and Options. |
+| **DEV MODE** | Settings / Toggle | `F3` / `` ` `` | **Developer Mode Telemetry**: Toggles engine diagnostics, raw room/chunk coordinates (`[rx,ry]`, `CHK(x,y)`), numerical HP/Inertia gauges, and internal asset IDs. |
 
 ---
 
-### 2.2 Reading the HUD
+### 2.2 Reading the Minimal HUD, Toasts & Typography Scale
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -86,29 +89,34 @@ Project Orion can be played using the on-screen virtual handheld pad, keyboard, 
 │ [FRAME HP]   ██████████  (Layer 3: 200 Fixed Structural Integrity)      │
 │ [REACTOR]    ▓▓▓▓░░░░░░  (Heat / Energy / Presence Commit Gauge)        │
 ├─────────────────────────────────────────────────────────────────────────┤
-│ • Top-Right / Edge Indicators : Æther Fog Depth & Wayfinding Tells      │
-│ • Bottom Skill Deck           : Active [X] [Y] [R] [L] [B] Cooldowns    │
+│                                                                         │
+│          (Clean 160×144 Viewport — Zero Coordinate Metadata)            │
+│                                                                         │
+│     ┌─────────────────────────────────────────────────────────────┐     │
+│     │    MULTI-LINE TOAST & STORY BANNER (10px–11px, Wrapped)     │     │
+│     └─────────────────────────────────────────────────────────────┘     │
+│                      [Slot 1] [Slot 2] [Slot 3] [Slot 4] [Slot 5]       │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Minimal Clutter by Design**: Hidden physics numbers (like exact Inertia and Stability values) are never shown on the default HUD so you can keep your eyes on enemy telegraphs and terrain hazards.
-- **Optional Telemetry Mod**: Installing the **Inertial Gyro-Telemetry Array** into your **Sensory B** slot inside the Armory enables live physics readouts directly on your HUD.
+- **Minimal HUD by Design (Zero Coordinate Clutter)**: Room coordinates (`[rx,ry]`), chunk indices (`CHK(x,y)`), off-path distances, and raw physics numbers are excluded from the standard gameplay HUD so your view stays focused on enemy telegraphs, lighting, and terrain hazards.
+- **Unified Multi-Line Toast Banner**: All combat notifications, item pickups, and post-rest story messages anchor consistently at the bottom-center above the skill deck (`bottom-11 left-1/2 -translate-x-1/2`) as a multi-line, word-wrapping banner (`10px`–`11px`) that never truncates.
+- **Standardized 4-Tier `9px`–`13px` Typography Hierarchy**: Every menu, HUD readout, toast, prompt, text input field, and Satchel tab uses a strict 4-tier pixel-aligned font scale (`9px` caption/badge floor, `10px` body/control copy, `11px` emphasized text and `<input>` fields, and `12px`–`13px` section/modal headers) with zero sub-`9px` micro-text or oversized headers.
+- **Optional Physics & Developer Telemetry**: Installing the **Inertial Gyro-Telemetry Array** into your **Sensory B** slot inside the Armory enables live Inertia & Stability readouts on the HUD, while pressing **`[F3]`** (or Backquote **`` [`] ``**) toggles full Developer Mode diagnostics.
 
 ---
 
-### 2.3 The Pilot Satchel (7 Tactical Tabs)
+### 2.3 The Pilot Satchel (5 Consolidated Tactical Tabs)
 
-Press **SELECT / SHIFT** (`Tab` / `Backspace`) at any time to open the Pilot Satchel. Use **`[L]`** and **`[R]`** (or click/tap the header tabs) to cycle across all seven modules:
+Press **SELECT / SHIFT** (`Tab` / `Backspace`) at any time to open the Pilot Satchel. Use **`[L]`** and **`[R]`** (or click/tap the header tabs) to cycle across all five consolidated modules:
 
 | Tab | Name | Purpose |
 | :---: | :--- | :--- |
-| **1** | **MECH STATUS** | Full diagnostic readout of your 3 Defense Layers, Load Weight Bracket (`Light / Medium / Heavy / Overloaded`), Reactor thermal output, and Inertia/Stability physics breakdown. |
-| **2** | **LOADOUT** | Interactive **Mech Doll** surrounded by anatomical hardpoint nodes (`Head Dome`, `Frame Plating`, `Arm Assembly`, `Leg Striders`, `Main Hand`, `Side Hand`, `Aux Back Mount`, and `[L]`/`[R]` Trigger Binds) with a 4-action context menu (`Equip / Swap`, `Unequip`, `Stance / Grip Toggle`, `Modify in Armory`). |
-| **3** | **ARMORY** | The **Modification Workbench**. Install, swap, or remove Weapon Component Parts, Internal Sub-Modules (`Optics`, `Sensory A/B`, `Actuators`, `Reactor Core`, `Leg Actuators`), Gem Sockets, and Action Modifications in any slot order (`Slot 1`, `Slot 2`, `Slot 3`). |
-| **4** | **INVENTORY** | Manage your Belt Flasks, Booster Kits, Gemstones, Scrap currency, and Quest Relics. |
-| **5** | **SKILLS & FEATS** | Invest Gemstones into the **6 Combat Disciplines** (`Lv 1–20`) and socket or refund **97 Canonical Feats** (`Tiers I–V`) at zero penalty. |
-| **6** | **WORLD MAP** | View local area topology and toggle the **Living Æther Cosmos (`u00`)** showing the 20 worlds orbiting the chthonic singularity **Sin**. |
-| **7** | **CODEX** | Discovery-gated field encyclopedia. Lore, schematics, and combat profiles unlock automatically as you encounter new worlds, areas, enemies, weapons, hardware, and relics. |
+| **1** | **STATUS** | Full diagnostic readout of your 3 Defense Layers, Load Weight Bracket (`Light / Medium / Heavy / Overloaded`), Reactor thermal output, active Specialist Stance, and Inertia/Stability physics breakdown. |
+| **2** | **LOADOUT** | Consolidated equipment hub housing three quick-switch sub-views:<br>• **`SLOTS` (`Mech Doll`)**: Interactive anatomical chassis diagram (`Head Dome`, `Frame Plating`, `Arm Assembly`, `Leg Striders`, `Main Hand`, `Side Hand`, `Aux Back Mount`, and `[L]`/`[R]` Trigger Binds) with a 4-action context menu (`Equip / Swap`, `Unequip`, `Stance / Grip Toggle`, `Modify in Armory`).<br>• **`ARMORY` (`Workbench`)**: Install, swap, or remove Weapon Component Parts (`3` slots on `Custom` weapons), Internal Sub-Modules (`Optics`, `Sensory A/B`, `Actuators`, `Reactor Core`, `Leg Actuators`), Gem Sockets, and Action Modifications in any slot order.<br>• **`INVENTORY`**: Manage owned Weapons, Hardware, Belt Flasks, Gemstones, Scrap currency, and Quest Relics. |
+| **3** | **FEATS** | Interactive **118-Node Hexagonal Constellation** across the **6 Combat Disciplines** (`Lv 1–20`). Invest Gemstones to unlock Feat Tiers (`I–V`) and socket or refund all **118 Canonical Feats** (including **22 Specialist Feats & Martial Stances**) at zero penalty. |
+| **4** | **MAP** | **Progressive Local Mini-Map**. Draws a tile-accurate local map as you explore rooms and `10×10`-tile chunks—plotting terrain, corrosive water, walls, cardinal doorways, and landmark icons (Drop-Pod, Campfires, Waygates, Caches, Poe Lanterns, and Boss Sanctums). *(Note: Planetary fast-travel opens at Campfires; Inter-world cosmic travel opens at Colossal Waygates).* |
+| **5** | **CODEX** | Discovery-gated field encyclopedia with live search (`11px` input). Lore, schematics, and combat profiles unlock automatically as you encounter new worlds, areas, enemies, weapons, hardware, and relics. |
 
 [↑ Back to Master Index](#-master-index-table-of-contents)
 
@@ -121,7 +129,7 @@ Press **SELECT / SHIFT** (`Tab` / `Backspace`) at any time to open the Pilot Sat
 1. **Unified Rules**: PvE and PvP share the exact same combat math, cooldowns, and crowd-control durations.
 2. **Every Skill Has a Tell**: Every heavy attack, boss lunge, and artillery volley has a visible windup telegraph and audio cue before impact.
 3. **Static Core Budget**: Every mech has **`200` Frame Integrity** and scales around the **Base Combat Unit (`1× BCU = 54`)**. Survival comes from managing your defense layers, positioning, and momentum.
-4. **Balanced Combat Tempo (`Medium = 1.00×`, `±30%` Band)**: Medium frames and weapons set the `1.00×` baseline tempo (`0.22s/shot` ranged, `0.30s/step` melee, `0.85s` bow draw). Light setups run up to `+30%` faster (`0.17s/shot`, `0.23s/step`) and Heavy setups run up to `-30%` slower (`0.29s/shot`, `0.39s/step`), while cumulative speed modifiers from feats, gems, and hardware are hard-capped at `±30%` (`0.70×` to `1.30×`) to keep every duel readable and tactical.
+4. **Balanced Combat Tempo (`Medium = 1.00×`, `±30%` Band)**: Medium frames and weapons set the `1.00×` baseline tempo (`0.34s/shot` ranged basic, `0.45s/step` melee combo, `1.15s` full bow draw, `0.34s` Perfect Block window). Light setups run up to `+30%` faster (`0.26s/shot`, `0.35s/step`, `0.88s` bow draw) and Heavy setups run up to `-30%` slower (`0.44s/shot`, `0.59s/step`, `1.50s` bow draw), while cumulative speed modifiers from feats, gems, and hardware are hard-capped at `±30%` (`0.70×` to `1.30×`) to keep every duel readable and tactical.
 
 ---
 
@@ -146,7 +154,7 @@ Incoming damage cascades sequentially through three distinct defensive layers:
 │   - Threshold (THR) : Flat damage ignored from light grazing hits │
 │   - Rating (RTG)    : Percentage mitigation applied to the hit    │
 │   - Durability (DUR): Degrades as armor absorbs strikes & acid    │
-│ • Repaired at Æther Waystations, Drop-Pods, or via Repair Systems.│
+│ • Restored via Campfire Rest (fade-to-black), Drop-Pods, or Repair│
 └───────┬───────────────────────────────────────────────────────────┘
         │ (Penetrating damage after Armor mitigation)
         ▼
@@ -229,9 +237,10 @@ You never need to read equations to master inertia—just remember the **Dynamic
 │    • Invest Gemstones into Warrior, Marauder, Guardian, Rogue, Wizard,  │
 │      or Cleric disciplines to unlock Feat Tiers (I–V).                  │
 ├─────────────────────────────────────────────────────────────────────────┤
-│ 2. FRAME LAYER (97 Canonical Feats · Tiers I–V)                         │
+│ 2. FRAME LAYER (118 Canonical Feats · 6-Arm Hexagonal Constellation)    │
 │    • System Feats step up Load Capacity (+22 WT per step).              │
 │    • Interface Feats alter combat behavior & weapon/hardware synergies. │
+│    • 22 Specialist Feats unlock Historical Martial Stances (Actions 2/4/5)│
 │    • Feats can be unsocketed and refunded at any time.                  │
 ├─────────────────────────────────────────────────────────────────────────┤
 │ 3. EQUIPMENT LAYER (LOADOUT Mech Doll & ARMORY Workbench)               │
@@ -245,7 +254,9 @@ You never need to read equations to master inertia—just remember the **Dynamic
 
 ### 4.3 Mech Doll (`LOADOUT`) vs. Modification Workbench (`ARMORY`)
 
-- **`LOADOUT` (`Mech Doll`)**: Organizes your equipped weapons and hardware around an anatomical diagram of your chassis (`Head Dome`, `Frame Plating`, `Arm Assembly`, `Leg Striders`, `Main Hand`, `Side Hand`, `Auxiliary Back Mount`, and `[L]`/`[R]` Trigger Binds). Select any slot to **Equip / Swap**, **Unequip**, **Toggle Grip / Stance** (1H, 2H, Dual-Wield), or jump directly to **Modify in Armory**. When equipping a weapon or shield, the **Nested Weapon Selector** organizes items into **8 Weapon Classes** ▸ **9 Shared Functional Weapon Types** ▸ **`Custom` / `Magitech` Subtypes** (for example, `Blades: Curved` ▸ `Khopesh` ▸ `Khopesh (Custom)` alongside `S-2 Turbine Khopesh (Magitech)`).
+- **`LOADOUT` (`Mech Doll`)**: Organizes your equipped weapons and hardware around an anatomical diagram of your chassis (`Head Dome`, `Frame Plating`, `Arm Assembly`, `Leg Striders`, `Main Hand`, `Side Hand`, `Auxiliary Back Mount`, and `[L]`/`[R]` Trigger Binds). Select any slot to **Equip / Swap**, **Unequip**, **Toggle Grip / Specialist Stance** (1H, 2H, Dual-Wield, or Active Specialist Doctrine vs. Base Moveset), or jump directly to **Modify in Armory**.
+  - **Nested 3-Tier Weapon Selector**: Organizes items into **8 Weapon Classes** ▸ **9 Shared Functional Weapon Types** ▸ **`Custom` / `Magitech` Subtypes** (for example, `Blades: Curved` ▸ `Khopesh` ▸ `Khopesh (Custom)` alongside `S-2 Turbine Khopesh (Magitech)`).
+  - **2H Hip-Holstering & Dorsal Back Launchers (`LOCKED`)**: **2H weapons** equip in the **Main Slot (`slot1`)** only unless overridden by a Feat, Unique counterbalanced trait, Legendary flag, or versatile grip (`Bastard Sword`). When wielding a 2H weapon in `slot1` while a 1H weapon or Shield is equipped in `slot2`, the **Side weapon stays in `slot2` and is rendered holstered at the hip**. **Carriers & Munitions** equip in either **Side (`slot2`)** or **Aux (`slot3`, Back Mount)** while *always* rendering dorsally on the back; pressing `[L]` toggles active Back Launcher ownership of **Skills 4 & 5** without moving the launcher into the hand.
 - **`ARMORY` (`Modification Workbench`)**: Houses all deep engineering:
   - **72 Customizable (`Custom`) Weapons vs. 29 Unique (`Magitech`) Weapons**:
     - **`Custom` Subtype (72 Archetypes across 8 Weapon Classes × 9 Functional Types)**: Feature **3 Component & Gem Slots** (`Slot 1`, `Slot 2`, `Slot 3`), allowing you to swap physical weapon parts (`Hilt / Grip / Stock`, `Blade / Head / Limbs`, `Counterweight / Focus / Payload`) or socket Gemstones in any order.
@@ -325,7 +336,7 @@ During **Levels 1–5** (the Belldor onboarding road), your mech brings its subs
 
 ---
 
-## 5. The Shattered Worlds (`u00`) & Æther Fog Navigation
+## 5. The Shattered Worlds (`u00`), Three-Tier Maps & Æther Fog Navigation
 
 ### 5.1 Lore: Waygates, Tuning Crystals & The Pilots
 
@@ -338,11 +349,11 @@ During **Levels 1–5** (the Belldor onboarding road), your mech brings its subs
 
 ### 5.2 The 20 Worlds of the `u00` Cosmos
 
-Open the **WORLD MAP** tab in your Satchel to view the real-time **Living Æther Cosmos (`u00`)**, where 20 worlds orbit the underworld singularity **Sin**:
+Interact with any **Colossal Waygate (`Q`)** in the field to open the **Æther Map** and view the real-time **Living Æther Cosmos (`u00`)**, where 20 worlds orbit the underworld singularity **Sin**:
 
 #### The Eight Major Worlds
 | # | World | Culture / Theme | Heritage | Narrative Identity |
-| :---: | :--- | :--- | :--- | :--- |
+| :---: | :--- | :--- | :---: | :--- |
 | **1** | **Belldor (Camelot)** | Arthurian Knights & Grail Myth | Canon | Your starting road. Phasing ruins, grail sickness, and contested waygates. |
 | **2** | **Tyrranus** | Greek & Roman | Folklore | Imperial marble colonnades and gladiatorial frontier outposts across the drift. |
 | **3** | **Orion** | Dwarven | Canon | Subterranean forge-world of deep-crust reactors and heavy chassis smiths. |
@@ -358,7 +369,33 @@ Open the **WORLD MAP** tab in your Satchel to view the real-time **Living Æther
 
 ---
 
-### 5.3 Navigating the Æther Fog
+### 5.3 Three-Tier Map Architecture (`Local Mini-Map`, `Campfire Planet Map`, `Waygate Æther Map`)
+
+Project Orion separates spatial navigation into three distinct map surfaces depending on whether you are checking your field satchel, resting at a campfire waystation, or standing before a colossal waygate:
+
+```
+┌───────────────────────────┐   ┌───────────────────────────┐   ┌───────────────────────────┐
+│   1. LOCAL MINI-MAP       │   │  2. CAMPFIRE PLANET MAP   │   │   3. WAYGATE ÆTHER MAP    │
+│   ([SELECT] -> MAP Tab)   │   │  (Waystation [A] Menu)    │   │   (Waygate [A] Menu)      │
+├───────────────────────────┤   ├───────────────────────────┤   ├───────────────────────────┤
+│ • Progressive fog-of-war  │   │ • Planetary region & area │   │ • 20-world u00 cosmic     │
+│   cartography drawn tile  │   │   atlas for the current   │   │   atlas orbiting Sin      │
+│   by tile as you explore  │   │   world (e.g., Belldor)   │   │ • Allows inter-world &    │
+│ • Plots terrain, water,   │   │ • Fast-travel between     │   │   regional teleportation  │
+│   walls, doors & landmark │   │   attuned Campfires /     │   │   between attuned         │
+│   icons (view-only)       │   │   Waystations             │   │   Colossal Waygates       │
+└───────────────────────────┘   └───────────────────────────┘   └───────────────────────────┘
+```
+
+| Map Surface | How to Open | Scope & Travel Authority |
+| :--- | :--- | :--- |
+| **Local Mini-Map** | Press **`[SELECT]`** ▸ **`MAP`** tab (or **`[START]`** ▸ **`MINI-MAP`**) | **Local Exploration Only (View-Only)**: Progressively draws visited rooms and `10×10`-tile chunks with tile-accurate terrain, corrosive water, walls, doorways, and landmark icons. Unvisited tiles remain hidden in fog of war. |
+| **Planet Map** | Interact **`[A]`** at an **Æther Waystation (`A`, Campfire)** ▸ **`PLANET MAP`** | **Planetary Fast Travel**: Displays the planetary atlas of regions, areas, and attuned Campfire Waystations on your current world, allowing rapid deployment between discovered sanctuaries. |
+| **Æther Map** | Interact **`[A]`** at a **Colossal Waygate (`Q`)** ▸ **`ÆTHER MAP`** | **Inter-World & Regional Fast Travel**: Opens the 20-world `u00` cosmic map for inter-world leaps and regional Waygate teleportation. |
+
+---
+
+### 5.4 Navigating the Æther Fog & Campfire Rest Lifecycle
 
 Beyond authored settlements and sanctums, Belldor frays into **Æther Fog**: shifting stretches of ruined country that fold back on themselves. There is no artificial wall at the edge of the map—only deeper fog.
 
@@ -378,7 +415,10 @@ Beyond authored settlements and sanctums, Belldor frays into **Æther Fog**: shi
 - **Authored Places & Corridors**: Main roads connect key places (Drop-Pod, Towns, Boss Sanctums, Waystations, Waygates) through corridor rooms that advance your route progress.
 - **Side Branches**: Stepping off the main route leads into side pockets holding supply caches, ambushes, or hidden mechanisms without advancing or resetting your main road progress.
 - **Going Deeper**: Venturing into the deep fog increases **Fog Density** step by step—mist hangs thicker, vision tightens, and enemies grow more aggressive. At any depth *before* the bottom, you can turn around and retrace your steps safely. Reaching the deepest room triggers a **Fog Boss**; defeating it clears the local fog and returns you to your last anchor on the main path.
-- **Æther Waystations (`Campfires / Monoliths`)**: Interact `[A]` with any Waystation to attune it for fast-travel, restore Frame Integrity, and repair Layer 2 Armor Durability.
+- **Campfire Rest Lifecycle (`Fade-to-Black Restoration, World Refresh & Story Hooks`)**:
+  - Interacting `[A]` with an **Æther Waystation (`A`, Campfire)** opens a dedicated in-world menu separating **Rest at Campfire** from **Planet Map**.
+  - **Rest Never Forces Fast Travel**: Choosing **Rest at Campfire** keeps you at your current campfire and initiates an immersive `1.3s` **fade-to-black / full-black midpoint / fade-in sequence**.
+  - **Full-Black Midpoint Refresh & Story Hooks**: At the full-black midpoint—before the screen fades back in—your mech's **Layer 1 Shields**, **Layer 2 Armor Durability**, and **Layer 3 Frame Integrity (`200 HP`)** are fully restored, Reactor Heat is vented, non-boss enemy patrols across the local zone refresh/respawn, and location- and flag-driven **Post-Rest Story Hooks** (`CAMPFIRE_REST_STORY_HOOKS`) evaluate to introduce new atmospheric lore captions, ambient encounters, or world state shifts upon waking.
 
 [↑ Back to Master Index](#-master-index-table-of-contents)
 
@@ -693,9 +733,9 @@ Project Orion features **101 weapons** organized into **8 Weapon Classes**, each
 
 ---
 
-## 8. Complete Canonical Feats Catalog (97 Feats)
+## 8. Complete Canonical Feats Catalog (118 Feats)
 
-Feats are unlocked by leveling your **6 Combat Disciplines** (`Tier I` at `Lv 2`, `Tier II` at `Lv 5`, `Tier III` at `Lv 9`, `Tier IV` at `Lv 14`, `Tier V` at `Lv 18`) and require specific **equipped hardware or weapon families**—never a class lock.
+Feats are organized across a **118-Node 6-Arm Hexagonal Constellation** (`FEATS` tab in the Satchel), unlocked by leveling your **6 Combat Disciplines** (`Tier I` at `Lv 2`, `Tier II` at `Lv 5`, `Tier III` at `Lv 9`, `Tier IV` at `Lv 14`, `Tier V` at `Lv 18`) and require specific **equipped hardware or functional weapon families**—never a class lock. The 118 feats comprise **95 Core Tier I–V Feats**, **1 Campaign Reward Feat (`Knight's Oath`)**, and **22 Historical Martial Specialist Feats & Stances**.
 
 ### 8.1 Tier I Feats
 
@@ -832,5 +872,36 @@ Feats are unlocked by leveling your **6 Combat Disciplines** (`Tier I` at `Lv 2`
 | Feat Name | How It Is Earned | Permanent Effect |
 | :--- | :--- | :--- |
 | **Knight's Oath** | Defeat **Sir Percival**, **Sir Tristan**, and **Sir Bors** in a combined encounter in Camelot Border Town | **`+10%` permanent bonus damage** against all Camelot enemies |
+
+---
+
+### 8.7 Specialist Feats & Historical Martial Stances (22 Doctrines)
+
+All **22 Specialist Feats** are distributed across the **6 Combat Discipline constellations** (`Guardian`, `Warrior`, `Rogue`, `Marauder`, `Cleric`, `Wizard`) at `Tier I`, `Tier II`, and `Tier III`. Both **`Custom` (`72`)** and **`Magitech` (`29`)** weapons qualify by their shared **Functional Weapon Type**. When a Specialist Feat is socketed and your equipped loadout and **Frame Load Bracket** (`Light`, `Medium`, or `Heavy`) satisfy its doctrine, the stance automatically overrides **Action 2**, **Action 4**, and **Action 5** with historical martial techniques and applies passive BCU/Inertia modifiers (toggleable between **Specialist Doctrine** and **Base Weapon Moveset** in the `LOADOUT` Slot Context Menu):
+
+| Feat Name | Historical Martial Stance | Discipline | Tier | Qualifying Functional Weapon Pairing (`Custom` or `Magitech`) | Required Load Bracket |
+| :--- | :--- | :---: | :---: | :--- | :---: |
+| **Sword & Buckler Specialist** | *I.33 Ward & Bind Stance* | Rogue | I | `Arming Sword` / `Spatha` / `Messer` / `Falchion` + `Buckler` / `Disc` / `Mote` | `Light` / `Medium` |
+| **Spear & Buckler Specialist** | *Darting Viper Stance* | Warrior | I | `Short Spear` / `Winged Spear` / `Partisan` / `Spetum` + `Buckler` / `Disc` / `Mote` | `Light` / `Medium` |
+| **Boarder Specialist** | *Brace & Cutlass Stance* | Rogue | I | `Falchion` / `Messer` / `Kilij` / `Dao` / `Khopesh` / `Wakizashi` ↔ `Bolt` / `Pulse` / `Blast` / `Arc Caster` | `Light` / `Medium` |
+| **Legionary Specialist** | *Pilum & Scutum Stance* | Guardian | II | `Spatha` / `Cinquedea` / `Arming Sword` + `Scutum` / `Tower` / `Norman` | `Medium` / `Heavy` |
+| **Limitanei Specialist** | *Plumbata & Spatha Stance* | Warrior | II | `Spatha` / `Arming Sword` / `Falchion` + `Plumbata` / `Bandolier` | `Light` / `Medium` |
+| **Spear & Shield Specialist** | *Hoplite Othismos Stance* | Guardian | II | `Short` / `Winged` / `Broad` / `Boar Spear` / `Partisan` + `Heater` / `Norman` / `Scutum` / `Tower` / `Corona` / `Rhom` | `Medium` / `Heavy` |
+| **Knightly Bastard Specialist** | *Fiore Posta di Donna Stance* | Guardian | II | `Bastard Sword` / `Arming Sword` / `Spatha` + `Heater` / `Norman` / `Corona` / `Rhom` | `Medium` / `Heavy` |
+| **Daisho Specialist** | *Niten Ichi-Ryu Stance* | Rogue | II | `Katana` / `Odachi` / `Dao` / `Kilij` + `Wakizashi` / `Cinquedea` | `Light` / `Medium` |
+| **Rapier & Dagger Specialist** | *Destreza & Main-Gauche Stance* | Rogue | II | `Spatha` / `Arming Sword` / `Messer` + `Cinquedea` / `Wakizashi` | `Light` / `Medium` |
+| **Shield-Breaker Specialist** | *Thracian Rhomphaia Stance* | Marauder | II | `Shotel` / `Falx` / `Khopesh` (+ optional Shield, Blade, or Carrier) | `Light` / `Medium` / `Heavy` |
+| **Viking Raider Specialist** | *Huscarl Skjaldborg Stance* | Marauder | II | `Battle Axe` / `Tomahawk` / `Parashu` / `Labrys` + `Norman` / `Heater` / `Buckler` / `Sheaf` / `Kaad` | `Medium` / `Heavy` |
+| **Mounted Archer Specialist** | *Parthian Cantabrian Stance* | Rogue | II | `Recurve` / `Reflex` / `Composite` / `Short` / `Compound Bow` + `Quiver` / `Yebira` | `Light` / `Medium` |
+| **Yeoman Longbow Specialist** | *Agincourt Stake-Line Stance* | Warrior | II | `Long Bow` / `Great Bow` / `Flat Bow` / `Self Bow` / `Compound Bow` + `Quiver` / `Sheaf` / `Bandolier` | `Medium` / `Heavy` |
+| **Repeating Arbalest Specialist** | *Chu-Ko-Nu Volley Stance* | Warrior | II | `Bolt Caster` / `Pulse Caster` / `Blast Caster` + `Bandolier` / `Quiver` / `Rack` / `Battery` | `Light` / `Medium` / `Heavy` |
+| **Scepter & Ward Specialist** | *Sanctum Hierophant Stance* | Cleric | II | `Mace` / `Cudgel` / `Hammer` / `Spike` + `Corona` / `Mote` / `Rhom` / `Disc` / `Buckler` | `Medium` / `Heavy` |
+| **Spellblade Specialist** | *Aether-Conduit Edge Stance* | Wizard | II | `Arming` / `Bastard Sword` / `Spatha` / `Katana` / `Khopesh` ↔ `Beam` / `Arc` / `Wave` / `Pulse` / `Nova Caster` | `Light` / `Medium` |
+| **Phalanx Specialist** | *Syntagma Sarissa Stance* | Guardian | III | `Pike` / `Lance` / `Broad Spear` + `Scutum` / `Tower` / `Norman` *(unlocks 1H sarissa + heavy shield)* | `Medium` / `Heavy` |
+| **Zweihander Specialist** | *Landsknecht Doppelsöldner Stance* | Marauder | III | `Zweihander` / `Flamberge` / `Executioner Sword` (`2H Grip`) | `Medium` / `Heavy` |
+| **Odachi Specialist** | *Nodachi Battojutsu Stance* | Warrior | III | `Odachi` / `Dadao` / `Katana` (`2H Grip`) | `Light` / `Medium` |
+| **Cataphract Specialist** | *Contus Clibanarii Stance* | Guardian | III | `Lance` / `Pike` / `Boar Spear` / `Mace` / `Hammer` (+ optional Shield or Mace) | `Heavy` |
+| **Archmage Staff Specialist** | *Astral Fulcrum Stance* | Wizard | III | `Spetum` / `Partisan` / `Short Spear` / `Stellar` / `Beam` / `Wave Caster` (+ optional `Mote` / `Corona` / `Battery`) | `Light` / `Medium` |
+| **Siege Battery Specialist** | *Bombardier Fire-Mission Stance* | Marauder | III | `Blast` / `Meteoric` / `Nova` / `Stellar` / `Beam Caster` + `Rack` / `Battery` / `Pangao` / `Plumbata` | `Heavy` |
 
 [↑ Back to Master Index](#-master-index-table-of-contents)

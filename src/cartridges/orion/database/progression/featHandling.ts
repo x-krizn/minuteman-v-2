@@ -603,15 +603,22 @@ export const FEAT_CONSTELLATION_NODES: FeatConstellationNode[] = (() => {
       if (count === 0) continue;
 
       const baseRadius = CONSTELLATION_TIER_RADII[tier];
-      const maxSpreadDeg = count <= 2 ? 18 : count === 3 ? 34 : count <= 5 ? 44 : 50;
+      const maxSpreadDeg =
+        count <= 2 ? 22 : count === 3 ? 36 : count <= 5 ? 48 : 54;
 
       armTierFeats.forEach((feat, localIdx) => {
         const t = count === 1 ? 0 : localIdx / (count - 1) - 0.5;
         const offsetDeg = t * maxSpreadDeg;
         const angleDeg = arm.angleDeg + offsetDeg;
         const angleRad = (angleDeg * Math.PI) / 180;
-        const staggerR =
-          count >= 3 && Math.abs(t) < 0.2 ? baseRadius - 6 : baseRadius + Math.abs(t) * 8;
+        let radialBandOffset = 0;
+        if (count >= 5) {
+          const band = localIdx % 3;
+          radialBandOffset = band === 0 ? -13 : band === 1 ? 0 : 13;
+        } else if (count >= 3) {
+          radialBandOffset = localIdx % 2 === 0 ? -7 : 7;
+        }
+        const staggerR = baseRadius + radialBandOffset;
         const x = Number((Math.cos(angleRad) * staggerR).toFixed(1));
         const y = Number((Math.sin(angleRad) * staggerR).toFixed(1));
         const handlingInfo = inferEquipmentClassesForFeat(feat);

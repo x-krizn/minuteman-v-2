@@ -416,12 +416,14 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
     }
   };
 
-  // Compute dynamic SVG viewBox from zoom & pan
+  // Compute dynamic SVG viewBox and semantic zoom node scale (`zoom^-0.72`)
+  // so inter-feat distance expands relative to node/label size as zoom increases up to 1000%
   const baseHalfSpan = 355;
   const halfSpan = baseHalfSpan / zoom;
   const vbMinX = -halfSpan - pan.x;
   const vbMinY = -halfSpan - pan.y;
   const vbSize = halfSpan * 2;
+  const nodeScale = zoom > 1 ? Math.pow(zoom, -0.72) : 1;
 
   const selectedSkillDef = PILOT_SKILL_DEFINITIONS.find(
     (s) => s.id === selectedNode.feat.requiredSkillId
@@ -710,9 +712,14 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
             <div className="flex items-center gap-1 bg-[#080d16]/90 border border-[#1e293b] rounded-xs p-0.5">
               <button
                 type="button"
-                onClick={() => setZoom((z) => Math.max(0.65, Number((z - 0.2).toFixed(2))))}
+                onClick={() =>
+                  setZoom((z) => {
+                    const step = Math.max(0.2, z * 0.25);
+                    return Math.max(0.65, Number((z - step).toFixed(2)));
+                  })
+                }
                 className="px-1.5 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#e2e8f0] rounded-xs text-[9px] font-bold cursor-pointer"
-                title="Zoom Out"
+                title="Zoom Out (Min 65%)"
               >
                 −
               </button>
@@ -723,15 +730,20 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
                   setPan({ x: 0, y: 0 });
                 }}
                 className="px-1.5 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#7dd3fc] rounded-xs text-[9px] font-bold cursor-pointer"
-                title="Reset Pan & Zoom"
+                title="Reset Pan & Zoom (100%)"
               >
                 {Math.round(zoom * 100)}% · FIT
               </button>
               <button
                 type="button"
-                onClick={() => setZoom((z) => Math.min(2.4, Number((z + 0.2).toFixed(2))))}
+                onClick={() =>
+                  setZoom((z) => {
+                    const step = Math.max(0.2, z * 0.25);
+                    return Math.min(10.0, Number((z + step).toFixed(2)));
+                  })
+                }
                 className="px-1.5 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#e2e8f0] rounded-xs text-[9px] font-bold cursor-pointer"
-                title="Zoom In"
+                title="Zoom In (Max 1000%)"
               >
                 +
               </button>
@@ -768,8 +780,11 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
               aria-label="113-Node 6-Sector Hexagonal Feat Constellation"
               onWheel={(e) => {
                 e.preventDefault();
-                const delta = e.deltaY < 0 ? 0.16 : -0.16;
-                setZoom((z) => Math.max(0.65, Math.min(2.4, Number((z + delta).toFixed(2)))));
+                setZoom((z) => {
+                  const step = Math.max(0.16, z * 0.18);
+                  const delta = e.deltaY < 0 ? step : -step;
+                  return Math.max(0.65, Math.min(10.0, Number((z + delta).toFixed(2))));
+                });
               }}
               onPointerDown={(e) => {
                 dragRef.current = {
@@ -790,8 +805,8 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
                 }
                 const scaleFactor = 2.1 / zoom;
                 setPan({
-                  x: Math.max(-280, Math.min(280, dragRef.current.origPanX + dx * scaleFactor)),
-                  y: Math.max(-280, Math.min(280, dragRef.current.origPanY + dy * scaleFactor)),
+                  x: Math.max(-355, Math.min(355, dragRef.current.origPanX + dx * scaleFactor)),
+                  y: Math.max(-355, Math.min(355, dragRef.current.origPanY + dy * scaleFactor)),
                 });
               }}
               onPointerUp={() => {
@@ -812,15 +827,15 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
                       r={r}
                       fill="none"
                       stroke="#1e293b"
-                      strokeWidth="0.9"
-                      strokeDasharray="4 4"
+                      strokeWidth={(0.9 * nodeScale).toFixed(3)}
+                      strokeDasharray={`${(4 * nodeScale).toFixed(2)} ${(4 * nodeScale).toFixed(2)}`}
                     />
                     <text
                       x="0"
-                      y={-r + 8}
+                      y={-r + 8 * nodeScale}
                       textAnchor="middle"
                       fill="#475569"
-                      fontSize="7"
+                      fontSize={(7 * nodeScale).toFixed(3)}
                       fontWeight="bold"
                     >
                       TIER {tier}
@@ -847,7 +862,7 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
                       y2={y2}
                       stroke={arm.color}
                       strokeOpacity="0.18"
-                      strokeWidth="1.2"
+                      strokeWidth={(1.2 * nodeScale).toFixed(3)}
                     />
                     <text
                       x={labelX}
@@ -855,7 +870,7 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
                       textAnchor="middle"
                       dominantBaseline="middle"
                       fill={arm.color}
-                      fontSize="8"
+                      fontSize={(8 * nodeScale).toFixed(3)}
                       fontWeight="bold"
                     >
                       {arm.compassCode} · {arm.skillId.toUpperCase()} [{arm.umbrella.toUpperCase()}]
@@ -878,6 +893,7 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
                   selectedNode.feat.id === toNode.feat.id ||
                   sameSelectedChain;
                 const dimmed = !fromNode.isHighlighted && !toNode.isHighlighted;
+                const baseEdgeWidth = touchesSelected ? 2.1 : bothEquipped ? 1.6 : 1.0;
 
                 return (
                   <line
@@ -893,7 +909,7 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
                           ? edge.color
                           : '#334155'
                     }
-                    strokeWidth={touchesSelected ? '2.1' : bothEquipped ? '1.6' : '1.0'}
+                    strokeWidth={(baseEdgeWidth * nodeScale).toFixed(3)}
                     strokeOpacity={
                       dimmed
                         ? 0.14
@@ -903,12 +919,16 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
                             ? 0.88
                             : 0.52
                     }
-                    strokeDasharray={edge.kind === 'bridge' ? '3 2' : undefined}
+                    strokeDasharray={
+                      edge.kind === 'bridge'
+                        ? `${(3 * nodeScale).toFixed(2)} ${(2 * nodeScale).toFixed(2)}`
+                        : undefined
+                    }
                   />
                 );
               })}
 
-              {/* Render All 113 Feat Hex Nodes */}
+              {/* Render All 113 Feat Hex Nodes with Semantic Zoom Scale (`nodeScale = zoom^-0.72`) */}
               {enrichedNodes.map((node) => {
                 const isSelected = selectedNode.feat.id === node.feat.id;
                 const isSameChain =
@@ -937,11 +957,16 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
                           : node.handlingRole === 'prerequisite'
                             ? node.armColor
                             : '#334155';
+                const maxLabelChars = zoom >= 2.2 ? 42 : zoom >= 1.6 ? 24 : 18;
+                const labelText =
+                  node.feat.name.length > maxLabelChars
+                    ? `${node.feat.name.slice(0, maxLabelChars - 2)}..`
+                    : node.feat.name;
 
                 return (
                   <g
                     key={node.feat.id}
-                    transform={`translate(${node.x}, ${node.y})`}
+                    transform={`translate(${node.x}, ${node.y}) scale(${nodeScale.toFixed(4)})`}
                     onClick={() => {
                       if (dragRef.current.moved) return;
                       soundSystem.playSelect();
@@ -1035,25 +1060,27 @@ export const SatchelFeatsTab: React.FC<SatchelFeatsTabProps> = ({
                         </text>
                       )}
 
-                    {/* Show Feat Name label when selected or zoomed in */}
+                    {/* Show Feat Name label with high-contrast dark stroke halo when selected or zoomed in */}
                     {(isSelected || isSameChain || zoom >= 1.35) && (
                       <text
                         x="0"
-                        y={hexR + 8}
+                        y={hexR + 7.5}
                         textAnchor="middle"
+                        paintOrder="stroke"
+                        stroke="#05080f"
+                        strokeWidth="2.4"
+                        strokeLinejoin="round"
                         fill={
                           isSelected
                             ? '#fde047'
                             : isSameChain
                               ? '#7dd3fc'
-                              : '#cbd5e1'
+                              : '#e2e8f0'
                         }
                         fontSize="5.8"
                         fontWeight="bold"
                       >
-                        {node.feat.name.length > 18
-                          ? `${node.feat.name.slice(0, 16)}..`
-                          : node.feat.name}
+                        {labelText}
                       </text>
                     )}
                   </g>

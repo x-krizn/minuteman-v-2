@@ -337,6 +337,51 @@ export interface InstalledWeaponComponentSlotRecord {
 }
 
 /**
+ * Lore-driven hardware architecture tier for `Magitech` Purist Relics (`Project Orion — Magitech Purist Weapon Overhaul.md` §2.1 & §5).
+ */
+export type MagitechArchitectureTier =
+  | 'SEALED_MONOLITH' // 0 open component slots + 1G
+  | 'SEMI_SEALED_ASSEMBLY' // 1 open component slot  + 1G
+  | 'MODULAR_FRAME_RELIC' // 2 open component slots + 1G
+  | 'REFERENCE_PLATFORM'; // 3 open component slots + 1G
+
+/**
+ * Purist Resonance Passive triggered when a Magitech Relic's paired Specialist Stance or Core Feat Chain is socketed (`Project Orion — Magitech Purist Weapon Overhaul.md` §3–§5).
+ */
+export interface PuristResonancePassive {
+  triggerType: 'SPECIALIST_STANCE' | 'CORE_FEAT_CHAIN';
+  /** Canonical Specialist Stance feat ID (e.g. `'spear_buckler_specialist'`) or Core Feat Chain ID (`'C-03'`, `'C-04'`, `'C-10'`, `'C-14'`, `'C-18'`) */
+  targetId: string;
+  /** Optional display title for the resonance doctrine (e.g. `'Darting Viper'`, `'Huscarl Skjaldborg'`) */
+  title?: string;
+  effectSummary: string;
+  /** Optional numeric combat modifiers activated while the Purist Resonance trigger is satisfied */
+  combatModifiers?: WeaponComponentStatModifiers;
+}
+
+/**
+ * Standalone TypeScript data schema for a Groomed `Magitech` Purist Weapon (`Project Orion — Magitech Purist Weapon Overhaul.md` §5).
+ */
+export interface MagitechWeaponDefinition {
+  id: string;
+  code: string;
+  name: string;
+  legacyEpithet?: string;
+  flavorText: string;
+  weaponClass: WeaponCategory;
+  functionalType: string;
+  baseDamageType: DamageType;
+  weight: number;
+  gripMode: '1H' | '2H' | 'VERSATILE' | 'DORSAL_CARRIER';
+  architectureTier: MagitechArchitectureTier;
+  openDomains: ModDomain[];
+  sealedDomains: Record<ModDomain, string | null>;
+  resonanceGemSlots: 1;
+  action1Signature: string;
+  puristResonance: PuristResonancePassive;
+}
+
+/**
  * Type contract for `WeaponComponentPartDefinition` (weapon component part definition) in `equipment.ts`.
  */
 export interface WeaponComponentPartDefinition {
@@ -481,6 +526,8 @@ export interface OrionEquipmentSlots {
     string,
     Partial<Record<0 | 1 | 2, InstalledWeaponComponentSlotRecord>>
   >;
+  /** Tracks the dedicated `1G` Factory Resonance Gem socketed on any Magitech Purist Relic (`weaponInstanceId -> GemId | null`) */
+  installedMagitechResonanceGems?: Record<string, GemId | null>;
   /** Inventory counts of salvaged `LOOTED` weapon components owned by the pilot (`partId -> count`) */
   ownedLootedComponents?: Record<string, number>;
   unlockedMods?: string[];
@@ -618,6 +665,28 @@ export interface WeaponDefinition {
   passiveLightBonus?: number;
   /** Default blade trail or projectile color when unmodified */
   bladeTrailColor?: string;
+  /** Manufacturer model code for Magitech Purist Relics (e.g. `'S-3'`, `'TI-110'`, `'B-55'`, `'CL-210'`) */
+  code?: string;
+  /** Preserved historical or campaign epithet (e.g. `'the Siegebreaker'`, `'this hallowed scepter'`, `'Grace Edge'`, `'the Aegis Charge Buckler'`) */
+  legacyEpithet?: string;
+  /** Codex and Armory flavor text quote */
+  flavorText?: string;
+  /** Exact Equip Weight (`WT`) specified by the Magitech Purist Weapon Overhaul table (`5`..`20 WT`) */
+  explicitEquipWeight?: number;
+  /** Magitech grip classification (`'1H' | '2H' | 'VERSATILE' | 'DORSAL_CARRIER'`) */
+  gripMode?: '1H' | '2H' | 'VERSATILE' | 'DORSAL_CARRIER';
+  /** Lore-driven hardware architecture tier (`0..3` open component slots + `1G` Resonance Gem Socket) */
+  architectureTier?: MagitechArchitectureTier;
+  /** Exposed physical component domains (`CONTACT`, `DELIVERY`, `REGULATION`) on this weapon (`0..3` domains) */
+  openDomains?: ModDomain[];
+  /** Sealed physical domain descriptions (`null` for open domains; non-null factory assembly description for sealed domains) */
+  sealedDomains?: Record<ModDomain, string | null>;
+  /** Number of dedicated Factory Resonance Gem Sockets (`1` for all Magitech Purist Relics) */
+  resonanceGemSlots?: 1;
+  /** Bespoke Action 1 moveset/emitter signature summary */
+  action1Signature?: string;
+  /** Purist Resonance Passive activated when the paired Specialist Stance or Core Feat Chain is socketed */
+  puristResonance?: PuristResonancePassive;
   description: string;
   lore: string;
   shotsPerChain: number; // 9 for Gladius Boltcaster

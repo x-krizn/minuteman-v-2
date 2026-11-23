@@ -7,7 +7,11 @@ import {
   ActionDefinition,
   DamageFamily,
   DamageType,
+  MagitechArchitectureTier,
+  MagitechWeaponDefinition,
   MeleeComboStepSpec,
+  ModDomain,
+  PuristResonancePassive,
   WeaponCategory,
   WeaponDefinition,
   WeaponTier,
@@ -189,19 +193,26 @@ export const WEAPON_FUNCTIONAL_TYPES_BY_CATEGORY: Record<WeaponCategory, readonl
 };
 
 const EXPLICIT_FUNCTIONAL_TYPE_BY_ID: Record<string, string> = {
-  // Shields
+  // Shields (Magitech Purist & Legacy Aliases)
+  ti110_aegis_buckler: 'Buckler',
   aegis_charge_buckler: 'Buckler',
   buckler_shield: 'Buckler',
   aux3_pnsy_rockweiler_buckler: 'Buckler',
   heater_shield: 'Heater',
   pavise_shield: 'Tower',
+  ti400_aegis_scutum: 'Scutum',
   utility_sanctum_font: 'Scutum',
+  ti350_radiant_corona: 'Corona',
   aux4_ti_radiant_sphere: 'Corona',
+  cl150_ward_mote: 'Mote',
+  vx10_eclipse_disc: 'Disc',
   aux3_ti_aegis_hardlight: 'Disc',
   aux3_arc_prismatic_barrier: 'Rhom',
 
   // Bows
-  m300_hasta: 'Compound Bow',
+  m300_cantabrian_recurve: 'Recurve Bow',
+  m300_hasta: 'Recurve Bow',
+  m450_arbalest_greatbow: 'Great Bow',
   m450_pilum: 'Great Bow',
   great_bow: 'Great Bow',
 
@@ -214,43 +225,62 @@ const EXPLICIT_FUNCTIONAL_TYPE_BY_ID: Record<string, string> = {
   b25_brushcutter: 'Bolt Caster',
   rs450_radiant_projector: 'Beam Caster',
   wz650_prism_lance: 'Beam Caster',
+  wz800_arclight_cannon: 'Beam Caster',
+  cl500_absolution: 'Beam Caster',
   cl700_sanctifier: 'Beam Caster',
   wz450_sparkstrike: 'Arc Caster',
-  arc_conductor: 'Pulse Caster',
+  arc_conductor: 'Arc Caster',
   cl350_litany: 'Pulse Caster',
-  cl500_absolution: 'Wave Caster',
   m350_mauler: 'Blast Caster',
-  wz800_arclight_cannon: 'Stellar Caster',
 
   // Spears
+  s3_viper_partisan: 'Short Spear',
   short_spear: 'Short Spear',
-  wz200_manacore_staff: 'Spetum',
-  ls900_swordspear: 'Partisan',
+  ls900_swordspear: 'Broad Spear',
+  wz200_manacore_staff: 'Partisan',
+  hl310_sarissa_pike: 'Pike',
   hl220_lightburst_lance: 'Lance',
   avalon_siege_lance: 'Lance',
 
   // Impact & Axes
+  cl210_sanctum_mace: 'Mace',
   mace: 'Mace',
   hallowed_scepter: 'Mace',
   hand_axe: 'Tomahawk',
+  b55_skjaldborg_axe: 'Battle Axe',
   siegebreaker: 'Battle Axe',
 
   // Blades: Curved
+  s4_whisper_wakizashi: 'Wakizashi',
+  s8_ghost_katana: 'Katana',
   s2_turbine_khopesh: 'Khopesh',
   khopesh: 'Khopesh',
+  s9_turbine_odachi: 'Odachi',
+  b40_ripper_falx: 'Falx',
 
   // Blades: Straight
+  s5_whisper_cinquedea: 'Cinquedea',
   s4_whisper_blade: 'Cinquedea',
-  s6_phantom_edge: 'Spatha',
+  n60_limitanei_spatha: 'Spatha',
+  n75_praetorian_spatha: 'Spatha',
+  sv22_stiletto_spatha: 'Spatha',
+  wz310_aether_spatha: 'Spatha',
   grace_edge: 'Spatha',
   tig_edge: 'Arming Sword',
   long_sword: 'Arming Sword',
+  hl110_dawnblade: 'Bastard Sword',
+  s6_phantom_messer: 'Messer',
+  s6_phantom_edge: 'Messer',
+  b80_doppelsoldner_greatsword: 'Zweihander',
   straight_09_executioner: 'Executioner Sword',
 
   // Carriers & Munitions
+  n20_rotary_bandolier: 'Bandolier',
   utility_phantom_shroud: 'Bandolier',
   aux4_rad_ether_vapor: 'Bandolier',
+  m10_bodkin_quiver: 'Quiver',
   quiver: 'Quiver',
+  vx15_ghost_yebira: 'Yebira',
   aux3_vx_eclipse_cloak: 'Yebira',
   aux4_vx_phase_shift: 'Yebira',
   aether_catalyst: 'Battery',
@@ -258,12 +288,13 @@ const EXPLICIT_FUNCTIONAL_TYPE_BY_ID: Record<string, string> = {
   aux4_arc_feedback_capacitor: 'Battery',
   utility_aegis_pulse: 'Battery',
   aux3_sanc_restoration_field: 'Battery',
-  lg950_tomahawk: 'Battery',
   utility_ichor_surge: 'Sheaf',
   utility_siege_brace: 'Sheaf',
   aux3_rad_kinetic_recycling: 'Sheaf',
   ln1200_avalanche: 'Rack',
+  lg950_tomahawk: 'Rack',
   aux4_pnsy_rough_rider_booster: 'Rack',
+  n12_plumbata_pod: 'Plumbata',
   aux4_sanc_martyrdom_plating: 'Pangao',
 };
 
@@ -324,6 +355,11 @@ export function resolveWeaponCategory(
   // 1. Shields
   if (
     cleanId.startsWith('shield_') ||
+    cleanId === 'ti110_aegis_buckler' ||
+    cleanId === 'ti400_aegis_scutum' ||
+    cleanId === 'ti350_radiant_corona' ||
+    cleanId === 'vx10_eclipse_disc' ||
+    cleanId === 'cl150_ward_mote' ||
     cleanId === 'aegis_charge_buckler' ||
     cleanId === 'buckler_shield' ||
     cleanId === 'heater_shield' ||
@@ -333,10 +369,12 @@ export function resolveWeaponCategory(
     return 'Shields';
   }
 
-  // 2. Bows (including M-300 Hasta Polybolos & M-450 Pilum Ballista)
+  // 2. Bows (including M-300 Cantabrian Recurve & M-450 Arbalest Greatbow)
   if (
     cleanId.startsWith('bow_') ||
     cleanId === 'great_bow' ||
+    cleanId === 'm300_cantabrian_recurve' ||
+    cleanId === 'm450_arbalest_greatbow' ||
     cleanId === 'm300_hasta' ||
     cleanId === 'm450_pilum' ||
     cleanCls.includes('bow') ||
@@ -346,11 +384,15 @@ export function resolveWeaponCategory(
     return 'Bows';
   }
 
-  // 8. Carriers & Munitions (including LN-1200 Avalanche Rocket System & LG-950 Tomahawk Missile System)
+  // 8. Carriers & Munitions (including N-12 Plumbata Pod, M-10 Bodkin Quiver, N-20 Rotary Bandolier, VX-15 Ghost Yebira, LN-1200 Avalanche, LG-950 Tomahawk)
   if (
     cleanId.startsWith('carrier_') ||
     cleanId === 'quiver' ||
     cleanId === 'aether_catalyst' ||
+    cleanId === 'n12_plumbata_pod' ||
+    cleanId === 'm10_bodkin_quiver' ||
+    cleanId === 'n20_rotary_bandolier' ||
+    cleanId === 'vx15_ghost_yebira' ||
     cleanId === 'ln1200_avalanche' ||
     cleanId === 'lg950_tomahawk' ||
     equipmentRole === 'quiver' ||
@@ -361,48 +403,67 @@ export function resolveWeaponCategory(
     return 'Carriers & Munitions';
   }
 
-  // 4. Spears (including LS-900 Swordspear, HL-220 Lightburst Lance, WZ-200 Manacore Staff)
+  // 4. Spears (including S-3 Viper Partisan, LS-900 Swordspear, HL-310 Sarissa Pike, HL-220 Lightburst Lance, WZ-200 Manacore Staff)
   if (
     cleanId.startsWith('spear_') ||
     cleanId === 'short_spear' ||
+    cleanId === 's3_viper_partisan' ||
     cleanId === 'ls900_swordspear' ||
+    cleanId === 'hl310_sarissa_pike' ||
     cleanId === 'hl220_lightburst_lance' ||
     cleanId === 'avalon_siege_lance' ||
     cleanId === 'wz200_manacore_staff' ||
     cleanCls.includes('polearm') ||
     cleanCls.includes('lance') ||
-    cleanCls.includes('spear')
+    cleanCls.includes('spear') ||
+    cleanCls.includes('pike') ||
+    cleanCls.includes('partisan')
   ) {
     return 'Spears';
   }
 
-  // 5. Impact & Axes (including Siegebreaker & Hallowed Scepter)
+  // 5. Impact & Axes (including B-55 Skjaldborg Axe & CL-210 Sanctum Mace)
   if (
     cleanId.startsWith('hafted_') ||
     cleanId === 'mace' ||
     cleanId === 'hand_axe' ||
+    cleanId === 'b55_skjaldborg_axe' ||
+    cleanId === 'cl210_sanctum_mace' ||
     cleanId === 'siegebreaker' ||
     cleanId === 'hallowed_scepter' ||
     cleanCls.includes('axe') ||
     cleanCls.includes('blunt') ||
+    cleanCls.includes('mace') ||
     cleanCls.includes('hybrid staff') ||
     cleanCls.includes('hammer')
   ) {
     return 'Impact & Axes';
   }
 
-  // 6. Blades: Curved (including S-2 Turbine Khopesh)
+  // 6. Blades: Curved (including S-9 Turbine Odachi, S-2 Turbine Khopesh, S-8 Ghost Katana, S-4 Whisper Wakizashi, B-40 Ripper Falx)
   if (
     cleanId.startsWith('curved_') ||
+    cleanId === 's9_turbine_odachi' ||
     cleanId === 's2_turbine_khopesh' ||
+    cleanId === 's8_ghost_katana' ||
+    cleanId === 's4_whisper_wakizashi' ||
+    cleanId === 'b40_ripper_falx' ||
     cleanId === 'khopesh'
   ) {
     return 'Blades: Curved';
   }
 
-  // 7. Blades: Straight (including TIG Edge, S-4 Whisper Blade, S-6 Phantom Edge, Grace Edge, Camelot Longsword)
+  // 7. Blades: Straight (including N-60 Limitanei Spatha, N-75 Praetorian Spatha, HL-110 Dawnblade, S-6 Phantom Messer, SV-22 Stiletto Spatha, S-5 Whisper Cinquedea, B-80 Doppelsöldner Greatsword, WZ-310 Aether Spatha)
   if (
     cleanId.startsWith('straight_') ||
+    cleanId === 'n60_limitanei_spatha' ||
+    cleanId === 'n75_praetorian_spatha' ||
+    cleanId === 'hl110_dawnblade' ||
+    cleanId === 's6_phantom_messer' ||
+    cleanId === 'sv22_stiletto_spatha' ||
+    cleanId === 's5_whisper_cinquedea' ||
+    cleanId === 'b80_doppelsoldner_greatsword' ||
+    cleanId === 'wz310_aether_spatha' ||
     cleanId === 'long_sword' ||
     cleanId === 'tig_edge' ||
     cleanId === 's4_whisper_blade' ||
@@ -654,6 +715,19 @@ export interface MagitechWeaponSkillSeed {
 export interface MagitechWeaponSeed {
   id: string;
   name: string;
+  code?: string;
+  legacyEpithet?: string;
+  flavorText?: string;
+  explicitEquipWeight?: number;
+  gripMode?: '1H' | '2H' | 'VERSATILE' | 'DORSAL_CARRIER';
+  allowOneHandGrip?: boolean;
+  allowSideSlot?: boolean;
+  architectureTier?: MagitechArchitectureTier;
+  openDomains?: ModDomain[];
+  sealedDomains?: Record<ModDomain, string | null>;
+  resonanceGemSlots?: 1;
+  action1Signature?: string;
+  puristResonance?: PuristResonancePassive;
   category?: WeaponCategory;
   weaponTier?: WeaponTier;
   archetypeNumber?: string;
@@ -695,6 +769,39 @@ export interface MagitechWeaponSeed {
     { name: string; dmg: number; cd: number; heat: number; dt?: DamageType; isBlock?: boolean; desc: string },
     { name: string; dmg: number; cd: number; heat: number; dt?: DamageType; desc: string }
   ];
+}
+
+/**
+ * Runtime validation ensuring a physical component can only be installed into
+ * an explicitly exposed domain on a Magitech Purist weapon (`Project Orion — Magitech Purist Weapon Overhaul.md` §5).
+ */
+export function canInstallComponentOnMagitech(
+  weapon: Pick<
+    MagitechWeaponDefinition,
+    'weaponClass' | 'openDomains' | 'sealedDomains'
+  >,
+  componentWeaponClass: WeaponCategory,
+  componentDomain: ModDomain,
+  installedDomains: ReadonlySet<ModDomain>
+): { ok: boolean; reason?: string } {
+  if (componentWeaponClass !== weapon.weaponClass) {
+    return { ok: false, reason: `Requires ${weapon.weaponClass} hardware.` };
+  }
+  if (!weapon.openDomains.includes(componentDomain)) {
+    const sealedLabel =
+      weapon.sealedDomains[componentDomain] ?? 'Factory-Sealed Assembly';
+    return {
+      ok: false,
+      reason: `${componentDomain} is sealed (${sealedLabel}).`,
+    };
+  }
+  if (installedDomains.has(componentDomain)) {
+    return {
+      ok: false,
+      reason: `${componentDomain} mount is already occupied.`,
+    };
+  }
+  return { ok: true };
 }
 
 /**
@@ -753,9 +860,39 @@ export function buildMagitechWeapon(seed: MagitechWeaponSeed): WeaponDefinition 
           : 4
       : undefined);
 
+  const resolvedOpenDomains: ModDomain[] =
+    seed.openDomains ??
+    (resolvedTier === 'unique' ? [] : ['CONTACT', 'DELIVERY', 'REGULATION']);
+  const resolvedArchitectureTier: MagitechArchitectureTier | undefined =
+    seed.architectureTier ??
+    (resolvedTier === 'unique'
+      ? resolvedOpenDomains.length === 0
+        ? 'SEALED_MONOLITH'
+        : resolvedOpenDomains.length === 1
+          ? 'SEMI_SEALED_ASSEMBLY'
+          : resolvedOpenDomains.length === 2
+            ? 'MODULAR_FRAME_RELIC'
+            : 'REFERENCE_PLATFORM'
+      : undefined);
+
   const rawWeapon: WeaponDefinition = {
     id: seed.id,
     name: seed.name,
+    code: seed.code,
+    legacyEpithet: seed.legacyEpithet,
+    flavorText: seed.flavorText,
+    explicitEquipWeight: seed.explicitEquipWeight,
+    gripMode: seed.gripMode,
+    allowOneHandGrip:
+      seed.allowOneHandGrip ??
+      (seed.gripMode === 'VERSATILE' ? true : undefined),
+    allowSideSlot: seed.allowSideSlot,
+    architectureTier: resolvedArchitectureTier,
+    openDomains: resolvedOpenDomains,
+    sealedDomains: seed.sealedDomains,
+    resonanceGemSlots: resolvedTier === 'unique' ? 1 : undefined,
+    action1Signature: seed.action1Signature || seed.skills[0].desc,
+    puristResonance: seed.puristResonance,
     category: resolvedCategory,
     weaponTier: resolvedTier,
     archetypeNumber: seed.archetypeNumber,
@@ -782,7 +919,9 @@ export function buildMagitechWeapon(seed: MagitechWeaponSeed): WeaponDefinition 
     passiveArmorBonus: seed.passiveArmorBonus,
     passiveLightBonus: seed.passiveLightBonus,
     bladeTrailColor: seed.bladeTrailColor,
-    description: `${seed.identity} (${resolvedCategory} · ${resolvedFunctionalType} · Subtype: ${subtypeLabel} · ${seed.weightClass.toUpperCase()} load).`,
+    description: `${seed.identity} (${resolvedCategory} · ${resolvedFunctionalType} · Subtype: ${subtypeLabel} · ${
+      seed.explicitEquipWeight ? `${seed.explicitEquipWeight} WT · ` : ''
+    }${seed.weightClass.toUpperCase()} load).`,
     lore: seed.lore,
     shotsPerChain: seed.shotsPerChain,
     damagePerShot: seed.damagePerShot,

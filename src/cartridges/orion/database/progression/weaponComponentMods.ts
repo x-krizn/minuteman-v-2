@@ -7,10 +7,13 @@ import {
   Action1Mode,
   Action1Override,
   DamageType,
+  FeatChainId,
   GemId,
   InstalledWeaponComponentSlotRecord,
+  MagitechArchitectureTier,
   ModDomain,
   OrionState,
+  PuristResonancePassive,
   WeaponCategory,
   WeaponComponentMod,
 } from '../../types';
@@ -21,11 +24,17 @@ import {
   parseEquipmentInstanceId,
 } from '../equipment/mod_naming';
 import {
+  canInstallComponentOnMagitech,
   getWeaponDefinition,
   resolveWeaponFunctionalType,
   WEAPON_REGISTRY,
 } from '../equipment/weapons';
 import { GEMSTONE_REGISTRY } from '../items/gemstones';
+import {
+  CANONICAL_FRAME_FEAT_CATALOG,
+  FEAT_CHAIN_NAMES,
+} from './canonical_feats';
+import { SPECIALIST_STANCE_LIST } from './specialistStances';
 import {
   BESPOKE_WEAPON_COMPONENT_BY_ID,
   BESPOKE_WEAPON_COMPONENT_CATALOG,
@@ -36,7 +45,7 @@ import {
 } from './weaponComponentCatalog';
 
 /**
- * Fully resolved runtime modification profile for a weapon instance (`Project Orion — Weapon Modification Overhaul Specification.md` §4).
+ * Fully resolved runtime modification profile for a weapon instance (`Project Orion — Magitech Purist Weapon Overhaul.md` & Custom Weapon Modification Overhaul).
  */
 export interface ResolvedWeaponModificationProfile {
   baseId: string;
@@ -44,6 +53,13 @@ export interface ResolvedWeaponModificationProfile {
   weaponClass: WeaponCategory;
   functionalType: string;
   isUniqueMagitech: boolean;
+  architectureTier?: MagitechArchitectureTier;
+  openDomains: ModDomain[];
+  sealedDomains: Record<ModDomain, string | null>;
+  resonanceGem: GemId | null;
+  puristResonance?: PuristResonancePassive;
+  puristResonanceActive: boolean;
+  puristResonanceTargetLabel: string;
   populatedSlotCount: number;
   semanticDisplayName: string;
   slotRecords: Record<0 | 1 | 2, InstalledWeaponComponentSlotRecord | null>;
@@ -267,7 +283,87 @@ export function getWeaponInstanceSlotRecords(
 }
 
 /**
- * Deterministically evaluates the complete runtime modification profile for any weapon instance (`Project Orion — Weapon Modification Overhaul Specification.md` §4).
+ * Resolves the dedicated `1G` Factory Resonance Gem socketed on a `Magitech` Purist Relic.
+ */
+export function getMagitechResonanceGem(
+  state: OrionState | undefined,
+  weaponInstanceId: string | null | undefined
+): GemId | null {
+  if (!weaponInstanceId) return null;
+  const { baseId, installedGems } = parseEquipmentInstanceId(weaponInstanceId);
+  const wDef = getWeaponDefinition(baseId) || getWeaponDefinition(weaponInstanceId);
+  if (!wDef || wDef.weaponTier !== 'unique') return null;
+
+  const map = state?.equipmentSlots?.installedMagitechResonanceGems;
+  if (map) {
+    if (weaponInstanceId in map) {
+      const g = map[weaponInstanceId];
+      return isCanonicalGemId(g) ? g : null;
+    }
+    if (baseId in map) {
+      const g = map[baseId];
+      return isCanonicalGemId(g) ? g : null;
+    }
+  }
+
+  // Fallback for legacy single-gem composite instance IDs when no open-domain components are installed
+  const slotRecords = getWeaponInstanceSlotRecords(state, weaponInstanceId);
+  const hasAnyComponent = Boolean(slotRecords[0] || slotRecords[1] || slotRecords[2]);
+  if (!hasAnyComponent && installedGems.length > 0 && isCanonicalGemId(installedGems[0])) {
+    return installedGems[0];
+  }
+  return null;
+}
+
+/**
+ * Evaluates whether a `Magitech` Purist Relic's `puristResonance` passive is currently active
+ * based on the pilot's socketed Specialist Martial Stance or Core Feat Chain (`C-03`, `C-04`, `C-10`, `C-14`, `C-18`).
+ */
+export function evaluateMagitechPuristResonance(
+  state: OrionState | undefined,
+  weaponInstanceId: string | null | undefined
+): {
+  active: boolean;
+  passive: PuristResonancePassive | null;
+  targetLabel: string;
+} {
+  if (!weaponInstanceId) {
+    return { active: false, passive: null, targetLabel: '' };
+  }
+  const { baseId } = parseEquipmentInstanceId(weaponInstanceId);
+  const wDef = getWeaponDefinition(baseId) || getWeaponDefinition(weaponInstanceId);
+  const passive = wDef?.puristResonance || null;
+  if (!passive) {
+    return { active: false, passive: null, targetLabel: '' };
+  }
+
+  const equippedFeats = state?.equippedFeats || [];
+  if (passive.triggerType === 'SPECIALIST_STANCE') {
+    const stanceDef = SPECIALIST_STANCE_LIST.find(
+      (s) => s.featId === passive.targetId
+    );
+    const featDef = CANONICAL_FRAME_FEAT_CATALOG.find(
+      (f) => f.id === passive.targetId
+    );
+    const targetLabel =
+      stanceDef?.featName || featDef?.name || passive.targetId;
+    const active = equippedFeats.includes(passive.targetId);
+    return { active, passive, targetLabel };
+  }
+
+  // CORE_FEAT_CHAIN
+  const chainId = passive.targetId as FeatChainId;
+  const chainName = FEAT_CHAIN_NAMES[chainId] || passive.targetId;
+  const targetLabel = `Core Chain ${chainId} (${chainName})`;
+  const active = equippedFeats.some((fid) => {
+    const f = CANONICAL_FRAME_FEAT_CATALOG.find((item) => item.id === fid);
+    return f?.chainId === chainId;
+  });
+  return { active, passive, targetLabel };
+}
+
+/**
+ * Deterministically evaluates the complete runtime modification profile for any weapon instance (`Project Orion — Magitech Purist Weapon Overhaul.md` & Custom Weapon Modification Overhaul).
  * Pure function: does not mutate `state: OrionState`.
  */
 export function resolveWeaponModificationProfile(
@@ -295,6 +391,31 @@ export function resolveWeaponModificationProfile(
     baseDef?.name
   );
   const isUniqueMagitech = Boolean(baseDef?.weaponTier === 'unique');
+  const openDomains: ModDomain[] = isUniqueMagitech
+    ? baseDef?.openDomains ?? ['REGULATION']
+    : ['CONTACT', 'DELIVERY', 'REGULATION'];
+  const sealedDomains: Record<ModDomain, string | null> = isUniqueMagitech
+    ? baseDef?.sealedDomains ?? {
+        CONTACT: openDomains.includes('CONTACT') ? null : 'Factory-Sealed Contact Assembly',
+        DELIVERY: openDomains.includes('DELIVERY') ? null : 'Factory-Sealed Delivery Assembly',
+        REGULATION: openDomains.includes('REGULATION') ? null : 'Factory-Sealed Regulation Assembly',
+      }
+    : { CONTACT: null, DELIVERY: null, REGULATION: null };
+  const architectureTier = isUniqueMagitech
+    ? baseDef?.architectureTier ??
+      (openDomains.length === 0
+        ? 'SEALED_MONOLITH'
+        : openDomains.length === 1
+          ? 'SEMI_SEALED_ASSEMBLY'
+          : openDomains.length === 2
+            ? 'MODULAR_FRAME_RELIC'
+            : 'REFERENCE_PLATFORM')
+    : undefined;
+  const resonanceGem = isUniqueMagitech ? getMagitechResonanceGem(state, fallbackId) : null;
+  const resonanceEval = isUniqueMagitech
+    ? evaluateMagitechPuristResonance(state, fallbackId)
+    : { active: false, passive: null, targetLabel: '' };
+
   const baseDamageType: DamageType = baseDef?.primaryDamageType || 'Pierce';
   const baseAction1Mode = resolveWeaponClassAction1Mode(weaponClass);
 
@@ -305,11 +426,19 @@ export function resolveWeaponModificationProfile(
   let regulationMod: WeaponComponentMod | null = null;
   const socketedGems: GemId[] = [];
 
+  if (resonanceGem) {
+    socketedGems.push(resonanceGem);
+  }
+
   for (const idx of [0, 1, 2] as const) {
     const rec = slotRecords[idx];
     if (!rec) continue;
     const mod = BESPOKE_WEAPON_COMPONENT_BY_ID[rec.partId];
-    if (mod && mod.weaponClass === weaponClass) {
+    if (
+      mod &&
+      mod.weaponClass === weaponClass &&
+      (!isUniqueMagitech || openDomains.includes(mod.domain))
+    ) {
       installedMods.push({ slotIndex: idx, mod });
       if (mod.domain === 'CONTACT' && !contactMod) contactMod = mod;
       if (mod.domain === 'DELIVERY' && !deliveryMod) deliveryMod = mod;
@@ -322,8 +451,8 @@ export function resolveWeaponModificationProfile(
     }
   }
 
-  // If no component slot records exist yet (e.g. Unique Magitech 1G resonance gem or direct gem instance ID)
-  if (installedMods.length === 0 && parsedGems.length > 0) {
+  // If no component slot records exist yet on a Custom weapon with direct gem instance ID
+  if (!isUniqueMagitech && installedMods.length === 0 && parsedGems.length > 0) {
     for (const g of parsedGems) {
       socketedGems.push(g);
     }
@@ -332,7 +461,11 @@ export function resolveWeaponModificationProfile(
   const populatedSlotCount =
     installedMods.length > 0
       ? installedMods.length
-      : Math.max(parsedPopulatedCount, parsedGems.length);
+      : isUniqueMagitech
+        ? resonanceGem
+          ? 1
+          : 0
+        : Math.max(parsedPopulatedCount, parsedGems.length);
 
   // Rule 2.3: Resolve Effective Damage Type deterministically from CONTACT domain component only
   let effectiveDamageType: DamageType =
@@ -462,7 +595,135 @@ export function resolveWeaponModificationProfile(
     }
   }
 
-  // Apply resonance modifiers from Gemstones socketed inside the installed components
+  // Apply active Magitech Purist Resonance bonuses when the paired Specialist Stance or Core Feat Chain is socketed
+  if (isUniqueMagitech && resonanceEval.active) {
+    switch (baseId) {
+      case 's3_viper_partisan':
+        tempoDelta += 0.12;
+        break;
+      case 'ti110_aegis_buckler':
+        impulseMultDelta += 0.15;
+        break;
+      case 'n60_limitanei_spatha':
+      case 'n12_plumbata_pod':
+        bcuMultDelta += 0.15;
+        break;
+      case 'm450_arbalest_greatbow':
+        thrPierceDelta += 6;
+        heatVentOnHit += 3;
+        break;
+      case 'm10_bodkin_quiver':
+        drawTimeMultDelta -= 0.1;
+        tempoDelta += 0.1;
+        break;
+      case 'n55_gladius':
+      case 'n20_rotary_bandolier':
+        heatVentOnHit += 2;
+        recoilMultDelta -= 0.25;
+        break;
+      case 'n75_praetorian_spatha':
+        thrPierceDelta += 4;
+        stabilityDelta += 4;
+        break;
+      case 'ti400_aegis_scutum':
+        impulseMultDelta += 0.25;
+        stabilityDelta += 4;
+        break;
+      case 'ls900_swordspear':
+        cleaveArcMultDelta += 0.2;
+        break;
+      case 'hl110_dawnblade':
+      case 'ti350_radiant_corona':
+        heatVentOnHit += 2;
+        heatVentOnBlock += 5;
+        break;
+      case 's9_turbine_odachi':
+        lungeMultDelta += 0.25;
+        break;
+      case 'hl310_sarissa_pike':
+        targetMuStripOnHit = 1.0;
+        break;
+      case 'hl220_lightburst_lance':
+        muChargeMultDelta += 0.25;
+        impulseMultDelta += 0.2;
+        break;
+      case 's6_phantom_messer':
+      case 'vx10_eclipse_disc':
+        heatVentOnBlock += 5;
+        parryWindowBonusSec += 0.05;
+        break;
+      case 's2_turbine_khopesh':
+      case 'sv12_viper':
+        reloadTimeMultiplier *= 0.85;
+        break;
+      case 's8_ghost_katana':
+      case 's4_whisper_wakizashi':
+        thrPierceDelta += 3;
+        break;
+      case 'sv22_stiletto_spatha':
+      case 's5_whisper_cinquedea':
+        thrPierceDelta += 5;
+        heatVentOnHit += 3;
+        parryWindowBonusSec += 0.05;
+        break;
+      case 'm300_cantabrian_recurve':
+      case 'vx15_ghost_yebira':
+        drawTimeMultDelta -= 0.18;
+        eliminateMoveAimSway = true;
+        break;
+      case 'b40_ripper_falx':
+        durShredMultDelta += 0.25;
+        shieldDmgMultDelta += 0.2;
+        break;
+      case 'b55_skjaldborg_axe':
+        heatVentOnHit += 5;
+        break;
+      case 'b80_doppelsoldner_greatsword':
+        impulseMultDelta += 0.25;
+        heatVentOnHit += 4;
+        break;
+      case 'm350_mauler':
+      case 'ln1200_avalanche':
+      case 'lg950_tomahawk':
+        reloadTimeMultiplier *= 0.85;
+        break;
+      case 'wz310_aether_spatha':
+      case 'wz450_sparkstrike':
+      case 'arc_conductor':
+        bcuMultDelta += 0.15;
+        break;
+      case 'cl210_sanctum_mace':
+      case 'cl150_ward_mote':
+        guardMitigationMultDelta += 0.15;
+        heatVentOnBlock += 3;
+        break;
+      case 'wz200_manacore_staff':
+      case 'wz650_prism_lance':
+        cleaveArcMultDelta += 0.2;
+        break;
+      case 'sr440_shadowfang':
+        thrPierceDelta += 6;
+        bcuMultDelta += 0.2;
+        break;
+      case 'wz800_arclight_cannon':
+        durShredMultDelta += 0.2;
+        heatCostMultDelta -= 0.15;
+        break;
+      case 'b25_brushcutter':
+        rangedImpulseMultDelta += 0.2;
+        shieldDmgMultDelta += 0.15;
+        break;
+      case 'rs450_radiant_projector':
+        cleaveArcMultDelta += 0.2;
+        break;
+      case 'cl500_absolution':
+        heatVentOnHit += 3;
+        bcuMultDelta += 0.12;
+        break;
+    }
+  }
+
+  // Apply resonance modifiers from Gemstones (1G Factory Resonance Gem + Gems socketed inside open-domain components)
   for (const g of socketedGems) {
     weightDelta += GEM_SOCKET_WEIGHT_DELTA[g] ?? 0;
     switch (g) {
@@ -516,11 +777,23 @@ export function resolveWeaponModificationProfile(
     Math.max(0.7, Math.min(1.3, rawTempoMultiplier)).toFixed(3)
   );
 
-  const semanticDisplayName = formatModifiedEquipmentName(
-    baseDef?.name || baseId,
-    slotTokens,
-    populatedSlotCount
-  );
+  // §2.2 Rule 3: Semantic Naming for Modified Magitech Relics (<BaseName> Custom, +II, +III)
+  let semanticDisplayName: string;
+  if (isUniqueMagitech && installedMods.length > 0) {
+    const tierSuffix =
+      installedMods.length >= 3
+        ? ' +III'
+        : installedMods.length === 2
+          ? ' +II'
+          : '';
+    semanticDisplayName = `${baseDef?.name || baseId} Custom${tierSuffix}`;
+  } else {
+    semanticDisplayName = formatModifiedEquipmentName(
+      baseDef?.name || baseId,
+      slotTokens,
+      populatedSlotCount
+    );
+  }
 
   const resolvedStatModifiers = {
     weightDelta,
@@ -587,9 +860,15 @@ export function resolveWeaponModificationProfile(
   ).map((slotIndex) => {
     const rec = slotRecords[slotIndex];
     const comp = rec ? BESPOKE_WEAPON_COMPONENT_BY_ID[rec.partId] || null : null;
+    const validComp =
+      comp &&
+      comp.weaponClass === weaponClass &&
+      (!isUniqueMagitech || openDomains.includes(comp.domain))
+        ? comp
+        : null;
     return {
       slotIndex,
-      component: comp && comp.weaponClass === weaponClass ? comp : null,
+      component: validComp,
       socketedGems: rec ? [...rec.socketedGems] : [],
     };
   });
@@ -600,6 +879,13 @@ export function resolveWeaponModificationProfile(
     weaponClass,
     functionalType,
     isUniqueMagitech,
+    architectureTier,
+    openDomains,
+    sealedDomains,
+    resonanceGem,
+    puristResonance: resonanceEval.passive || undefined,
+    puristResonanceActive: resonanceEval.active,
+    puristResonanceTargetLabel: resonanceEval.targetLabel,
     populatedSlotCount,
     occupiedSlotCount: populatedSlotCount,
     semanticDisplayName,
@@ -631,8 +917,8 @@ export function resolveWeaponModificationProfile(
 /**
  * Validates whether a bespoke weapon component (`candidatePartId`) can be installed into `targetSlotIndex` (`0 | 1 | 2`)
  * on `weaponInstanceId`, enforcing:
- * 1. Custom Weapon Scope (`weaponTier !== 'unique'`)
- * 2. Weapon Class Match (`mod.weaponClass === weapon.category`)
+ * 1. Weapon Class Match (`mod.weaponClass === weapon.category`)
+ * 2. Magitech Sealed vs. Exposed Domain Rules (`canInstallComponentOnMagitech` when `weaponTier === 'unique'`)
  * 3. Domain Uniqueness Guardrail (at most one component per `CONTACT`, `DELIVERY`, or `REGULATION` domain)
  * 4. Single-Behavior Guardrail (at most one `BEHAVIORAL` Action 1 override)
  * 5. Mode Compatibility Guardrail (`requiresMode` matches the weapon's Action 1 mode)
@@ -662,14 +948,6 @@ export function validateWeaponComponentInstallation(
       conflictingBehavioralSlotIndex: null,
     };
   }
-  if (wDef.weaponTier === 'unique') {
-    return {
-      valid: false,
-      reason: 'Unique Magitech weapons have fixed internal components (1 Resonance Gem Socket only)',
-      conflictingDomainSlotIndex: null,
-      conflictingBehavioralSlotIndex: null,
-    };
-  }
   if (wDef.category !== mod.weaponClass) {
     return {
       valid: false,
@@ -677,6 +955,55 @@ export function validateWeaponComponentInstallation(
       conflictingDomainSlotIndex: null,
       conflictingBehavioralSlotIndex: null,
     };
+  }
+
+  const slotRecords = getWeaponInstanceSlotRecords(state, weaponInstanceId);
+  const otherInstalledDomains = new Set<ModDomain>();
+  let conflictingDomainSlotIndex: 0 | 1 | 2 | null = null;
+  let conflictingBehavioralSlotIndex: 0 | 1 | 2 | null = null;
+
+  for (const idx of [0, 1, 2] as const) {
+    if (idx === targetSlotIndex) continue;
+    const rec = slotRecords[idx];
+    if (!rec) continue;
+    const otherMod = BESPOKE_WEAPON_COMPONENT_BY_ID[rec.partId];
+    if (!otherMod) continue;
+    otherInstalledDomains.add(otherMod.domain);
+    if (otherMod.domain === mod.domain) {
+      conflictingDomainSlotIndex = idx;
+    }
+    if (
+      mod.action1Override?.kind === 'BEHAVIORAL' &&
+      otherMod.action1Override?.kind === 'BEHAVIORAL'
+    ) {
+      conflictingBehavioralSlotIndex = idx;
+    }
+  }
+
+  // Enforce Magitech Sealed vs. Exposed Domain rules (§2.2 & §5)
+  if (wDef.weaponTier === 'unique') {
+    const magitechCheck = canInstallComponentOnMagitech(
+      {
+        weaponClass: wDef.category || mod.weaponClass,
+        openDomains: wDef.openDomains || [],
+        sealedDomains: wDef.sealedDomains || {
+          CONTACT: 'Factory-Sealed Assembly',
+          DELIVERY: 'Factory-Sealed Assembly',
+          REGULATION: 'Factory-Sealed Assembly',
+        },
+      },
+      mod.weaponClass,
+      mod.domain,
+      otherInstalledDomains
+    );
+    if (!magitechCheck.ok) {
+      return {
+        valid: false,
+        reason: magitechCheck.reason || `${mod.domain} is factory-sealed on ${wDef.name}.`,
+        conflictingDomainSlotIndex,
+        conflictingBehavioralSlotIndex,
+      };
+    }
   }
 
   const baseAction1Mode = resolveWeaponClassAction1Mode(wDef.category);
@@ -690,27 +1017,6 @@ export function validateWeaponComponentInstallation(
       conflictingDomainSlotIndex: null,
       conflictingBehavioralSlotIndex: null,
     };
-  }
-
-  const slotRecords = getWeaponInstanceSlotRecords(state, weaponInstanceId);
-  let conflictingDomainSlotIndex: 0 | 1 | 2 | null = null;
-  let conflictingBehavioralSlotIndex: 0 | 1 | 2 | null = null;
-
-  for (const idx of [0, 1, 2] as const) {
-    if (idx === targetSlotIndex) continue;
-    const rec = slotRecords[idx];
-    if (!rec) continue;
-    const otherMod = BESPOKE_WEAPON_COMPONENT_BY_ID[rec.partId];
-    if (!otherMod) continue;
-    if (otherMod.domain === mod.domain) {
-      conflictingDomainSlotIndex = idx;
-    }
-    if (
-      mod.action1Override?.kind === 'BEHAVIORAL' &&
-      otherMod.action1Override?.kind === 'BEHAVIORAL'
-    ) {
-      conflictingBehavioralSlotIndex = idx;
-    }
   }
 
   if (conflictingDomainSlotIndex !== null) {
@@ -856,6 +1162,16 @@ function transitionWeaponInstanceState(
   eq.unlockedEquipment = eq.unlockedEquipment || [];
   eq.installedWeaponComponentSlots = eq.installedWeaponComponentSlots || {};
   eq.installedWeaponComponents = eq.installedWeaponComponents || {};
+  eq.installedMagitechResonanceGems = eq.installedMagitechResonanceGems || {};
+
+  // Carry over dedicated 1G Factory Resonance Gem if transitioning a Magitech weapon instance ID
+  if (
+    oldInstanceId in eq.installedMagitechResonanceGems &&
+    !(newInstanceId in eq.installedMagitechResonanceGems)
+  ) {
+    eq.installedMagitechResonanceGems[newInstanceId] =
+      eq.installedMagitechResonanceGems[oldInstanceId];
+  }
 
   // Store updated 3-slot records under newInstanceId
   const hasAnyRecord = Boolean(
@@ -897,6 +1213,7 @@ function transitionWeaponInstanceState(
     );
     delete eq.installedWeaponComponentSlots[oldInstanceId];
     delete eq.installedWeaponComponents[oldInstanceId];
+    delete eq.installedMagitechResonanceGems[oldInstanceId];
   }
 
   eq.ownedWeaponCounts[newInstanceId] =
@@ -976,8 +1293,9 @@ function addGemsToInventory(
 
 /**
  * Installs or replaces a Bespoke Weapon Component (`partId`) in `slotIndex` (`0 | 1 | 2`) on `sourceInstanceId`:
- * - Enforces non-sequential slot installation, domain uniqueness (`CONTACT`, `DELIVERY`, `REGULATION`), and Action 1 behavioral safety.
- * - If `autoSwapDomainSlot` is true and another slot holds the same domain, automatically relocates/replaces that domain slot.
+ * - Supports both `Custom` weapons (`3` open domains) and `Magitech` Purist Relics (`0` to `3` open domains governed by `openDomains`).
+ * - Enforces non-sequential slot installation, domain uniqueness (`CONTACT`, `DELIVERY`, `REGULATION`), sealed-domain protection, and Action 1 behavioral safety.
+ * - If `autoReplaceConflictingDomain` is true and another slot holds the same domain, automatically relocates/replaces that domain slot.
  * - For `CRAFTED` parts: deducts `recipe.scrapCost` from `state.salvageScrap` and `recipe.gemstoneCount` from inventory.
  * - For `LOOTED` parts: consumes `1` copy from `state.equipmentSlots.ownedLootedComponents` (and refunds any displaced `LOOTED` part).
  * - Preserves existing socketed gems in that slot up to `mod.maxGemSlots` (refunding overflow gems to inventory).
@@ -997,10 +1315,7 @@ export function installBespokeWeaponComponent(
   const { baseId } = parseEquipmentInstanceId(sourceInstanceId);
   const wDef =
     getWeaponDefinition(baseId) || getWeaponDefinition(sourceInstanceId);
-  if (!wDef || wDef.weaponTier === 'unique') {
-    ctx?.say(
-      'UNIQUE MAGITECH WEAPONS HAVE FIXED INTERNAL COMPONENTS (1 GEM SOCKET ONLY)'
-    );
+  if (!wDef) {
     return null;
   }
 
@@ -1336,6 +1651,100 @@ export function unsocketGemFromWeaponComponent(
     `UNSOCKETED ${gName.toUpperCase()} FROM ${mod.name.toUpperCase()} (REFUNDED TO INVENTORY)`
   );
   return newInstanceId;
+}
+
+/**
+ * Sockets a Gemstone (`gemId`) into a `Magitech` Purist Relic's dedicated `1G` Factory Resonance Gem Socket.
+ * Works independently of the relic's `0` to `3` open physical component mounts (`openDomains`).
+ * Mutates `state: OrionState`.
+ */
+export function socketResonanceGemIntoMagitechWeapon(
+  state: OrionState,
+  sourceInstanceId: string,
+  gemId: GemId,
+  ctx?: { say: (text: string) => void }
+): string | null {
+  if (!state.equipmentSlots || !isCanonicalGemId(gemId)) return null;
+  const { baseId } = parseEquipmentInstanceId(sourceInstanceId);
+  const wDef =
+    getWeaponDefinition(baseId) || getWeaponDefinition(sourceInstanceId);
+  if (!wDef || wDef.weaponTier !== 'unique') {
+    return null;
+  }
+
+  const prevGem = getMagitechResonanceGem(state, sourceInstanceId);
+  if (prevGem === gemId) return sourceInstanceId;
+
+  const isFreeSandbox =
+    Boolean(state.bypassProgressionGates) || state.room === '-4,0';
+  if (!isFreeSandbox) {
+    if (!hasEnoughGemsInInventory(state, gemId, 1)) {
+      const gName = GEMSTONE_REGISTRY[gemId]?.name || gemId;
+      ctx?.say(`REQUIRES 1 ${gName.toUpperCase()} IN INVENTORY TO SOCKET`);
+      return null;
+    }
+    deductGemsFromInventory(state, gemId, 1);
+    if (isCanonicalGemId(prevGem)) {
+      addGemsToInventory(state, prevGem, 1);
+    }
+  }
+
+  state.equipmentSlots.installedMagitechResonanceGems =
+    state.equipmentSlots.installedMagitechResonanceGems || {};
+  state.equipmentSlots.installedMagitechResonanceGems[sourceInstanceId] = gemId;
+  state.equipmentSlots.installedMagitechResonanceGems[baseId] = gemId;
+
+  // Record unlock tag for post-tutorial level progression
+  state.equipmentSlots.unlockedMods = state.equipmentSlots.unlockedMods || [];
+  const unlockTag = `wpn_gem:${baseId}::${gemId}`;
+  if (!state.equipmentSlots.unlockedMods.includes(unlockTag)) {
+    state.equipmentSlots.unlockedMods.push(unlockTag);
+  }
+
+  const gName = GEMSTONE_REGISTRY[gemId]?.name || gemId;
+  ctx?.say(
+    `SOCKETED ${gName.toUpperCase()} INTO ${wDef.name.toUpperCase()} [1G FACTORY RESONANCE SOCKET]`
+  );
+  return sourceInstanceId;
+}
+
+/**
+ * Unsockets the Gemstone from a `Magitech` Purist Relic's dedicated `1G` Factory Resonance Gem Socket,
+ * refunding the Gemstone to the pilot's inventory.
+ * Mutates `state: OrionState`.
+ */
+export function unsocketResonanceGemFromMagitechWeapon(
+  state: OrionState,
+  sourceInstanceId: string,
+  ctx?: { say: (text: string) => void }
+): string | null {
+  if (!state.equipmentSlots) return null;
+  const { baseId } = parseEquipmentInstanceId(sourceInstanceId);
+  const wDef =
+    getWeaponDefinition(baseId) || getWeaponDefinition(sourceInstanceId);
+  if (!wDef || wDef.weaponTier !== 'unique') {
+    return null;
+  }
+
+  const removedGem = getMagitechResonanceGem(state, sourceInstanceId);
+  if (!isCanonicalGemId(removedGem)) return null;
+
+  const isFreeSandbox =
+    Boolean(state.bypassProgressionGates) || state.room === '-4,0';
+  if (!isFreeSandbox) {
+    addGemsToInventory(state, removedGem, 1);
+  }
+
+  state.equipmentSlots.installedMagitechResonanceGems =
+    state.equipmentSlots.installedMagitechResonanceGems || {};
+  state.equipmentSlots.installedMagitechResonanceGems[sourceInstanceId] = null;
+  state.equipmentSlots.installedMagitechResonanceGems[baseId] = null;
+
+  const gName = GEMSTONE_REGISTRY[removedGem]?.name || removedGem;
+  ctx?.say(
+    `UNSOCKETED ${gName.toUpperCase()} FROM ${wDef.name.toUpperCase()} [1G FACTORY RESONANCE SOCKET]`
+  );
+  return sourceInstanceId;
 }
 
 export {

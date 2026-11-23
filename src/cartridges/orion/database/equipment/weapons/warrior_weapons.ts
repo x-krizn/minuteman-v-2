@@ -7,24 +7,42 @@ import { WeaponDefinition } from '../../../types';
 import { LONG_SWORD_STRIP_BASE64 } from './base_sprites';
 import { buildMagitechWeapon } from './builder';
 
-// ─── WARRIOR / ASSAULT LINEAGE MAGITECH WEAPONS ─────────────────────────────
+// ─── WARRIOR / ASSAULT LINEAGE MAGITECH PURIST RELICS (§3.1) ────────────────
 
 /**
- * Canonical database definition for `n55GladiusWeapon` (`N-55 Gladius`, id `'n55_gladius'`, load `'medium'`) — BCU reference weapon, burst-fire stabilization.
+ * Canonical database definition for `n55GladiusWeapon` (`N-55 Gladius`, id `'n55_gladius'`, `11 WT`, `3` Open Slots: `CONTACT`, `DELIVERY`, `REGULATION` + `1G`).
+ * Paired Specialist Stance: `Repeating Arbalest` (`repeating_arbalest_specialist`, Tier II).
  */
 export const n55GladiusWeapon = buildMagitechWeapon({
   id: 'n55_gladius',
+  code: 'N-55',
   name: 'N-55 Gladius',
-  weaponClass: 'Bolter',
+  weaponClass: 'Bolt Caster',
   primaryDamageType: 'Impact',
   weightClass: 'medium',
+  explicitEquipWeight: 11,
+  gripMode: '1H',
+  architectureTier: 'REFERENCE_PLATFORM',
+  openDomains: ['CONTACT', 'DELIVERY', 'REGULATION'],
+  sealedDomains: {
+    CONTACT: null,
+    DELIVERY: null,
+    REGULATION: null,
+  },
+  action1Signature: '3-round stabilized kinetic burst salvo (BCU = 54 reference bolter).',
+  puristResonance: {
+    triggerType: 'SPECIALIST_STANCE',
+    targetId: 'repeating_arbalest_specialist',
+    effectSummary: 'Chu-Ko-Nu Volley: Firing from a dorsal carrier vents heat on the next bolt burst.',
+  },
+  flavorText: 'Warrior BCU = 54 reference bolter built on an open 3-domain military rail architecture.',
   skillCount: 3,
   loadoutSlots: ['Weapon 1', 'Weapon 2'],
   equipmentRole: 'ranged',
   handing: '1-hand',
   bladeTrailColor: '#f8fafc',
-  identity: 'BCU reference weapon, burst-fire stabilization',
-  lore: 'Standard-issue BCU reference Bolter engineered for disciplined 9-round kinetic salvos and recoil-stabilized frontline fire.',
+  identity: 'Reference Platform · Repeating Arbalest Stance (11 WT · 3 Open Mounts + 1G)',
+  lore: 'Standard-issue BCU reference Bolt Caster engineered for disciplined 3-round kinetic burst salvos and recoil-stabilized frontline fire.',
   shotsPerChain: 9,
   damagePerShot: 6,
   chainDurationSec: 1.5,
@@ -32,7 +50,7 @@ export const n55GladiusWeapon = buildMagitechWeapon({
   range: 88,
   isPlaceholderAsset: false,
   skills: [
-    { name: 'Stabilized 9-Round Burst', desc: 'Reference 9-shot kinetic burst dealing 6 Impact damage per bolt (54 BCU).' },
+    { name: 'Stabilized 3-Round Salvo', desc: 'Reference kinetic burst salvo dealing 6 Impact damage per bolt (54 BCU).' },
     { name: 'Hammerhead Impact Slug', dmg: 20, cd: 4.0, heat: 14, desc: 'High-mass kinetic slug that dents heavy armor plating.' },
     { name: 'Compensated Double-Tap', dmg: 16, cd: 5.0, heat: 12, desc: 'Gyro-stabilized two-round burst with tight grouping.' },
     { name: 'Suppressive Sweep', dmg: 12, cd: 5.5, heat: 16, desc: 'Horizontal suppression fan that slows advancing targets.' },
@@ -41,7 +59,306 @@ export const n55GladiusWeapon = buildMagitechWeapon({
 });
 
 /**
- * Backward-compatible alias for starter loadouts and existing systems.
+ * Canonical database definition for `n20RotaryBandolierWeapon` (`N-20 Rotary Bandolier`, id `'n20_rotary_bandolier'`, `7 WT`, `2` Open Slots: `CONTACT`, `REGULATION` + `1G`).
+ * Paired Specialist Stance: `Repeating Arbalest` (`repeating_arbalest_specialist`, Tier II).
+ */
+export const n20RotaryBandolierWeapon = buildMagitechWeapon({
+  id: 'n20_rotary_bandolier',
+  code: 'N-20',
+  name: 'N-20 Rotary Bandolier',
+  category: 'Carriers & Munitions',
+  weaponClass: 'Bandolier',
+  primaryDamageType: 'Impact',
+  weightClass: 'light',
+  explicitEquipWeight: 7,
+  gripMode: 'DORSAL_CARRIER',
+  architectureTier: 'MODULAR_FRAME_RELIC',
+  openDomains: ['CONTACT', 'REGULATION'],
+  sealedDomains: {
+    CONTACT: null,
+    DELIVERY: 'Motorized chest-to-back belt feed',
+    REGULATION: null,
+  },
+  action1Signature: 'Eliminates burst-fire recoil drift during sustained volleys.',
+  puristResonance: {
+    triggerType: 'SPECIALIST_STANCE',
+    targetId: 'repeating_arbalest_specialist',
+    effectSummary: 'Chu-Ko-Nu Volley: Eliminates burst-fire recoil drift and vents heat on linked bolt bursts.',
+  },
+  flavorText: 'Motorized chest-to-back rotary belt feed engineered for the Repeating Arbalest stance.',
+  loadoutSlots: ['Aux 2'],
+  equipmentRole: 'quiver',
+  handing: 'off-hand-only',
+  bladeTrailColor: '#f87171',
+  identity: 'Modular-Frame Relic · Repeating Arbalest Dorsal Feed (7 WT · 2 Open Mounts + 1G)',
+  lore: 'Dorsal and chest-linked rotary bandolier with a sealed motorized belt feed that stabilizes rapid bolt-caster volleys.',
+  shotsPerChain: 9,
+  damagePerShot: 6,
+  chainDurationSec: 1.35,
+  reloadDurationSec: 2.1,
+  range: 84,
+  isPlaceholderAsset: false,
+  skills: [
+    { name: 'Rotary Feed Burst', desc: 'Stabilized belt-fed kinetic volley eliminating burst-fire recoil drift.' },
+    { name: 'Belt-Link Overfeed', dmg: 18, cd: 4.2, heat: 11, desc: 'Cycles a high-density kinetic burst from the dorsal feed.' },
+    { name: 'Recoil Damper Lock', dmg: 14, cd: 5.0, heat: 8, desc: 'Locks rotary tensioners to zero out spread.' },
+    { name: 'Rapid Feed Cycle', dmg: 16, cd: 5.0, heat: -6, desc: 'Flushes spent casings to vent -6 Heat and speed reload.' },
+    { name: 'Chu-Ko-Nu Saturation', dmg: 28, cd: 8.0, heat: 20, desc: 'Continuous motorized bolt stream across the forward firing lane.' },
+  ],
+});
+
+/**
+ * Canonical database definition for `n60LimitaneiSpathaWeapon` (`N-60 Limitanei Spatha`, id `'n60_limitanei_spatha'`, `9 WT`, `3` Open Slots: `CONTACT`, `DELIVERY`, `REGULATION` + `1G`).
+ * Paired Specialist Stance: `Limitanei` (`limitanei_specialist`, Tier II).
+ */
+export const n60LimitaneiSpathaWeapon = buildMagitechWeapon({
+  id: 'n60_limitanei_spatha',
+  code: 'N-60',
+  name: 'N-60 Limitanei Spatha',
+  category: 'Blades: Straight',
+  weaponClass: 'Spatha',
+  primaryDamageType: 'Pierce',
+  weightClass: 'medium',
+  explicitEquipWeight: 9,
+  gripMode: '1H',
+  architectureTier: 'REFERENCE_PLATFORM',
+  openDomains: ['CONTACT', 'DELIVERY', 'REGULATION'],
+  sealedDomains: {
+    CONTACT: null,
+    DELIVERY: null,
+    REGULATION: null,
+  },
+  action1Signature: 'Clean 4-step cut-and-thrust chain.',
+  puristResonance: {
+    triggerType: 'SPECIALIST_STANCE',
+    targetId: 'limitanei_specialist',
+    effectSummary: 'Plumbata & Spatha: Throwing a Plumbata empowers the next melee swing (+15% BCU).',
+  },
+  flavorText: 'Frontier service sword with balanced mil-spec tang and full 3-domain modular rails.',
+  loadoutSlots: ['Weapon 1', 'Aux 1'],
+  equipmentRole: 'melee',
+  handing: '1-hand',
+  canBlock: true,
+  bladeTrailColor: '#f8fafc',
+  identity: 'Reference Platform · Limitanei Stance (9 WT · 3 Open Mounts + 1G)',
+  lore: 'Frontier limitanei cavalry and infantry spatha built on a 3-slot open military reference tang for seamless dart-and-blade skirmishing.',
+  shotsPerChain: 4,
+  damagePerShot: 13,
+  chainDurationSec: 1.0,
+  reloadDurationSec: 0.55,
+  range: 28,
+  isPlaceholderAsset: false,
+  skills: [
+    { name: 'Limitanei Cut-and-Thrust', desc: 'Clean 4-step cut-and-thrust chain dealing 13 Pierce damage per strike.' },
+    { name: 'Borderland Lunge', dmg: 23, cd: 4.2, heat: 11, desc: 'Forward skirmish thrust that capitalizes on Plumbata openings.' },
+    { name: 'Edge-Turn Riposte', dmg: 19, cd: 4.8, heat: 12, desc: 'Crisp lateral cut that checks flanking rushers.' },
+    { name: 'Block', dmg: 10, cd: 0, heat: 3, isBlock: true, desc: 'Hold to raise spatha cross-guard (0.34s Perfect Block window).' },
+    { name: 'Frontier Decimation', dmg: 31, cd: 8.0, heat: 22, desc: 'Empowered driving thrust that punishes staggered targets.' },
+  ],
+});
+
+/**
+ * Canonical database definition for `n12PlumbataPodWeapon` (`N-12 Plumbata Pod`, id `'n12_plumbata_pod'`, `6 WT`, `2` Open Slots: `CONTACT`, `REGULATION` + `1G`).
+ * Paired Specialist Stance: `Limitanei` (`limitanei_specialist`, Tier II).
+ */
+export const n12PlumbataPodWeapon = buildMagitechWeapon({
+  id: 'n12_plumbata_pod',
+  code: 'N-12',
+  name: 'N-12 Plumbata Pod',
+  category: 'Carriers & Munitions',
+  weaponClass: 'Plumbata',
+  primaryDamageType: 'Pierce',
+  weightClass: 'light',
+  explicitEquipWeight: 6,
+  gripMode: 'DORSAL_CARRIER',
+  architectureTier: 'MODULAR_FRAME_RELIC',
+  openDomains: ['CONTACT', 'REGULATION'],
+  sealedDomains: {
+    CONTACT: null,
+    DELIVERY: 'Dorsal spring-ejection rail',
+    REGULATION: null,
+  },
+  action1Signature: 'Lobs weighted kinetic darts in high arcs over shield walls.',
+  puristResonance: {
+    triggerType: 'SPECIALIST_STANCE',
+    targetId: 'limitanei_specialist',
+    effectSummary: 'Plumbata & Spatha: Weighted dart impacts mark targets so the next Spatha swing gains +15% BCU.',
+  },
+  flavorText: 'Dorsal spring-ejection plumbata rack that lobs lead-weighted kinetic darts over enemy barriers.',
+  loadoutSlots: ['Aux 2'],
+  equipmentRole: 'quiver',
+  handing: 'off-hand-only',
+  bladeTrailColor: '#fbbf24',
+  identity: 'Modular-Frame Relic · Limitanei Dorsal Pod (6 WT · 2 Open Mounts + 1G)',
+  lore: 'Sealed dorsal spring-ejection pod housing lead-weighted plumbata war-darts designed to arc over shield walls before melee contact.',
+  shotsPerChain: 6,
+  damagePerShot: 9,
+  chainDurationSec: 1.2,
+  reloadDurationSec: 2.0,
+  range: 78,
+  isPlaceholderAsset: false,
+  skills: [
+    { name: 'Arcing Plumbata Lob', desc: 'Lobs weighted kinetic darts in high arcs over shield walls (9 Pierce damage).' },
+    { name: 'Lead-Weighted Pin', dmg: 20, cd: 4.2, heat: 10, desc: 'Heavy plumbata dart that weights down enemy shields.' },
+    { name: 'Skirmish Volleys', dmg: 18, cd: 4.8, heat: 11, desc: 'Three-dart plunging fan that exposes frontline targets.' },
+    { name: 'Spring-Rack Reset', dmg: 14, cd: 5.0, heat: 6, desc: 'Snap-loads the dorsal ejection rail and fires a quick dart.' },
+    { name: 'Mattiobarbuli Rain', dmg: 29, cd: 8.0, heat: 20, desc: 'Full-pod high-angle plumbata salvo across the forward sector.' },
+  ],
+});
+
+/**
+ * Canonical database definition for `m450ArbalestGreatbowWeapon` (`M-450 Arbalest Greatbow`, id `'m450_arbalest_greatbow'`, `19 WT`, `2` Open Slots: `DELIVERY`, `REGULATION` + `1G`).
+ * Paired Specialist Stance: `Yeoman Longbow` (`longbow_specialist`, Tier II).
+ */
+export const m450ArbalestGreatbowWeapon = buildMagitechWeapon({
+  id: 'm450_arbalest_greatbow',
+  code: 'M-450',
+  name: 'M-450 Arbalest Greatbow',
+  category: 'Bows',
+  weaponClass: 'Great Bow',
+  primaryDamageType: 'Impact',
+  weightClass: 'heavy',
+  explicitEquipWeight: 19,
+  gripMode: '2H',
+  architectureTier: 'MODULAR_FRAME_RELIC',
+  openDomains: ['DELIVERY', 'REGULATION'],
+  sealedDomains: {
+    CONTACT: 'High-poundage shock-rail war limbs (+6 THR pierce at full draw)',
+    DELIVERY: null,
+    REGULATION: null,
+  },
+  action1Signature: 'High-poundage shock-rail war limbs (+6 THR pierce at full draw).',
+  puristResonance: {
+    triggerType: 'SPECIALIST_STANCE',
+    targetId: 'longbow_specialist',
+    effectSummary: 'Agincourt Stake-Line: Stationary draws (μ = 0) vent -3 Reactor Heat.',
+  },
+  flavorText: 'Heavy torsion-rail war greatbow whose sealed shock limbs punch through hardened armor thresholds.',
+  skillCount: 4,
+  loadoutSlots: ['Weapon 3', 'Weapon 4'],
+  equipmentRole: 'ranged',
+  handing: '2-hand',
+  bladeTrailColor: '#f97316',
+  identity: 'Modular-Frame Relic · Yeoman Longbow Stance (19 WT · 2 Open Mounts + 1G)',
+  lore: 'Heavy shock-rail greatbow firing high-impulse war shafts that punch +6 Armor THR pierce at full stationary draw.',
+  shotsPerChain: 4,
+  damagePerShot: 14,
+  chainDurationSec: 1.6,
+  reloadDurationSec: 3.4,
+  range: 130,
+  isPlaceholderAsset: false,
+  skills: [
+    { name: 'Shock-Rail Full Draw', desc: '4-shot heavy war-bow chain dealing 14 Impact damage (+6 THR pierce at full draw).' },
+    { name: 'Agincourt Bodkin Impale', dmg: 28, cd: 5.0, heat: 18, desc: 'Channels a shock-rail war shaft through hardened plating.' },
+    { name: 'Armor-Cracking Draw', dmg: 25, cd: 6.0, heat: 18, desc: 'Shatters hardened plating thresholds on direct hit.' },
+    { name: 'Stake-Line Anchor Shot', dmg: 20, cd: 5.5, heat: 15, desc: 'High-impulse stake shaft that halts charging enemies.' },
+    { name: 'Cataclysmic Skewer', dmg: 38, cd: 10.0, heat: 32, desc: 'Overcharged greatbow war-lance that pierces entire enemy formations.' },
+  ],
+});
+
+/**
+ * Canonical database definition for `m10BodkinQuiverWeapon` (`M-10 Bodkin Quiver`, id `'m10_bodkin_quiver'`, `6 WT`, `2` Open Slots: `CONTACT`, `REGULATION` + `1G`).
+ * Paired Specialist Stance: `Yeoman Longbow` (`longbow_specialist`, Tier II).
+ */
+export const m10BodkinQuiverWeapon = buildMagitechWeapon({
+  id: 'm10_bodkin_quiver',
+  code: 'M-10',
+  name: 'M-10 Bodkin Quiver',
+  category: 'Carriers & Munitions',
+  weaponClass: 'Quiver',
+  primaryDamageType: 'Pierce',
+  weightClass: 'light',
+  explicitEquipWeight: 6,
+  gripMode: 'DORSAL_CARRIER',
+  architectureTier: 'MODULAR_FRAME_RELIC',
+  openDomains: ['CONTACT', 'REGULATION'],
+  sealedDomains: {
+    CONTACT: null,
+    DELIVERY: 'Automated magnetic fletching feed',
+    REGULATION: null,
+  },
+  action1Signature: 'Accelerates bow nock/draw cycle tempo by +10%.',
+  puristResonance: {
+    triggerType: 'SPECIALIST_STANCE',
+    targetId: 'longbow_specialist',
+    effectSummary: 'Agincourt Stake-Line: Automated magnetic fletching feed accelerates nock/draw tempo by +10%.',
+  },
+  flavorText: 'Dorsal quiver with a sealed magnetic fletching escalator that presents heavy bodkin shafts directly to the draw hand.',
+  loadoutSlots: ['Aux 2'],
+  equipmentRole: 'quiver',
+  handing: 'off-hand-only',
+  bladeTrailColor: '#fbbf24',
+  identity: 'Modular-Frame Relic · Yeoman Longbow Dorsal Quiver (6 WT · 2 Open Mounts + 1G)',
+  lore: 'Automated magnetic fletching quiver engineered to pair with the M-450 Arbalest Greatbow for sustained long-range stake-line volleys.',
+  shotsPerChain: 10,
+  damagePerShot: 6,
+  chainDurationSec: 1.3,
+  reloadDurationSec: 2.0,
+  range: 95,
+  isPlaceholderAsset: false,
+  skills: [
+    { name: 'Magnetic Nock Feed', desc: 'Accelerates bow nock/draw cycle tempo by +10% while firing 6 Pierce bodkin darts.' },
+    { name: 'Tempered Bodkin Sheaf', dmg: 20, cd: 4.0, heat: 10, desc: 'Feeds armor-piercing bodkin tips for the next salvo.' },
+    { name: 'Stake-Line Resupply', dmg: 15, cd: 5.0, heat: -6, desc: 'Cycles magnetic feed rails and vents -6 Reactor Heat.' },
+    { name: 'Pinned Corridor Volley', dmg: 18, cd: 5.0, heat: 12, desc: 'Arcs a cluster of heavy bodkin shafts into a target zone.' },
+    { name: 'Yeoman Hailstorm', dmg: 30, cd: 8.0, heat: 20, desc: 'Empties the magnetic quiver rack in a high-angle armor-piercing rain.' },
+  ],
+});
+
+/**
+ * Canonical database definition for `s9TurbineOdachiWeapon` (`S-9 Turbine Odachi`, id `'s9_turbine_odachi'`, `16 WT`, `1` Open Slot: `REGULATION` + `1G`).
+ * Paired Specialist Stance: `Odachi` (`odachi_specialist`, Tier III).
+ */
+export const s9TurbineOdachiWeapon = buildMagitechWeapon({
+  id: 's9_turbine_odachi',
+  code: 'S-9',
+  name: 'S-9 Turbine Odachi',
+  category: 'Blades: Curved',
+  weaponClass: 'Odachi',
+  primaryDamageType: 'Pierce',
+  weightClass: 'heavy',
+  explicitEquipWeight: 16,
+  gripMode: '2H',
+  architectureTier: 'SEMI_SEALED_ASSEMBLY',
+  openDomains: ['REGULATION'],
+  sealedDomains: {
+    CONTACT: 'Turbine-vented great blade',
+    DELIVERY: 'Two-handed counterbalanced tsuka assembly',
+    REGULATION: null,
+  },
+  action1Signature: '3-step wide draw-cut sweep.',
+  puristResonance: {
+    triggerType: 'SPECIALIST_STANCE',
+    targetId: 'odachi_specialist',
+    effectSummary: 'Nodachi Battojutsu: Step 1 lunge distance increased by +25%.',
+  },
+  flavorText: 'Massive turbine-vented field sword whose sealed edge and two-handed tsuka propel devastating draw-cut lunges.',
+  loadoutSlots: ['Weapon 1', 'Weapon 3'],
+  equipmentRole: 'melee',
+  handing: '2-hand',
+  canBlock: true,
+  bladeTrailColor: '#ef4444',
+  identity: 'Semi-Sealed Assembly · Odachi Stance (16 WT · 1 Open Mount + 1G)',
+  lore: 'Two-handed alchemic turbine odachi with a hermetically mated great-blade and long tsuka, leaving the rear exhaust regulation port open for tuning.',
+  shotsPerChain: 3,
+  damagePerShot: 18,
+  chainDurationSec: 1.15,
+  reloadDurationSec: 0.65,
+  range: 38,
+  isPlaceholderAsset: false,
+  skills: [
+    { name: 'Turbine Draw-Cut Sweep', desc: '3-step wide draw-cut sweep dealing 18 Pierce damage across a broad forward arc.' },
+    { name: 'Battojutsu Turbine Lunge', dmg: 29, cd: 4.5, heat: 15, desc: 'High-speed spooling draw-slash with extended forward lunge.' },
+    { name: 'Great-Blade Horizon Cleave', dmg: 25, cd: 5.2, heat: 16, desc: 'Wide anti-formation sweep that cuts through multiple targets.' },
+    { name: 'Block', dmg: 12, cd: 0, heat: 3, isBlock: true, desc: 'Hold to brace the odachi spine in two-handed guard (0.34s Perfect Block window).' },
+    { name: 'Redline Swallow Sever', dmg: 38, cd: 9.0, heat: 26, desc: 'Full-turbine overhead draw-cut that cleaves through guarded frames.' },
+  ],
+});
+
+// ─── BACKWARD-COMPATIBLE ALIAS EXPORTS & BASE CUSTOMIZABLE LONGSWORD ────────
+
+/**
+ * Backward-compatible alias for `n55GladiusWeapon`.
  */
 export const gladiusBoltcasterWeapon: WeaponDefinition = {
   ...n55GladiusWeapon,
@@ -50,109 +367,39 @@ export const gladiusBoltcasterWeapon: WeaponDefinition = {
 };
 
 /**
- * Canonical database definition for `m300HastaWeapon` (`M-300 Hasta`, id `'m300_hasta'`, load `'medium'`) — Mid-range sustained fire.
+ * Backward-compatible alias for `m450ArbalestGreatbowWeapon` (legacy `m450_pilum`).
  */
-export const m300HastaWeapon = buildMagitechWeapon({
-  id: 'm300_hasta',
-  name: 'M-300 Hasta',
-  weaponClass: 'Polybolos',
-  primaryDamageType: 'Impact',
-  weightClass: 'medium',
-  skillCount: 3,
-  loadoutSlots: ['Weapon 3'],
-  equipmentRole: 'ranged',
-  handing: '2-hand',
-  bladeTrailColor: '#fbbf24',
-  identity: 'Mid-range sustained fire',
-  lore: 'Repeating magitech polybolos auto-crossbow built to hold mid-range firing lanes under sustained thermal load.',
-  shotsPerChain: 12,
-  damagePerShot: 5,
-  chainDurationSec: 1.8,
-  reloadDurationSec: 3.2,
-  range: 102,
-  isPlaceholderAsset: false,
-  skills: [
-    { name: 'Polybolos Repeating Feed', desc: 'Sustained 12-bolt mid-range stream dealing 5 Impact damage per bolt.' },
-    { name: 'Pinning Stake Volley', dmg: 19, cd: 4.5, heat: 15, desc: 'High-tension bolt cluster that checks enemy movement.' },
-    { name: 'Ratchet Cadence Surge', dmg: 22, cd: 6.0, heat: 18, desc: 'Accelerates feed mechanism for a rapid mid-range barrage.' },
-    { name: 'Covering Arc', dmg: 14, cd: 5.0, heat: 15, desc: 'Blankets a forward corridor with staggered impact bolts.' },
-    { name: 'Siege Drum Unload', dmg: 32, cd: 9.0, heat: 30, desc: 'Empties the auxiliary torsion drum in a single punishing burst.' },
-  ],
-});
-
-/**
- * Canonical database definition for `m450PilumWeapon` (`M-450 Pilum`, id `'m450_pilum'`, load `'heavy'`) — Shock-channeling, heavy hitter.
- */
-export const m450PilumWeapon = buildMagitechWeapon({
+export const m450PilumWeapon: WeaponDefinition = {
+  ...m450ArbalestGreatbowWeapon,
   id: 'm450_pilum',
-  name: 'M-450 Pilum',
-  weaponClass: 'Ballista',
-  primaryDamageType: 'Impact',
-  weightClass: 'heavy',
-  skillCount: 4,
-  loadoutSlots: ['Weapon 4'],
-  equipmentRole: 'ranged',
-  handing: '2-hand',
-  bladeTrailColor: '#f97316',
-  identity: 'Shock-channeling, heavy hitter',
-  lore: 'Heavy torsion ballista firing shock-core javelins that punch through reinforced barriers and detonate kinetic shockwaves.',
-  shotsPerChain: 4,
-  damagePerShot: 14,
-  chainDurationSec: 1.6,
-  reloadDurationSec: 3.6,
-  range: 125,
-  isPlaceholderAsset: false,
-  skills: [
-    { name: 'Heavy Pilum Javelin', desc: '4-shot heavy ballista chain dealing 14 Impact damage per javelin.' },
-    { name: 'Shock-Core Impale', dmg: 28, cd: 5.0, heat: 20, dt: 'Wave', desc: 'Channels a shockwave pulse through the target on impact.' },
-    { name: 'Armor-Cracking Bolt', dmg: 25, cd: 6.0, heat: 18, desc: 'Shatters hardened plating thresholds on direct hit.' },
-    { name: 'Torsion Anchor Shot', dmg: 20, cd: 5.5, heat: 16, desc: 'High-impulse stake that staggers charging enemies.' },
-    { name: 'Cataclysmic Skewer', dmg: 38, cd: 10.0, heat: 34, desc: 'Overcharged ballista spear that pierces entire enemy formations.' },
-  ],
-});
-
-/**
- * Canonical database definition for `s2TurbineKhopeshWeapon` (`S-2 Turbine Khopesh`, id `'s2_turbine_khopesh'`, load `'light'`) — Compact fallback, dual-wield capable.
- */
-export const s2TurbineKhopeshWeapon = buildMagitechWeapon({
-  id: 's2_turbine_khopesh',
-  name: 'S-2 Turbine Khopesh',
-  weaponClass: 'Blade',
-  primaryDamageType: 'Pierce',
-  weightClass: 'light',
-  loadoutSlots: ['Aux 1', 'Aux 2'],
-  equipmentRole: 'melee',
-  handing: '1-hand',
-  canBlock: true,
-  bladeTrailColor: '#ef4444',
-  identity: 'Compact fallback, dual-wield capable',
-  lore: 'Alchemic turbine-assisted curved blade designed for dual-wielding or rapid CQC fallback when primary magazines run dry.',
-  shotsPerChain: 4,
-  damagePerShot: 11,
-  chainDurationSec: 0.85,
-  reloadDurationSec: 0.45,
-  range: 25,
-  isPlaceholderAsset: false,
-  skills: [
-    { name: 'Turbine Hook Slash', desc: '4-hit high-RPM curved blade combo dealing 11 Pierce damage per strike.' },
-    { name: 'Spooling Lunge', dmg: 24, cd: 4.0, heat: 11, desc: 'Turbine-boosted gap closer that bypasses frontal guard.' },
-    { name: 'Cross-Rotor Riposte', dmg: 18, cd: 4.8, heat: 10, desc: 'Scissoring slash optimized for dual-wield and off-hand stances.' },
-    { name: 'Block', dmg: 10, cd: 0, heat: 3, isBlock: true, desc: 'Hold to raise turbine blade guard (0.34s Perfect Block window).' },
-    { name: 'Redline Cyclone', dmg: 29, cd: 7.5, heat: 22, desc: 'Vents turbine exhaust into a 360-degree razor cleave.' },
-  ],
-});
-
-/**
- * Backward-compatible alias for existing khopesh.
- */
-export const khopeshWeapon: WeaponDefinition = {
-  ...s2TurbineKhopeshWeapon,
-  id: 'khopesh',
-  name: 'Turbine Khopesh (S-2)',
 };
 
 /**
- * Canonical database definition for `longSwordWeapon` (`Camelot Longsword`, id `'long_sword'`, load `'medium'`) — Balanced double-edged knightly magitech broadsword with wide sweeping arcs and disciplined reach..
+ * Backward-compatible alias for `n20RotaryBandolierWeapon` (legacy `utility_ichor_surge`).
+ */
+export const utilityIchorSurgeAuxiliary: WeaponDefinition = {
+  ...n20RotaryBandolierWeapon,
+  id: 'utility_ichor_surge',
+};
+
+/**
+ * Backward-compatible alias for `n20RotaryBandolierWeapon` (legacy `aux3_pnsy_rockweiler_buckler`).
+ */
+export const aux3PnsyRockweilerBucklerAuxiliary: WeaponDefinition = {
+  ...n20RotaryBandolierWeapon,
+  id: 'aux3_pnsy_rockweiler_buckler',
+};
+
+/**
+ * Backward-compatible alias for `n12PlumbataPodWeapon` (legacy `aux4_pnsy_rough_rider_booster`).
+ */
+export const aux4PnsyRoughRiderBoosterAuxiliary: WeaponDefinition = {
+  ...n12PlumbataPodWeapon,
+  id: 'aux4_pnsy_rough_rider_booster',
+};
+
+/**
+ * Canonical database definition for `longSwordWeapon` (`Camelot Longsword`, id `'long_sword'`, load `'medium'`) — Balanced double-edged knightly magitech broadsword with wide sweeping arcs and disciplined reach.
  */
 export const longSwordWeapon: WeaponDefinition = {
   id: 'long_sword',
@@ -267,103 +514,3 @@ export const longSwordWeapon: WeaponDefinition = {
     },
   ],
 };
-
-// ─── WARRIOR / ASSAULT AUXILIARIES (Migrated from Utility, Aux 3 & Aux 4) ───
-
-/**
- * Canonical database definition for `utilityIchorSurgeAuxiliary` (`PNSY D-0g Repair Drone`, id `'utility_ichor_surge'`, load `'medium'`) — Bay-launched autonomous repair drone (+16 Shield, active Armor weld on hit).
- */
-export const utilityIchorSurgeAuxiliary = buildMagitechWeapon({
-  id: 'utility_ichor_surge',
-  name: 'PNSY D-0g Repair Drone',
-  weaponClass: 'Repair Drone',
-  primaryDamageType: 'Pulse',
-  weightClass: 'medium',
-  loadoutSlots: ['Aux 1', 'Aux 2'],
-  equipmentRole: 'catalyst',
-  handing: 'off-hand-only',
-  passiveShieldBonus: 16,
-  supportPulseOnHit: { armorRestore: 12, shieldRestore: 8 },
-  bladeTrailColor: '#ef4444',
-  identity: 'Bay-launched autonomous repair drone (+16 Shield, active Armor weld on hit)',
-  lore: 'Canonical PNSY W416 tactical support drone converted into an off-hand/back Auxiliary. Deploys nanite welding beams and Overdrive servo stimulation.',
-  shotsPerChain: 3,
-  damagePerShot: 9,
-  chainDurationSec: 0.9,
-  reloadDurationSec: 1.5,
-  range: 64,
-  isPlaceholderAsset: false,
-  skills: [
-    { name: 'Drone Welder Pulse', desc: 'Auxiliary focus node (Auxiliaries expose Skill 4 & Skill 5).' },
-    { name: 'Nanite Stitch', dmg: 12, cd: 4.0, heat: 6, desc: 'Auxiliary focus node.' },
-    { name: 'Servo Telemetry', dmg: 14, cd: 5.0, heat: 8, desc: 'Auxiliary focus node.' },
-    { name: 'D-0g Field Triage', dmg: 18, cd: 6.5, heat: 10, dt: 'Pulse', desc: 'Deploys D-0g drone to mend +18 Armor, restore +10 Shield, and pulse nearby foes.' },
-    { name: 'Overdrive Repair Surge', dmg: 26, cd: 9.0, heat: 14, dt: 'Wave', desc: 'Full drone repair cycle restoring +35 Armor, +15 Shield, and engaging Overdrive.' },
-  ],
-});
-
-/**
- * Canonical database definition for `aux3PnsyRockweilerBucklerAuxiliary` (`PNSY R-11 Rockweiler Buckler`, id `'aux3_pnsy_rockweiler_buckler'`, load `'medium'`) — Parrying shield, reactive plating (+18 Shield, +10 Armor).
- */
-export const aux3PnsyRockweilerBucklerAuxiliary = buildMagitechWeapon({
-  id: 'aux3_pnsy_rockweiler_buckler',
-  name: 'PNSY R-11 Rockweiler Buckler',
-  weaponClass: 'Physical Shield',
-  primaryDamageType: 'Impact',
-  weightClass: 'medium',
-  loadoutSlots: ['Aux 1', 'Aux 2'],
-  equipmentRole: 'shield',
-  handing: 'off-hand-only',
-  canBlock: true,
-  passiveShieldBonus: 18,
-  passiveArmorBonus: 10,
-  bladeTrailColor: '#f87171',
-  identity: 'Parrying shield, reactive plating (+18 Shield, +10 Armor)',
-  lore: 'Compact PNSY R-11 reactive parrying buckler lined with explosive counter-plates that punish close-quarters strikes.',
-  shotsPerChain: 3,
-  damagePerShot: 12,
-  chainDurationSec: 0.9,
-  reloadDurationSec: 0.45,
-  range: 24,
-  isPlaceholderAsset: false,
-  skills: [
-    { name: 'Rockweiler Rim Bash', desc: '3-hit reactive buckler bash dealing 12 Impact damage.' },
-    { name: 'Reactive Counter-Snap', dmg: 20, cd: 4.5, heat: 10, desc: 'Detonates a reactive rim plate to stagger melee attackers.' },
-    { name: 'Braced Forearm Guard', dmg: 16, cd: 5.0, heat: 8, desc: 'Reinforces frontal guard and restores +12 Shield.' },
-    { name: 'Block', dmg: 10, cd: 0, heat: 2, isBlock: true, desc: 'Hold to raise Rockweiler parrying guard (0.34s Perfect Block window).' },
-    { name: 'Rockweiler Concussion Slam', dmg: 28, cd: 7.5, heat: 18, dt: 'Blast', desc: 'Explosive shield slam that shreds enemy armor durability.' },
-  ],
-});
-
-/**
- * Canonical database definition for `aux4PnsyRoughRiderBoosterAuxiliary` (`PNSY UF-9 Rough Rider Booster`, id `'aux4_pnsy_rough_rider_booster'`, load `'medium'`) — Engagement/evasion kit with thrusters (+12 Shield).
- */
-export const aux4PnsyRoughRiderBoosterAuxiliary = buildMagitechWeapon({
-  id: 'aux4_pnsy_rough_rider_booster',
-  name: 'PNSY UF-9 Rough Rider Booster',
-  weaponClass: 'Tactical Mobility',
-  primaryDamageType: 'Blast',
-  weightClass: 'medium',
-  loadoutSlots: ['Aux 1', 'Aux 2'],
-  equipmentRole: 'catalyst',
-  handing: 'off-hand-only',
-  passiveShieldBonus: 12,
-  supportPulseOnHit: { shieldRestore: 5, heatVent: 4 },
-  bladeTrailColor: '#fb923c',
-  identity: 'Engagement/evasion kit with thrusters (+12 Shield)',
-  lore: 'PNSY UF-9 auxiliary thruster pod providing vectored engagement bursts and thermal backblast shockwaves.',
-  shotsPerChain: 3,
-  damagePerShot: 11,
-  chainDurationSec: 0.85,
-  reloadDurationSec: 1.4,
-  range: 42,
-  isPlaceholderAsset: false,
-  skills: [
-    { name: 'Thruster Backblast', desc: 'Auxiliary focus node.' },
-    { name: 'Vectored Hop', dmg: 14, cd: 4.0, heat: 8, desc: 'Auxiliary focus node.' },
-    { name: 'Ignition Flare', dmg: 16, cd: 4.5, heat: 10, desc: 'Auxiliary focus node.' },
-    { name: 'Rough Rider Burn', dmg: 20, cd: 5.5, heat: 10, dt: 'Blast', desc: 'Fires auxiliary thrusters to scorch pursuing targets and restore +10 Shield.' },
-    { name: 'Afterburner Ram Jet', dmg: 30, cd: 8.0, heat: 18, dt: 'Blast', desc: 'Full thruster overburn that blasts enemies in a forward cone and triggers Overdrive.' },
-  ],
-});
-

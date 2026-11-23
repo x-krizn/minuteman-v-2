@@ -47,8 +47,10 @@ import {
   removeGemModFromEquipment,
   resolveWeaponModificationProfile,
   socketGemIntoWeaponComponent,
+  socketResonanceGemIntoMagitechWeapon,
   unlockEquipmentItem,
   unsocketGemFromWeaponComponent,
+  unsocketResonanceGemFromMagitechWeapon,
   validateWeaponComponentInstallation,
   WEAPON_COMPONENT_PART_CATALOG,
   WEAPON_DOMAIN_ANATOMY_LABELS,
@@ -359,13 +361,13 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
     const maxSlots = getEquipmentMaxModSlots(targetInstanceId);
     const wDef = isWeaponItem ? getWeaponDefinition(baseId) : undefined;
     const isUniqueWeapon = Boolean(wDef?.weaponTier === 'unique');
-    const clampedSlotIdx = Math.max(0, Math.min(maxSlots - 1, selectedModSlotIndex)) as
-      | 0
-      | 1
-      | 2;
+    const clampedSlotIdx = Math.max(
+      0,
+      Math.min((isWeaponItem ? 3 : maxSlots) - 1, selectedModSlotIndex)
+    ) as 0 | 1 | 2;
 
-    // ─── CUSTOM WEAPONS (72 Archetypes): 3 Non-Sequential Component Slots + Nested Gem Sockets (1G Crafted / 1–3G Looted) ───
-    if (isWeaponItem && wDef && !isUniqueWeapon) {
+    // ─── WEAPONS (72 Custom Archetypes + Magitech Purist Relics): 3 Physical Domains (Sealed vs. Open) + 1G Factory Resonance Socket ───
+    if (isWeaponItem && wDef) {
       const weaponCategory: WeaponCategory = wDef.category || 'Blades: Straight';
       const modProfile = resolveWeaponModificationProfile(state, targetInstanceId);
       const domainLabels = WEAPON_DOMAIN_ANATOMY_LABELS[weaponCategory];
@@ -381,6 +383,23 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
           (componentDomainFilter === 'ALL' || p.domain === componentDomainFilter) &&
           (componentSourceFilter === 'ALL' || p.acquisitionSource === componentSourceFilter)
       );
+      const openDomains = modProfile.openDomains;
+      const sealedDomains = modProfile.sealedDomains;
+      const resonanceGemId = modProfile.resonanceGem;
+      const resonanceGemDef = resonanceGemId ? GEMSTONE_REGISTRY[resonanceGemId] : null;
+      const archTierLabel =
+        modProfile.architectureTier === 'SEALED_MONOLITH'
+          ? 'SEALED MONOLITH · 0 OPEN + 1G'
+          : modProfile.architectureTier === 'SEMI_SEALED_ASSEMBLY'
+            ? 'SEMI-SEALED ASSEMBLY · 1 OPEN + 1G'
+            : modProfile.architectureTier === 'MODULAR_FRAME_RELIC'
+              ? 'MODULAR-FRAME RELIC · 2 OPEN + 1G'
+              : 'REFERENCE PLATFORM · 3 OPEN + 1G';
+      const domainOrder: readonly [ModDomain, ModDomain, ModDomain] = [
+        'CONTACT',
+        'DELIVERY',
+        'REGULATION',
+      ];
 
       return (
         <div className="p-2 bg-[#070b12] rounded-xs border border-[#1e293b] space-y-2">
@@ -388,22 +407,36 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
             <div>
               <div className="text-[10px] font-bold text-[#fde047] flex flex-wrap items-center gap-2">
                 <span>
-                  3 NON-SEQUENTIAL COMPONENT SLOTS ({modProfile.occupiedSlotCount}/3 OCCUPIED ·{' '}
-                  {modProfile.allSocketedGems.length} GEMS SOCKETED)
+                  {isUniqueWeapon
+                    ? `MAGITECH PURIST RELIC · ${archTierLabel} (${modProfile.occupiedSlotCount}/${openDomains.length} OPEN MOUNTS · ${resonanceGemId ? '1/1G' : '0/1G'} RESONANCE)`
+                    : `3 NON-SEQUENTIAL COMPONENT SLOTS (${modProfile.occupiedSlotCount}/3 OCCUPIED · ${modProfile.allSocketedGems.length} GEMS SOCKETED)`}
                 </span>
                 <span className="px-1.5 py-0.5 rounded-xs bg-[#1e293b] text-[#ffd27d] text-[9px]">
                   SCRAP POUCH: {isCheatMode ? '∞' : state.salvageScrap} SCRAP
                 </span>
               </div>
               <div className="text-[9px] text-[#94a3b8]">
-                Install up to 3 physical components in <b className="text-[#7dd3fc]">any slot order</b>{' '}
-                (at most 1 per domain:{' '}
-                <span className="text-[#fb923c]">CONTACT ({domainLabels.CONTACT})</span>,{' '}
-                <span className="text-[#38bdf8]">DELIVERY ({domainLabels.DELIVERY})</span>,{' '}
-                <span className="text-[#a78bfa]">REGULATION ({domainLabels.REGULATION})</span>).
-                Only <b className="text-[#fb923c]">CONTACT</b> components can convert Action 1
-                DamageType. Crafted parts expose <b className="text-[#e9d5ff]">1G</b>; Looted
-                field salvage exposes <b className="text-[#86efac]">1–3G</b>.
+                {isUniqueWeapon ? (
+                  <>
+                    Magitech Purist relics feature a dedicated{' '}
+                    <b className="text-[#c084fc]">1G Factory Resonance Socket</b> plus{' '}
+                    <b className="text-[#7dd3fc]">{openDomains.length} Open Physical Mount(s)</b> (
+                    {openDomains.length > 0 ? openDomains.join(', ') : 'All 3 Domains Factory-Sealed'}
+                    ). Modified relics use post-nominal{' '}
+                    <b className="text-[#fde047]">&lt;BaseName&gt; Custom (+II / +III)</b> naming.
+                  </>
+                ) : (
+                  <>
+                    Install up to 3 physical components in{' '}
+                    <b className="text-[#7dd3fc]">any slot order</b> (at most 1 per domain:{' '}
+                    <span className="text-[#fb923c]">CONTACT ({domainLabels.CONTACT})</span>,{' '}
+                    <span className="text-[#38bdf8]">DELIVERY ({domainLabels.DELIVERY})</span>,{' '}
+                    <span className="text-[#a78bfa]">REGULATION ({domainLabels.REGULATION})</span>).
+                    Only <b className="text-[#fb923c]">CONTACT</b> components can convert Action 1
+                    DamageType. Crafted parts expose <b className="text-[#e9d5ff]">1G</b>; Looted
+                    field salvage exposes <b className="text-[#86efac]">1–3G</b>.
+                  </>
+                )}
               </div>
             </div>
             <button
@@ -420,18 +453,198 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
             </button>
           </div>
 
-          {/* 3 Non-Sequential Component Slot Cards */}
+          {/* Magitech Purist Resonance & Dedicated 1G Factory Resonance Gem Socket */}
+          {isUniqueWeapon && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+              {/* Purist Resonance Passive Card */}
+              <div className="p-2 rounded-xs bg-[#090d14] border border-[#c084fc]/40 space-y-1">
+                <div className="flex flex-wrap items-center justify-between gap-1">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {wDef.code && (
+                      <span className="px-1.5 py-0.2 rounded-[2px] bg-[#1e1b4b] text-[#c4b5fd] border border-[#818cf8]/40 text-[9px] font-mono font-bold">
+                        {wDef.code}
+                      </span>
+                    )}
+                    <span className="text-[9px] font-bold text-[#e9d5ff]">
+                      {modProfile.puristResonance?.title || 'PURIST RESONANCE'}
+                    </span>
+                    {wDef.legacyEpithet && (
+                      <span className="text-[9px] italic text-[#fde047]">
+                        “{wDef.legacyEpithet}”
+                      </span>
+                    )}
+                  </div>
+                  <span
+                    className={`px-1.5 py-0.2 rounded-[2px] text-[8px] font-bold border ${
+                      modProfile.puristResonanceActive
+                        ? 'bg-[#052e16] text-[#86efac] border-[#22c55e]/50'
+                        : 'bg-[#2e1065] text-[#ddd6fe] border-[#a855f7]/50'
+                    }`}
+                  >
+                    {modProfile.puristResonanceActive
+                      ? 'RESONANCE ACTIVE'
+                      : 'RESONANCE DORMANT'}
+                  </span>
+                </div>
+                {modProfile.puristResonance && (
+                  <>
+                    <div className="text-[8px] text-[#7dd3fc] font-bold">
+                      PAIRED DOCTRINE: {modProfile.puristResonanceTargetLabel}
+                    </div>
+                    <div className="text-[9px] text-[#86efac] leading-tight">
+                      ✦ {modProfile.puristResonance.effectSummary}
+                    </div>
+                  </>
+                )}
+                {wDef.action1Signature && (
+                  <div className="text-[8px] text-[#cbd5e1] leading-tight pt-0.5 border-t border-[#1e293b]">
+                    <b className="text-[#fde047]">Action 1 Signature:</b> {wDef.action1Signature}
+                  </div>
+                )}
+              </div>
+
+              {/* Dedicated 1G Factory Resonance Gem Socket Card */}
+              <div className="p-2 rounded-xs bg-[#090d14] border border-[#38bdf8]/40 space-y-1.5">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[9px] font-bold text-[#7dd3fc]">
+                    FACTORY RESONANCE GEM SOCKET (1G)
+                  </span>
+                  {resonanceGemDef ? (
+                    <div className="flex items-center gap-1">
+                      <SpriteCanvasIcon
+                        base64={resonanceGemDef.iconBase64}
+                        sizeClass="w-3.5 h-3.5"
+                      />
+                      <span
+                        className="text-[9px] font-bold"
+                        style={{ color: resonanceGemDef.hexColor }}
+                      >
+                        {resonanceGemDef.name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextId = unsocketResonanceGemFromMagitechWeapon(
+                            state,
+                            targetInstanceId,
+                            sayCtx
+                          );
+                          if (nextId) {
+                            soundSystem.playSelect();
+                            syncStateGates(state);
+                            onInstanceUpdated(nextId);
+                            notifyOrionStateChange();
+                          }
+                        }}
+                        className="px-1.5 py-0.2 bg-[#450a0a] hover:bg-[#7f1d1d] text-[#fca5a5] border border-[#ef4444]/50 rounded-xs text-[8px] font-bold cursor-pointer"
+                      >
+                        UNSOCKET
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="text-[8px] px-1.5 py-0.2 rounded-[2px] bg-[#1e293b] text-[#94a3b8] font-bold">
+                      EMPTY (0/1G)
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-3 gap-1">
+                  {GEMSTONE_CATALOG.map((gem) => {
+                    const invCount = getInventoryGemCount(state, gem.id);
+                    const isCurrent = resonanceGemId === gem.id;
+                    const canSocket = isCheatMode || invCount > 0 || isCurrent;
+                    return (
+                      <button
+                        key={`res-gem-${gem.id}`}
+                        type="button"
+                        disabled={!canSocket || isCurrent}
+                        onClick={() => {
+                          const nextId = socketResonanceGemIntoMagitechWeapon(
+                            state,
+                            targetInstanceId,
+                            gem.id,
+                            sayCtx
+                          );
+                          if (nextId) {
+                            soundSystem.playPowerup();
+                            syncStateGates(state);
+                            onInstanceUpdated(nextId);
+                            notifyOrionStateChange();
+                          } else {
+                            soundSystem.playMenuBeep();
+                          }
+                        }}
+                        title={WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS[gem.id]}
+                        className={`px-1.5 py-1 rounded-xs border text-left flex items-center justify-between gap-1 ${
+                          isCurrent
+                            ? 'bg-[#3b0764] border-[#fde047] text-[#fde047] cursor-default'
+                            : canSocket
+                              ? 'bg-[#05070a] hover:bg-[#0f172a] border-[#334155] hover:border-[#fde047] cursor-pointer'
+                              : 'bg-[#05070a]/50 border-[#1e293b]/50 opacity-50 cursor-not-allowed'
+                        }`}
+                      >
+                        <span
+                          className="font-bold text-[8px] flex items-center gap-1 truncate"
+                          style={{ color: gem.hexColor }}
+                        >
+                          <SpriteCanvasIcon
+                            base64={gem.iconBase64}
+                            sizeClass="w-3 h-3"
+                          />
+                          {gem.name}
+                        </span>
+                        <span className="text-[8px] text-[#94a3b8] font-bold shrink-0">
+                          {isCurrent ? 'ACTIVE' : isCheatMode ? '∞' : `×${invCount}`}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 3 Physical Domain / Component Slot Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
             {modProfile.slots.map((slotState) => {
               const idx = slotState.slotIndex;
+              const fixedDomain = domainOrder[idx];
+              const isDomainSealed = isUniqueWeapon && !openDomains.includes(fixedDomain);
+              const sealedSpecText = isDomainSealed
+                ? sealedDomains[fixedDomain] ||
+                  'Hermetically sealed factory Magitech assembly.'
+                : null;
               const comp = slotState.component;
               const isSelected = clampedSlotIdx === idx;
               const domainBadgeClass =
-                comp?.domain === 'CONTACT'
+                (comp?.domain || fixedDomain) === 'CONTACT'
                   ? 'bg-[#431407] text-[#fdba74] border-[#f97316]/50'
-                  : comp?.domain === 'DELIVERY'
+                  : (comp?.domain || fixedDomain) === 'DELIVERY'
                     ? 'bg-[#082f49] text-[#7dd3fc] border-[#38bdf8]/50'
                     : 'bg-[#2e1065] text-[#ddd6fe] border-[#a78bfa]/50';
+
+              if (isDomainSealed) {
+                return (
+                  <div
+                    key={`bespoke-sealed-${idx}`}
+                    className="p-2 rounded-xs border border-[#4c1d95]/60 bg-[#0b0716] flex flex-col justify-between gap-1.5 opacity-95"
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-[9px] font-bold text-[#c4b5fd]">
+                        {fixedDomain} · [{domainLabels[fixedDomain].toUpperCase()}]
+                      </span>
+                      <span className="text-[8px] px-1.5 py-0.2 rounded-[2px] font-bold bg-[#2e1065] text-[#e9d5ff] border border-[#a855f7]/50">
+                        SEALED ASSEMBLY
+                      </span>
+                    </div>
+                    <div className="text-[8px] text-[#cbd5e1] leading-snug">
+                      {sealedSpecText}
+                    </div>
+                    <div className="text-[8px] text-[#a78bfa] italic pt-0.5 border-t border-[#1e1b4b]">
+                      Factory-sealed Magitech hardware domain — physical aftermarket mods locked.
+                    </div>
+                  </div>
+                );
+              }
 
               return (
                 <div
@@ -454,10 +667,13 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                 >
                   <div className="flex items-center justify-between gap-1">
                     <span className="text-[9px] font-bold text-[#7dd3fc]">
-                      SLOT {idx + 1}{' '}
-                      {comp
-                        ? `· [${comp.domain} · ${domainLabels[comp.domain].toUpperCase()}]`
-                        : '· [ANY DOMAIN]'}
+                      {isUniqueWeapon
+                        ? `OPEN MOUNT · [${fixedDomain} · ${domainLabels[fixedDomain].toUpperCase()}]`
+                        : `SLOT ${idx + 1} ${
+                            comp
+                              ? `· [${comp.domain} · ${domainLabels[comp.domain].toUpperCase()}]`
+                              : '· [ANY DOMAIN]'
+                          }`}
                     </span>
                     <span
                       className={`text-[9px] px-1 py-0.2 rounded-[2px] font-bold border ${
@@ -470,7 +686,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                     >
                       {comp
                         ? `${comp.acquisitionSource} · ${comp.maxGemSlots}G`
-                        : 'EMPTY SLOT'}
+                        : 'OPEN MOUNT'}
                     </span>
                   </div>
 
@@ -603,8 +819,9 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                     </div>
                   ) : (
                     <div className="text-[9px] text-[#64748b] italic pt-0.5">
-                      Click to focus Slot {idx + 1} & install any Contact, Delivery, or
-                      Regulation component
+                      {isUniqueWeapon
+                        ? `Click to focus ${fixedDomain} (${domainLabels[fixedDomain]}) open mount & install a compatible component`
+                        : `Click to focus Slot ${idx + 1} & install any Contact, Delivery, or Regulation component`}
                     </div>
                   )}
                 </div>
@@ -704,194 +921,213 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
           )}
 
           {/* Class-Specific Bespoke Component Catalog (28 Crafted Blueprints + 33 Looted Field Salvage) */}
-          <div className="p-2 bg-[#090d14] rounded-xs border border-[#334155] space-y-2">
-            <div className="flex flex-wrap items-center justify-between gap-1.5">
-              <div className="text-[9px] font-bold text-[#fde047]">
-                BESPOKE [{weaponCategory.toUpperCase()}] COMPONENT CATALOG → INSTALLING INTO SLOT{' '}
-                {clampedSlotIdx + 1}:
+          {(!isUniqueWeapon || openDomains.length > 0) && (
+            <div className="p-2 bg-[#090d14] rounded-xs border border-[#334155] space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-1.5">
+                <div className="text-[9px] font-bold text-[#fde047]">
+                  BESPOKE [{weaponCategory.toUpperCase()}] COMPONENT CATALOG{' '}
+                  {isUniqueWeapon
+                    ? `→ OPEN MOUNTS: [${openDomains.join(', ')}]`
+                    : `→ INSTALLING INTO SLOT ${clampedSlotIdx + 1}`}
+                  :
+                </div>
+                <div className="flex flex-wrap items-center gap-1">
+                  {(['ALL', 'CONTACT', 'DELIVERY', 'REGULATION'] as const).map((domOpt) => (
+                    <button
+                      key={domOpt}
+                      type="button"
+                      onClick={() => {
+                        soundSystem.playSelect();
+                        setComponentDomainFilter(domOpt);
+                      }}
+                      className={`px-1.5 py-0.5 rounded-xs text-[8px] font-bold border cursor-pointer ${
+                        componentDomainFilter === domOpt
+                          ? 'bg-[#38bdf8] text-[#05070a] border-[#7dd3fc]'
+                          : 'bg-[#05070a] text-[#94a3b8] border-[#1e293b] hover:border-[#38bdf8]/60'
+                      }`}
+                    >
+                      {domOpt === 'ALL'
+                        ? 'ALL DOMAINS'
+                        : `${domOpt} (${domainLabels[domOpt]})`}
+                    </button>
+                  ))}
+                  {(['ALL', 'CRAFTED', 'LOOTED'] as const).map((srcOpt) => (
+                    <button
+                      key={srcOpt}
+                      type="button"
+                      onClick={() => {
+                        soundSystem.playSelect();
+                        setComponentSourceFilter(srcOpt);
+                      }}
+                      className={`px-1.5 py-0.5 rounded-xs text-[8px] font-bold border cursor-pointer ${
+                        componentSourceFilter === srcOpt
+                          ? 'bg-[#fde047] text-[#05070a] border-[#ffd27d]'
+                          : 'bg-[#05070a] text-[#94a3b8] border-[#1e293b] hover:border-[#fde047]/60'
+                      }`}
+                    >
+                      {srcOpt === 'ALL'
+                        ? 'ALL SOURCES'
+                        : srcOpt === 'CRAFTED'
+                          ? 'CRAFTED (1G)'
+                          : 'LOOTED SALVAGE (1–3G)'}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="flex flex-wrap items-center gap-1">
-                {(['ALL', 'CONTACT', 'DELIVERY', 'REGULATION'] as const).map((domOpt) => (
-                  <button
-                    key={domOpt}
-                    type="button"
-                    onClick={() => {
-                      soundSystem.playSelect();
-                      setComponentDomainFilter(domOpt);
-                    }}
-                    className={`px-1.5 py-0.5 rounded-xs text-[8px] font-bold border cursor-pointer ${
-                      componentDomainFilter === domOpt
-                        ? 'bg-[#38bdf8] text-[#05070a] border-[#7dd3fc]'
-                        : 'bg-[#05070a] text-[#94a3b8] border-[#1e293b] hover:border-[#38bdf8]/60'
-                    }`}
-                  >
-                    {domOpt === 'ALL'
-                      ? 'ALL DOMAINS'
-                      : `${domOpt} (${domainLabels[domOpt]})`}
-                  </button>
-                ))}
-                {(['ALL', 'CRAFTED', 'LOOTED'] as const).map((srcOpt) => (
-                  <button
-                    key={srcOpt}
-                    type="button"
-                    onClick={() => {
-                      soundSystem.playSelect();
-                      setComponentSourceFilter(srcOpt);
-                    }}
-                    className={`px-1.5 py-0.5 rounded-xs text-[8px] font-bold border cursor-pointer ${
-                      componentSourceFilter === srcOpt
-                        ? 'bg-[#fde047] text-[#05070a] border-[#ffd27d]'
-                        : 'bg-[#05070a] text-[#94a3b8] border-[#1e293b] hover:border-[#fde047]/60'
-                    }`}
-                  >
-                    {srcOpt === 'ALL'
-                      ? 'ALL SOURCES'
-                      : srcOpt === 'CRAFTED'
-                        ? 'CRAFTED (1G)'
-                        : 'LOOTED SALVAGE (1–3G)'}
-                  </button>
-                ))}
-              </div>
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-              {bespokeClassParts.map((part) => {
-                // Determine target slot: if another slot already holds this domain, auto-target that slot on click
-                const existingDomainSlot = modProfile.slots.find(
-                  (s) => s.component?.domain === part.domain
-                );
-                const targetSlotForPart = existingDomainSlot
-                  ? existingDomainSlot.slotIndex
-                  : clampedSlotIdx;
-                const validation = validateWeaponComponentInstallation(
-                  state,
-                  targetInstanceId,
-                  targetSlotForPart,
-                  part.id
-                );
-                const isInstalledHere = modProfile.slots.some(
-                  (s) => s.component?.id === part.id
-                );
-                const ownedLootCount =
-                  part.acquisitionSource === 'LOOTED'
-                    ? getOwnedLootedComponentCount(state, part.id)
-                    : 0;
-                const costLabel =
-                  part.acquisitionSource === 'LOOTED'
-                    ? `SALVAGE STOCK: ${isCheatMode ? '∞' : `×${ownedLootCount}`}`
-                    : `${part.recipe.scrapCost} Scrap + ${part.recipe.gemstoneCount}× ${part.recipe.gemstoneType} (${
-                        isCheatMode
-                          ? '∞'
-                          : getInventoryGemCount(
-                              state,
-                              RECIPE_GEMSTONE_TO_ID[part.recipe.gemstoneType]
-                            )
-                      } owned)`;
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                {bespokeClassParts.map((part) => {
+                  const canonicalDomainSlot = (
+                    part.domain === 'CONTACT' ? 0 : part.domain === 'DELIVERY' ? 1 : 2
+                  ) as 0 | 1 | 2;
+                  const existingDomainSlot = modProfile.slots.find(
+                    (s) => s.component?.domain === part.domain
+                  );
+                  const targetSlotForPart = isUniqueWeapon
+                    ? existingDomainSlot
+                      ? existingDomainSlot.slotIndex
+                      : canonicalDomainSlot
+                    : existingDomainSlot
+                      ? existingDomainSlot.slotIndex
+                      : clampedSlotIdx;
+                  const isDomainSealedOnRelic =
+                    isUniqueWeapon && !openDomains.includes(part.domain);
+                  const validation = validateWeaponComponentInstallation(
+                    state,
+                    targetInstanceId,
+                    targetSlotForPart,
+                    part.id
+                  );
+                  const isInstalledHere = modProfile.slots.some(
+                    (s) => s.component?.id === part.id
+                  );
+                  const ownedLootCount =
+                    part.acquisitionSource === 'LOOTED'
+                      ? getOwnedLootedComponentCount(state, part.id)
+                      : 0;
+                  const costLabel =
+                    part.acquisitionSource === 'LOOTED'
+                      ? `SALVAGE STOCK: ${isCheatMode ? '∞' : `×${ownedLootCount}`}`
+                      : `${part.recipe.scrapCost} Scrap + ${part.recipe.gemstoneCount}× ${part.recipe.gemstoneType} (${
+                          isCheatMode
+                            ? '∞'
+                            : getInventoryGemCount(
+                                state,
+                                RECIPE_GEMSTONE_TO_ID[part.recipe.gemstoneType]
+                              )
+                        } owned)`;
 
-                return (
-                  <div
-                    key={part.id}
-                    className={`p-2 rounded-xs border flex flex-col justify-between gap-1 ${
-                      isInstalledHere
-                        ? 'bg-[#172554]/60 border-[#fde047]'
-                        : 'bg-[#05070a] border-[#1e293b]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-1">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="font-bold text-[9px] text-[#e2e8f0] truncate">
-                          {part.name}
-                          {devMode ? ` [${part.id}]` : ''}
-                        </span>
+                  return (
+                    <div
+                      key={part.id}
+                      className={`p-2 rounded-xs border flex flex-col justify-between gap-1 ${
+                        isInstalledHere
+                          ? 'bg-[#172554]/60 border-[#fde047]'
+                          : isDomainSealedOnRelic
+                            ? 'bg-[#05070a]/50 border-[#1e293b]/50 opacity-55'
+                            : 'bg-[#05070a] border-[#1e293b]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="font-bold text-[9px] text-[#e2e8f0] truncate">
+                            {part.name}
+                            {devMode ? ` [${part.id}]` : ''}
+                          </span>
+                          <span
+                            className={`text-[8px] px-1 py-0.2 rounded-[2px] font-bold shrink-0 ${
+                              part.domain === 'CONTACT'
+                                ? 'bg-[#431407] text-[#fdba74]'
+                                : part.domain === 'DELIVERY'
+                                  ? 'bg-[#082f49] text-[#7dd3fc]'
+                                  : 'bg-[#2e1065] text-[#ddd6fe]'
+                            }`}
+                          >
+                            {part.domain}
+                          </span>
+                        </div>
                         <span
                           className={`text-[8px] px-1 py-0.2 rounded-[2px] font-bold shrink-0 ${
-                            part.domain === 'CONTACT'
-                              ? 'bg-[#431407] text-[#fdba74]'
-                              : part.domain === 'DELIVERY'
-                                ? 'bg-[#082f49] text-[#7dd3fc]'
-                                : 'bg-[#2e1065] text-[#ddd6fe]'
+                            part.acquisitionSource === 'LOOTED'
+                              ? 'bg-[#052e16] text-[#86efac] border border-[#22c55e]/40'
+                              : 'bg-[#3b0764] text-[#e9d5ff] border border-[#c084fc]/40'
                           }`}
                         >
-                          {part.domain}
+                          {part.acquisitionSource} · {part.maxGemSlots}G
                         </span>
                       </div>
-                      <span
-                        className={`text-[8px] px-1 py-0.2 rounded-[2px] font-bold shrink-0 ${
-                          part.acquisitionSource === 'LOOTED'
-                            ? 'bg-[#052e16] text-[#86efac] border border-[#22c55e]/40'
-                            : 'bg-[#3b0764] text-[#e9d5ff] border border-[#c084fc]/40'
-                        }`}
-                      >
-                        {part.acquisitionSource} · {part.maxGemSlots}G
-                      </span>
-                    </div>
 
-                    <div className="text-[9px] text-[#86efac]">
-                      + {part.effectSummary}
-                      {part.damageTypeOverride ? (
-                        <span className="ml-1 px-1 py-0.2 rounded-[2px] bg-[#450a0a] text-[#fde047] font-bold text-[8px]">
-                          ACTION 1 → {part.damageTypeOverride.toUpperCase()}
+                      <div className="text-[9px] text-[#86efac]">
+                        + {part.effectSummary}
+                        {part.damageTypeOverride ? (
+                          <span className="ml-1 px-1 py-0.2 rounded-[2px] bg-[#450a0a] text-[#fde047] font-bold text-[8px]">
+                            ACTION 1 → {part.damageTypeOverride.toUpperCase()}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="text-[9px] text-[#f87171]">
+                        − {part.tradeOffSummary} (
+                        {(part.statModifiers.weightDelta ?? 0) >= 0
+                          ? `+${part.statModifiers.weightDelta ?? 0}`
+                          : (part.statModifiers.weightDelta ?? 0)}{' '}
+                        WT)
+                      </div>
+
+                      <div className="flex items-center justify-between gap-1 pt-1 border-t border-[#1e293b]/80">
+                        <span className="text-[8px] text-[#cbd5e1]">
+                          {part.acquisitionSource === 'CRAFTED' ? 'Recipe: ' : ''}
+                          <b className="text-[#ffd27d]">{costLabel}</b>
                         </span>
-                      ) : null}
+                        <button
+                          type="button"
+                          disabled={!validation.valid || isInstalledHere || isDomainSealedOnRelic}
+                          onClick={() => {
+                            const nextId = installBespokeWeaponComponent(
+                              state,
+                              targetInstanceId,
+                              targetSlotForPart,
+                              part.id,
+                              sayCtx,
+                              { autoReplaceConflictingDomain: true }
+                            );
+                            if (nextId) {
+                              soundSystem.playPowerup();
+                              setSelectedModSlotIndex(targetSlotForPart);
+                              setSelectedComponentGemSocketIdx(0);
+                              syncStateGates(state);
+                              onInstanceUpdated(nextId);
+                              notifyOrionStateChange();
+                            } else {
+                              soundSystem.playMenuBeep();
+                            }
+                          }}
+                          className={`px-2 py-0.5 rounded-xs text-[8px] font-bold border cursor-pointer shrink-0 ${
+                            isInstalledHere
+                              ? 'bg-[#1e293b] text-[#fde047] border-[#fde047]/50 cursor-default'
+                              : isDomainSealedOnRelic
+                                ? 'bg-[#1e1b4b] text-[#a78bfa] border-[#4c1d95]/50 cursor-not-allowed'
+                                : validation.valid
+                                  ? 'bg-[#052e16] hover:bg-[#14532d] text-[#86efac] border-[#22c55e]/60'
+                                  : 'bg-[#0f172a] text-[#475569] border-[#1e293b] cursor-not-allowed'
+                          }`}
+                        >
+                          {isInstalledHere
+                            ? 'INSTALLED'
+                            : isDomainSealedOnRelic
+                              ? `SEALED (${part.domain})`
+                              : existingDomainSlot
+                                ? `REPLACE ${part.domain}`
+                                : part.acquisitionSource === 'CRAFTED'
+                                  ? `FORGE → ${isUniqueWeapon ? part.domain : `SLOT ${targetSlotForPart + 1}`}`
+                                  : `INSTALL → ${isUniqueWeapon ? part.domain : `SLOT ${targetSlotForPart + 1}`}`}
+                        </button>
+                      </div>
                     </div>
-                    <div className="text-[9px] text-[#f87171]">
-                      − {part.tradeOffSummary} (
-                      {(part.statModifiers.weightDelta ?? 0) >= 0
-                        ? `+${part.statModifiers.weightDelta ?? 0}`
-                        : (part.statModifiers.weightDelta ?? 0)}{' '}
-                      WT)
-                    </div>
-
-                    <div className="flex items-center justify-between gap-1 pt-1 border-t border-[#1e293b]/80">
-                      <span className="text-[8px] text-[#cbd5e1]">
-                        {part.acquisitionSource === 'CRAFTED' ? 'Recipe: ' : ''}
-                        <b className="text-[#ffd27d]">{costLabel}</b>
-                      </span>
-                      <button
-                        type="button"
-                        disabled={!validation.valid || isInstalledHere}
-                        onClick={() => {
-                          const nextId = installBespokeWeaponComponent(
-                            state,
-                            targetInstanceId,
-                            targetSlotForPart,
-                            part.id,
-                            sayCtx,
-                            { autoReplaceConflictingDomain: true }
-                          );
-                          if (nextId) {
-                            soundSystem.playPowerup();
-                            setSelectedModSlotIndex(targetSlotForPart);
-                            setSelectedComponentGemSocketIdx(0);
-                            syncStateGates(state);
-                            onInstanceUpdated(nextId);
-                            notifyOrionStateChange();
-                          } else {
-                            soundSystem.playMenuBeep();
-                          }
-                        }}
-                        className={`px-2 py-0.5 rounded-xs text-[8px] font-bold border cursor-pointer shrink-0 ${
-                          isInstalledHere
-                            ? 'bg-[#1e293b] text-[#fde047] border-[#fde047]/50 cursor-default'
-                            : validation.valid
-                              ? 'bg-[#052e16] hover:bg-[#14532d] text-[#86efac] border-[#22c55e]/60'
-                              : 'bg-[#0f172a] text-[#475569] border-[#1e293b] cursor-not-allowed'
-                        }`}
-                      >
-                        {isInstalledHere
-                          ? 'INSTALLED'
-                          : existingDomainSlot
-                            ? `REPLACE ${part.domain} (SLOT ${targetSlotForPart + 1})`
-                            : part.acquisitionSource === 'CRAFTED'
-                              ? `FORGE → SLOT ${targetSlotForPart + 1}`
-                              : `INSTALL → SLOT ${targetSlotForPart + 1}`}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       );
     }
@@ -1266,7 +1502,9 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                           isUnique ? 'text-[#c084fc]' : 'text-[#86efac]'
                         }`}
                       >
-                        {isUnique ? '· Magitech (1G)' : '· Custom (3S)'}
+                        {isUnique
+                          ? `· Magitech (${w.openDomains?.length ?? 0}S+1G)`
+                          : '· Custom (3S)'}
                       </span>
                       {isMain && (
                         <span className="px-1 py-0.2 bg-[#fde047]/20 text-[#fde047] rounded-[2px] text-[9px]">
@@ -1316,7 +1554,15 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                     <b>{getWeaponInstanceEquipWeight(activeWeaponDef.id, state)} WT</b> ·{' '}
                     {activeWeaponBaseDef.weaponTier === 'unique' ? (
                       <span className="text-[#c084fc] font-bold">
-                        FIXED INTERNAL PARTS · 1 RESONANCE GEM SOCKET
+                        {activeWeaponBaseDef.code ? `[${activeWeaponBaseDef.code}] · ` : ''}
+                        {(activeWeaponBaseDef.architectureTier || 'MAGITECH_RELIC').replace(
+                          /_/g,
+                          ' '
+                        )}{' '}
+                        ({activeWeaponBaseDef.openDomains?.length ?? 0} OPEN MOUNTS + 1G RESONANCE)
+                        {activeWeaponBaseDef.legacyEpithet
+                          ? ` · “${activeWeaponBaseDef.legacyEpithet}”`
+                          : ''}
                       </span>
                     ) : (
                       <>

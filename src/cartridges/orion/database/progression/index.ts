@@ -47,6 +47,7 @@ import {
 import {
   canBypassTwoHandRestriction,
   canEquipWeaponInSlot,
+  canInstallComponentOnMagitech,
   getWeaponDefinition,
   isAuxiliaryEquipment,
   isLauncherEquipment,
@@ -80,6 +81,8 @@ import {
   WEAPON_DOMAIN_ANATOMY_LABELS,
 } from './weaponComponentCatalog';
 import {
+  evaluateMagitechPuristResonance,
+  getMagitechResonanceGem,
   getOwnedLootedComponentCount,
   getWeaponInstanceSlotRecords,
   grantLootedWeaponComponent,
@@ -89,7 +92,9 @@ import {
   resolveWeaponModificationProfile,
   rollAndGrantFieldLootedComponent,
   socketGemIntoWeaponComponent,
+  socketResonanceGemIntoMagitechWeapon,
   unsocketGemFromWeaponComponent,
+  unsocketResonanceGemFromMagitechWeapon,
   validateWeaponComponentInstallation,
   type WeaponComponentValidationResult,
 } from './weaponComponentMods';
@@ -100,6 +105,7 @@ export {
   type CanonicalHardwareItemDefinition,
   canBypassTwoHandRestriction,
   canEquipWeaponInSlot,
+  canInstallComponentOnMagitech,
   CHASSIS_HARDWARE_CATALOG,
   type ChassisHardwareItemDefinition,
   CRAFTED_SUBMODULE_HARDWARE,
@@ -127,7 +133,9 @@ export {
   BESPOKE_WEAPON_COMPONENT_BY_ID,
   BESPOKE_WEAPON_COMPONENT_CATALOG,
   createStarterLootedComponentsByTrait,
+  evaluateMagitechPuristResonance,
   getBespokeComponentsForWeaponClass,
+  getMagitechResonanceGem,
   getOwnedLootedComponentCount,
   getWeaponInstanceSlotRecords,
   grantLootedWeaponComponent,
@@ -141,8 +149,10 @@ export {
   resolveWeaponModificationProfile,
   rollAndGrantFieldLootedComponent,
   socketGemIntoWeaponComponent,
+  socketResonanceGemIntoMagitechWeapon,
   toLegacyWeaponComponentPartDefinition,
   unsocketGemFromWeaponComponent,
+  unsocketResonanceGemFromMagitechWeapon,
   validateWeaponComponentInstallation,
   WEAPON_DOMAIN_ANATOMY_LABELS,
   type WeaponComponentValidationResult,
@@ -774,12 +784,7 @@ export function getWeaponComponentSlots(
   const { baseId } = parseEquipmentInstanceId(weaponIdOrName);
   const wDef = getWeaponDefinition(baseId);
 
-  // Unique Magitech weapons have fixed internal components and expose 1 Resonance Gem Socket (focus)
-  if (wDef?.weaponTier === 'unique') {
-    return ['focus', 'focus', 'focus'];
-  }
-
-  // Category-driven anatomical component slots for all 72 Customizable Weapons
+  // Category-driven anatomical component slots for all weapons
   if (wDef?.category) {
     switch (wDef.category) {
       case 'Blades: Straight':
@@ -927,7 +932,11 @@ export function getEquipmentMaxModSlots(idOrName: string | null | undefined): 1 
   const { baseId } = parseEquipmentInstanceId(idOrName);
   const wDef = getWeaponDefinition(baseId);
   if (wDef) {
-    return wDef.weaponTier === 'unique' ? 1 : 3;
+    if (wDef.weaponTier === 'unique') {
+      const openCount = wDef.openDomains?.length ?? 0;
+      return Math.min(3, Math.max(1, openCount + 1)) as 1 | 2 | 3;
+    }
+    return 3;
   }
   const hwDef = findHardwareItemByNameOrId(baseId);
   if (hwDef) {
@@ -1137,6 +1146,7 @@ export function createInitialEquipmentSlots(traitLine: TraitLine = 'Warrior'): O
     installedMods: {},
     installedWeaponComponents: {},
     installedWeaponComponentSlots: {},
+    installedMagitechResonanceGems: {},
     ownedLootedComponents: createStarterLootedComponentsByTrait(traitLine),
     unlockedMods: [],
     unlockedEquipment: Array.from(
@@ -3238,9 +3248,15 @@ export function getWeaponInstanceEquipWeight(
   if (!wDef) return 0;
   const baseClass = wDef.weightClass || 'medium';
   const baseWt =
-    baseClass === 'heavy' ? 18 : baseClass === 'light' ? 4 : 10;
+    typeof wDef.explicitEquipWeight === 'number'
+      ? wDef.explicitEquipWeight
+      : baseClass === 'heavy'
+        ? 18
+        : baseClass === 'light'
+          ? 4
+          : 10;
   const modProfile = resolveWeaponModificationProfile(state, weaponInstanceId);
-  if (modProfile.installedMods.length > 0) {
+  if (modProfile.installedMods.length > 0 || modProfile.resonanceGem || modProfile.socketedGems.length > 0) {
     return Math.max(2, baseWt + modProfile.weightDelta);
   }
   const { installedGems } = parseEquipmentInstanceId(weaponInstanceId);

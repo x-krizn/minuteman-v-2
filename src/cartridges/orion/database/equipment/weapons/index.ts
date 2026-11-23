@@ -30,11 +30,41 @@ export * from './custom_blades';
 // Auto-discover all weapon entity modules in this directory (including subfolders) via Vite import.meta.glob
 const modules = import.meta.glob<Record<string, unknown>>('./**/*.ts', { eager: true });
 
-const LEGACY_WEAPON_ID_ALIASES: Record<string, string> = {
+export const LEGACY_WEAPON_ID_ALIASES: Record<string, string> = {
   gladius_boltcaster: 'n55_gladius',
   khopesh: 's2_turbine_khopesh',
   avalon_siege_lance: 'hl220_lightburst_lance',
-  buckler_shield: 'aegis_charge_buckler',
+  buckler_shield: 'ti110_aegis_buckler',
+  aegis_charge_buckler: 'ti110_aegis_buckler',
+  tig_edge: 's3_viper_partisan',
+  m450_pilum: 'm450_arbalest_greatbow',
+  m300_hasta: 'm300_cantabrian_recurve',
+  sv18_serpent: 'sv22_stiletto_spatha',
+  s4_whisper_blade: 's4_whisper_wakizashi',
+  s6_phantom_edge: 's6_phantom_messer',
+  siegebreaker: 'b55_skjaldborg_axe',
+  hallowed_scepter: 'cl210_sanctum_mace',
+  grace_edge: 'cl500_absolution',
+  cl700_sanctifier: 'cl500_absolution',
+  cl350_litany: 'cl210_sanctum_mace',
+  utility_ichor_surge: 'n20_rotary_bandolier',
+  aux3_pnsy_rockweiler_buckler: 'n20_rotary_bandolier',
+  aux4_pnsy_rough_rider_booster: 'n12_plumbata_pod',
+  utility_aegis_pulse: 'ti350_radiant_corona',
+  aux3_ti_aegis_hardlight: 'ti400_aegis_scutum',
+  aux4_ti_radiant_sphere: 'ti350_radiant_corona',
+  utility_phantom_shroud: 'vx15_ghost_yebira',
+  aux3_vx_eclipse_cloak: 'vx10_eclipse_disc',
+  aux4_vx_phase_shift: 'vx10_eclipse_disc',
+  utility_siege_brace: 'ln1200_avalanche',
+  aux3_rad_kinetic_recycling: 'ln1200_avalanche',
+  aux4_rad_ether_vapor: 'lg950_tomahawk',
+  utility_arclight_capacitor: 'arc_conductor',
+  aux3_arc_prismatic_barrier: 'wz650_prism_lance',
+  aux4_arc_feedback_capacitor: 'wz450_sparkstrike',
+  utility_sanctum_font: 'cl150_ward_mote',
+  aux3_sanc_restoration_field: 'cl150_ward_mote',
+  aux4_sanc_martyrdom_plating: 'cl150_ward_mote',
   carrier_01_quiver: 'carrier_02_quiver',
   carrier_02_rack: 'carrier_06_rack',
   carrier_03_sheaf: 'carrier_05_sheaf',
@@ -163,6 +193,7 @@ export function isLauncherEquipment(weaponOrId?: WeaponDefinition | string | nul
   if (!def) return false;
   const baseId = parseEquipmentInstanceId(def.id).baseId;
   return (
+    def.gripMode === 'DORSAL_CARRIER' ||
     def.category === 'Carriers & Munitions' ||
     def.equipmentRole === 'quiver' ||
     def.equipmentRole === 'catalyst' ||
@@ -244,18 +275,21 @@ export function canBypassTwoHandRestriction(
   if (def.category === 'Bows' || baseId === 'great_bow' || baseId.startsWith('bow_')) {
     return false;
   }
-  if (def.allowOneHandGrip || def.allowSideSlot || def.isLegendary) {
+  if (def.gripMode === 'VERSATILE' || def.allowOneHandGrip || def.allowSideSlot || def.isLegendary) {
     return true;
   }
   // Bastard Sword is explicitly hand-and-a-half versatile
-  if (baseId === 'straight_05_bastard') {
+  if (baseId === 'straight_05_bastard' || baseId === 'hl110_dawnblade') {
     return true;
   }
   // Counterbalanced Unique Magitech weapons can be wielded 1-handed alongside a Side weapon or Shield
   if (
     def.weaponTier === 'unique' &&
     (baseId === 'ls900_swordspear' ||
+      baseId === 'hl110_dawnblade' ||
+      baseId === 'hl310_sarissa_pike' ||
       baseId === 'm350_mauler' ||
+      baseId === 'cl210_sanctum_mace' ||
       baseId === 'hallowed_scepter' ||
       baseId === 'cl700_sanctifier' ||
       baseId === 'wz650_prism_lance')

@@ -33,13 +33,15 @@
    - [6.2 Stage 2: Camelot Border Town (Levels 3–6)](#62-stage-2-camelot-border-town-levels-36)
    - [6.3 The Three Grail Knights & The Dungeon Door](#63-the-three-grail-knights--the-dungeon-door)
    - [6.4 Whispers, Rumors & What Lies Ahead](#64-whispers-rumors--what-lies-ahead)
-7. **[Complete Equipment & Hardware Reference](#7-complete-equipment--hardware-reference)**
-   - [7.1 All 101 Weapons Across the 8 Weapon Classes (Shared Functional Classes · Custom & Magitech Subtypes)](#71-all-101-weapons-across-the-8-weapon-classes-shared-functional-classes--custom--magitech-subtypes)
-   - [7.2 Core Frame Platings (6 Coreplates)](#72-core-frame-platings-6-coreplates)
-   - [7.3 Core Systems (6 Generators / Reactors)](#73-core-systems-6-generators--reactors)
-   - [7.4 Auxiliary & Tactical Utility Systems (18 Modules)](#74-auxiliary--tactical-utility-systems-18-modules)
-   - [7.5 Optics & Battlefield Sensors (18 Modules)](#75-optics--battlefield-sensors-18-modules)
-   - [7.6 Head, Arm, Leg & Energy Storage Components](#76-head-arm-leg--energy-storage-components)
+7. **[Complete Equipment, Weapons, Hardware & Items Reference](#7-complete-equipment-weapons-hardware--items-reference)**
+   - [7.1 All 115 Canonical Weapons Across the 8 Weapon Classes (`72 Custom` + `37 Magitech` + `6 Legendary` + `3 Lore-Bound Relics` + `9 Starting-Kit Field Weapons`)](#71-all-115-canonical-weapons-across-the-8-weapon-classes-72-custom--37-magitech--6-legendary--3-lore-bound-relics--9-starting-kit-field-weapons)
+   - [7.2 All 61 Bespoke Weapon Modification Components (`28 Crafted` + `33 Looted`)](#72-all-61-bespoke-weapon-modification-components-28-crafted--33-looted)
+   - [7.3 Core Frame Platings (`13 Coreplates`)](#73-core-frame-platings-13-coreplates)
+   - [7.4 Core Systems, Reactors & Energy Storage (`10 Modules`)](#74-core-systems-reactors--energy-storage-10-modules)
+   - [7.5 Auxiliary, Tactical Utility & Active Hardware/Reactor Trigger Modules (`25 Modules`)](#75-auxiliary-tactical-utility--active-hardwarereactor-trigger-modules-25-modules)
+   - [7.6 Head Dome Plates (`7`), Optics (`8`) & Battlefield Sensory Arrays (`15`)](#76-head-dome-plates-7-optics-8--battlefield-sensory-arrays-15)
+   - [7.7 Arm Aperture Plates (`7`), Arm Actuators (`8`) & Leg Striders (`8`)](#77-arm-aperture-plates-7-arm-actuators-8--leg-striders-8)
+   - [7.8 The 9 Canonical Gemstones, Belt Flasks, Consumables, Currencies & Quest/Relic Items](#78-the-9-canonical-gemstones-belt-flasks-consumables-currencies--questrelic-items)
 8. **[Complete Canonical Feats Catalog (113-Node Constellation)](#8-complete-canonical-feats-catalog-113-node-constellation)**
    - [8.0 Five Golden Rules (`P-01`–`P-05`), 3 Macro-Umbrellas & 18 Selective Chains](#80-five-golden-rules-p-01p-05-3-macro-umbrellas--18-selective-chains)
    - [8.1 Tier I Core Feats (15 Nodes)](#81-tier-i-core-feats-15-nodes)
@@ -257,16 +259,17 @@ You never need to read equations to master inertia—just remember the **Dynamic
 ### 4.3 Mech Doll (`LOADOUT`) vs. Modification Workbench (`ARMORY`)
 
 - **`LOADOUT` (`Mech Doll`)**: Organizes your equipped weapons and hardware around an anatomical diagram of your chassis (`Head Dome`, `Frame Plating`, `Arm Assembly`, `Leg Striders`, `Main Hand`, `Side Hand`, `Auxiliary Back Mount`, and `[L]`/`[R]` Trigger Binds). Select any slot to **Equip / Swap**, **Unequip**, **Toggle Grip / Specialist Stance** (1H, 2H, Dual-Wield, or Active Specialist Doctrine vs. Base Moveset), or jump directly to **Modify in Armory**.
-  - **Nested 3-Tier Weapon Selector**: Organizes items into **8 Weapon Classes** ▸ **9 Shared Functional Weapon Types** ▸ **`Custom` / `Magitech` Subtypes** (for example, `Blades: Curved` ▸ `Khopesh` ▸ `Khopesh (Custom)` alongside `S-2 Turbine Khopesh (Magitech)`).
-  - **2H Hip-Holstering & Dorsal Back Launchers (`LOCKED`)**: **2H weapons** equip in the **Main Slot (`slot1`)** only unless overridden by a Feat, Unique counterbalanced trait, Legendary flag, or versatile grip (`Bastard Sword`). When wielding a 2H weapon in `slot1` while a 1H weapon or Shield is equipped in `slot2`, the **Side weapon stays in `slot2` and is rendered holstered at the hip**. **Carriers & Munitions** equip in either **Side (`slot2`)** or **Aux (`slot3`, Back Mount)** while *always* rendering dorsally on the back; pressing `[L]` toggles active Back Launcher ownership of **Skills 4 & 5** without moving the launcher into the hand.
+  - **Nested 3-Tier Weapon Selector**: Organizes items into **8 Weapon Classes** ▸ **9 Shared Functional Weapon Types** ▸ **`Custom` / `Magitech` / `Legendary` Subtypes** (for example, `Blades: Curved` ▸ `Khopesh` ▸ `Khopesh (Custom)`, `S-2 Turbine Khopesh (Magitech)`, and `Knives of the Lake of Fire (Legendary)`).
+  - **2H Hip-Holstering & Dorsal Back Launchers (`LOCKED`)**: **2H weapons** equip in the **Main Slot (`slot1`)** only unless overridden by a Feat, Unique counterbalanced trait, Legendary flag (except `Balmung`, which enforces `strictTwoHandedNoOffhand: true`), or versatile grip (`Bastard Sword`, `Excalibur`). When wielding a 2H weapon in `slot1` while a 1H weapon or Shield is equipped in `slot2`, the **Side weapon stays in `slot2` and is rendered holstered at the hip**. **Carriers & Munitions** equip in either **Side (`slot2`)** or **Aux (`slot3`, Back Mount)** while *always* rendering dorsally on the back; pressing `[L]` toggles active Back Launcher ownership of **Skills 4 & 5** without moving the launcher into the hand.
 - **`ARMORY` (`Modification Workbench`)**: Houses all deep engineering:
-  - **72 Customizable (`Custom`) Weapons vs. 29 Unique (`Magitech`) Weapons**:
-    - **`Custom` Subtype (72 Archetypes across 8 Weapon Classes × 9 Functional Types)**: Feature **3 Component & Gem Slots** (`Slot 1`, `Slot 2`, `Slot 3`), allowing you to swap physical weapon parts (`Hilt / Grip / Stock`, `Blade / Head / Limbs`, `Counterweight / Focus / Payload`) or socket Gemstones in any order.
-    - **`Magitech` Subtype (29 Unique Relics)**: Share the same 8 Weapon Classes and 9 Functional Weapon Types per class (`weaponClass`), while defining a unique named relic with **fixed internal components**, distinct movesets, and **1 Resonance Gem Socket**.
-  - **Non-Sequential Slot Order**: Install, replace, or strip modifications in **any slot order** (`Slot 1`, `Slot 2`, or `Slot 3`).
-  - **Physical Domain Separation**: Only exterior armor (**Dome Plates**, **Aperture Plates**, **Frame Platings**) and **Shields** grant Armor (`Durability`, `Rating`, `Threshold`). Internal sub-modules (`Optics`, `Sensory A/B`, `Actuators`, `Reactor Core`, `Leg Actuators`) grant `0` Armor and instead tune vision radius, accuracy, tell duration, attack mass, stability, heat venting, cooldowns, mobility, and weight capacity.
-  - **Crafted vs. Looted Mod Parts**: Mod parts crafted from Gemstones have at most `1` additional gem socket (`maxGemSlots: 1`), whereas standalone parts looted in the field can roll `1–3` gem sockets.
-  - **Semantic `Custom` Naming**: Modified gear automatically earns a `Custom` designation—**`Custom <BaseName>`** for traditional weapons/shields (e.g., `Custom Katana`, `Custom Buckler`) or **`<BaseName> Custom`** for manufacturer model codes (e.g., `N-55 Gladius Custom`, `BWI Bastion Frame Plating Custom`), appending **`+II`** or **`+III`** when 2 or 3 modification slots are populated.
+  - **115 Canonical Weapons Across 3 Subtype Tiers (`72 Custom` + `37 Magitech` + `6 Legendary`)**:
+    - **`Custom` Subtype (`72` Archetypes across 8 Weapon Classes × 9 Functional Types + `9` Field Legacy Weapons)**: Feature **3 Non-Sequential Component Slots** (`CONTACT`, `DELIVERY`, `REGULATION`), allowing you to install any of the **61 Bespoke Weapon Components** (`28 Crafted` + `33 Looted`) and socket Gemstones into each component (`1G` on Crafted components, `1–3G` on Looted field salvage).
+    - **`Magitech` Subtype (`37` Unique Purist Relics)**: Share the same 8 Weapon Classes and 9 Functional Weapon Types per class while defining named manufacturer relics governed by **Four Hardware Architecture Tiers** (`0–3` open physical component mounts + `1G` dedicated Factory Resonance Gem Socket) and **Purist Resonance Passives** paired with the 22 Specialist Martial Stances and 5 Core Feat Chains (`C-03`, `C-04`, `C-10`, `C-14`, `C-18`).
+    - **`Legendary` Subtype (`6` Playable Folklore Artifacts across 5 World Entries + `3` Lore-Bound Companion Mounts)**: Reject standard physical components (`allowStandardMods: false`) and elemental gemstones (`maxGemSlots: 0`). Each carries a permanent rule-breaking **Engine Hook** (`LegendaryEngineHook`) tied to its origin world's folklore, and 3 of the 5 entries expose **1 Lore-Bound Companion Mount** (*The Scabbard of Avalon* on *Excalibur*, *Juuchi Yosamu* on *Yawarakai-Te*, and *Medusa's Head* on *Aegis*).
+  - **Non-Sequential Slot Order & `CONTACT`-Only Damage Conversion**: Install, replace, or strip modifications in **any slot order** (`Slot 1`, `Slot 2`, or `Slot 3`). Only **`CONTACT`** domain components can convert a weapon's Action 1 `DamageType`.
+  - **Physical Domain Separation**: Only exterior armor (**Dome Plates**, **Aperture Plates**, **Frame Platings**) and **Shields** grant Armor (`Durability`, `Rating`, `Threshold`). Internal sub-modules (`Optics`, `Sensory A/B`, `Actuators`, `Reactor Core`, `Leg Actuators`) and non-`Shields` weapon components grant `0` Armor and instead tune vision radius, accuracy, tell duration, attack mass, stability, heat venting, cooldowns, mobility, and weight capacity.
+  - **Crafted vs. Looted Mod Parts**: Mod parts crafted at the workbench (`28` weapon components + `8` crafted chassis sub-modules) cost Scrap + Gemstones and have `1` gem socket (`maxGemSlots: 1`), whereas standalone parts looted in the field (`33` weapon components + `60` looted chassis items) have `1–3` gem sockets.
+  - **Semantic `Custom` Naming**: Modified gear automatically earns a `Custom` designation—**`Custom <BaseName>`** for traditional weapons/shields (e.g., `Custom Katana`, `Custom Buckler`) or **`<BaseName> Custom`** for manufacturer model codes and Magitech relics (e.g., `N-55 Gladius Custom`, `BWI Bastion Frame Plating Custom`), appending **`+II`** or **`+III`** when 2 or 3 modification slots are populated.
 
 ---
 
@@ -485,251 +488,508 @@ Three corrupted champions patrol the Barracks and Cathedral districts. You can d
 
 ---
 
-## 7. Complete Equipment & Hardware Reference
+## 7. Complete Equipment, Weapons, Hardware & Items Reference
 
-### 7.1 All 101 Weapons Across the 8 Weapon Classes (Shared Functional Classes · Custom & Magitech Subtypes)
+### 7.1 All 115 Canonical Weapons Across the 8 Weapon Classes (`72 Custom` + `37 Magitech` + `6 Legendary` + `3 Lore-Bound Relics` + `9 Starting-Kit Field Weapons`)
 
-Project Orion features **101 weapons** organized into **8 Weapon Classes**, each containing **9 shared Functional Weapon Types**:
-- **`Custom` Subtype (72 Customizable Weapons · 9 per Class)**: Feature **3 Component & Gem Slots** (`3S`) in the Armory Workbench for swapping physical weapon components and Gemstones.
-- **`Magitech` Subtype (29 Unique Magitech Weapons)**: Named manufacturer relics that share a functional weapon class with their customizable counterparts (for example, `S-2 Turbine Khopesh` is a `Magitech` subtype of `Khopesh` under `Blades: Curved`) while featuring distinct movesets, **fixed internal components**, and **1 Resonance Gem Socket** (`1G`).
+Project Orion features **115 canonical weapons** organized into **8 Weapon Classes**, each containing **9 shared Functional Weapon Types**, plus **3 Lore-Bound Legendary Companion Relics** and **9 Starting-Kit / Field Legacy Weapons**:
+- **`Custom` Subtype (`weaponTier: 'customizable'` · `72` Archetypes · `9` per Class)**: Feature **3 Non-Sequential Component Slots** (`3S`: `CONTACT`, `DELIVERY`, `REGULATION`) in the Armory Workbench for installing any of the **61 Bespoke Weapon Components** (`28 Crafted` with `1G` socket, `33 Looted` with `1–3G` sockets).
+- **`Magitech` Subtype (`weaponTier: 'unique'` · `37` Unique Purist Relics)**: Named manufacturer relics that share a functional weapon class with their customizable counterparts while preserving legacy epithets (*"the Siegebreaker"*, *"this hallowed scepter"*, *"Grace Edge"*, *"the Aegis Charge Buckler"*). Governed by **Four Hardware Architecture Tiers** (`0S + 1G` `SEALED_MONOLITH`, `1S + 1G` `SEMI_SEALED_ASSEMBLY`, `2S + 1G` `MODULAR_FRAME_RELIC`, and `3S + 1G` `REFERENCE_PLATFORM` on `N-55 Gladius`) plus **Purist Resonance Passives** paired with the **22 Specialist Martial Stances** and **5 Core Feat Chains (`C-03`, `C-04`, `C-10`, `C-14`, `C-18`)**.
+- **`Legendary` Subtype (`weaponTier: 'legendary'` · `6` Playable Folklore Artifacts across `5` World Entries + `3` Lore-Bound Companion Mounts)**: Reject all 61 standard components (`allowStandardMods: false`) and elemental gemstones (`maxGemSlots: 0`). Each carries permanent rule-breaking **Engine Hooks** (`LegendaryEngineHook`) tied to its origin world's folklore, and 3 of the 5 entries expose **1 Lore-Bound Companion Mount** (*The Scabbard of Avalon* on *Excalibur*, *Juuchi Yosamu* on *Yawarakai-Te*, and *Medusa's Head* on *Aegis*).
 
-#### 1. Shields (9 Custom + 1 Magitech = 10)
-| Subtype | Functional Class | Weapon Name | Damage Type | Weight Class | Slots | Combat Identity |
+#### 1. Shields (`9 Custom` + `5 Magitech` + `1 Legendary` = `15`)
+| Subtype | Functional Class | Weapon Name (& Preserved Epithet) | Damage Type | Weight Class | Architecture / Slots | Combat Identity & Paired Doctrine / Hook |
 | :---: | :--- | :--- | :--- | :---: | :---: | :--- |
-| `Custom` | `Buckler` | **Buckler** | Impact | Light (`5 WT`) | `3S` | Compact, fist-held iron boss designed for active parrying, deflection, and close-quarters hand-to-hand binding |
-| `Magitech` | `Buckler` | **Aegis Charge Buckler** | Impact | Medium (`9 WT`) | `1G` | Guardian physical buckler barrier; enables `Shield Charge` feat |
-| `Custom` | `Heater` | **Heater** | Impact | Medium (`10 WT`) | `3S` | Compact, triangular cavalry shield offering high torso coverage without impeding weapon clearance enabling high mobility |
-| `Custom` | `Tower` | **Tower** | Impact | Heavy (`22 WT`) | `3S` | Heavy, slightly curved full-length pavis designed to establish a portable defensive wall against ranged volleys |
-| `Custom` | `Norman` | **Norman** | Impact | Medium (`13 WT`) | `3S` | Teardrop kite shield elongated at the base to protect a rider's flank and leg, tapering upward for upper-body warding |
-| `Custom` | `Scutum` | **Scutum** | Impact | Heavy (`19 WT`) | `3S` | Semi-cylindrical curved rectangular shield engineered for overlapping frontline legion formations and devastating forward shield-punches |
-| `Custom` | `Corona` | **Corona** | Beam | Medium (`11 WT`) | `3S` | Radiant magitech projection ring generating a localized solar flare field that incinerates incoming projectiles on impact |
-| `Custom` | `Mote` | **Mote** | Pulse | Light (`6 WT`) | `3S` | Swarm of orbiting micro-kinetic shields that dynamically drift to intercept incoming ballistics and dispersed spell fire |
-| `Custom` | `Disc` | **Disc** | Wave | Light (`7 WT`) | `3S` | Revolving hard-light barrier that rotates around the forearm to disperse ballistic momentum through centrifugal force |
-| `Custom` | `Rhom` | **Rhom** | Beam | Heavy (`18 WT`) | `3S` | Asymmetric rhombus-phase energy lattice calibrated to shatter high-caliber kinetic munitions and thermal lances |
+| `Custom` | `Buckler` | **Buckler** | Impact | Light (`5 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Compact, fist-held iron boss designed for active parrying, deflection, and close-quarters hand-to-hand binding |
+| `Magitech` | `Buckler` | **TI-110 Aegis Buckler** (*"the Aegis Charge Buckler"*) | Impact | Light (`5 WT`) | `1S + 1G` (`DELIVERY`) | Guardian hard-light rimmed buckler; paired with `Spear & Buckler` (*Hard-Light Rim Deflection*) |
+| `Custom` | `Heater` | **Heater** | Impact | Medium (`10 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Compact, triangular cavalry shield offering high torso coverage without impeding weapon clearance |
+| `Custom` | `Tower` | **Tower** | Impact | Heavy (`22 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Heavy, slightly curved full-length pavis designed to establish a portable defensive wall against ranged volleys |
+| `Custom` | `Norman` | **Norman** | Impact | Medium (`13 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Teardrop kite shield elongated at the base to protect a rider's flank and leg |
+| `Custom` | `Scutum` | **Scutum** | Impact | Heavy (`19 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Semi-cylindrical curved rectangular shield engineered for overlapping frontline legion formations |
+| `Magitech` | `Scutum` | **TI-400 Aegis Scutum** | Impact | Heavy (`18 WT`) | `1S + 1G` (`REGULATION`) | Guardian interlocking siege scutum; paired with `Legionary Specialist` (*Interlocking Testudo Wall*) |
+| `Legendary` | `Scutum` | **Aegis** (→ **Aegis of the Gorgon**) | Impact | Medium (`14 WT`) | `1 Lore-Bound` (*Medusa's Head*) | Tyrranus divine shield (`165 DUR / 14 RTG / 10 THR`); `UNBREAKABLE_DIRECTIONAL_GUARD` + `BYPASS_BOSS_CC_IMMUNITY_PETRIFY` (*Gorgon's Gaze*) |
+| `Custom` | `Corona` | **Corona** | Beam | Medium (`11 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Radiant magitech projection ring generating a localized solar flare field that incinerates incoming projectiles |
+| `Magitech` | `Corona` | **TI-350 Radiant Corona** | Pulse | Medium (`11 WT`) | `0S + 1G` (`SEALED_MONOLITH`) | Guardian solar halo barrier; paired with `Knightly Bastard` (*Solar Flare Deflection*) |
+| `Custom` | `Mote` | **Mote** | Pulse | Light (`6 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Swarm of orbiting micro-kinetic shields that dynamically drift to intercept incoming ballistics |
+| `Magitech` | `Mote` | **CL-150 Ward Mote** | Pulse | Light (`6 WT`) | `0S + 1G` (`SEALED_MONOLITH`) | Cleric autonomous choir-ward array; paired with `Scepter & Ward` (*Autonomous Orbiting Ward*) |
+| `Custom` | `Disc` | **Disc** | Wave | Light (`7 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Revolving hard-light barrier that rotates around the forearm to disperse ballistic momentum |
+| `Magitech` | `Disc` | **VX-10 Eclipse Disc** | Pierce | Light (`6 WT`) | `0S + 1G` (`SEALED_MONOLITH`) | Rogue phase-chakram parry disc; paired with `Sword & Buckler` (*Phase-Skip Ricochet*) |
+| `Custom` | `Rhom` | **Rhom** | Beam | Heavy (`18 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Asymmetric rhombus-phase energy lattice calibrated to shatter high-caliber kinetic munitions |
 
-#### 2. Bows (9 Custom + 2 Magitech = 11)
-| Subtype | Functional Class | Weapon Name | Damage Type | Weight Class | Slots | Combat Identity |
+#### 2. Bows (`9 Custom` + `2 Magitech` = `11`)
+| Subtype | Functional Class | Weapon Name | Damage Type | Weight Class | Architecture / Slots | Combat Identity & Paired Doctrine |
 | :---: | :--- | :--- | :--- | :---: | :---: | :--- |
-| `Custom` | `Self Bow` | **Self Bow** | Pierce | Light (`5 WT`) | `3S` | Primitive bow fashioned from a single continuous stave of conditioned hardwood, dependable in its structural simplicity |
-| `Custom` | `Short Bow` | **Short Bow** | Pierce | Light (`6 WT`) | `3S` | Lightweight, quick-drawing bow optimized for swift skirmishing, outrider maneuvers, and confined ambushes |
-| `Custom` | `Flat Bow` | **Flat Bow** | Pierce | Medium (`9 WT`) | `3S` | Broad-limbed stave engineered to distribute mechanical stress evenly, yielding a stable, high-efficiency draw |
-| `Custom` | `Recurve Bow` | **Recurve Bow** | Pierce | Medium (`10 WT`) | `3S` | Bow with limbs that curve outward at the tips, accelerating arrow velocity without requiring an oversized draw length |
-| `Custom` | `Reflex Bow` | **Reflex Bow** | Pierce | Light (`7 WT`) | `3S` | Aggressively pre-stressed limb profile that curves completely away from the archer when unstrung, delivering snap-fire power |
-| `Custom` | `Composite Bow` | **Composite Bow** | Pierce | Medium (`11 WT`) | `3S` | Layered construct of horn, wood, and sinew bonded with alchemical resin, producing immense kinetic energy for its compact frame |
-| `Custom` | `Long Bow` | **Long Bow** | Pierce | Heavy (`16 WT`) | `3S` | Tall, high-draw-weight war bow capable of driving heavy bodkin shafts clean through reinforced armor plating at distance |
-| `Custom` | `Compound Bow` | **Compound Bow** | Pierce | Medium (`13 WT`) | `3S` | Engineered pulley-and-cam mechanical rig that reduces holding weight at full draw while maximizing projectile speed |
-| `Magitech` | `Compound Bow` | **M-300 Hasta** | Impact | Medium (`13 WT`) | `1G` | Warrior polybolos repeating bow; mid-range sustained kinetic fire |
-| `Custom` | `Great Bow` | **Great Bow** | Pierce | Heavy (`20 WT`) | `3S` | Monstrous oversized war bow anchored by raw foot-pounds, launching heavy harpoons capable of staggering armored constructs |
-| `Magitech` | `Great Bow` | **M-450 Pilum** | Impact | Heavy (`20 WT`) | `1G` | Warrior shock-channeling heavy ballista artillery hitter |
+| `Custom` | `Self Bow` | **Self Bow** | Pierce | Light (`5 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Primitive bow fashioned from a single continuous stave of conditioned hardwood |
+| `Custom` | `Short Bow` | **Short Bow** | Pierce | Light (`6 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Lightweight, quick-drawing bow optimized for swift skirmishing and confined ambushes |
+| `Custom` | `Flat Bow` | **Flat Bow** | Pierce | Medium (`9 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Broad-limbed stave engineered to distribute mechanical stress evenly |
+| `Custom` | `Recurve Bow` | **Recurve Bow** | Pierce | Medium (`10 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Bow with outward-curving limb tips that accelerate arrow velocity |
+| `Magitech` | `Recurve Bow` | **M-300 Cantabrian Recurve** | Pierce | Medium (`9 WT`) | `2S + 1G` (`CONTACT`, `REGULATION`) | Rogue gyro-stabilized outrider recurve (aliases legacy `M-300 Hasta`); paired with `Mounted Archer` (*Cantabrian Glide Draw*) |
+| `Custom` | `Reflex Bow` | **Reflex Bow** | Pierce | Light (`7 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Aggressively pre-stressed limb profile delivering high-velocity snap-fire power |
+| `Custom` | `Composite Bow` | **Composite Bow** | Pierce | Medium (`11 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Layered construct of horn, wood, and sinew bonded with alchemical resin |
+| `Custom` | `Long Bow` | **Long Bow** | Pierce | Heavy (`16 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Tall, high-draw-weight war bow capable of driving heavy bodkin shafts through armor plating |
+| `Custom` | `Compound Bow` | **Compound Bow** | Pierce | Medium (`13 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Engineered pulley-and-cam mechanical rig that reduces holding weight at full draw |
+| `Custom` | `Great Bow` | **Great Bow** | Pierce | Heavy (`20 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Monstrous oversized war bow launching heavy harpoons capable of staggering constructs |
+| `Magitech` | `Great Bow` | **M-450 Arbalest Greatbow** | Pierce | Heavy (`18 WT`) | `1S + 1G` (`CONTACT`) | Warrior magnetic-rail siege greatbow (aliases legacy `M-450 Pilum`); paired with `Yeoman Longbow` (*Magnetic Rail Overdraw*) |
 
-#### 3. Casters (9 Custom + 13 Magitech = 22)
-| Subtype | Functional Class | Weapon Name | Damage Type | Weight Class | Slots | Combat Identity |
+#### 3. Casters (`9 Custom` + `11 Magitech` = `20`)
+| Subtype | Functional Class | Weapon Name (& Preserved Epithet) | Damage Type | Weight Class | Architecture / Slots | Combat Identity & Paired Doctrine / Chain |
 | :---: | :--- | :--- | :--- | :---: | :---: | :--- |
-| `Custom` | `Bolt Caster` | **Bolt Caster** | Pierce | Light (`6 WT`) | `3S` | Direct-channel focal barrel designed to condense raw ether into high-velocity, single-shot kinetic penetrators |
-| `Magitech` | `Bolt Caster` | **N-55 Gladius** | Impact | Medium (`11 WT`) | `1G` | Warrior BCU reference bolter; burst-fire stabilization |
-| `Magitech` | `Bolt Caster` | **SV-12 Viper** | Pierce | Light (`6 WT`) | `1G` | Rogue high-fire-rate SMG; close-range rapid burst |
-| `Magitech` | `Bolt Caster` | **SV-18 Serpent** | Pierce | Light (`8 WT`) | `1G` | Rogue suppressed carbine for mid-range stealth ops |
-| `Magitech` | `Bolt Caster` | **SR-440 Shadowfang** | Pierce | Medium (`11 WT`) | `1G` | Rogue long-range marksman rifle; critical amplification |
-| `Magitech` | `Bolt Caster` | **B-25 Brushcutter** | Pierce | Heavy (`20 WT`) | `1G` | Marauder twin-rotor rotary gun; intercept & suppression |
-| `Custom` | `Beam Caster` | **Beam Caster** | Beam | Medium (`10 WT`) | `3S` | Continuous collimated emitter that sustains a coherent lance of focused thermal energy to scour armor seams |
-| `Magitech` | `Beam Caster` | **RS-450 Radiant Projector** | Beam | Medium (`12 WT`) | `1G` | Guardian mid-range beam emitter; reinforces personal shields |
-| `Magitech` | `Beam Caster` | **WZ-800 Arclight Cannon** | Beam | Heavy (`19 WT`) | `1G` | Wizard long-range heavy sustained beam cannon |
-| `Magitech` | `Beam Caster` | **WZ-650 Prism Lance** | Beam | Medium (`12 WT`) | `1G` | Wizard focusing crystal beam rifle with variable intensity |
-| `Magitech` | `Beam Caster` | **CL-700 Sanctifier** | Beam | Medium (`12 WT`) | `1G` | Cleric adaptive hybrid rifle |
-| `Magitech` | `Beam Caster` | **CL-500 Absolution** | Beam | Medium (`13 WT`) | `1G` | Cleric area purification beam projector; buffs allies on sustained fire |
-| `Custom` | `Arc Caster` | **Arc Caster** | Pulse | Light (`7 WT`) | `3S` | Conductively tuned emitter fork that discharges cascading chain lightning to leap across clustered targets |
-| `Magitech` | `Arc Caster` | **WZ-450 Sparkstrike** | Pulse | Medium (`10 WT`) | `1G` | Wizard rapid pulse carbine for close-range defense |
-| `Magitech` | `Arc Caster` | **ARC Conductor** | Pulse | Light (`5 WT`) | `1G` | Wizard lightweight emergency energy pistol sidearm |
-| `Custom` | `Pulse Caster` | **Pulse Caster** | Pulse | Medium (`10 WT`) | `3S` | Cyclic resonance chamber firing rhythmic concussive soundwaves to rupture internal components and stagger advances |
-| `Magitech` | `Pulse Caster` | **CL-350 Litany** | Pulse | Medium (`10 WT`) | `1G` | Cleric support carbine; applies ally tactical buffs on enemy hit |
-| `Custom` | `Wave Caster` | **Wave Caster** | Wave | Medium (`12 WT`) | `3S` | Wide-aperture diffuser that unleashes rolling horizontal crests of force to clear infantry lanes and sweeps |
-| `Custom` | `Blast Caster` | **Blast Caster** | Blast | Medium (`13 WT`) | `3S` | High-pressure compression nozzle delivering volatile shockwave detonations at close-to-medium range |
-| `Magitech` | `Blast Caster` | **M-350 Mauler** | Blast | Medium (`14 WT`) | `1G` | Marauder three-shot explosive burst grenade cannon |
-| `Custom` | `Nova Caster` | **Nova Caster** | Wave | Heavy (`16 WT`) | `3S` | Omnidirectional release matrix that discharges an expanding radial burst of energy from the operator’s core |
-| `Custom` | `Meteoric Caster` | **Meteoric Caster** | Blast | Heavy (`18 WT`) | `3S` | Atmospheric ionization channel that commands violent, weather-born aerial barrages and crushing downdrafts |
-| `Custom` | `Stellar Caster` | **Stellar Caster** | Beam | Heavy (`21 WT`) | `3S` | Astrological focus tuned to deep-space geometry, drawing down the devastating, hyper-dense fusion energy of falling stars |
+| `Custom` | `Bolt Caster` | **Bolt Caster** | Pierce | Light (`6 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Direct-channel focal barrel condensing raw ether into high-velocity kinetic penetrators |
+| `Magitech` | `Bolt Caster` | **N-55 Gladius** | Impact | Medium (`10 WT`) | `3S + 1G` (`REFERENCE_PLATFORM`) | Warrior BCU reference bolter (`all 3 domains open`); paired with `Repeating Arbalest` (*BCU Reference Stabilizer*) |
+| `Magitech` | `Bolt Caster` | **SV-12 Viper** | Pierce | Light (`6 WT`) | `2S + 1G` (`CONTACT`, `REGULATION`) | Rogue high-fire-rate CQC submachine caster (aliases legacy `SV-18 Serpent`); paired with `Boarder Specialist` (*Point-Blank Viper Volley*) |
+| `Magitech` | `Bolt Caster` | **SR-440 Shadowfang** | Pierce | Medium (`11 WT`) | `2S + 1G` (`DELIVERY`, `REGULATION`) | Rogue long-range marksman bolter; Apex Relic for Core Chain `C-03` (*Phantom Strike → Phantom Sniper*) |
+| `Magitech` | `Bolt Caster` | **B-25 Brushcutter** | Pierce | Heavy (`18 WT`) | `1S + 1G` (`REGULATION`) | Marauder twin-rotor suppression cannon; Apex Relic for Core Chain `C-10` (*Suppression Chainfire → Avalanche Surge*) |
+| `Custom` | `Beam Caster` | **Beam Caster** | Beam | Medium (`10 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Continuous collimated emitter sustaining a coherent lance of focused thermal energy |
+| `Magitech` | `Beam Caster` | **RS-450 Radiant Projector** | Beam | Medium (`11 WT`) | `1S + 1G` (`REGULATION`) | Guardian barrier-harmonic beam projector; Apex Relic for Core Chain `C-14` (*Stabilizer Pulse → Radiant Convergence*) |
+| `Magitech` | `Beam Caster` | **WZ-650 Prism Lance** | Beam | Medium (`12 WT`) | `1S + 1G` (`REGULATION`) | Wizard variable-intensity prism beam rifle (aliases legacy `CL-700 Sanctifier`); paired with `Archmage Staff` (*Prismatic Intensity Ramp*) |
+| `Custom` | `Arc Caster` | **Arc Caster** | Pulse | Light (`7 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Conductively tuned emitter fork discharging cascading chain lightning across clustered targets |
+| `Magitech` | `Arc Caster` | **WZ-450 Sparkstrike** | Pulse | Medium (`10 WT`) | `1S + 1G` (`REGULATION`) | Wizard rapid forked-lightning carbine; paired with `Spellblade Specialist` (*Forked Lightning Jump*) |
+| `Custom` | `Pulse Caster` | **Pulse Caster** | Pulse | Medium (`10 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Cyclic resonance chamber firing rhythmic concussive soundwaves |
+| `Magitech` | `Pulse Caster` | **ARC Conductor** | Pulse | Light (`6 WT`) | `2S + 1G` (`CONTACT`, `DELIVERY`) | Wizard lightweight emergency energy pistol (aliases legacy `CL-350 Litany`); paired with `Spellblade Specialist` (*Emergency Capacitor Tap*) |
+| `Custom` | `Wave Caster` | **Wave Caster** | Wave | Medium (`12 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Wide-aperture diffuser unleashing rolling horizontal crests of force |
+| `Magitech` | `Wave Caster` | **CL-500 Absolution** (*"Grace Edge"*) | Wave | Medium (`11 WT`) | `1S + 1G` (`REGULATION`) | Cleric area purification wave projector; Apex Relic for Core Chain `C-18` (*Radiant Overflow → Infinite Wellspring*) |
+| `Custom` | `Blast Caster` | **Blast Caster** | Blast | Medium (`13 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | High-pressure compression nozzle delivering volatile shockwave detonations |
+| `Magitech` | `Blast Caster` | **M-350 Mauler** | Blast | Medium (`13 WT`) | `2S + 1G` (`CONTACT`, `REGULATION`) | Marauder tri-barrel explosive breach cannon; paired with `Siege Battery` (*Tri-Barrel Breach Salvo*) |
+| `Custom` | `Nova Caster` | **Nova Caster** | Wave | Heavy (`16 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Omnidirectional release matrix discharging an expanding radial burst of energy |
+| `Custom` | `Meteoric Caster` | **Meteoric Caster** | Blast | Heavy (`18 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Atmospheric ionization channel commanding aerial bolide barrages |
+| `Custom` | `Stellar Caster` | **Stellar Caster** | Beam | Heavy (`21 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Astrological focus drawing down hyper-dense fusion beams |
+| `Magitech` | `Stellar Caster` | **WZ-800 Arclight Cannon** | Beam | Heavy (`22 WT`) | `0S + 1G` (`SEALED_MONOLITH`) | Wizard long-range singularity beam cannon; Apex Relic for Core Chain `C-04` (*Anchored Focus → Arcane Annihilation*) |
 
-#### 4. Spears (9 Custom + 3 Magitech = 12)
-| Subtype | Functional Class | Weapon Name | Damage Type | Weight Class | Slots | Combat Identity |
+#### 4. Spears (`9 Custom` + `5 Magitech` = `14`)
+| Subtype | Functional Class | Weapon Name | Damage Type | Weight Class | Architecture / Slots | Combat Identity & Paired Doctrine |
 | :---: | :--- | :--- | :--- | :---: | :---: | :--- |
-| `Custom` | `Short Spear` | **Short Spear** | Pierce | Light (`7 WT`) | `3S` | Handy six-foot thrusting spear built for swift one-on-one skirmishing and close-quarters combat |
-| `Custom` | `Winged Spear` | **Winged Spear** | Pierce | Medium (`10 WT`) | `3S` | Thrusting spear flanked by side lugs behind the head to prevent over-penetration and entangle enemy weapon shafts |
-| `Custom` | `Javelin` | **Javelin** | Pierce | Light (`6 WT`) | `3S` | Light, front-weighted throwing shaft weighted for maximum aerodynamic piercing upon ballistic impact |
-| `Custom` | `Spetum` | **Spetum** | Pierce | Medium (`12 WT`) | `3S` | Long thrusting spear featuring two sharp, crescent-shaped side blades designed to hook armor and parry strikes |
-| `Custom` | `Broad Spear` | **Broad Spear** | Pierce | Medium (`13 WT`) | `3S` | Wide, leaf-bladed spear optimized to deliver vicious cutting wounds alongside heavy forward thrusts |
-| `Magitech` | `Broad Spear` | **LS-900 Swordspear** | Wave | Medium (`12 WT`) | `1G` | Guardian mana-channeling polearm; wide cleave strikes |
-| `Custom` | `Partisan` | **Partisan** | Pierce | Medium (`14 WT`) | `3S` | Broad double-edged spear head mounted with sharp basal projections, serving both as an officer’s insignia and a lethal thrusting tool |
-| `Magitech` | `Partisan` | **WZ-200 Manacore Staff** | Wave | Heavy (`16 WT`) | `1G` | Wizard AoE mana discharge polearm and area denial |
-| `Custom` | `Pike` | **Pike** | Pierce | Heavy (`18 WT`) | `3S` | Impressively reaching pole topped with a compact steel point, built to break cavalry charges in massive phalanxes |
-| `Custom` | `Boar Spear` | **Boar Spear** | Pierce | Heavy (`16 WT`) | `3S` | Thick-shafted spear fitted with a sturdy cross-bar designed to halt charging beasts and armored vanguards dead in their tracks |
-| `Custom` | `Lance` | **Lance** | Impact | Heavy (`21 WT`) | `3S` | Heavy, tapered cavalry spear fitted with a vamplate guard, designed to deliver the crushing momentum of a charge |
-| `Magitech` | `Lance` | **HL-220 Lightburst Lance** | Beam | Heavy (`18 WT`) | `1G` | Guardian reactor-linked heavy lance; Judgment Strike |
+| `Custom` | `Short Spear` | **Short Spear** | Pierce | Light (`7 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Handy six-foot thrusting spear built for swift one-on-one skirmishing |
+| `Custom` | `Winged Spear` | **Winged Spear** | Pierce | Medium (`10 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Thrusting spear flanked by side lugs behind the head to entangle enemy weapon shafts |
+| `Custom` | `Javelin` | **Javelin** | Pierce | Light (`6 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Light, front-weighted throwing shaft engineered for high-velocity ballistic piercing |
+| `Custom` | `Spetum` | **Spetum** | Pierce | Medium (`12 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Long thrusting spear with crescent side blades designed to hook armor and parry strikes |
+| `Magitech` | `Spetum` | **WZ-200 Manacore Staff** | Wave | Heavy (`16 WT`) | `1S + 1G` (`DELIVERY`) | Wizard AoE mana-discharge fulcrum polearm; paired with `Archmage Staff` (*Manacore Horizon Wave*) |
+| `Custom` | `Broad Spear` | **Broad Spear** | Pierce | Medium (`13 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Wide, leaf-bladed spear optimized for deep cutting wounds and heavy thrusts |
+| `Custom` | `Partisan` | **Partisan** | Pierce | Medium (`14 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Broad double-edged spear head mounted with sharp basal projections |
+| `Magitech` | `Partisan` | **S-3 Viper Partisan** | Pierce | Light (`8 WT`) | `2S + 1G` (`DELIVERY`, `REGULATION`) | Guardian agile skirmish partisan; paired with `Spear & Buckler` (*Viper Skirmish Feed*) |
+| `Magitech` | `Partisan` | **LS-900 Swordspear** | Wave | Medium (`14 WT`) | `1S + 1G` (`REGULATION`) | Guardian mana-channeling cleave polearm; paired with `Spear & Shield` (*Harmonic Crest Sweeper*) |
+| `Custom` | `Pike` | **Pike** | Pierce | Heavy (`18 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Long-reach infantry polearm built to break charges in phalanx formations |
+| `Magitech` | `Pike` | **HL-310 Sarissa Pike** | Pierce | Heavy (`20 WT`) | `1S + 1G` (`DELIVERY`) | Guardian counter-balanced 1H/2H magnetic sarissa; paired with `Phalanx Specialist` (*Magnetic Counter-Torque Grip*) |
+| `Custom` | `Boar Spear` | **Boar Spear** | Pierce | Heavy (`16 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Thick-shafted spear fitted with a cross-bar to halt charging beasts and vanguards |
+| `Custom` | `Lance` | **Lance** | Impact | Heavy (`21 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Heavy tapered cavalry spear with vamplate guard for high-momentum charges |
+| `Magitech` | `Lance` | **HL-220 Lightburst Lance** | Beam | Heavy (`22 WT`) | `0S + 1G` (`SEALED_MONOLITH`) | Guardian reactor-linked judgment lance; paired with `Cataphract Specialist` (*Judgment Strike Overdrive*) |
 
-#### 5. Impact & Axes (9 Custom + 2 Magitech = 11)
-| Subtype | Functional Class | Weapon Name | Damage Type | Weight Class | Slots | Combat Identity |
+#### 5. Impact & Axes (`9 Custom` + `2 Magitech` = `11`)
+| Subtype | Functional Class | Weapon Name (& Preserved Epithet) | Damage Type | Weight Class | Architecture / Slots | Combat Identity & Paired Doctrine |
 | :---: | :--- | :--- | :--- | :---: | :---: | :--- |
-| `Custom` | `Cudgel` | **Cudgel** | Impact | Light (`6 WT`) | `3S` | Weighted hardwood club reinforced with metal studs, delivering blunt concussive force through brute leverage |
-| `Custom` | `Mace` | **Mace** | Impact | Medium (`11 WT`) | `3S` | Flanged steel head mounted on an iron shaft, engineered specifically to crush rigid plate and cause trauma beneath armor |
-| `Magitech` | `Mace` | **Hallowed Scepter** | Wave | Medium (`11 WT`) | `1G` | Cleric hybrid staff; melee sweeps + ranged healing pulses |
-| `Custom` | `Spike` | **Spike** | Pierce | Light (`8 WT`) | `3S` | Dedicated armor-piercing war pick designed to concentrate striking force onto a fine steel tooth |
-| `Custom` | `Hammer` | **Hammer** | Impact | Medium (`14 WT`) | `3S` | Compact war hammer featuring a flat striking face for crushing bone and an opposing beak for puncturing helmets |
-| `Custom` | `Mallet` | **Mallet** | Impact | Heavy (`20 WT`) | `3S` | Heavy two-handed lead or iron head built for devastating, unbalanced blows that shatter defenses and stagger frames |
-| `Custom` | `Tomahawk` | **Tomahawk** | Pierce | Light (`7 WT`) | `3S` | Light, nimble throwing axe balanced with a straight haft, equally lethal in close melee or spun from the hand |
-| `Custom` | `Parashu` | **Parashu** | Pierce | Medium (`13 WT`) | `3S` | Ancient, crescent-bladed war axe from the southern mountain traditions, balanced for deep cleaving arc strikes |
-| `Custom` | `Labrys` | **Labrys** | Impact | Heavy (`17 WT`) | `3S` | Classical symmetrical double-bitted war axe representing divine balance and royal execution, dangerous on both forward and backswings |
-| `Custom` | `Battle Axe` | **Battle Axe** | Impact | Heavy (`19 WT`) | `3S` | Purpose-built broad axe perched on a long haft, designed to sever limbs and split weak shields |
-| `Magitech` | `Battle Axe` | **Siegebreaker** | Impact | Heavy (`18 WT`) | `1G` | Marauder two-handed battle axe with integrated energy vent |
+| `Custom` | `Cudgel` | **Cudgel** | Impact | Light (`6 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Weighted hardwood club reinforced with metal studs |
+| `Custom` | `Mace` | **Mace** | Impact | Medium (`11 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Flanged steel head mounted on an iron shaft to crush rigid plate |
+| `Magitech` | `Mace` | **CL-210 Sanctum Mace** (*"this hallowed scepter"*) | Wave | Medium (`10 WT`) | `1S + 1G` (`DELIVERY`) | Cleric choir-bell hybrid mace & triage staff; paired with `Scepter & Ward` (*Choir Bell Triage*) |
+| `Custom` | `Spike` | **Spike** | Pierce | Light (`8 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Dedicated armor-piercing war pick concentrating force onto a fine steel tooth |
+| `Custom` | `Hammer` | **Hammer** | Impact | Medium (`14 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Compact war hammer with a flat striking face and an opposing armor-piercing beak |
+| `Custom` | `Mallet` | **Mallet** | Impact | Heavy (`20 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Heavy two-handed maul built for devastating ground slams that shatter defenses |
+| `Custom` | `Tomahawk` | **Tomahawk** | Pierce | Light (`7 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Light, nimble throwing axe equally lethal in close melee or spun from the hand |
+| `Custom` | `Parashu` | **Parashu** | Pierce | Medium (`13 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Crescent-bladed war axe balanced for deep cleaving arc strikes |
+| `Custom` | `Labrys` | **Labrys** | Impact | Heavy (`17 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Symmetrical double-bitted war axe dangerous on both forward and backswings |
+| `Custom` | `Battle Axe` | **Battle Axe** | Impact | Heavy (`19 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Broad war axe perched on a long haft to sever limbs and split shields |
+| `Magitech` | `Battle Axe` | **B-55 Skjaldborg Axe** (*"the Siegebreaker"*) | Impact | Medium (`13 WT`) | `1S + 1G` (`DELIVERY`) | Marauder thermal-vented bearded war axe; paired with `Viking Raider` (*Siegebreaker Exhaust Vent*) |
 
-#### 6. Blades: Curved (9 Custom + 1 Magitech = 10)
-| Subtype | Functional Class | Weapon Name | Damage Type | Weight Class | Slots | Combat Identity |
+#### 6. Blades: Curved (`9 Custom` + `5 Magitech` + `3 Legendary` = `17`)
+| Subtype | Functional Class | Weapon Name (& Transformed Title) | Damage Type | Weight Class | Architecture / Slots | Combat Identity & Paired Doctrine / Hook |
 | :---: | :--- | :--- | :--- | :---: | :---: | :--- |
-| `Custom` | `Wakizashi` | **Wakizashi** | Pierce | Light (`5 WT`) | `3S` | Traditional companion sidearm forged by eastern guildsmiths for rapid duels and close-quarters defense |
-| `Custom` | `Katana` | **Katana** | Pierce | Medium (`10 WT`) | `3S` | Medium-length curved blade designed for slashing and piercing, folded in master smithing traditions, a deadly tool in skilled hands |
-| `Custom` | `Khopesh` | **Khopesh** | Pierce | Light (`8 WT`) | `3S` | Ancient sickle-sword featuring an outer-curved forward edge designed to hook shields and deliver sweeping slashes |
-| `Magitech` | `Khopesh` | **S-2 Turbine Khopesh** | Pierce | Light (`7 WT`) | `1G` | Warrior compact turbine fallback khopesh; dual-wield capable |
-| `Custom` | `Shotel` | **Shotel** | Pierce | Light (`8 WT`) | `3S` | Deeply curved, sickle-like highlands blade engineered to reach around shields and bypass an opponent’s guard |
-| `Custom` | `Odachi` | **Odachi** | Pierce | Heavy (`17 WT`) | `3S` | Immense two-handed battlefield sword with a sweeping edge, deployed to sweep through mounted vanguards on open fields |
-| `Custom` | `Kilij` | **Kilij** | Pierce | Medium (`11 WT`) | `3S` | Nomad cavalry sabre with a flared, double-edged tip that shifts kinetic mass forward to produce devastating draw-cuts |
-| `Custom` | `Falx` | **Falx** | Pierce | Heavy (`15 WT`) | `3S` | Fearsome two-handed forward-curving war blade designed to hook over tower shields and split helmets with a scythe-like chop |
-| `Custom` | `Dao` | **Dao** | Pierce | Medium (`12 WT`) | `3S` | Single-edged broadsword from the eastern manufacturing clans featuring a flared slashing belly, balanced for rapid sweeping forms |
-| `Custom` | `Dadao` | **Dadao** | Impact | Heavy (`18 WT`) | `3S` | Heavy, two-handed military cleaver built with a broad tip, designed for brutal overhead chops through frontline armor lines |
+| `Custom` | `Wakizashi` | **Wakizashi** | Pierce | Light (`5 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Traditional companion sidearm forged for rapid duels and close-quarters defense |
+| `Magitech` | `Wakizashi` | **S-4 Whisper Wakizashi** | Pierce | Light (`5 WT`) | `1S + 1G` (`REGULATION`) | Rogue monomolecular companion blade (aliases legacy `S-4 Whisper Blade`); paired with `Daisho Specialist` (*Monomolecular Riposte*) |
+| `Custom` | `Katana` | **Katana** | Pierce | Medium (`10 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Medium-length curved blade folded in master smithing traditions for slashing and piercing |
+| `Magitech` | `Katana` | **S-8 Ghost Katana** | Pierce | Medium (`9 WT`) | `1S + 1G` (`DELIVERY`) | Rogue phase-edged iaijutsu katana; paired with `Daisho Specialist` (*Iaijutsu Phase Draw*) |
+| `Legendary` | `Katana` | **Yawarakai-Te** (→ **Yawarakai-Te & Juuchi Yosamu**) | Pierce | Medium (`9 WT` / `16 WT` fused) | `1 Lore-Bound` (*Juuchi Yosamu*) | New Novarin Masamune katana (`~0.80×` solo BCU, `+20%` windup, `-20%` hit window); `DR_OUTSIDE_ACTIVE_HIT_FRAMES` (`20%` DR outside hit frames; fuses with *Juuchi Yosamu* for `2×` twin-blade strike execution & 100% all-phase `20%` DR) |
+| `Legendary` | `Katana` | **Juuchi Yosamu** | Pierce | Medium (`9 WT`) | `0 Slots` (or mounts into `Yawarakai-Te`) | Novarin Muramasa katana (`~0.80×` solo BCU, `-20%` windup, `+20%` hit window); `DR_DURING_ACTIVE_HIT_FRAMES` (`20%` DR during active hit frames; wielded standalone or slotted into *Yawarakai-Te*) |
+| `Custom` | `Khopesh` | **Khopesh** | Pierce | Light (`8 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Ancient sickle-sword with an outer-curved edge designed to hook shields |
+| `Magitech` | `Khopesh` | **S-2 Turbine Khopesh** | Pierce | Light (`6 WT`) | `2S + 1G` (`DELIVERY`, `REGULATION`) | Rogue/Warrior turbine-driven hooked khopesh; paired with `Boarder / Shield-Breaker` (*Twin-Turbine Hook*) |
+| `Legendary` | `Khopesh` | **Knives of the Lake of Fire** (`maxObtainableCopies: 4`) | Pierce | Light (`8 WT`) | `0 Slots` (True Dual-Wield `slot1 + slot2`) | Golem bronze flame-sickles; `PERMANENT_KILL_PREVENT_RESURRECT` (slain enemies cannot self-reassemble, death-split, or revive) + Action 3 *Glance of the Gatekeeper* frontal stun/blind cone (widened when dual-wielded) |
+| `Custom` | `Shotel` | **Shotel** | Pierce | Light (`8 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Deeply curved sickle blade engineered to reach around shields and bypass guard |
+| `Custom` | `Odachi` | **Odachi** | Pierce | Heavy (`17 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Immense two-handed battlefield sword deployed to sweep through vanguards |
+| `Magitech` | `Odachi` | **S-9 Turbine Odachi** | Pierce | Heavy (`19 WT`) | `1S + 1G` (`REGULATION`) | Warrior centrifugal turbine great-katana; paired with `Odachi Specialist` (*Centrifugal Spool Momentum*) |
+| `Custom` | `Kilij` | **Kilij** | Pierce | Medium (`11 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Nomad cavalry sabre with a flared yelman tip that accelerates draw-cuts |
+| `Custom` | `Falx` | **Falx** | Pierce | Heavy (`15 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Two-handed forward-curving war blade designed to hook over tower shields |
+| `Magitech` | `Falx` | **B-40 Ripper Falx** | Pierce | Medium (`12 WT`) | `1S + 1G` (`REGULATION`) | Marauder motorized chain-toothed rhomphaia; paired with `Shield-Breaker Specialist` (*Chain-Ripper Guard Hook*) |
+| `Custom` | `Dao` | **Dao** | Pierce | Medium (`12 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Single-edged broadsword with a flared slashing belly for rapid sweeping forms |
+| `Custom` | `Dadao` | **Dadao** | Impact | Heavy (`18 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Heavy two-handed military cleaver built for brutal overhead chops |
 
-#### 7. Blades: Straight (9 Custom + 4 Magitech = 13)
-| Subtype | Functional Class | Weapon Name | Damage Type | Weight Class | Slots | Combat Identity |
+#### 7. Blades: Straight (`9 Custom` + `8 Magitech` + `2 Legendary` = `19`)
+| Subtype | Functional Class | Weapon Name (& Transformed Title) | Damage Type | Weight Class | Architecture / Slots | Combat Identity & Paired Doctrine / Hook |
 | :---: | :--- | :--- | :--- | :---: | :---: | :--- |
-| `Custom` | `Cinquedea` | **Cinquedea** | Pierce | Light (`5 WT`) | `3S` | Broad, five-finger-wide guild dagger tapering sharply to a thrusting point, lethal in crowded alley ambushes |
-| `Magitech` | `Cinquedea` | **S-4 Whisper Blade** | Pierce | Light (`5 WT`) | `1G` | Rogue monomolecular dagger edge; dual-wield capable |
-| `Custom` | `Spatha` | **Spatha** | Pierce | Medium (`9 WT`) | `3S` | Straight, medium-length double-edged cavalry sword engineered by frontier garrisons for sweeping mounted slashes |
-| `Magitech` | `Spatha` | **TIG Edge / Guardian's Edge** | Pulse | Light (`6 WT`) | `1G` | Guardian compact precision melee defense energy blade |
-| `Magitech` | `Spatha` | **Grace Edge** | Pierce | Light (`6 WT`) | `1G` | Cleric consecrated blade; releases a healing pulse on critical hit |
-| `Custom` | `Falchion` | **Falchion** | Pierce | Medium (`10 WT`) | `3S` | Single-edged heavy blade combining the balance of a sword with the forward weight and cutting bite of an axe |
-| `Custom` | `Arming Sword` | **Arming Sword** | Pierce | Medium (`10 WT`) | `3S` | Quintessential knightly one-handed cross-hilted sword, balanced for agile thrusts, cuts, and paired shield maneuvers |
-| `Custom` | `Bastard Sword` | **Bastard Sword** | Pierce | Medium (`13 WT`) | `3S` | Hand-and-a-half sword featuring an extended grip, allowing the wielder to switch fluidly between one-handed guard and two-handed power |
-| `Custom` | `Messer` | **Messer** | Pierce | Medium (`12 WT`) | `3S` | Heavy, single-edged knife-sword fitted with a distinct guard lug, favored by frontline skirmishers and duelists |
-| `Magitech` | `Messer` | **S-6 Phantom Edge** | Pierce | Light (`5 WT`) | `1G` | Rogue thermal-coated stealth knife; heat-dampened strikes |
-| `Custom` | `Zweihander` | **Zweihander** | Impact | Heavy (`18 WT`) | `3S` | Massive double-handed sword with flanged parrying lugs, wielded by frontline shock infantry to break spear lines |
-| `Custom` | `Flamberge` | **Flamberge** | Pierce | Heavy (`17 WT`) | `3S` | Greatsword with an undulating, wave-shaped blade designed to induce heavy blade vibrations on parry and tear ragged cuts |
-| `Custom` | `Executioner Sword` | **Executioner Sword** | Impact | Heavy (`21 WT`) | `3S` | Heavy, flat-tipped two-handed blade balanced purely for forward momentum and decapitating downward chops |
+| `Custom` | `Cinquedea` | **Cinquedea** | Pierce | Light (`5 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Broad, five-finger-wide guild dagger tapering sharply to a thrusting point |
+| `Magitech` | `Cinquedea` | **S-5 Whisper Cinquedea** | Pierce | Light (`5 WT`) | `1S + 1G` (`DELIVERY`) | Rogue parrying main-gauche dagger; paired with `Rapier & Dagger` (*Five-Finger Blade Catch*) |
+| `Custom` | `Spatha` | **Spatha** | Pierce | Medium (`9 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Straight, medium-length double-edged cavalry sword for sweeping slashes |
+| `Magitech` | `Spatha` | **N-60 Limitanei Spatha** | Pierce | Medium (`9 WT`) | `2S + 1G` (`CONTACT`, `REGULATION`) | Warrior frontier garrison spatha; paired with `Limitanei Specialist` (*Plumbata Breach Signal*) |
+| `Magitech` | `Spatha` | **N-75 Praetorian Spatha** | Pierce | Medium (`10 WT`) | `1S + 1G` (`REGULATION`) | Guardian heavy formation spatha (aliases legacy `TIG Edge`); paired with `Legionary Specialist` (*Scutum Firing Port Lock*) |
+| `Magitech` | `Spatha` | **SV-22 Stiletto Spatha** | Pierce | Light (`8 WT`) | `2S + 1G` (`DELIVERY`, `REGULATION`) | Rogue acoustic-damped dueling thrusting sword; paired with `Rapier & Dagger` (*Acoustic-Null Thrust*) |
+| `Magitech` | `Spatha` | **WZ-310 Æther Spatha** | Beam | Light (`8 WT`) | `2S + 1G` (`DELIVERY`, `REGULATION`) | Wizard crystal-conduit spellblade; paired with `Spellblade Specialist` (*Conduit Edge Siphon*) |
+| `Custom` | `Falchion` | **Falchion** | Pierce | Medium (`10 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Single-edged heavy blade combining sword balance with the bite of an axe |
+| `Custom` | `Arming Sword` | **Arming Sword** | Pierce | Medium (`10 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Quintessential knightly one-handed cross-hilted sword |
+| `Custom` | `Bastard Sword` | **Bastard Sword** | Pierce | Medium (`13 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Hand-and-a-half sword switching fluidly between 1H guard and 2H power |
+| `Magitech` | `Bastard Sword` | **HL-110 Dawnblade** | Beam | Medium (`12 WT`) | `2S + 1G` (`DELIVERY`, `REGULATION`) | Guardian solar-forged hand-and-a-half sword; paired with `Knightly Bastard` (*Solar Half-Swording*) |
+| `Legendary` | `Bastard Sword` | **Excalibur** (→ **Excalibur, Sheathed in Avalon**) | Pierce | Medium (`12 WT`) | `1 Lore-Bound` (*The Scabbard of Avalon*) | Belldor sovereign bastard sword (aliases `avalon_siege_lance`); `BYPASS_LAYER1_SHIELDS` (100% shield penetration) + `PREVENT_LETHAL_DOT` (DoTs clamp Frame HP at `1 HP` when sheathed in Avalon) |
+| `Custom` | `Messer` | **Messer** | Pierce | Medium (`12 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Heavy single-edged knife-sword fitted with a Nagel guard lug |
+| `Magitech` | `Messer` | **S-6 Phantom Messer** | Pierce | Light (`7 WT`) | `2S + 1G` (`CONTACT`, `REGULATION`) | Rogue thermal-coated stealth Kriegsmesser (aliases legacy `S-6 Phantom Edge`); paired with `Sword & Buckler` (*Thermal-Null Backswing*) |
+| `Custom` | `Zweihander` | **Zweihander** | Impact | Heavy (`18 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Massive double-handed greatsword with flanged parrying lugs |
+| `Magitech` | `Zweihander` | **B-80 Doppelsöldner Greatsword** | Impact | Heavy (`22 WT`) | `1S + 1G` (`DELIVERY`) | Marauder rocket-assisted pike-cleaving greatsword; paired with `Zweihander Specialist` (*Pike-Cleaver Ignition*) |
+| `Legendary` | `Zweihander` | **Balmung** | Wave | Heavy (`20 WT`) | `0 Slots` (Strict `2H`, `slot2` locked) | Orion dwarven dragon-slayer greatsword; `ALWAYS_HYPER_ARMOR` + `ZERO_HIT_STOP` + `PERFECT_BLOCK_MELEE_AUTO_COUNTER` (*Gram Counter-Slash*) |
+| `Custom` | `Flamberge` | **Flamberge** | Pierce | Heavy (`17 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Undulating wave-bladed greatsword that induces severe parry vibrations |
+| `Custom` | `Executioner Sword` | **Executioner Sword** | Impact | Heavy (`21 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Flat-tipped two-handed blade balanced purely for decapitating downward chops |
 
-#### 8. Carriers & Munitions (9 Custom + 2 Magitech = 11)
-| Subtype | Functional Class | Weapon Name | Damage Type | Weight Class | Slots | Combat Identity |
+#### 8. Carriers & Munitions (`9 Custom` + `6 Magitech` = `15`)
+| Subtype | Functional Class | Weapon Name | Damage Type | Weight Class | Architecture / Slots | Combat Identity & Paired Doctrine |
 | :---: | :--- | :--- | :--- | :---: | :---: | :--- |
-| `Custom` | `Bandolier` | **Bandolier** | Impact | Light (`6 WT`) | `3S` | Chest-slung webbing harness fitted with dedicated loops to carry loose cartridges, shells, or small munitions |
-| `Custom` | `Quiver` | **Quiver** | Pierce | Light (`5 WT`) | `3S` | Reinforced leather or hardened chassis container worn on the hip or flank, designed for rapid dispensing while mobile |
-| `Custom` | `Yebira` | **Yebira** | Pierce | Light (`8 WT`) | `3S` | Open-face rig of eastern origin designed to secure and display medium munitions individually for rapid draw |
-| `Custom` | `Battery` | **Battery** | Pulse | Medium (`13 WT`) | `3S` | Integrated multi-cell energy cell and munitions cluster rigged for synchronized, sequential salvo discharges |
-| `Custom` | `Sheaf` | **Sheaf** | Pierce | Light (`7 WT`) | `3S` | Tightly bound tactical bundle of standardized munitions wrapped for rapid field distribution and logistics |
-| `Custom` | `Rack` | **Rack** | Blast | Heavy (`14 WT`) | `3S` | Open-frame mechanical rail assembly mounted to hardpoints, holding heavy ordnance ready for automated feed cycles |
-| `Magitech` | `Rack` | **LN-1200 Avalanche** | Blast | Heavy (`19 WT`) | `1G` | Marauder long-range rocket pod; interference shielding |
-| `Magitech` | `Rack` | **LG-950 Tomahawk** | Blast | Heavy (`18 WT`) | `1G` | Marauder long-range soft-lock missile salvo system |
-| `Custom` | `Plumbata` | **Plumbata** | Pierce | Light (`6 WT`) | `3S` | Weighted darts tipped with heavy core weights, loosed underhand in high arcs to rain down behind shield walls |
-| `Custom` | `Kaad` | **Kaad** | Wave | Light (`6 WT`) | `3S` | Consecrated wraps wound along the hands and forearms, trailing weighted cords used to bind incoming strikes and whip mid-range targets |
-| `Custom` | `Pangao` | **Pangao** | Blast | Medium (`11 WT`) | `3S` | Protected, shock-dampened shoulder satchel engineered to transport volatile bombs, powder flasks, and other explosives |
+| `Custom` | `Bandolier` | **Bandolier** | Impact | Light (`6 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Chest-slung webbing harness fitted with loops for cartridges, shells, and percussion darts |
+| `Magitech` | `Bandolier` | **N-20 Rotary Bandolier** | Impact | Light (`7 WT`) | `1S + 1G` (`CONTACT`) | Warrior motorized chest-feed bandolier; paired with `Repeating Arbalest` (*Rotary Quick-Toss Feed*) |
+| `Custom` | `Quiver` | **Quiver** | Pierce | Light (`5 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Reinforced container worn on the hip or dorsal mount for rapid arrow dispensing |
+| `Magitech` | `Quiver` | **M-10 Bodkin Quiver** | Pierce | Light (`8 WT`) | `2S + 1G` (`CONTACT`, `DELIVERY`) | Warrior auto-indexing armor-piercing quiver; paired with `Yeoman Longbow` (*Auto-Indexer Nock Feed*) |
+| `Custom` | `Yebira` | **Yebira** | Pierce | Light (`8 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Open-face eastern rig displaying medium shafts individually for rapid draw |
+| `Magitech` | `Yebira` | **VX-15 Ghost Yebira** | Pierce | Light (`6 WT`) | `1S + 1G` (`CONTACT`) | Rogue phase-cased stealth arrow rig; paired with `Mounted Archer` (*Phase-Cased Nock Feed*) |
+| `Custom` | `Battery` | **Battery** | Pulse | Medium (`13 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Multi-cell energy and micro-missile cluster rigged for synchronized salvo discharges |
+| `Magitech` | `Battery` | **LG-950 Tomahawk** | Blast | Heavy (`18 WT`) | `0S + 1G` (`SEALED_MONOLITH`) | Marauder multi-target soft-lock cruise missile battery; paired with `Siege Battery` (*Multi-Target Soft-Lock*) |
+| `Custom` | `Sheaf` | **Sheaf** | Pierce | Light (`7 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Tightly bound tactical bundle of standardized war arrows and javelins |
+| `Custom` | `Rack` | **Rack** | Blast | Heavy (`14 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Open-frame dorsal rail assembly holding heavy rockets ready for automated feed cycles |
+| `Magitech` | `Rack` | **LN-1200 Avalanche** | Blast | Heavy (`19 WT`) | `1S + 1G` (`REGULATION`) | Marauder long-range bombardment rocket pod with chaff screen; paired with `Siege Battery` (*Chaff-Screen Salvo*) |
+| `Custom` | `Plumbata` | **Plumbata** | Pierce | Light (`6 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Lead-weighted war darts loosed in high plunging arcs behind shield walls |
+| `Magitech` | `Plumbata` | **N-12 Plumbata Pod** | Pierce | Medium (`9 WT`) | `1S + 1G` (`CONTACT`) | Warrior dorsal pneumatic dart dispenser; paired with `Limitanei Specialist` (*Weighted Plunge Link*) |
+| `Custom` | `Kaad` | **Kaad** | Wave | Light (`6 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Consecrated forearm wraps trailing weighted cords to bind strikes and whip mid-range targets |
+| `Custom` | `Pangao` | **Pangao** | Blast | Medium (`11 WT`) | `3S` (`CONTACT`/`DELIVERY`/`REGULATION`) | Shock-dampened shoulder satchel engineered to deploy volatile bombs and powder charges |
 
-*(Note: 9 additional starting-kit field weapons—`Camelot Longsword` (`Arming Sword`), `Sanctum Flange Mace` (`Mace`), `Marauder Hand Axe` (`Tomahawk`), `Knightly Heater Shield` (`Heater`), `Aegis Pavise Tower Shield` (`Tower`), `Camelot Short Spear` (`Short Spear`), `Arclight Great Bow` (`Great Bow`), `Fletcher Munitions Quiver` (`Quiver`), and `Sanctum Æther Catalyst` (`Battery`)—also remain available in Belldor caches and Starting Loadout Kits under their shared functional classes.)*
+#### 9. The 5 Canonical Legendary World Entries (`6` Playable Artifacts + `3` Lore-Bound Companion Relics)
+| Origin World | Weapon ID & Name | Transformed Title (with Companion) | Lore-Bound Companion Relic | Acquisition & Sequence Gate | Rule-Breaking Engine Hooks (`LegendaryEngineHook`) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Belldor** (`belldor`) | `leg_excalibur` — **Excalibur** *(aliases `avalon_siege_lance`)* | **Excalibur, Sheathed in Avalon** | **The Scabbard of Avalon** (`scabbard_of_avalon`) | Defeat **King Arthur** in Camelot's inner sanctum (`arthur_defeated`), then gather all 3 relics on **Bedivere's Numbered List** and defeat **The Lady of the Lake** in The Bog (`lady_of_the_lake_defeated`). | **`BYPASS_LAYER1_SHIELDS`**: Melee attacks bypass 100% of Layer 1 Energy Shields.<br>**`PREVENT_LETHAL_DOT`** *(with Scabbard)*: Periodic DoT ticks (bog acid, burn, bleed, poison) clamp Layer 3 Frame Integrity at `1 HP` and can never kill you. |
+| **New Novarin & Novarin** (`new_novarin` / `novarin`) | `leg_yawarakai_te` — **Yawarakai-Te** *(Masamune)* | **Yawarakai-Te & Juuchi Yosamu** | **Juuchi Yosamu** (`leg_juuchi_yosamu`, *Muramasa*) | Claim *Yawarakai-Te* on New Novarin (`new_novarin_shrine_cleared`) and *Juuchi Yosamu* from the Novarin war-forges (`novarin_warlord_defeated`). Slot *Juuchi Yosamu* into *Yawarakai-Te* at the Armory Workbench. | **`DR_OUTSIDE_ACTIVE_HIT_FRAMES`** (*Yawarakai-Te*): `20%` Damage Reduction outside active hit frames.<br>**`DR_DURING_ACTIVE_HIT_FRAMES`** (*Juuchi Yosamu*): `20%` Damage Reduction during active hit frames.<br>**`TWIN_BLADE_DUAL_EXECUTION`** *(Fused `16 WT`)*: Unbroken 100% all-phase `20%` DR, `2×` twin-blade strike execution, and paired *Daisho* off-hand eligibility. |
+| **Tyrranus** (`tyrranus`) | `leg_aegis` — **Aegis** | **Aegis of the Gorgon** | **Medusa's Head** (`medusas_head`) | Claim *Aegis* from the Pantheon Vault on Tyrranus (`tyrranus_pantheon_cleared`), defeat **Medusa** in the sunken marble labyrinth (`medusa_defeated`), and mount *Medusa's Head* at the Armory Workbench. | **`UNBREAKABLE_DIRECTIONAL_GUARD`**: Active frontal guard cannot be guard-broken or posture-collapsed.<br>**`BYPASS_BOSS_CC_IMMUNITY_PETRIFY`** *(with Medusa's Head, `14s` CD)*: Action 4 Perfect Block or Action 1 Shield Bash Finisher emits a `72px` frontal glare that petrifies enemies and bosses for `2.2s` (`+25%` Impact/Blast vulnerability, followed by `8s` *Stone-Hardened* immunity). |
+| **Golem** (`golem`) | `leg_lake_of_fire_knife` — **Knives of the Lake of Fire** *(up to `4` copies)* | *Dual-Wield Pair (`slot1 + slot2`)* | *None (`0` Slots)* | Recover up to `4` bronze flame-sickles from the gatekeeper wardens of Golem's subterranean Lake of Fire (`golem_lake_of_fire_cleared`). | **`PERMANENT_KILL_PREVENT_RESURRECT`**: Slain targets are soul-severed (`preventResurrection = true`) and cannot self-reassemble, spawn death-splits, or revive. Action 3 *Glance of the Gatekeeper* projects a frontal stun/blind flash (`1.2s` Stun + `2.5s` Blind; widened to `1.55 rad` and `1.6s` Stun + `3.2s` Blind when dual-wielded). |
+| **Orion** (`orion`) | `leg_balmung` — **Balmung** | *Strict Two-Handed (`slot2` locked)* | *None (`0` Slots; dorsal `slot3` allowed)* | Forged in the deep-crust dragon crucibles of Orion (`orion_dragon_crucible_cleared`). | **`ALWAYS_HYPER_ARMOR` + `ZERO_HIT_STOP` + `PERFECT_BLOCK_MELEE_AUTO_COUNTER`**: Uninterruptible hyper-armor during all swings, zero hit-stop frame pause through heavy armor, and an automatic `1.35×` *Gram Counter-Slash* (`Wave`) on any melee Perfect Block. |
+
+#### 10. Starting-Kit & Field Legacy Weapons (`9 Items`)
+| Weapon ID | Display Name | Weapon Class (`Functional Type`) | Damage / WT | Source & Role |
+| :--- | :--- | :--- | :---: | :--- |
+| `long_sword` | **Camelot Longsword** | Blades: Straight (`Arming Sword`) | Pierce · `10 WT` | Belldor knightly starting & field longsword (`3S` customizable) |
+| `flange_mace` | **Sanctum Flange Mace** | Impact & Axes (`Mace`) | Impact · `11 WT` | Sanctum starting & field flanged war mace (`3S` customizable) |
+| `hand_axe` | **Marauder Hand Axe** | Impact & Axes (`Tomahawk`) | Pierce · `7 WT` | Borderland starting & field throwing/melee axe (`3S` customizable) |
+| `heater_shield` | **Knightly Heater Shield** | Shields (`Heater`) | Impact · `10 WT` | Belldor vanguard starting & field heater shield (`3S` customizable) |
+| `tower_shield` | **Aegis Pavise Tower Shield** | Shields (`Tower`) | Impact · `22 WT` | Heavy siege pavise tower shield (`3S` customizable) |
+| `short_spear` | **Camelot Short Spear** | Spears (`Short Spear`) | Pierce · `7 WT` | Garrison starting & field thrusting spear (`3S` customizable) |
+| `long_bow` | **Arclight Great Bow** | Bows (`Great Bow`) | Pierce · `18 WT` | Frontier long-range war bow (`3S` customizable) |
+| `arrow_quiver` | **Fletcher Munitions Quiver** | Carriers & Munitions (`Quiver`) | Pierce · `5 WT` | Field munitions quiver carrier (`3S` customizable) |
+| `aether_catalyst` | **Sanctum Æther Catalyst** | Carriers & Munitions (`Battery`) | Wave · `11 WT` | Harmonic æther battery carrier (`3S` customizable) |
 
 ---
 
-### 7.2 Core Frame Platings (6 Coreplates)
+### 7.2 All 61 Bespoke Weapon Modification Components (`28 Crafted` + `33 Looted`)
 
-| Coreplate Name | Heritage | Plating Type | Base Capacity | Weight | Armor (`DUR / RTG / THR`) | Shield Bonus | Built-In Trade-Off |
+Every `Custom` weapon (`3` open mounts) and every non-monolith `Magitech` Purist relic (`1–3` open mounts) can install bespoke physical components from `BESPOKE_WEAPON_COMPONENT_CATALOG` across three anatomical domains—**`CONTACT`**, **`DELIVERY`**, and **`REGULATION`**. **`CRAFTED`** blueprints (`28` total) are forged at the Armory Workbench using **Scrap + 1 Gemstone** and expose **`1G` socket**. **`LOOTED`** field salvage parts (`33` total) are recovered from caches and enemy drops and expose **`1–3G` sockets**. Only **`CONTACT`** components with a `damageTypeOverride` can convert a weapon's Action 1 `DamageType`.
+
+#### 1. Blades: Straight Components (`3 Crafted` + `5 Looted` = `8`)
+| Component ID | Component Name | Domain | Origin & Sockets | Crafting Recipe / Damage Override | Effect Summary | Zero-Sum Trade-Off |
+| :--- | :--- | :---: | :---: | :--- | :--- | :--- |
+| `wmod_straight_hollow_fuller` | **Hollow-Ground Fuller** | `CONTACT` | `CRAFTED` (`1G`) | `22 Scrap` + `1 Charoite` | `+10%` swing tempo, `-2 WT` | `-15%` Melee Impulse (`J`) |
+| `wmod_straight_ribbed_cord_grip` | **Ribbed Cord Grip** | `DELIVERY` | `CRAFTED` (`1G`) | `18 Scrap` + `1 Titanite` | `+4` Stability (`S`) during combo chains | `+1 WT` |
+| `wmod_straight_wheel_pommel` | **Wheel Counterweight Pommel** | `REGULATION` | `CRAFTED` (`1G`) | `24 Scrap` + `1 Demantoid` | `-12%` post-swing recovery, `+10%` swap speed | `+3 WT` |
+| `wmod_straight_bodkin_tip` | **Reinforced Bodkin Tip** | `CONTACT` | `LOOTED` (`2G`) | Overrides Action 1 to **`Pierce`** | Sets `damageType` to `Pierce` and ignores `+4` Armor `THR` on thrust steps | `-18%` horizontal cleave arc |
+| `wmod_straight_executioner_grind` | **Flat-Tipped Executioner Grind** | `CONTACT` | `LOOTED` (`3G`) | Overrides Action 1 to **`Impact`** | Converts `damageType` to `Impact`, `+20%` BCU on finisher steps, `+20%` Impulse (`J`) | `-10%` swing tempo, `+2 WT`, `-3` `THR` pierce |
+| `wmod_straight_parrying_lugs` | **Flanged Parrying Lugs** | `DELIVERY` | `LOOTED` (`2G`) | Field Salvage (`Titanite` affinity) | `+0.05s` Action 4 Perfect Parry window | `+2 WT`, `-6%` swap speed |
+| `wmod_straight_conduit_crossguard` | **Conduit-Vented Crossguard** | `DELIVERY` | `LOOTED` (`3G`) | Behavioral Override (`Wave` arc) | Emits short-range `Wave` arc (`3.0m`, `0.35× BCU`) on Combo Step 3 / Finisher | `+3` Reactor Heat per wave, `+2 WT` |
+| `wmod_straight_thermal_tang` | **Thermal-Vented Tang** | `REGULATION` | `LOOTED` (`2G`) | Field Salvage (`Hematite` affinity) | Vents `-3` Reactor Heat per hit | `-3` Stability (`S`) |
+
+#### 2. Blades: Curved Components (`4 Crafted` + `3 Looted` = `7`)
+| Component ID | Component Name | Domain | Origin & Sockets | Crafting Recipe / Behavioral Override | Effect Summary | Zero-Sum Trade-Off |
+| :--- | :--- | :---: | :---: | :--- | :--- | :--- |
+| `wmod_curved_broadened_belly` | **Broadened Belly Grind** | `CONTACT` | `CRAFTED` (`1G`) | `22 Scrap` + `1 Carnelian` | `+15%` cleave arc width & `+10%` Layer 2 Armor `DUR` shred | `-8%` swing tempo |
+| `wmod_curved_iaijutsu_profile` | **Lightweight Iaijutsu Profile** | `CONTACT` | `CRAFTED` (`1G`) | `28 Scrap` + `1 Charoite` (`3-Step Chain`) | Fast 3-step draw-cut chain (`+12%` step tempo) with `+15%` lunge on Step 1 | `-15%` Melee Impulse (`J`) |
+| `wmod_curved_silk_cord_wrap` | **Tapered Silk-Cord Wrap** | `DELIVERY` | `CRAFTED` (`1G`) | `18 Scrap` + `1 Spinel` | `+8%` draw-cut BCU scaling on Step 1 | `-2` Stability (`S`) |
+| `wmod_curved_heavy_guard_disc` | **Heavy Iron Guard Disc** | `REGULATION` | `CRAFTED` (`1G`) | `22 Scrap` + `1 Titanite` | `+5` Stability (`S`) on guard/parry | `+3 WT` |
+| `wmod_curved_serrated_sawback` | **Serrated Spine Sawback** | `CONTACT` | `LOOTED` (`2G`) | Field Salvage (`Rubellite` affinity) | Inflicts `-15%` armor repair / shield regen for `3s` | `+2` Reactor Heat per combo |
+| `wmod_curved_canted_duelling_hilt` | **Forward-Canted Duelling Hilt** | `DELIVERY` | `LOOTED` (`2G`) | Field Salvage (`Kyanite` affinity) | `+20%` forward lunge step distance | `-10%` guard mitigation (`RTG`) |
+| `wmod_curved_resonance_core` | **Hollow Resonance Core** | `REGULATION` | `LOOTED` (`3G`) | Field Salvage (`Carnelian` affinity) | `+15%` Melee Impulse (`J`) on finisher steps | `+2 WT`, `-10%` swap speed |
+
+#### 3. Impact & Axes Components (`3 Crafted` + `4 Looted` = `7`)
+| Component ID | Component Name | Domain | Origin & Sockets | Crafting Recipe / Damage Override | Effect Summary | Zero-Sum Trade-Off |
+| :--- | :--- | :---: | :---: | :--- | :--- | :--- |
+| `wmod_hafted_flanged_crown` | **Flanged Impact Crown** | `CONTACT` | `CRAFTED` (`1G`) | `24 Scrap` + `1 Carnelian` (Sets **`Impact`**) | Sets `damageType` to `Impact` and adds `+20%` `DUR` shred | `-10%` swing tempo, `-3` `THR` pierce |
+| `wmod_hafted_steel_langets` | **Steel-Reinforced Langets** | `DELIVERY` | `CRAFTED` (`1G`) | `20 Scrap` + `1 Titanite` | `+6` Stability (`S`) mid-swing | `+3 WT` |
+| `wmod_hafted_lead_ballast_cap` | **Lead Ballast Butt-Cap** | `REGULATION` | `CRAFTED` (`1G`) | `24 Scrap` + `1 Hematite` | `+20%` Melee Impulse (`J`) for grounded knockdowns | `+4 WT`, `-8%` tempo |
+| `wmod_hafted_crows_beak` | **Armor-Piercing Crow's Beak** | `CONTACT` | `LOOTED` (`2G`) | Overrides Action 1 to **`Pierce`** | Converts `damageType` to `Pierce` and ignores `+6` `THR` | `-25%` cleave arc, `-20%` Impulse (`J`) |
+| `wmod_hafted_seismic_anvil` | **Seismic Anvil Head** | `CONTACT` | `LOOTED` (`3G`) | Overrides to **`Impact`** + Finisher Slam | Converts `damageType` to `Impact`; final step triggers grounded shockwave slam (`+35%` Impulse `J`) | `-12%` swing tempo, `+4 WT` |
+| `wmod_hafted_ash_haft` | **Shock-Absorbing Ash Haft** | `DELIVERY` | `LOOTED` (`2G`) | Field Salvage (`Demantoid` affinity) | `-35%` hit-stop recoil on blocked blows | `-10%` Melee Impulse (`J`) |
+| `wmod_hafted_kinetic_vent_cap` | **Kinetic Heat-Vent Cap** | `REGULATION` | `LOOTED` (`2G`) | Field Salvage (`Hematite` affinity) | Vents `-5` Reactor Heat on heavy hits | `-4` Stability (`S`) |
+
+#### 4. Spears Components (`5 Crafted` + `3 Looted` = `8`)
+| Component ID | Component Name | Domain | Origin & Sockets | Crafting Recipe / Damage Override | Effect Summary | Zero-Sum Trade-Off |
+| :--- | :--- | :---: | :---: | :--- | :--- | :--- |
+| `wmod_spear_narrow_bodkin` | **Narrow Bodkin Point** | `CONTACT` | `CRAFTED` (`1G`) | `24 Scrap` + `1 Spinel` (Sets **`Pierce`**) | Sets `damageType` to `Pierce` and ignores `+5` Armor `THR` | `-20%` sweep/cleave damage |
+| `wmod_spear_blunt_coronal` | **Blunt Coronal Tourney Head** | `CONTACT` | `CRAFTED` (`1G`) | `24 Scrap` + `1 Carnelian` (Sets **`Impact`**) | Converts `damageType` to `Impact` with `+25%` Impulse (`J`) & `+15%` `DUR` shred | `-4` Armor `THR` penetration |
+| `wmod_spear_fluted_ashwood` | **Fluted Ashwood Shaft** | `DELIVERY` | `CRAFTED` (`1G`) | `20 Scrap` + `1 Charoite` | `+12%` thrust tempo, `-2 WT` | `-4` Stability (`S`) |
+| `wmod_spear_telescoping_haft` | **Telescoping Spring Haft** | `DELIVERY` | `CRAFTED` (`1G`) | `28 Scrap` + `1 Kyanite` (`+22%` Reach) | Extends Action 1 thrust reach by `+22%` on the final combo step | `-4` Stability (`S`) while extended |
+| `wmod_spear_bronze_sauroter` | **Bronze Sauroter Spike** | `REGULATION` | `CRAFTED` (`1G`) | `20 Scrap` + `1 Titanite` | `+5` Stability (`S`) & `+15%` swap speed | `+3 WT` |
+| `wmod_spear_crescent_lugs` | **Crescent Hook-Lugs** | `CONTACT` | `LOOTED` (`2G`) | Field Salvage (`Demantoid` affinity) | Strips `-20%` target directional charge (`μ`) on hit | `+2 WT`, `-6%` tempo |
+| `wmod_spear_iron_shod_haft` | **Iron-Shod War Haft** | `DELIVERY` | `LOOTED` (`2G`) | Field Salvage (`Carnelian` affinity) | `+25%` Directional Charge (`μ`) bonus when gliding forward | `+4 WT` |
+| `wmod_spear_boar_stop_crossbar` | **Boar-Stop Crossbar** | `REGULATION` | `LOOTED` (`3G`) | Field Salvage (`Titanite` affinity) | `+35%` Impulse (`J`) against charging enemies | `-12%` swap speed |
+
+#### 5. Bows Components (`4 Crafted` + `4 Looted` = `8`)
+| Component ID | Component Name | Domain | Origin & Sockets | Crafting Recipe / Damage Override | Effect Summary | Zero-Sum Trade-Off |
+| :--- | :--- | :---: | :---: | :--- | :--- | :--- |
+| `wmod_bow_reflex_recurve_tips` | **Reflex Recurve Tips** | `CONTACT` | `CRAFTED` (`1G`) | `22 Scrap` + `1 Charoite` | `-15%` Action 1 draw time (faster snap-shots) | `-15%` max projectile range |
+| `wmod_bow_blunt_stun_limbs` | **Blunt Stun-Shaft Limbs & Shelf** | `CONTACT` | `CRAFTED` (`1G`) | `24 Scrap` + `1 Carnelian` (Sets **`Impact`**) | Converts `damageType` to `Impact` with `+30%` Ranged Impulse (`J_ranged`) | `-20%` max range, `-3` `THR` pierce |
+| `wmod_bow_sinew_cord` | **Pre-Stressed Sinew Cord** | `DELIVERY` | `CRAFTED` (`1G`) | `20 Scrap` + `1 Spinel` | `+15%` projectile velocity & Ranged Impulse (`J_ranged`) | `+2` Reactor Heat per draw |
+| `wmod_bow_weighted_riser` | **Weighted Center Riser** | `REGULATION` | `CRAFTED` (`1G`) | `20 Scrap` + `1 Titanite` | `-30%` ranged recoil, `+3` Stability (`S`) | `+3 WT` |
+| `wmod_bow_heavy_laminate_limbs` | **Heavy Laminate War-Limbs** | `CONTACT` | `LOOTED` (`2G`) | Field Salvage (`Spinel` affinity) | `+6` Armor `THR` penetration at full draw | `+18%` draw time, `+3 WT` |
+| `wmod_bow_twin_cam_pulley` | **Twin-Cam Pulley Rig** | `DELIVERY` | `LOOTED` (`2G`) | Field Salvage (`Demantoid` affinity) | `-60%` draw-hold energy/heat drain | `+2 WT`, `-10%` swap speed |
+| `wmod_bow_gravity_repeating_box` | **Gravity-Feed Repeating Box** | `DELIVERY` | `LOOTED` (`3G`) | Behavioral Override (`BURST_VOLLEY`) | Turns Action 1 into a 3-arrow rapid burst on tap (replaces full-charge draw) | `-25%` per-arrow BCU & range, `+3 WT` |
+| `wmod_bow_harmonic_dampener` | **Harmonic Dampener Rod** | `REGULATION` | `LOOTED` (`2G`) | Field Salvage (`Kyanite` affinity) | Eliminates aim sway while moving at full draw | `+2 WT` |
+
+#### 6. Casters Components (`5 Crafted` + `4 Looted` = `9`)
+| Component ID | Component Name | Domain | Origin & Sockets | Crafting Recipe / Damage Override | Effect Summary | Zero-Sum Trade-Off |
+| :--- | :--- | :---: | :---: | :--- | :--- | :--- |
+| `wmod_caster_choke_collimator` | **Choke Collimator Nozzle** | `CONTACT` | `CRAFTED` (`1G`) | `22 Scrap` + `1 Kyanite` | `-30%` spread & `+15%` effective range | `-15%` AoE / beam width |
+| `wmod_caster_concussive_pulse_barrel` | **Concussive Pulse Chamber-Barrel** | `CONTACT` | `CRAFTED` (`1G`) | `26 Scrap` + `1 Moonstone` (Sets **`Pulse`**) | Converts `damageType` to `Pulse` with `+20%` Layer 1 Shield damage | `-20%` effective range |
+| `wmod_caster_extended_drum_mag` | **Extended Drum Magazine** | `DELIVERY` | `CRAFTED` (`1G`) | `28 Scrap` + `1 Rubellite` (`1.5×` Ammo) | Increases Action 1 `ammoCount` by `+50%` | `+3 WT`, `+20%` tactical reload/vent time |
+| `wmod_caster_cyclic_capacitor` | **Cyclic Capacitor Chamber** | `DELIVERY` | `CRAFTED` (`1G`) | `24 Scrap` + `1 Spinel` | `+12%` fire rate / tick tempo | `+15%` Reactor Heat per shot |
+| `wmod_caster_finned_heatsink` | **Finned Heat-Sink Shroud** | `REGULATION` | `CRAFTED` (`1G`) | `24 Scrap` + `1 Hematite` | `-20%` Reactor Heat generated per shot | `+3 WT` |
+| `wmod_caster_wide_scatter_diffuser` | **Wide Scatter Diffuser** | `CONTACT` | `LOOTED` (`2G`) | Field Salvage (`Moonstone` affinity) | `+35%` projectile/wave width & `+15%` Shield damage | `-25%` effective range |
+| `wmod_caster_tri_prism_splitter` | **Tri-Prism Splitter Nozzle** | `CONTACT` | `LOOTED` (`3G`) | Behavioral Override (`3-Bolt Fan`) | Splits single-bolt Action 1 into a 3-bolt horizontal fan (`3 × 0.45× BCU`) | `-25%` range, `+2` Reactor Heat per shot |
+| `wmod_caster_overclocked_coil` | **Overclocked Induction Coil** | `DELIVERY` | `LOOTED` (`2G`) | Field Salvage (`Rubellite` affinity) | `+20%` BCU scaling & `+20%` Ranged Impulse (`J_ranged`) | `+25%` Reactor Heat, `-10%` tempo |
+| `wmod_caster_magnetic_recoil_stock` | **Magnetic Recoil Stock** | `REGULATION` | `LOOTED` (`2G`) | Field Salvage (`Titanite` affinity) | `-45%` Ranged Recoil & `+4` Stability (`S`) | `+4 WT`, `+15%` swap time |
+
+#### 7. Shields Components (`3 Crafted` + `4 Looted` = `7` · *Only Weapon Class Permitted to Modify Layer 2 Armor*)
+| Component ID | Component Name | Domain | Origin & Sockets | Crafting Recipe / Damage Override | Effect Summary | Zero-Sum Trade-Off |
+| :--- | :--- | :---: | :---: | :--- | :--- | :--- |
+| `wmod_shield_hardened_rim` | **Hardened Rim Band** | `CONTACT` | `CRAFTED` (`1G`) | `24 Scrap` + `1 Titanite` | `+25` Shield Durability (`DUR`) & `+2` `THR` | `+3 WT` |
+| `wmod_shield_forearm_straps` | **Forearm Enarme Straps** | `DELIVERY` | `CRAFTED` (`1G`) | `20 Scrap` + `1 Carnelian` | `+6` Stability (`S`) while guarding | `+15%` weapon swap time |
+| `wmod_shield_lightened_core` | **Lightened Core Backing** | `REGULATION` | `CRAFTED` (`1G`) | `20 Scrap` + `1 Charoite` | `-3 WT` & `+10%` guard-raise speed | `-20` Shield Durability (`DUR`) |
+| `wmod_shield_spiked_boss` | **Spiked Impact Boss** | `CONTACT` | `LOOTED` (`2G`) | Field Salvage (`Carnelian` affinity) | `+30%` Shield Bash/Charge BCU & Impulse (`J`) | `+2 WT` |
+| `wmod_shield_capacitor_rim` | **Capacitor Rim Emitter** | `CONTACT` | `LOOTED` (`3G`) | Overrides to **`Pulse`** + Bash Pulse | Converts Action 1 Shield Bash to `Pulse` (`+20%` Shield damage & `2.2m` stun jolt) | `-15` Shield Durability (`DUR`) |
+| `wmod_shield_pivot_grip_boss` | **Pivot Center-Grip Boss** | `DELIVERY` | `LOOTED` (`2G`) | Field Salvage (`Demantoid` affinity) | `+0.05s` Action 4 Perfect Block window | `-5` Stability (`S`) on heavy hits |
+| `wmod_shield_reactive_vent_lattice` | **Reactive Vent Lattice** | `REGULATION` | `LOOTED` (`2G`) | Field Salvage (`Hematite` affinity) | Blocking vents `-4` Reactor Heat per hit | `-2` Armor Rating (`RTG`) |
+
+#### 8. Carriers & Munitions Components (`4 Crafted` + `3 Looted` = `7`)
+| Component ID | Component Name | Domain | Origin & Sockets | Crafting Recipe / Damage Override | Effect Summary | Zero-Sum Trade-Off |
+| :--- | :--- | :---: | :---: | :--- | :--- | :--- |
+| `wmod_carrier_ap_sabot_pack` | **Armor-Piercing Sabot Pack** | `CONTACT` | `CRAFTED` (`1G`) | `24 Scrap` + `1 Spinel` (Sets **`Pierce`**) | Sets `damageType` to `Pierce` and ignores `+5` Armor `THR` | `-15%` blast/splash radius |
+| `wmod_carrier_quick_draw_latch` | **Quick-Draw Tension Latch** | `DELIVERY` | `CRAFTED` (`1G`) | `20 Scrap` + `1 Kyanite` | `-20%` salvo reload/cycle cooldown | `+2` Reactor Heat per cycle |
+| `wmod_carrier_dual_feed_hopper` | **Dual-Feed Hopper** | `DELIVERY` | `CRAFTED` (`1G`) | `28 Scrap` + `1 Rubellite` (`+1` Volley) | Increases Action 1 / basic munition volley count by `+1` projectile per burst | `+3 WT`, `+15%` cycle cooldown |
+| `wmod_carrier_blast_dampened_housing` | **Blast-Dampened Housing** | `REGULATION` | `CRAFTED` (`1G`) | `20 Scrap` + `1 Titanite` | `-35%` salvo recoil & `+3` Stability (`S`) | `+3 WT` |
+| `wmod_carrier_concussive_shock_charge` | **Concussive Shock-Charge** | `CONTACT` | `LOOTED` (`2G`) | Overrides Action 1 to **`Impact`** | Converts `damageType` to `Impact` with `+30%` Ranged Impulse (`J_ranged`) & `+15%` `DUR` shred | `-15%` projectile velocity |
+| `wmod_carrier_rotary_indexing_feed` | **Rotary Indexing Feed** | `DELIVERY` | `LOOTED` (`2G`) | Field Salvage (`Spinel` affinity) | `+15%` salvo fire cadence | `+3 WT`, `+10%` heat |
+| `wmod_carrier_counter_balanced_frame` | **Counter-Balanced Frame** | `REGULATION` | `LOOTED` (`3G`) | Field Salvage (`Charoite` affinity) | `-4 WT` effective load & `+12%` swap speed | `-1` internal ammo capacity |
+
+---
+
+### 7.3 Core Frame Platings (`13 Coreplates`)
+
+All 13 canonical exterior Frame Platings (`slot: 'plating'`, `maxGemSlots: 3`) in `CANONICAL_FRAME_PLATING`, spanning the 6 Starting Heritage Sets (`set_01`–`set_06`), 6 Looted Variant Sets (`set_07`–`set_12`), and the Chivalric Boss Set (`set_camelot_knight`):
+
+| ID | Coreplate Name | Set / Heritage | Plating Type | Base Capacity | Weight | Armor (`DUR / RTG / THR`) | Shield | Gem Slots | Built-In Modifiers & Zero-Sum Trade-Off |
+| :--- | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :--- |
+| `coreplate_bwi_bastion` | **BWI Bastion Frame Plating** | Set 0 (`Warrior`) | Physical / Reactive | Medium (`90 WT`) | `15 WT` | `140 / 9 / 5` | `+45` | `3G` | `+6` Stability, `+6%` Heat Venting / `-2%` Stride Speed |
+| `coreplate_fire_ice_fortress` | **Fire & Ice Fortress Frame Plating** | Set 1 (`Marauder`) | Physical / Hardened | Heavy (`112 WT`) | `32 WT` | `180 / 12 / 8` | `+35` | `3G` | `+14` Stability / `-6%` Stride Speed |
+| `coreplate_dawnforge_guardian` | **Dawnforge Guardian Frame Plating** | Set 2 (`Guardian`) | Physical / Layered | Medium (`90 WT`) | `17 WT` | `155 / 10 / 6` | `+75` | `3G` | `+8` Stability / `+4%` Cooldown Draw |
+| `coreplate_shadowcraft_recon` | **Shadowcraft Recon Frame Plating** | Set 3 (`Rogue`) | Physical / Ablative | Light (`84 WT`) | `7 WT` | `105 / 5 / 3` | `+40` | `3G` | `+6%` Stride Speed, `-4%` Cooldowns / `-6` Stability |
+| `coreplate_arcanum_projector` | **Arcanum Heavy Projector Frame Plating** | Set 4 (`Wizard`) | Physical / Layered | Medium (`90 WT`) | `15 WT` | `110 / 6 / 4` | `+65` | `3G` | `+8%` Heat Venting, `-4%` Cooldowns / `-4` Stability |
+| `coreplate_sanctum_support` | **Sanctum Support Frame Plating** | Set 5 (`Cleric`) | Physical / Reactive | Medium (`90 WT`) | `15 WT` | `130 / 8 / 4` | `+60` | `3G` | `-5%` Cooldowns, `+6%` Heat Venting / `-2%` Stride Speed |
+| `hw_plating_reactive` | **Reactive Blast-Plate Frame Plating** | Set 6 (`Blastplate`) | Reactive Armor | Medium (`90 WT`) | `16 WT` | `145 / 9 / 6` | `+45` | `3G` | `+8` Stability / `-5%` Heat Venting |
+| `hw_plating_hardened` | **Hardened Sanctum Frame Plating** | Set 7 (`Siegebreaker`) | Hardened Armor | Heavy (`112 WT`) | `30 WT` | `170 / 11 / 7` | `+40` | `3G` | `+12` Stability / `-5%` Stride Speed |
+| `hw_plating_layered` | **Layered Weave Frame Plating** | Set 8 (`Radiant`) | Layered Armor | Medium (`90 WT`) | `14 WT` | `130 / 8 / 5` | `+55` | `3G` | `+12%` Heat Venting / `-4` Stability |
+| `hw_plating_ablative` | **Ablative Cuirass Frame Plating** | Set 9 (`Whisperblade`) | Ablative Armor | Light (`84 WT`) | `8 WT` | `115 / 6 / 4` | `+40` | `3G` | `+5%` Stride Speed / `-5` Stability |
+| `hw_plating_arcanum_conduit` | **Arcanum Conduit Frame Plating** | Set 10 (`Conduit`) | Layered / Æther Lattice | Medium (`90 WT`) | `16 WT` | `120 / 7 / 5` | `+70` | `3G` | `+0.5` Light Radius, `-6%` Cooldowns / `-5` Stability |
+| `hw_plating_sanctum_reliquary` | **Sanctum Reliquary Frame Plating** | Set 11 (`Reliquary`) | Reactive / Harmonic | Heavy (`112 WT`) | `28 WT` | `155 / 10 / 6` | `+65` | `3G` | `-6%` Cooldowns / `-5%` Stride Speed |
+| `plating_camelot_knight` | **Camelot Knight Frame Plating** | Set 12 (`Camelot Knight`) | Hardened / Chivalric Plate | Heavy (`112 WT`) | `31 WT` | `175 / 12 / 7` | `+50` | `3G` | `+14` Stability / `-5%` Stride Speed |
+
+---
+
+### 7.4 Core Systems, Reactors & Energy Storage (`10 Modules`)
+
+All 10 Frame Mod 1 (`slot: 'reactor'`) items—comprising **6 Canonical Heritage Reactors**, **2 Energy Storage Reservoirs**, and **2 Gem-Crafted Reactor Sub-Modules**:
+
+| ID | Reactor / Storage Name | Heritage / Origin | Reactor Family | Capacity Bonus | Weight | Gem Slots | Domain Modifiers & Zero-Sum Trade-Off |
 | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :--- |
-| **BWI Bastion Frame Plating** | Warrior | Physical / Reactive | `90 WT` | `15 WT` | `135 / 11 / 7` | `+55` | `+4%` Venting, `+6` Stability / `-2%` Speed |
-| **Fire & Ice Fortress Frame Plating** | Marauder | Physical / Hardened | `112 WT` | `32 WT` | `205 / 15 / 11` | `+35` | `+18` Stability / `-6%` Speed |
-| **Dawnforge Guardian Frame Plating** | Guardian | Physical / Layered | `90 WT` | `17 WT` | `170 / 13 / 9` | `+75` | `+12` Stability / `-3%` Speed |
-| **Shadowcraft Recon Frame Plating** | Rogue | Physical / Ablative | `84 WT` | `7 WT` | `95 / 6 / 4` | `+40` | `+6%` Speed, `+0.5` Light / `-8` Stability |
-| **Arcanum Heavy Projector Frame Plating** | Wizard | Physical / Layered | `90 WT` | `15 WT` | `120 / 8 / 6` | `+95` | `-6%` Cooldowns, `+0.5` Light / `-4` Stability |
-| **Sanctum Support Frame Plating** | Cleric | Physical / Reactive | `90 WT` | `15 WT` | `145 / 10 / 7` | `+70` | `+6%` Venting, `-4%` Cooldowns / `-2%` Speed |
+| `reactor_pnsy_turbine_mk4` | **PNSY Alchemic Turbine Core Mk.IV** | Warrior (`Looted`) | `Ichor` | `+24 WT` | `8 WT` | `3G` | `+12%` Heat Venting, `-4%` Cooldowns / `-3` Gyro Stability |
+| `reactor_rad_battleheart_mk5` | **RAD Battleheart Ether Reactor Mk.V** | Marauder (`Looted`) | `Ichor` | `+26 WT` | `14 WT` | `3G` | `+16%` Heat Venting, `+6` Shield, `+6` Stability / `-3%` Stride Speed |
+| `reactor_ti_manaheart_mk4` | **TI Manaheart Reactor Mk.IV** | Guardian (`Looted`) | `Mana` | `+24 WT` | `8 WT` | `3G` | `+14` Shield Capacity, `+8%` Heat Venting / `+3%` Swing Windup |
+| `reactor_vx_phantom_mk3` | **VX Phantom Core Mk.III** | Rogue (`Looted`) | `Ether` | `+28 WT` | `4 WT` | `3G` | `+14%` Heat Venting, `-6%` Cooldowns / `-4` Stability |
+| `reactor_arc_infinite_well_mk6` | **ARC Infinite Well Reactor Mk.VI** | Wizard (`Looted`) | `Ether` | `+26 WT` | `8 WT` | `3G` | `+12` Shield Capacity, `+12%` Heat Venting, `-6%` Cooldowns / `-4` Stability |
+| `reactor_sanc_heartwell_mk4` | **SANC Heartwell Reactor Mk.IV** | Cleric (`Looted`) | `Mana` | `+24 WT` | `8 WT` | `3G` | `+12` Shield Capacity, `-6%` Cooldowns, `+8%` Heat Venting / `-3` Strike Mass |
+| `storage_cd_erd_lodestone` | **Crystal Dynamics ERD Lodestone** | Warrior (`Looted Storage`) | `Ichor` | `+24 WT` | `8 WT` | `3G` | `-8%` Cooldowns, `+10%` Heat Venting / `-3` Gyro Stability |
+| `storage_vx_shadow_capacitor` | **VX Shadow Capacitor** | Rogue (`Looted Storage`) | `Ether` | `+28 WT` | `4 WT` | `3G` | `-8%` Cooldowns, `+12%` Heat Venting / `-5` Stability |
+| `reactor_crafted_hematite_furnace` | **Synthesized Ichor Overbore Core** | `Crafted` (`2 Hematite + 1 Carnelian`) | `Ichor` | `+28 WT` | `18 WT` | `1G` | `+18%` Heat Venting, `-6%` Cooldowns / `+18 WT` Heavy Boiler Mass |
+| `reactor_crafted_moonstone_well` | **Synthesized Harmonic Mana Condenser** | `Crafted` (`1 Moonstone + 1 Demantoid`) | `Mana` | `+18 WT` | `11 WT` | `1G` | `+20` Shield Capacity, `+10%` Heat Venting / `+11 WT` & lower `+18 WT` Cap |
 
 ---
 
-### 7.3 Core Systems (6 Generators / Reactors)
+### 7.5 Auxiliary, Tactical Utility & Active Hardware/Reactor Trigger Modules (`25 Modules`)
 
-| Reactor Name | Heritage | Core Identity & Combat Behavior |
-| :--- | :--- | :--- |
-| **PNSY Alchemic Turbine Core Mk.IV** | Warrior | Ichor magitech turbine; volatile heat output that powers overclock maneuvers. |
-| **RAD Battleheart Ether Reactor Mk.V** | Marauder | Heavy reactor with kinetic-recycling feedback loops under sustained siege. |
-| **TI Manaheart Reactor Mk.IV** | Guardian | High-stability Mana core that powers barriers, aura projection, and cleave waves. |
-| **VX Phantom Core Mk.III** | Rogue | Low-emission Ether reactor tuned for thermal masking, stealth, and burst output. |
-| **ARC Infinite Well Reactor Mk.VI** | Wizard | Massive energy reservoir built for sustained beam discharge and overflow venting. |
-| **SANC Heartwell Reactor Mk.IV** | Cleric | Balanced Mana core that distributes overflow energy to ally shields and repair fields. |
+#### 1. Heritage Auxiliary (`Aux 3`, `Aux 4`) & Tactical Utility (`Action 6`) Systems (`18 Modules`)
+| System Name | Heritage | Slot | System Type | Tactical Function & Combat Profile |
+| :--- | :--- | :---: | :--- | :--- |
+| **PNSY R-11 Rockweiler Buckler** | Warrior | `Aux 3` | Physical Shield | Parrying buckler with reactive impact plating |
+| **PNSY UF-9 Rough Rider Booster** | Warrior | `Aux 4` | Mobility | Thruster engagement and evasion kit |
+| **PNSY D-0g Repair Drone** (`utility_ichor_surge`) | Warrior | `Utility` (`Action 6`) | Repair Drone | Restores `+35` Armor Durability, `+15` Shield, `+15` Energy, and grants `3.5s` Overdrive (`9.0s` CD, `+12` Heat) |
+| **RAD R-22 Bastion Kinetic Recycling** | Marauder | `Aux 3` | Armor Augment | Reactive plating absorbs kinetic hits and recycles power |
+| **RAD UF-12 Ether Vapor Launcher** | Marauder | `Aux 4` | Utility | Launches obscuring vapor clouds that scramble enemy targeting |
+| **RAD R463 Fathomless System** (`utility_siege_brace`) | Marauder | `Utility` (`Action 6`) | Self-Repair | Restores `+55` Armor Durability, `+10` Shield, `+10` Energy, and vents `-20` Reactor Heat (`10.0s` CD) |
+| **TI Aegis Hard-Light Shield** | Guardian | `Aux 3` | Energy Shield | Deployable frontal hard-light barrier (*Hardening Light*) |
+| **TI Radiant Sphere Generator** | Guardian | `Aux 4` | Energy Shield | Projects a protective dome barrier around nearby allies |
+| **TI Lightwell Recovery System** (`utility_aegis_pulse`) | Guardian | `Utility` (`Action 6`) | Shield & Core Repair | Restores `+50` Layer 1 Shield, clears Shield Overload, mends `+30` Armor Durability, and restores `+20` Energy (`8.5s` CD) |
+| **VX Eclipse Cloak Generator** | Rogue | `Aux 3` | Stealth | Active optical camouflage and thermal signature masking |
+| **VX Phase-Shift Module** | Rogue | `Aux 4` | Evasion | Grants a brief burst of phase intangibility |
+| **VX Smoke Dispersal System** (`utility_phantom_shroud`) | Rogue | `Utility` (`Action 6`) | Thermal Masking | Purges `-25` Heat, restores `+30` Shield & `+30` Energy, mends `+20` Armor, and marks hostiles with Optic Telemetry for `5.0s` (`8.0s` CD) |
+| **ARC Prismatic Barrier** | Wizard | `Aux 3` | Energy Shield | Refractive barrier that deflects incoming energy beams |
+| **ARC Feedback Loop Capacitor** | Wizard | `Aux 4` | Energy Shield | Absorbs incoming energy attacks and stores them for counter-discharge |
+| **ARC Rift Anchor** (`utility_arclight_capacitor`) | Wizard | `Utility` (`Action 6`) | Phase Escape | Vents `-35` Heat into `+45` Shield, `+15` Armor, `+35` Energy, and `4.0s` of Overdrive (`9.0s` CD) |
+| **SANC Aegis Restoration Field** | Cleric | `Aux 3` | Repair | Area-effect shield and armor restoration field |
+| **SANC Martyrdom Plating** | Cleric | `Aux 4` | Armor Augment | Reactive armor that redirects nearby ally damage to your own chassis |
+| **SANC Radiant Ward Projector** (`utility_sanctum_font`) | Cleric | `Utility` (`Action 6`) | Status Ward | Deployable barrier restoring `+40` Shield, `+40` Armor Durability, and `+25` Energy (`9.5s` CD, `+8` Heat) |
 
----
-
-### 7.4 Auxiliary & Tactical Utility Systems (18 Modules)
-
-| System Name | Heritage | Slot | System Type | Tactical Function |
-| :--- | :--- | :--- | :--- | :--- |
-| **PNSY R-11 Rockweiler Buckler** | Warrior | Aux 3 | Physical Shield | Parrying buckler with reactive impact plating |
-| **PNSY UF-9 Rough Rider Booster** | Warrior | Aux 4 | Mobility | Thruster engagement and evasion kit |
-| **PNSY D-0g Repair Drone** | Warrior | Utility | Utility | Bay-launched autonomous armor/frame repair drone |
-| **RAD R-22 Bastion Kinetic Recycling** | Marauder | Aux 3 | Armor Augment | Reactive plating absorbs kinetic hits and recycles power |
-| **RAD UF-12 Ether Vapor Launcher** | Marauder | Aux 4 | Utility | Launches obscuring vapor clouds that scramble enemy targeting |
-| **RAD R463 Fathomless System** | Marauder | Utility | Self-Repair | Channels excess reactor energy into subsystem and armor repair |
-| **TI Aegis Hard-Light Shield** | Guardian | Aux 3 | Energy Shield | Deployable frontal hard-light barrier |
-| **TI Radiant Sphere Generator** | Guardian | Aux 4 | Energy Shield | Projects a protective dome barrier around nearby allies |
-| **TI Lightwell Recovery System** | Guardian | Utility | Self-Repair | Converts excess reactor energy into shield and subsystem restoration |
-| **VX Eclipse Cloak Generator** | Rogue | Aux 3 | Stealth | Active optical camouflage and thermal signature masking |
-| **VX Phase-Shift Module** | Rogue | Aux 4 | Evasion | Grants a brief burst of phase intangibility |
-| **VX Smoke Dispersal System** | Rogue | Utility | Utility | Deploys thermal-masking smoke canisters |
-| **ARC Prismatic Barrier** | Wizard | Aux 3 | Energy Shield | Refractive barrier that deflects incoming energy beams |
-| **ARC Feedback Loop Capacitor** | Wizard | Aux 4 | Energy Shield | Absorbs incoming energy attacks and stores them for counter-discharge |
-| **ARC Rift Anchor** | Wizard | Utility | Mobility | High-energy short-range spatial teleport escape |
-| **SANC Aegis Restoration Field** | Cleric | Aux 3 | Repair | Area-effect shield and armor restoration field |
-| **SANC Martyrdom Plating** | Cleric | Aux 4 | Armor Augment | Reactive armor that redirects nearby ally damage to your own chassis |
-| **SANC Radiant Ward Projector** | Cleric | Utility | Barrier | Deployable ward that absorbs status effects and incoming fire |
-
----
-
-### 7.5 Optics & Battlefield Sensors (18 Modules)
-
-| Module Name | Heritage | Internal Slot | Sensor Function |
-| :--- | :--- | :--- | :--- |
-| **Crystal Dynamics EmberSight Suite** | Warrior | Optics | Mid-short range targeting with rapid lock acquisition |
-| **Federated T7 Sensor Array** | Warrior | Sensory A | Thermal and motion battlefield monitor |
-| **Federated EchoPulse Scanner** | Warrior | Sensory B | Acoustic radar and close-quarters breach detection |
-| **BE Foresight Targeting Array** | Marauder | Optics | Long-range artillery and missile lock tracking |
-| **NDS ArcPulse Sensor Grid** | Marauder | Sensory A | Blast wave and suppression disruption scanner |
-| **NDS EchoStorm Threat Analyzer** | Marauder | Sensory B | Incoming ordnance and lock-on warning analyzer |
-| **Aegis Radiant Targeting Array** | Guardian | Optics | Shield projection alignment and cleave arc precision |
-| **Solbright Flux Sensor Grid** | Guardian | Sensory A | Shield harmonics and vanguard threat awareness |
-| **Aegis Lightveil Analyzer** | Guardian | Sensory B | Artillery saturation and barrier stress monitor |
-| **Veilsight Targeting Suite** | Rogue | Optics | Low-light vision enhancement and critical weak-point optics |
-| **VX Phantom Network Sensor** | Rogue | Sensory A | Motion tracker and counter-stealth detection array |
-| **VX Echo-Null Scanner** | Rogue | Sensory B | Acoustic dampening and ambush breach prediction |
-| **ARC Omniscient Array** | Wizard | Optics | Long-range energy signature tracking and beam focusing |
-| **ARC Manaflow Analyzer** | Wizard | Sensory A | Ambient æther/mana field monitor and discharge timer |
-| **ARC Convergence Predictor** | Wizard | Sensory B | Beam trajectory computer and weak-point lock |
-| **SANC Providence Scanner** | Cleric | Optics | Ally status telemetry and priority threat identification |
-| **SANC Lifeline Monitor** | Cleric | Sensory A | Real-time triage and barrier integrity tracking |
-| **SANC Blessing Resonance Grid** | Cleric | Sensory B | Buff harmonic optimizer and formation tracker |
+#### 2. Assignable Hardware & Reactor Trigger Modules (`7 Active Modules`)
+| Action ID | Module Name | Source Slot | Cooldown / Heat | Damage / Range | Active Tactical Effect |
+| :--- | :--- | :---: | :---: | :---: | :--- |
+| `mod_head_optic_scan` | **Optic Target Painter** | Head (`Optics`) | `7.0s` CD · `+10` Heat | `0` (`Pulse` · `120px`) | Sweeps sector with targeting telemetry, revealing submerged threats and increasing enemy damage taken by `+25%` for `6s`. |
+| `mod_torso_reactive_burst` | **Ablative Reactive Burst** | Torso (`Plating`) | `8.0s` CD · `+14` Heat | `14 Impact` (`36px`) | Detonates reactive counter-plates to restore `+22` Armor Durability and stagger nearby attackers. |
+| `mod_arms_shock_grapple` | **Arc Tether Shot** | Arms (`Sidearm`) | `5.5s` CD · `+14` Heat | `20 Pulse` (`95px`) | Fires an electromagnetic tether bolt that overloads Energy Shields and stuns for `1.2s`. |
+| `mod_legs_seismic_stomp` | **Seismic Thruster Slam** | Legs (`Booster`) | `6.0s` CD · `+16` Heat | `22 Impact` (`38px`) | Vector-pulses leg thrusters into the ground, dealing `22 Impact` damage and stunning enemies within `38px`. |
+| `reactor_thermal_vent` | **Thermal Vent Purge** | Reactor (`Thermal`) | `6.5s` CD · `-45` Heat | `14 Wave` (`34px`) | Opens emergency radiator baffles to immediately purge `-45` Reactor Heat while scorching adjacent hostiles. |
+| `reactor_overdrive` | **Reactor Overdrive** | Reactor (`Output`) | `10.0s` CD · `+20` Heat | Self Buff (`6.0s`) | Surges reactor output to grant `+30%` weapon and skill damage and rapid reload recovery for `6.0s`. |
+| `reactor_aegis_pulse` | **Aegis Barrier Pulse** | Reactor (`Shields`) | `7.5s` CD · `+18` Heat | Self Restore | Channels reactor energy into Layer 1 Shields, restoring `+35` Shield Capacity and clearing Shield Overload. |
 
 ---
 
-### 7.6 Head, Arm, Leg & Energy Storage Components
+### 7.6 Head Dome Plates (`7`), Optics (`8`) & Battlefield Sensory Arrays (`15`)
 
-| Heritage | Slot | Component Name | Mechanical Role |
-| :--- | :--- | :--- | :--- |
-| **Warrior** | Head | **Crystal Dynamics G341 Murmillio** | Reinforced helm with alchemic optic core and heat-dispersing vents |
-| **Warrior** | Arms | **BWI Twinstrike Gauntlets** | Recoil dampeners and reinforced joints for sustained burst fire |
-| **Warrior** | Legs | **BWI Gatecrasher Striders** | Shock-absorbing, booster-linked leg actuators |
-| **Warrior** | Energy Storage | **Crystal Dynamics ERD Lodestone** | Field-controlled energy reservoir for rapid combat discharge |
-| **Marauder** | Head | **BE Ironveil Command Dome** | Layered siege dome with interference dampeners |
-| **Marauder** | Arms | **Fire & Ice Line Holder** | Shock-channeling conduits and heavy recoil bracing |
-| **Marauder** | Legs | **Fire & Ice Outrigger Striders** | Heavy outrigger plates for maximum stability under siege |
-| **Guardian** | Head | **Aegis Halo Command Dome** | Mana-channeling conduits and tactical shield uplink |
-| **Guardian** | Arms | **Solbright Cleaver Assemblies** | Reactor-linked polearm and cleave actuator channels |
-| **Guardian** | Legs | **Dawnforge Stabilizer Striders** | Heavy-duty stabilizer anchors |
-| **Rogue** | Head | **VX Veilsight Command Helm** | Low-light optics and thermal signature dampening |
-| **Rogue** | Arms | **Shadowcraft Silencer Gauntlets** | Recoil suppression and CQC vibration dampening |
-| **Rogue** | Legs | **Shadowcraft Ghost Striders** | Silent actuators tuned for burst acceleration |
-| **Rogue** | Energy Storage | **VX Shadow Capacitor** | Rapid-discharge capacitor for stealth mobility and critical strikes |
-| **Wizard** | Head | **ARC Omniscient Command Dome** | Crystal lattice dome for long-range energy signature tracking |
-| **Wizard** | Arms | **Arcanum Channeler Assemblies** | High-output energy conduits and beam focusing arrays |
-| **Wizard** | Legs | **Arcanum Anchor Striders** | Energy grounding and sustained beam recoil absorption |
-| **Cleric** | Head | **SANC Providence Command Helm** | Triage command HUD and threat assessment uplink |
-| **Cleric** | Arms | **Sanctum Benediction Assemblies** | Hybrid weapon integration and ally buff emitters |
-| **Cleric** | Legs | **Sanctum Steadfast Striders** | Stabilizer anchors for frontline support positioning |
+#### 1. Exterior Head Dome Plates (`7 Dome Plates` · Grant Layer 2 Armor)
+| ID | Dome Plate Name | Set / Heritage | Armor Type | Armor (`DUR / RTG / THR`) | Shield | Weight | Gem Slots | Domain Modifiers & Trade-Off |
+| :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :--- |
+| `head_cd_g341_murmillio` | **Crystal Dynamics G341 Murmillio** | Set 0 (`Warrior`) | Reactive | `20 / 1 / 1` | `+6` | `6 WT` | `2G` | `+4%` Heat Venting / `-2%` Lock Accuracy |
+| `head_be_ironveil_dome` | **BE Ironveil Command Dome** | Set 1 (`Marauder`) | Hardened | `24 / 2 / 1` | `+8` | `12 WT` | `2G` | `+6` Stability / `+3%` Cooldowns |
+| `head_aegis_halo_dome` | **Aegis Halo Command Dome** | Set 2 (`Guardian`) | Layered | `18 / 2 / 1` | `+12` | `7 WT` | `2G` | `+4` Stability / `-3%` Heat Venting |
+| `head_vx_veilsight_helm` | **VX Veilsight Command Helm** | Set 3 (`Rogue`) | Ablative | `10 / 1 / 0` | `+4` | `3 WT` | `2G` | `+0.5` Light, `+5%` Accuracy / `-3` Stability |
+| `head_arc_omniscient_dome` | **ARC Omniscient Command Dome** | Set 4 (`Wizard`) | Layered | `14 / 1 / 1` | `+10` | `6 WT` | `2G` | `+0.5` Light, `+6%` Accuracy / `-3` Stability |
+| `head_sanc_providence_helm` | **SANC Providence Command Helm** | Set 5 (`Cleric`) | Reactive | `16 / 1 / 1` | `+10` | `6 WT` | `2G` | `-4%` Cooldowns / `+3%` Swing Windup |
+| `head_camelot_knight` | **Camelot Knight Greathelm** | Set 12 (`Camelot Knight`) | Hardened | `22 / 2 / 1` | `+10` | `13 WT` | `3G` | `+6` Stability, `+4%` Accuracy / `-4%` Heat Venting |
+
+#### 2. Head Mod 1 — Optics Suites (`8 Modules` = `6 Looted` + `2 Crafted`)
+| ID | Optics Module Name | Heritage / Origin | Light Bonus | Weight | Gem Slots | Domain Modifiers & Zero-Sum Trade-Off |
+| :--- | :--- | :--- | :---: | :---: | :---: | :--- |
+| `optics_embersight` | **Crystal Dynamics EmberSight Suite** | Warrior (`Looted`) | `+0.5` | `2 WT` | `2G` | `+8%` Lock Accuracy, `+6%` Stagger Dmg / `-3%` Heat Venting |
+| `optics_be_foresight` | **BE Foresight Targeting Array** | Marauder (`Looted`) | `+1.0` | `5 WT` | `2G` | `+14%` Lock Accuracy, `+8%` Stagger Dmg / `+4%` Swing Windup |
+| `optics_aegis_radiant` | **Aegis Radiant Targeting Array** | Guardian (`Looted`) | `+0.5` | `2 WT` | `2G` | `+8` Shield, `+6%` Accuracy, `-5%` Cooldowns / `-3%` Heat Venting |
+| `optics_veilsight` | **Veilsight Targeting Suite** | Rogue (`Looted`) | `+1.0` | `1 WT` | `2G` | `+12%` Stagger Dmg, `+8%` Accuracy / `-3` Stability |
+| `optics_arc_omniscient` | **ARC Omniscient Array** | Wizard (`Looted`) | `+1.0` | `3 WT` | `3G` | `+12%` Accuracy, `+8%` Stagger Dmg, `+6` Shield / `-4%` Heat Venting |
+| `optics_sanc_providence` | **SANC Providence Scanner** | Cleric (`Looted`) | `+0.5` | `2 WT` | `2G` | `+8` Shield, `-8%` Cooldowns, `+6%` Accuracy / `-4%` Stagger Dmg |
+| `optics_crafted_kyanite_pinpoint` | **Synthesized Arclight Pinpoint Lens** | `Crafted` (`1 Kyanite + 1 Rubellite`) | `+1.0` | `3 WT` | `1G` | `+12%` Accuracy, `+8%` Stagger Dmg, `+4` Shield / `-4%` Heat Venting |
+| `optics_crafted_charoite_nightglass` | **Synthesized Phantom Nightglass** | `Crafted` (`1 Charoite`) | `+0.5` | `1 WT` | `1G` | `+10%` Stagger Dmg at ultralight `1 WT` / `-4` Stability |
+
+#### 3. Head Mods 2 & 3 — Battlefield Sensory Arrays (`15 Modules` = `13 Looted` + `2 Crafted`)
+| ID | Sensory Module Name | Internal Slot | Heritage / Origin | Weight | Gem Slots | Sensor Function & Zero-Sum Trade-Off |
+| :--- | :--- | :---: | :--- | :---: | :---: | :--- |
+| `sensory_a_federated_t7` | **Federated T7 Sensor Array** | `Sensory A` | Warrior (`Looted`) | `2 WT` | `2G` | `+0.5` Light, `+6%` Lock Accuracy / `+2%` Cooldowns |
+| `sensory_a_nds_arcpulse` | **NDS ArcPulse Sensor Grid** | `Sensory A` | Marauder (`Looted`) | `4 WT` | `2G` | `+8%` Stagger Dmg, `+6` Stability / `+3%` Swing Windup |
+| `sensory_a_solbright_flux` | **Solbright Flux Sensor Grid** | `Sensory A` | Guardian (`Looted`) | `2 WT` | `2G` | `+8` Shield, `+0.5` Light / `-3%` Heat Venting |
+| `sensory_a_vx_phantom_net` | **VX Phantom Network Sensor** | `Sensory A` | Rogue (`Looted`) | `1 WT` | `2G` | `+0.5` Light, `+8%` Stagger Dmg / `-3` Stability |
+| `sensory_a_arc_manaflow` | **ARC Manaflow Analyzer** | `Sensory A` | Wizard (`Looted`) | `2 WT` | `2G` | `-6%` Cooldowns, `+6%` Accuracy / `-3` Stability |
+| `sensory_a_sanc_lifeline` | **SANC Lifeline Monitor** | `Sensory A` | Cleric (`Looted`) | `2 WT` | `2G` | `+6` Shield, `-5%` Cooldowns / `-3%` Stagger Dmg |
+| `sensory_a_crafted_demantoid_pulse` | **Synthesized Harmonic Field Sensor** | `Sensory A` | `Crafted` (`1 Demantoid`) | `4 WT` | `1G` | `+8` Shield, `+0.5` Light, `-6%` Cooldowns / `+4 WT` Draw |
+| `sensory_b_federated_echopulse` | **Federated EchoPulse Scanner** | `Sensory B` | Warrior (`Looted`) | `2 WT` | `2G` | `+6%` Lock Accuracy, `+5%` Stagger Dmg / `-2%` Heat Venting |
+| `sensory_b_nds_echostorm` | **NDS EchoStorm Threat Analyzer** | `Sensory B` | Marauder (`Looted`) | `4 WT` | `2G` | `+10%` Lock Accuracy, `+6` Stability / `+3%` Cooldowns |
+| `sensory_b_aegis_lightveil` | **Aegis Lightveil Analyzer** | `Sensory B` | Guardian (`Looted`) | `2 WT` | `2G` | `+6` Shield, `+8` Stability / `+3%` Swing Windup |
+| `sensory_b_vx_echonull` | **VX Echo-Null Scanner** | `Sensory B` | Rogue (`Looted`) | `1 WT` | `2G` | `+10%` Stagger Dmg, `-5%` Cooldowns / `-3` Stability |
+| `sensory_b_arc_convergence` | **ARC Convergence Predictor** | `Sensory B` | Wizard (`Looted`) | `2 WT` | `2G` | `+10%` Lock Accuracy, `+6%` Stagger Dmg / `-3%` Heat Venting |
+| `sensory_b_sanc_blessing_grid` | **SANC Blessing Resonance Grid** | `Sensory B` | Cleric (`Looted`) | `2 WT` | `2G` | `-7%` Cooldowns, `+6` Shield / `-3%` Lock Accuracy |
+| `sensory_b_inertial_gyro_telemetry` | **Inertial Gyro-Telemetry Array** | `Sensory B` | Telemetry (`Looted`) | `3 WT` | `2G` | Enables live HUD Inertia (`m_eff`, `μ`, `k1·S`) readout + `+12` Stability, `+4%` Acc / `+3%` CD |
+| `sensory_b_crafted_titanite_gyro` | **Synthesized Aegis Gyro-Scanner** | `Sensory B` | `Crafted` (`1 Titanite + 1 Moonstone`) | `6 WT` | `1G` | `+14` Gyro Stability, `+8` Shield, `+6%` Accuracy / `+6 WT` Housing |
+
+---
+
+### 7.7 Arm Aperture Plates (`7`), Arm Actuators (`8`) & Leg Striders (`8`)
+
+#### 1. Exterior Arm Aperture Plates (`7 Aperture Plates` · Grant Layer 2 Armor)
+| ID | Aperture Plate Name | Set / Heritage | Armor Type | Armor (`DUR / RTG / THR`) | Shield | Weight | Gem Slots | Domain Modifiers & Trade-Off |
+| :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :--- |
+| `arms_bwi_twinstrike` | **BWI Twinstrike Gauntlets** | Set 0 (`Warrior`) | Reactive | `24 / 1 / 1` | `0` | `8 WT` | `2G` | `+6` Stability, `+4%` Accuracy / `+3%` Cooldowns |
+| `arms_fire_ice_line_holder` | **Fire & Ice Line Holder** | Set 1 (`Marauder`) | Hardened | `34 / 2 / 1` | `0` | `16 WT` | `2G` | `+10` Stability, `+6` Strike Mass / `+5%` Swing Windup |
+| `arms_solbright_cleaver` | **Solbright Cleaver Assemblies** | Set 2 (`Guardian`) | Layered | `26 / 1 / 1` | `+10` | `9 WT` | `2G` | `+4` Strike Mass / `-3%` Heat Venting |
+| `arms_shadowcraft_silencer` | **Shadowcraft Silencer Gauntlets** | Set 3 (`Rogue`) | Ablative | `14 / 1 / 0` | `0` | `4 WT` | `2G` | `-7%` Swing Windup, `+4%` Accuracy / `-4` Stability |
+| `arms_arcanum_channeler` | **Arcanum Channeler Assemblies** | Set 4 (`Wizard`) | Layered | `18 / 1 / 1` | `+12` | `8 WT` | `2G` | `+6%` Lock Accuracy / `-3` Stability |
+| `arms_sanctum_benediction` | **Sanctum Benediction Assemblies** | Set 5 (`Cleric`) | Reactive | `22 / 1 / 1` | `+10` | `8 WT` | `2G` | `-4%` Cooldowns / `-3` Strike Mass |
+| `arms_camelot_knight` | **Camelot Knight Gauntlets** | Set 12 (`Camelot Knight`) | Hardened | `28 / 2 / 1` | `+10` | `17 WT` | `3G` | `+8` Stability, `+6` Strike Mass / `+4%` Swing Windup |
+
+#### 2. Arms Mod 1 — Forearm & Shoulder Actuators (`8 Modules` = `6 Looted` + `2 Crafted`)
+| ID | Actuator Module Name | Heritage / Origin | Weight | Gem Slots | Domain Modifiers & Zero-Sum Trade-Off |
+| :--- | :--- | :--- | :---: | :---: | :--- |
+| `arms_cd_striker_vambraces` | **Crystal Dynamics Striker Vambraces** | Warrior (`Looted`) | `4 WT` | `2G` | `-12%` Swing Windup, `+6` Strike Mass, `-6%` Cooldowns / `-4%` Heat Venting |
+| `arms_be_siegebreaker_pauldrons` | **BE Siegebreaker Stabilizer Servos** | Marauder (`Looted`) | `8 WT` | `3G` | `+16` Recoil Stability, `+10` Strike Mass / `+5%` Swing Windup |
+| `arms_aegis_radiant_vambraces` | **Aegis Radiant Coupler Actuators** | Guardian (`Looted`) | `4 WT` | `2G` | `+10` Shield, `+10` Stability, `-6%` Cooldowns / `+3%` Swing Windup |
+| `arms_vx_whisperblade_gauntlets` | **VX Whisperblade Micro-Gyros** | Rogue (`Looted`) | `2 WT` | `2G` | `-15%` Swing Windup, `+8` Stability, `-5%` Cooldowns / `-4` Strike Mass |
+| `arms_arc_prism_refractors` | **ARC Prism Refractor Servos** | Wizard (`Looted`) | `4 WT` | `2G` | `+12` Shield, `+8%` Accuracy, `-6%` Cooldowns, `+0.5` Light / `-4` Stability |
+| `arms_sanc_seraphic_pinions` | **SANC Seraphic Pinion Actuators** | Cleric (`Looted`) | `4 WT` | `2G` | `+10` Shield, `-10%` Cooldowns, `+8` Stability / `-3` Strike Mass |
+| `actuators_crafted_carnelian_piston` | **Synthesized Heavy Siege Pistons** | `Crafted` (`1 Carnelian + 1 Hematite`) | `12 WT` | `1G` | `+14` Strike Mass, `+12` Stability / `+12 WT` & `+6%` Swing Windup |
+| `actuators_crafted_spinel_overdrive` | **Synthesized Assault Torque Servos** | `Crafted` (`1 Spinel`) | `5 WT` | `1G` | `-14%` Swing Windup, `+6` Strike Mass, `-7%` Cooldowns / `-5%` Heat Venting |
+
+#### 3. Frame Mod 2 — Leg Striders & Actuators (`8 Modules` = `6 Looted` + `2 Crafted`)
+| ID | Leg Strider Name | Heritage / Origin | Capacity Bonus | Weight | Gem Slots | Domain Modifiers & Zero-Sum Trade-Off |
+| :--- | :--- | :--- | :---: | :---: | :---: | :--- |
+| `legs_bwi_gatecrasher` | **BWI Gatecrasher Striders** | Warrior (`Looted`) | `+24 WT` | `7 WT` | `2G` | `+4%` Stride Speed, `+6` Stability / `-3%` Heat Venting |
+| `legs_fire_ice_outrigger` | **Fire & Ice Outrigger Striders** | Marauder (`Looted`) | `+26 WT` | `14 WT` | `2G` | `+16` Grounding Stability / `-4%` Stride Speed |
+| `legs_dawnforge_stabilizer` | **Dawnforge Stabilizer Striders** | Guardian (`Looted`) | `+26 WT` | `7 WT` | `2G` | `+12` Grounding Stability / `-2%` Stride Speed |
+| `legs_shadowcraft_ghost` | **Shadowcraft Ghost Striders** | Rogue (`Looted`) | `+24 WT` | `3 WT` | `2G` | `+7%` Stride Speed at ultralight `3 WT` / `-4` Stability |
+| `legs_arcanum_anchor` | **Arcanum Anchor Striders** | Wizard (`Looted`) | `+24 WT` | `7 WT` | `2G` | `+10` Stability, `+6` Shield / `-2%` Stride Speed |
+| `legs_sanctum_steadfast` | **Sanctum Steadfast Striders** | Cleric (`Looted`) | `+26 WT` | `7 WT` | `2G` | `+10` Stability, `+3%` Stride Speed / `+2%` Cooldowns |
+| `legs_crafted_carnelian_outriggers` | **Synthesized Siege Load-Bearing Striders** | `Crafted` (`2 Carnelian + 1 Titanite`) | `+32 WT` | `16 WT` | `1G` | `+32` Load Capacity, `+16` Stability / `+16 WT` & `-5%` Stride Speed |
+| `legs_crafted_charoite_featherstep` | **Synthesized Phantom Featherstep Striders** | `Crafted` (`1 Charoite + 1 Rubellite`) | `+12 WT` | `5 WT` | `1G` | `+8%` Stride Speed at `5 WT` / Lower `+12 WT` Cap & `-4` Stability |
+
+---
+
+### 7.8 The 9 Canonical Gemstones, Belt Flasks, Consumables, Currencies & Quest/Relic Items
+
+#### 1. The 9 Canonical Gemstones (`GEMSTONE_CATALOG` · Unified Skill, Feat & Modification Currency)
+| Gem ID | Name & Color | Assignment & Funded Skills | Buy / Sell | Exterior Armor Socket Effect | Weapon Component / Resonance Socket Effect |
+| :--- | :--- | :--- | :---: | :--- | :--- |
+| `moonstone` | **Moonstone** (`White`) | Mana Core · Funds `Guardian`, `Cleric` | `25g / 12g` | `+10` Shield / `+3 WT`, `-4` Armor Dur | `+12%` Layer 1 Shield Dmg & `-6%` Heat Cost / `-4%` BCU |
+| `spinel` | **Spinel** (`Red`) | Assault Ballistics · Funds `Warrior` | `25g / 12g` | `+8` Shield, `+8` Armor Dur / `+4 WT` | `+6%` Combat Tempo & `+5%` BCU / `+6%` Heat Cost |
+| `carnelian` | **Carnelian** (`Orange`) | Heavy Siege · Funds `Marauder` | `25g / 12g` | `+15` Armor Dur, `+1` THR (`+6` Cap on Torso) / `+8 WT` | `+12%` Impulse (`J`) & `+10%` Armor `DUR` Shred / `-5%` Tempo, `+1 WT` |
+| `titanite` | **Titanite** (`Yellow`) | Aegis Vanguard · Funds `Guardian` | `25g / 12g` | `+12` Shield, `+1` Armor RTG / `+6 WT` | `+4` Stability (`S`) & `-12%` Recoil / `+1 WT` |
+| `demantoid` | **Demantoid** (`Green`) | Harmonic Support · Funds `Cleric` | `25g / 12g` | `+8` Shield, `+10` Armor Dur / `+3 WT` | Vents `-2` Reactor Heat on hit & `+6%` Swap Speed / `-4%` Impulse (`J`) |
+| `kyanite` | **Kyanite** (`Blue`) | Beam Artillery · Funds `Wizard` | `25g / 12g` | `+6` Shield, `+0.5` Light / `+2 WT`, `-3` Dur | `+10%` Effective Range & `+8%` Projectile Velocity / `+5%` Heat Cost |
+| `charoite` | **Charoite** (`Purple`) | Recon & CQC · Funds `Rogue` | `25g / 12g` | `+6` Shield, `-4 WT` Ultralight / `-6` Armor Dur | `+8%` Combat Tempo & `-1 WT` Ultralight / `-8%` Impulse (`J`) |
+| `rubellite` | **Rubellite** (`Magenta`) | Ether Core · Funds `Rogue`, `Wizard` | `25g / 12g` | `+10` Shield, `+10` Armor Dur / `+4 WT` | `+8%` Finisher / Step-1 BCU & `+10%` Shield Dmg / `+8%` Heat Cost |
+| `hematite` | **Hematite** (`Black`) | Ichor Core · Funds `Warrior`, `Marauder` | `25g / 12g` | `+18` Armor Durability / `+5 WT`, `-4` Shield | `-12%` Reactor Heat Cost & `+2` `THR` Pierce / `-3` Stability (`S`) |
+
+#### 2. Gem-Infused Belt Flasks, Tactical Consumables & Field Kits (`11 Items`)
+| Item ID | Item Name | Category | Buy / Sell | Tactical Effect on Activation / Equip |
+| :--- | :--- | :---: | :---: | :--- |
+| `grail_water` | **Moonstone Grail Flask** | `consumable` | `35g / 15g` | Restores **`+45` Layer 1 Shield Capacity** and clears Shield Overload. |
+| `spinel_flask` | **Spinel Fury Flask** | `consumable` | `28g / 12g` | Grants **`+30%` Weapon Damage Overdrive** for `6.0s` and vents **`-30` Reactor Heat**. |
+| `carnelian_flask` | **Carnelian Siege Draught** | `consumable` | `28g / 12g` | Restores **`+45` Layer 2 Armor Durability** and boosts Presence priority (`+25`). |
+| `titanite_flask` | **Titanite Bastion Phial** | `consumable` | `28g / 12g` | Clears Shield Overload and restores **`+40` Shield Capacity** and **`+30` Armor Durability**. |
+| `demantoid_flask` | **Demantoid Repair Flask** | `consumable` | `20g / 8g` | Restores **`+50` Layer 2 Armor Durability** *(Layer 3 Frame HP requires a Campfire or Waygate)*. |
+| `kyanite_flask` | **Kyanite Arc Condensate** | `consumable` | `30g / 14g` | Restores **`+60` Reactor Energy** and resets all active Weapon & Trigger skill cooldowns. |
+| `charoite_flask` | **Charoite Phantom Vial** | `consumable` | `30g / 14g` | Marks all targets (**`+25%` Vulnerability** for `6.0s`) and resets Booster Dash & Weapon Swap cooldowns. |
+| `rubellite_flask` | **Rubellite Ether Tonic** | `consumable` | `32g / 15g` | Instantly reloads active weapon chain to full and grants **`5.0s` Overdrive (`+30%` Damage)**. |
+| `hematite_flask` | **Hematite Thermal Quench** | `consumable` | `26g / 12g` | Immediately purges **`-80` Reactor Heat** and reinforces **`+25` Armor Durability**. |
+| `orc_war_paint` | **Orc War Paint** | `consumable` | `25g / 10g` | Applies ceremonial ochre pigment: **`+15%` Weapon Damage Overdrive** & **`+10%` Stagger Impact** for `8.0s` (`+10` Presence). |
+| `booster_kit` | **Basic Booster Kit** | `equipment` | `100g / 45g` | `0 WT` passive thruster rig found on the fallen scout in M00 The Bog; enables **`[B]` Evasive Dash** (`0.18s` vector burst, `1.4s` CD, `+8` Heat). |
+
+#### 3. Scrap & Coin Pickups (`3 Tiers`)
+| Currency Tier | Value Range | Sprite Asset | Usage |
+| :--- | :---: | :--- | :--- |
+| **Small Coin** | `1 – 4 Scrap` | `SMALL_COIN_BASE64` (`16×16`) | Field salvage currency dropped by minor patrols; funds Armory Workbench component crafting and merchant trades. |
+| **Large Coin** | `5 – 14 Scrap` | `LARGE_COIN_BASE64` (`16×16`) | Mid-tier salvage currency dropped by elite enemies and supply containers. |
+| **Coin Bag** | `15+ Scrap` | `COIN_BAG_BASE64` (`16×16`) | High-value salvage pouch recovered from boss sanctums, hidden caches, and raid rewards. |
+
+#### 4. Campaign Quest Items, Keys, Relics & Lore-Bound Attachments (`13 Items`)
+| Item ID | Item Name | Category | Origin / World | Passive / Narrative Function |
+| :--- | :--- | :---: | :--- | :--- |
+| `bedivere_ring` | **Bedivere's Signet Ring** | `key` | Belldor (`M00 The Bog`) | `0 WT` signet artifact (`+2` Light Resonance). Unlocks Camelot Vanguard dialogue gates; causes loyalist merchants in Border Town to treat you as a grave robber if taken. |
+| `bedivere_list` | **Bedivere's Numbered List** | `key` | Belldor (`M00 The Bog`) | Numbered scroll of 3 seemingly nonsensical curiosities scattered across Belldor. Required to summon **The Lady of the Lake** at the bog water after defeating King Arthur. |
+| `bedivere_relic` | **Grail Amulet (Bedivere List Relic)** | `key` | Belldor (`3/3` across zones) | `0 WT` sacred relic (`+3` Light Resonance). Collecting all `3/3` completes Bedivere's scroll ritual (`flags.bedivere_list_items = 3`). |
+| `rusted_gate_key` | **Rusted Gate Key** | `key` | Belldor (`M00 The Bog`) | Heavy iron key stamped with the Camelot border insignia; unlocks the perimeter gate connecting The Bog to Border Town. |
+| `sanctum_lock` | **Sanctum Padlock Seal** | `key` | Belldor (`Border Town`) | Heavy iron warden padlock sealing high-hazard desynchronization chambers and garrison vaults (`10g` sell value). |
+| `grail_fragment` | **Grail Fragment** | `key` | Belldor (`Percival, Tristan, Bors`) | Resonant Grail shard carried by each of the Three Knights; collecting all `3` forces open the Cathedral Dungeon Door. |
+| `dungeon_key` | **Camelot Waygate Key** | `key` | Belldor (`Cathedral Dungeon`) | Ancient Grail-stamped sanctum key that unlocks the Deep Dungeon and attunes to the colossal Camelot Waygate. |
+| `corrupted_shard` | **Corrupted Shard** | `valuable` | Belldor (`Corrupted Knights`) | `0 WT` desynchronized chrono-crystal (`50g` buy / `25g` sell); emits a `-1` Light distortion field. |
+| `knights_oath` | **Feat: Knight's Oath** | `equipment` | Belldor (`3 Knights Simultaneous`) | Earned by defeating Sir Percival, Sir Tristan, and Sir Bors simultaneously; unlocks the permanent **Knight's Oath** reward feat (`+10%` to `+25%` damage vs. Camelot enemies). |
+| `poe_lantern` | **Poe's Æther Lantern** *(Flag / Relic)* | `key` | Belldor (`M00 Poe Encounter`) | Earned by guiding the lantern-spirit Poe home (`poe_helped`); reveals submerged Bog Wurms and Æther Fog depth gradients. |
+| `scabbard_of_avalon` | **The Scabbard of Avalon** | `lore-bound` | Belldor (`Lady of the Lake`) | Mounts exclusively into **Excalibur** (`leg_excalibur`), transforming it into **Excalibur, Sheathed in Avalon** and granting **`PREVENT_LETHAL_DOT`**. |
+| `leg_juuchi_yosamu` | **Juuchi Yosamu** | `legendary / lore-bound` | Novarin (`Muramasa War-Forge`) | Wielded standalone as a Legendary Katana (`DR_DURING_ACTIVE_HIT_FRAMES`) or mounted into **Yawarakai-Te** to fuse into **Yawarakai-Te & Juuchi Yosamu** (`TWIN_BLADE_DUAL_EXECUTION`). |
+| `medusas_head` | **Medusa's Head** (*Gorgoneion*) | `lore-bound` | Tyrranus (`Sunken Labyrinth`) | Mounts exclusively into **Aegis** (`leg_aegis`), transforming it into **Aegis of the Gorgon** and granting **`BYPASS_BOSS_CC_IMMUNITY_PETRIFY`** (*Gorgon's Gaze*). |
 
 [↑ Back to Master Index](#-master-index-table-of-contents)
 
@@ -891,9 +1151,9 @@ Feats are organized across a **113-Node 6-Sector Hexagonal Star Chart** (`FEATS`
 
 ### 8.7 Specialist Martial Stances (22 Standalone Doctrines)
 
-All **22 Specialist Martial Stances** (`3` Tier I, `13` Tier II, `6` Tier III) are standalone weapon-mastery nodes (`Rule P-04` — zero prerequisite lines) distributed across the **3 Macro-Umbrellas** and **6 Combat Discipline sectors**. Both **`Custom` (`72`)** and **`Magitech` (`29`)** weapons qualify by their shared **Functional Weapon Type**. When socketed and paired with matching equipment and **Frame Load Bracket** (`Light`, `Medium`, or `Heavy`), the stance overrides **Action 2**, **Action 4**, and **Action 5** with historical martial techniques and applies passive BCU/Inertia modifiers:
+All **22 Specialist Martial Stances** (`3` Tier I, `13` Tier II, `6` Tier III) are standalone weapon-mastery nodes (`Rule P-04` — zero prerequisite lines) distributed across the **3 Macro-Umbrellas** and **6 Combat Discipline sectors**. All **`Custom` (`72`)**, **`Magitech` (`37`)**, and **`Legendary` (`6`)** weapons qualify by their shared **Functional Weapon Type**. When socketed and paired with matching equipment and **Frame Load Bracket** (`Light`, `Medium`, or `Heavy`), the stance overrides **Action 2**, **Action 4**, and **Action 5** with historical martial techniques and applies passive BCU/Inertia modifiers:
 
-| Feat Name | Historical Martial Stance | Umbrella / Sector | Tier | Qualifying Functional Weapon Pairing (`Custom` or `Magitech`) | Required Load Bracket |
+| Feat Name | Historical Martial Stance | Umbrella / Sector | Tier | Qualifying Functional Weapon Pairing (`Custom`, `Magitech`, or `Legendary`) | Required Load Bracket |
 | :--- | :--- | :---: | :---: | :--- | :---: |
 | **Spear & Buckler Specialist** | *Darting Viper Stance* | Fighter (`Warrior`) | I | `Short Spear` / `Winged Spear` / `Partisan` / `Spetum` + `Buckler` / `Disc` / `Mote` | `Light` / `Medium` |
 | **Sword & Buckler Specialist** | *I.33 Ward & Bind Stance* | Rogue (`Rogue`) | I | `Arming Sword` / `Spatha` / `Messer` / `Falchion` + `Buckler` / `Disc` / `Mote` | `Light` / `Medium` |

@@ -137,13 +137,93 @@ All weapons in Project Orion are classified into **8 broad Weapon Classes** (`We
 | **Golem** (`golem`) | `leg_lake_of_fire_knife` | **Knives of the Lake of Fire** (`maxObtainableCopies: 4`) | Blades: Curved (`Khopesh`) | Pierce · `8 WT` · `1H` (True Dual-Wield `slot1 + slot2`) | `0` Slots | **`PERMANENT_KILL_PREVENT_RESURRECT`**: Targets slain by these bronze flame-sickles are soul-severed (`preventResurrection = true`) and cannot self-reassemble, spawn death-splits, or be revived. Action 3 **Glance of the Gatekeeper** projects a `78px` frontal judgment flash (`1.2s` Stun + `2.5s` Blind); dual-wielding two copies widens the cone (`1.15 rad → 1.55 rad`) and extends stun/blind duration (`1.6s` Stun + `3.2s` Blind). |
 | **Orion** (`orion`) | `leg_balmung` | **Balmung** | Blades: Straight (`Zweihander`) | Wave · `20 WT` · Strict `2H` (`strictTwoHandedNoOffhand: true`) | `0` Slots (`allowDorsalLauncherOnly: true`) | **`ALWAYS_HYPER_ARMOR` + `ZERO_HIT_STOP` + `PERFECT_BLOCK_MELEE_AUTO_COUNTER`**: Uninterruptible hyper-armor during all attack animations, zero hit-stop frame pause when cleaving through heavy armor, and an automatic `1.35×` *Gram Counter-Slash* (`Wave`) upon any Perfect Block against a melee attack. Strictly locks Side Hand (`slot2`) while leaving the dorsal Aux Launcher (`slot3`) open. |
 
+### 1E. Starting-Kit & Field Legacy Weapons (`9` Campaign Kit Variants)
+
+| ID | Weapon Name | Weapon Class (`Functional Type`) | Tier | Handing / Slots | Damage / WT | Kit / Field Assignment |
+|---|---|---|---|---|---|---|
+| `camelot_longsword` | **Camelot Longsword** | Blades: Straight (`Bastard Sword`) | `Custom` (`3S`) | Versatile `1H/2H` (`Main` / `Side`) | Pierce · `10 WT` | Dawnforge Guardian & Sanctum Support starting kit main blade |
+| `camelot_shield` | **Camelot Heater Shield** | Shields (`Heater`) | `Custom` (`3S`) | `1H` (`Main` / `Side`) | Impact · `11 WT` | Starting kit physical guard shield (`55 DUR / 10 RTG / 7 THR`) |
+| `camelot_mace` | **Camelot Flanged Mace** | Impact & Axes (`Mace`) | `Custom` (`3S`) | `1H` (`Main` / `Side`) | Impact · `10 WT` | Starting kit armor-crushing sidearm |
+| `orc_cleaver` | **Orcish Iron Cleaver** | Blades: Curved (`Falchion`) | `Custom` (`3S`) | `1H` (`Main` / `Side`) | Pierce · `9 WT` | M00 The Bog / Border Town Orc Warrior salvage blade |
+| `orc_composite_bow` | **Orcish Horn Bow** | Bows (`Composite Bow`) | `Custom` (`3S`) | `2H` (`Main`) | Pierce · `11 WT` | M00 The Bog / Border Town Orc Scout salvage bow |
+| `pnsy_carbine` | **PNSY Carbine** | Casters (`Bolt Caster`) | `Custom` (`3S`) | `1H` (`Main` / `Side`) | Impact · `9 WT` | Bastion Striker starting kit rapid bolt carbine |
+| `vx_whisper_dagger` | **VX Whisper Dagger** | Blades: Straight (`Cinquedea`) | `Custom` (`3S`) | `1H` (`Main` / `Side`) | Pierce · `5 WT` | Phantom Recon starting kit stealth thrusting blade |
+| `arc_focus_staff` | **Arcanum Focus Staff** | Casters (`Beam Caster`) | `Custom` (`3S`) | `2H` (`Main`) | Beam · `12 WT` | Arclight Artillery starting kit sustained beam stave |
+| `sanctum_aether_catalyst` | **Sanctum Æther Catalyst** | Casters (`Wave Caster`) | `Custom` (`3S`) | `1H` (`Main` / `Side`) | Wave · `8 WT` | Sanctum Support starting kit harmonic wave projector |
+
+### 1F. The 61 Bespoke Weapon Modification Components (`28 Crafted` + `33 Looted`)
+
+| Weapon Class | Component Name (`ID`) | Domain | Acquisition & Recipe (`GemSockets`) | Damage Override | Positive Mechanical Gain | Zero-Sum Trade-Off (`WT Δ`) |
+|---|---|---|---|---|---|---|
+| **Blades (`Straight` & `Curved`)** | **Fullered Blade** (`comp_blade_contact_fullered`) | `CONTACT` | `LOOTED` (`2G`) | — | `-12%` attack cadence duration, `-8%` skill cooldowns | `-2 WT`, `-6%` base damage |
+| **Blades (`Straight` & `Curved`)** | **Hollow-Ground Blade** (`comp_blade_contact_hollow_ground`) | `CONTACT` | `CRAFTED` (`28 Scrap + 1 Ruby`, `1G`) | `Pierce` | `+14%` base damage, `+8%` critical hit chance | `-1 WT`, `-8%` stagger impulse |
+| **Blades (`Straight` & `Curved`)** | **Diamond-Section Blade** (`comp_blade_contact_diamond_section`) | `CONTACT` | `LOOTED` (`2G`) | `Pierce` | `+16%` base damage, `+15%` stagger impulse | `+2 WT`, `+10%` attack cadence duration |
+| **Blades (`Straight` & `Curved`)** | **Serrated Spine Edge** (`comp_blade_contact_serrated_spine`) | `CONTACT` | `CRAFTED` (`32 Scrap + 1 Citrine`, `1G`) | — | `+12%` base damage, `+22%` stagger/guard chip | `+1 WT`, `+12%` heat generation |
+| **Blades (`Straight` & `Curved`)** | **Thermal-Conduit Edge** (`comp_blade_contact_thermal_conduit`) | `CONTACT` | `CRAFTED` (`38 Scrap + 1 Topaz`, `1G`) | `Beam` | Converts Action 1 to `Beam`; `+15%` base damage | `+2 WT`, `+16%` heat generation |
+| **Blades (`Straight` & `Curved`)** | **Swept-Ringing Crossguard** (`comp_blade_delivery_swept_crossguard`) | `DELIVERY` | `LOOTED` (`2G`) | — | `+18%` stagger impulse, `-8%` skill cooldowns | `+1 WT`, `+6%` attack cadence duration |
+| **Blades (`Straight` & `Curved`)** | **Counter-Balanced Grip Assembly** (`comp_blade_delivery_counter_grip`) | `DELIVERY` | `CRAFTED` (`26 Scrap + 1 Emerald`, `1G`) | — | `-14%` attack cadence duration, `+10%` accuracy/tracking | `0 WT`, `-8%` stagger impulse |
+| **Blades (`Straight` & `Curved`)** | **Hydraulic Assist Hilt** (`comp_blade_delivery_hydraulic_hilt`) | `DELIVERY` | `LOOTED` (`3G`) | — | `+15%` base damage, `+12%` projectile/wave velocity | `+2 WT`, `+14%` heat generation |
+| **Blades (`Straight` & `Curved`)** | **Weighted Wheel Pommel** (`comp_blade_reg_wheel_pommel`) | `REGULATION` | `LOOTED` (`2G`) | — | `+20%` stagger impulse, `+8%` base damage | `+2 WT`, `+8%` attack cadence duration |
+| **Blades (`Straight` & `Curved`)** | **Ring-Counterweight Pommel** (`comp_blade_reg_ring_pommel`) | `REGULATION` | `CRAFTED` (`24 Scrap + 1 Aquamarine`, `1G`) | — | `-10%` skill cooldowns, `-12%` heat generation | `-1 WT`, `-6%` base damage |
+| **Blades (`Straight` & `Curved`)** | **Aether-Capacitor Pommel** (`comp_blade_reg_aether_pommel`) | `REGULATION` | `CRAFTED` (`36 Scrap + 1 Sapphire`, `1G`) | — | `+12%` base damage, `-10%` skill cooldowns | `+1 WT`, `+12%` heat generation |
+| **Impact & Axes** | **Flanged Striking Head** (`comp_impact_contact_flanged_head`) | `CONTACT` | `LOOTED` (`2G`) | `Impact` | `+16%` base damage, `+20%` stagger impulse | `+2 WT`, `+10%` attack cadence duration |
+| **Impact & Axes** | **Bearded Hook-Bit** (`comp_impact_contact_bearded_bit`) | `CONTACT` | `LOOTED` (`2G`) | `Pierce` | Converts Action 1 to `Pierce`; `+14%` base damage, `+6%` crit | `+1 WT`, `+8%` skill cooldowns |
+| **Impact & Axes** | **Crow's-Beak Armor Spike** (`comp_impact_contact_crows_beak`) | `CONTACT` | `CRAFTED` (`30 Scrap + 1 Ruby`, `1G`) | `Pierce` | Converts Action 1 to `Pierce`; `+12%` damage, `+10%` crit | `+1 WT`, `-10%` cleave arc stability |
+| **Impact & Axes** | **Concussion Flux-Head** (`comp_impact_contact_concussion_flux`) | `CONTACT` | `CRAFTED` (`38 Scrap + 1 Citrine`, `1G`) | `Blast` | Converts Action 1 to `Blast`; `+18%` damage, `+22%` stagger | `+3 WT`, `+18%` heat generation |
+| **Impact & Axes** | **Langets-Reinforced Haft** (`comp_impact_delivery_langets_haft`) | `DELIVERY` | `LOOTED` (`2G`) | — | `+18%` stagger impulse, `+8%` base damage | `+2 WT`, `+8%` attack cadence duration |
+| **Impact & Axes** | **Piston-Driven Impact Collar** (`comp_impact_delivery_piston_collar`) | `DELIVERY` | `CRAFTED` (`34 Scrap + 1 Ruby`, `1G`) | — | `+16%` base damage, `+16%` stagger impulse | `+2 WT`, `+15%` heat generation |
+| **Impact & Axes** | **Ash-Flex Shock Haft** (`comp_impact_delivery_ash_flex_haft`) | `DELIVERY` | `LOOTED` (`3G`) | — | `-14%` attack cadence duration, `-10%` heat generation | `-2 WT`, `-10%` stagger impulse |
+| **Impact & Axes** | **Lead-Cored Counterweight Cap** (`comp_impact_reg_lead_cap`) | `REGULATION` | `LOOTED` (`2G`) | — | `+24%` stagger impulse, `+10%` base damage | `+3 WT`, `+12%` attack cadence duration |
+| **Impact & Axes** | **Lanyard Wrist-Loop Assembly** (`comp_impact_reg_wrist_loop`) | `REGULATION` | `CRAFTED` (`24 Scrap + 1 Emerald`, `1G`) | — | `-12%` skill cooldowns, `-10%` attack cadence duration | `-1 WT`, `-8%` stagger impulse |
+| **Spears** | **Leaf-Bladed Broadhead** (`comp_spear_contact_leaf_head`) | `CONTACT` | `LOOTED` (`2G`) | `Pierce` | `+14%` base damage, `+10%` stagger impulse | `+1 WT`, `+8%` attack cadence duration |
+| **Spears** | **Ahlspiess Bodkin Awl-Pike** (`comp_spear_contact_ahlspiess_awl`) | `CONTACT` | `CRAFTED` (`30 Scrap + 1 Ruby`, `1G`) | `Pierce` | `+12%` base damage, `+10%` critical hit chance | `+1 WT`, `-8%` stagger impulse |
+| **Spears** | **Boar-Winged Lugged Head** (`comp_spear_contact_winged_lugs`) | `CONTACT` | `LOOTED` (`2G`) | `Impact` | Converts Action 1 to `Impact`; `+22%` stagger, `+8%` damage | `+2 WT`, `+10%` attack cadence duration |
+| **Spears** | **Harmonic Wave-Fork Prongs** (`comp_spear_contact_wave_fork`) | `CONTACT` | `CRAFTED` (`38 Scrap + 1 Sapphire`, `1G`) | `Wave` | Converts Action 1 to `Wave`; `+15%` damage, `+15%` wave speed | `+2 WT`, `+16%` heat generation |
+| **Spears** | **Tapered Ash & Carbon Shaft** (`comp_spear_delivery_tapered_shaft`) | `DELIVERY` | `LOOTED` (`2G`) | — | `-14%` attack cadence duration, `+12%` thrust/throw velocity | `-2 WT`, `-8%` stagger impulse |
+| **Spears** | **Vamplate Hand-Guard Cone** (`comp_spear_delivery_vamplate_cone`) | `DELIVERY` | `CRAFTED` (`30 Scrap + 1 Citrine`, `1G`) | — | `+18%` stagger impulse, `+10%` base damage | `+2 WT`, `+8%` attack cadence duration |
+| **Spears** | **Telescoping Servo-Shaft** (`comp_spear_delivery_telescoping_shaft`) | `DELIVERY` | `LOOTED` (`3G`) | — | `+14%` base damage, `-10%` skill cooldowns | `+2 WT`, `+12%` heat generation |
+| **Spears** | **Sauroter Bronze Butt-Spike** (`comp_spear_reg_sauroter_spike`) | `REGULATION` | `LOOTED` (`2G`) | — | `+18%` stagger impulse, `-8%` skill cooldowns | `+2 WT`, `+6%` attack cadence duration |
+| **Spears** | **Weighted Counter-Ferrule** (`comp_spear_reg_counter_ferrule`) | `REGULATION` | `CRAFTED` (`26 Scrap + 1 Emerald`, `1G`) | — | `-12%` attack cadence duration, `+10%` accuracy/tracking | `0 WT`, `-6%` base damage |
+| **Bows** | **Bodkin Armor-Needle Tips** (`comp_bow_contact_bodkin_tips`) | `CONTACT` | `LOOTED` (`2G`) | `Pierce` | `+12%` base damage, `+8%` critical hit chance | `0 WT`, `-10%` stagger impulse |
+| **Bows** | **Barbed Broadhead Tips** (`comp_bow_contact_broadhead_tips`) | `CONTACT` | `LOOTED` (`2G`) | `Pierce` | `+16%` base damage, `+14%` stagger impulse | `+1 WT`, `-10%` projectile velocity |
+| **Bows** | **Crescent Moon-Cutter Tips** (`comp_bow_contact_crescent_tips`) | `CONTACT` | `CRAFTED` (`28 Scrap + 1 Emerald`, `1G`) | `Wave` | Converts Action 1 to `Wave`; `+12%` damage, `+15%` stagger | `+1 WT`, `+8%` draw duration |
+| **Bows** | **Pyro-Capsule Whistle Tips** (`comp_bow_contact_pyro_tips`) | `CONTACT` | `CRAFTED` (`34 Scrap + 1 Citrine`, `1G`) | `Blast` | Converts Action 1 to `Blast`; `+18%` damage, `+18%` stagger | `+2 WT`, `+16%` heat generation |
+| **Bows** | **Horn-Sinew Composite Limbs** (`comp_bow_delivery_horn_sinew`) | `DELIVERY` | `LOOTED` (`2G`) | — | `+14%` base damage, `+16%` arrow velocity | `+1 WT`, `+8%` draw duration |
+| **Bows** | **Eccentric Pulley Cam-Limbs** (`comp_bow_delivery_pulley_cams`) | `DELIVERY` | `CRAFTED` (`32 Scrap + 1 Topaz`, `1G`) | — | `-14%` draw duration, `+12%` accuracy | `+2 WT`, `-6%` base damage |
+| **Bows** | **Yew High-Draw War-Limbs** (`comp_bow_delivery_yew_war_limbs`) | `DELIVERY` | `LOOTED` (`3G`) | — | `+20%` base damage, `+18%` stagger impulse | `+3 WT`, `+14%` draw duration |
+| **Bows** | **reflexed Siyah Ear-Tips & String** (`comp_bow_reg_siyah_ears`) | `REGULATION` | `LOOTED` (`2G`) | — | `+18%` arrow velocity, `-10%` skill cooldowns | `0 WT`, `+8%` heat generation |
+| **Bows** | **Gyro-Stabilized Riser Grip** (`comp_bow_reg_gyro_riser`) | `REGULATION` | `CRAFTED` (`26 Scrap + 1 Aquamarine`, `1G`) | — | `+14%` accuracy, `+6%` critical hit chance | `+1 WT`, `-8%` stagger impulse |
+| **Casters** | **Collimated Beam-Lens Nozzle** (`comp_caster_contact_beam_lens`) | `CONTACT` | `CRAFTED` (`36 Scrap + 1 Topaz`, `1G`) | `Beam` | Converts Action 1 to `Beam`; `+14%` damage, `+16%` beam speed | `+1 WT`, `+14%` heat generation |
+| **Casters** | **High-Velocity Bolt Choke** (`comp_caster_contact_bolt_choke`) | `CONTACT` | `LOOTED` (`2G`) | `Pierce` | Converts Action 1 to `Pierce`; `+20%` bolt speed, `+8%` crit | `0 WT`, `-10%` stagger impulse |
+| **Casters** | **Harmonic Wave-Diffuser Bell** (`comp_caster_contact_wave_diffuser`) | `CONTACT` | `CRAFTED` (`34 Scrap + 1 Sapphire`, `1G`) | `Wave` | Converts Action 1 to `Wave`; `+12%` damage, `+16%` stagger | `+1 WT`, `-12%` projectile velocity |
+| **Casters** | **Pressurized Blast-Chamber Muzzle** (`comp_caster_contact_blast_muzzle`) | `CONTACT` | `LOOTED` (`2G`) | `Blast` | Converts Action 1 to `Blast`; `+18%` damage, `+20%` stagger | `+2 WT`, `+16%` heat generation |
+| **Casters** | **Tesla Arc-Prong Crown** (`comp_caster_contact_arc_crown`) | `CONTACT` | `CRAFTED` (`36 Scrap + 1 Amethyst`, `1G`) | `Pulse` | Converts Action 1 to `Pulse`; `+14%` damage, `-8%` cooldowns | `+1 WT`, `+12%` heat generation |
+| **Casters** | **Rifled Magnetic Accelerator Rails** (`comp_caster_delivery_magnetic_rails`) | `DELIVERY` | `LOOTED` (`2G`) | — | `+15%` base damage, `+22%` projectile velocity | `+2 WT`, `+12%` heat generation |
+| **Casters** | **Rotary Multi-Bore Barrel Assembly** (`comp_caster_delivery_rotary_barrel`) | `DELIVERY` | `CRAFTED` (`34 Scrap + 1 Ruby`, `1G`) | — | `-16%` firing cadence duration, `-8%` skill cooldowns | `+2 WT`, `-8%` base damage per shot |
+| **Casters** | **Aether-Lined Resonance Conduit** (`comp_caster_delivery_aether_conduit`) | `DELIVERY` | `LOOTED` (`3G`) | — | `+12%` base damage, `-12%` heat generation | `+1 WT`, `+8%` firing cadence duration |
+| **Casters** | **Cryo-Vented Heatsink Jacket** (`comp_caster_reg_cryo_heatsink`) | `REGULATION` | `LOOTED` (`2G`) | — | `-22%` heat generation, `-10%` skill cooldowns | `+2 WT`, `-6%` base damage |
+| **Casters** | **Overclocked Flux Capacitor Bank** (`comp_caster_reg_flux_capacitor`) | `REGULATION` | `CRAFTED` (`38 Scrap + 1 Diamond`, `1G`) | — | `+18%` base damage, `+6%` critical hit chance | `+1 WT`, `+18%` heat generation |
+| **Casters** | **Harmonic Recoil Buffer Stock** (`comp_caster_reg_recoil_stock`) | `REGULATION` | `CRAFTED` (`26 Scrap + 1 Aquamarine`, `1G`) | — | `+14%` accuracy, `-10%` firing cadence duration | `+1 WT`, `-10%` stagger impulse |
+| **Shields** | **Reinforced Steel-Laminate Face Plate** (`comp_shield_contact_reinforced_plate`) | `CONTACT` | `LOOTED` (`2G`) | `Impact` | `+25` Armor DUR, `+2` Armor RTG, `+1` Armor THR | `+3 WT`, `+10%` bash cadence duration |
+| **Shields** | **Layered Sacrificial Confront** (`comp_shield_contact_sacrificial_confront`) | `CONTACT` | `CRAFTED` (`30 Scrap + 1 Garnet`, `1G`) | — | `+35` Armor DUR, `+2` Armor THR, `-10%` heat generation | `+2 WT`, `-8%` bash damage |
+| **Shields** | **Hard-Light Prismatic Projector Face** (`comp_shield_contact_prismatic_face`) | `CONTACT` | `CRAFTED` (`38 Scrap + 1 Topaz`, `1G`) | `Pulse` | Converts Shield Bash to `Pulse`; `+18` Layer 1 Shield, `+12%` bash | `+1 WT`, `-12` physical Armor DUR |
+| **Shields** | **Spiked Umbo Boss & Rim** (`comp_shield_delivery_spiked_boss`) | `DELIVERY` | `LOOTED` (`2G`) | `Pierce` | `+18%` bash damage, `+20%` stagger impulse, `+10` Armor DUR | `+2 WT`, `+8%` skill cooldowns |
+| **Shields** | **Sword-Catching Notched Rim** (`comp_shield_delivery_notched_rim`) | `DELIVERY` | `CRAFTED` (`28 Scrap + 1 Emerald`, `1G`) | — | `+16%` stagger impulse, `-10%` skill cooldowns | `+1 WT`, `-10` Armor DUR |
+| **Shields** | **Quick-Release Enarmes & Guige Strap** (`comp_shield_reg_quick_enarmes`) | `REGULATION` | `LOOTED` (`2G`) | — | `-14%` bash cadence duration, `-10%` skill cooldowns | `-2 WT`, `-1` Armor RTG |
+| **Shields** | **Hydraulic Forearm Brace Clamp** (`comp_shield_reg_hydraulic_brace`) | `REGULATION` | `CRAFTED` (`32 Scrap + 1 Citrine`, `1G`) | — | `+22%` stagger impulse, `+1` Armor RTG, `+1` Armor THR | `+2 WT`, `+10%` heat generation |
+| **Carriers & Munitions** | **Shaped-Charge Breaching Payload** (`comp_carrier_contact_shaped_charge`) | `CONTACT` | `CRAFTED` (`36 Scrap + 1 Citrine`, `1G`) | `Blast` | Converts payload to `Blast`; `+18%` damage, `+20%` stagger | `+2 WT`, `+15%` heat generation |
+| **Carriers & Munitions** | **Flechette Sabot Dart Cluster** (`comp_carrier_contact_flechette_sabot`) | `CONTACT` | `LOOTED` (`2G`) | `Pierce` | Converts payload to `Pierce`; `+22%` projectile speed, `+8%` crit | `0 WT`, `-10%` stagger impulse |
+| **Carriers & Munitions** | **Autoloading Rotary Feed Drum** (`comp_carrier_delivery_autoloader_drum`) | `DELIVERY` | `LOOTED` (`2G`) | — | `-16%` firing cadence duration, `-10%` skill cooldowns | `+2 WT`, `-8%` per-shot damage |
+| **Carriers & Munitions** | **Pneumatic High-Impulse Launch Tube** (`comp_carrier_delivery_pneumatic_tube`) | `DELIVERY` | `CRAFTED` (`30 Scrap + 1 Ruby`, `1G`) | — | `+14%` base damage, `+18%` launch velocity | `+2 WT`, `+10%` heat generation |
+| **Carriers & Munitions** | **Optical Target-Lock Guidance Fins** (`comp_carrier_reg_guidance_fins`) | `REGULATION` | `CRAFTED` (`32 Scrap + 1 Aquamarine`, `1G`) | — | `+16%` accuracy/homing, `+6%` critical hit chance | `+1 WT`, `-8%` stagger impulse |
+
 ## 2. ARMOR / CORE FRAMES & HARDWARE DOMAIN RULES
 
 ### 2A. Physical Domain Separation, Load Brackets, Armory Workbench & Gem Socket Laws (`LOCKED`)
 - **Exterior Armor vs. Internal Hardware**: Only **Dome Plates** (`slot: 'head'`), **Aperture Plates** (`slot: 'arms'`), **Frame Platings** (`slot: 'plating'`), and physical/ward **Shields** grant Armor (`armorDurability`, `armorRating`, `armorThreshold`). Internal sub-modules (**Optics**, **Sensory A/B**, **Actuators**, **Reactor Core**, **Leg Actuators**) never grant armor values; they strictly modify their mechanical domains (`lightBonus`, `accuracyMult`, `staggerDamageMult`, `tellDurationMult`, `attackMassBonus`, `stabilityBonus`, `heatVentMult`, `cooldownMult`, `moveSpeedMult`, `capacityBonus`).
 - **Mech Doll `LOADOUT` vs. `ARMORY` Workbench**:
-  - **`LOADOUT`**: Displays a central interactive **Mech Doll** surrounded by selectable anatomical hardpoint nodes (`Head Dome`, `Frame Plating`, `Arm Assembly`, `Leg Striders`, `Main Hand`, `Side Hand`, `Auxiliary Back Mount`, and `[L]`/`[R]` Trigger Binds) with a 4-action Slot Context Menu (`Equip / Swap`, `Unequip`, `Stance / Grip Toggle`, and `Modify in Armory`), a nested **3-tier Weapon Selector** (`8 Weapon Classes` ▸ `9 Shared Functional Weapon Types` ▸ `Custom / Magitech Subtypes`), and `128×128` technical schematics.
-  - **`ARMORY`**: Houses all equipment modification systems—**Weapon Component Parts** (`3` non-sequential slots on `Custom` weapons; `0–3` open domain mounts on `Magitech` Purist relics), **Weapon Gem Sockets** (`1G` Crafted / `1–3G` Looted nested component gem sockets + a dedicated `1G` Factory Resonance Socket on every `Magitech` Purist relic), **Internal Sub-Modules**, **Hardware Gem Sockets**, and **Action Modifications** (`Structure / Melee`, `Integration / Ranged`, `Mobility Kit`).
+  - **`LOADOUT`**: Displays a central interactive **Mech Doll** surrounded by selectable anatomical hardpoint nodes (`Head Dome`, `Frame Plating`, `Arm Assembly`, `Leg Striders`, `Main Hand`, `Side Hand`, `Auxiliary Back Mount`, and `[L]`/`[R]` Trigger Binds) with a 4-action Slot Context Menu (`Equip / Swap`, `Unequip`, `Stance / Grip Toggle`, and `Modify in Armory`), a nested **3-tier Weapon Selector** (`8 Weapon Classes` ▸ `9 Shared Functional Weapon Types` ▸ `Custom / Magitech / Legendary Subtypes`), and `128×128` technical schematics.
+  - **`ARMORY`**: Houses all equipment modification systems—**Weapon Component Parts** (`3` non-sequential slots on `Custom` weapons; `0–3` open domain mounts on `Magitech` Purist relics; hermetically sealed lore assemblies on `Legendary` folklore artifacts with optional `Lore-Bound Companion Mount`), **Weapon Gem Sockets** (`1G` Crafted / `1–3G` Looted nested component gem sockets + a dedicated `1G` Factory Resonance Socket on every `Magitech` Purist relic), **Internal Sub-Modules**, **Hardware Gem Sockets**, and **Action Modifications** (`Structure / Melee`, `Integration / Ranged`, `Mobility Kit`).
 - **Non-Sequential Modification Slot Order, 61 Bespoke Weapon Components, Magitech Architecture Tiers & Semantic `Custom` Naming (`LOCKED`)**:
   - **3-Slot Non-Sequential Anatomy (`CONTACT`, `DELIVERY`, `REGULATION`)**: All 72 `Custom` weapons feature 3 non-sequential component slots (`Slot 1`, `Slot 2`, `Slot 3`) mapped to three physical domains: **`CONTACT`** (*Blade / Head / Point / Arrowhead / Emitter Nozzle / Face Plate / Warhead Payload*), **`DELIVERY`** (*Hilt / Haft / Collar / Limbs / Accelerator Barrel / Rim & Boss / Feed & Magazine*), and **`REGULATION`** (*Pommel / Counterweight / Butt-Spike / Riser / Capacitor & Heatsink / Harness / Guidance*). Any domain can be installed into any slot index in any order, with at most **1 component per domain** per weapon instance.
   - **Four Magitech Purist Hardware Architecture Tiers (`0–3` Open Component Mounts + `1G` Factory Resonance Socket)**:
@@ -165,96 +245,210 @@ All weapons in Project Orion are classified into **8 broad Weapon Classes** (`We
   - `66–100%` = **Heavy** (`-10%` Mobility, `+12%` Heat, `+18%` Swap Time) — *Marauder starts at `81%`*
   - `>100%` = **Overloaded** (`-35%` Mobility, `+35%` Heat, `+45%` Swap Time, stealth broken)
 
-| Name | Trait Line | Type | Base Capacity | Weight | Armor (DUR / RTG / THR) | Shield | Identity & Trade-Off |
+### 2B. All 13 Core Frame Platings (`CANONICAL_FRAME_PLATING`)
+
+| ID | Name | Trait Line | Type | Base Capacity | Weight | Armor (`DUR / RTG / THR`) | Shield | Gem Slots | Identity & Zero-Sum Trade-Off |
+|---|---|---|---|---|---|---|---|---|---|
+| `bwi_bastion_coreplate` | **BWI Bastion Frame Plating** | Warrior | Physical / Reactive | Medium (`90 WT`) | `15 WT` | `135 / 11 / 7` | `+55` | `3G` | Heavy frontal turbine shielding (`+4%` Venting, `+6` Stability / `-2%` Speed) |
+| `fire_ice_fortress_coreplate` | **Fire & Ice Fortress Frame Plating** | Marauder | Physical / Hardened | Heavy (`112 WT`) | `32 WT` | `205 / 15 / 11` | `+35` | `3G` | Super-heavy frontal outrigging stabilizers (`+18` Stability / `-6%` Speed) |
+| `dawnforge_guardian_coreplate` | **Dawnforge Guardian Frame Plating** | Guardian | Physical / Layered | Medium (`90 WT`) | `17 WT` | `170 / 13 / 9` | `+75` | `3G` | Stabilizer anchors & shield emitters (`+12` Stability / `-3%` Speed) |
+| `shadowcraft_recon_coreplate` | **Shadowcraft Recon Frame Plating** | Rogue | Physical / Ablative | Light (`84 WT`) | `7 WT` | `95 / 6 / 4` | `+40` | `3G` | Ultralight emission dampeners (`+6%` Speed, `+0.5` Light / `-8` Stability) |
+| `arcanum_heavy_projector_coreplate` | **Arcanum Heavy Projector Frame Plating** | Wizard | Physical / Layered | Medium (`90 WT`) | `15 WT` | `120 / 8 / 6` | `+95` | `3G` | Reinforced crystal lattice (`-6%` Cooldowns, `+0.5` Light / `-4` Stability) |
+| `sanctum_support_coreplate` | **Sanctum Support Frame Plating** | Cleric | Physical / Reactive | Medium (`90 WT`) | `15 WT` | `145 / 10 / 7` | `+70` | `3G` | Distributed buffer systems (`+6%` Venting, `-4%` Cooldowns / `-2%` Speed) |
+| `camelot_errant_brigandine` | **Camelot Errant Brigandine** | Guardian | Physical / Layered | Medium (`92 WT`) | `14 WT` | `140 / 10 / 7` | `+50` | `2G` | Field-riveted knightly brigandine (`+8` Stability / `-2%` Speed) |
+| `camelot_grail_cataphract_harness` | **Camelot Grail Cataphract Harness** | Guardian | Physical / Hardened | Heavy (`108 WT`) | `28 WT` | `195 / 14 / 10` | `+60` | `3G` | Fluted Grail-knight barding (`+16` Stability, `+4%` Venting / `-5%` Speed) |
+| `novarin_ironhide_lamellar` | **Novarin Ironhide Lamellar** | Marauder | Physical / Hardened | Heavy (`104 WT`) | `24 WT` | `180 / 13 / 9` | `+30` | `2G` | Orcish bog-iron lamellar (`+14` Stability, `+2.5` Attack Mass / `-4%` Speed) |
+| `tyrranus_lorica_segmentata` | **Tyrranus Lorica Segmentata** | Warrior | Physical / Layered | Medium (`94 WT`) | `16 WT` | `155 / 12 / 8` | `+45` | `2G` | Articulated legionary hoop-plate (`+10` Stability, `+1.5` Attack Mass / `-2%` Speed) |
+| `new_novarin_silverscale_cuirass` | **New Novarin Silverscale Cuirass** | Rogue | Physical / Ablative | Light (`86 WT`) | `9 WT` | `108 / 7 / 5` | `+65` | `3G` | Elven leaf-scale aether mail (`+5%` Speed, `-5%` Cooldowns / `-6` Stability) |
+| `orion_deepforge_carapace` | **Orion Deepforge Carapace** | Marauder | Physical / Hardened | Super-Heavy (`122 WT`) | `36 WT` | `225 / 16 / 12` | `+40` | `3G` | Dwarven tuning-forge siege carapace (`+22` Stability / `-8%` Speed) |
+| `golem_sunbleached_aegis_shell` | **Golem Sunbleached Aegis Shell** | Wizard | Physical / Reactive | Medium (`92 WT`) | `14 WT` | `128 / 9 / 6` | `+85` | `3G` | Bronze-and-quartz desert mirror plating (`+10%` Venting, `-4%` Cooldowns / `-3` Stability) |
+
+## 3. CORE SYSTEMS (REACTORS & ENERGY STORAGE — `10 Modules`)
+
+| ID | Name | Trait Line | Slot / Type | Weight & Cap Bonus | Gem Slots | Identity & Zero-Sum Trade-Off |
+|---|---|---|---|---|---|---|
+| `pnsy_alchemic_turbine_core` | **PNSY Alchemic Turbine Core Mk.IV** | Warrior | Frame Mod 1 (Reactor) | `12 WT` (`+24 WT` Cap) | `2G` | Magitech engine, volatile heat output (`+14%` Venting, `-6%` Cooldowns, `+3` Stability / `+4 WT`) |
+| `rad_battleheart_ether_reactor` | **RAD Battleheart Ether Reactor Mk.V** | Marauder | Frame Mod 1 (Reactor) | `16 WT` (`+38 WT` Cap) | `2G` | Heavy ether reactor with recycling feedback loops (`+8` Stability, `+8%` Venting / `-3%` Speed) |
+| `ti_manaheart_reactor` | **TI Manaheart Reactor Mk.IV** | Guardian | Frame Mod 1 (Reactor) | `13 WT` (`+26 WT` Cap) | `2G` | Powers shields, aura projection, and cleave systems (`+35` Shield, `+6` Stability, `-4%` Cooldowns / `+3 WT`) |
+| `vx_phantom_core` | **VX Phantom Core Mk.III** | Rogue | Frame Mod 1 (Reactor) | `7 WT` (`+24 WT` Cap) | `2G` | Low-emission stealth reactor (`+5%` Speed, `-8%` Cooldowns, `+8%` Venting / `-4` Stability) |
+| `arc_infinite_well_reactor` | **ARC Infinite Well Reactor Mk.VI** | Wizard | Frame Mod 1 (Reactor) | `11 WT` (`+26 WT` Cap) | `2G` | High-capacity energy pool (`+40` Shield, `-12%` Cooldowns, `+10%` Venting / `-3` Stability) |
+| `sanc_heartwell_reactor` | **SANC Heartwell Reactor Mk.IV** | Cleric | Frame Mod 1 (Reactor) | `12 WT` (`+26 WT` Cap) | `2G` | Balanced overflow distribution (`+30` Shield, `-8%` Cooldowns, `+8%` Venting, `+4` Stability) |
+| `cd_erd_lodestone` | **Crystal Dynamics ERD Lodestone** | Warrior | Frame Mod 1 (Energy Storage) | `9 WT` (`+18 WT` Cap) | `2G` | Field-controlled energy reservoir for rapid discharge (`+15` Shield, `+16%` Venting, `-5%` Cooldowns) |
+| `vx_shadow_capacitor` | **VX Shadow Capacitor** | Rogue | Frame Mod 1 (Energy Storage) | `6 WT` (`+18 WT` Cap) | `2G` | Rapid-discharge capacitor (`+15` Shield, `+6%` Speed, `-8%` Cooldowns / `-4` Stability) |
+| `craft_alchemical_furnace_core` | **Crafted Alchemical Furnace Core** | Warrior | Frame Mod 1 (`CRAFTED`: `40 Scrap + 1 Ruby + 1 Citrine`) | `14 WT` (`+28 WT` Cap) | `1G` | Workbench-forged high-pressure furnace (`+18%` Venting, `+2.5` Attack Mass, `+5` Stability / `-3%` Speed) |
+| `craft_harmonic_mana_condenser` | **Crafted Harmonic Mana Condenser** | Wizard | Frame Mod 1 (`CRAFTED`: `40 Scrap + 1 Sapphire + 1 Topaz`) | `10 WT` (`+22 WT` Cap) | `1G` | Workbench-forged crystal condenser (`+45` Shield, `-10%` Cooldowns / `-4` Stability) |
+
+## 4. AUX / UTILITY SYSTEMS & ASSIGNABLE TRIGGER MODULES (`25 Modules`)
+
+### 4A. Heritage Auxiliary & Tactical Utility Systems (`18 Modules`)
+
+| ID | Name | Trait Line | Slot | Type | Weight | Cooldown / Cost | Identity & Mechanical Payload |
 |---|---|---|---|---|---|---|---|
-| BWI Bastion Frame Plating | Warrior | Physical / Reactive | Medium (`90 WT`) | `15 WT` | `135 / 11 / 7` | `+55` | Heavy frontal turbine shielding (`+4%` Venting, `+6` Stability / `-2%` Speed) |
-| Fire & Ice Fortress Frame Plating | Marauder | Physical / Hardened | Heavy (`112 WT`) | `32 WT` | `205 / 15 / 11` | `+35` | Super-heavy frontal outrigging stabilizers (`+18` Stability / `-6%` Speed) |
-| Dawnforge Guardian Frame Plating | Guardian | Physical / Layered | Medium (`90 WT`) | `17 WT` | `170 / 13 / 9` | `+75` | Stabilizer anchors & shield emitters (`+12` Stability / `-3%` Speed) |
-| Shadowcraft Recon Frame Plating | Rogue | Physical / Ablative | Light (`84 WT`) | `7 WT` | `95 / 6 / 4` | `+40` | Ultralight emission dampeners (`+6%` Speed, `+0.5` Light / `-8` Stability) |
-| Arcanum Heavy Projector Frame Plating | Wizard | Physical / Layered | Medium (`90 WT`) | `15 WT` | `120 / 8 / 6` | `+95` | Reinforced crystal lattice (`-6%` Cooldowns, `+0.5` Light / `-4` Stability) |
-| Sanctum Support Frame Plating | Cleric | Physical / Reactive | Medium (`90 WT`) | `15 WT` | `145 / 10 / 7` | `+70` | Distributed buffer systems (`+6%` Venting, `-4%` Cooldowns / `-2%` Speed) |
+| `pnsy_rockweiler_buckler` | **PNSY R-11 Rockweiler Buckler** | Warrior | Aux 3 (`Mobility / Aux`) | Physical Shield | `6 WT` | `8.0s` · `+8 Heat` | Parrying shield & reactive plating (`1.1s` frontal active guard + parry counter-impulse) |
+| `pnsy_rough_rider_booster` | **PNSY UF-9 Rough Rider Booster** | Warrior | Aux 4 (`Mobility Kit`) | Mobility | `7 WT` | `5.5s` · `+10 Heat` | Engagement/evasion thruster kit (`+14 WT` Cap, `+6%` Speed, `64px` high-impulse booster dash) |
+| `pnsy_repair_drone` | **PNSY D-0g Repair Drone** | Warrior | Utility (`Action 6`) | Autonomous Drone | `8 WT` | `24.0s` · `+14 Heat` | Bay-launched repair drone restoring `+35` Frame Structure and `+25` Armor Durability over `6.0s` |
+| `rad_bastion_kinetic_recycling` | **RAD R-22 Bastion Kinetic Recycling** | Marauder | Aux 3 (`Structure / Melee`) | Armor Augment | `10 WT` | `14.0s` · `+10 Heat` | Reactive plating absorbs kinetic hits for `4.5s`, venting `-18` Heat and granting `+16` Stability |
+| `rad_ether_vapor_launcher` | **RAD UF-12 Ether Vapor Launcher** | Marauder | Aux 4 (`Integration / Ranged`) | Utility | `9 WT` | `16.0s` · `+12 Heat` | Fires an ether-vapor screen (`68px` radius, `5.0s`) that obscures vision and scrambles enemy locks |
+| `rad_fathomless_system` | **RAD R463 Fathomless System** | Marauder | Utility (`Action 6`) | Self-Repair | `11 WT` | `26.0s` · `+16 Heat` | Converts excess reactor heat/energy into `+45` Structure and `+35` Armor Durability |
+| `ti_aegis_hardlight_shield` | **TI Aegis Hard-Light Shield** | Guardian | Aux 3 (`Structure / Melee`) | Energy Shield | `8 WT` | `12.0s` · `+12 Heat` | Projects a deployable frontal hard-light barrier (`+55` Layer 1 Overshield for `5.0s`) |
+| `ti_radiant_sphere_generator` | **TI Radiant Sphere Generator** | Guardian | Aux 4 (`Integration / Ranged`) | Energy Shield | `10 WT` | `20.0s` · `+16 Heat` | Deploys a `76px` protective dome (`6.0s`) granting `-25%` incoming ranged damage inside |
+| `ti_lightwell_recovery_system` | **TI Lightwell Recovery System** | Guardian | Utility (`Action 6`) | Self-Repair | `9 WT` | `22.0s` · `+14 Heat` | Converts reactor overflow into `+50` Layer 1 Shield and `+30` Structure |
+| `vx_eclipse_cloak_generator` | **VX Eclipse Cloak Generator** | Rogue | Aux 3 (`Mobility Kit`) | Stealth | `5 WT` | `16.0s` · `+10 Heat` | Active optical camouflage & heat masking (`3.5s` stealth + `+15%` move speed) |
+| `vx_phaseshift_module` | **VX Phase-Shift Module** | Rogue | Aux 4 (`Mobility Kit`) | Evasion | `5 WT` | `11.0s` · `+12 Heat` | Brief intangibility phase-dash (`0.55s` `i-frames`, passes through units and obstacles) |
+| `vx_smoke_dispersal_system` | **VX Smoke Dispersal System** | Rogue | Utility (`Action 6`) | Utility | `6 WT` | `18.0s` · `+10 Heat` | Releases thermal-masking smoke canisters (`64px` radius, `4.5s` blind + `2.0s` personal cloak) |
+| `arc_prismatic_barrier` | **ARC Prismatic Barrier** | Wizard | Aux 3 (`Integration / Ranged`) | Energy Shield | `7 WT` | `14.0s` · `+12 Heat` | Prismatic lattice (`+45` Overshield for `5.0s`) that refracts and reflects `25%` of incoming beams |
+| `arc_feedback_loop_capacitor` | **ARC Feedback Loop Capacitor** | Wizard | Aux 4 (`Integration / Ranged`) | Energy Shield | `8 WT` | `16.0s` · `+14 Heat` | Absorbs incoming energy damage for `4.0s` and discharges a `72px` counter-pulse |
+| `arc_rift_anchor` | **ARC Rift Anchor** | Wizard | Utility (`Action 6`) | Mobility | `7 WT` | `15.0s` · `+16 Heat` | Short-range `84px` phase-blink teleport escape that leaves an arcane snare at origin |
+| `sanc_aegis_restoration_field` | **SANC Aegis Restoration Field** | Cleric | Aux 3 (`Integration / Ranged`) | Repair | `8 WT` | `18.0s` · `+14 Heat` | Pulses an `80px` harmonic wave restoring `+40` Layer 1 Shield and `+20` Armor Durability |
+| `sanc_martyrdom_plating` | **SANC Martyrdom Plating** | Cleric | Aux 4 (`Structure / Melee`) | Armor Augment | `10 WT` | `20.0s` · `+12 Heat` | Hardens frame for `6.0s` (`+20%` DR, redirects nearby ally damage to your Layer 1 Shield) |
+| `sanc_radiant_ward_projector` | **SANC Radiant Ward Projector** | Cleric | Utility (`Action 6`) | Barrier | `9 WT` | `20.0s` · `+15 Heat` | Deploys a sanctified ward (`74px` radius, `6.0s`) that cleanses status effects and absorbs damage |
 
-## 3. CORE SYSTEMS (GENERATORS / REACTORS)
+### 4B. Assignable Hardware & Reactor Trigger Actions (`7 Active Modules`)
 
-| Name | Trait Line | Identity |
-|---|---|---|
-| PNSY Alchemic Turbine Core Mk.IV | Warrior | Magitech engine, volatile heat output, supports overclock |
-| RAD Battleheart Ether Reactor Mk.V | Marauder | Ether reactor with recycling feedback loops |
-| TI Manaheart Reactor Mk.IV | Guardian | Powers shields, aura projection, cleave systems |
-| VX Phantom Core Mk.III | Rogue | Low-emission reactor, stealth and burst |
-| ARC Infinite Well Reactor Mk.VI | Wizard | Massive energy pool, sustained discharge, overflow venting |
-| SANC Heartwell Reactor Mk.IV | Cleric | Balanced, overflow distribution to ally systems |
-
-## 4. AUX / UTILITY SYSTEMS (DEFENSIVE & TACTICAL)
-
-| Name | Trait Line | Slot | Type | Identity |
+| Action ID | Module Name | Source Hardware / Reactor | Cooldown / Cost | Tactical Execution |
 |---|---|---|---|---|
-| PNSY R-11 Rockweiler Buckler | Warrior | Aux 3 | Physical Shield | Parrying shield, reactive plating |
-| PNSY UF-9 Rough Rider Booster | Warrior | Aux 4 | Mobility | Engagement/evasion kit with thrusters |
-| PNSY D-0g Repair Drone | Warrior | Utility | Utility | Bay-launched repair drone |
-| RAD R-22 Bastion Kinetic Recycling | Marauder | Aux 3 | Armor Augment | Reactive plating absorbs energy, recycles power |
-| RAD UF-12 Ether Vapor Launcher | Marauder | Aux 4 | Utility | Vision obscurement, targeting scramble |
-| RAD R463 Fathomless System | Marauder | Utility | Self-Repair | Excess energy repairs subsystems and armor |
-| TI Aegis Hard-Light Shield | Guardian | Aux 3 | Energy Shield | Deployable frontal barrier (Hardening Light) |
-| TI Radiant Sphere Generator | Guardian | Aux 4 | Energy Shield | Protective dome around allies |
-| TI Lightwell Recovery System | Guardian | Utility | Self-Repair | Converts excess reactor energy to subsystem and shield repair |
-| VX Eclipse Cloak Generator | Rogue | Aux 3 | Stealth | Active camouflage, heat masking |
-| VX Phase-Shift Module | Rogue | Aux 4 | Evasion | Brief intangibility burst |
-| VX Smoke Dispersal System | Rogue | Utility | Utility | Obscurement canisters, thermal masking |
-| ARC Prismatic Barrier | Wizard | Aux 3 | Energy Shield | Refracts incoming beams |
-| ARC Feedback Loop Capacitor | Wizard | Aux 4 | Energy Shield | Absorbs energy attacks, stores for counter-discharge |
-| ARC Rift Anchor | Wizard | Utility | Mobility | Short-range teleport escape (energy-intensive) |
-| SANC Aegis Restoration Field | Cleric | Aux 3 | Repair | Area-effect shield and armor repair for allies |
-| SANC Martyrdom Plating | Cleric | Aux 4 | Armor Augment | Reactive armor redirects ally damage to self |
-| SANC Radiant Ward Projector | Cleric | Utility | Barrier | Deployable barrier absorbs status effects and damage |
+| `hw_act_turbine_overclock` | **Alchemic Turbine Overclock** | `PNSY Alchemic Turbine Core Mk.IV` | `18.0s` · `+18 Heat` | Surges turbine pressure for `5.0s` (`+18%` attack & move tempo, `-20%` cooldowns) |
+| `hw_act_battleheart_recycle` | **Battleheart Kinetic Purge** | `RAD Battleheart Ether Reactor Mk.V` | `16.0s` · `0 Heat` | Vents `-28` Reactor Heat and converts it into a `60px` concussive shockwave (`Impact`) |
+| `hw_act_manaheart_aegis` | **Manaheart Aegis Pulse** | `TI Manaheart Reactor Mk.IV` | `18.0s` · `+12 Heat` | Instantly restores `+45` Layer 1 Shield and emits a `64px` stagger-resistant radiant pulse |
+| `hw_act_phantom_veil` | **Phantom Low-Emission Veil** | `VX Phantom Core Mk.III` | `16.0s` · `+8 Heat` | Drops thermal signature for `2.8s` (`Stealth` + `-15` Heat vent + `+12%` glide speed) |
+| `hw_act_infinite_well_surge` | **Infinite Well Singularity Tap** | `ARC Infinite Well Reactor Mk.VI` | `20.0s` · `+14 Heat` | Empowering surge (`5.0s`) granting `+22%` ranged/caster damage and `-25%` skill cooldowns |
+| `hw_act_heartwell_benediction` | **Heartwell Sanctuary Pulse** | `SANC Heartwell Reactor Mk.IV` | `20.0s` · `+12 Heat` | Restores `+30` Structure, `+35` Shield, and cleanses active DoT/corrosive status effects |
+| `hw_act_lodestone_discharge` | **ERD Lodestone Arc Discharge** | `Crystal Dynamics ERD Lodestone` | `14.0s` · `+10 Heat` | Releases stored capacitor charge as a chaining `76px` lightning arc (`Pulse`, chains up to `3` targets) |
 
-## 5. OPTICS & SENSORS
+## 5. HEAD DOME PLATES, OPTICS & BATTLEFIELD SENSORS (`30 Items`)
 
-| Name | Trait Line | Slot | Identity |
-|---|---|---|---|
-| Crystal Dynamics EmberSight Suite | Warrior | Optics | Mid-short range targeting, fast acquisition |
-| Federated T7 Sensor Array | Warrior | Sensory A | Heat and motion battlefield monitor |
-| Federated EchoPulse Scanner | Warrior | Sensory B | Acoustic scanner, breach detection |
-| BE Foresight Targeting Array | Marauder | Optics | Long-range, missile tracking |
-| NDS ArcPulse Sensor Grid | Marauder | Sensory A | Blast disruption scanner |
-| NDS EchoStorm Threat Analyzer | Marauder | Sensory B | Missile lock detection |
-| Aegis Radiant Targeting Array | Guardian | Optics | Shield projection and cleave precision |
-| Solbright Flux Sensor Grid | Guardian | Sensory A | Shield harmonics and battlefield awareness |
-| Aegis Lightveil Analyzer | Guardian | Sensory B | Artillery saturation and shield stress |
-| Veilsight Targeting Suite | Rogue | Optics | Low-light optics, thermal masking, critical point identification |
-| VX Phantom Network Sensor | Rogue | Sensory A | Motion tracker, stealth detection countermeasures |
-| VX Echo-Null Scanner | Rogue | Sensory B | Acoustic dampening, breach prediction |
-| ARC Omniscient Array | Wizard | Optics | Long-range, energy signature tracking, beam focusing |
-| ARC Manaflow Analyzer | Wizard | Sensory A | Energy field monitor, discharge timing optimization |
-| ARC Convergence Predictor | Wizard | Sensory B | Beam trajectory calculator, weak-point targeting |
-| SANC Providence Scanner | Cleric | Optics | Ally status monitoring, priority threat identification |
-| SANC Lifeline Monitor | Cleric | Sensory A | Real-time ally health and status tracking |
-| SANC Blessing Resonance Grid | Cleric | Sensory B | Buff duration optimizer, ally position tracker |
+### 5A. Exterior Head Dome Plates (`7 Items`)
 
-## 6. FRAME COMPONENTS BY LOADOUT (HEAD / ARMS / LEGS / ENERGY STORAGE)
+| ID | Name | Trait Line | Weight | Armor (`DUR / RTG / THR`) | Shield | Gem Slots | Identity & Zero-Sum Trade-Off |
+|---|---|---|---|---|---|---|---|
+| `cd_g341_murmillio` | **Crystal Dynamics G341 Murmillio** | Warrior | `6 WT` | `55 / 5 / 3` | `+15` | `2G` | Reinforced crest helm & heat vents (`+0.5` Light, `+3%` Venting, `+3` Stability) |
+| `be_ironveil_command_dome` | **BE Ironveil Command Dome** | Marauder | `10 WT` | `80 / 7 / 5` | `+10` | `2G` | Heavy siege command dome (`+7` Stability / `-2%` Speed) |
+| `aegis_halo_command_dome` | **Aegis Halo Command Dome** | Guardian | `7 WT` | `68 / 6 / 4` | `+25` | `2G` | Mana-channeling halo dome (`+0.5` Light, `+5` Stability) |
+| `vx_veilsight_command_helm` | **VX Veilsight Command Helm** | Rogue | `3 WT` | `40 / 3 / 2` | `+15` | `2G` | Ultralight low-light visor (`+1.5` Light, `+4%` Accuracy, `+2%` Speed / `-3` Stability) |
+| `arc_omniscient_command_dome` | **ARC Omniscient Command Dome** | Wizard | `5 WT` | `48 / 4 / 3` | `+35` | `2G` | Crystal lattice telemetry dome (`+1.0` Light, `+4%` Accuracy, `-4%` Cooldowns / `-2` Stability) |
+| `sanc_providence_command_helm` | **SANC Providence Command Helm** | Cleric | `6 WT` | `58 / 5 / 3` | `+25` | `2G` | Ally triage HUD helm (`+0.8` Light, `-4%` Cooldowns, `+3` Stability) |
+| `camelot_great_basinet` | **Camelot Great Basinet** | Guardian | `8 WT` | `72 / 6 / 4` | `+20` | `2G` |Hinged houndskull knightly visor (`+6` Stability, `+10%` Tell Readability / `-2%` Speed) |
 
-| Trait Line | Slot | Component | Description |
-|---|---|---|---|
-| Warrior | Head | Crystal Dynamics G341 Murmillio | Reinforced helm, alchemic optic core, heat-dispersing vents |
-| Warrior | Arms | BWI Twinstrike Gauntlets | Recoil dampeners, reinforced joints for sustained fire |
-| Warrior | Legs | BWI Gatecrasher Striders | Shock-absorbing, booster-linked actuators |
-| Warrior | Energy Storage | Crystal Dynamics ERD Lodestone | Field-controlled energy reservoir for rapid discharge |
-| Marauder | Head | BE Ironveil Command Dome | Layered shielding, interference dampeners |
-| Marauder | Arms | Fire & Ice Line Holder | Shock-channeling conduits, reinforced recoil bracing |
-| Marauder | Legs | Fire & Ice Outrigger Striders | Heavy plates, enhanced stability under siege |
-| Guardian | Head | Aegis Halo Command Dome | Mana-channeling conduits, tactical shield uplink |
-| Guardian | Arms | Solbright Cleaver Assemblies | Reactor-linked sword-spear channels |
-| Guardian | Legs | Dawnforge Stabilizer Striders | Heavy-duty, stabilizer anchors (supports Unfaltering feat) |
-| Rogue | Head | VX Veilsight Command Helm | Low-light optics, thermal dampening |
-| Rogue | Arms | Shadowcraft Silencer Gauntlets | Recoil suppression, vibration dampening |
-| Rogue | Legs | Shadowcraft Ghost Striders | Silent actuators, burst acceleration |
-| Rogue | Energy Storage | VX Shadow Capacitor | Rapid-discharge for mobility and critical strikes |
-| Wizard | Head | ARC Omniscient Command Dome | Crystal lattice, long-range energy signature tracking |
-| Wizard | Arms | Arcanum Channeler Assemblies | Energy conduits, beam focusing arrays |
-| Wizard | Legs | Arcanum Anchor Striders | Energy grounding, recoil absorption |
-| Cleric | Head | SANC Providence Command Helm | Ally status HUD, priority threat assessment |
-| Cleric | Arms | Sanctum Benediction Assemblies | Hybrid weapon integration, ally buff emitters |
-| Cleric | Legs | Sanctum Steadfast Striders | Stabilizer anchors for support positioning |
+### 5B. Internal Head Mod 1 — Optics Suites (`8 Items`)
+
+| ID | Name | Trait Line | Acquisition | Weight | Gem Slots | Optical Domain Modifiers & Zero-Sum Trade-Off |
+|---|---|---|---|---|---|---|
+| `cd_embersight_suite` | **Crystal Dynamics EmberSight Suite** | Warrior | `LOOTED` | `2 WT` | `2G` | `+1.0` Light, `+8%` Accuracy, `+6%` Stagger Damage / `+1 WT` thermal draw |
+| `be_foresight_targeting_array` | **BE Foresight Targeting Array** | Marauder | `LOOTED` | `3 WT` | `2G` | `+0.8` Light, `+12%` Accuracy, `+8%` Stagger Damage / `-2%` Move Speed |
+| `aegis_radiant_targeting_array` | **Aegis Radiant Targeting Array** | Guardian | `LOOTED` | `2 WT` | `2G` | `+1.2` Light, `+7%` Accuracy, `+10%` Enemy Tell Readability / `+2 WT` |
+| `veilsight_targeting_suite` | **Veilsight Targeting Suite** | Rogue | `LOOTED` | `1 WT` | `2G` | `+2.0` Light, `+10%` Accuracy, `+12%` Stagger/Crit Precision / `-2` Stability |
+| `arc_omniscient_array` | **ARC Omniscient Array** | Wizard | `LOOTED` | `2 WT` | `2G` | `+1.4` Light, `+11%` Accuracy, `-4%` Cooldowns / `-2` Stability |
+| `sanc_providence_scanner` | **SANC Providence Scanner** | Cleric | `LOOTED` | `2 WT` | `2G` | `+1.0` Light, `+6%` Accuracy, `+14%` Enemy Tell Readability, `-3%` Cooldowns |
+| `craft_thermal_pinpoint_lens` | **Crafted Thermal Pinpoint Lens** | Rogue | `CRAFTED` (`28 Scrap + 1 Ruby`) | `2 WT` | `1G` | `+1.5` Light, `+12%` Accuracy, `+10%` Stagger/Crit Damage / `+3%` Heat |
+| `craft_aether_prism_sight` | **Crafted Æther Prism Sight** | Wizard | `CRAFTED` (`28 Scrap + 1 Topaz`) | `2 WT` | `1G` | `+1.8` Light, `+9%` Accuracy, `-5%` Cooldowns / `-2` Stability |
+
+### 5C. Internal Head Mod 2 & Mod 3 — Battlefield Sensory Arrays (`15 Items`)
+
+| ID | Name | Trait Line | Slot (`Acquisition`) | Weight | Gem Slots | Sensory Domain Modifiers & Zero-Sum Trade-Off |
+|---|---|---|---|---|---|---|
+| `fed_t7_sensor_array` | **Federated T7 Sensor Array** | Warrior | Sensory A (`LOOTED`) | `2 WT` | `1G` | `+0.8` Light, `+12%` Enemy Tell Window, `+5%` Accuracy |
+| `nds_arcpulse_sensor_grid` | **NDS ArcPulse Sensor Grid** | Marauder | Sensory A (`LOOTED`) | `3 WT` | `1G` | `+0.6` Light, `+10%` Stagger Damage, `+10%` Tell Window / `+3 WT` |
+| `solbright_flux_sensor_grid` | **Solbright Flux Sensor Grid** | Guardian | Sensory A (`LOOTED`) | `2 WT` | `1G` | `+1.0` Light, `+15` Layer 1 Shield harmonics, `+10%` Tell Window |
+| `vx_phantom_network_sensor` | **VX Phantom Network Sensor** | Rogue | Sensory A (`LOOTED`) | `1 WT` | `2G` | `+1.4` Light, `+15%` Tell Window, `+6%` Accuracy / `-2` Stability |
+| `arc_manaflow_analyzer` | **ARC Manaflow Analyzer** | Wizard | Sensory A (`LOOTED`) | `2 WT` | `1G` | `+0.8` Light, `-5%` Cooldowns, `+5%` Venting |
+| `sanc_lifeline_monitor` | **SANC Lifeline Monitor** | Cleric | Sensory A (`LOOTED`) | `2 WT` | `1G` | `+0.8` Light, `+14%` Tell Window, `-4%` Cooldowns |
+| `craft_seismic_tremor_sensor` | **Crafted Seismic Tremor Sensor** | Marauder | Sensory A (`CRAFTED`: `24 Scrap + 1 Garnet`) | `2 WT` | `1G` | `+16%` Enemy Tell Window, `+4` Stability, `+8%` Stagger Damage |
+| `fed_echopulse_scanner` | **Federated EchoPulse Scanner** | Warrior | Sensory B (`LOOTED`) | `2 WT` | `1G` | `+0.8` Light, `+8%` Stagger Damage, `+10%` Tell Window |
+| `nds_echostorm_threat_analyzer` | **NDS EchoStorm Threat Analyzer** | Marauder | Sensory B (`LOOTED`) | `3 WT` | `1G` | `+0.6` Light, `+8%` Accuracy, `+12%` Tell Window |
+| `aegis_lightveil_analyzer` | **Aegis Lightveil Analyzer** | Guardian | Sensory B (`LOOTED`) | `2 WT` | `1G` | `+1.0` Light, `+15` Shield stress buffer, `+4` Stability |
+| `vx_echonull_scanner` | **VX Echo-Null Scanner** | Rogue | Sensory B (`LOOTED`) | `1 WT` | `2G` | `+1.2` Light, `+10%` Stagger/Crit Precision, `+12%` Tell Window |
+| `arc_convergence_predictor` | **ARC Convergence Predictor** | Wizard | Sensory B (`LOOTED`) | `2 WT` | `1G` | `+0.8` Light, `+9%` Accuracy, `+8%` Stagger Damage |
+| `sanc_blessing_resonance_grid` | **SANC Blessing Resonance Grid** | Cleric | Sensory B (`LOOTED`) | `2 WT` | `1G` | `+0.8` Light, `-6%` Cooldowns, `+10` Layer 1 Shield |
+| `poe_bog_lantern_sensor` | **Poe's Bog-Lantern Array** | Rogue | Sensory B (`QUEST RELIC`) | `1 WT` | `2G` | `+2.6` Light, reveals submerged Bog Wurms & deep æther fog pockets, `+15%` Tell Window |
+| `craft_chronometric_tell_predictor` | **Crafted Chronometric Tell Predictor** | Guardian | Sensory B (`CRAFTED`: `26 Scrap + 1 Aquamarine`) | `2 WT` | `1G` | `+20%` Enemy Tell Window, `+6%` Accuracy / `+4%` Cooldowns |
+
+## 6. ARM ASSEMBLIES, ACTUATORS & LEG STRIDERS (`23 Items`)
+
+### 6A. Exterior Arm Aperture Plates (`7 Items`) & Internal Arm Actuators (`8 Items`)
+
+| ID | Name | Trait Line | Slot (`Acquisition`) | Weight | Armor (`DUR / RTG / THR`) | Shield | Gem Slots | Mechanical Domain & Zero-Sum Trade-Off |
+|---|---|---|---|---|---|---|---|---|
+| `bwi_twinstrike_gauntlets` | **BWI Twinstrike Gauntlets** | Warrior | Arms Exterior (`LOOTED`) | `8 WT` | `65 / 5 / 3` | `+10` | `2G` | Recoil dampeners (`+2.0` Attack Mass, `+3%` Accuracy, `+3` Stability) |
+| `fire_ice_line_holder` | **Fire & Ice Line Holder** | Marauder | Arms Exterior (`LOOTED`) | `13 WT` | `95 / 7 / 5` | `+10` | `2G` | Heavy siege bracing gauntlets (`+4.0` Attack Mass, `+8` Stability / `-2%` Speed) |
+| `solbright_cleaver_assemblies` | **Solbright Cleaver Assemblies** | Guardian | Arms Exterior (`LOOTED`) | `9 WT` | `78 / 6 / 4` | `+20` | `2G` | Reactor-linked sword-spear channels (`+2.5` Attack Mass, `+5` Stability) |
+| `shadowcraft_silencer_gauntlets` | **Shadowcraft Silencer Gauntlets** | Rogue | Arms Exterior (`LOOTED`) | `4 WT` | `45 / 3 / 2` | `+10` | `2G` | Vibration-damped gauntlets (`+6%` Accuracy, `+8%` Stagger/Crit / `-2` Stability) |
+| `arcanum_channeler_assemblies` | **Arcanum Channeler Assemblies** | Wizard | Arms Exterior (`LOOTED`) | `6 WT` | `52 / 4 / 3` | `+25` | `2G` | Beam-focusing conduit vambraces (`+5%` Accuracy, `-4%` Cooldowns) |
+| `sanctum_benediction_assemblies` | **Sanctum Benediction Assemblies** | Cleric | Arms Exterior (`LOOTED`) | `7 WT` | `62 / 5 / 3` | `+20` | `2G` | Harmonic emitter gauntlets (`+1.5` Attack Mass, `-4%` Cooldowns, `+3` Stability) |
+| `camelot_vanguard_vambraces` | **Camelot Vanguard Vambraces** | Guardian | Arms Exterior (`LOOTED`) | `9 WT` | `75 / 6 / 4` | `+15` | `2G` | Fluted plate vambraces (`+3.0` Attack Mass, `+6` Stability / `-1%` Speed) |
+| `act_bwi_twin_servos` | **BWI Twin-Link Servo Actuators** | Warrior | Arms Mod 1 (`LOOTED`) | `3 WT` | `0 / 0 / 0` | `0` | `2G` | `+2.5` Attack Mass, `+5%` Accuracy, `+6%` Stagger Damage |
+| `act_rad_siege_braces` | **RAD Hydraulic Siege Braces** | Marauder | Arms Mod 1 (`LOOTED`) | `5 WT` | `0 / 0 / 0` | `0` | `2G` | `+4.5` Attack Mass, `+8` Stability, `+10%` Stagger Damage / `-2%` Speed |
+| `act_ti_aegis_couplers` | **TI Aegis Guard Couplers** | Guardian | Arms Mod 1 (`LOOTED`) | `3 WT` | `0 / 0 / 0` | `+15` | `2G` | `+2.5` Attack Mass, `+6` Stability, `+15` Shield guard coupler |
+| `act_vx_whisper_gyros` | **VX Whisper Recoil Gyros** | Rogue | Arms Mod 1 (`LOOTED`) | `2 WT` | `0 / 0 / 0` | `0` | `2G` | `+8%` Accuracy, `+10%` Stagger/Crit Precision, `-3%` Cooldowns |
+| `act_arc_conduit_relays` | **ARC Flux Conduit Relays** | Wizard | Arms Mod 1 (`LOOTED`) | `2 WT` | `0 / 0 / 0` | `+15` | `2G` | `+6%` Accuracy, `-6%` Cooldowns, `+5%` Venting |
+| `act_sanc_harmonic_links` | **SANC Harmonic Grip Links** | Cleric | Arms Mod 1 (`LOOTED`) | `3 WT` | `0 / 0 / 0` | `+15` | `2G` | `+1.5` Attack Mass, `-5%` Cooldowns, `+4` Stability |
+| `craft_pneumatic_pile_actuators` | **Crafted Pneumatic Pile Actuators** | Marauder | Arms Mod 1 (`CRAFTED`: `30 Scrap + 1 Ruby`) | `4 WT` | `0 / 0 / 0` | `0` | `1G` | `+5.0` Attack Mass, `+14%` Stagger Damage / `+6%` Heat |
+| `craft_gyro_draw_stabilizers` | **Crafted Gyro-Draw Stabilizers** | Rogue | Arms Mod 1 (`CRAFTED`: `28 Scrap + 1 Emerald`) | `2 WT` | `0 / 0 / 0` | `0` | `1G` | `+10%` Accuracy, `-5%` Cooldowns / `-2` Stability |
+
+### 6B. Leg Striders & Stabilizer Actuators (`8 Items`)
+
+| ID | Name | Trait Line | Acquisition | Weight & Cap Bonus | Gem Slots | Mobility / Stability Modifiers & Zero-Sum Trade-Off |
+|---|---|---|---|---|---|---|
+| `bwi_gatecrasher_striders` | **BWI Gatecrasher Striders** | Warrior | `LOOTED` | `9 WT` (`+10 WT` Cap) | `2G` | Shock-absorbing booster legs (`+5%` Move Speed, `+5` Stability, `+1.5` Attack Mass) |
+| `fire_ice_outrigger_striders` | **Fire & Ice Outrigger Striders** | Marauder | `LOOTED` | `15 WT` (`+22 WT` Cap) | `2G` | Heavy siege outriggers (`+16` Stability, `+3.0` Attack Mass / `-5%` Move Speed) |
+| `dawnforge_stabilizer_striders` | **Dawnforge Stabilizer Striders** | Guardian | `LOOTED` | `11 WT` (`+16 WT` Cap) | `2G` | Stabilizer anchor greaves (`+12` Stability, `+2.0` Attack Mass / `-2%` Move Speed) |
+| `shadowcraft_ghost_striders` | **Shadowcraft Ghost Striders** | Rogue | `LOOTED` | `5 WT` (`+8 WT` Cap) | `2G` | Silent burst-acceleration legs (`+10%` Move Speed, `-4%` Cooldowns / `-6` Stability) |
+| `arcanum_anchor_striders` | **Arcanum Anchor Striders** | Wizard | `LOOTED` | `8 WT` (`+12 WT` Cap) | `2G` | Energy grounding greaves (`+6` Stability, `+6%` Venting, `-4%` Cooldowns) |
+| `sanctum_steadfast_striders` | **Sanctum Steadfast Striders** | Cleric | `LOOTED` | `9 WT` (`+14 WT` Cap) | `2G` | Support positioning anchors (`+9` Stability, `+4%` Venting, `+2%` Move Speed) |
+| `craft_mag_rail_skates` | **Crafted Mag-Rail Skates** | Rogue | `CRAFTED` (`32 Scrap + 1 Emerald`) | `6 WT` (`+8 WT` Cap) | `1G` | High-glide magnetic skates (`+12%` Move Speed, `-5%` Cooldowns / `-8` Stability) |
+| `craft_siege_spade_outriggers` | **Crafted Siege-Spade Outriggers** | Marauder | `CRAFTED` (`34 Scrap + 1 Garnet`) | `16 WT` (`+26 WT` Cap) | `1G` | Hydraulic ground-spade anchors (`+20` Stability, `+3.5` Attack Mass / `-6%` Move Speed) |
+
+## 6C. GEMSTONES, BELT FLASKS, CONSUMABLES, CURRENCIES & QUEST / RELIC ITEMS (`36 Items`)
+
+### 6C.1 The 9 Canonical Gemstones (`Slot-Adaptive Equipment Sockets & Skill Investment`)
+
+| Gemstone | Color / Palette Row | Weapon / Component Socket Bonus | Exterior Armor Socket Bonus (`Head`, `Arms`, `Plating`) | Internal Sub-Module Socket Bonus (`Optics`, `Sensors`, `Actuators`, `Reactor`, `Legs`) |
+|---|---|---|---|---|
+| **Ruby** (`ruby`) | Crimson (`Row 1`) | `+8%` Base Damage, `+1.0` Attack Mass | `+12` Armor Durability, `+1` Armor Rating | `+1.5` Attack Mass, `+5%` Stagger Damage |
+| **Sapphire** (`sapphire`) | Cobalt (`Row 2`) | `-8%` Heat Cost, `+6%` Wave/Beam Velocity | `+18` Layer 1 Shield Capacity | `+8%` Heat Venting, `-4%` Skill Cooldowns |
+| **Emerald** (`emerald`) | Viridian (`Row 3`) | `-6%` Attack Cadence Duration, `+6%` Accuracy | `+3%` Move Speed, `+8` Armor Durability | `+4%` Move Speed, `+6%` Accuracy |
+| **Topaz** (`topaz`) | Amber-Gold (`Row 4`) | `+6%` Base Damage, `+8%` Beam/Projectile Speed | `+14` Layer 1 Shield, `+0.4` Light Radius | `+0.8` Light Radius, `-5%` Skill Cooldowns |
+| **Amethyst** (`amethyst`) | Violet (`Row 5`) | `+5%` Critical Hit Chance, `-6%` Skill Cooldowns | `+12` Layer 1 Shield, `-3%` Skill Cooldowns | `-6%` Skill Cooldowns, `+8%` Enemy Tell Window |
+| **Diamond** (`diamond`) | Prismatic White (`Row 6`) | `+6%` Base Damage, `+4%` Crit Chance, `-4%` Heat | `+15` Armor Durability, `+15` Layer 1 Shield, `+1` RTG | `+4` Stability, `-4%` Cooldowns, `+5%` Venting |
+| **Citrine** (`citrine`) | Solar Orange (`Row 7`) | `+10%` Stagger Impulse, `+5%` Base Damage | `+10` Armor Durability, `+4` Stability | `+6%` Stagger Damage, `+5%` Heat Venting |
+| **Garnet** (`garnet`) | Deep Bordeaux (`Row 8`) | `+12%` Stagger Impulse, `+1.5` Attack Mass | `+18` Armor Durability, `+1` Armor Threshold, `+5` Stability | `+8` Stability, `+6 WT` Load Capacity |
+| **Aquamarine** (`aquamarine`) | Seafoam Cyan (`Row 9`) | `-10%` Heat Generation, `+8%` Accuracy | `+14` Layer 1 Shield, `+4%` Heat Venting | `+10%` Enemy Tell Window, `+6%` Heat Venting |
+
+### 6C.2 Belt Flasks, Gem-Infused Elixirs & Field Consumables (`11 Items`)
+
+| Item ID | Name | Category | Charges / Cooldown | Effect & Tactical Use |
+|---|---|---|---|---|
+| `moonstone_grail_flask` | **Moonstone Grail Flask** | Primary Belt Flask (`[C]` / `[RB]`) | `3` Charges (refills at Waystations) | Restores **`+45` Frame Structure**, **`+35` Layer 1 Shield**, and vents **`-20` Reactor Heat** |
+| `flask_ruby` | **Ruby Ignition Draught** | Gem-Infused Belt Flask | `2` Charges · `18s` duration | Grants **`+18%` melee & physical damage** and **`+2.5` Attack Mass** for `18.0s` |
+| `flask_sapphire` | **Sapphire Coolant Phial** | Gem-Infused Belt Flask | `2` Charges · Instant + `15s` | Immediately vents **`-45` Reactor Heat** and grants **`+30%` Heat Dissipation** for `15.0s` |
+| `flask_emerald` | **Emerald Quicksilver Tonic** | Gem-Infused Belt Flask | `2` Charges · `18s` duration | Grants **`+15%` Move Speed**, **`-15%` Booster Dash Cooldown**, and **`+10%` Accuracy** for `18.0s` |
+| `flask_topaz` | **Topaz Luminary Elixir** | Gem-Infused Belt Flask | `2` Charges · `20s` duration | Restores **`+50` Layer 1 Overshield**, expands **Light Radius (`+2.5`)**, and boosts **Beam/Caster damage by `+15%`** |
+| `flask_amethyst` | **Amethyst Veil Tincture** | Gem-Infused Belt Flask | `2` Charges · `16s` duration | Grants **`2.5s` Optical Camouflage** on drink and **`+12%` Critical Hit Chance** for `16.0s` |
+| `flask_citrine` | **Citrine Siege-Breaker Brew** | Gem-Infused Belt Flask | `2` Charges · `18s` duration | Grants **`+25%` Stagger & Guard-Break Impulse** and **`+10` Stability** for `18.0s` |
+| `flask_garnet` | **Garnet Ironclad Decoction** | Gem-Infused Belt Flask | `2` Charges · `20s` duration | Repairs **`+40` Layer 2 Armor Durability** and grants **`+3` Armor Rating** & **`+14` Stability** for `20.0s` |
+| `flask_aquamarine` | **Aquamarine Clarity Draught** | Gem-Infused Belt Flask | `2` Charges · `20s` duration | Cleanses all corrosive/DoT effects, prevents bog corrosion for `20.0s`, and extends **Enemy Tell Windows by `+20%`** |
+| `orc_war_paint` | **Orcish Blood-Ochre War Paint** | Field Consumable | Single-Use (`Stackable`) | Grants **`+15%` melee damage**, **`+8` Stability**, and **`-10%` heat generation** for `30.0s` |
+| `basic_booster_kit` | **Field Patch & Booster Cell** | Field Consumable | Single-Use (`Stackable`) | Field maintenance charge restoring **`+25` Structure**, **`+25` Armor Durability**, and **`+25` Shield** |
+
+### 6C.3 Scrap & Coin Pickups (`3 Tiers`) & Campaign Quest / Key / Relic Items (`13 Items`)
+
+| Item ID | Name | Category | Zone / Source | Purpose & Campaign Interaction |
+|---|---|---|---|---|
+| `coin_copper` | **Copper Bog-Scrip (`+5 Scrap`)** | Currency Pickup | Standard enemy & crate drop | Adds **`+5` Scrap** for Armory Workbench crafting and merchant trade |
+| `coin_silver` | **Silver Camelot Denier (`+15 Scrap`)** | Currency Pickup | Elite knight, patrol & chest drop | Adds **`+15` Scrap** for Armory Workbench crafting and merchant trade |
+| `coin_gold` | **Gold Waygate Sovereign (`+50 Scrap`)** | Currency Pickup | Boss & deep reliquary cache drop | Adds **`+50` Scrap** for Armory Workbench crafting and merchant trade |
+| `poe_lantern_fragment` | **Poe's Fractured Lantern Core** | Quest Item (`M00 The Bog`) | Drowned monastery ruin in The Bog | Returned to the Poe spirit to rekindle its lantern and receive **Poe's Bog-Lantern Array** |
+| `bedivere_signet_ring` | **Sir Bedivere's Signet Ring** | Quest / Consequence Relic (`M00 → M01`) | Sir Bedivere's fallen chassis in The Bog | Taking it marks you as a grave robber to Camelot loyalists in Border Town, but unlocks the **Cathedral Crypt & Lady of the Lake** subplot |
+| `bedivere_numbered_list` | **Bedivere's Numbered Vellum List** | Quest Cipher (`M00 → M01`) | Sir Bedivere's satchel in The Bog | Lists the **3 Arthurian Offering Relics** (*Tarnished Chalice*, *Broken Spur of Camlann*, *Vial of Avalon Dew*) required at the deep bog water |
+| `bedivere_relic_chalice` | **Tarnished Grail Chalice (`List #1`)** | Secret Offering Relic | Hidden behind a desynchronizing wall in Market District | First of Bedivere's three listed relics for the **Lady of the Lake** ritual |
+| `bedivere_relic_spur` | **Broken Spur of Camlann (`List #2`)** | Secret Offering Relic | Locked armory cache in Barracks Quarter | Second of Bedivere's three listed relics for the **Lady of the Lake** ritual |
+| `bedivere_relic_dew` | **Vial of Avalon Dew (`List #3`)** | Secret Offering Relic | Beneath the defiled altar in Cathedral District | Third of Bedivere's three listed relics; offering all 3 in The Bog summons **The Lady of the Lake** |
+| `grail_fragment_percival` | **Percival's Grail Fragment** | Boss Key (`Camelot Border Town`) | Dropped by **Sir Percival, Grail Knight** | One of three Grail Fragments needed to unseal the **Cathedral Dungeon Door** by force |
+| `grail_fragment_tristan` | **Tristan's Grail Fragment** | Boss Key (`Camelot Border Town`) | Dropped by **Sir Tristan, Corrupted Ranger** | Second of three Grail Fragments needed to unseal the **Cathedral Dungeon Door** by force |
+| `grail_fragment_bors` | **Bors's Grail Fragment** | Boss Key (`Camelot Border Town`) | Dropped by **Sir Bors, Berserk Striker** | Third of three Grail Fragments; defeating Percival, Tristan, and Bors together also awards **Knight's Oath** |
+| `camelot_waygate_tuning_fork` | **Camelot Waygate Tuning Crystal** | Major Campaign Key | Deep Dungeon sanctum beneath Cathedral District | Stabilizes the **Belldor Waygate** aperture for interworld transit |
+| `scabbard_of_avalon` | **The Scabbard of Avalon** | Lore-Bound Legendary Relic (`Belldor`) | Dropped by **The Lady of the Lake** (`lady_of_the_lake_defeated`) | Mounts exclusively into **Excalibur** (`leg_excalibur`) at the Armory Workbench, transforming it into **Excalibur, Sheathed in Avalon** (`PREVENT_LETHAL_DOT`) |
+| `medusas_head` | **Medusa's Head** | Lore-Bound Legendary Relic (`Tyrranus`) | Dropped by **The Gorgon Medusa** (`medusa_defeated`) | Mounts exclusively into **Aegis** (`leg_aegis`) at the Armory Workbench, transforming it into **Aegis of the Gorgon** (*Gorgon's Gaze* boss-piercing petrification) |
+| `leg_juuchi_yosamu` | **Juuchi Yosamu (Muramasa Companion Blade)** | Playable Legendary Katana & Lore-Bound Relic (`Novarin`) | Recovered after **The Demon Blade Trial** (`juuchi_yosamu_claimed`) | Wielded standalone (`DR_DURING_ACTIVE_HIT_FRAMES`) or mounted into **Yawarakai-Te** (`leg_yawarakai_te`) to fuse into **Yawarakai-Te & Juuchi Yosamu** (`TWIN_BLADE_DUAL_EXECUTION`) |
 
 ## 7. THE 113-NODE FEAT CONSTELLATION & FIVE GOLDEN RULES (`P-01` – `P-05`)
 
@@ -401,7 +595,7 @@ The **113-Node Hexagonal Feat Constellation** (`90` Groomed Core Feats + `22` St
 
 ### 13.2 Standalone Specialist Martial Stances (`22 Nodes` — Zero Prerequisite Lines)
 
-All **22 Specialist Martial Stances** (`3` Tier I, `13` Tier II, `6` Tier III) are standalone weapon-mastery nodes (`Rule P-04`) distributed across the 6 Combat Discipline sectors. Both **Custom (`72`)** and **Magitech (`29`)** weapons qualify by shared **Functional Weapon Type** (`resolveWeaponFunctionalType`). When socketed and paired with matching equipment and Frame Load Bracket (`Light` / `Medium` / `Heavy`), the stance overrides **Action 2**, **Action 4**, and **Action 5** and applies passive BCU/Inertia modifiers:
+All **22 Specialist Martial Stances** (`3` Tier I, `13` Tier II, `6` Tier III) are standalone weapon-mastery nodes (`Rule P-04`) distributed across the 6 Combat Discipline sectors. All **Custom (`72`)**, **Magitech (`37`)**, and **Legendary (`6`)** weapons qualify by shared **Functional Weapon Type** (`resolveWeaponFunctionalType`). When socketed and paired with matching equipment and Frame Load Bracket (`Light` / `Medium` / `Heavy`), the stance overrides **Action 2**, **Action 4**, and **Action 5** and applies passive BCU/Inertia modifiers:
 
 | Feat ID | Feat Name | Historical Martial Stance | Umbrella / Sector | Tier | Qualifying Pairing & Load Bracket |
 |---|---|---|---|---|---|

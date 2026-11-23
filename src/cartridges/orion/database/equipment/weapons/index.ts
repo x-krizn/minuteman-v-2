@@ -108,11 +108,16 @@ export function getWeaponDefinition(id: string): WeaponDefinition | undefined {
     return MODIFIED_WEAPON_CACHE[id];
   }
 
-  const { baseId: rawBaseId, installedGems } = parseEquipmentInstanceId(id);
+  const {
+    baseId: rawBaseId,
+    installedGems,
+    slotTokens,
+    populatedSlotCount,
+  } = parseEquipmentInstanceId(id);
   const baseId = LEGACY_WEAPON_ID_ALIASES[rawBaseId] || rawBaseId;
   const baseDef = WEAPON_REGISTRY[baseId];
   if (!baseDef) return undefined;
-  if (installedGems.length === 0) return baseDef;
+  if (populatedSlotCount === 0 && installedGems.length === 0) return baseDef;
 
   const allowsArmorBonus =
     baseDef.equipmentRole === 'shield' || baseDef.id.includes('martyrdom_plating');
@@ -130,7 +135,7 @@ export function getWeaponDefinition(id: string): WeaponDefinition | undefined {
   const derived: WeaponDefinition = {
     ...baseDef,
     id,
-    name: formatModifiedEquipmentName(baseDef.name, installedGems),
+    name: formatModifiedEquipmentName(baseDef.name, slotTokens, populatedSlotCount),
     passiveShieldBonus:
       (baseDef.passiveShieldBonus || 0) + extraShield > 0
         ? (baseDef.passiveShieldBonus || 0) + extraShield

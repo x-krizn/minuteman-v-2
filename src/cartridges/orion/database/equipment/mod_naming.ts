@@ -79,53 +79,83 @@ export function usesCustomSuffixBySemantics(baseName: string): boolean {
 }
 
 /**
- * Parses any equipment identifier (`<baseId>`, `<baseId>::<gem1>+<gem2>`, or sparse `<baseId>::none+<gem2>`)
- * into its base item ID, dense array of installed Gemstone mods, and positional `slotGems` array (`GemId | null`).
+ * Type guard verifying whether a slot token represents a populated modification slot
+ * (either a canonical `GemId` or `'mod'` for an installed component with 0 socketed gems).
+ */
+export function isPopulatedModSlotToken(
+  val: string | null | undefined
+): val is GemId | 'mod' {
+  return Boolean(val && (val === 'mod' || VALID_GEM_IDS.has(val)));
+}
+
+/**
+ * Parses any equipment identifier (`<baseId>`, `<baseId>::<gem1>+<gem2>`, `<baseId>::mod+spinel`, or sparse `<baseId>::none+<gem2>`)
+ * into its base item ID, dense array of installed Gemstone mods, positional `slotGems` array (`GemId | null`),
+ * positional `slotTokens` array (`GemId | 'mod' | null`), and total `populatedSlotCount` (`0..3`).
  */
 export function parseEquipmentInstanceId(rawId: string | null | undefined): {
   baseId: string;
   installedGems: GemId[];
   slotGems: Array<GemId | null>;
+  slotTokens: Array<GemId | 'mod' | null>;
+  populatedSlotCount: number;
 } {
   if (!rawId) {
-    return { baseId: '', installedGems: [], slotGems: [] };
+    return {
+      baseId: '',
+      installedGems: [],
+      slotGems: [],
+      slotTokens: [],
+      populatedSlotCount: 0,
+    };
   }
   const sepIdx = rawId.indexOf('::');
   if (sepIdx < 0) {
-    return { baseId: rawId.trim(), installedGems: [], slotGems: [] };
+    return {
+      baseId: rawId.trim(),
+      installedGems: [],
+      slotGems: [],
+      slotTokens: [],
+      populatedSlotCount: 0,
+    };
   }
   const baseId = rawId.slice(0, sepIdx).trim();
   const gemPart = rawId.slice(sepIdx + 2).trim();
-  const rawSlotGems: Array<GemId | null> = gemPart
-    .split('+')
-    .map((g) => g.trim().toLowerCase())
-    .map((token) => (isCanonicalGemId(token) ? token : null));
+  const rawTokens = gemPart.split('+').map((g) => g.trim().toLowerCase());
+  const rawSlotTokens: Array<GemId | 'mod' | null> = rawTokens.map((token) =>
+    isCanonicalGemId(token) ? token : token === 'mod' ? 'mod' : null
+  );
+  const rawSlotGems: Array<GemId | null> = rawSlotTokens.map((token) =>
+    isCanonicalGemId(token) ? token : null
+  );
 
   let lastValidIdx = -1;
-  for (let i = rawSlotGems.length - 1; i >= 0; i--) {
-    if (rawSlotGems[i] !== null) {
+  for (let i = rawSlotTokens.length - 1; i >= 0; i--) {
+    if (rawSlotTokens[i] !== null) {
       lastValidIdx = i;
       break;
     }
   }
+  const slotTokens = lastValidIdx >= 0 ? rawSlotTokens.slice(0, lastValidIdx + 1) : [];
   const slotGems = lastValidIdx >= 0 ? rawSlotGems.slice(0, lastValidIdx + 1) : [];
   const installedGems = slotGems.filter((g): g is GemId => isCanonicalGemId(g));
-  return { baseId, installedGems, slotGems };
+  const populatedSlotCount = slotTokens.filter((t) => t !== null).length;
+  return { baseId, installedGems, slotGems, slotTokens, populatedSlotCount };
 }
 
 /**
  * Constructs a deterministic composite equipment instance ID from a base item ID and
- * either a dense array of `GemId`s or a positional slot array (`Array<GemId | null | undefined>`).
+ * either a dense array of `GemId`s or a positional slot array (`Array<GemId | 'mod' | null | undefined>`).
  * Preserves `'none'` slot placeholders when later slots are populated before earlier slots.
  */
 export function buildEquipmentInstanceId(
   baseId: string,
-  installedGemsOrSlots: ReadonlyArray<GemId | null | undefined>
+  installedGemsOrSlots: ReadonlyArray<GemId | 'mod' | null | undefined>
 ): string {
   const cleanBase = parseEquipmentInstanceId(baseId).baseId;
   let lastValidIdx = -1;
   for (let i = installedGemsOrSlots.length - 1; i >= 0; i--) {
-    if (isCanonicalGemId(installedGemsOrSlots[i])) {
+    if (isPopulatedModSlotToken(installedGemsOrSlots[i])) {
       lastValidIdx = i;
       break;
     }
@@ -134,7 +164,7 @@ export function buildEquipmentInstanceId(
   const serializedSlots: string[] = [];
   for (let i = 0; i <= lastValidIdx; i++) {
     const g = installedGemsOrSlots[i];
-    serializedSlots.push(isCanonicalGemId(g) ? g : 'none');
+    serializedSlots.push(isPopulatedModSlotToken(g) ? g : 'none');
   }
   return `${cleanBase}::${serializedSlots.join('+')}`;
 }
@@ -143,19 +173,24 @@ export function buildEquipmentInstanceId(
  * Formats an equipment item's display name from its base name and installed Gemstones/Mods:
  * - Uses semantic `"Custom"` placement:
  *   - Model designations & coded titles (`N-55 Gladius`, `BWI Bastion Frame Plating`) -> `<BaseName> Custom`
- *   - Standard weapon/armor nouns (`Camelot Longsword`, `Heater Shield`) -> `Custom <BaseName>`
- * - 2nd+ mods append a Roman numeral tier count (`+II`, `+III`, e.g. `Custom Camelot Longsword +II` or `N-55 Gladius Custom +II`).
+ *   - Standard weapon/armor nouns (`Camelot Longsword`, `Heater Shield`, `Short Spear`) -> `Custom <BaseName>`
+ * - 2nd+ populated slots append a Roman numeral tier count (`+II`, `+III`, e.g. `Custom Short Spear +II` or `Custom Bolt Caster +III`).
  */
 export function formatModifiedEquipmentName(
   baseName: string,
-  installedGems: ReadonlyArray<GemId | null | undefined>
+  installedGems: ReadonlyArray<GemId | 'mod' | null | undefined>,
+  explicitPopulatedSlotCount?: number
 ): string {
-  const validGems = installedGems.filter((g): g is GemId => isCanonicalGemId(g));
-  if (validGems.length === 0) return baseName;
+  const validTokens = installedGems.filter((g): g is GemId | 'mod' =>
+    isPopulatedModSlotToken(g)
+  );
+  const count =
+    typeof explicitPopulatedSlotCount === 'number'
+      ? explicitPopulatedSlotCount
+      : validTokens.length;
+  if (count <= 0) return baseName;
   const tierSuffix =
-    validGems.length >= 2
-      ? ` ${ROMAN_NUMERAL_BY_COUNT[validGems.length] || `+${validGems.length}`}`
-      : '';
+    count >= 2 ? ` ${ROMAN_NUMERAL_BY_COUNT[count] || `+${count}`}` : '';
   const cleanBase = baseName
     .replace(/^Custom\s+/i, '')
     .replace(/\s+Custom(?:\s+\+[IVX0-9]+)?$/i, '')

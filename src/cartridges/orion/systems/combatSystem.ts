@@ -9,12 +9,14 @@ import {
   getResolvedActionDescriptor,
 } from '../database/equipment';
 import {
+  clampTempoMultiplier,
   classifyWeaponCombatArchetype,
   COMBAT_TEMPO_CONSTANTS,
   getWeaponDefinition,
 } from '../database/equipment/weapons';
 import {
   computeInterfaceFeatModifiers,
+  getWeaponGemCombatModifiers,
   getWeaponGemVisuals,
   resolveEquippedHardwareStats,
 } from '../database/progression';
@@ -66,8 +68,10 @@ export function handleCombatInput(
 
   const skill0 = weapon.moveset[0];
   const arch = classifyWeaponCombatArchetype(weapon, currentWeaponId);
+  const modProfile = getWeaponGemCombatModifiers(state, currentWeaponId).modificationProfile;
+  const isBurstVolleyBow = modProfile?.effectiveAction1Mode === 'BURST_VOLLEY';
   const isMeleeOrShield = Boolean(skill0?.noReload) || arch.isMeleeOrShield;
-  const isBowWeapon = arch.isBow || Boolean(skill0?.isChargeable);
+  const isBowWeapon = !isBurstVolleyBow && (arch.isBow || Boolean(skill0?.isChargeable));
 
   // Melee & Shield weapons never reload
   if (isMeleeOrShield && state.isReloading) {
@@ -141,7 +145,13 @@ export function handleCombatInput(
         : weapon.weightClass === 'heavy'
           ? COMBAT_TEMPO_CONSTANTS.BOW_FULL_DRAW_SEC.heavy
           : COMBAT_TEMPO_CONSTANTS.BOW_FULL_DRAW_SEC.medium;
-    const maxCharge = Math.max(0.55, Math.min(1.25, skill0?.maxChargeSec ?? defaultCharge));
+    const drawTimeMult = modProfile
+      ? clampTempoMultiplier(modProfile.statModifiers.bowDrawTimeMultiplier)
+      : 1.0;
+    const maxCharge = Math.max(
+      0.45,
+      Math.min(1.5, (skill0?.maxChargeSec ?? defaultCharge) * drawTimeMult)
+    );
     state.bowMaxChargeSec = maxCharge;
 
     if (p.x) {

@@ -89,12 +89,22 @@ export function firePrimarySalvoShot(
   const installedRangedModId = state.equipmentSlots?.installedMods?.ranged;
   const rangedMod = ACTION_MODIFICATION_CATALOG.find((m) => m.id === installedRangedModId);
   const hwStats = resolveEquippedHardwareStats(state);
+  const gemCombatMods = getWeaponGemCombatModifiers(state, currentWeaponId);
+  const modProfile = gemCombatMods.modificationProfile;
+  const compDurationMult = modProfile
+    ? 1.0 / Math.max(0.7, Math.min(1.3, modProfile.clampedTempoMultiplier || 1.0))
+    : 1.0;
   const tellMult = clampTempoMultiplier(
     (!isMeleeOrShield ? (rangedMod?.modifiers.tellDurationMult ?? 1.0) : 1.0) *
-      hwStats.tellDurationMult
+      hwStats.tellDurationMult *
+      compDurationMult
   );
 
-  const comboSteps = isMeleeOrShield ? skill0.comboSequence : undefined;
+  const rawComboSteps = isMeleeOrShield ? skill0.comboSequence : undefined;
+  const comboSteps =
+    rawComboSteps && modProfile?.comboStepCountOverride
+      ? rawComboSteps.slice(0, Math.max(2, modProfile.comboStepCountOverride))
+      : rawComboSteps;
   const currentStepIdx = comboSteps?.length
     ? (state.meleeComboStep || 0) % comboSteps.length
     : 0;
@@ -118,7 +128,11 @@ export function firePrimarySalvoShot(
     state.skillActionMaxTimer = state.skillActionTimer;
     state.meleeComboResetTimer =
       (skill0.comboResetWindowSec ?? 1.45) + state.skillTellTimer + state.skillActionTimer;
-  } else if (skill0.isChargeable && bowChargeRatio !== undefined) {
+  } else if (
+    skill0.isChargeable &&
+    bowChargeRatio !== undefined &&
+    modProfile?.effectiveAction1Mode !== 'BURST_VOLLEY'
+  ) {
     // Bow release: immediate crisp release tell since the player already held draw
     state.skillTellTimer = 0.045;
     state.skillTellMaxTimer = 0.045;
@@ -153,13 +167,16 @@ export function executeBasicAttackShot(
   const weapon = getWeaponDefinition(currentWeaponId);
   const action = weapon?.moveset[0];
   const arch = classifyWeaponCombatArchetype(weapon, currentWeaponId);
+  const gemCombatMods = getWeaponGemCombatModifiers(state, currentWeaponId);
+  const modProfile = gemCombatMods.modificationProfile;
+  const compStats = modProfile?.statModifiers;
+  const isBurstVolleyBow = modProfile?.effectiveAction1Mode === 'BURST_VOLLEY';
   const isMeleeOrShield = Boolean(action?.noReload) || arch.isMeleeOrShield;
-  const isBowWeapon = arch.isBow || Boolean(action?.isChargeable);
+  const isBowWeapon = !isBurstVolleyBow && (arch.isBow || Boolean(action?.isChargeable));
   const gemVis = getWeaponGemVisuals(state, currentWeaponId);
   const featMods = computeInterfaceFeatModifiers(state.equippedFeats || []);
   const loadPenalty = state.gates?.loadPenalty;
   const aim = getCombatAimVector(state);
-  const gemCombatMods = getWeaponGemCombatModifiers(state, currentWeaponId);
   const overdriveMult =
     ((state.overdriveTimer || 0) > 0 ? 1.3 : 1.0) *
     featMods.damageMult *
@@ -180,27 +197,48 @@ export function executeBasicAttackShot(
     state.isReloading = false;
   }
 
-  const comboSteps = isMeleeOrShield ? action.comboSequence : undefined;
+  const rawComboSteps = isMeleeOrShield ? action.comboSequence : undefined;
+  const comboSteps =
+    rawComboSteps && modProfile?.comboStepCountOverride
+      ? rawComboSteps.slice(0, Math.max(2, modProfile.comboStepCountOverride))
+      : rawComboSteps;
   const stepCount = comboSteps?.length || 1;
   const stepIdx = isMeleeOrShield ? (state.meleeComboStep || 0) % stepCount : 0;
   const comboStep = comboSteps?.[stepIdx];
+  const isStep1 = isMeleeOrShield && stepIdx === 0;
+  const isFinisherStep = isMeleeOrShield && stepIdx === stepCount - 1 && stepCount > 1;
 
-  const bowHeatMult = isBowWeapon ? 1.0 + 0.65 * bowChargeRatio : 1.0;
+  const bowHoldDrainMult = compStats?.bowDrawHoldDrainMultiplier ?? 1.0;
+  const bowHeatMult = isBowWeapon ? 1.0 + 0.65 * bowChargeRatio * bowHoldDrainMult : 1.0;
   const bowDmgMult = isBowWeapon ? 1.0 + 0.85 * bowChargeRatio : 1.0;
-  const comboDmgMult = comboStep?.damageMult ?? 1.0;
+  const stepSpecificMult = isStep1
+    ? (compStats?.step1BcuMultiplier ?? 1.0)
+    : isFinisherStep
+      ? (compStats?.finisherBcuMultiplier ?? 1.0)
+      : 1.0;
+  const comboDmgMult = (comboStep?.damageMult ?? 1.0) * stepSpecificMult;
 
+  const baseActionHeat = Math.max(
+    0,
+    (action.heatCost + (compStats?.heatPerActionDelta ?? 0)) *
+      (compStats?.heatCostMultiplier ?? 1.0)
+  );
   const shotHeat =
-    action.heatCost *
+    baseActionHeat *
     bowHeatMult *
     (loadPenalty?.heatMult ?? 1.0) *
     featMods.heatGenMult;
   state.heat = Math.min(state.maxHeat, state.heat + shotHeat);
   state.heatDecayDelayTimer = Math.max(state.heatDecayDelayTimer || 0, 0.45);
   if (isBowWeapon && bowChargeRatio > 0.15 && state.gates?.energySystemActive) {
-    const energyCost = Math.round(4 * bowChargeRatio);
+    const energyCost = Math.round(4 * bowChargeRatio * bowHoldDrainMult);
     state.energy = Math.max(0, state.energy - energyCost);
   }
-  const shotDmg = Math.round(action.damage * overdriveMult * bowDmgMult * comboDmgMult);
+  const shotDmg = Math.max(1, Math.round(action.damage * overdriveMult * bowDmgMult * comboDmgMult));
+  const effectiveAction1DamageType = modProfile?.effectiveDamageType || action.damageType;
+  const thrPierceDelta = compStats?.thrPierceDelta ?? 0;
+  const durShredMult = compStats?.durShredMultiplier ?? 1.0;
+  const shieldDmgMult = compStats?.shieldDamageMultiplier ?? 1.0;
 
   // Advance Melee Combo Step & set internal reset timer / deliberate finisher recovery
   if (isMeleeOrShield) {
@@ -236,10 +274,12 @@ export function executeBasicAttackShot(
     const playerBasicProf = resolvePlayerInertiaProfile(state);
     const basicWeaponSpec = resolveWeaponAttackInertiaSpec(currentWeaponId, 0, state);
     const hwStats = resolveEquippedHardwareStats(state);
+    const recoilScale = compStats?.recoilMultiplier ?? 1.0;
 
     // Apply Melee Attack Recoil / Movement Restriction (§2.3, §7)
     const meleeRecoilRes = resolveRecoil({
-      recoilImpulseJ: basicWeaponSpec.attackWeight * basicWeaponSpec.attackSpeed * 0.45,
+      recoilImpulseJ:
+        basicWeaponSpec.attackWeight * basicWeaponSpec.attackSpeed * 0.45 * recoilScale,
       shooterFrameWeight: playerBasicProf.totalBaseWeight,
       shooterStability: playerBasicProf.stability,
     });
@@ -271,12 +311,21 @@ export function executeBasicAttackShot(
         e.y,
         false
       );
-      const totalDent =
-        extraArmorDent +
-        (comboStep?.extraArmorDent || 0) +
-        gemCombatMods.extraArmorDentOnHit;
+      const totalDent = Math.round(
+        (extraArmorDent +
+          (comboStep?.extraArmorDent || 0) +
+          gemCombatMods.extraArmorDentOnHit) *
+          durShredMult
+      );
       if (totalDent > 0 && e.armor.durability > 0) {
         e.armor.durability = Math.max(0, e.armor.durability - totalDent);
+      }
+
+      // Hooked / Barbed Blade or Halberd Billhook strips target forward momentum fraction (μ)
+      if ((compStats?.targetMuStripOnHit ?? 0) > 0) {
+        const stripRatio = Math.max(0, Math.min(0.85, compStats?.targetMuStripOnHit ?? 0));
+        e.vx = (e.vx || 0) * (1 - stripRatio);
+        e.vy = (e.vy || 0) * (1 - stripRatio);
       }
 
       // Resolve Melee Inertia (`J_melee = (attack_weight + m_attacker * μ_attacker * commitment) * attack_speed`)
@@ -288,16 +337,18 @@ export function executeBasicAttackShot(
 
       const attackerMu = computeMomentumFraction(state.vx, state.vy, impDx, impDy);
       const stepKbScale = comboStep?.knockbackScale ?? 1.0;
-      const impulseJ = computeMeleeImpulse(
-        basicWeaponSpec.attackWeight *
-          stepKbScale *
-          (1 + knockbackDist * 0.04) *
-          (hitEval.quality === 'sweet' ? 1.2 : 1.0),
-        basicWeaponSpec.attackSpeed,
-        playerBasicProf.totalBaseWeight,
-        attackerMu,
-        basicWeaponSpec.commitment
-      );
+      const meleeImpulseMult = compStats?.meleeImpulseMultiplier ?? 1.0;
+      const impulseJ =
+        computeMeleeImpulse(
+          basicWeaponSpec.attackWeight *
+            stepKbScale *
+            (1 + knockbackDist * 0.04) *
+            (hitEval.quality === 'sweet' ? 1.2 : 1.0),
+          basicWeaponSpec.attackSpeed,
+          playerBasicProf.totalBaseWeight,
+          attackerMu,
+          basicWeaponSpec.commitment
+        ) * meleeImpulseMult;
       const eProf = resolveEnemyInertiaProfile(e);
       const defenderMu = computeMomentumFraction(e.vx || 0, e.vy || 0, -impDx, -impDy);
       const existingSpeed = Math.hypot(e.knockbackVx || 0, e.knockbackVy || 0);
@@ -425,9 +476,12 @@ export function executeBasicAttackShot(
         ? e.shields.capacity > 0
           ? weapon.adaptiveDamageTypes[0]
           : weapon.adaptiveDamageTypes[1]
-        : action.damageType;
+        : effectiveAction1DamageType;
       const layerOpts = {
         armorBypassRatio: hitEval.armorBypassRatio,
+        thrPierceDelta,
+        durShredMultiplier: durShredMult,
+        shieldDamageMultiplier: shieldDmgMult,
         hitQuality: hitEval.quality,
         onFlash: (color: string, dur: number, kind: string) =>
           triggerEntityFlash(e, color, dur, kind),
@@ -478,15 +532,25 @@ export function executeBasicAttackShot(
     state.bladeTrails = state.bladeTrails || [];
 
     if (comboStep) {
+      const reachMult =
+        (compStats?.rangeMultiplier ?? 1.0) *
+        (isFinisherStep ? (compStats?.finisherReachMultiplier ?? 1.0) : 1.0);
+      const arcMult = compStats?.cleaveArcMultiplier ?? 1.0;
+      const scaledRadius = Math.max(14, Math.round(comboStep.radius * reachMult));
+      const scaledLength = comboStep.length
+        ? Math.max(14, Math.round(comboStep.length * reachMult))
+        : undefined;
+      const scaledArcSpan = Math.min(Math.PI * 1.85, comboStep.arcSpan * arcMult);
+
       // Fluid Weapon-Unique Combo Step Execution (thrust / slash / chop / slam / bash)
       state.bladeTrails.push({
         x: state.x,
         y: state.y,
         z: state.z,
         angle: aimAngle,
-        arcSpan: comboStep.arcSpan,
-        radius: comboStep.radius,
-        length: comboStep.length,
+        arcSpan: scaledArcSpan,
+        radius: scaledRadius,
+        length: scaledLength,
         width: comboStep.width,
         style: comboStep.style,
         color: trailColor,
@@ -515,8 +579,8 @@ export function executeBasicAttackShot(
           y: state.y,
           z: state.z,
           angle: aimAngle + (comboStep.flipDir ? -0.18 : 0.18),
-          arcSpan: Math.max(Math.PI * 0.48, comboStep.arcSpan * 0.85),
-          radius: Math.max(18, comboStep.radius - 2),
+          arcSpan: Math.max(Math.PI * 0.48, scaledArcSpan * 0.85),
+          radius: Math.max(18, scaledRadius - 2),
           width: Math.max(10, (comboStep.width || 12) - 2),
           style: comboStep.style === 'slam' ? 'chop' : comboStep.style,
           color: sideTrailCol,
@@ -532,9 +596,9 @@ export function executeBasicAttackShot(
       for (const e of state.enemies) {
         if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
         let isHit = false;
-        let reach = comboStep.radius + 4;
+        let reach = scaledRadius + 4;
         if (comboStep.style === 'thrust') {
-          reach = comboStep.length || comboStep.radius;
+          reach = scaledLength || scaledRadius;
           isHit = isTargetInThrustCorridor(
             state.x,
             state.y,
@@ -545,24 +609,24 @@ export function executeBasicAttackShot(
             e.y
           );
         } else if (comboStep.style === 'slam') {
-          reach = (comboStep.length || 16) + (comboStep.width || 18) * 0.6;
+          reach = (scaledLength || 16) + (comboStep.width || 18) * 0.6;
           isHit = isTargetInImpactZone(
             state.x,
             state.y,
             aimAngle,
-            comboStep.length || 16,
+            scaledLength || 16,
             comboStep.width || 18,
             e.x,
             e.y
           );
         } else {
-          reach = comboStep.radius + 4;
+          reach = scaledRadius + 4;
           isHit = isTargetInDirectionalArc(
             state.x,
             state.y,
             aimAngle,
             reach,
-            comboStep.arcSpan + 0.14,
+            scaledArcSpan + 0.14,
             e.x,
             e.y
           );
@@ -580,8 +644,88 @@ export function executeBasicAttackShot(
         }
       }
 
+      // Bespoke Secondary Projectile Payloads (Conduit-Vented Crossguard Wave slash, Seismic Anvil Head shockwave, Capacitor Rim Emitter shock-cone)
+      const secProj = modProfile?.secondaryProjectile;
+      if (
+        secProj &&
+        ((secProj.triggerStep === 'FINISHER' && (isFinisherStep || stepCount === 1)) ||
+          (secProj.triggerStep === 'STEP_1' && (isStep1 || arch.isShield)) ||
+          secProj.triggerStep === 'EVERY_SHOT')
+      ) {
+        const secRangePx = Math.max(24, Math.round(secProj.rangeMeters * 14));
+        const secDamage = Math.max(4, Math.round(shotDmg * secProj.bcuScale));
+        if (secProj.damageType === 'Blast' || secProj.damageType === 'Pulse') {
+          state.bladeTrails.push({
+            x: state.x + aim.dx * 10,
+            y: state.y + aim.dy * 10,
+            z: state.z,
+            angle: aimAngle,
+            arcSpan: arch.isShield ? Math.PI * 0.85 : Math.PI * 2,
+            radius: secRangePx,
+            style: 'shockwave',
+            color: trailColor,
+            coreColor,
+            life: 0.25,
+            maxLife: 0.25,
+          });
+          for (const e of state.enemies) {
+            if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
+            const inShock =
+              arch.isShield
+                ? isTargetInDirectionalArc(
+                    state.x,
+                    state.y,
+                    aimAngle,
+                    secRangePx,
+                    Math.PI * 0.9,
+                    e.x,
+                    e.y
+                  )
+                : Math.hypot(e.x - (state.x + aim.dx * 10), e.y - (state.y + aim.dy * 10)) <=
+                  secRangePx;
+            if (inShock) {
+              applyDamageToLayers(
+                e.shields,
+                e.armor,
+                e.frame,
+                secDamage,
+                secProj.damageType,
+                (cnt, col) => ctx.spawnParticles(e.x, e.y, e.z + 8, cnt, col, ''),
+                {
+                  thrPierceDelta,
+                  durShredMultiplier: durShredMult,
+                  shieldDamageMultiplier: shieldDmgMult,
+                }
+              );
+            }
+          }
+        } else {
+          const secLife = Math.max(0.32, secRangePx / 120);
+          state.projectiles.push({
+            x: state.x + aim.dx * 10,
+            y: state.y + aim.dy * 10,
+            z: state.z + 6,
+            vx: aim.dx * 120,
+            vy: aim.dy * 120,
+            vz: 0,
+            damage: secDamage,
+            damageType: secProj.damageType,
+            isPlayer: true,
+            life: secLife,
+            initialLife: secLife,
+            radius: 6.4,
+            visualShape: 'wave',
+            waveSpanPx: 18,
+            pierceRemaining: 1,
+            color: trailColor,
+            trailColor: coreColor,
+            lightRadius: 24,
+          });
+        }
+      }
+
       // Preserve hybrid projectiles on Beam lances and Wave mana staves/polearms
-      if (arch.isLanceOrPike && weapon?.primaryDamageType === 'Beam') {
+      if (arch.isLanceOrPike && effectiveAction1DamageType === 'Beam') {
         state.projectiles.push({
           x: state.x + aim.dx * 12,
           y: state.y + aim.dy * 12,
@@ -590,7 +734,7 @@ export function executeBasicAttackShot(
           vy: aim.dy * 168,
           vz: 0,
           damage: shotDmg,
-          damageType: action.damageType,
+          damageType: effectiveAction1DamageType,
           isPlayer: true,
           life: 0.72,
           initialLife: 0.72,
@@ -604,7 +748,7 @@ export function executeBasicAttackShot(
         });
       } else if (
         (arch.isBluntOrStaff || arch.isSpearOrPolearm) &&
-        weapon?.primaryDamageType === 'Wave'
+        effectiveAction1DamageType === 'Wave'
       ) {
         state.projectiles.push({
           x: state.x + aim.dx * 10,
@@ -659,7 +803,9 @@ export function executeBasicAttackShot(
 
     const installedRangedModId = state.equipmentSlots?.installedMods?.ranged;
     const rangedMod = ACTION_MODIFICATION_CATALOG.find((m) => m.id === installedRangedModId);
-    const extraCount = isBowWeapon ? 0 : rangedMod?.modifiers.extraProjectiles || 0;
+    const extraCount =
+      (isBowWeapon ? 0 : rangedMod?.modifiers.extraProjectiles || 0) +
+      (modProfile?.volleyBonusCount ?? 0);
     const totalProjectiles = Math.max(1, shotProfile.projectilesPerShot + extraCount);
     const offsets: number[] = [];
     for (let i = 0; i < totalProjectiles; i++) {
@@ -732,12 +878,15 @@ export function executeBasicAttackShot(
       ? lockedTarget && lockedTarget.shields.capacity <= 0
         ? weapon.adaptiveDamageTypes[1]
         : weapon.adaptiveDamageTypes[0]
-      : action.damageType;
+      : effectiveAction1DamageType;
+    const volleyDamageScale =
+      (modProfile?.volleyBonusCount ?? 0) >= 2 && totalProjectiles >= 3 ? 0.58 : 1.0;
     const adaptiveShotDmg = Math.max(
       2,
       Math.round(
         (weapon?.adaptiveDamageTypes ? shotDmg * 1.12 : shotDmg) *
-          shotProfile.perProjectileDamageMult
+          shotProfile.perProjectileDamageMult *
+          volleyDamageScale
       )
     );
     const bowSpeedMult = isBowWeapon ? 1.0 + 0.42 * bowChargeRatio : 1.0;
@@ -747,10 +896,15 @@ export function executeBasicAttackShot(
     const baseProjSpeed =
       (isBowWeapon ? 142 * bowSpeedMult : 128 * shotProfile.speedMult) * projSpeedScale;
     const projLife =
-      (isBowWeapon ? 0.92 + 0.42 * bowChargeRatio : 1.02) * shotProfile.lifeMult;
+      (isBowWeapon ? 0.92 + 0.42 * bowChargeRatio : 1.02) *
+      shotProfile.lifeMult *
+      (compStats?.rangeMultiplier ?? 1.0);
     const rangedPlayerProf = resolvePlayerInertiaProfile(state);
     const rangedWeaponSpec = resolveWeaponAttackInertiaSpec(currentWeaponId, 0, state);
-    const recoilJ = computeRangedImpulse(rangedWeaponSpec.projectileWeight, baseProjSpeed);
+    const recoilScale = compStats?.recoilMultiplier ?? 1.0;
+    const rangedImpulseMult = compStats?.rangedImpulseMultiplier ?? 1.0;
+    const recoilJ =
+      computeRangedImpulse(rangedWeaponSpec.projectileWeight, baseProjSpeed) * recoilScale;
     const recoilRes = resolveRecoil({
       recoilImpulseJ: recoilJ,
       shooterFrameWeight: rangedPlayerProf.totalBaseWeight,
@@ -770,7 +924,9 @@ export function executeBasicAttackShot(
       }
     }
 
-    const impactAoERadius = shotProfile.impactAoERadius;
+    const impactAoERadius = shotProfile.impactAoERadius
+      ? Math.round(shotProfile.impactAoERadius * (compStats?.cleaveArcMultiplier ?? 1.0))
+      : undefined;
     for (const off of offsets) {
       const ang = baseAngle + off;
       state.projectiles.push({
@@ -789,7 +945,9 @@ export function executeBasicAttackShot(
           ? shotProfile.projectileRadius + bowChargeRatio * 1.4
           : shotProfile.projectileRadius,
         visualShape: shotProfile.visualShape,
-        waveSpanPx: shotProfile.waveSpanPx,
+        waveSpanPx: shotProfile.waveSpanPx
+          ? Math.round(shotProfile.waveSpanPx * (compStats?.cleaveArcMultiplier ?? 1.0))
+          : undefined,
         beamLengthPx: shotProfile.beamLengthPx,
         chainCount: shotProfile.chainCount,
         chainRangePx: shotProfile.chainRangePx,
@@ -802,7 +960,9 @@ export function executeBasicAttackShot(
         trailColor: projTrail,
         lightRadius: isBowWeapon ? Math.round(18 + 10 * bowChargeRatio) : 18,
         projectileWeight:
-          rangedWeaponSpec.projectileWeight * (isBowWeapon ? 0.9 + 0.45 * bowChargeRatio : 1.0),
+          rangedWeaponSpec.projectileWeight *
+          (isBowWeapon ? 0.9 + 0.45 * bowChargeRatio : 1.0) *
+          rangedImpulseMult,
         projectileSpeed: baseProjSpeed,
         onImpact: impactAoERadius
           ? (ix, iy, iz, st) => {
@@ -835,7 +995,12 @@ export function executeBasicAttackShot(
                     e.frame,
                     Math.max(2, Math.round(adaptiveShotDmg * 0.35)),
                     adaptiveDmgType,
-                    (cnt, col) => ctx.spawnParticles(e.x, e.y, e.z + 6, cnt, col, '')
+                    (cnt, col) => ctx.spawnParticles(e.x, e.y, e.z + 6, cnt, col, ''),
+                    {
+                      thrPierceDelta,
+                      durShredMultiplier: durShredMult,
+                      shieldDamageMultiplier: shieldDmgMult,
+                    }
                   );
                 }
               }

@@ -391,12 +391,23 @@ export function executeActionPayload(
       false
     );
     const profileDent = activeSkillProfile?.extraArmorDent || 0;
-    const totalArmorDent =
-      Math.max(extraArmorDent, profileDent) +
-      gemCombatMods.extraArmorDentOnHit +
-      specMods.extraArmorDentOnHit;
+    const compStats = gemCombatMods.modificationProfile?.statModifiers;
+    const durShredMult = compStats?.durShredMultiplier ?? 1.0;
+    const thrPierceDelta = compStats?.thrPierceDelta ?? 0;
+    const shieldDmgMult = compStats?.shieldDamageMultiplier ?? 1.0;
+    const totalArmorDent = Math.round(
+      (Math.max(extraArmorDent, profileDent) +
+        gemCombatMods.extraArmorDentOnHit +
+        specMods.extraArmorDentOnHit) *
+        durShredMult
+    );
     if (totalArmorDent > 0 && e.armor.durability > 0) {
       e.armor.durability = Math.max(0, e.armor.durability - totalArmorDent);
+    }
+    if ((compStats?.targetMuStripOnHit ?? 0) > 0) {
+      const stripRatio = Math.max(0, Math.min(0.85, compStats?.targetMuStripOnHit ?? 0));
+      e.vx = (e.vx || 0) * (1 - stripRatio);
+      e.vy = (e.vy || 0) * (1 - stripRatio);
     }
 
     // Apply guard-breaking shield strip on Hook/Wrench/Snag skills
@@ -435,13 +446,14 @@ export function executeActionPayload(
       0.75,
       Math.min(1.6, stunSec / 0.45 + Math.abs(effectiveKbDist) * 0.03)
     );
-    const impulseJ = computeMeleeImpulse(
-      weaponInertiaSpec.attackWeight * scaleMult * (hitEval.quality === 'sweet' ? 1.2 : 1.0),
-      weaponInertiaSpec.attackSpeed,
-      playerInertiaProf.totalBaseWeight,
-      attackerMu,
-      weaponInertiaSpec.commitment
-    );
+    const impulseJ =
+      computeMeleeImpulse(
+        weaponInertiaSpec.attackWeight * scaleMult * (hitEval.quality === 'sweet' ? 1.2 : 1.0),
+        weaponInertiaSpec.attackSpeed,
+        playerInertiaProf.totalBaseWeight,
+        attackerMu,
+        weaponInertiaSpec.commitment
+      ) * (compStats?.meleeImpulseMultiplier ?? 1.0);
     const eProf = resolveEnemyInertiaProfile(e);
     const defenderMu = computeMomentumFraction(e.vx || 0, e.vy || 0, -impDx, -impDy);
     const existingSpeed = Math.hypot(e.knockbackVx || 0, e.knockbackVy || 0);
@@ -566,6 +578,9 @@ export function executeActionPayload(
           undefined,
           {
             armorBypassRatio: effectiveArmorBypass,
+            thrPierceDelta,
+            durShredMultiplier: durShredMult,
+            shieldDamageMultiplier: shieldDmgMult,
             hitQuality: hitEval.quality,
             onFlash: (color, dur, kind) => triggerEntityFlash(e, color, dur, kind),
           }
@@ -582,6 +597,9 @@ export function executeActionPayload(
         (count, color) => ctx.spawnParticles(e.x, e.y, e.z + 8, count, color, ''),
         {
           armorBypassRatio: effectiveArmorBypass,
+          thrPierceDelta,
+          durShredMultiplier: durShredMult,
+          shieldDamageMultiplier: shieldDmgMult,
           hitQuality: hitEval.quality,
           onFlash: (color, dur, kind) => triggerEntityFlash(e, color, dur, kind),
         }
@@ -597,6 +615,9 @@ export function executeActionPayload(
         (count, color) => ctx.spawnParticles(e.x, e.y, e.z + 8, count, color, ''),
         {
           armorBypassRatio: effectiveArmorBypass,
+          thrPierceDelta,
+          durShredMultiplier: durShredMult,
+          shieldDamageMultiplier: shieldDmgMult,
           hitQuality: hitEval.quality,
           onFlash: (color, dur, kind) => triggerEntityFlash(e, color, dur, kind),
         }
@@ -2606,10 +2627,20 @@ export function performAuxiliarySwap(
 
   const featMods = computeInterfaceFeatModifiers(state.equippedFeats || []);
   const swapPenaltyMult = state.gates?.loadPenalty?.swapTimeMult ?? 1.0;
+  const swapModMult =
+    (getWeaponGemCombatModifiers(state, slot1).modificationProfile?.statModifiers
+      .swapTimeMultiplier ?? 1.0) *
+    (slot2
+      ? (getWeaponGemCombatModifiers(state, slot2).modificationProfile?.statModifiers
+          .swapTimeMultiplier ?? 1.0)
+      : 1.0);
 
   if (!bypassCooldown) {
     state.weaponSwapCooldown =
-      WEAPON_SWAP_COOLDOWN * swapPenaltyMult * featMods.swapTimeMult;
+      WEAPON_SWAP_COOLDOWN *
+      swapPenaltyMult *
+      featMods.swapTimeMult *
+      clampTempoMultiplier(swapModMult);
   }
 
   state.activeSkillSlot = null;
@@ -2764,12 +2795,15 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
       ? m?.reloadDurationSec ?? weaponDef?.reloadDurationSec ?? 1.2
       : undefined;
 
+    const wpnModProfile = getWeaponGemCombatModifiers(state, weaponId).modificationProfile;
+    const compParryBonusSec = wpnModProfile?.statModifiers.parryWindowBonusSec ?? 0;
     const activeRemaining = isBlock
       ? state.isHoldingBlock
         ? Math.max(
             0.06,
             PERFECT_BLOCK_WINDOW_SEC +
-              specEval.passiveModifiers.perfectBlockWindowBonusSec -
+              specEval.passiveModifiers.perfectBlockWindowBonusSec +
+              compParryBonusSec -
               (state.blockHoldTimer || 0)
           )
         : Math.max(0, state.blockTimer || 0)
@@ -2791,7 +2825,11 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
       internalCharges && internalCharges > 1
         ? state.skillInternalAmmo?.[cooldownKey] ?? internalCharges
         : undefined;
-    const comboLen = movesetSlot === 0 ? m?.comboSequence?.length : undefined;
+    const rawComboLen = movesetSlot === 0 ? m?.comboSequence?.length : undefined;
+    const comboLen =
+      rawComboLen && wpnModProfile?.comboStepCountOverride
+        ? Math.min(rawComboLen, Math.max(2, wpnModProfile.comboStepCountOverride))
+        : rawComboLen;
     const comboStep =
       comboLen && comboLen > 0 ? ((state.meleeComboStep || 0) % comboLen) + 1 : undefined;
 
@@ -2812,14 +2850,19 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
       weaponId,
       weaponMovesetSlot: movesetSlot,
       damage: m?.damage,
-      damageType: m?.damageType,
+      damageType:
+        movesetSlot === 0 && wpnModProfile?.effectiveDamageType
+          ? wpnModProfile.effectiveDamageType
+          : m?.damageType,
       heatCost: m?.heatCost,
       cooldownSec: isBlock || movesetSlot === 0 ? 0 : m?.cooldownSec ?? 4.0,
       currentCooldown: separateCd,
       activatesReloadState,
       isChain,
       noReload: isMeleeOrShieldWpn || movesetSlot > 0,
-      isChargeable: Boolean(m?.isChargeable),
+      isChargeable: Boolean(
+        m?.isChargeable && wpnModProfile?.effectiveAction1Mode !== 'BURST_VOLLEY'
+      ),
       maxChargeSec: m?.maxChargeSec,
       ammoCount: m?.ammoCount,
       internalCharges,
@@ -3158,8 +3201,13 @@ export function startHoldingBlock(
   const aim = getCombatAimVector(state);
   const aimAngle = Math.atan2(aim.dy, aim.dx);
   const specEval = evaluateActiveSpecialistStance(state);
+  const compParryBonusSec =
+    getWeaponGemCombatModifiers(state, blockWpnId).modificationProfile?.statModifiers
+      .parryWindowBonusSec ?? 0;
   const effectiveBlockWindow =
-    PERFECT_BLOCK_WINDOW_SEC + specEval.passiveModifiers.perfectBlockWindowBonusSec;
+    PERFECT_BLOCK_WINDOW_SEC +
+    specEval.passiveModifiers.perfectBlockWindowBonusSec +
+    compParryBonusSec;
 
   if (!state.isHoldingBlock) {
     state.isHoldingBlock = true;

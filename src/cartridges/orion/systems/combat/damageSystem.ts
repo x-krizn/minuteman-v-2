@@ -4,7 +4,10 @@
  */
 
 import { soundSystem } from '../../../../engine/core/soundSystem';
-import { evaluateActiveSpecialistStance } from '../../database/progression';
+import {
+  evaluateActiveSpecialistStance,
+  getWeaponGemCombatModifiers,
+} from '../../database/progression';
 import {
   ArmorState,
   DamageType,
@@ -42,6 +45,12 @@ export interface DamageLayerOptions {
   armorBypassRatio?: number;
   /** Positional accuracy hit quality ('sweet' | 'normal' | 'sour') */
   hitQuality?: PositionalHitQuality;
+  /** Flat Armor Threshold (THR) penetration delta from weapon components */
+  thrPierceDelta?: number;
+  /** Layer 2 Armor Durability (DUR) shred multiplier from weapon components */
+  durShredMultiplier?: number;
+  /** Layer 1 Shield damage multiplier from weapon components */
+  shieldDamageMultiplier?: number;
   /** Optional callback to trigger a sprite silhouette flash frame on the defender */
   onFlash?: (color: string, durationSec: number, kind: string) => void;
 }
@@ -66,11 +75,14 @@ export function applyDamageToLayers(
   let frameDamage = 0;
   const hitQuality = options?.hitQuality || 'normal';
   const armorBypassRatio = options?.armorBypassRatio || 0;
+  const thrPierceDelta = options?.thrPierceDelta || 0;
+  const compDurShredMult = options?.durShredMultiplier ?? 1.0;
+  const compShieldDmgMult = options?.shieldDamageMultiplier ?? 1.0;
 
   // 1. SHIELD LAYER (Pulse & Beam disrupt shields; Wave partially bleeds through shields; Pierce is resisted by full shields)
   if (shields.capacity > 0) {
     const shieldEfficiencyMult =
-      damageType === 'Pulse'
+      (damageType === 'Pulse'
         ? 1.3
         : damageType === 'Beam'
           ? 1.2
@@ -80,7 +92,7 @@ export function applyDamageToLayers(
               ? 1.1
               : damageType === 'Pierce'
                 ? 0.85
-                : 1.0;
+                : 1.0) * compShieldDmgMult;
 
     // Wave (Mana) channels harmonic resonance that bleeds 20% directly past active shields
     let waveBleed = 0;
@@ -138,6 +150,7 @@ export function applyDamageToLayers(
     if (hitQuality === 'sweet') {
       durShredMult *= 1.25;
     }
+    durShredMult *= compDurShredMult;
 
     const durabilityLoss = Math.min(
       armor.durability,
@@ -182,9 +195,10 @@ export function applyDamageToLayers(
       ratingMult *= 1.15;
     }
 
-    // Apply Positional Accuracy ("Sweet-Spot" bypass vs "Sour-Spot" glance)
+    // Apply Positional Accuracy ("Sweet-Spot" bypass vs "Sour-Spot" glance) & Weapon Component THR Pierce
     const positionalArmorScale = Math.max(0.25, 1 - armorBypassRatio);
-    const effThreshold = armor.threshold * durRatio * thresholdMult * positionalArmorScale;
+    const baseThrAfterPierce = Math.max(0, armor.threshold - thrPierceDelta);
+    const effThreshold = baseThrAfterPierce * durRatio * thresholdMult * positionalArmorScale;
     const effRating = armor.rating * durRatio * ratingMult * positionalArmorScale;
 
     if (remaining < effThreshold) {
@@ -307,11 +321,19 @@ export function resolveEnemyMeleeAttacks(
           hitDamage = Math.max(1, Math.round(hitDamage * 0.85));
         }
 
-        // Active Skill 4 Held Block mitigation (0.34s Perfect Block window + Specialist Stance bonus vs Standard Held Block)
+        // Active Skill 4 Held Block mitigation (0.34s Perfect Block window + Specialist Stance + Weapon Component bonus)
         if (state.isHoldingBlock || (state.blockTimer || 0) > 0) {
           const isShieldBlock = Boolean(
             state.blockingWeaponId && state.blockingWeaponId.includes('shield')
           );
+          const blockWpnMod = getWeaponGemCombatModifiers(
+            state,
+            state.blockingWeaponId || state.equipmentSlots?.slot1 || undefined
+          ).modificationProfile;
+          const compParryBonusSec = blockWpnMod?.parryWindowBonusSec ?? 0;
+          const compHeatVentOnBlock = blockWpnMod?.heatVentOnBlock ?? 0;
+          const compGuardMitigationMult = blockWpnMod?.guardMitigationMultiplier ?? 1.0;
+
           const hasOffHandDeflection = (state.equippedFeats || []).some((f) =>
             ['off_hand_deflection', 'cqc_deflection'].includes(f)
           );
@@ -320,6 +342,7 @@ export function resolveEnemyMeleeAttacks(
             (state.blockHoldTimer ?? 0) <=
             PERFECT_BLOCK_WINDOW_SEC +
               specEval.passiveModifiers.perfectBlockWindowBonusSec +
+              compParryBonusSec +
               (hasOffHandDeflection ? 0.06 : 0);
 
           if (isPerfectBlock) {
@@ -336,18 +359,23 @@ export function resolveEnemyMeleeAttacks(
               state.shields.maxCapacity,
               state.shields.capacity + (isShieldBlock ? 22 : 14)
             );
-            state.heat = Math.max(0, state.heat - 14);
+            state.heat = Math.max(0, state.heat - (14 + compHeatVentOnBlock));
             soundSystem.playPowerup();
             soundSystem.playSword();
             ctx.spawnParticles(state.x, state.y, state.z + 10, 12, '#fde047', '');
             continue;
           }
 
-          const blockMult = isShieldBlock
+          if (compHeatVentOnBlock > 0) {
+            state.heat = Math.max(0, state.heat - compHeatVentOnBlock);
+          }
+
+          const baseBlockMult = isShieldBlock
             ? 0.15
             : hasOffHandDeflection
               ? 0.21
               : 0.28;
+          const blockMult = Math.max(0.05, baseBlockMult / compGuardMitigationMult);
           const blockedDamage = Math.max(0, Math.round(hitDamage * blockMult));
           e.stun = Math.max(e.stun, isShieldBlock ? 0.95 : 0.7);
           triggerEntityFlash(state, '#38bdf8', 0.12, 'shield');

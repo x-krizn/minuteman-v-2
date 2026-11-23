@@ -24,37 +24,48 @@ import {
   GEMSTONE_CATALOG,
   GEMSTONE_REGISTRY,
   generateEquipmentModWithGems,
+  getBespokeComponentsForWeaponClass,
   getEquipmentMaxModSlots,
   getHardwareBaseWeight,
   getHardwareCapacityBonus,
   getHardwareGemBonusDescription,
   getInventoryGemCount,
   getOwnedEquipmentInstances,
+  getOwnedLootedComponentCount,
   getOwnedWeaponCount,
   getWeaponComponentSlots,
   getWeaponGemCombatModifiers,
   getWeaponGemVisuals,
   getWeaponInstanceEquipWeight,
   getWeaponSubtypeInfo,
+  installBespokeWeaponComponent,
   installGemModOnEquipment,
   isEquipmentUnlocked,
   parseEquipmentInstanceId,
+  RECIPE_GEMSTONE_TO_ID,
+  removeBespokeWeaponComponent,
   removeGemModFromEquipment,
+  resolveWeaponModificationProfile,
+  socketGemIntoWeaponComponent,
   unlockEquipmentItem,
+  unsocketGemFromWeaponComponent,
+  validateWeaponComponentInstallation,
   WEAPON_COMPONENT_PART_CATALOG,
+  WEAPON_DOMAIN_ANATOMY_LABELS,
   WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS,
   WEAPON_GEM_WEIGHT_DELTA,
 } from '../../database/progression';
 import {
   getOrionGraphicsSettings,
   notifyOrionStateChange,
+  syncStateGates,
 } from '../../systems';
 import {
   GemId,
+  ModDomain,
   OrionState,
   WEAPON_CATEGORIES,
   WeaponCategory,
-  WeaponComponentPartDefinition,
   WeaponComponentSlotId,
 } from '../../types';
 import {
@@ -118,6 +129,11 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
     'melee' | 'ranged' | 'mobility'
   >('melee');
   const [weaponCategoryFilter, setWeaponCategoryFilter] = useState<'ALL' | WeaponCategory>('ALL');
+  const [componentDomainFilter, setComponentDomainFilter] = useState<'ALL' | ModDomain>('ALL');
+  const [componentSourceFilter, setComponentSourceFilter] = useState<
+    'ALL' | 'CRAFTED' | 'LOOTED'
+  >('ALL');
+  const [selectedComponentGemSocketIdx, setSelectedComponentGemSocketIdx] = useState<number>(0);
 
   // Synchronize workbench focus when jumping from Loadout "Modify in Armory" context action
   useEffect(() => {
@@ -341,15 +357,552 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
   ) => {
     const { baseId, installedGems, slotGems } = parseEquipmentInstanceId(targetInstanceId);
     const maxSlots = getEquipmentMaxModSlots(targetInstanceId);
+    const wDef = isWeaponItem ? getWeaponDefinition(baseId) : undefined;
+    const isUniqueWeapon = Boolean(wDef?.weaponTier === 'unique');
+    const clampedSlotIdx = Math.max(0, Math.min(maxSlots - 1, selectedModSlotIndex)) as
+      | 0
+      | 1
+      | 2;
+
+    // ─── CUSTOM WEAPONS (72 Archetypes): 3 Non-Sequential Component Slots + Nested Gem Sockets (1G Crafted / 1–3G Looted) ───
+    if (isWeaponItem && wDef && !isUniqueWeapon) {
+      const weaponCategory: WeaponCategory = wDef.category || 'Blades: Straight';
+      const modProfile = resolveWeaponModificationProfile(state, targetInstanceId);
+      const domainLabels = WEAPON_DOMAIN_ANATOMY_LABELS[weaponCategory];
+      const activeSlotState = modProfile.slots[clampedSlotIdx];
+      const activeComponent = activeSlotState.component;
+      const maxGemSocketsOnActive = activeComponent?.maxGemSlots ?? 0;
+      const clampedGemIdx = Math.max(
+        0,
+        Math.min(Math.max(0, maxGemSocketsOnActive - 1), selectedComponentGemSocketIdx)
+      );
+      const bespokeClassParts = getBespokeComponentsForWeaponClass(weaponCategory).filter(
+        (p) =>
+          (componentDomainFilter === 'ALL' || p.domain === componentDomainFilter) &&
+          (componentSourceFilter === 'ALL' || p.acquisitionSource === componentSourceFilter)
+      );
+
+      return (
+        <div className="p-2 bg-[#070b12] rounded-xs border border-[#1e293b] space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-1 border-b border-[#1e293b] pb-1.5">
+            <div>
+              <div className="text-[10px] font-bold text-[#fde047] flex flex-wrap items-center gap-2">
+                <span>
+                  3 NON-SEQUENTIAL COMPONENT SLOTS ({modProfile.occupiedSlotCount}/3 OCCUPIED ·{' '}
+                  {modProfile.allSocketedGems.length} GEMS SOCKETED)
+                </span>
+                <span className="px-1.5 py-0.5 rounded-xs bg-[#1e293b] text-[#ffd27d] text-[9px]">
+                  SCRAP POUCH: {isCheatMode ? '∞' : state.salvageScrap} SCRAP
+                </span>
+              </div>
+              <div className="text-[9px] text-[#94a3b8]">
+                Install up to 3 physical components in <b className="text-[#7dd3fc]">any slot order</b>{' '}
+                (at most 1 per domain:{' '}
+                <span className="text-[#fb923c]">CONTACT ({domainLabels.CONTACT})</span>,{' '}
+                <span className="text-[#38bdf8]">DELIVERY ({domainLabels.DELIVERY})</span>,{' '}
+                <span className="text-[#a78bfa]">REGULATION ({domainLabels.REGULATION})</span>).
+                Only <b className="text-[#fb923c]">CONTACT</b> components can convert Action 1
+                DamageType. Crafted parts expose <b className="text-[#e9d5ff]">1G</b>; Looted
+                field salvage exposes <b className="text-[#86efac]">1–3G</b>.
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const ok = acquireAdditionalWeaponCopy(state, targetInstanceId, sayCtx);
+                if (ok) soundSystem.playPowerup();
+                else soundSystem.playMenuBeep();
+                notifyOrionStateChange();
+              }}
+              className="px-2 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#38bdf8] border border-[#38bdf8]/50 rounded-xs text-[9px] font-bold cursor-pointer"
+            >
+              + ACQUIRE 2ND COPY (PAIRED STANCE)
+            </button>
+          </div>
+
+          {/* 3 Non-Sequential Component Slot Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+            {modProfile.slots.map((slotState) => {
+              const idx = slotState.slotIndex;
+              const comp = slotState.component;
+              const isSelected = clampedSlotIdx === idx;
+              const domainBadgeClass =
+                comp?.domain === 'CONTACT'
+                  ? 'bg-[#431407] text-[#fdba74] border-[#f97316]/50'
+                  : comp?.domain === 'DELIVERY'
+                    ? 'bg-[#082f49] text-[#7dd3fc] border-[#38bdf8]/50'
+                    : 'bg-[#2e1065] text-[#ddd6fe] border-[#a78bfa]/50';
+
+              return (
+                <div
+                  key={`bespoke-slot-${idx}`}
+                  role="button"
+                  tabIndex={0}
+                  data-menu-focusable="true"
+                  onClick={() => {
+                    soundSystem.playSelect();
+                    setSelectedModSlotIndex(idx);
+                    setSelectedComponentGemSocketIdx(0);
+                  }}
+                  className={`p-2 rounded-xs border transition-colors cursor-pointer flex flex-col justify-between gap-1.5 ${
+                    isSelected
+                      ? 'bg-[#172554]/70 border-[#fde047] shadow-sm'
+                      : comp
+                        ? 'bg-[#0f172a] border-[#38bdf8]/50 hover:border-[#fde047]/70'
+                        : 'bg-[#090d14] border-[#1e293b] hover:border-[#475569]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[9px] font-bold text-[#7dd3fc]">
+                      SLOT {idx + 1}{' '}
+                      {comp
+                        ? `· [${comp.domain} · ${domainLabels[comp.domain].toUpperCase()}]`
+                        : '· [ANY DOMAIN]'}
+                    </span>
+                    <span
+                      className={`text-[9px] px-1 py-0.2 rounded-[2px] font-bold border ${
+                        comp
+                          ? comp.acquisitionSource === 'LOOTED'
+                            ? 'bg-[#052e16] text-[#86efac] border-[#22c55e]/40'
+                            : 'bg-[#3b0764] text-[#e9d5ff] border-[#c084fc]/40'
+                          : 'bg-[#1e293b] text-[#94a3b8] border-[#334155]'
+                      }`}
+                    >
+                      {comp
+                        ? `${comp.acquisitionSource} · ${comp.maxGemSlots}G`
+                        : 'EMPTY SLOT'}
+                    </span>
+                  </div>
+
+                  {comp ? (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <div className="min-w-0">
+                          <div className="text-[10px] font-bold text-[#fde047] truncate">
+                            {comp.name}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                            <span
+                              className={`text-[8px] px-1 py-0.2 rounded-[2px] font-bold border ${domainBadgeClass}`}
+                            >
+                              {comp.domain}
+                            </span>
+                            {comp.damageTypeOverride && (
+                              <span className="text-[8px] px-1 py-0.2 rounded-[2px] font-bold bg-[#450a0a] text-[#fca5a5] border border-[#ef4444]/50">
+                                DMG → {comp.damageTypeOverride.toUpperCase()}
+                              </span>
+                            )}
+                            <span className="text-[8px] text-[#94a3b8]">
+                              {(comp.statModifiers.weightDelta ?? 0) >= 0
+                                ? `+${comp.statModifiers.weightDelta ?? 0}`
+                                : (comp.statModifiers.weightDelta ?? 0)}{' '}
+                              WT
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const nextId = removeBespokeWeaponComponent(
+                              state,
+                              targetInstanceId,
+                              idx,
+                              sayCtx
+                            );
+                            if (nextId) {
+                              soundSystem.playSelect();
+                              syncStateGates(state);
+                              onInstanceUpdated(nextId);
+                              notifyOrionStateChange();
+                            }
+                          }}
+                          className="px-1.5 py-0.5 bg-[#450a0a] hover:bg-[#7f1d1d] text-[#fca5a5] border border-[#ef4444]/50 rounded-xs text-[9px] font-bold cursor-pointer shrink-0"
+                        >
+                          STRIP PART
+                        </button>
+                      </div>
+
+                      <div className="text-[8px] text-[#86efac] leading-tight">
+                        + {comp.effectSummary}
+                      </div>
+                      <div className="text-[8px] text-[#f87171] leading-tight">
+                        − {comp.tradeOffSummary}
+                      </div>
+
+                      {/* Nested Component Gem Sockets (1G on Crafted, 1-3G on Looted) */}
+                      <div className="pt-1 border-t border-[#1e293b] space-y-1">
+                        <div className="text-[8px] font-bold text-[#c084fc]">
+                          COMPONENT GEM SOCKETS (
+                          {slotState.socketedGems.filter(Boolean).length}/{comp.maxGemSlots}G):
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {Array.from({ length: comp.maxGemSlots }).map((_, gIdx) => {
+                            const gId = slotState.socketedGems[gIdx] || null;
+                            const gDef = gId ? GEMSTONE_REGISTRY[gId] : null;
+                            const isActiveSocket = isSelected && clampedGemIdx === gIdx;
+
+                            return (
+                              <div
+                                key={`comp-gem-${idx}-${gIdx}`}
+                                role="button"
+                                tabIndex={0}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  soundSystem.playSelect();
+                                  setSelectedModSlotIndex(idx);
+                                  setSelectedComponentGemSocketIdx(gIdx);
+                                }}
+                                className={`px-1.5 py-0.5 rounded-xs border text-[8px] font-bold flex items-center gap-1 cursor-pointer ${
+                                  isActiveSocket
+                                    ? 'bg-[#3b0764] border-[#fde047] text-[#fde047]'
+                                    : gDef
+                                      ? 'bg-[#05070a] border-[#c084fc]/50 text-[#e2e8f0]'
+                                      : 'bg-[#05070a] border-[#334155] text-[#94a3b8]'
+                                }`}
+                              >
+                                {gDef ? (
+                                  <>
+                                    <SpriteCanvasIcon
+                                      base64={gDef.iconBase64}
+                                      sizeClass="w-3 h-3"
+                                    />
+                                    <span style={{ color: gDef.hexColor }}>{gDef.name}</span>
+                                    <button
+                                      type="button"
+                                      onClick={(ev) => {
+                                        ev.stopPropagation();
+                                        const nextId = unsocketGemFromWeaponComponent(
+                                          state,
+                                          targetInstanceId,
+                                          idx,
+                                          gIdx,
+                                          sayCtx
+                                        );
+                                        if (nextId) {
+                                          soundSystem.playSelect();
+                                          syncStateGates(state);
+                                          onInstanceUpdated(nextId);
+                                          notifyOrionStateChange();
+                                        }
+                                      }}
+                                      className="ml-0.5 text-[#fca5a5] hover:text-[#ef4444] font-bold cursor-pointer"
+                                      title="Unsocket Gem"
+                                    >
+                                      ×
+                                    </button>
+                                  </>
+                                ) : (
+                                  <span>+ SOCKET G{gIdx + 1}</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-[9px] text-[#64748b] italic pt-0.5">
+                      Click to focus Slot {idx + 1} & install any Contact, Delivery, or
+                      Regulation component
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Nested Gemstone Infusion Bar for Active Installed Component */}
+          {activeComponent && (
+            <div className="p-2 bg-[#090d14] rounded-xs border border-[#c084fc]/40 space-y-1.5">
+              <div className="flex flex-wrap items-center justify-between gap-1">
+                <span className="text-[9px] font-bold text-[#c084fc]">
+                  SOCKET GEMSTONE INTO SLOT {clampedSlotIdx + 1} [{activeComponent.name.toUpperCase()}] ·
+                  GEM SOCKET G{clampedGemIdx + 1} OF {activeComponent.maxGemSlots}G:
+                </span>
+                <div className="flex gap-1">
+                  {Array.from({ length: activeComponent.maxGemSlots }).map((_, gIdx) => (
+                    <button
+                      key={`pick-gsock-${gIdx}`}
+                      type="button"
+                      onClick={() => {
+                        soundSystem.playSelect();
+                        setSelectedComponentGemSocketIdx(gIdx);
+                      }}
+                      className={`px-1.5 py-0.5 rounded-xs text-[8px] font-bold border cursor-pointer ${
+                        clampedGemIdx === gIdx
+                          ? 'bg-[#c084fc] text-[#05070a] border-[#fde047]'
+                          : 'bg-[#05070a] text-[#cbd5e1] border-[#334155]'
+                      }`}
+                    >
+                      SOCKET G{gIdx + 1}{' '}
+                      {activeSlotState.socketedGems[gIdx]
+                        ? `(${GEMSTONE_REGISTRY[activeSlotState.socketedGems[gIdx]!]?.name})`
+                        : '(EMPTY)'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1">
+                {GEMSTONE_CATALOG.map((gem) => {
+                  const invCount = getInventoryGemCount(state, gem.id);
+                  const canSocket = isCheatMode || invCount > 0;
+                  const bonusDesc = WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS[gem.id];
+                  const wtDelta = WEAPON_GEM_WEIGHT_DELTA[gem.id];
+                  return (
+                    <button
+                      key={gem.id}
+                      type="button"
+                      disabled={!canSocket}
+                      onClick={() => {
+                        const nextId = socketGemIntoWeaponComponent(
+                          state,
+                          targetInstanceId,
+                          clampedSlotIdx,
+                          clampedGemIdx,
+                          gem.id,
+                          sayCtx
+                        );
+                        if (nextId) {
+                          soundSystem.playPowerup();
+                          syncStateGates(state);
+                          onInstanceUpdated(nextId);
+                          notifyOrionStateChange();
+                        } else {
+                          soundSystem.playMenuBeep();
+                        }
+                      }}
+                      className={`p-1.5 rounded-xs border text-left transition-colors flex flex-col justify-between gap-0.5 ${
+                        canSocket
+                          ? 'bg-[#05070a] hover:bg-[#0f172a] border-[#334155] hover:border-[#fde047] cursor-pointer'
+                          : 'bg-[#05070a]/50 border-[#1e293b]/50 opacity-55 cursor-not-allowed'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <span
+                          className="font-bold text-[9px] flex items-center gap-1"
+                          style={{ color: gem.hexColor }}
+                        >
+                          <SpriteCanvasIcon
+                            base64={gem.iconBase64}
+                            sizeClass="w-3.5 h-3.5"
+                          />
+                          {gem.name}
+                        </span>
+                        <span className="text-[9px] text-[#94a3b8] font-bold">
+                          {isCheatMode ? '∞' : `×${invCount}`} ({wtDelta >= 0 ? `+${wtDelta}` : wtDelta} WT)
+                        </span>
+                      </div>
+                      <div className="text-[8px] text-[#cbd5e1] leading-tight">
+                        {bonusDesc}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Class-Specific Bespoke Component Catalog (28 Crafted Blueprints + 33 Looted Field Salvage) */}
+          <div className="p-2 bg-[#090d14] rounded-xs border border-[#334155] space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-1.5">
+              <div className="text-[9px] font-bold text-[#fde047]">
+                BESPOKE [{weaponCategory.toUpperCase()}] COMPONENT CATALOG → INSTALLING INTO SLOT{' '}
+                {clampedSlotIdx + 1}:
+              </div>
+              <div className="flex flex-wrap items-center gap-1">
+                {(['ALL', 'CONTACT', 'DELIVERY', 'REGULATION'] as const).map((domOpt) => (
+                  <button
+                    key={domOpt}
+                    type="button"
+                    onClick={() => {
+                      soundSystem.playSelect();
+                      setComponentDomainFilter(domOpt);
+                    }}
+                    className={`px-1.5 py-0.5 rounded-xs text-[8px] font-bold border cursor-pointer ${
+                      componentDomainFilter === domOpt
+                        ? 'bg-[#38bdf8] text-[#05070a] border-[#7dd3fc]'
+                        : 'bg-[#05070a] text-[#94a3b8] border-[#1e293b] hover:border-[#38bdf8]/60'
+                    }`}
+                  >
+                    {domOpt === 'ALL'
+                      ? 'ALL DOMAINS'
+                      : `${domOpt} (${domainLabels[domOpt]})`}
+                  </button>
+                ))}
+                {(['ALL', 'CRAFTED', 'LOOTED'] as const).map((srcOpt) => (
+                  <button
+                    key={srcOpt}
+                    type="button"
+                    onClick={() => {
+                      soundSystem.playSelect();
+                      setComponentSourceFilter(srcOpt);
+                    }}
+                    className={`px-1.5 py-0.5 rounded-xs text-[8px] font-bold border cursor-pointer ${
+                      componentSourceFilter === srcOpt
+                        ? 'bg-[#fde047] text-[#05070a] border-[#ffd27d]'
+                        : 'bg-[#05070a] text-[#94a3b8] border-[#1e293b] hover:border-[#fde047]/60'
+                    }`}
+                  >
+                    {srcOpt === 'ALL'
+                      ? 'ALL SOURCES'
+                      : srcOpt === 'CRAFTED'
+                        ? 'CRAFTED (1G)'
+                        : 'LOOTED SALVAGE (1–3G)'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+              {bespokeClassParts.map((part) => {
+                // Determine target slot: if another slot already holds this domain, auto-target that slot on click
+                const existingDomainSlot = modProfile.slots.find(
+                  (s) => s.component?.domain === part.domain
+                );
+                const targetSlotForPart = existingDomainSlot
+                  ? existingDomainSlot.slotIndex
+                  : clampedSlotIdx;
+                const validation = validateWeaponComponentInstallation(
+                  state,
+                  targetInstanceId,
+                  targetSlotForPart,
+                  part.id
+                );
+                const isInstalledHere = modProfile.slots.some(
+                  (s) => s.component?.id === part.id
+                );
+                const ownedLootCount =
+                  part.acquisitionSource === 'LOOTED'
+                    ? getOwnedLootedComponentCount(state, part.id)
+                    : 0;
+                const costLabel =
+                  part.acquisitionSource === 'LOOTED'
+                    ? `SALVAGE STOCK: ${isCheatMode ? '∞' : `×${ownedLootCount}`}`
+                    : `${part.recipe.scrapCost} Scrap + ${part.recipe.gemstoneCount}× ${part.recipe.gemstoneType} (${
+                        isCheatMode
+                          ? '∞'
+                          : getInventoryGemCount(
+                              state,
+                              RECIPE_GEMSTONE_TO_ID[part.recipe.gemstoneType]
+                            )
+                      } owned)`;
+
+                return (
+                  <div
+                    key={part.id}
+                    className={`p-2 rounded-xs border flex flex-col justify-between gap-1 ${
+                      isInstalledHere
+                        ? 'bg-[#172554]/60 border-[#fde047]'
+                        : 'bg-[#05070a] border-[#1e293b]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="font-bold text-[9px] text-[#e2e8f0] truncate">
+                          {part.name}
+                          {devMode ? ` [${part.id}]` : ''}
+                        </span>
+                        <span
+                          className={`text-[8px] px-1 py-0.2 rounded-[2px] font-bold shrink-0 ${
+                            part.domain === 'CONTACT'
+                              ? 'bg-[#431407] text-[#fdba74]'
+                              : part.domain === 'DELIVERY'
+                                ? 'bg-[#082f49] text-[#7dd3fc]'
+                                : 'bg-[#2e1065] text-[#ddd6fe]'
+                          }`}
+                        >
+                          {part.domain}
+                        </span>
+                      </div>
+                      <span
+                        className={`text-[8px] px-1 py-0.2 rounded-[2px] font-bold shrink-0 ${
+                          part.acquisitionSource === 'LOOTED'
+                            ? 'bg-[#052e16] text-[#86efac] border border-[#22c55e]/40'
+                            : 'bg-[#3b0764] text-[#e9d5ff] border border-[#c084fc]/40'
+                        }`}
+                      >
+                        {part.acquisitionSource} · {part.maxGemSlots}G
+                      </span>
+                    </div>
+
+                    <div className="text-[9px] text-[#86efac]">
+                      + {part.effectSummary}
+                      {part.damageTypeOverride ? (
+                        <span className="ml-1 px-1 py-0.2 rounded-[2px] bg-[#450a0a] text-[#fde047] font-bold text-[8px]">
+                          ACTION 1 → {part.damageTypeOverride.toUpperCase()}
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="text-[9px] text-[#f87171]">
+                      − {part.tradeOffSummary} (
+                      {(part.statModifiers.weightDelta ?? 0) >= 0
+                        ? `+${part.statModifiers.weightDelta ?? 0}`
+                        : (part.statModifiers.weightDelta ?? 0)}{' '}
+                      WT)
+                    </div>
+
+                    <div className="flex items-center justify-between gap-1 pt-1 border-t border-[#1e293b]/80">
+                      <span className="text-[8px] text-[#cbd5e1]">
+                        {part.acquisitionSource === 'CRAFTED' ? 'Recipe: ' : ''}
+                        <b className="text-[#ffd27d]">{costLabel}</b>
+                      </span>
+                      <button
+                        type="button"
+                        disabled={!validation.valid || isInstalledHere}
+                        onClick={() => {
+                          const nextId = installBespokeWeaponComponent(
+                            state,
+                            targetInstanceId,
+                            targetSlotForPart,
+                            part.id,
+                            sayCtx,
+                            { autoReplaceConflictingDomain: true }
+                          );
+                          if (nextId) {
+                            soundSystem.playPowerup();
+                            setSelectedModSlotIndex(targetSlotForPart);
+                            setSelectedComponentGemSocketIdx(0);
+                            syncStateGates(state);
+                            onInstanceUpdated(nextId);
+                            notifyOrionStateChange();
+                          } else {
+                            soundSystem.playMenuBeep();
+                          }
+                        }}
+                        className={`px-2 py-0.5 rounded-xs text-[8px] font-bold border cursor-pointer shrink-0 ${
+                          isInstalledHere
+                            ? 'bg-[#1e293b] text-[#fde047] border-[#fde047]/50 cursor-default'
+                            : validation.valid
+                              ? 'bg-[#052e16] hover:bg-[#14532d] text-[#86efac] border-[#22c55e]/60'
+                              : 'bg-[#0f172a] text-[#475569] border-[#1e293b] cursor-not-allowed'
+                        }`}
+                      >
+                        {isInstalledHere
+                          ? 'INSTALLED'
+                          : existingDomainSlot
+                            ? `REPLACE ${part.domain} (SLOT ${targetSlotForPart + 1})`
+                            : part.acquisitionSource === 'CRAFTED'
+                              ? `FORGE → SLOT ${targetSlotForPart + 1}`
+                              : `INSTALL → SLOT ${targetSlotForPart + 1}`}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ─── UNIQUE MAGITECH WEAPONS (1G Resonance Socket) & CHASSIS HARDWARE SOCKETS ───
     const anatomicalSlots: WeaponComponentSlotId[] = isWeaponItem
       ? getWeaponComponentSlots(baseId)
       : (['grip', 'focus', 'sight'] as WeaponComponentSlotId[]);
     const compMap = eq.installedWeaponComponents?.[targetInstanceId] || {};
     const hwItem = !isWeaponItem ? findHardwareItemByNameOrId(targetInstanceId) : undefined;
-    const clampedSlotIdx = Math.max(0, Math.min(maxSlots - 1, selectedModSlotIndex));
     const activeAnatomicalSlotName = anatomicalSlots[clampedSlotIdx];
-    const wDef = isWeaponItem ? getWeaponDefinition(baseId) : undefined;
-    const isUniqueWeapon = Boolean(wDef?.weaponTier === 'unique');
     const currentSlotGem = slotGems[clampedSlotIdx] || null;
     const currentInstalledPartId =
       isWeaponItem && !isUniqueWeapon ? compMap[activeAnatomicalSlotName] : undefined;
@@ -357,14 +910,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
       ? WEAPON_COMPONENT_PART_CATALOG.find((p) => p.id === currentInstalledPartId)
       : undefined;
 
-    const compatibleWeaponParts: WeaponComponentPartDefinition[] =
-      isWeaponItem && !isUniqueWeapon
-        ? WEAPON_COMPONENT_PART_CATALOG.filter(
-            (p) => p.componentSlot === activeAnatomicalSlotName
-          )
-        : [];
-
-    // Compute what the Custom name will look like if a gem/part is installed in clampedSlotIdx
+    // Compute what the Custom name will look like if a gem is installed in clampedSlotIdx
     const previewNextName = (candidateGemId: GemId) => {
       const previewSlots: Array<GemId | null> = Array.from(
         { length: maxSlots },
@@ -380,14 +926,13 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
             <div className="text-[10px] font-bold text-[#fde047]">
               {isUniqueWeapon
                 ? `UNIQUE MAGITECH · FIXED COMPONENTS & 1 RESONANCE GEM SOCKET (${installedGems.length}/${maxSlots} OCCUPIED)`
-                : `ANY-ORDER MODIFICATION SLOTS (${installedGems.length}/${maxSlots} OCCUPIED)`}
+                : `ANY-ORDER HARDWARE GEM SOCKETS (${installedGems.length}/${maxSlots} OCCUPIED)`}
             </div>
             <div className="text-[9px] text-[#94a3b8]">
               {isUniqueWeapon ? (
                 <>
-                  Unique Magitech ordnance features factory-sealed internal components (Hilt, Grip,
-                  Blade, Actuator) and exposes <b className="text-[#c084fc]">1 Resonance Gem Socket</b>{' '}
-                  for elemental domain tuning (
+                  Unique Magitech ordnance features factory-sealed internal components and exposes{' '}
+                  <b className="text-[#c084fc]">1 Resonance Gem Socket</b> for elemental tuning (
                   <span className="text-[#86efac]">
                     {formatModifiedEquipmentName(baseName, ['spinel'])}
                   </span>
@@ -395,17 +940,8 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                 </>
               ) : (
                 <>
-                  Select any slot below in any order to install, replace, or remove a component part
-                  or gemstone. Modified items use semantic <b className="text-[#fde047]">Custom</b>{' '}
-                  naming (
-                  <span className="text-[#86efac]">
-                    {formatModifiedEquipmentName(baseName, ['spinel'])}
-                  </span>{' '}
-                  /{' '}
-                  <span className="text-[#86efac]">
-                    {formatModifiedEquipmentName(baseName, ['spinel', 'carnelian'])}
-                  </span>
-                  ).
+                  Select any slot below in any order to socket or remove a gemstone. Modified items
+                  use semantic <b className="text-[#fde047]">Custom</b> naming.
                 </>
               )}
             </div>
@@ -426,18 +962,14 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
           )}
         </div>
 
-        {/* Interactive Slot Selector Buttons (Install in ANY Order) */}
+        {/* Interactive Slot Selector Buttons */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
           {Array.from({ length: maxSlots }).map((_, idx) => {
             const sGem = slotGems[idx] || null;
             const gemInfo = sGem ? GEMSTONE_REGISTRY[sGem] : null;
             const slotLabel = isWeaponItem
-              ? anatomicalSlots[idx]?.toUpperCase() || `SLOT ${idx + 1}`
+              ? 'RESONANCE SOCKET'
               : `${hwItem?.canonicalSlotLabel.toUpperCase() || 'HARDWARE'} SOCKET ${idx + 1}`;
-            const partId = isWeaponItem ? compMap[anatomicalSlots[idx]] : undefined;
-            const partDef = partId
-              ? WEAPON_COMPONENT_PART_CATALOG.find((p) => p.id === partId)
-              : undefined;
             const isSelected = clampedSlotIdx === idx;
 
             return (
@@ -484,7 +1016,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                         className="text-[9px] font-bold truncate"
                         style={{ color: gemInfo.hexColor }}
                       >
-                        {partDef ? partDef.name : `${gemInfo.name} Socket`}
+                        {`${gemInfo.name} Socket`}
                       </span>
                     </div>
                     <button
@@ -510,7 +1042,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                   </div>
                 ) : (
                   <div className="text-[9px] text-[#64748b] italic pt-0.5">
-                    Click to select & install mod in Slot {idx + 1}
+                    Click to select & install gem in Slot {idx + 1}
                   </div>
                 )}
               </div>
@@ -518,202 +1050,82 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
           })}
         </div>
 
-        {/* Active Slot Installation Options */}
+        {/* Direct Gemstone Socket Installation */}
         <div className="p-2 bg-[#090d14] rounded-xs border border-[#334155] space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[9px] font-bold text-[#fde047]">
-              CONFIGURING SLOT {clampedSlotIdx + 1}: [
-              {isWeaponItem
-                ? anatomicalSlots[clampedSlotIdx]?.toUpperCase()
-                : `GEM SOCKET ${clampedSlotIdx + 1}`}
-              ]{' '}
+              CONFIGURING SLOT {clampedSlotIdx + 1}:{' '}
               {currentSlotGem
                 ? `— CURRENT: ${(currentInstalledPartDef?.name || GEMSTONE_REGISTRY[currentSlotGem]?.name || '').toUpperCase()} (CLICK ANY OPTION TO REPLACE)`
-                : '— READY FOR INSTALLATION'}
+                : '— READY FOR GEMSTONE INFUSION'}
             </span>
           </div>
 
-          {/* 1. Named Anatomical Weapon Component Parts (if Weapon/Auxiliary) */}
-          {isWeaponItem && compatibleWeaponParts.length > 0 && (
-            <div className="space-y-1">
-              <div className="text-[9px] font-bold text-[#7dd3fc]">
-                A. COMPATIBLE [{activeAnatomicalSlotName.toUpperCase()}] COMPONENT PARTS (CRAFTED OR LOOTED):
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-                {compatibleWeaponParts.map((part) => {
-                  const canAfford =
-                    isCheatMode ||
-                    part.origin === 'looted' ||
-                    part.gemCost.every(
-                      (req) => getInventoryGemCount(state, req.gemId) >= req.count
-                    );
-                  const costLabel =
-                    part.origin === 'looted'
-                      ? 'LOOTED PART (0 GEMS)'
-                      : part.gemCost
-                          .map(
-                            (r) =>
-                              `${r.count} ${GEMSTONE_REGISTRY[r.gemId]?.name || r.gemId}`
-                          )
-                          .join(' + ');
-                  const isCurrentlyInstalled = currentInstalledPartId === part.id;
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-1">
+            {GEMSTONE_CATALOG.map((gem) => {
+              const invCount = getInventoryGemCount(state, gem.id);
+              const canSocket = isCheatMode || invCount > 0;
+              const bonusDesc = isWeaponItem
+                ? WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS[gem.id]
+                : getHardwareGemBonusDescription(hwItem?.slot || 'plating', gem.id);
+              const wtDelta = WEAPON_GEM_WEIGHT_DELTA[gem.id];
 
-                  return (
-                    <div
-                      key={part.id}
-                      className={`p-1.5 rounded-xs border flex flex-col justify-between gap-1 ${
-                        isCurrentlyInstalled
-                          ? 'bg-[#172554]/60 border-[#fde047]'
-                          : 'bg-[#05070a] border-[#1e293b]'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="font-bold text-[9px] text-[#e2e8f0] truncate">
-                          {part.name}
-                          {devMode ? ` [${part.id}]` : ''}
-                        </span>
-                        <span
-                          className={`text-[9px] px-1 py-0.2 rounded-[2px] font-bold shrink-0 ${
-                            part.origin === 'looted'
-                              ? 'bg-[#052e16] text-[#86efac]'
-                              : 'bg-[#3b0764] text-[#e9d5ff]'
-                          }`}
-                        >
-                          {part.origin.toUpperCase()} · {part.maxGemSlots}G
-                        </span>
-                      </div>
-                      <div className="text-[9px] text-[#86efac]">+ {part.gainDescription}</div>
-                      <div className="text-[9px] text-[#f87171]">
-                        − {part.drawbackDescription} (
-                        {part.weightDelta >= 0 ? `+${part.weightDelta}` : part.weightDelta}{' '}
-                        WT)
-                      </div>
-                      <div className="flex items-center justify-between gap-1 pt-0.5 border-t border-[#1e293b]/70">
-                        <span className="text-[9px] text-[#94a3b8]">
-                          Cost: <b className="text-[#ffd27d]">{costLabel}</b> →{' '}
-                          <span className="text-[#fde047]">
-                            {previewNextName(part.primaryGemId)}
-                          </span>
-                        </span>
-                        <button
-                          type="button"
-                          disabled={!canAfford || isCurrentlyInstalled}
-                          onClick={() => {
-                            const nextId = installGemModOnEquipment(
-                              state,
-                              targetInstanceId,
-                              part.primaryGemId,
-                              sayCtx,
-                              {
-                                slotIndex: clampedSlotIdx,
-                                slotName: activeAnatomicalSlotName,
-                                partDef: part,
-                              }
-                            );
-                            if (nextId) {
-                              soundSystem.playPowerup();
-                              onInstanceUpdated(nextId);
-                              notifyOrionStateChange();
-                            } else {
-                              soundSystem.playMenuBeep();
-                            }
-                          }}
-                          className={`px-2 py-0.5 rounded-xs text-[9px] font-bold border cursor-pointer shrink-0 ${
-                            isCurrentlyInstalled
-                              ? 'bg-[#1e293b] text-[#fde047] border-[#fde047]/50 cursor-default'
-                              : canAfford
-                                ? 'bg-[#052e16] hover:bg-[#14532d] text-[#86efac] border-[#22c55e]/60'
-                                : 'bg-[#0f172a] text-[#475569] border-[#1e293b] cursor-not-allowed'
-                          }`}
-                        >
-                          {isCurrentlyInstalled
-                            ? 'INSTALLED'
-                            : currentSlotGem
-                              ? `REPLACE SLOT ${clampedSlotIdx + 1}`
-                              : `INSTALL IN SLOT ${clampedSlotIdx + 1}`}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* 2. Direct Gemstone Socket Installation (Available for both Weapons and Hardware in Any Slot Order) */}
-          <div className="space-y-1">
-            <div className="text-[9px] font-bold text-[#c084fc]">
-              {isWeaponItem
-                ? `B. DIRECT GEMSTONE INFUSION INTO SLOT ${clampedSlotIdx + 1} [${activeAnatomicalSlotName.toUpperCase()}]:`
-                : `SOCKET GEMSTONE INTO ${hwItem?.canonicalSlotLabel.toUpperCase() || 'HARDWARE'} SLOT ${clampedSlotIdx + 1}:`}
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-1">
-              {GEMSTONE_CATALOG.map((gem) => {
-                const invCount = getInventoryGemCount(state, gem.id);
-                const canSocket = isCheatMode || invCount > 0;
-                const bonusDesc = isWeaponItem
-                  ? WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS[gem.id]
-                  : getHardwareGemBonusDescription(hwItem?.slot || 'plating', gem.id);
-                const wtDelta = WEAPON_GEM_WEIGHT_DELTA[gem.id];
-
-                return (
-                  <button
-                    key={gem.id}
-                    type="button"
-                    disabled={!canSocket}
-                    onClick={() => {
-                      const nextId = installGemModOnEquipment(
-                        state,
-                        targetInstanceId,
-                        gem.id,
-                        sayCtx,
-                        {
-                          slotIndex: clampedSlotIdx,
-                          slotName: isWeaponItem ? activeAnatomicalSlotName : undefined,
-                        }
-                      );
-                      if (nextId) {
-                        soundSystem.playPowerup();
-                        onInstanceUpdated(nextId);
-                        notifyOrionStateChange();
-                      } else {
-                        soundSystem.playMenuBeep();
+              return (
+                <button
+                  key={gem.id}
+                  type="button"
+                  disabled={!canSocket}
+                  onClick={() => {
+                    const nextId = installGemModOnEquipment(
+                      state,
+                      targetInstanceId,
+                      gem.id,
+                      sayCtx,
+                      {
+                        slotIndex: clampedSlotIdx,
+                        slotName: isWeaponItem ? activeAnatomicalSlotName : undefined,
                       }
-                    }}
-                    className={`p-1.5 rounded-xs border text-left transition-colors flex flex-col justify-between gap-0.5 ${
-                      canSocket
-                        ? 'bg-[#05070a] hover:bg-[#0f172a] border-[#334155] hover:border-[#fde047] cursor-pointer'
-                        : 'bg-[#05070a]/50 border-[#1e293b]/50 opacity-55 cursor-not-allowed'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-1">
-                      <span
-                        className="font-bold text-[9px] flex items-center gap-1"
-                        style={{ color: gem.hexColor }}
-                      >
-                        <SpriteCanvasIcon
-                          base64={gem.iconBase64}
-                          sizeClass="w-3.5 h-3.5"
-                        />
-                        {gem.name}
-                      </span>
-                      <span className="text-[9px] text-[#94a3b8] font-bold">
-                        {isCheatMode ? '∞' : `×${invCount}`}
-                      </span>
+                    );
+                    if (nextId) {
+                      soundSystem.playPowerup();
+                      onInstanceUpdated(nextId);
+                      notifyOrionStateChange();
+                    } else {
+                      soundSystem.playMenuBeep();
+                    }
+                  }}
+                  className={`p-1.5 rounded-xs border text-left transition-colors flex flex-col justify-between gap-0.5 ${
+                    canSocket
+                      ? 'bg-[#05070a] hover:bg-[#0f172a] border-[#334155] hover:border-[#fde047] cursor-pointer'
+                      : 'bg-[#05070a]/50 border-[#1e293b]/50 opacity-55 cursor-not-allowed'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-1">
+                    <span
+                      className="font-bold text-[9px] flex items-center gap-1"
+                      style={{ color: gem.hexColor }}
+                    >
+                      <SpriteCanvasIcon
+                        base64={gem.iconBase64}
+                        sizeClass="w-3.5 h-3.5"
+                      />
+                      {gem.name}
+                    </span>
+                    <span className="text-[9px] text-[#94a3b8] font-bold">
+                      {isCheatMode ? '∞' : `×${invCount}`}
+                    </span>
+                  </div>
+                  <div className="text-[9px] text-[#cbd5e1] leading-tight">
+                    {bonusDesc}
+                  </div>
+                  {isWeaponItem && (
+                    <div className="text-[9px] text-[#fde047] truncate">
+                      → {previewNextName(gem.id)} ({wtDelta >= 0 ? `+${wtDelta}` : wtDelta} WT)
                     </div>
-                    <div className="text-[9px] text-[#cbd5e1] leading-tight">
-                      {bonusDesc}
-                    </div>
-                    {isWeaponItem && (
-                      <div className="text-[9px] text-[#fde047] truncate">
-                        → {previewNextName(gem.id)} ({wtDelta >= 0 ? `+${wtDelta}` : wtDelta}{' '}
-                        WT)
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -908,8 +1320,15 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                       </span>
                     ) : (
                       <>
-                        3 Component Slots: [
-                        {getWeaponComponentSlots(activeWeaponBaseId).join(' / ').toUpperCase()}]
+                        3 Domains: [
+                        {Object.values(
+                          WEAPON_DOMAIN_ANATOMY_LABELS[
+                            activeWeaponBaseDef.category || 'Blades: Straight'
+                          ]
+                        )
+                          .join(' / ')
+                          .toUpperCase()}
+                        ]
                       </>
                     )}
                   </div>
@@ -964,40 +1383,66 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
               {/* Canonical Moveset & Modifiers Summary */}
               {(() => {
                 const mods = getWeaponGemCombatModifiers(state, activeWeaponDef.id);
+                const modProf = mods.modificationProfile;
                 const m1 = activeWeaponDef.moveset[0];
                 const m2 = activeWeaponDef.moveset[1];
+                const effDmgType =
+                  modProf?.effectiveDamageType ||
+                  m1?.damageType ||
+                  activeWeaponDef.primaryDamageType;
+                const isConverted = Boolean(modProf?.damageTypeConvertedFromContact);
+                const tempoMult = modProf?.clampedTempoMultiplier ?? 1.0;
+                const compStats = modProf?.statModifiers;
                 return (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 pt-1">
                     <div className="p-1 bg-[#05070a] rounded-xs border border-[#1e293b]">
-                      <div className="text-[9px] text-[#94a3b8]">PRIMARY DMG</div>
-                      <div className="text-[9px] font-bold text-[#fde047]">
-                        {m1
-                          ? `${Math.round(m1.damage * mods.damageMult)} (${m1.damageType})`
-                          : 'Utility'}
+                      <div className="text-[9px] text-[#94a3b8]">ACTION 1 · DAMAGE TYPE</div>
+                      <div className="text-[9px] font-bold text-[#fde047] flex items-center gap-1 flex-wrap">
+                        <span>
+                          {m1
+                            ? `${Math.round(m1.damage * mods.damageMult)} (${effDmgType})`
+                            : 'Utility'}
+                        </span>
+                        {isConverted && (
+                          <span className="px-1 py-0.1 rounded-[2px] bg-[#431407] text-[#fdba74] text-[8px]">
+                            CONTACT CONV
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="p-1 bg-[#05070a] rounded-xs border border-[#1e293b]">
-                      <div className="text-[9px] text-[#94a3b8]">SECONDARY / ART</div>
+                      <div className="text-[9px] text-[#94a3b8]">TEMPO (±30% CAP) & MODE</div>
                       <div className="text-[9px] font-bold text-[#38bdf8]">
+                        ×{tempoMult.toFixed(2)} · {modProf?.effectiveAction1Mode || 'STANDARD'}
                         {m2
-                          ? `${Math.round(m2.damage * mods.damageMult)} · ${(m2.cooldownSec * mods.skillCooldownMult).toFixed(1)}s`
-                          : 'Passive'}
-                      </div>
-                    </div>
-                    <div className="p-1 bg-[#05070a] rounded-xs border border-[#1e293b]">
-                      <div className="text-[9px] text-[#94a3b8]">PASSIVE DEFENSE</div>
-                      <div className="text-[9px] font-bold text-[#86efac]">
-                        +{ (activeWeaponDef.passiveShieldBonus || 0) + mods.maxShieldBonus } SHD
-                        {activeWeaponDef.passiveArmorBonus
-                          ? ` · +${activeWeaponDef.passiveArmorBonus} ARM`
+                          ? ` · S2 ${Math.round(m2.damage * mods.damageMult)}`
                           : ''}
                       </div>
                     </div>
                     <div className="p-1 bg-[#05070a] rounded-xs border border-[#1e293b]">
-                      <div className="text-[9px] text-[#94a3b8]">HEAT / COOLDOWN</div>
+                      <div className="text-[9px] text-[#94a3b8]">DEFENSE / LAYER 2</div>
+                      <div className="text-[9px] font-bold text-[#86efac]">
+                        +{(activeWeaponDef.passiveShieldBonus || 0) + mods.maxShieldBonus} SHD
+                        {(activeWeaponDef.passiveArmorBonus || 0) +
+                          (compStats?.shieldDurabilityDelta || 0) !==
+                        0
+                          ? ` · +${(activeWeaponDef.passiveArmorBonus || 0) + (compStats?.shieldDurabilityDelta || 0)} DUR`
+                          : ''}
+                        {compStats?.armorThresholdDelta
+                          ? ` · ${compStats.armorThresholdDelta > 0 ? `+${compStats.armorThresholdDelta}` : compStats.armorThresholdDelta} THR`
+                          : ''}
+                      </div>
+                    </div>
+                    <div className="p-1 bg-[#05070a] rounded-xs border border-[#1e293b]">
+                      <div className="text-[9px] text-[#94a3b8]">HEAT / PIERCE / SHRED</div>
                       <div className="text-[9px] font-bold text-[#c084fc]">
-                        CD ×{mods.skillCooldownMult.toFixed(2)} · HEAT ×
-                        {mods.skillHeatCostMult.toFixed(2)}
+                        HEAT ×{mods.skillHeatCostMult.toFixed(2)}
+                        {compStats?.thrPierceDelta
+                          ? ` · +${compStats.thrPierceDelta} THR PIERCE`
+                          : ''}
+                        {compStats && compStats.durShredMultiplier !== 1
+                          ? ` · ×${compStats.durShredMultiplier.toFixed(2)} SHRED`
+                          : ''}
                       </div>
                     </div>
                   </div>

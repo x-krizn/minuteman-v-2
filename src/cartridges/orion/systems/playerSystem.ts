@@ -225,14 +225,27 @@ function applySerializedSaveDataToState(
     );
   }
   if (data.equipmentSlots && typeof data.equipmentSlots === 'object') {
+    const baseSlots = createInitialEquipmentSlots(state.traitLine);
     state.equipmentSlots = {
-      ...createInitialEquipmentSlots(state.traitLine),
+      ...baseSlots,
       ...data.equipmentSlots,
+      installedWeaponComponentSlots:
+        data.equipmentSlots.installedWeaponComponentSlots ||
+        baseSlots.installedWeaponComponentSlots ||
+        {},
+      ownedLootedComponents:
+        data.equipmentSlots.ownedLootedComponents &&
+        Object.keys(data.equipmentSlots.ownedLootedComponents).length > 0
+          ? data.equipmentSlots.ownedLootedComponents
+          : baseSlots.ownedLootedComponents,
     };
   }
   state.presence = data.presence ?? state.presence ?? 100;
   state.hasBoosterKit = data.hasBoosterKit ?? state.hasBoosterKit;
-  state.salvageScrap = data.salvageScrap ?? state.salvageScrap;
+  state.salvageScrap =
+    typeof data.salvageScrap === 'number' && data.salvageScrap > 0
+      ? data.salvageScrap
+      : Math.max(85, state.salvageScrap || 85);
   state.inventorySlots = consolidateInventorySlots(
     data.inventorySlots ?? state.inventorySlots
   );
@@ -659,7 +672,7 @@ export function createInitialOrionState(
     boosterDirX: 0,
     boosterDirY: 1,
 
-    salvageScrap: 0,
+    salvageScrap: 85,
     inventorySlots: consolidateInventorySlots([
       { itemId: 'demantoid_flask', count: 2 },
       { itemId: 'grail_water', count: 1 },
@@ -928,8 +941,6 @@ export function syncStateGates(state: OrionState): OrionCapabilityGates {
   const hwStats = resolveEquippedHardwareStats(state);
   state.reactor = hwStats.reactorFamily;
   state.armor.type = hwStats.armorType;
-  state.armor.threshold = hwStats.armorThreshold;
-  state.armor.rating = hwStats.armorRating;
 
   // Apply Static Budget Interface Feat Modifiers + Equipped Shield/Hardware Passive Bonuses + Gem Bonus to Max Shield
   const featMods = computeInterfaceFeatModifiers(state.equippedFeats || []);
@@ -938,11 +949,29 @@ export function syncStateGates(state: OrionState): OrionCapabilityGates {
     state.equipmentSlots.slot2,
     state.equipmentSlots.slot3,
   ].filter((id): id is string => Boolean(id));
+
+  let shieldArmorDurDelta = 0;
+  let shieldArmorThrDelta = 0;
+  let shieldArmorRtgDelta = 0;
+  let componentStabilityDelta = 0;
+
   const shieldBonusFromGear = allGear.reduce((sum, wId) => {
     const def = getWeaponDefinition(wId);
     const gemMod = getWeaponGemCombatModifiers(state, wId);
+    const modProf = gemMod.modificationProfile;
+    if (modProf) {
+      // Physical Domain Separation (§2.5): only Shields modify Layer 2 Armor stats
+      shieldArmorDurDelta += modProf.shieldDurabilityDelta;
+      shieldArmorThrDelta += modProf.armorThresholdDelta;
+      shieldArmorRtgDelta += modProf.armorRatingDelta;
+      componentStabilityDelta += modProf.stabilityDelta;
+    }
     return sum + (def?.passiveShieldBonus || 0) + gemMod.maxShieldBonus;
   }, 0);
+
+  state.armor.threshold = Math.max(1, hwStats.armorThreshold + shieldArmorThrDelta);
+  state.armor.rating = Math.max(1, hwStats.armorRating + shieldArmorRtgDelta);
+
   const targetMaxShield = Math.max(
     0,
     hwStats.baseShieldCapacity +
@@ -964,7 +993,8 @@ export function syncStateGates(state: OrionState): OrionCapabilityGates {
     10,
     hwStats.baseArmorDurability +
       hwStats.hardwareArmorBonus +
-      featMods.armorDurabilityDelta
+      featMods.armorDurabilityDelta +
+      shieldArmorDurDelta
   );
   if (state.armor.maxDurability !== targetMaxArmor) {
     const armorDiff = targetMaxArmor - state.armor.maxDurability;
@@ -992,13 +1022,18 @@ export function syncStateGates(state: OrionState): OrionCapabilityGates {
     'gladius_boltcaster';
   const activeWDef = getWeaponDefinition(activeWId);
   if (activeWDef) {
+    const activeGemMod = getWeaponGemCombatModifiers(state, activeWId);
+    const activeModProf = activeGemMod.modificationProfile;
     const isMeleeNoReload =
       Boolean(activeWDef.moveset[0]?.noReload) ||
       activeWDef.equipmentRole === 'melee' ||
       activeWDef.equipmentRole === 'shield';
     if (isMeleeNoReload) {
-      const comboLen =
+      const baseComboLen =
         activeWDef.moveset[0]?.comboSequence?.length || activeWDef.shotsPerChain || 3;
+      const comboLen = activeModProf?.comboStepCountOverride
+        ? Math.min(baseComboLen, activeModProf.comboStepCountOverride)
+        : baseComboLen;
       state.maxAmmo = comboLen;
       state.ammo = comboLen;
       state.isReloading = false;
@@ -1010,29 +1045,36 @@ export function syncStateGates(state: OrionState): OrionCapabilityGates {
         (state.equippedWeapons.includes('quiver') ||
           state.equipmentSlots.slot2 === 'quiver' ||
           state.equipmentSlots.slot3 === 'quiver');
-      const activeGemMod = getWeaponGemCombatModifiers(state, activeWId);
       const specEval = evaluateActiveSpecialistStance(state);
       const isBowSingleShot =
-        activeWDef.category === 'Bows' || Boolean(activeWDef.moveset[0]?.isChargeable);
-      const targetMaxAmmo = isBowSingleShot
+        (activeWDef.category === 'Bows' || Boolean(activeWDef.moveset[0]?.isChargeable)) &&
+        activeModProf?.effectiveAction1Mode !== 'BURST_VOLLEY';
+      const ammoMult = activeModProf?.ammoMultiplier ?? 1.0;
+      const rawBaseShots = isBowSingleShot
         ? 1
-        : activeWDef.shotsPerChain +
-          (hasQuiverSynergy ? 3 : 0) +
-          activeGemMod.bonusMaxAmmo;
+        : Math.max(1, Math.round(activeWDef.shotsPerChain * ammoMult));
+      const targetMaxAmmo = isBowSingleShot
+        ? Math.max(1, Math.round(1 * ammoMult))
+        : rawBaseShots + (hasQuiverSynergy ? 3 : 0) + activeGemMod.bonusMaxAmmo;
       if (state.maxAmmo !== targetMaxAmmo) {
         state.maxAmmo = targetMaxAmmo;
         state.ammo = Math.min(state.ammo, state.maxAmmo);
       }
-      state.reloadDuration =
-        activeWDef.reloadDurationSec *
-        (hasQuiverSynergy ? 0.75 : 1.0) *
-        specEval.passiveModifiers.reloadDurationMult;
+      state.reloadDuration = Number(
+        Math.max(
+          0.45,
+          activeWDef.reloadDurationSec *
+            (hasQuiverSynergy ? 0.75 : 1.0) *
+            (activeModProf?.reloadTimeMultiplier ?? 1.0) *
+            specEval.passiveModifiers.reloadDurationMult
+        ).toFixed(2)
+      );
     }
   }
 
   const inertiaProfile = resolvePlayerInertiaProfile(state);
   state.baseWeight = inertiaProfile.totalBaseWeight;
-  state.stability = inertiaProfile.stability;
+  state.stability = Math.max(10, inertiaProfile.stability + componentStabilityDelta);
   state.effectiveWeight = computeEffectiveWeight(
     inertiaProfile.totalBaseWeight,
     state.currentMu || 0
@@ -1081,6 +1123,8 @@ export function applyTraitLineProfile(state: OrionState, traitLine: TraitLine): 
   const prevInstalledMods = state.equipmentSlots?.installedMods || {};
   const prevWeaponGemMods = state.equipmentSlots?.weaponGemMods || {};
   const prevUnlockedEquip = state.equipmentSlots?.unlockedEquipment || [];
+  const prevCompSlots = state.equipmentSlots?.installedWeaponComponentSlots || {};
+  const prevOwnedLooted = state.equipmentSlots?.ownedLootedComponents || {};
   const prevBelt = state.equipmentSlots?.belt;
 
   const prevTrait = state.traitLine;
@@ -1138,11 +1182,17 @@ export function applyTraitLineProfile(state: OrionState, traitLine: TraitLine): 
       ...state.equippedWeapons,
     ])
   );
+  const freshSlots = createInitialEquipmentSlots(profile.id);
   state.equipmentSlots = {
-    ...createInitialEquipmentSlots(profile.id),
+    ...freshSlots,
     unlockedMods: [...prevUnlockedMods],
     installedMods: { ...prevInstalledMods },
     weaponGemMods: { ...prevWeaponGemMods },
+    installedWeaponComponentSlots: { ...prevCompSlots },
+    ownedLootedComponents: {
+      ...(freshSlots.ownedLootedComponents || {}),
+      ...prevOwnedLooted,
+    },
     unlockedEquipment: mergedUnlockedEquip,
     ...(prevBelt ? { belt: prevBelt } : {}),
   };

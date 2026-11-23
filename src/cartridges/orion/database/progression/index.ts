@@ -67,6 +67,32 @@ import {
   findDependentDownstreamChainFeats,
 } from './featHandling';
 import { doesPilotMeetSpecialistFeatRequirement } from './specialistStances';
+import {
+  BESPOKE_WEAPON_COMPONENT_BY_ID,
+  BESPOKE_WEAPON_COMPONENT_CATALOG,
+  createStarterLootedComponentsByTrait,
+  getBespokeComponentsForWeaponClass,
+  LOOTED_WEAPON_COMPONENT_POOL,
+  mapDomainToLegacyComponentSlot,
+  RECIPE_GEMSTONE_TO_ID,
+  resolveWeaponClassAction1Mode,
+  toLegacyWeaponComponentPartDefinition,
+  WEAPON_DOMAIN_ANATOMY_LABELS,
+} from './weaponComponentCatalog';
+import {
+  getOwnedLootedComponentCount,
+  getWeaponInstanceSlotRecords,
+  grantLootedWeaponComponent,
+  installBespokeWeaponComponent,
+  removeBespokeWeaponComponent,
+  type ResolvedWeaponModificationProfile,
+  resolveWeaponModificationProfile,
+  rollAndGrantFieldLootedComponent,
+  socketGemIntoWeaponComponent,
+  unsocketGemFromWeaponComponent,
+  validateWeaponComponentInstallation,
+  type WeaponComponentValidationResult,
+} from './weaponComponentMods';
 
 export {
   buildEquipmentInstanceId,
@@ -97,6 +123,30 @@ export { GEMSTONE_CATALOG, GEMSTONE_REGISTRY, TRAIT_FUNDING_GEMS };
 export { resolveWeaponFunctionalType, WEAPON_FUNCTIONAL_TYPES_BY_CATEGORY };
 export * from './featHandling';
 export * from './specialistStances';
+export {
+  BESPOKE_WEAPON_COMPONENT_BY_ID,
+  BESPOKE_WEAPON_COMPONENT_CATALOG,
+  createStarterLootedComponentsByTrait,
+  getBespokeComponentsForWeaponClass,
+  getOwnedLootedComponentCount,
+  getWeaponInstanceSlotRecords,
+  grantLootedWeaponComponent,
+  installBespokeWeaponComponent,
+  LOOTED_WEAPON_COMPONENT_POOL,
+  mapDomainToLegacyComponentSlot,
+  RECIPE_GEMSTONE_TO_ID,
+  removeBespokeWeaponComponent,
+  type ResolvedWeaponModificationProfile,
+  resolveWeaponClassAction1Mode,
+  resolveWeaponModificationProfile,
+  rollAndGrantFieldLootedComponent,
+  socketGemIntoWeaponComponent,
+  toLegacyWeaponComponentPartDefinition,
+  unsocketGemFromWeaponComponent,
+  validateWeaponComponentInstallation,
+  WEAPON_DOMAIN_ANATOMY_LABELS,
+  type WeaponComponentValidationResult,
+};
 
 /**
  * Type contract for `LevelUnlockInfo` (level unlock info) in `index.ts`.
@@ -706,270 +756,11 @@ export const ACTION_MODIFICATION_CATALOG: ActionModificationDefinition[] = [
 ];
 
 /**
- * Anatomical Weapon & Auxiliary Component Parts (`hilt`, `grip`, `blade`, `head`, `tip`, `focus`, `catalyst`, `actuator`, `sight`).
- * Includes both Crafted parts (`origin: 'crafted'`, variable gem costs, `maxGemSlots: 0 | 1`)
- * and Looted Standalone parts (`origin: 'looted'`, `maxGemSlots: 2 | 3`).
- * Every part enforces the Zero-Sum Stat & Weight Law (`+Gain` vs `-Drawback` & `weightDelta`).
+ * Anatomical Weapon & Auxiliary Component Parts derived from the 61 Bespoke Weapon Components
+ * (`28 Crafted` + `33 Looted`) across all 8 Weapon Classes (`Project Orion — Weapon Modification Overhaul Specification.md` §3).
  */
-export const WEAPON_COMPONENT_PART_CATALOG: WeaponComponentPartDefinition[] = [
-  // ─── HILT (Melee) ──────────────────────────────────────────────────────────
-  {
-    id: 'wpart_hilt_crafted_carnelian_pommel',
-    name: 'Weighted Carnelian Counter-Pommel',
-    componentSlot: 'hilt',
-    origin: 'crafted',
-    maxGemSlots: 1,
-    gemCost: [{ gemId: 'carnelian', count: 1 }],
-    primaryGemId: 'carnelian',
-    gainDescription: '+4 Armor Shred on Hit, +15 Presence & +8 Melee Attack Mass',
-    drawbackDescription: '+8 WT (Heavier for Inertia & Equip Load) & +10% Windup',
-    weightDelta: 8,
-    attackWeightDelta: 8,
-  },
-  {
-    id: 'wpart_hilt_looted_camelot_crossguard',
-    name: 'Camelot Reliquary Cross-Hilt',
-    componentSlot: 'hilt',
-    origin: 'looted',
-    maxGemSlots: 2,
-    gemCost: [],
-    primaryGemId: 'titanite',
-    gainDescription: '+15 Max Shield & +4 Shield on Skill Hit',
-    drawbackDescription: '+6 WT Crossguard Mass & -4% Move Speed',
-    weightDelta: 6,
-    attackWeightDelta: 5,
-  },
-  // ─── GRIP (Melee & Ranged) ─────────────────────────────────────────────────
-  {
-    id: 'wpart_grip_crafted_charoite_wrap',
-    name: 'Ultralight Phantom Grip-Wrap',
-    componentSlot: 'grip',
-    origin: 'crafted',
-    maxGemSlots: 1,
-    gemCost: [{ gemId: 'charoite', count: 1 }],
-    primaryGemId: 'charoite',
-    gainDescription: '+20% Locked/Staggered DMG, +8% Move Speed & -4 WT Equip Load',
-    drawbackDescription: '-6 Attack/Inertia Mass (Lighter Impact Impulse)',
-    weightDelta: -4,
-    attackWeightDelta: -6,
-  },
-  {
-    id: 'wpart_grip_crafted_hematite_heatsink',
-    name: 'Alchemic Ichor Heatsink Grip',
-    componentSlot: 'grip',
-    origin: 'crafted',
-    maxGemSlots: 1,
-    gemCost: [{ gemId: 'hematite', count: 1 }],
-    primaryGemId: 'hematite',
-    gainDescription: '-4 Heat per Basic Hit & +4 Armor on Kill',
-    drawbackDescription: '+5 WT Dense Grip Core & +8% Skill Cooldowns',
-    weightDelta: 5,
-    attackWeightDelta: 4,
-  },
-  {
-    id: 'wpart_grip_looted_bwi_recoil_stock',
-    name: 'BWI Stabilized Recoil Grip',
-    componentSlot: 'grip',
-    origin: 'looted',
-    maxGemSlots: 2,
-    gemCost: [],
-    primaryGemId: 'demantoid',
-    gainDescription: '-15% Skill Heat Cost & -10% Skill Cooldowns',
-    drawbackDescription: '+3 WT Stabilizer Frame & -5% Projectile/Swing Speed',
-    weightDelta: 3,
-  },
-  // ─── BLADE (Melee Blades) ──────────────────────────────────────────────────
-  {
-    id: 'wpart_blade_crafted_spinel_edge',
-    name: 'Thermal Assault Serrated Edge',
-    componentSlot: 'blade',
-    origin: 'crafted',
-    maxGemSlots: 1,
-    gemCost: [
-      { gemId: 'spinel', count: 1 },
-      { gemId: 'hematite', count: 1 },
-    ],
-    primaryGemId: 'spinel',
-    gainDescription: '+15% Weapon DMG (+22% at ≥50 Heat)',
-    drawbackDescription: '+12% Skill Heat Cost & +4 WT Heavy Blade Spine',
-    weightDelta: 4,
-    attackWeightDelta: 4,
-  },
-  {
-    id: 'wpart_blade_looted_vx_monowire',
-    name: 'VX Monomolecular Whisper-Blade',
-    componentSlot: 'blade',
-    origin: 'looted',
-    maxGemSlots: 3,
-    gemCost: [],
-    primaryGemId: 'charoite',
-    gainDescription: '+20% Locked/Staggered DMG, +8% Move Speed & -3 WT',
-    drawbackDescription: '-5 Attack Mass (Reduced Knockback Impulse)',
-    weightDelta: -3,
-    attackWeightDelta: -5,
-  },
-  // ─── HEAD (Melee Blunt/Axes, Polearms, Shields) ────────────────────────────
-  {
-    id: 'wpart_head_crafted_carnelian_maul',
-    name: 'Siegebreaker Tungsten Strike-Head',
-    componentSlot: 'head',
-    origin: 'crafted',
-    maxGemSlots: 1,
-    gemCost: [{ gemId: 'carnelian', count: 2 }],
-    primaryGemId: 'carnelian',
-    gainDescription: '+4 Armor Shred on Hit, +15 Presence & +12 Attack Mass',
-    drawbackDescription: '+10 WT Massive Strike-Head (Increases Inertia & Equip Load)',
-    weightDelta: 10,
-    attackWeightDelta: 12,
-  },
-  {
-    id: 'wpart_head_looted_rad_pilebunker',
-    name: 'RAD Kinetic Pilebunker Head',
-    componentSlot: 'head',
-    origin: 'looted',
-    maxGemSlots: 2,
-    gemCost: [],
-    primaryGemId: 'carnelian',
-    gainDescription: '+4 Armor Shred, +15 Presence & +14 Attack Mass',
-    drawbackDescription: '+11 WT Heavy Pilebunker Mass & +12% Tell Windup',
-    weightDelta: 11,
-    attackWeightDelta: 14,
-  },
-  // ─── TIP (Polearms & Lances) ───────────────────────────────────────────────
-  {
-    id: 'wpart_tip_crafted_kyanite_spike',
-    name: 'Arclight Condenser Lance-Tip',
-    componentSlot: 'tip',
-    origin: 'crafted',
-    maxGemSlots: 1,
-    gemCost: [{ gemId: 'kyanite', count: 1 }],
-    primaryGemId: 'kyanite',
-    gainDescription: '+15% Reach/Velocity & -12% Skill Cooldowns',
-    drawbackDescription: '+8% Skill Heat Cost & +3 WT Tip Condenser',
-    weightDelta: 3,
-    attackWeightDelta: 2,
-  },
-  {
-    id: 'wpart_tip_looted_avalon_corepiercer',
-    name: 'Avalon Core-Piercer Lance Tip',
-    componentSlot: 'tip',
-    origin: 'looted',
-    maxGemSlots: 3,
-    gemCost: [],
-    primaryGemId: 'spinel',
-    gainDescription: '+15% Weapon DMG (+22% ≥50 Heat) & +6 Attack Mass',
-    drawbackDescription: '+6 WT Reinforced Lance Tip & +10% Skill Heat Cost',
-    weightDelta: 6,
-    attackWeightDelta: 6,
-  },
-  // ─── FOCUS (Beam, Wave, Hybrid, Bows, Shields) ─────────────────────────────
-  {
-    id: 'wpart_focus_crafted_kyanite_prism',
-    name: 'Synthesized Arclight Collimator Focus',
-    componentSlot: 'focus',
-    origin: 'crafted',
-    maxGemSlots: 1,
-    gemCost: [
-      { gemId: 'kyanite', count: 1 },
-      { gemId: 'moonstone', count: 1 },
-    ],
-    primaryGemId: 'kyanite',
-    gainDescription: '+15% Projectile Speed/Range & -12% Skill Cooldowns',
-    drawbackDescription: '+8% Skill Heat Cost & +3 WT Prism Housing',
-    weightDelta: 3,
-  },
-  {
-    id: 'wpart_focus_looted_arc_convergence',
-    name: 'ARC Convergence Focusing Lens',
-    componentSlot: 'focus',
-    origin: 'looted',
-    maxGemSlots: 3,
-    gemCost: [],
-    primaryGemId: 'moonstone',
-    gainDescription: '+8 Max Shield & -10% Skill Cooldowns',
-    drawbackDescription: '+4 WT Lens Array & -5% Raw Impact Mass',
-    weightDelta: 4,
-  },
-  // ─── CATALYST (Bows & Tactical Catalysts) ──────────────────────────────────
-  {
-    id: 'wpart_catalyst_crafted_rubellite_cell',
-    name: 'Volatile Ether Catalyst Cell',
-    componentSlot: 'catalyst',
-    origin: 'crafted',
-    maxGemSlots: 1,
-    gemCost: [{ gemId: 'rubellite', count: 1 }],
-    primaryGemId: 'rubellite',
-    gainDescription: '+12% All Weapon DMG & +1 Max Chain Ammo',
-    drawbackDescription: '+10% Skill Heat Cost & +4 WT Catalyst Cell',
-    weightDelta: 4,
-    projectileWeightDelta: 3,
-  },
-  {
-    id: 'wpart_catalyst_looted_sanc_chalice',
-    name: 'Sanctum Reliquary Catalyst Core',
-    componentSlot: 'catalyst',
-    origin: 'looted',
-    maxGemSlots: 2,
-    gemCost: [],
-    primaryGemId: 'demantoid',
-    gainDescription: '-15% Skill Heat Cost & -10% Skill Cooldowns',
-    drawbackDescription: '+3 WT Reliquary Core & -5% Projectile Velocity',
-    weightDelta: 3,
-  },
-  // ─── ACTUATOR (Ballistics & Ordnance) ──────────────────────────────────────
-  {
-    id: 'wpart_actuator_crafted_spinel_rotary',
-    name: 'Overclocked Assault Breech Actuator',
-    componentSlot: 'actuator',
-    origin: 'crafted',
-    maxGemSlots: 1,
-    gemCost: [{ gemId: 'spinel', count: 1 }],
-    primaryGemId: 'spinel',
-    gainDescription: '+15% Weapon DMG (+22% at ≥50 Heat)',
-    drawbackDescription: '+12% Skill Heat Cost & +5 WT Breech Block',
-    weightDelta: 5,
-    projectileWeightDelta: 4,
-  },
-  {
-    id: 'wpart_actuator_looted_be_heavy_drum',
-    name: 'BE Siege Heavy Drum Actuator',
-    componentSlot: 'actuator',
-    origin: 'looted',
-    maxGemSlots: 3,
-    gemCost: [],
-    primaryGemId: 'carnelian',
-    gainDescription: '+4 Armor Shred on Hit, +15 Presence & +8 Projectile Mass',
-    drawbackDescription: '+9 WT Heavy Drum Feed (Increases Recoil & Equip Load)',
-    weightDelta: 9,
-    projectileWeightDelta: 8,
-  },
-  // ─── SIGHT (Ranged Ballistics, Beam & Marksman) ────────────────────────────
-  {
-    id: 'wpart_sight_crafted_charoite_targeter',
-    name: 'Phantom Pinpoint Target-Sight',
-    componentSlot: 'sight',
-    origin: 'crafted',
-    maxGemSlots: 1,
-    gemCost: [{ gemId: 'charoite', count: 1 }],
-    primaryGemId: 'charoite',
-    gainDescription: '+20% Locked/Staggered DMG, +8% Move Speed & -2 WT',
-    drawbackDescription: '-4 Projectile Impact Mass',
-    weightDelta: -2,
-    projectileWeightDelta: -4,
-  },
-  {
-    id: 'wpart_sight_looted_sr_holoscope',
-    name: 'Shadowfang Long-Eye Holoscope Sight',
-    componentSlot: 'sight',
-    origin: 'looted',
-    maxGemSlots: 2,
-    gemCost: [],
-    primaryGemId: 'kyanite',
-    gainDescription: '+15% Projectile Speed/Range & -12% Skill Cooldowns',
-    drawbackDescription: '+3 WT Scope Mount & +6% Skill Heat Cost',
-    weightDelta: 3,
-  },
-];
+export const WEAPON_COMPONENT_PART_CATALOG: WeaponComponentPartDefinition[] =
+  BESPOKE_WEAPON_COMPONENT_CATALOG.map(toLegacyWeaponComponentPartDefinition);
 
 /**
  * Returns the 3 canonical anatomical component mod slots for any weapon or auxiliary item:
@@ -1345,6 +1136,8 @@ export function createInitialEquipmentSlots(traitLine: TraitLine = 'Warrior'): O
     },
     installedMods: {},
     installedWeaponComponents: {},
+    installedWeaponComponentSlots: {},
+    ownedLootedComponents: createStarterLootedComponentsByTrait(traitLine),
     unlockedMods: [],
     unlockedEquipment: Array.from(
       new Set([
@@ -1908,6 +1701,11 @@ export function unlockEquipmentItem(
   if (!state.equipmentSlots) {
     state.equipmentSlots = createInitialEquipmentSlots(state.traitLine);
   }
+  const bespokeMod = BESPOKE_WEAPON_COMPONENT_BY_ID[itemIdOrName];
+  if (bespokeMod && bespokeMod.acquisitionSource === 'LOOTED') {
+    return grantLootedWeaponComponent(state, bespokeMod.id, 1, ctx);
+  }
+
   const normKey = normalizeEquipmentInstanceKey(itemIdOrName);
   state.equipmentSlots.unlockedEquipment = state.equipmentSlots.unlockedEquipment || [
     state.equippedWeapons[0] || 'long_sword',
@@ -1926,6 +1724,14 @@ export function unlockEquipmentItem(
       5,
       (state.equipmentSlots.ownedWeaponCounts[normKey] || 1) + 1
     );
+  }
+
+  // Award a field-salvaged LOOTED weapon component alongside field cache & enemy gear drops
+  if (state.room !== '-4,0') {
+    const seed =
+      state.equipmentSlots.unlockedEquipment.length +
+      Math.max(0, state.salvageScrap || 0);
+    rollAndGrantFieldLootedComponent(state, seed);
   }
 
   const wDef = getWeaponDefinition(normKey);
@@ -2021,6 +1827,8 @@ export interface WeaponGemCombatModifiers {
   attackWeightDelta: number;
   /** Zero-sum ranged projectile mass delta (m_projectile) */
   projectileWeightDelta: number;
+  /** Resolved modification profile from installed 3-slot weapon components */
+  modificationProfile?: ResolvedWeaponModificationProfile;
   summaryLabel: string;
 }
 
@@ -2055,12 +1863,17 @@ export const WEAPON_GEM_WEIGHT_DELTA: Record<GemId, number> = {
 };
 
 /**
- * Resolves the ordered list of installed Gemstones on a weapon/auxiliary instance.
+ * Resolves the ordered list of installed Gemstones on a weapon/auxiliary instance
+ * (including gems socketed inside the weapon's 3 installed physical components).
  */
 export function getWeaponInstalledGems(
   state: OrionState | undefined,
   weaponId: string
 ): GemId[] {
+  const modProfile = resolveWeaponModificationProfile(state, weaponId);
+  if (modProfile.socketedGems.length > 0) {
+    return modProfile.socketedGems;
+  }
   const { baseId, installedGems } = parseEquipmentInstanceId(weaponId);
   if (installedGems.length > 0) {
     return installedGems;
@@ -2095,7 +1908,7 @@ export function getWeaponInstalledGems(
 
 /**
  * Computes the stone-specific combat bonus AND zero-sum physical drawbacks for a weapon, shield,
- * or auxiliary modified with 1–3 Gemstones / Component Parts.
+ * or auxiliary modified with 1–3 Bespoke Weapon Components and Gemstones.
  */
 export function getWeaponGemCombatModifiers(
   state: OrionState | undefined,
@@ -2106,91 +1919,112 @@ export function getWeaponGemCombatModifiers(
     state?.equipmentSlots?.slot1 ||
     state?.equippedWeapons[state.activeWeaponIndex] ||
     'gladius_boltcaster';
+  const modProfile = resolveWeaponModificationProfile(state, targetWpnId);
   const installedGems = getWeaponInstalledGems(state, targetWpnId);
   const gemId = installedGems[0] || null;
 
   const base: WeaponGemCombatModifiers = {
     gemId,
     installedGems,
-    damageMult: 1.0,
+    damageMult: modProfile.bcuDamageMultiplier,
     lockedOrStaggeredDamageMult: 1.0,
     maxShieldBonus: 0,
-    skillCooldownMult: 1.0,
-    skillHeatCostMult: 1.0,
-    projectileSpeedMult: 1.0,
+    skillCooldownMult: Number(
+      (1 / Math.max(0.7, modProfile.clampedTempoMultiplier)).toFixed(2)
+    ),
+    skillHeatCostMult: modProfile.heatCostMultiplier,
+    projectileSpeedMult: modProfile.projectileVelocityMultiplier,
     moveSpeedMult: 1.0,
-    bonusMaxAmmo: 0,
-    extraArmorDentOnHit: 0,
+    bonusMaxAmmo: modProfile.internalAmmoDelta,
+    extraArmorDentOnHit: Math.max(
+      0,
+      Math.round((modProfile.durShredMultiplier - 1) * 16) +
+        Math.max(0, modProfile.thrPierceDelta)
+    ),
     presenceGainOnHit: 0,
     shieldRestoreOnSkillHit: 0,
-    heatVentOnBasicHit: 0,
+    heatVentOnBasicHit: modProfile.heatVentOnHit,
     armorRestoreOnKill: 0,
-    weightDelta: 0,
-    attackWeightDelta: 0,
-    projectileWeightDelta: 0,
-    summaryLabel: 'Unmodified Base Equipment (Col 0)',
+    weightDelta: modProfile.weightDelta,
+    attackWeightDelta: Math.round((modProfile.meleeImpulseMultiplier - 1) * 20),
+    projectileWeightDelta: Math.round(
+      (modProfile.rangedImpulseMultiplier - 1) * 20
+    ),
+    modificationProfile: modProfile,
+    summaryLabel:
+      modProfile.installedMods.length > 0
+        ? modProfile.installedMods
+            .map(({ mod }) => `${mod.name} (${mod.effectSummary})`)
+            .join(' · ')
+        : 'Unmodified Base Equipment (Col 0)',
   };
 
-  if (installedGems.length === 0) return base;
-  base.summaryLabel = installedGems
-    .map((g) => WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS[g])
-    .filter(Boolean)
-    .join(' · ');
+  if (installedGems.length === 0 && modProfile.installedMods.length === 0) {
+    return base;
+  }
 
-  for (const g of installedGems) {
-    base.weightDelta += WEAPON_GEM_WEIGHT_DELTA[g] ?? 0;
-    switch (g) {
-      case 'moonstone':
-        base.maxShieldBonus += 8;
-        base.skillCooldownMult *= 0.9;
-        base.damageMult *= 0.95; // Zero-sum drawback: -5% direct damage
-        break;
-      case 'spinel':
-        base.damageMult *= (state?.heat ?? 0) >= 50 ? 1.22 : 1.15;
-        base.skillHeatCostMult *= 1.12; // Zero-sum drawback: +12% heat cost
-        base.attackWeightDelta += 3;
-        break;
-      case 'carnelian':
-        base.extraArmorDentOnHit += 4;
-        base.presenceGainOnHit += 15;
-        base.attackWeightDelta += 8; // Heavier for inertia impulse
-        base.projectileWeightDelta += 6;
-        base.skillCooldownMult *= 1.06; // Zero-sum drawback: heavier swing recovery
-        break;
-      case 'titanite':
-        base.maxShieldBonus += 15;
-        base.shieldRestoreOnSkillHit += 4;
-        base.moveSpeedMult *= 0.96; // Zero-sum drawback: -4% move speed from heavy barrier mass
-        base.attackWeightDelta += 5;
-        break;
-      case 'demantoid':
-        base.skillHeatCostMult *= 0.85;
-        base.skillCooldownMult *= 0.9;
-        base.projectileSpeedMult *= 0.95; // Zero-sum drawback: -5% velocity
-        break;
-      case 'kyanite':
-        base.projectileSpeedMult *= 1.15;
-        base.skillCooldownMult *= 0.88;
-        base.skillHeatCostMult *= 1.08; // Zero-sum drawback: +8% skill heat cost
-        break;
-      case 'charoite':
-        base.lockedOrStaggeredDamageMult *= 1.2;
-        base.moveSpeedMult *= 1.08;
-        base.attackWeightDelta -= 6; // Zero-sum drawback: lighter blade has less raw inertia mass
-        base.projectileWeightDelta -= 4;
-        break;
-      case 'rubellite':
-        base.damageMult *= 1.12;
-        base.bonusMaxAmmo += 1;
-        base.skillHeatCostMult *= 1.1; // Zero-sum drawback: +10% skill heat cost
-        base.projectileWeightDelta += 3;
-        break;
-      case 'hematite':
-        base.heatVentOnBasicHit += 4;
-        base.armorRestoreOnKill += 4;
-        base.skillCooldownMult *= 1.08; // Zero-sum drawback: +8% skill cooldowns
-        base.attackWeightDelta += 4;
-        break;
+  // If no bespoke component slots exist (e.g., direct gem socket on Unique Magitech weapon), apply legacy gem modifiers
+  if (modProfile.installedMods.length === 0 && installedGems.length > 0) {
+    base.summaryLabel = installedGems
+      .map((g) => WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS[g])
+      .filter(Boolean)
+      .join(' · ');
+
+    for (const g of installedGems) {
+      base.weightDelta += WEAPON_GEM_WEIGHT_DELTA[g] ?? 0;
+      switch (g) {
+        case 'moonstone':
+          base.maxShieldBonus += 8;
+          base.skillCooldownMult *= 0.9;
+          base.damageMult *= 0.95;
+          break;
+        case 'spinel':
+          base.damageMult *= (state?.heat ?? 0) >= 50 ? 1.22 : 1.15;
+          base.skillHeatCostMult *= 1.12;
+          base.attackWeightDelta += 3;
+          break;
+        case 'carnelian':
+          base.extraArmorDentOnHit += 4;
+          base.presenceGainOnHit += 15;
+          base.attackWeightDelta += 8;
+          base.projectileWeightDelta += 6;
+          base.skillCooldownMult *= 1.06;
+          break;
+        case 'titanite':
+          base.maxShieldBonus += 15;
+          base.shieldRestoreOnSkillHit += 4;
+          base.moveSpeedMult *= 0.96;
+          base.attackWeightDelta += 5;
+          break;
+        case 'demantoid':
+          base.skillHeatCostMult *= 0.85;
+          base.skillCooldownMult *= 0.9;
+          base.projectileSpeedMult *= 0.95;
+          break;
+        case 'kyanite':
+          base.projectileSpeedMult *= 1.15;
+          base.skillCooldownMult *= 0.88;
+          base.skillHeatCostMult *= 1.08;
+          break;
+        case 'charoite':
+          base.lockedOrStaggeredDamageMult *= 1.2;
+          base.moveSpeedMult *= 1.08;
+          base.attackWeightDelta -= 6;
+          base.projectileWeightDelta -= 4;
+          break;
+        case 'rubellite':
+          base.damageMult *= 1.12;
+          base.bonusMaxAmmo += 1;
+          base.skillHeatCostMult *= 1.1;
+          base.projectileWeightDelta += 3;
+          break;
+        case 'hematite':
+          base.heatVentOnBasicHit += 4;
+          base.armorRestoreOnKill += 4;
+          base.skillCooldownMult *= 1.08;
+          base.attackWeightDelta += 4;
+          break;
+      }
     }
   }
 
@@ -2213,9 +2047,24 @@ export function getWeaponGemVisuals(
   label: string;
   bonusDescription: string;
 } {
+  const modProfile = resolveWeaponModificationProfile(state, weaponId);
   const installedGems = getWeaponInstalledGems(state, weaponId);
-  const gemId = installedGems[0] || null;
-  if (!gemId) {
+  let gemId: GemId | null = installedGems[0] || null;
+  if (!gemId && modProfile.installedMods.length > 0) {
+    const firstMod = modProfile.installedMods[0].mod;
+    gemId =
+      firstMod.acquisitionSource === 'CRAFTED'
+        ? RECIPE_GEMSTONE_TO_ID[firstMod.recipe.gemstoneType]
+        : 'spinel';
+  }
+  const suffix =
+    modProfile.populatedSlotCount === 2
+      ? ' +II'
+      : modProfile.populatedSlotCount >= 3
+        ? ' +III'
+        : '';
+
+  if (!gemId && modProfile.populatedSlotCount === 0) {
     return {
       gemId: null,
       installedGems: [],
@@ -2226,7 +2075,7 @@ export function getWeaponGemVisuals(
       bonusDescription: 'Unmodified Base Equipment',
     };
   }
-  const gem = GEMSTONE_REGISTRY[gemId];
+  const gem = gemId ? GEMSTONE_REGISTRY[gemId] : undefined;
   if (!gem) {
     return {
       gemId: null,
@@ -2234,29 +2083,33 @@ export function getWeaponGemVisuals(
       colIndex: 0,
       color: '#e2e8f0',
       coreColor: '#ffffff',
-      label: 'BASE (COL 0)',
-      bonusDescription: 'Unmodified Base Equipment',
+      label:
+        modProfile.populatedSlotCount > 0 ? `CUSTOM${suffix}` : 'BASE (COL 0)',
+      bonusDescription:
+        modProfile.installedMods.length > 0
+          ? modProfile.installedMods.map(({ mod }) => mod.name).join(' · ')
+          : 'Unmodified Base Equipment',
     };
   }
-  const suffix =
-    installedGems.length === 2
-      ? ' +II'
-      : installedGems.length === 3
-        ? ' +III'
-        : installedGems.length > 3
-          ? ` +${installedGems.length}`
-          : '';
   return {
     gemId,
     installedGems,
     colIndex: gem.colIndex,
     color: gem.hexColor,
     coreColor: gem.coreHexColor || gem.hexColor,
-    label: `CUSTOM${suffix} (${gem.name.toUpperCase()})`,
-    bonusDescription: installedGems
-      .map((g) => WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS[g])
-      .filter(Boolean)
-      .join(' · '),
+    label:
+      modProfile.installedMods.length > 0
+        ? `CUSTOM${suffix} (${modProfile.installedMods.length}/3 PARTS${modProfile.socketedGems.length > 0 ? ` · ${modProfile.socketedGems.length}G` : ''})`
+        : `CUSTOM${suffix} (${gem.name.toUpperCase()})`,
+    bonusDescription:
+      modProfile.installedMods.length > 0
+        ? modProfile.installedMods
+            .map(({ mod }) => `${mod.name}: ${mod.effectSummary}`)
+            .join(' · ')
+        : installedGems
+            .map((g) => WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS[g])
+            .filter(Boolean)
+            .join(' · '),
   };
 }
 
@@ -3386,20 +3239,14 @@ export function getWeaponInstanceEquipWeight(
   const baseClass = wDef.weightClass || 'medium';
   const baseWt =
     baseClass === 'heavy' ? 18 : baseClass === 'light' ? 4 : 10;
+  const modProfile = resolveWeaponModificationProfile(state, weaponInstanceId);
+  if (modProfile.installedMods.length > 0) {
+    return Math.max(2, baseWt + modProfile.weightDelta);
+  }
   const { installedGems } = parseEquipmentInstanceId(weaponInstanceId);
   let delta = 0;
   for (const g of installedGems) {
     delta += WEAPON_GEM_WEIGHT_DELTA[g] ?? 0;
-  }
-  const compMap = state?.equipmentSlots?.installedWeaponComponents?.[weaponInstanceId];
-  if (compMap) {
-    for (const partId of Object.values(compMap)) {
-      const partDef = WEAPON_COMPONENT_PART_CATALOG.find((p) => p.id === partId);
-      if (partDef) {
-        // Adjust difference between part's explicit weightDelta and its primaryGemId baseline
-        delta += partDef.weightDelta - (WEAPON_GEM_WEIGHT_DELTA[partDef.primaryGemId] ?? 0);
-      }
-    }
   }
   return Math.max(2, baseWt + delta);
 }

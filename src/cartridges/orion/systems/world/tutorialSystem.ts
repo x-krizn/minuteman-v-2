@@ -22,6 +22,7 @@ import {
   CANONICAL_HARDWARE_CATALOG,
   findHardwareItemByNameOrId,
   GEMSTONE_CATALOG,
+  LOOTED_WEAPON_COMPONENT_POOL,
   refundInventoryGem,
   unlockEquipmentItem,
   unlockLevel2SecondaryWeapon,
@@ -878,12 +879,16 @@ export function performDirectWorldInteraction(
         for (const hw of CANONICAL_HARDWARE_CATALOG) {
           unlockEquipmentItem(state, hw.id);
         }
+        for (const part of LOOTED_WEAPON_COMPONENT_POOL) {
+          unlockEquipmentItem(state, part.id);
+          unlockEquipmentItem(state, part.id);
+        }
         if (state.equipmentSlots) {
           state.equipmentSlots.unlockedMods = ACTION_MODIFICATION_CATALOG.map((m) => m.id);
         }
         syncStateGates(state);
         soundSystem.playPowerup();
-        ctx.say('UNLOCKED ALL WEAPONS, AUXILIARIES, HARDWARE & ACTION MODS');
+        ctx.say('UNLOCKED ALL WEAPONS, AUXILIARIES, HARDWARE, LOOTED COMPONENTS & ACTION MODS');
         notifyOrionStateChange();
         return true;
       }

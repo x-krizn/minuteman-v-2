@@ -203,6 +203,140 @@ export type ModPartOrigin = 'crafted' | 'looted';
 export type LoadBracket = 'light' | 'medium' | 'heavy' | 'overloaded';
 
 /**
+ * Physical domain for weapon component modifications (`Project Orion — Weapon Modification Overhaul Specification.md` §2.1).
+ * A weapon may hold at most one component per domain across its 3 non-sequential slots.
+ */
+export type ModDomain = 'CONTACT' | 'DELIVERY' | 'REGULATION';
+
+/**
+ * Action 1 execution mode gating for parametric and behavioral weapon component overrides (`Project Orion — Weapon Modification Overhaul Specification.md` §2.4 & §4).
+ */
+export type Action1Mode = 'MAGAZINE' | 'DRAW_CHARGE' | 'MELEE_COMBO' | 'BURST_VOLLEY';
+
+/**
+ * Crafting recipe required at the Armory Workbench for `CRAFTED` weapon components (`Project Orion — Weapon Modification Overhaul Specification.md` §2.2 & §4).
+ */
+export interface CraftingRecipe {
+  scrapCost: number;
+  gemstoneType:
+    | 'Moonstone'
+    | 'Spinel'
+    | 'Carnelian'
+    | 'Titanite'
+    | 'Demantoid'
+    | 'Kyanite'
+    | 'Charoite'
+    | 'Rubellite'
+    | 'Hematite';
+  gemstoneCount: number;
+}
+
+/**
+ * Parametric or behavioral Action 1 modification defined by a weapon component (`Project Orion — Weapon Modification Overhaul Specification.md` §2.4 & §4).
+ * At most one `'BEHAVIORAL'` Action 1 override may be active on a weapon at a time.
+ */
+export interface Action1Override {
+  kind: 'PARAMETRIC' | 'BEHAVIORAL';
+  requiresMode?: Action1Mode;
+  setsMode?: Action1Mode;
+  ammoMultiplier?: number;
+  reloadTimeMultiplier?: number;
+  volleyBonusCount?: number;
+  comboStepCountOverride?: number;
+  finisherReachMultiplier?: number;
+  secondaryProjectile?: {
+    damageType: DamageType;
+    bcuScale: number;
+    rangeMeters: number;
+    triggerStep: 'STEP_1' | 'FINISHER' | 'EVERY_SHOT';
+  };
+}
+
+/**
+ * Numeric stat modifiers carried by a weapon component (`Project Orion — Weapon Modification Overhaul Specification.md` §3 & §4).
+ */
+export interface WeaponComponentStatModifiers {
+  weightDelta?: number;
+  tempoDelta?: number;
+  impulseMultDelta?: number;
+  rangedImpulseMultDelta?: number;
+  thrPierceDelta?: number;
+  durShredMultDelta?: number;
+  shieldDmgMultDelta?: number;
+  stabilityDelta?: number;
+  heatPerActionDelta?: number;
+  heatCostMultDelta?: number;
+  heatVentOnHit?: number;
+  heatVentOnBlock?: number;
+  parryWindowBonusSec?: number;
+  swapSpeedMultDelta?: number;
+  recoilMultDelta?: number;
+  rangeMultDelta?: number;
+  cleaveArcMultDelta?: number;
+  bcuMultDelta?: number;
+  finisherBcuMultDelta?: number;
+  step1BcuMultDelta?: number;
+  lungeMultDelta?: number;
+  muChargeMultDelta?: number;
+  targetMuStripOnHit?: number;
+  shieldRegenDebuffSec?: number;
+  drawTimeMultDelta?: number;
+  drawHoldDrainMultDelta?: number;
+  eliminateMoveAimSway?: number;
+  shieldDurabilityDelta?: number;
+  armorThresholdDelta?: number;
+  armorRatingDelta?: number;
+  guardMitigationMultDelta?: number;
+  internalAmmoDelta?: number;
+  projectileVelocityMultDelta?: number;
+}
+
+/**
+ * Discriminated union for the 61 Bespoke Weapon Components across the 8 Weapon Classes (`Project Orion — Weapon Modification Overhaul Specification.md` §3 & §4).
+ * Enforces strict mutual exclusion between `CRAFTED` (1G socket, requires recipe) and `LOOTED` (1–3G sockets, recipe is null).
+ */
+export type WeaponComponentMod =
+  | {
+      id: string;
+      name: string;
+      weaponClass: WeaponCategory;
+      domain: ModDomain;
+      acquisitionSource: 'CRAFTED';
+      maxGemSlots: 1;
+      recipe: CraftingRecipe;
+      damageTypeOverride?: DamageType;
+      action1Override?: Action1Override;
+      statModifiers: WeaponComponentStatModifiers;
+      effectSummary: string;
+      tradeOffSummary: string;
+      primaryGemId: GemId;
+    }
+  | {
+      id: string;
+      name: string;
+      weaponClass: WeaponCategory;
+      domain: ModDomain;
+      acquisitionSource: 'LOOTED';
+      maxGemSlots: 1 | 2 | 3;
+      recipe: null;
+      damageTypeOverride?: DamageType;
+      action1Override?: Action1Override;
+      statModifiers: WeaponComponentStatModifiers;
+      effectSummary: string;
+      tradeOffSummary: string;
+      primaryGemId: GemId;
+    };
+
+/**
+ * Per-slot installation state for one of the 3 non-sequential weapon slots (`Slot 1`, `Slot 2`, `Slot 3`),
+ * storing the installed component ID and its nested Gemstone sockets (`1G` for Crafted, `1..3G` for Looted).
+ */
+export interface InstalledWeaponComponentSlotRecord {
+  partId: string;
+  socketedGems: Array<GemId | null>;
+}
+
+/**
  * Type contract for `WeaponComponentPartDefinition` (weapon component part definition) in `equipment.ts`.
  */
 export interface WeaponComponentPartDefinition {
@@ -222,6 +356,18 @@ export interface WeaponComponentPartDefinition {
   weightDelta: number;
   attackWeightDelta?: number;
   projectileWeightDelta?: number;
+  /** Canonical Weapon Class (`WeaponCategory`) for the 61 Bespoke Weapon Components */
+  weaponClass?: WeaponCategory;
+  /** Physical anatomical domain (`CONTACT` | `DELIVERY` | `REGULATION`) */
+  domain?: ModDomain;
+  /** Scrap cost required when forging a `CRAFTED` weapon component */
+  scrapCost?: number;
+  /** Damage type override (only permitted on `CONTACT` domain components) */
+  damageTypeOverride?: DamageType;
+  /** Parametric or behavioral Action 1 override */
+  action1Override?: Action1Override;
+  /** Structured numeric stat modifiers */
+  statModifiers?: WeaponComponentStatModifiers;
 }
 
 /**
@@ -330,6 +476,13 @@ export interface OrionEquipmentSlots {
   installedMods: Record<string, string>;
   /** Tracks named component parts installed on weapon instances (`weaponInstanceId -> { [componentSlot]: partId }`) */
   installedWeaponComponents?: Record<string, Record<string, string>>;
+  /** Tracks the 3 non-sequential weapon component slots (`0 | 1 | 2`) and their nested Gem sockets (`1G` Crafted / `1..3G` Looted) per weapon instance */
+  installedWeaponComponentSlots?: Record<
+    string,
+    Partial<Record<0 | 1 | 2, InstalledWeaponComponentSlotRecord>>
+  >;
+  /** Inventory counts of salvaged `LOOTED` weapon components owned by the pilot (`partId -> count`) */
+  ownedLootedComponents?: Record<string, number>;
   unlockedMods?: string[];
   unlockedEquipment?: string[];
   weaponGemMods?: Record<string, GemId | null>;

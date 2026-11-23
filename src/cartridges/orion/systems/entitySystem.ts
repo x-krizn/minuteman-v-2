@@ -292,6 +292,23 @@ export function updateEnemies(
     if ((e.lastInertiaOutcomeTimer || 0) > 0) {
       e.lastInertiaOutcomeTimer = Math.max(0, (e.lastInertiaOutcomeTimer || 0) - dt);
     }
+    if ((e.petrifyImmunityTimer || 0) > 0) {
+      e.petrifyImmunityTimer = Math.max(0, (e.petrifyImmunityTimer || 0) - dt);
+    }
+    if ((e.petrifiedTimer || 0) > 0) {
+      const prevPet = e.petrifiedTimer || 0;
+      e.petrifiedTimer = Math.max(0, prevPet - dt);
+      e.stun = Math.max(e.stun, e.petrifiedTimer);
+      e.knockbackVx = 0;
+      e.knockbackVy = 0;
+      if (prevPet > 0 && e.petrifiedTimer <= 0) {
+        // Stone-Hardened immunity for 8.0s after thawing from Gorgon's Gaze
+        e.petrifyImmunityTimer = 8.0;
+      }
+    }
+    if ((e.blindedTimer || 0) > 0) {
+      e.blindedTimer = Math.max(0, (e.blindedTimer || 0) - dt);
+    }
     if ((e.knockdownTimer || 0) > 0) {
       e.knockdownTimer = Math.max(0, (e.knockdownTimer || 0) - dt);
       e.stun = Math.max(e.stun, e.knockdownTimer);
@@ -319,6 +336,10 @@ export function updateEnemies(
     const def = getEnemyDefinition(e.type);
     if (def) {
       def.update(rooms, state, e, dt);
+      // Glance of the Gatekeeper Blind (-50% tracking accuracy during windup/chase)
+      if ((e.blindedTimer || 0) > 0 && typeof e.attackAngle === 'number' && e.state === 'windup') {
+        e.attackAngle += Math.sin(e.t * 11 + e.id) * 0.45 * dt;
+      }
     }
 
     // Record enemy in Pilot Codex once sighted within light range, locked-on, or damaged

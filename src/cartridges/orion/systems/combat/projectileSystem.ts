@@ -15,6 +15,7 @@ import {
 import {
   ACTION_MODIFICATION_CATALOG,
   computeInterfaceFeatModifiers,
+  getActiveLegendaryEngineHooks,
   getWeaponGemCombatModifiers,
   getWeaponGemVisuals,
   resolveEquippedHardwareStats,
@@ -43,7 +44,11 @@ import {
   normalizeAngleDiff,
   triggerEntityFlash,
 } from './combatHelpers';
-import { applyDamageToLayers, PERFECT_BLOCK_WINDOW_SEC } from './damageSystem';
+import {
+  applyDamageToLayers,
+  PERFECT_BLOCK_WINDOW_SEC,
+  triggerGorgonsGazeCone,
+} from './damageSystem';
 import { getSkillCooldownKey } from './skillExecution';
 
 /**
@@ -169,6 +174,16 @@ export function executeBasicAttackShot(
   const arch = classifyWeaponCombatArchetype(weapon, currentWeaponId);
   const gemCombatMods = getWeaponGemCombatModifiers(state, currentWeaponId);
   const modProfile = gemCombatMods.modificationProfile;
+  const activeLegendaryHooks = modProfile?.activeLegendaryHooks || [];
+  const hasBypassLayer1Shields = activeLegendaryHooks.includes('BYPASS_LAYER1_SHIELDS');
+  const hasZeroHitStop = activeLegendaryHooks.includes('ZERO_HIT_STOP');
+  const hasPermanentKill = activeLegendaryHooks.includes('PERMANENT_KILL_PREVENT_RESURRECT');
+  const hasTwinBladeExecution = activeLegendaryHooks.includes('TWIN_BLADE_DUAL_EXECUTION');
+  const hasGorgonsGaze =
+    activeLegendaryHooks.includes('BYPASS_BOSS_CC_IMMUNITY_PETRIFY') ||
+    getActiveLegendaryEngineHooks(state, state.equipmentSlots?.slot2).has(
+      'BYPASS_BOSS_CC_IMMUNITY_PETRIFY'
+    );
   const compStats = modProfile?.statModifiers;
   const isBurstVolleyBow = modProfile?.effectiveAction1Mode === 'BURST_VOLLEY';
   const isMeleeOrShield = Boolean(action?.noReload) || arch.isMeleeOrShield;
@@ -301,6 +316,9 @@ export function executeBasicAttackShot(
       maxReach: number = 28
     ) => {
       e.hurt = 0.2;
+      if (hasPermanentKill) {
+        e.preventResurrection = true;
+      }
       const hitEval = evaluatePositionalHitQuality(
         currentWeaponId,
         state.x,
@@ -374,10 +392,14 @@ export function executeBasicAttackShot(
       e.knockbackVy = nextKvy;
       e.lastInertiaOutcome = inertiaRes.outcome;
       e.lastInertiaOutcomeTimer = 0.55;
-      state.hitstopTimer = Math.max(
-        state.hitstopTimer || 0,
-        inertiaRes.hitstopSec + hitEval.extraHitstopSec
-      );
+      if (hasZeroHitStop) {
+        state.hitstopTimer = 0;
+      } else {
+        state.hitstopTimer = Math.max(
+          state.hitstopTimer || 0,
+          inertiaRes.hitstopSec + hitEval.extraHitstopSec
+        );
+      }
 
       if (inertiaRes.outcome === 'none') {
         triggerEntityFlash(e, '#94a3b8', 0.08, 'armor_deflect');
@@ -479,6 +501,7 @@ export function executeBasicAttackShot(
         : effectiveAction1DamageType;
       const layerOpts = {
         armorBypassRatio: hitEval.armorBypassRatio,
+        bypassShields: hasBypassLayer1Shields,
         thrPierceDelta,
         durShredMultiplier: durShredMult,
         shieldDamageMultiplier: shieldDmgMult,
@@ -486,7 +509,7 @@ export function executeBasicAttackShot(
         onFlash: (color: string, dur: number, kind: string) =>
           triggerEntityFlash(e, color, dur, kind),
       };
-      if (shieldBypassRatio > 0 && e.shields.capacity > 0) {
+      if (!hasBypassLayer1Shields && shieldBypassRatio > 0 && e.shields.capacity > 0) {
         const bypassed = Math.max(1, Math.round(effDamage * shieldBypassRatio));
         const normalPortion = Math.max(0, effDamage - bypassed);
         if (normalPortion > 0) {
@@ -523,6 +546,20 @@ export function executeBasicAttackShot(
           layerOpts
         );
       }
+
+      // Fused Yawarakai-Te & Juuchi Yosamu: both blades strike simultaneously across the shared Katana choreography
+      if (hasTwinBladeExecution) {
+        applyDamageToLayers(
+          e.shields,
+          e.armor,
+          e.frame,
+          effDamage,
+          resolvedDmgType,
+          (count) => ctx.spawnParticles(e.x, e.y, e.z + 10, count, '#e11d48', ''),
+          layerOpts
+        );
+      }
+
       if (hitEval.quality === 'sweet') {
         soundSystem.playPowerup();
       }
@@ -560,10 +597,31 @@ export function executeBasicAttackShot(
         flipDir: comboStep.flipDir,
       });
 
+      // Fused Yawarakai-Te & Juuchi Yosamu Twin-Blade Simultaneous Crimson Trail
+      if (hasTwinBladeExecution) {
+        state.bladeTrails.push({
+          x: state.x,
+          y: state.y,
+          z: state.z,
+          angle: aimAngle + (comboStep.flipDir ? -0.14 : 0.14),
+          arcSpan: scaledArcSpan,
+          radius: Math.max(16, scaledRadius - 1),
+          length: scaledLength,
+          width: Math.max(10, (comboStep.width || 12) - 1),
+          style: comboStep.style,
+          color: '#e11d48',
+          coreColor: '#ffe4e6',
+          life: Math.max(0.2, comboStep.actionDurationSec * 1.05),
+          maxLife: Math.max(0.2, comboStep.actionDurationSec * 1.05),
+          flipDir: !comboStep.flipDir,
+        });
+      }
+
       // Dual-Wield Companion Off-Hand Slash Trail when wielding a secondary melee weapon in Slot 2
       const sideWeaponId = state.equipmentSlots?.slot2;
       const sideWeapon = sideWeaponId ? getWeaponDefinition(sideWeaponId) : undefined;
       if (
+        !hasTwinBladeExecution &&
         sideWeaponId &&
         sideWeapon &&
         sideWeapon.equipmentRole === 'melee' &&
@@ -642,6 +700,11 @@ export function executeBasicAttackShot(
             reach
           );
         }
+      }
+
+      // Aegis of the Gorgon: Action 1 Shield Bash Finisher triggers Gorgon's Gaze petrify cone
+      if (isFinisherStep && hasGorgonsGaze && arch.isShield) {
+        triggerGorgonsGazeCone(state, ctx, aimAngle);
       }
 
       // Bespoke Secondary Projectile Payloads (Conduit-Vented Crossguard Wave slash, Seismic Anvil Head shockwave, Capacitor Rim Emitter shock-cone)
@@ -1359,6 +1422,31 @@ export function updateProjectiles(
     } else {
       const dist = Math.hypot(state.x - p.x, state.y - p.y);
       if (dist < 12 && Math.abs(state.z - p.z) < 12 && !state.isBoosterDashing) {
+        const slot1Id = state.equipmentSlots?.slot1 || state.equippedWeapons[0];
+        const slot2Id = state.equipmentSlots?.slot2;
+        const activeBlockWpnId = state.blockingWeaponId || slot1Id;
+        const playerHooks = new Set([
+          ...getActiveLegendaryEngineHooks(state, slot1Id),
+          ...getActiveLegendaryEngineHooks(state, slot2Id),
+          ...getActiveLegendaryEngineHooks(state, activeBlockWpnId),
+        ]);
+        const hasUnbreakableGuard = playerHooks.has('UNBREAKABLE_DIRECTIONAL_GUARD');
+        const hasGorgonsGaze = playerHooks.has('BYPASS_BOSS_CC_IMMUNITY_PETRIFY');
+        const hasAlwaysHyperArmor = playerHooks.has('ALWAYS_HYPER_ARMOR');
+        const hasZeroHitStop = playerHooks.has('ZERO_HIT_STOP');
+        const hasDrOutsideHitFrames = playerHooks.has('DR_OUTSIDE_ACTIVE_HIT_FRAMES');
+        const hasDrDuringHitFrames = playerHooks.has('DR_DURING_ACTIVE_HIT_FRAMES');
+        const isInActiveHitFrames = Boolean(
+          (state.activeSkillSlot !== null || state.activeActionId !== null) &&
+            (state.skillTellTimer || 0) <= 0 &&
+            (state.skillActionTimer || 0) > 0
+        );
+        const phaseDrMult =
+          (hasDrDuringHitFrames && isInActiveHitFrames) ||
+          (hasDrOutsideHitFrames && !isInActiveHitFrames)
+            ? 0.8
+            : 1.0;
+
         const isPerfectBlock = Boolean(
           state.isHoldingBlock && (state.blockHoldTimer || 0) <= PERFECT_BLOCK_WINDOW_SEC
         );
@@ -1367,21 +1455,40 @@ export function updateProjectiles(
         if (isPerfectBlock) {
           soundSystem.playPowerup();
           triggerEntityFlash(state, '#fde047', 0.16, 'parry');
-          state.hitstopTimer = Math.max(state.hitstopTimer || 0, 0.05);
+          state.hitstopTimer = hasZeroHitStop ? 0 : Math.max(state.hitstopTimer || 0, 0.05);
           state.shields.capacity = Math.min(
             state.shields.maxCapacity,
             state.shields.capacity + 10
           );
           state.heat = Math.max(0, state.heat - 8);
           ctx.spawnParticles(state.x, state.y, state.z + 10, 8, '#fde047', '');
+          if (hasGorgonsGaze) {
+            triggerGorgonsGazeCone(state, ctx, Math.atan2(-p.vy, -p.vx));
+          }
         } else {
           soundSystem.playHit();
-          const finalProjDamage = isGuarding
-            ? Math.max(1, Math.round(p.damage * 0.35))
-            : p.damage;
+          const finalProjDamage = Math.max(
+            1,
+            Math.round((isGuarding ? Math.round(p.damage * 0.35) : p.damage) * phaseDrMult)
+          );
           if (isGuarding) {
-            triggerEntityFlash(state, '#38bdf8', 0.1, 'shield');
-            ctx.spawnParticles(state.x, state.y, state.z + 8, 4, '#38bdf8', '');
+            triggerEntityFlash(
+              state,
+              hasUnbreakableGuard ? '#facc15' : '#38bdf8',
+              0.1,
+              'shield'
+            );
+            ctx.spawnParticles(
+              state.x,
+              state.y,
+              state.z + 8,
+              4,
+              hasUnbreakableGuard ? '#facc15' : '#38bdf8',
+              hasUnbreakableGuard ? 'AEGIS GUARD' : ''
+            );
+          } else if (hasAlwaysHyperArmor) {
+            state.hitstopTimer = hasZeroHitStop ? 0 : state.hitstopTimer;
+            triggerEntityFlash(state, '#38bdf8', 0.08, 'armor_deflect');
           } else {
             const projSpeed = p.projectileSpeed || Math.hypot(p.vx, p.vy) || 155;
             const projWeight = p.projectileWeight ?? 14;
@@ -1415,7 +1522,9 @@ export function updateProjectiles(
             state.lastInertiaOutcomeTimer = 0.65;
             state.lastImpactDv = inertiaRes.dv;
             state.lastImpactDvEff = inertiaRes.dvEff;
-            state.hitstopTimer = Math.max(state.hitstopTimer || 0, inertiaRes.hitstopSec);
+            state.hitstopTimer = hasZeroHitStop
+              ? 0
+              : Math.max(state.hitstopTimer || 0, inertiaRes.hitstopSec);
 
             if (inertiaRes.outcome === 'none') {
               triggerEntityFlash(state, '#94a3b8', 0.08, 'armor_deflect');
@@ -1461,6 +1570,7 @@ export function updateProjectiles(
               );
             }
           }
+          const preHitArmorDur = state.armor.durability;
           applyDamageToLayers(
             state.shields,
             state.armor,
@@ -1473,6 +1583,9 @@ export function updateProjectiles(
               onFlash: (color, dur, kind) => triggerEntityFlash(state, color, dur, kind),
             }
           );
+          if (isGuarding && hasUnbreakableGuard && state.armor.durability <= 0 && preHitArmorDur > 0) {
+            state.armor.durability = 1;
+          }
         }
 
         if (p.onImpact) {

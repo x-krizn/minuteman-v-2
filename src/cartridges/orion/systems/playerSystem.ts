@@ -238,6 +238,14 @@ function applySerializedSaveDataToState(
         Object.keys(data.equipmentSlots.ownedLootedComponents).length > 0
           ? data.equipmentSlots.ownedLootedComponents
           : baseSlots.ownedLootedComponents,
+      installedLoreBoundRelics:
+        data.equipmentSlots.installedLoreBoundRelics ||
+        baseSlots.installedLoreBoundRelics ||
+        {},
+      ownedLoreBoundRelics:
+        data.equipmentSlots.ownedLoreBoundRelics ||
+        baseSlots.ownedLoreBoundRelics ||
+        {},
     };
   }
   state.presence = data.presence ?? state.presence ?? 100;
@@ -916,6 +924,10 @@ export function syncStateGates(state: OrionState): OrionCapabilityGates {
   }
   if (isTwoHandOnlyWeapon(state.equipmentSlots.slot1, state)) {
     state.equipmentSlots.mainGrip = '2h';
+    const slot1Def = getWeaponDefinition(state.equipmentSlots.slot1);
+    if (slot1Def?.legendarySpec?.strictTwoHandedNoOffhand) {
+      state.equipmentSlots.slot2 = null;
+    }
   } else if (!state.equipmentSlots.mainGrip) {
     state.equipmentSlots.mainGrip = state.equipmentSlots.slot2 ? '1h' : '2h';
   }
@@ -955,6 +967,10 @@ export function syncStateGates(state: OrionState): OrionCapabilityGates {
   let shieldArmorRtgDelta = 0;
   let componentStabilityDelta = 0;
 
+  let legendaryArmorFloorDur = 0;
+  let legendaryArmorFloorRtg = 0;
+  let legendaryArmorFloorThr = 0;
+
   const shieldBonusFromGear = allGear.reduce((sum, wId) => {
     const def = getWeaponDefinition(wId);
     const gemMod = getWeaponGemCombatModifiers(state, wId);
@@ -966,11 +982,33 @@ export function syncStateGates(state: OrionState): OrionCapabilityGates {
       shieldArmorRtgDelta += modProf.armorRatingDelta;
       componentStabilityDelta += modProf.stabilityDelta;
     }
+    if (def?.legendarySpec?.armorProfile) {
+      legendaryArmorFloorDur = Math.max(
+        legendaryArmorFloorDur,
+        def.legendarySpec.armorProfile.durability
+      );
+      legendaryArmorFloorRtg = Math.max(
+        legendaryArmorFloorRtg,
+        def.legendarySpec.armorProfile.rating
+      );
+      legendaryArmorFloorThr = Math.max(
+        legendaryArmorFloorThr,
+        def.legendarySpec.armorProfile.threshold
+      );
+    }
     return sum + (def?.passiveShieldBonus || 0) + gemMod.maxShieldBonus;
   }, 0);
 
-  state.armor.threshold = Math.max(1, hwStats.armorThreshold + shieldArmorThrDelta);
-  state.armor.rating = Math.max(1, hwStats.armorRating + shieldArmorRtgDelta);
+  state.armor.threshold = Math.max(
+    1,
+    legendaryArmorFloorThr,
+    hwStats.armorThreshold + shieldArmorThrDelta
+  );
+  state.armor.rating = Math.max(
+    1,
+    legendaryArmorFloorRtg,
+    hwStats.armorRating + shieldArmorRtgDelta
+  );
 
   const targetMaxShield = Math.max(
     0,
@@ -991,6 +1029,7 @@ export function syncStateGates(state: OrionState): OrionCapabilityGates {
 
   const targetMaxArmor = Math.max(
     10,
+    legendaryArmorFloorDur,
     hwStats.baseArmorDurability +
       hwStats.hardwareArmorBonus +
       featMods.armorDurabilityDelta +
@@ -1125,6 +1164,8 @@ export function applyTraitLineProfile(state: OrionState, traitLine: TraitLine): 
   const prevUnlockedEquip = state.equipmentSlots?.unlockedEquipment || [];
   const prevCompSlots = state.equipmentSlots?.installedWeaponComponentSlots || {};
   const prevOwnedLooted = state.equipmentSlots?.ownedLootedComponents || {};
+  const prevInstalledLoreRelics = state.equipmentSlots?.installedLoreBoundRelics || {};
+  const prevOwnedLoreRelics = state.equipmentSlots?.ownedLoreBoundRelics || {};
   const prevBelt = state.equipmentSlots?.belt;
 
   const prevTrait = state.traitLine;
@@ -1192,6 +1233,11 @@ export function applyTraitLineProfile(state: OrionState, traitLine: TraitLine): 
     ownedLootedComponents: {
       ...(freshSlots.ownedLootedComponents || {}),
       ...prevOwnedLooted,
+    },
+    installedLoreBoundRelics: { ...prevInstalledLoreRelics },
+    ownedLoreBoundRelics: {
+      ...(freshSlots.ownedLoreBoundRelics || {}),
+      ...prevOwnedLoreRelics,
     },
     unlockedEquipment: mergedUnlockedEquip,
     ...(prevBelt ? { belt: prevBelt } : {}),
@@ -1851,6 +1897,9 @@ export function updatePlayerSystem(
     if (state.lightBuffTimer <= 0) {
       state.lightBuffDelta = 0;
     }
+  }
+  if ((state.gorgonGazeCooldownTimer || 0) > 0) {
+    state.gorgonGazeCooldownTimer = Math.max(0, (state.gorgonGazeCooldownTimer || 0) - dt);
   }
 
   const recoilMult =

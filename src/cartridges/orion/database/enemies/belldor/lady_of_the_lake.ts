@@ -44,8 +44,16 @@ export const ladyOfTheLakeEnemy: EnemyWikiDefinition = {
   onDeath(state, _e, ctx) {
     state.flags = state.flags || {};
     state.flags.lady_of_the_lake_defeated = true;
+    if (state.equipmentSlots) {
+      state.equipmentSlots.ownedLoreBoundRelics =
+        state.equipmentSlots.ownedLoreBoundRelics || {};
+      state.equipmentSlots.ownedLoreBoundRelics.scabbard_of_avalon =
+        (state.equipmentSlots.ownedLoreBoundRelics.scabbard_of_avalon || 0) + 1;
+    }
     soundSystem.playPowerup();
-    ctx.say('THE LADY OF THE LAKE VANQUISHED! · AVALON SIEGE LANCE & RELIC GEMSTONES RECOVERED!');
+    ctx.say(
+      'THE LADY OF THE LAKE VANQUISHED! · CLAIMED LORE-BOUND RELIC: THE SCABBARD OF AVALON!'
+    );
     notifyOrionStateChange();
   },
   render25D(g, e, state, ey, isHurt, isWindup) {

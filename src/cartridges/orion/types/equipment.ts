@@ -382,6 +382,80 @@ export interface MagitechWeaponDefinition {
 }
 
 /**
+ * Exclusive engine boundary hooks granted by Legendary folklore relics and their lore-bound companion pieces (`Project Orion — Legendary Weapons Framework.md` §9).
+ */
+export type LegendaryEngineHook =
+  | 'BYPASS_LAYER1_SHIELDS'
+  | 'PREVENT_LETHAL_DOT'
+  | 'DR_OUTSIDE_ACTIVE_HIT_FRAMES'
+  | 'DR_DURING_ACTIVE_HIT_FRAMES'
+  | 'TWIN_BLADE_DUAL_EXECUTION'
+  | 'UNBREAKABLE_DIRECTIONAL_GUARD'
+  | 'BYPASS_BOSS_CC_IMMUNITY_PETRIFY'
+  | 'PERMANENT_KILL_PREVENT_RESURRECT'
+  | 'ALWAYS_HYPER_ARMOR'
+  | 'ZERO_HIT_STOP'
+  | 'PERFECT_BLOCK_MELEE_AUTO_COUNTER'
+  | 'IMMUNE_TO_OVERHEAT_LOCKOUT';
+
+/**
+ * Named lore-bound companion artifact that can be slotted into a specific Legendary weapon (`Project Orion — Legendary Weapons Framework.md` §2 Law 4 & §9).
+ */
+export interface LoreBoundAttachment {
+  id: string;
+  name: string;
+  originWorldId: string;
+  requiredWorldFlags: string[];
+  acquisitionSource: string;
+  canBeEquippedStandalone?: boolean;
+  transformedWeaponTitle?: string;
+  combinedWeightOverride?: number;
+  internalCooldownSeconds?: number;
+  grantedEngineHooks: LegendaryEngineHook[];
+  mechanicSummary: string;
+}
+
+/**
+ * Standalone TypeScript data schema for a canonical Legendary Folklore Weapon (`Project Orion — Legendary Weapons Framework.md` §9).
+ */
+export interface LegendaryWeaponDefinition {
+  id: string;
+  tier: 'LEGENDARY';
+  name: string;
+  originWorldId: string;
+  folkloreTradition: string;
+  areaLoreConnection: string;
+  weaponClass: WeaponCategory;
+  functionalClass: string;
+  damageType: DamageType;
+  weight: number;
+  maxObtainableCopies?: number;
+  armorProfile?: {
+    durability: number;
+    rating: number;
+    threshold: number;
+  };
+  gripMode: '1H' | '2H' | 'VERSATILE' | 'DORSAL_CARRIER';
+  legendaryGripOverride?: boolean;
+  strictTwoHandedNoOffhand?: boolean;
+  allowDorsalLauncherOnly?: boolean;
+  countsAsPairedOffhandBlade?: boolean;
+  allowStandardMods: false;
+  maxGemSlots: 0;
+  boundRelicSlots: LoreBoundAttachment[];
+  innateEngineHooks: LegendaryEngineHook[];
+  action3Override?: {
+    name: string;
+    effectType: 'STUN_BLIND_CONE';
+    stunSeconds: number;
+    blindSeconds: number;
+    widensWhenDualWielded?: boolean;
+  };
+  innateMechanicSummary: string;
+  loreDescription: string;
+}
+
+/**
  * Type contract for `WeaponComponentPartDefinition` (weapon component part definition) in `equipment.ts`.
  */
 export interface WeaponComponentPartDefinition {
@@ -528,6 +602,10 @@ export interface OrionEquipmentSlots {
   >;
   /** Tracks the dedicated `1G` Factory Resonance Gem socketed on any Magitech Purist Relic (`weaponInstanceId -> GemId | null`) */
   installedMagitechResonanceGems?: Record<string, GemId | null>;
+  /** Tracks the lore-bound companion relic installed on a Legendary weapon (`weaponBaseOrInstanceId -> attachmentId | null`) */
+  installedLoreBoundRelics?: Record<string, string | null>;
+  /** Inventory counts of lore-bound companion relics owned by the pilot (`attachmentId -> count`) */
+  ownedLoreBoundRelics?: Record<string, number>;
   /** Inventory counts of salvaged `LOOTED` weapon components owned by the pilot (`partId -> count`) */
   ownedLootedComponents?: Record<string, number>;
   unlockedMods?: string[];
@@ -605,10 +683,12 @@ export const WEAPON_CATEGORIES: WeaponCategory[] = [
 ];
 
 /**
- * Customization tier for a weapon (`'customizable'` for the 72 modular weapons with `3` component/gem slots,
- * or `'unique'` for the 29 fixed-part Magitech weapons with `1` gem socket).
+ * Customization tier for a weapon:
+ * - `'customizable'`: 72 modular weapons with `3` component slots & nested gem sockets
+ * - `'unique'`: 37 Magitech Purist relics with `0..3` open mil-spec mounts & `1` resonance gem socket
+ * - `'legendary'`: Mythic folklore artifacts with `0` standard mods, `0` gem sockets, and optional lore-bound companion relics
  */
-export type WeaponTier = 'customizable' | 'unique';
+export type WeaponTier = 'customizable' | 'unique' | 'legendary';
 
 /**
  * Weapon / Shield / Quiver / Catalyst Definition.
@@ -687,6 +767,8 @@ export interface WeaponDefinition {
   action1Signature?: string;
   /** Purist Resonance Passive activated when the paired Specialist Stance or Core Feat Chain is socketed */
   puristResonance?: PuristResonancePassive;
+  /** Canonical Legendary Folklore Weapon metadata and engine hooks (`weaponTier === 'legendary'`) */
+  legendarySpec?: LegendaryWeaponDefinition;
   description: string;
   lore: string;
   shotsPerChain: number; // 9 for Gladius Boltcaster

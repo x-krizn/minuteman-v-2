@@ -26,6 +26,8 @@ export * from './custom_shields_and_bows';
 export * from './custom_casters_and_carriers';
 export * from './custom_spears_and_hafted';
 export * from './custom_blades';
+export * from './legendary_weapons';
+import { canEquipOffhandWithLegendary } from './legendary_weapons';
 
 // Auto-discover all weapon entity modules in this directory (including subfolders) via Vite import.meta.glob
 const modules = import.meta.glob<Record<string, unknown>>('./**/*.ts', { eager: true });
@@ -33,7 +35,13 @@ const modules = import.meta.glob<Record<string, unknown>>('./**/*.ts', { eager: 
 export const LEGACY_WEAPON_ID_ALIASES: Record<string, string> = {
   gladius_boltcaster: 'n55_gladius',
   khopesh: 's2_turbine_khopesh',
-  avalon_siege_lance: 'hl220_lightburst_lance',
+  avalon_siege_lance: 'leg_excalibur',
+  excalibur: 'leg_excalibur',
+  yawarakai_te: 'leg_yawarakai_te',
+  juuchi_yosamu: 'leg_juuchi_yosamu',
+  aegis: 'leg_aegis',
+  knives_of_the_lake_of_fire: 'leg_lake_of_fire_knife',
+  balmung: 'leg_balmung',
   buckler_shield: 'ti110_aegis_buckler',
   aegis_charge_buckler: 'ti110_aegis_buckler',
   tig_edge: 's3_viper_partisan',
@@ -110,7 +118,8 @@ for (const [path, mod] of Object.entries(modules)) {
         exportedValue.name
       );
       const tier = exportedValue.weaponTier || 'customizable';
-      const subtypeLabel = tier === 'unique' ? 'Magitech' : 'Custom';
+      const subtypeLabel =
+        tier === 'legendary' ? 'Legendary' : tier === 'unique' ? 'Magitech' : 'Custom';
       WEAPON_REGISTRY[exportedValue.id] = normalizeWeaponCombatFunctions({
         ...exportedValue,
         category,
@@ -275,6 +284,10 @@ export function canBypassTwoHandRestriction(
   if (def.category === 'Bows' || baseId === 'great_bow' || baseId.startsWith('bow_')) {
     return false;
   }
+  // Strict two-handed Legendaries (e.g., Balmung) never bypass 2H restriction even with Feats
+  if (def.legendarySpec?.strictTwoHandedNoOffhand) {
+    return false;
+  }
   if (def.gripMode === 'VERSATILE' || def.allowOneHandGrip || def.allowSideSlot || def.isLegendary) {
     return true;
   }
@@ -384,6 +397,28 @@ export function canEquipWeaponInSlot(
   }
 
   // slot === 'slot2' (Side Hand)
+  if (def.legendarySpec?.strictTwoHandedNoOffhand) {
+    return {
+      allowed: false,
+      reason: `${def.name} requires a strict two-handed grip in the MAIN slot.`,
+    };
+  }
+  const mainHandId = state?.equipmentSlots?.slot1 || state?.equippedWeapons?.[0];
+  if (mainHandId) {
+    const mainDef = getWeaponDefinition(mainHandId);
+    if (mainDef?.legendarySpec?.strictTwoHandedNoOffhand) {
+      const check = canEquipOffhandWithLegendary(
+        mainDef.legendarySpec,
+        def.category || 'Blades: Straight'
+      );
+      if (!check.ok) {
+        return {
+          allowed: false,
+          reason: check.reason,
+        };
+      }
+    }
+  }
   if (isTwoHandOnlyWeapon(def, state)) {
     return {
       allowed: false,

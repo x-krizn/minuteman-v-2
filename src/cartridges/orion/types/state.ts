@@ -216,6 +216,8 @@ export interface OrionState {
   revealedTimer?: number;
   /** Remaining duration in seconds of the 2.5s Veil of Mercy self-only -15% incoming damage reduction after stealth entry */
   stealthDrTimer?: number;
+  /** Remaining 14s internal cooldown in seconds for Aegis of the Gorgon's petrifying glare */
+  gorgonGazeCooldownTimer?: number;
 
   // Target Lock-On & Multi-Function Input State
   lockedTargetId: number | null;

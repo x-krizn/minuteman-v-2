@@ -93,6 +93,14 @@ export interface EnemyEntity {
   lastInertiaOutcomeTimer?: number;
   /** Enemy Light / vision radius in tiles (defaults to 5 tiles = 80px) */
   visionRadiusTiles?: number;
+  /** True when slain by Knives of the Lake of Fire (permanently disables resurrection/self-repair triggers) */
+  preventResurrection?: boolean;
+  /** Remaining petrification hard-lock freeze duration in seconds from Aegis of the Gorgon */
+  petrifiedTimer?: number;
+  /** Remaining Stone-Hardened petrification immunity duration in seconds after thawing from Gorgon's Gaze */
+  petrifyImmunityTimer?: number;
+  /** Remaining blinded duration in seconds from Glance of the Gatekeeper */
+  blindedTimer?: number;
 }
 
 /**

@@ -25,6 +25,7 @@ import {
   GEMSTONE_REGISTRY,
   generateEquipmentModWithGems,
   getBespokeComponentsForWeaponClass,
+  getEquipmentDisplayName,
   getEquipmentMaxModSlots,
   getHardwareBaseWeight,
   getHardwareCapacityBonus,
@@ -40,11 +41,14 @@ import {
   getWeaponSubtypeInfo,
   installBespokeWeaponComponent,
   installGemModOnEquipment,
+  installLoreBoundRelicOnLegendary,
   isEquipmentUnlocked,
+  isLoreBoundRelicUnlocked,
   parseEquipmentInstanceId,
   RECIPE_GEMSTONE_TO_ID,
   removeBespokeWeaponComponent,
   removeGemModFromEquipment,
+  removeLoreBoundRelicFromLegendary,
   resolveWeaponModificationProfile,
   socketGemIntoWeaponComponent,
   socketResonanceGemIntoMagitechWeapon,
@@ -365,6 +369,205 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
       0,
       Math.min((isWeaponItem ? 3 : maxSlots) - 1, selectedModSlotIndex)
     ) as 0 | 1 | 2;
+
+    // ─── LEGENDARY FOLKLORE ARTIFACTS (0 Standard Mods · 0 Gem Sockets · Optional Lore-Bound Companion Mount) ───
+    if (isWeaponItem && wDef && wDef.weaponTier === 'legendary' && wDef.legendarySpec) {
+      const legSpec = wDef.legendarySpec;
+      const modProfile = resolveWeaponModificationProfile(state, targetInstanceId);
+      const installedRelic = modProfile.installedLoreBoundRelic;
+      const boundRelicSlot = legSpec.boundRelicSlots[0] || null;
+      const isRelicUnlocked = boundRelicSlot
+        ? isCheatMode || isLoreBoundRelicUnlocked(state, boundRelicSlot.id)
+        : false;
+
+      return (
+        <div className="p-2 bg-[#070b12] rounded-xs border border-[#f59e0b]/60 space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-1 border-b border-[#1e293b] pb-1.5">
+            <div>
+              <div className="text-[10px] font-bold text-[#fde047] flex flex-wrap items-center gap-2">
+                <span>
+                  ★ LEGENDARY FOLKLORE ARTIFACT · 0 STANDARD MODS · 0 GEM SOCKETS (
+                  {boundRelicSlot
+                    ? `${installedRelic ? '1/1' : '0/1'} LORE-BOUND MOUNT`
+                    : 'SEALED SINGULARITY RELIC'}
+                  )
+                </span>
+                <span className="px-1.5 py-0.5 rounded-xs bg-[#451a03] text-[#fde047] border border-[#f59e0b]/60 text-[9px]">
+                  ORIGIN WORLD: {legSpec.originWorldId.replace(/_/g, ' ').toUpperCase()}
+                </span>
+              </div>
+              <div className="text-[9px] text-[#94a3b8]">
+                Legendary weapons reject all 61 standard component parts and all 11 elemental
+                gemstones. Their combat geometry is permanently forged around their folklore origin
+                and optional lore-bound companion relic.
+              </div>
+            </div>
+            {(legSpec.maxObtainableCopies ?? 1) > 1 && (
+              <button
+                type="button"
+                onClick={() => {
+                  const ok = acquireAdditionalWeaponCopy(state, targetInstanceId, sayCtx);
+                  if (ok) soundSystem.playPowerup();
+                  else soundSystem.playMenuBeep();
+                  notifyOrionStateChange();
+                }}
+                className="px-2 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#38bdf8] border border-[#38bdf8]/50 rounded-xs text-[9px] font-bold cursor-pointer"
+              >
+                + ACQUIRE PAIRED COPY (MAX {legSpec.maxObtainableCopies})
+              </button>
+            )}
+          </div>
+
+          {/* Folklore Origin & Innate Engine Hook Card */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="p-2 bg-[#090d14] rounded-xs border border-[#334155] space-y-1">
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-[9px] font-bold text-[#fde047]">
+                  FOLKLORE TRADITION: {legSpec.folkloreTradition.toUpperCase()}
+                </span>
+                <span className="text-[8px] px-1.5 py-0.2 rounded-[2px] bg-[#451a03] text-[#fcd34d] font-bold">
+                  ALWAYS ACTIVE
+                </span>
+              </div>
+              <div className="text-[9px] text-[#86efac] leading-snug">
+                {legSpec.innateMechanicSummary}
+              </div>
+              <div className="text-[8px] text-[#94a3b8] pt-1 border-t border-[#1e293b]">
+                <b className="text-[#7dd3fc]">WORLD &amp; HAZARD CONNECTION:</b>{' '}
+                {legSpec.areaLoreConnection}
+              </div>
+              <div className="text-[8px] text-[#cbd5e1]">
+                <b className="text-[#ffd27d]">LORE DOSSIER:</b> {legSpec.loreDescription}
+              </div>
+            </div>
+
+            {/* Lore-Bound Companion Mount Slot (or Standalone Relic Notice) */}
+            {boundRelicSlot ? (
+              <div
+                className={`p-2 rounded-xs border flex flex-col justify-between gap-1.5 ${
+                  installedRelic
+                    ? 'bg-[#172554]/70 border-[#fde047]'
+                    : 'bg-[#090d14] border-[#f59e0b]/50'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[9px] font-bold text-[#fde047]">
+                      LORE-BOUND COMPANION MOUNT: {boundRelicSlot.name.toUpperCase()}
+                    </span>
+                    <span
+                      className={`text-[8px] px-1.5 py-0.2 rounded-[2px] font-bold ${
+                        installedRelic
+                          ? 'bg-[#052e16] text-[#86efac] border border-[#22c55e]/50'
+                          : isRelicUnlocked
+                            ? 'bg-[#451a03] text-[#fde047] border border-[#f59e0b]/60'
+                            : 'bg-[#1e293b] text-[#94a3b8]'
+                      }`}
+                    >
+                      {installedRelic
+                        ? 'MOUNTED'
+                        : isRelicUnlocked
+                          ? 'UNLOCKED · READY'
+                          : 'LOCKED IN CAMPAIGN'}
+                    </span>
+                  </div>
+                  <div className="text-[9px] text-[#c084fc] font-bold mt-0.5">
+                    {boundRelicSlot.name}
+                    {boundRelicSlot.transformedWeaponTitle
+                      ? ` → Transforms Title to “${boundRelicSlot.transformedWeaponTitle}”`
+                      : ''}
+                  </div>
+                  <div className="text-[9px] text-[#cbd5e1] mt-0.5 leading-snug">
+                    {boundRelicSlot.mechanicSummary}
+                  </div>
+                  <div className="text-[8px] text-[#94a3b8] mt-1">
+                    <b className="text-[#ffd27d]">RELIC SOURCE:</b>{' '}
+                    {boundRelicSlot.acquisitionSource}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-1 pt-1 border-t border-[#1e293b]">
+                  <span className="text-[8px] text-[#7dd3fc] font-mono">
+                    HOOK: {boundRelicSlot.grantedEngineHooks.join(' · ')}
+                  </span>
+                  {installedRelic ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const ok = removeLoreBoundRelicFromLegendary(
+                          state,
+                          targetInstanceId,
+                          sayCtx
+                        );
+                        if (ok) {
+                          soundSystem.playSelect();
+                          syncStateGates(state);
+                          onInstanceUpdated(targetInstanceId);
+                          notifyOrionStateChange();
+                        } else {
+                          soundSystem.playMenuBeep();
+                        }
+                      }}
+                      className="px-2 py-0.5 bg-[#450a0a] hover:bg-[#7f1d1d] text-[#fca5a5] border border-[#ef4444]/60 rounded-xs text-[9px] font-bold cursor-pointer"
+                    >
+                      UNMOUNT {boundRelicSlot.name.toUpperCase()}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={!isRelicUnlocked}
+                      onClick={() => {
+                        const ok = installLoreBoundRelicOnLegendary(
+                          state,
+                          targetInstanceId,
+                          boundRelicSlot.id,
+                          sayCtx
+                        );
+                        if (ok) {
+                          soundSystem.playPowerup();
+                          syncStateGates(state);
+                          onInstanceUpdated(targetInstanceId);
+                          notifyOrionStateChange();
+                        } else {
+                          soundSystem.playMenuBeep();
+                        }
+                      }}
+                      className={`px-2 py-0.5 rounded-xs text-[9px] font-bold border ${
+                        isRelicUnlocked
+                          ? 'bg-[#052e16] hover:bg-[#14532d] text-[#86efac] border-[#22c55e]/60 cursor-pointer'
+                          : 'bg-[#0f172a] text-[#475569] border-[#1e293b] cursor-not-allowed'
+                      }`}
+                    >
+                      {isRelicUnlocked
+                        ? `MOUNT ${boundRelicSlot.name.toUpperCase()}`
+                        : 'RELIC NOT YET ACQUIRED'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="p-2 bg-[#090d14] rounded-xs border border-[#334155] flex flex-col justify-between gap-1">
+                <div>
+                  <div className="text-[9px] font-bold text-[#fde047]">
+                    SEALED FOLKLORE ARCHITECTURE (0 LORE-BOUND SLOTS)
+                  </div>
+                  <div className="text-[9px] text-[#cbd5e1] mt-0.5 leading-snug">
+                    {wDef.id === 'leg_juuchi_yosamu'
+                      ? 'Juuchi Yosamu has no open slots of its own, but can be mounted into Yawarakai-Te’s Lore-Bound Companion slot at this workbench to fuse both blades into “Yawarakai-Te & Juuchi Yosamu” (16 WT, 2× twin-blade strike execution, and continuous 20% all-phase DR).'
+                      : wDef.id === 'leg_lake_of_fire_knife'
+                        ? 'Up to 4 Knives of the Lake of Fire can be recovered across Golem, permitting true Main + Off-Hand dual-wielding in Slot 1 and Slot 2 to widen Action 3 Glance of the Gatekeeper.'
+                        : 'Balmung is a strict two-handed singularity Zweihander (20 WT). Equipping Balmung locks Side Hand (Slot 2) while leaving the dorsal Aux Launcher mount (Slot 3) free.'}
+                  </div>
+                </div>
+                <div className="text-[8px] text-[#7dd3fc] font-mono pt-1 border-t border-[#1e293b]">
+                  ACTIVE ENGINE HOOKS: {modProfile.activeLegendaryHooks.join(' · ')}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
 
     // ─── WEAPONS (72 Custom Archetypes + Magitech Purist Relics): 3 Physical Domains (Sealed vs. Open) + 1G Factory Resonance Socket ───
     if (isWeaponItem && wDef) {
@@ -1470,7 +1673,9 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                   const gemVis = getWeaponGemVisuals(state, instanceId);
                   const strip = w.variantStripBase64 || w.hardpointSprite?.base64;
                   const isUnique = w.weaponTier === 'unique';
+                  const isLegendary = w.weaponTier === 'legendary';
                   const stInfo = getWeaponSubtypeInfo(w.id);
+                  const displayName = getEquipmentDisplayName(instanceId, state);
 
                   return (
                     <button
@@ -1493,18 +1698,24 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                         row={!gemVis.gemId ? (w.hardpointSprite?.row ?? 0) : 0}
                         sizeClass="w-3.5 h-3.5"
                       />
-                      <span>{w.name}</span>
+                      <span>{displayName}</span>
                       <span className="text-[9px] text-[#7dd3fc]">
                         [{stInfo.functionalType}]
                       </span>
                       <span
                         className={`text-[9px] font-mono ${
-                          isUnique ? 'text-[#c084fc]' : 'text-[#86efac]'
+                          isLegendary
+                            ? 'text-[#fde047]'
+                            : isUnique
+                              ? 'text-[#c084fc]'
+                              : 'text-[#86efac]'
                         }`}
                       >
-                        {isUnique
-                          ? `· Magitech (${w.openDomains?.length ?? 0}S+1G)`
-                          : '· Custom (3S)'}
+                        {isLegendary
+                          ? `· Legendary (${w.legendarySpec?.boundRelicSlots.length ?? 0} Relic)`
+                          : isUnique
+                            ? `· Magitech (${w.openDomains?.length ?? 0}S+1G)`
+                            : '· Custom (3S)'}
                       </span>
                       {isMain && (
                         <span className="px-1 py-0.2 bg-[#fde047]/20 text-[#fde047] rounded-[2px] text-[9px]">
@@ -1539,7 +1750,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
               <div className="flex flex-wrap items-center justify-between gap-1">
                 <div>
                   <div className="text-[11px] font-bold text-[#fde047]">
-                    {activeWeaponDef.name}{' '}
+                    {getEquipmentDisplayName(activeWeaponDef.id, state)}{' '}
                     {devMode && (
                       <span className="text-[9px] font-mono text-[#64748b]">
                         [{activeWeaponDef.id}]
@@ -1552,7 +1763,13 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                   <div className="text-[9px] text-[#7dd3fc]">
                     {getWeaponSubtypeInfo(activeWeaponBaseId).subtype} · Equip Weight:{' '}
                     <b>{getWeaponInstanceEquipWeight(activeWeaponDef.id, state)} WT</b> ·{' '}
-                    {activeWeaponBaseDef.weaponTier === 'unique' ? (
+                    {activeWeaponBaseDef.weaponTier === 'legendary' ? (
+                      <span className="text-[#fde047] font-bold">
+                        LEGENDARY FOLKLORE ARTIFACT · 0 STANDARD MODS · 0G (
+                        {activeWeaponBaseDef.legendarySpec?.boundRelicSlots.length ?? 0} LORE-BOUND
+                        COMPANION SLOT)
+                      </span>
+                    ) : activeWeaponBaseDef.weaponTier === 'unique' ? (
                       <span className="text-[#c084fc] font-bold">
                         {activeWeaponBaseDef.code ? `[${activeWeaponBaseDef.code}] · ` : ''}
                         {(activeWeaponBaseDef.architectureTier || 'MAGITECH_RELIC').replace(

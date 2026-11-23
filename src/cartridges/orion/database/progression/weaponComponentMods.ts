@@ -10,6 +10,9 @@ import {
   FeatChainId,
   GemId,
   InstalledWeaponComponentSlotRecord,
+  LegendaryEngineHook,
+  LegendaryWeaponDefinition,
+  LoreBoundAttachment,
   MagitechArchitectureTier,
   ModDomain,
   OrionState,
@@ -26,6 +29,8 @@ import {
 import {
   canInstallComponentOnMagitech,
   getWeaponDefinition,
+  LEGENDARY_WEAPONS_BY_ID,
+  LORE_BOUND_ATTACHMENT_BY_ID,
   resolveWeaponFunctionalType,
   WEAPON_REGISTRY,
 } from '../equipment/weapons';
@@ -53,6 +58,10 @@ export interface ResolvedWeaponModificationProfile {
   weaponClass: WeaponCategory;
   functionalType: string;
   isUniqueMagitech: boolean;
+  isLegendary: boolean;
+  legendarySpec?: LegendaryWeaponDefinition;
+  installedLoreBoundRelic: LoreBoundAttachment | null;
+  activeLegendaryHooks: LegendaryEngineHook[];
   architectureTier?: MagitechArchitectureTier;
   openDomains: ModDomain[];
   sealedDomains: Record<ModDomain, string | null>;
@@ -363,6 +372,229 @@ export function evaluateMagitechPuristResonance(
 }
 
 /**
+ * Resolves the lore-bound companion relic currently mounted on a `Legendary` weapon instance.
+ */
+export function getInstalledLoreBoundRelic(
+  state: OrionState | undefined,
+  weaponInstanceId: string | null | undefined
+): LoreBoundAttachment | null {
+  if (!weaponInstanceId) return null;
+  const { baseId } = parseEquipmentInstanceId(weaponInstanceId);
+  const wDef = getWeaponDefinition(baseId) || getWeaponDefinition(weaponInstanceId);
+  const spec = wDef?.legendarySpec || LEGENDARY_WEAPONS_BY_ID[baseId];
+  if (!spec || spec.boundRelicSlots.length === 0) return null;
+
+  const map = state?.equipmentSlots?.installedLoreBoundRelics;
+  const installedId = map?.[weaponInstanceId] ?? map?.[baseId] ?? null;
+  if (!installedId) return null;
+
+  return (
+    spec.boundRelicSlots.find((b) => b.id === installedId) ||
+    LORE_BOUND_ATTACHMENT_BY_ID[installedId] ||
+    null
+  );
+}
+
+/**
+ * Checks whether a lore-bound companion relic is unlocked/owned by the pilot
+ * (via `ownedLoreBoundRelics`, world flags, standalone ownership for `leg_juuchi_yosamu`, or Cheat/Training mode).
+ */
+export function isLoreBoundRelicUnlocked(
+  state: OrionState | undefined,
+  attachmentId: string
+): boolean {
+  if (!state || !attachmentId) return false;
+  if (state.bypassProgressionGates || state.room === '-4,0') return true;
+
+  const attachment = LORE_BOUND_ATTACHMENT_BY_ID[attachmentId];
+  if (!attachment) return false;
+
+  const ownedCount = state.equipmentSlots?.ownedLoreBoundRelics?.[attachmentId] ?? 0;
+  if (ownedCount > 0) return true;
+
+  if (attachmentId === 'leg_juuchi_yosamu') {
+    const ownedWpnCount = state.equipmentSlots?.ownedWeaponCounts?.leg_juuchi_yosamu ?? 0;
+    const inUnlocked = Boolean(
+      state.equipmentSlots?.unlockedEquipment?.includes('leg_juuchi_yosamu')
+    );
+    if (ownedWpnCount > 0 || inUnlocked) return true;
+  }
+
+  if (
+    attachment.requiredWorldFlags.length > 0 &&
+    attachment.requiredWorldFlags.every((flag) => Boolean(state.flags?.[flag]))
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Returns the number of copies of a lore-bound companion relic available to the pilot.
+ */
+export function getOwnedLoreBoundRelicCount(
+  state: OrionState | undefined,
+  attachmentId: string
+): number {
+  if (!state || !attachmentId) return 0;
+  if (state.bypassProgressionGates || state.room === '-4,0') return 1;
+  const direct = state.equipmentSlots?.ownedLoreBoundRelics?.[attachmentId] ?? 0;
+  if (direct > 0) return direct;
+  return isLoreBoundRelicUnlocked(state, attachmentId) ? 1 : 0;
+}
+
+/**
+ * Grants a lore-bound companion relic to the pilot's inventory (`state.equipmentSlots.ownedLoreBoundRelics`).
+ * Mutates `state: OrionState`.
+ */
+export function grantLoreBoundRelic(
+  state: OrionState,
+  attachmentId: string,
+  count: number = 1,
+  ctx?: { say: (text: string) => void }
+): boolean {
+  const attachment = LORE_BOUND_ATTACHMENT_BY_ID[attachmentId];
+  if (!attachment || count <= 0 || !state.equipmentSlots) return false;
+
+  state.equipmentSlots.ownedLoreBoundRelics =
+    state.equipmentSlots.ownedLoreBoundRelics || {};
+  state.equipmentSlots.ownedLoreBoundRelics[attachmentId] =
+    (state.equipmentSlots.ownedLoreBoundRelics[attachmentId] || 0) + count;
+
+  if (attachment.canBeEquippedStandalone) {
+    state.equipmentSlots.unlockedEquipment =
+      state.equipmentSlots.unlockedEquipment || [];
+    if (!state.equipmentSlots.unlockedEquipment.includes(attachmentId)) {
+      state.equipmentSlots.unlockedEquipment.push(attachmentId);
+    }
+    state.equipmentSlots.ownedWeaponCounts =
+      state.equipmentSlots.ownedWeaponCounts || {};
+    state.equipmentSlots.ownedWeaponCounts[attachmentId] = Math.max(
+      1,
+      state.equipmentSlots.ownedWeaponCounts[attachmentId] || 0
+    );
+  }
+
+  ctx?.say(`CLAIMED LORE-BOUND RELIC: ${attachment.name.toUpperCase()}!`);
+  return true;
+}
+
+/**
+ * Installs a lore-bound companion relic (`attachmentId`) onto a `Legendary` weapon (`weaponInstanceId`)
+ * at the Armory Workbench, transforming its title and activating its companion engine hooks.
+ * Mutates `state: OrionState`.
+ */
+export function installLoreBoundRelicOnLegendary(
+  state: OrionState,
+  weaponInstanceId: string,
+  attachmentId: string,
+  ctx?: { say: (text: string) => void }
+): boolean {
+  if (!state.equipmentSlots) return false;
+  const { baseId } = parseEquipmentInstanceId(weaponInstanceId);
+  const wDef = getWeaponDefinition(baseId) || getWeaponDefinition(weaponInstanceId);
+  const spec = wDef?.legendarySpec || LEGENDARY_WEAPONS_BY_ID[baseId];
+  if (!wDef || !spec) return false;
+
+  const allowedRelic = spec.boundRelicSlots.find((b) => b.id === attachmentId);
+  if (!allowedRelic) {
+    ctx?.say(`${wDef.name.toUpperCase()} CANNOT ACCEPT THIS COMPANION RELIC.`);
+    return false;
+  }
+
+  if (!isLoreBoundRelicUnlocked(state, attachmentId)) {
+    ctx?.say(
+      `REQUIRES ${allowedRelic.name.toUpperCase()} (${allowedRelic.acquisitionSource.toUpperCase()})`
+    );
+    return false;
+  }
+
+  // If fusing Juuchi Yosamu into Yawarakai-Te while Juuchi Yosamu is equipped in another hand slot, unequip the standalone copy
+  if (attachmentId === 'leg_juuchi_yosamu') {
+    if (
+      state.equipmentSlots.slot2 &&
+      parseEquipmentInstanceId(state.equipmentSlots.slot2).baseId === 'leg_juuchi_yosamu'
+    ) {
+      state.equipmentSlots.slot2 = null;
+    }
+    if (
+      state.equipmentSlots.slot1 &&
+      baseId !== 'leg_juuchi_yosamu' &&
+      parseEquipmentInstanceId(state.equipmentSlots.slot1).baseId === 'leg_juuchi_yosamu'
+    ) {
+      state.equipmentSlots.slot1 = weaponInstanceId;
+    }
+  }
+
+  state.equipmentSlots.installedLoreBoundRelics =
+    state.equipmentSlots.installedLoreBoundRelics || {};
+  state.equipmentSlots.installedLoreBoundRelics[baseId] = attachmentId;
+  state.equipmentSlots.installedLoreBoundRelics[weaponInstanceId] = attachmentId;
+
+  const transformedTitle = allowedRelic.transformedWeaponTitle || wDef.name;
+  ctx?.say(
+    `MOUNTED ${allowedRelic.name.toUpperCase()} → ${transformedTitle.toUpperCase()}`
+  );
+  return true;
+}
+
+/**
+ * Unmounts the lore-bound companion relic from a `Legendary` weapon (`weaponInstanceId`)
+ * at the Armory Workbench, returning the companion relic to inventory.
+ * Mutates `state: OrionState`.
+ */
+export function removeLoreBoundRelicFromLegendary(
+  state: OrionState,
+  weaponInstanceId: string,
+  ctx?: { say: (text: string) => void }
+): boolean {
+  if (!state.equipmentSlots?.installedLoreBoundRelics) return false;
+  const { baseId } = parseEquipmentInstanceId(weaponInstanceId);
+  const wDef = getWeaponDefinition(baseId) || getWeaponDefinition(weaponInstanceId);
+  const installed = getInstalledLoreBoundRelic(state, weaponInstanceId);
+  if (!installed) return false;
+
+  state.equipmentSlots.installedLoreBoundRelics[baseId] = null;
+  state.equipmentSlots.installedLoreBoundRelics[weaponInstanceId] = null;
+
+  ctx?.say(
+    `UNMOUNTED ${installed.name.toUpperCase()} FROM ${(wDef?.name || baseId).toUpperCase()}`
+  );
+  return true;
+}
+
+/**
+ * Collects all active `LegendaryEngineHook` values across the pilot's currently equipped weapons
+ * (or for a specific `specificWeaponId` when provided), including any mounted lore-bound companion relics.
+ */
+export function getActiveLegendaryEngineHooks(
+  state: OrionState | undefined,
+  specificWeaponId?: string | null
+): Set<LegendaryEngineHook> {
+  const hooks = new Set<LegendaryEngineHook>();
+  if (!state) return hooks;
+
+  const eq = state.equipmentSlots;
+  const weaponIds = specificWeaponId
+    ? [specificWeaponId]
+    : ([
+        eq?.slot1,
+        eq?.slot2,
+        eq?.slot3,
+        ...(state.equippedWeapons || []),
+      ].filter(Boolean) as string[]);
+
+  for (const id of weaponIds) {
+    const profile = resolveWeaponModificationProfile(state, id);
+    for (const h of profile.activeLegendaryHooks) {
+      hooks.add(h);
+    }
+  }
+  return hooks;
+}
+
+/**
  * Deterministically evaluates the complete runtime modification profile for any weapon instance (`Project Orion — Magitech Purist Weapon Overhaul.md` & Custom Weapon Modification Overhaul).
  * Pure function: does not mutate `state: OrionState`.
  */
@@ -390,17 +622,44 @@ export function resolveWeaponModificationProfile(
     baseDef?.weaponClass,
     baseDef?.name
   );
+  const isLegendary = Boolean(
+    baseDef?.weaponTier === 'legendary' ||
+      baseDef?.isLegendary ||
+      LEGENDARY_WEAPONS_BY_ID[baseId]
+  );
+  const legendarySpec =
+    baseDef?.legendarySpec || LEGENDARY_WEAPONS_BY_ID[baseId];
+  const installedLoreBoundRelic = isLegendary
+    ? getInstalledLoreBoundRelic(state, fallbackId)
+    : null;
+  const activeLegendaryHooks: LegendaryEngineHook[] = isLegendary
+    ? Array.from(
+        new Set<LegendaryEngineHook>([
+          ...(legendarySpec?.innateEngineHooks || []),
+          ...(installedLoreBoundRelic?.grantedEngineHooks || []),
+        ])
+      )
+    : [];
+
   const isUniqueMagitech = Boolean(baseDef?.weaponTier === 'unique');
-  const openDomains: ModDomain[] = isUniqueMagitech
-    ? baseDef?.openDomains ?? ['REGULATION']
-    : ['CONTACT', 'DELIVERY', 'REGULATION'];
-  const sealedDomains: Record<ModDomain, string | null> = isUniqueMagitech
-    ? baseDef?.sealedDomains ?? {
-        CONTACT: openDomains.includes('CONTACT') ? null : 'Factory-Sealed Contact Assembly',
-        DELIVERY: openDomains.includes('DELIVERY') ? null : 'Factory-Sealed Delivery Assembly',
-        REGULATION: openDomains.includes('REGULATION') ? null : 'Factory-Sealed Regulation Assembly',
+  const openDomains: ModDomain[] = isLegendary
+    ? []
+    : isUniqueMagitech
+      ? baseDef?.openDomains ?? ['REGULATION']
+      : ['CONTACT', 'DELIVERY', 'REGULATION'];
+  const sealedDomains: Record<ModDomain, string | null> = isLegendary
+    ? {
+        CONTACT: 'Immutable Folklore Relic',
+        DELIVERY: 'Immutable Folklore Relic',
+        REGULATION: 'Immutable Folklore Relic',
       }
-    : { CONTACT: null, DELIVERY: null, REGULATION: null };
+    : isUniqueMagitech
+      ? baseDef?.sealedDomains ?? {
+          CONTACT: openDomains.includes('CONTACT') ? null : 'Factory-Sealed Contact Assembly',
+          DELIVERY: openDomains.includes('DELIVERY') ? null : 'Factory-Sealed Delivery Assembly',
+          REGULATION: openDomains.includes('REGULATION') ? null : 'Factory-Sealed Regulation Assembly',
+        }
+      : { CONTACT: null, DELIVERY: null, REGULATION: null };
   const architectureTier = isUniqueMagitech
     ? baseDef?.architectureTier ??
       (openDomains.length === 0
@@ -426,40 +685,45 @@ export function resolveWeaponModificationProfile(
   let regulationMod: WeaponComponentMod | null = null;
   const socketedGems: GemId[] = [];
 
-  if (resonanceGem) {
-    socketedGems.push(resonanceGem);
-  }
-
-  for (const idx of [0, 1, 2] as const) {
-    const rec = slotRecords[idx];
-    if (!rec) continue;
-    const mod = BESPOKE_WEAPON_COMPONENT_BY_ID[rec.partId];
-    if (
-      mod &&
-      mod.weaponClass === weaponClass &&
-      (!isUniqueMagitech || openDomains.includes(mod.domain))
-    ) {
-      installedMods.push({ slotIndex: idx, mod });
-      if (mod.domain === 'CONTACT' && !contactMod) contactMod = mod;
-      if (mod.domain === 'DELIVERY' && !deliveryMod) deliveryMod = mod;
-      if (mod.domain === 'REGULATION' && !regulationMod) regulationMod = mod;
+  if (!isLegendary) {
+    if (resonanceGem) {
+      socketedGems.push(resonanceGem);
     }
-    for (const g of rec.socketedGems) {
-      if (isCanonicalGemId(g)) {
+
+    for (const idx of [0, 1, 2] as const) {
+      const rec = slotRecords[idx];
+      if (!rec) continue;
+      const mod = BESPOKE_WEAPON_COMPONENT_BY_ID[rec.partId];
+      if (
+        mod &&
+        mod.weaponClass === weaponClass &&
+        (!isUniqueMagitech || openDomains.includes(mod.domain))
+      ) {
+        installedMods.push({ slotIndex: idx, mod });
+        if (mod.domain === 'CONTACT' && !contactMod) contactMod = mod;
+        if (mod.domain === 'DELIVERY' && !deliveryMod) deliveryMod = mod;
+        if (mod.domain === 'REGULATION' && !regulationMod) regulationMod = mod;
+      }
+      for (const g of rec.socketedGems) {
+        if (isCanonicalGemId(g)) {
+          socketedGems.push(g);
+        }
+      }
+    }
+
+    // If no component slot records exist yet on a Custom weapon with direct gem instance ID
+    if (!isUniqueMagitech && installedMods.length === 0 && parsedGems.length > 0) {
+      for (const g of parsedGems) {
         socketedGems.push(g);
       }
     }
   }
 
-  // If no component slot records exist yet on a Custom weapon with direct gem instance ID
-  if (!isUniqueMagitech && installedMods.length === 0 && parsedGems.length > 0) {
-    for (const g of parsedGems) {
-      socketedGems.push(g);
-    }
-  }
-
-  const populatedSlotCount =
-    installedMods.length > 0
+  const populatedSlotCount = isLegendary
+    ? installedLoreBoundRelic
+      ? 1
+      : 0
+    : installedMods.length > 0
       ? installedMods.length
       : isUniqueMagitech
         ? resonanceGem
@@ -771,15 +1035,30 @@ export function resolveWeaponModificationProfile(
     }
   }
 
+  // Apply Legendary combined weight override (e.g. Yawarakai-Te + Juuchi Yosamu -> 16 WT)
+  if (
+    isLegendary &&
+    installedLoreBoundRelic?.combinedWeightOverride !== undefined
+  ) {
+    const baseWt =
+      legendarySpec?.weight ?? baseDef?.explicitEquipWeight ?? 9;
+    weightDelta += installedLoreBoundRelic.combinedWeightOverride - baseWt;
+  }
+
   const rawTempoMultiplier = Number((1 + tempoDelta).toFixed(3));
   // Rule 2.5: Cumulative Combat Tempo Hard Cap (±30% -> [0.70, 1.30])
   const clampedTempoMultiplier = Number(
     Math.max(0.7, Math.min(1.3, rawTempoMultiplier)).toFixed(3)
   );
 
-  // §2.2 Rule 3: Semantic Naming for Modified Magitech Relics (<BaseName> Custom, +II, +III)
+  // Semantic Naming for Legendary Relics (Lore-Bound Transformed Title), Magitech Relics (<BaseName> Custom, +II, +III), and Custom Weapons
   let semanticDisplayName: string;
-  if (isUniqueMagitech && installedMods.length > 0) {
+  if (isLegendary) {
+    semanticDisplayName =
+      installedLoreBoundRelic?.transformedWeaponTitle ||
+      baseDef?.name ||
+      baseId;
+  } else if (isUniqueMagitech && installedMods.length > 0) {
     const tierSuffix =
       installedMods.length >= 3
         ? ' +III'
@@ -879,6 +1158,10 @@ export function resolveWeaponModificationProfile(
     weaponClass,
     functionalType,
     isUniqueMagitech,
+    isLegendary,
+    legendarySpec,
+    installedLoreBoundRelic,
+    activeLegendaryHooks,
     architectureTier,
     openDomains,
     sealedDomains,
@@ -944,6 +1227,15 @@ export function validateWeaponComponentInstallation(
     return {
       valid: false,
       reason: 'Weapon definition not found',
+      conflictingDomainSlotIndex: null,
+      conflictingBehavioralSlotIndex: null,
+    };
+  }
+  if (wDef.weaponTier === 'legendary' || wDef.isLegendary) {
+    return {
+      valid: false,
+      reason:
+        'Legendary folklore relics cannot accept standard components (lore-bound companion relics only).',
       conflictingDomainSlotIndex: null,
       conflictingBehavioralSlotIndex: null,
     };

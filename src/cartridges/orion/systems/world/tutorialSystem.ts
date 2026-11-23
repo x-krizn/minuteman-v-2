@@ -22,8 +22,10 @@ import {
   CANONICAL_HARDWARE_CATALOG,
   findHardwareItemByNameOrId,
   GEMSTONE_CATALOG,
+  getActiveLegendaryEngineHooks,
   LOOTED_WEAPON_COMPONENT_POOL,
   refundInventoryGem,
+  resolveFrameDamageWithLegendaryHooks,
   unlockEquipmentItem,
   unlockLevel2SecondaryWeapon,
 } from '../../database/progression';
@@ -94,11 +96,42 @@ export function updateEnvironmentalHazards(
     const pChar = roomData[pty]?.[ptx] || '.';
     const pTile = getTileDefinition(pChar, state.biomeId);
 
-    if (pTile.isCorrosive && state.armor.durability > 0) {
-      state.armor.durability = Math.max(0, state.armor.durability - corrosionRate * dt);
-      if (corrosionParticleTimer <= 0) {
-        ctx.spawnParticles(state.x, state.y, 4, 2, '#84cc16', 'CORROSION');
-        spawnedCorrosionParticle = true;
+    if (pTile.isCorrosive) {
+      if (state.armor.durability > 0) {
+        state.armor.durability = Math.max(0, state.armor.durability - corrosionRate * dt);
+        if (corrosionParticleTimer <= 0) {
+          ctx.spawnParticles(state.x, state.y, 4, 2, '#84cc16', 'CORROSION');
+          spawnedCorrosionParticle = true;
+        }
+      } else if (state.frame.integrity > 0) {
+        const activeHooks = getActiveLegendaryEngineHooks(state);
+        const isInHitFrames =
+          state.activeSkillSlot !== null &&
+          (state.skillTellTimer || 0) <= 0 &&
+          (state.skillActionTimer || 0) > 0;
+        const dotTick = corrosionRate * 0.45 * dt;
+        const nextHp = resolveFrameDamageWithLegendaryHooks(
+          state.frame.integrity,
+          dotTick,
+          true,
+          isInHitFrames,
+          0.8,
+          activeHooks
+        );
+        state.frame.integrity = nextHp;
+        if (corrosionParticleTimer <= 0) {
+          ctx.spawnParticles(
+            state.x,
+            state.y,
+            4,
+            2,
+            activeHooks.has('PREVENT_LETHAL_DOT') && nextHp === 1 ? '#fde047' : '#84cc16',
+            activeHooks.has('PREVENT_LETHAL_DOT') && nextHp === 1
+              ? 'AVALON IMMORTALITY (1 HP)'
+              : 'MIRE DECAY'
+          );
+          spawnedCorrosionParticle = true;
+        }
       }
     }
   }
@@ -135,6 +168,26 @@ export function awakenLadyOfTheLake(state: OrionState, ctx?: OrionCombatContext)
   state.flags = state.flags || {};
   const existing = state.enemies.some((e) => e.type === 'lady_of_the_lake');
   if (existing) return false;
+
+  // §3.1 Sequential Acquisition Contract (Arthur -> Lady of the Lake):
+  // If the pilot gathered Bedivere's list items before defeating King Arthur, display the seal message without spawning the encounter.
+  const canBypassArthurSeal = Boolean(
+    state.flags.arthur_defeated ||
+      state.bypassProgressionGates ||
+      state.room === '-4,0'
+  );
+  if (!canBypassArthurSeal) {
+    const sealMsg =
+      "THE DARK WATER STIRS BENEATH THE MIST, YET THE SOVEREIGN'S SEAL STILL HOLDS THE LAKE AT BAY...";
+    if (ctx) {
+      ctx.say(sealMsg);
+    } else {
+      state.toastText = sealMsg;
+      state.toastTimer = 3.6;
+    }
+    notifyOrionStateChange();
+    return true;
+  }
 
   if (isChunkedExpanseRoom(state.room)) {
     const effRoom = getEffectiveRoomCoord(state);

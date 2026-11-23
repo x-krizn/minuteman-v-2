@@ -46,6 +46,7 @@ import {
 } from '../equipment/mod_naming';
 import {
   canBypassTwoHandRestriction,
+  canEquipOffhandWithLegendary,
   canEquipWeaponInSlot,
   canInstallComponentOnMagitech,
   getWeaponDefinition,
@@ -54,6 +55,11 @@ import {
   isOneHandWeapon,
   isTwoHandOnlyWeapon,
   isTwoHandWeapon,
+  LEGENDARY_WEAPON_DEFINITIONS,
+  LEGENDARY_WEAPONS_BY_ID,
+  LORE_BOUND_ATTACHMENT_BY_ID,
+  LORE_BOUND_ATTACHMENT_CATALOG,
+  resolveFrameDamageWithLegendaryHooks,
   resolveWeaponFunctionalType,
   WEAPON_FUNCTIONAL_TYPES_BY_CATEGORY,
 } from '../equipment/weapons';
@@ -82,12 +88,19 @@ import {
 } from './weaponComponentCatalog';
 import {
   evaluateMagitechPuristResonance,
+  getActiveLegendaryEngineHooks,
+  getInstalledLoreBoundRelic,
   getMagitechResonanceGem,
   getOwnedLootedComponentCount,
+  getOwnedLoreBoundRelicCount,
   getWeaponInstanceSlotRecords,
   grantLootedWeaponComponent,
+  grantLoreBoundRelic,
   installBespokeWeaponComponent,
+  installLoreBoundRelicOnLegendary,
+  isLoreBoundRelicUnlocked,
   removeBespokeWeaponComponent,
+  removeLoreBoundRelicFromLegendary,
   type ResolvedWeaponModificationProfile,
   resolveWeaponModificationProfile,
   rollAndGrantFieldLootedComponent,
@@ -104,6 +117,7 @@ export {
   CANONICAL_HARDWARE_CATALOG,
   type CanonicalHardwareItemDefinition,
   canBypassTwoHandRestriction,
+  canEquipOffhandWithLegendary,
   canEquipWeaponInSlot,
   canInstallComponentOnMagitech,
   CHASSIS_HARDWARE_CATALOG,
@@ -120,8 +134,13 @@ export {
   isOneHandWeapon,
   isTwoHandOnlyWeapon,
   isTwoHandWeapon,
+  LEGENDARY_WEAPON_DEFINITIONS,
+  LEGENDARY_WEAPONS_BY_ID,
+  LORE_BOUND_ATTACHMENT_BY_ID,
+  LORE_BOUND_ATTACHMENT_CATALOG,
   parseEquipmentInstanceId,
   resolveEquippedHardwareStats,
+  resolveFrameDamageWithLegendaryHooks,
   usesCustomSuffixBySemantics,
 };
 
@@ -134,16 +153,23 @@ export {
   BESPOKE_WEAPON_COMPONENT_CATALOG,
   createStarterLootedComponentsByTrait,
   evaluateMagitechPuristResonance,
+  getActiveLegendaryEngineHooks,
   getBespokeComponentsForWeaponClass,
+  getInstalledLoreBoundRelic,
   getMagitechResonanceGem,
   getOwnedLootedComponentCount,
+  getOwnedLoreBoundRelicCount,
   getWeaponInstanceSlotRecords,
   grantLootedWeaponComponent,
+  grantLoreBoundRelic,
   installBespokeWeaponComponent,
+  installLoreBoundRelicOnLegendary,
+  isLoreBoundRelicUnlocked,
   LOOTED_WEAPON_COMPONENT_POOL,
   mapDomainToLegacyComponentSlot,
   RECIPE_GEMSTONE_TO_ID,
   removeBespokeWeaponComponent,
+  removeLoreBoundRelicFromLegendary,
   type ResolvedWeaponModificationProfile,
   resolveWeaponClassAction1Mode,
   resolveWeaponModificationProfile,
@@ -854,7 +880,7 @@ export function getWeaponSubtypeInfo(weaponId: string): {
   equipmentType: 'Weapon' | 'Auxiliary';
   category: WeaponCategory;
   functionalType: string;
-  variantSubtype: 'Custom' | 'Magitech';
+  variantSubtype: 'Custom' | 'Magitech' | 'Legendary';
   subtype: string;
 } {
   const { baseId } = parseEquipmentInstanceId(weaponId);
@@ -870,8 +896,12 @@ export function getWeaponSubtypeInfo(weaponId: string): {
       wDef.weaponClass,
       wDef.name
     );
-    const variantSubtype: 'Custom' | 'Magitech' =
-      wDef.weaponTier === 'unique' ? 'Magitech' : 'Custom';
+    const variantSubtype: 'Custom' | 'Magitech' | 'Legendary' =
+      wDef.weaponTier === 'legendary' || wDef.isLegendary
+        ? 'Legendary'
+        : wDef.weaponTier === 'unique'
+          ? 'Magitech'
+          : 'Custom';
     return {
       equipmentType,
       category,
@@ -908,12 +938,21 @@ export function normalizeEquipmentInstanceKey(idOrName: string | null | undefine
 }
 
 /**
- * Returns the resolved display name for any equipment ID or name (including Gem-modified `+II` / `+III` variants).
+ * Returns the resolved display name for any equipment ID or name (including Gem-modified `+II` / `+III` variants
+ * and lore-bound Legendary transformed titles when `state` is provided).
  */
-export function getEquipmentDisplayName(idOrName: string | null | undefined): string {
+export function getEquipmentDisplayName(
+  idOrName: string | null | undefined,
+  state?: OrionState
+): string {
   if (!idOrName) return 'None';
   const wDef = getWeaponDefinition(idOrName);
-  if (wDef) return wDef.name;
+  if (wDef) {
+    if (state) {
+      return resolveWeaponModificationProfile(state, idOrName).semanticDisplayName;
+    }
+    return wDef.name;
+  }
   const hwDef = findHardwareItemByNameOrId(idOrName);
   if (hwDef) return hwDef.name;
   const { baseId, installedGems } = parseEquipmentInstanceId(idOrName);
@@ -1147,6 +1186,8 @@ export function createInitialEquipmentSlots(traitLine: TraitLine = 'Warrior'): O
     installedWeaponComponents: {},
     installedWeaponComponentSlots: {},
     installedMagitechResonanceGems: {},
+    installedLoreBoundRelics: {},
+    ownedLoreBoundRelics: {},
     ownedLootedComponents: createStarterLootedComponentsByTrait(traitLine),
     unlockedMods: [],
     unlockedEquipment: Array.from(
@@ -1215,6 +1256,13 @@ export function isEquipmentUnlocked(state: OrionState, itemIdOrName: string): bo
     }
   }
 
+  if (targetBase === 'leg_excalibur' && state.flags?.arthur_defeated) return true;
+  if (targetBase === 'leg_yawarakai_te' && state.flags?.new_novarin_trial_cleared) return true;
+  if (targetBase === 'leg_juuchi_yosamu' && state.flags?.novarin_warlord_defeated) return true;
+  if (targetBase === 'leg_aegis' && state.flags?.zeus_defeated) return true;
+  if (targetBase === 'leg_lake_of_fire_knife' && state.flags?.golem_gatekeepers_defeated) return true;
+  if (targetBase === 'leg_balmung' && state.flags?.siegfried_defeated) return true;
+
   return false;
 }
 
@@ -1223,9 +1271,16 @@ export function isEquipmentUnlocked(state: OrionState, itemIdOrName: string): bo
  */
 export function getOwnedWeaponCount(state: OrionState, itemIdOrName: string): number {
   if (!itemIdOrName) return 0;
-  if (state.bypassProgressionGates || state.room === '-4,0') return 2;
-
   const normKey = normalizeEquipmentInstanceKey(itemIdOrName);
+  const { baseId } = parseEquipmentInstanceId(normKey);
+  const wDef = getWeaponDefinition(baseId);
+  if (state.bypassProgressionGates || state.room === '-4,0') {
+    if (wDef?.legendarySpec?.maxObtainableCopies) {
+      return wDef.legendarySpec.maxObtainableCopies;
+    }
+    return 2;
+  }
+
   const counts = state.equipmentSlots?.ownedWeaponCounts || {};
 
   if (typeof counts[normKey] === 'number') {
@@ -1256,7 +1311,11 @@ export function getOwnedWeaponCount(state: OrionState, itemIdOrName: string): nu
   const exactUnlocked = (eq?.unlockedEquipment || []).some(
     (u) => normalizeEquipmentInstanceKey(u) === normKey
   );
-  return exactEquipped || exactUnlocked ? 1 : 0;
+  if (exactEquipped || exactUnlocked) return 1;
+  if (wDef?.weaponTier === 'legendary' && isEquipmentUnlocked(state, normKey)) {
+    return 1;
+  }
+  return 0;
 }
 
 /**
@@ -1615,20 +1674,37 @@ export function acquireAdditionalWeaponCopy(
     state.equipmentSlots = createInitialEquipmentSlots(state.traitLine);
   }
   const normKey = normalizeEquipmentInstanceKey(weaponId);
+  const { baseId } = parseEquipmentInstanceId(normKey);
+  const wDef = getWeaponDefinition(baseId);
+  const maxCopies =
+    wDef?.weaponTier === 'legendary'
+      ? (wDef.legendarySpec?.maxObtainableCopies ?? 1)
+      : 2;
   state.equipmentSlots.ownedWeaponCounts = state.equipmentSlots.ownedWeaponCounts || {};
   const current = getOwnedWeaponCount(state, normKey);
-  if (current >= 2) {
-    ctx?.say(`ALREADY OWN 2 SEPARATE COPIES OF ${getEquipmentDisplayName(normKey).toUpperCase()}`);
+  if (maxCopies <= 1) {
+    ctx?.say(
+      `${getEquipmentDisplayName(normKey, state).toUpperCase()} IS A UNIQUE FOLKLORE RELIC (1 COPY MAX)`
+    );
     return false;
   }
-  state.equipmentSlots.ownedWeaponCounts[normKey] = 2;
+  if (current >= maxCopies) {
+    ctx?.say(
+      `ALREADY OWN ${maxCopies} SEPARATE COPIES OF ${getEquipmentDisplayName(normKey, state).toUpperCase()}`
+    );
+    return false;
+  }
+  const nextCount = Math.min(maxCopies, Math.max(2, current + 1));
+  state.equipmentSlots.ownedWeaponCounts[normKey] = nextCount;
   if (!state.equipmentSlots.unlockedEquipment?.includes(normKey)) {
     state.equipmentSlots.unlockedEquipment = [
       ...(state.equipmentSlots.unlockedEquipment || []),
       normKey,
     ];
   }
-  ctx?.say(`ACQUIRED 2ND COPY: ${getEquipmentDisplayName(normKey).toUpperCase()} (PAIRED STANCE READY)`);
+  ctx?.say(
+    `ACQUIRED COPY ×${nextCount}: ${getEquipmentDisplayName(normKey, state).toUpperCase()} (PAIRED STANCE READY)`
+  );
   return true;
 }
 
@@ -2073,6 +2149,23 @@ export function getWeaponGemVisuals(
       : modProfile.populatedSlotCount >= 3
         ? ' +III'
         : '';
+
+  if (modProfile.isLegendary) {
+    return {
+      gemId: null,
+      installedGems: [],
+      colIndex: 0,
+      color: '#fde047',
+      coreColor: '#fef9c3',
+      label: modProfile.installedLoreBoundRelic
+        ? `MYTHIC + LORE-BOUND (${modProfile.installedLoreBoundRelic.name.toUpperCase()})`
+        : 'MYTHIC FOLKLORE RELIC',
+      bonusDescription: modProfile.installedLoreBoundRelic
+        ? `${modProfile.legendarySpec?.innateMechanicSummary || ''} · ${modProfile.installedLoreBoundRelic.mechanicSummary}`
+        : modProfile.legendarySpec?.innateMechanicSummary ||
+          'Mythic Folklore Relic',
+    };
+  }
 
   if (!gemId && modProfile.populatedSlotCount === 0) {
     return {
@@ -3256,7 +3349,12 @@ export function getWeaponInstanceEquipWeight(
           ? 4
           : 10;
   const modProfile = resolveWeaponModificationProfile(state, weaponInstanceId);
-  if (modProfile.installedMods.length > 0 || modProfile.resonanceGem || modProfile.socketedGems.length > 0) {
+  if (
+    modProfile.isLegendary ||
+    modProfile.installedMods.length > 0 ||
+    modProfile.resonanceGem ||
+    modProfile.socketedGems.length > 0
+  ) {
     return Math.max(2, baseWt + modProfile.weightDelta);
   }
   const { installedGems } = parseEquipmentInstanceId(weaponInstanceId);

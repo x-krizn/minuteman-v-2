@@ -25,7 +25,9 @@ import {
   buildActionDefinitionFromStanceOverride,
   computeInterfaceFeatModifiers,
   evaluateActiveSpecialistStance,
+  getActiveLegendaryEngineHooks,
   getEffectiveMainGrip,
+  getEquipmentDisplayName,
   getOwnedWeaponCount,
   getWeaponGemCombatModifiers,
   getWeaponGemVisuals,
@@ -65,7 +67,11 @@ import {
   normalizeAngleDiff,
   triggerEntityFlash,
 } from './combatHelpers';
-import { DamageLayerOptions, PERFECT_BLOCK_WINDOW_SEC } from './damageSystem';
+import {
+  DamageLayerOptions,
+  PERFECT_BLOCK_WINDOW_SEC,
+  triggerGorgonsGazeCone,
+} from './damageSystem';
 import {
   applySkillMovementAndSupportImpulse,
   executeSpecializedSkillPayload,
@@ -238,6 +244,16 @@ export function executeActionPayload(
 
   const featMods = computeInterfaceFeatModifiers(state.equippedFeats || []);
   const gemCombatMods = getWeaponGemCombatModifiers(state, rawWeaponId);
+  const activeLegendaryHooks = gemCombatMods.modificationProfile?.activeLegendaryHooks || [];
+  const hasBypassLayer1Shields = activeLegendaryHooks.includes('BYPASS_LAYER1_SHIELDS');
+  const hasZeroHitStop = activeLegendaryHooks.includes('ZERO_HIT_STOP');
+  const hasPermanentKill = activeLegendaryHooks.includes('PERMANENT_KILL_PREVENT_RESURRECT');
+  const hasTwinBladeExecution = activeLegendaryHooks.includes('TWIN_BLADE_DUAL_EXECUTION');
+  const hasGorgonsGaze =
+    activeLegendaryHooks.includes('BYPASS_BOSS_CC_IMMUNITY_PETRIFY') ||
+    getActiveLegendaryEngineHooks(state, state.equipmentSlots?.slot2).has(
+      'BYPASS_BOSS_CC_IMMUNITY_PETRIFY'
+    );
   const specEval = evaluateActiveSpecialistStance(state);
   const specMods = specEval.passiveModifiers;
   const overdriveMult =
@@ -380,6 +396,9 @@ export function executeActionPayload(
     maxReach: number = 34
   ) => {
     e.hurt = 0.22;
+    if (hasPermanentKill) {
+      e.preventResurrection = true;
+    }
     const hitEval = evaluatePositionalHitQuality(
       currentWeaponId,
       state.x,
@@ -482,10 +501,14 @@ export function executeActionPayload(
     e.knockbackVy = nextKvy;
     e.lastInertiaOutcome = inertiaRes.outcome;
     e.lastInertiaOutcomeTimer = 0.6;
-    state.hitstopTimer = Math.max(
-      state.hitstopTimer || 0,
-      inertiaRes.hitstopSec + hitEval.extraHitstopSec
-    );
+    if (hasZeroHitStop) {
+      state.hitstopTimer = 0;
+    } else {
+      state.hitstopTimer = Math.max(
+        state.hitstopTimer || 0,
+        inertiaRes.hitstopSec + hitEval.extraHitstopSec
+      );
+    }
 
     if (inertiaRes.outcome === 'none') {
       triggerEntityFlash(e, '#94a3b8', 0.08, 'armor_deflect');
@@ -565,7 +588,16 @@ export function executeActionPayload(
       activeSkillProfile?.shieldBypassRatio || 0,
       specMods.shieldBypassRatio
     );
-    if (shieldBypassRatio > 0 && e.shields.capacity > 0) {
+    const layerOpts: DamageLayerOptions = {
+      armorBypassRatio: effectiveArmorBypass,
+      bypassShields: hasBypassLayer1Shields,
+      thrPierceDelta,
+      durShredMultiplier: durShredMult,
+      shieldDamageMultiplier: shieldDmgMult,
+      hitQuality: hitEval.quality,
+      onFlash: (color, dur, kind) => triggerEntityFlash(e, color, dur, kind),
+    };
+    if (!hasBypassLayer1Shields && shieldBypassRatio > 0 && e.shields.capacity > 0) {
       const bypassedPortion = Math.max(1, Math.round(totalSkillHitDmg * shieldBypassRatio));
       const normalPortion = Math.max(0, totalSkillHitDmg - bypassedPortion);
       if (normalPortion > 0) {
@@ -576,14 +608,7 @@ export function executeActionPayload(
           normalPortion,
           resolvedDmgType,
           undefined,
-          {
-            armorBypassRatio: effectiveArmorBypass,
-            thrPierceDelta,
-            durShredMultiplier: durShredMult,
-            shieldDamageMultiplier: shieldDmgMult,
-            hitQuality: hitEval.quality,
-            onFlash: (color, dur, kind) => triggerEntityFlash(e, color, dur, kind),
-          }
+          layerOpts
         );
       }
       const savedShield = e.shields.capacity;
@@ -595,14 +620,7 @@ export function executeActionPayload(
         bypassedPortion,
         resolvedDmgType,
         (count, color) => ctx.spawnParticles(e.x, e.y, e.z + 8, count, color, ''),
-        {
-          armorBypassRatio: effectiveArmorBypass,
-          thrPierceDelta,
-          durShredMultiplier: durShredMult,
-          shieldDamageMultiplier: shieldDmgMult,
-          hitQuality: hitEval.quality,
-          onFlash: (color, dur, kind) => triggerEntityFlash(e, color, dur, kind),
-        }
+        layerOpts
       );
       e.shields.capacity = savedShield;
     } else {
@@ -613,14 +631,18 @@ export function executeActionPayload(
         totalSkillHitDmg,
         resolvedDmgType,
         (count, color) => ctx.spawnParticles(e.x, e.y, e.z + 8, count, color, ''),
-        {
-          armorBypassRatio: effectiveArmorBypass,
-          thrPierceDelta,
-          durShredMultiplier: durShredMult,
-          shieldDamageMultiplier: shieldDmgMult,
-          hitQuality: hitEval.quality,
-          onFlash: (color, dur, kind) => triggerEntityFlash(e, color, dur, kind),
-        }
+        layerOpts
+      );
+    }
+    if (hasTwinBladeExecution) {
+      applyDamageFn(
+        e.shields,
+        e.armor,
+        e.frame,
+        totalSkillHitDmg,
+        resolvedDmgType,
+        (count) => ctx.spawnParticles(e.x, e.y, e.z + 10, count, '#e11d48', ''),
+        layerOpts
       );
     }
     if (hitEval.quality === 'sweet') {
@@ -1016,6 +1038,9 @@ export function executeActionPayload(
         }
         ctx.spawnParticles(state.x, state.y, state.z + 8, 10, trailColor, action.name);
         soundSystem.playSword();
+        if (hasGorgonsGaze) {
+          triggerGorgonsGazeCone(state, ctx, aimAngle);
+        }
       } else {
         const salvoCount = Math.max(1, action.ammoCount || (isRapidRotaryWeapon ? 4 : 1));
         state.bladeTrails.push({
@@ -1283,6 +1308,61 @@ export function executeActionPayload(
           action.name
         );
         soundSystem.playExplosion();
+        if (hasGorgonsGaze) {
+          triggerGorgonsGazeCone(state, ctx, aimAngle);
+        }
+      } else if (currentWeaponId === 'leg_lake_of_fire_knife') {
+        // Glance of the Gatekeeper: searing frontal flash of infernal radiance (1.2s Stun + 2.5s Blind; widens when dual-wielding two Knives of the Lake of Fire)
+        const s1Base = parseEquipmentInstanceId(state.equipmentSlots?.slot1).baseId;
+        const s2Base = parseEquipmentInstanceId(state.equipmentSlots?.slot2).baseId;
+        const isDualLakeOfFire =
+          s1Base === 'leg_lake_of_fire_knife' &&
+          s2Base === 'leg_lake_of_fire_knife' &&
+          state.equipmentSlots?.mainGrip !== '2h';
+        const coneReach = isDualLakeOfFire ? 46 : 38;
+        const coneSpan = isDualLakeOfFire ? Math.PI * 1.35 : Math.PI * 0.9;
+        soundSystem.playPowerup();
+        state.bladeTrails.push({
+          x: state.x,
+          y: state.y,
+          z: state.z,
+          angle: aimAngle,
+          arcSpan: coneSpan,
+          radius: coneReach,
+          width: isDualLakeOfFire ? 20 : 16,
+          style: 'shockwave',
+          color: '#fb923c',
+          coreColor: '#fef08a',
+          life: 0.32,
+          maxLife: 0.32,
+        });
+        for (const e of state.enemies) {
+          if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
+          if (isTargetInDirectionalArc(state.x, state.y, aimAngle, coneReach, coneSpan + 0.15, e.x, e.y)) {
+            e.preventResurrection = true;
+            e.stun = Math.max(e.stun, 1.2);
+            e.blindedTimer = Math.max(e.blindedTimer || 0, 2.5);
+            triggerEntityFlash(e, '#fef08a', 0.28, 'sweet');
+            applyHitToEnemy(
+              e,
+              action.damage || 30,
+              action.damageType || 'Wave',
+              1.2,
+              10,
+              4,
+              coneReach
+            );
+            ctx.spawnParticles(e.x, e.y, e.z + 12, 8, '#fef08a', 'BLINDED! (2.5s)');
+          }
+        }
+        ctx.spawnParticles(
+          state.x + aim.dx * 16,
+          state.y + aim.dy * 16,
+          state.z + 8,
+          12,
+          '#fb923c',
+          isDualLakeOfFire ? 'TWIN GATEKEEPER GLANCE!' : 'GLANCE OF THE GATEKEEPER!'
+        );
       } else if (isAxeWeapon) {
         state.bladeTrails.push({
           x: state.x,
@@ -1882,6 +1962,9 @@ export function executeActionPayload(
           }
         }
         ctx.spawnParticles(state.x, state.y, state.z + 8, 14, trailColor, action.name);
+        if (hasGorgonsGaze) {
+          triggerGorgonsGazeCone(state, ctx, aimAngle);
+        }
       } else if (isMeleeOrShield) {
         soundSystem.playSword();
         state.bladeTrails.push({
@@ -2479,6 +2562,28 @@ export function getActiveWeaponStance(state: OrionState): ActiveWeaponStanceSumm
 
   if (
     w1 &&
+    getActiveLegendaryEngineHooks(state, slot1Id).has('TWIN_BLADE_DUAL_EXECUTION')
+  ) {
+    const fusedTitle = getEquipmentDisplayName(slot1Id, state);
+    return {
+      stance: 'paired',
+      grip: '1h',
+      label: 'TWIN-BLADE FUSED KATANA STANCE',
+      shortTag: 'TWIN KATANA',
+      description: `${fusedTitle} (Masamune + Muramasa Fused Pair · 16 WT) → ac1–ac5 active with simultaneous dual strikes`,
+      specialistStance: specEval,
+      actionGridRow: {
+        ac1: true,
+        ac2: true,
+        ac3: true,
+        ac4: true,
+        ac5: true,
+      },
+    };
+  }
+
+  if (
+    w1 &&
     w2 &&
     isTrueWeaponEquipment(w1) &&
     isTrueWeaponEquipment(w2) &&
@@ -2740,17 +2845,21 @@ export function getResolvedCombatSkills(state: OrionState): ResolvedCombatSkills
   const specEval = evaluateActiveSpecialistStance(state);
   const isPowerStance2H =
     !isAuxActive && !specEval.active && (mainGrip === '2h' || is2HWeapon);
+  const isFusedTwinBladeKatana = Boolean(
+    w1 && getActiveLegendaryEngineHooks(state, slot1Id).has('TWIN_BLADE_DUAL_EXECUTION')
+  );
   const isPairedStance =
     !isAuxActive &&
     !isPowerStance2H &&
-    Boolean(
-      w1 &&
-        w2 &&
-        isTrueWeaponEquipment(w1) &&
-        isTrueWeaponEquipment(w2) &&
-        w1.name === w2.name &&
-        getOwnedWeaponCount(state, slot1Id) >= 2
-    );
+    (isFusedTwinBladeKatana ||
+      Boolean(
+        w1 &&
+          w2 &&
+          isTrueWeaponEquipment(w1) &&
+          isTrueWeaponEquipment(w2) &&
+          w1.name === w2.name &&
+          getOwnedWeaponCount(state, slot1Id) >= 2
+      ));
   const isUnpairedStance =
     !isAuxActive &&
     !isPowerStance2H &&

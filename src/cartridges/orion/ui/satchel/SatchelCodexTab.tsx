@@ -142,7 +142,9 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const [arsenalClassFilter, setArsenalClassFilter] = useState<'ALL' | WeaponCategory>('ALL');
-  const [arsenalSubtypeFilter, setArsenalSubtypeFilter] = useState<'ALL' | 'Custom' | 'Magitech'>('ALL');
+  const [arsenalSubtypeFilter, setArsenalSubtypeFilter] = useState<
+    'ALL' | 'Custom' | 'Magitech' | 'Legendary'
+  >('ALL');
 
   const devMode = getOrionGraphicsSettings().devModeEnabled;
   const q = searchQuery.trim().toLowerCase();
@@ -524,9 +526,9 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                   </button>
                 ))}
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 flex-wrap">
                 <span className="text-[9px] text-[#94a3b8] font-bold">SUBTYPE:</span>
-                {(['ALL', 'Custom', 'Magitech'] as const).map((subOpt) => (
+                {(['ALL', 'Custom', 'Magitech', 'Legendary'] as const).map((subOpt) => (
                   <button
                     key={subOpt}
                     type="button"
@@ -536,11 +538,13 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                     }}
                     className={`px-1.5 py-0.2 rounded-xs text-[9px] font-bold border cursor-pointer ${
                       arsenalSubtypeFilter === subOpt
-                        ? subOpt === 'Magitech'
-                          ? 'bg-[#a21caf] text-[#f8fafc] border-[#e879f9]'
-                          : subOpt === 'Custom'
-                            ? 'bg-[#15803d] text-[#f8fafc] border-[#86efac]'
-                            : 'bg-[#ffd27d] text-[#05070a] border-[#fde047]'
+                        ? subOpt === 'Legendary'
+                          ? 'bg-[#78350f] text-[#fde047] border-[#f59e0b]'
+                          : subOpt === 'Magitech'
+                            ? 'bg-[#a21caf] text-[#f8fafc] border-[#e879f9]'
+                            : subOpt === 'Custom'
+                              ? 'bg-[#15803d] text-[#f8fafc] border-[#86efac]'
+                              : 'bg-[#ffd27d] text-[#05070a] border-[#fde047]'
                         : 'bg-[#05070a] text-[#94a3b8] border-[#1e293b]'
                     }`}
                   >
@@ -568,6 +572,7 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
               const primaryRange = primaryAction?.range ?? 64;
               const stInfo = getWeaponSubtypeInfo(w.id);
               const isMagitech = stInfo.variantSubtype === 'Magitech';
+              const isLegendary = stInfo.variantSubtype === 'Legendary';
               return (
                 <div
                   key={w.id}
@@ -603,15 +608,23 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                         )}
                         <span
                           className={`ml-1.5 px-1 py-0.1 rounded-[2px] text-[9px] font-bold ${
-                            isMagitech
-                              ? 'bg-[#311042] text-[#e879f9] border border-[#a21caf]/50'
-                              : 'bg-[#052e16] text-[#86efac] border border-[#22c55e]/40'
+                            isLegendary
+                              ? 'bg-[#451a03] text-[#fde047] border border-[#f59e0b]/60'
+                              : isMagitech
+                                ? 'bg-[#311042] text-[#e879f9] border border-[#a21caf]/50'
+                                : 'bg-[#052e16] text-[#86efac] border border-[#22c55e]/40'
                           }`}
                         >
                           {stInfo.variantSubtype.toUpperCase()}
                         </span>
                         <span className="ml-2 text-[9px] text-[#94a3b8]">
-                          {stInfo.category} ▸ {stInfo.functionalType} · {wt} WT ({(w.weightClass || 'medium').toUpperCase()}) · {w.handing || '1-hand'} · [{isMagitech ? '1 GEM SOCKET' : `3 SLOTS: ${compSlots}`}]
+                          {stInfo.category} ▸ {stInfo.functionalType} · {wt} WT ({(w.weightClass || 'medium').toUpperCase()}) · {w.handing || '1-hand'} · [
+                          {isLegendary
+                            ? `0 MODS · 0G · ${w.legendarySpec?.boundRelicSlots.length ?? 0} LORE-BOUND`
+                            : isMagitech
+                              ? '1 GEM SOCKET'
+                              : `3 SLOTS: ${compSlots}`}
+                          ]
                         </span>
                       </div>
                     </div>
@@ -695,6 +708,29 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                       <div className="text-[#fde68a] italic leading-snug">
                         “{w.lore}”
                       </div>
+                      {w.legendarySpec && (
+                        <div className="p-1.5 bg-[#090d14] border border-[#f59e0b]/50 rounded-xs space-y-1 text-[9px]">
+                          <div className="flex flex-wrap items-center justify-between gap-1">
+                            <span className="font-bold text-[#fde047]">
+                              ★ FOLKLORE ORIGIN ({w.legendarySpec.originWorldId.replace(/_/g, ' ').toUpperCase()}) ·{' '}
+                              {w.legendarySpec.folkloreTradition.toUpperCase()}
+                            </span>
+                            <span className="text-[#86efac] font-mono">
+                              {w.legendarySpec.innateEngineHooks.join(' · ')}
+                            </span>
+                          </div>
+                          <div className="text-[#cbd5e1]">{w.legendarySpec.innateMechanicSummary}</div>
+                          <div className="text-[#7dd3fc]">
+                            <b>World &amp; Hazard Link:</b> {w.legendarySpec.areaLoreConnection}
+                          </div>
+                          {w.legendarySpec.boundRelicSlots[0] && (
+                            <div className="text-[#e9d5ff] pt-0.5 border-t border-[#1e293b]">
+                              <b>Lore-Bound Companion Mount ({w.legendarySpec.boundRelicSlots[0].name}):</b>{' '}
+                              {w.legendarySpec.boundRelicSlots[0].mechanicSummary}
+                            </div>
+                          )}
+                        </div>
+                      )}
                       {primaryAction?.comboSequence && primaryAction.comboSequence.length > 0 && (
                         <div className="px-1.5 py-0.5 bg-[#090d14] border border-[#f472b6]/40 rounded-xs text-[9px] text-[#f472b6]">
                           <span className="font-bold">FLUID COMBO SEQUENCE: </span>

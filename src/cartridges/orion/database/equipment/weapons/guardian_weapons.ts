@@ -528,15 +528,6 @@ export const rs450RadiantProjectorWeapon = buildMagitechWeapon({
 // ─── BACKWARD-COMPATIBLE ALIAS EXPORTS & BASE CUSTOMIZABLE WEAPONS ──────────
 
 /**
- * Backward-compatible alias for `hl220LightburstLanceWeapon`.
- */
-export const avalonSiegeLanceWeapon: WeaponDefinition = {
-  ...hl220LightburstLanceWeapon,
-  id: 'avalon_siege_lance',
-  name: 'Avalon Siege Lance (HL-220)',
-};
-
-/**
  * Backward-compatible alias for `s3ViperPartisanWeapon` (legacy `tig_edge`).
  */
 export const tigEdgeWeapon: WeaponDefinition = {

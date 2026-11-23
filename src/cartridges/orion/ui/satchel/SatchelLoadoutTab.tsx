@@ -230,15 +230,23 @@ export const WeaponStatReadout: React.FC<{
         )}
         <span
           className={`px-1 py-0.2 rounded-[2px] font-bold ${
-            w.weaponTier === 'unique'
-              ? 'bg-[#311042] text-[#e879f9] border border-[#a21caf]/50'
-              : 'bg-[#052e16] text-[#86efac] border border-[#22c55e]/40'
+            w.weaponTier === 'legendary'
+              ? 'bg-[#451a03] text-[#fde047] border border-[#f59e0b]/60'
+              : w.weaponTier === 'unique'
+                ? 'bg-[#311042] text-[#e879f9] border border-[#a21caf]/50'
+                : 'bg-[#052e16] text-[#86efac] border border-[#22c55e]/40'
           }`}
         >
-          {w.weaponTier === 'unique' ? 'SUBTYPE: MAGITECH · 1 GEM' : 'SUBTYPE: CUSTOM · 3 SLOTS'}
+          {w.weaponTier === 'legendary'
+            ? `SUBTYPE: LEGENDARY · ${w.legendarySpec?.boundRelicSlots.length ?? 0} LORE-BOUND`
+            : w.weaponTier === 'unique'
+              ? 'SUBTYPE: MAGITECH · 1 GEM'
+              : 'SUBTYPE: CUSTOM · 3 SLOTS'}
         </span>
         <span className="px-1 py-0.2 rounded-[2px] bg-[#0f172a] text-[#94a3b8] border border-[#334155]">
-          MODS: {getWeaponComponentSlots(instanceId).join(' / ').toUpperCase()}
+          {w.weaponTier === 'legendary'
+            ? `TRADITION: ${w.legendarySpec?.folkloreTradition.toUpperCase() || 'FOLKLORE RELIC'}`
+            : `MODS: ${getWeaponComponentSlots(instanceId).join(' / ').toUpperCase()}`}
         </span>
         <span className="px-1 py-0.2 rounded-[2px] bg-[#1e293b] text-[#ffd27d] font-bold">
           {totalWt} WT ({(w.weightClass || 'medium').toUpperCase()})
@@ -515,7 +523,9 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
   const [hoveredSlot, setHoveredSlot] = useState<EditableLoadoutSlot | null>(null);
   const [previewCandidateId, setPreviewCandidateId] = useState<string | null>(null);
   const [loadoutSelectedClass, setLoadoutSelectedClass] = useState<WeaponCategory | null>(null);
-  const [loadoutVariantFilter, setLoadoutVariantFilter] = useState<'ALL' | 'Custom' | 'Magitech'>('ALL');
+  const [loadoutVariantFilter, setLoadoutVariantFilter] = useState<
+    'ALL' | 'Custom' | 'Magitech' | 'Legendary'
+  >('ALL');
 
   if (!state.equipmentSlots) {
     state.equipmentSlots = createInitialEquipmentSlots(state.traitLine);
@@ -916,7 +926,8 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                 Select one of the <span className="text-[#fde047] font-semibold">8 Weapon Classes</span>{' '}
                 ▸ choose a <span className="text-[#38bdf8] font-semibold">Functional Weapon Class</span>{' '}
                 (e.g. Khopesh) to compare <span className="text-[#86efac] font-semibold">Custom</span>{' '}
-                (3 Slots) &amp; <span className="text-[#e879f9] font-semibold">Magitech</span> (Unique · 1 Gem) variants.
+                (3 Slots), <span className="text-[#e879f9] font-semibold">Magitech</span> (Unique · 1 Gem), &amp;{' '}
+                <span className="text-[#fde047] font-semibold">Legendary</span> (Folklore · Lore-Bound) variants.
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -966,7 +977,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                 <div className="flex items-center justify-between gap-1">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="font-bold text-[10px] text-[#fde047]">
-                      {inspectedWeapon.name}
+                      {getEquipmentDisplayName(inspectedId, state)}
                     </span>
                     <span className="text-[9px] text-[#7dd3fc] font-semibold">
                       [{getWeaponSubtypeInfo(inspectedWeapon.id).subtype}]
@@ -1045,10 +1056,13 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                   (w) => getWeaponSubtypeInfo(w.id).category === cat
                 );
                 const customCount = classItems.filter(
-                  (w) => w.weaponTier !== 'unique'
+                  (w) => w.weaponTier !== 'unique' && w.weaponTier !== 'legendary'
                 ).length;
                 const magitechCount = classItems.filter(
                   (w) => w.weaponTier === 'unique'
+                ).length;
+                const legendaryCount = classItems.filter(
+                  (w) => w.weaponTier === 'legendary'
                 ).length;
                 const isSelected = activeWeaponClass === cat;
                 const hasEquippedInClass = currentSubtypeInfo?.category === cat;
@@ -1078,10 +1092,16 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                         </span>
                       )}
                     </div>
-                    <div className="text-[9px] text-[#94a3b8] mt-0.5 flex items-center gap-1.5">
+                    <div className="text-[9px] text-[#94a3b8] mt-0.5 flex items-center gap-1 flex-wrap">
                       <span className="text-[#86efac]">{customCount} Custom</span>
                       <span>·</span>
                       <span className="text-[#e879f9]">{magitechCount} Magitech</span>
+                      {legendaryCount > 0 && (
+                        <>
+                          <span>·</span>
+                          <span className="text-[#fde047]">{legendaryCount} Legendary</span>
+                        </>
+                      )}
                     </div>
                   </button>
                 );
@@ -1095,9 +1115,9 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
               <span className="text-[9px] font-bold text-[#38bdf8]">
                 2. {activeWeaponClass.toUpperCase()} ▸ FUNCTIONAL WEAPON TYPE:
               </span>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 flex-wrap">
                 <span className="text-[9px] text-[#94a3b8] font-bold">SUBTYPE:</span>
-                {(['ALL', 'Custom', 'Magitech'] as const).map((variantOpt) => (
+                {(['ALL', 'Custom', 'Magitech', 'Legendary'] as const).map((variantOpt) => (
                   <button
                     key={variantOpt}
                     type="button"
@@ -1107,19 +1127,23 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                     }}
                     className={`px-1.5 py-0.2 rounded-xs text-[9px] font-bold border cursor-pointer ${
                       loadoutVariantFilter === variantOpt
-                        ? variantOpt === 'Magitech'
-                          ? 'bg-[#a21caf] text-[#f8fafc] border-[#e879f9]'
-                          : variantOpt === 'Custom'
-                            ? 'bg-[#15803d] text-[#f8fafc] border-[#86efac]'
-                            : 'bg-[#fde047] text-[#05070a] border-[#facc15]'
+                        ? variantOpt === 'Legendary'
+                          ? 'bg-[#78350f] text-[#fde047] border-[#f59e0b]'
+                          : variantOpt === 'Magitech'
+                            ? 'bg-[#a21caf] text-[#f8fafc] border-[#e879f9]'
+                            : variantOpt === 'Custom'
+                              ? 'bg-[#15803d] text-[#f8fafc] border-[#86efac]'
+                              : 'bg-[#fde047] text-[#05070a] border-[#facc15]'
                         : 'bg-[#090d14] text-[#94a3b8] border-[#1e293b]'
                     }`}
                   >
                     {variantOpt === 'ALL'
-                      ? 'ALL (CUSTOM + MAGITECH)'
+                      ? 'ALL SUBTYPES'
                       : variantOpt === 'Custom'
                         ? 'CUSTOM (3 SLOTS)'
-                        : 'MAGITECH (UNIQUE · 1G)'}
+                        : variantOpt === 'Magitech'
+                          ? 'MAGITECH (1G)'
+                          : 'LEGENDARY (FOLKLORE)'}
                   </button>
                 ))}
               </div>
@@ -1199,6 +1223,9 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                     <span className="text-[9px] text-[#94a3b8]">
                       {items.filter((i) => i.stInfo.variantSubtype === 'Custom').length} Custom ·{' '}
                       {items.filter((i) => i.stInfo.variantSubtype === 'Magitech').length} Magitech
+                      {items.some((i) => i.stInfo.variantSubtype === 'Legendary')
+                        ? ` · ${items.filter((i) => i.stInfo.variantSubtype === 'Legendary').length} Legendary`
+                        : ''}
                     </span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
@@ -1206,11 +1233,14 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                       const isEquippedHere = currentId === instanceId;
                       const copies = getOwnedWeaponCount(state, instanceId);
                       const isMagitech = stInfo.variantSubtype === 'Magitech';
+                      const isLegendary = stInfo.variantSubtype === 'Legendary';
                       const itemHandling = evaluateEquipmentFeatHandling(state, instanceId);
                       const slotsLabel =
-                        resolvedW.weaponTier === 'unique'
-                          ? '1 GEM SOCKET (FIXED PARTS)'
-                          : `3 SLOTS (${getWeaponComponentSlots(instanceId).join('/').toUpperCase()})`;
+                        resolvedW.weaponTier === 'legendary'
+                          ? `0 MODS · 0G (${resolvedW.legendarySpec?.boundRelicSlots.length ?? 0} LORE-BOUND)`
+                          : resolvedW.weaponTier === 'unique'
+                            ? '1 GEM SOCKET (FIXED PARTS)'
+                            : `3 SLOTS (${getWeaponComponentSlots(instanceId).join('/').toUpperCase()})`;
                       return (
                         <div
                           key={instanceId}
@@ -1233,14 +1263,16 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                             <div className="min-w-0">
                               <div className="flex items-center gap-1 flex-wrap">
                                 <span className="font-bold text-[9px] text-[#e2e8f0] truncate">
-                                  {resolvedW.name}
+                                  {getEquipmentDisplayName(instanceId, state)}
                                 </span>
                                 <span className="text-[9px] text-[#94a3b8]">×{copies}</span>
                                 <span
                                   className={`px-1 py-0.1 rounded-[2px] text-[9px] font-bold ${
-                                    isMagitech
-                                      ? 'bg-[#311042] text-[#e879f9] border border-[#a21caf]/50'
-                                      : 'bg-[#052e16] text-[#86efac] border border-[#22c55e]/40'
+                                    isLegendary
+                                      ? 'bg-[#451a03] text-[#fde047] border border-[#f59e0b]/60'
+                                      : isMagitech
+                                        ? 'bg-[#311042] text-[#e879f9] border border-[#a21caf]/50'
+                                        : 'bg-[#052e16] text-[#86efac] border border-[#22c55e]/40'
                                   }`}
                                 >
                                   {stInfo.variantSubtype.toUpperCase()}
@@ -1667,7 +1699,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                     SLOT INSPECTOR: [{contextMenuSlot.toUpperCase()}]
                   </span>
                   <span className="text-[9px] text-[#7dd3fc] truncate max-w-[140px]">
-                    {getEquipmentDisplayName(getEquippedIdForSlot(contextMenuSlot))}
+                    {getEquipmentDisplayName(getEquippedIdForSlot(contextMenuSlot), state)}
                     {devMode && getEquippedIdForSlot(contextMenuSlot)
                       ? ` [${getEquippedIdForSlot(contextMenuSlot)}]`
                       : ''}
@@ -1855,14 +1887,17 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                 slot: 'slot1',
                 title: 'MAIN HAND [RIGHT]',
                 itemId: slot1Id,
-                itemName: mainWeapon?.name || getEquipmentDisplayName(slot1Id),
+                itemName: getEquipmentDisplayName(slot1Id, state),
                 subtitle: mainWeapon
                   ? `${getWeaponSubtypeInfo(mainWeapon.id).subtype} · ${mainWeapon.damagePerShot} DMG`
                   : 'Primary Weapon (1H or 2H)',
                 wtLabel: `${getWeaponInstanceEquipWeight(slot1Id, state)} WT`,
                 accentColor: '#fde047',
                 badgeText: mainGrip.toUpperCase(),
-                subModulesSummary: `Slots: [${getWeaponComponentSlots(slot1Id).join('/').toUpperCase()}]`,
+                subModulesSummary:
+                  mainWeapon?.weaponTier === 'legendary'
+                    ? `Tradition: ${mainWeapon.legendarySpec?.folkloreTradition || 'Folklore Relic'}`
+                    : `Slots: [${getWeaponComponentSlots(slot1Id).join('/').toUpperCase()}]`,
               })}
 
               {renderDollSlotNode({
@@ -1870,9 +1905,9 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                 title: 'SIDE HAND [LEFT]',
                 itemId: slot2Id,
                 itemName: sideWeapon
-                  ? sideWeapon.name
+                  ? getEquipmentDisplayName(slot2Id, state)
                   : mainGrip === '2h'
-                    ? `${mainWeapon?.name || 'Main Hand'} (2H Grip)`
+                    ? `${getEquipmentDisplayName(slot1Id, state)} (2H Grip)`
                     : 'Empty Off-Hand (1H / Shield)',
                 subtitle: sideWeapon
                   ? mainGrip === '2h'
@@ -2059,7 +2094,7 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
 }) => {
   const [invWeaponFuncFilter, setInvWeaponFuncFilter] = useState<string>('ALL');
   const [invWeaponVariantFilter, setInvWeaponVariantFilter] = useState<
-    'ALL' | 'Custom' | 'Magitech'
+    'ALL' | 'Custom' | 'Magitech' | 'Legendary'
   >('ALL');
   const devMode = getOrionGraphicsSettings().devModeEnabled;
 
@@ -2246,20 +2281,22 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
                 Select a Weapon Class above to drill into its 9 shared Functional Types.
               </span>
             )}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-wrap">
               <span className="text-[9px] text-[#94a3b8] font-bold">SUBTYPE:</span>
-              {(['ALL', 'Custom', 'Magitech'] as const).map((vOpt) => (
+              {(['ALL', 'Custom', 'Magitech', 'Legendary'] as const).map((vOpt) => (
                 <button
                   key={vOpt}
                   type="button"
                   onClick={() => setInvWeaponVariantFilter(vOpt)}
                   className={`px-1.5 py-0.2 rounded-xs text-[9px] font-bold border cursor-pointer ${
                     invWeaponVariantFilter === vOpt
-                      ? vOpt === 'Magitech'
-                        ? 'bg-[#a21caf] text-[#f8fafc] border-[#e879f9]'
-                        : vOpt === 'Custom'
-                          ? 'bg-[#15803d] text-[#f8fafc] border-[#86efac]'
-                          : 'bg-[#ffd27d] text-[#05070a] border-[#fbbf24]'
+                      ? vOpt === 'Legendary'
+                        ? 'bg-[#78350f] text-[#fde047] border-[#f59e0b]'
+                        : vOpt === 'Magitech'
+                          ? 'bg-[#a21caf] text-[#f8fafc] border-[#e879f9]'
+                          : vOpt === 'Custom'
+                            ? 'bg-[#15803d] text-[#f8fafc] border-[#86efac]'
+                            : 'bg-[#ffd27d] text-[#05070a] border-[#fbbf24]'
                       : 'bg-[#05070a] text-[#94a3b8] border-[#1e293b]'
                   }`}
                 >
@@ -2275,7 +2312,7 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
       {(invCategory === 'all' || invCategory === 'weapon' || invCategory === 'auxiliary') && (
         <div className="space-y-1">
           <div className="text-[9px] font-bold text-[#ffd27d]">
-            OWNED WEAPONS & AUXILIARIES (SHARED FUNCTIONAL CLASSES · CUSTOM &amp; MAGITECH):
+            OWNED WEAPONS & AUXILIARIES (SHARED FUNCTIONAL CLASSES · CUSTOM, MAGITECH &amp; LEGENDARY):
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
             {Object.values(WEAPON_REGISTRY)
@@ -2339,7 +2376,8 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
                         />
                         <div className="min-w-0">
                           <div className="font-bold text-[9px] text-[#ffd27d] truncate">
-                            {w.name} <span className="text-[#94a3b8]">×{copies}</span>
+                            {getEquipmentDisplayName(instanceId, state)}{' '}
+                            <span className="text-[#94a3b8]">×{copies}</span>
                             {devMode && (
                               <span className="ml-1 text-[9px] text-[#64748b] font-mono">
                                 [{instanceId}]
@@ -2347,7 +2385,10 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
                             )}
                           </div>
                           <div className="text-[9px] text-[#7dd3fc] truncate">
-                            {stInfo.subtype} · [{getWeaponComponentSlots(instanceId).join(' / ').toUpperCase()}]
+                            {stInfo.subtype} ·{' '}
+                            {w.weaponTier === 'legendary'
+                              ? `[0 MODS · 0G · ${w.legendarySpec?.boundRelicSlots.length ?? 0} LORE-BOUND]`
+                              : `[${getWeaponComponentSlots(instanceId).join(' / ').toUpperCase()}]`}
                             {inMain ? ' · [MAIN]' : ''}
                             {inSide ? ' · [SIDE]' : ''}
                             {inAux ? ' · [AUX]' : ''}

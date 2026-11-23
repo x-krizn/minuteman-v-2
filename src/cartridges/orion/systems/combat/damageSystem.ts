@@ -6,6 +6,7 @@
 import { soundSystem } from '../../../../engine/core/soundSystem';
 import {
   evaluateActiveSpecialistStance,
+  getActiveLegendaryEngineHooks,
   getWeaponGemCombatModifiers,
 } from '../../database/progression';
 import {
@@ -51,6 +52,8 @@ export interface DamageLayerOptions {
   durShredMultiplier?: number;
   /** Layer 1 Shield damage multiplier from weapon components */
   shieldDamageMultiplier?: number;
+  /** True when Excalibur's Sovereign's Decree bypasses Layer 1 Energy Shields completely */
+  bypassShields?: boolean;
   /** Optional callback to trigger a sprite silhouette flash frame on the defender */
   onFlash?: (color: string, durationSec: number, kind: string) => void;
 }
@@ -80,7 +83,8 @@ export function applyDamageToLayers(
   const compShieldDmgMult = options?.shieldDamageMultiplier ?? 1.0;
 
   // 1. SHIELD LAYER (Pulse & Beam disrupt shields; Wave partially bleeds through shields; Pierce is resisted by full shields)
-  if (shields.capacity > 0) {
+  // Excalibur (BYPASS_LAYER1_SHIELDS) unconditionally bypasses Layer 1 Shields on melee strikes.
+  if (shields.capacity > 0 && !options?.bypassShields) {
     const shieldEfficiencyMult =
       (damageType === 'Pulse'
         ? 1.3
@@ -251,6 +255,69 @@ export function applyDamageToLayers(
 }
 
 /**
+ * Unleashes Aegis of the Gorgon's (`BYPASS_BOSS_CC_IMMUNITY_PETRIFY`) conical petrifying glare,
+ * turning struck enemies in the forward arc to stone (`Hard-Lock Freeze`) for `2.0s`—bypassing
+ * Boss and Unstoppable crowd-control immunity (`14s` internal cooldown; `8s` Stone-Hardened immunity after thawing).
+ * Mutates `state: OrionState`.
+ */
+export function triggerGorgonsGazeCone(
+  state: OrionState,
+  ctx: OrionCombatContext,
+  facingAngle: number
+): boolean {
+  if ((state.gorgonGazeCooldownTimer || 0) > 0) return false;
+  let petrifiedCount = 0;
+
+  for (const target of state.enemies) {
+    if (target.frame.integrity <= 0 || target.type === 'bog_poe') continue;
+    if ((target.petrifyImmunityTimer || 0) > 0) continue;
+    const inCone =
+      Math.hypot(target.x - state.x, target.y - state.y) <= 24 ||
+      isTargetInDirectionalArc(
+        state.x,
+        state.y,
+        facingAngle,
+        64,
+        Math.PI * 0.75,
+        target.x,
+        target.y
+      );
+    if (!inCone) continue;
+
+    target.petrifiedTimer = 2.0;
+    target.stun = Math.max(target.stun, 2.0);
+    target.state = 'stagger';
+    target.stateTimer = 2.0;
+    target.stateMaxTimer = 2.0;
+    triggerEntityFlash(target, '#cbd5e1', 0.35, 'stagger');
+    ctx.spawnParticles(target.x, target.y, target.z + 10, 10, '#94a3b8', 'PETRIFIED (2.0S)');
+    petrifiedCount += 1;
+  }
+
+  if (petrifiedCount > 0) {
+    state.gorgonGazeCooldownTimer = 14.0;
+    state.bladeTrails = state.bladeTrails || [];
+    state.bladeTrails.push({
+      x: state.x,
+      y: state.y,
+      z: state.z,
+      angle: facingAngle,
+      arcSpan: Math.PI * 0.75,
+      radius: 64,
+      style: 'shockwave',
+      color: '#cbd5e1',
+      coreColor: '#fde047',
+      life: 0.28,
+      maxLife: 0.28,
+    });
+    soundSystem.playPowerup();
+    ctx.say("GORGON'S GAZE: TARGETS TURNED TO STONE (2.0S)!");
+    return true;
+  }
+  return false;
+}
+
+/**
  * Resolves enemy melee/lunge/slam strikes against the player, including Perfect Block, Held Guard,
  * and Inertia v0 impulse/displacement/stagger resolution.
  */
@@ -321,10 +388,25 @@ export function resolveEnemyMeleeAttacks(
           hitDamage = Math.max(1, Math.round(hitDamage * 0.85));
         }
 
+        const activeHooks = getActiveLegendaryEngineHooks(state);
+        const isInActiveHitFrames =
+          state.activeSkillSlot !== null &&
+          (state.skillTellTimer || 0) <= 0 &&
+          (state.skillActionTimer || 0) > 0;
+        if (
+          (!isInActiveHitFrames && activeHooks.has('DR_OUTSIDE_ACTIVE_HIT_FRAMES')) ||
+          (isInActiveHitFrames && activeHooks.has('DR_DURING_ACTIVE_HIT_FRAMES'))
+        ) {
+          hitDamage = Math.max(1, Math.round(hitDamage * 0.8));
+        }
+
         // Active Skill 4 Held Block mitigation (0.34s Perfect Block window + Specialist Stance + Weapon Component bonus)
         if (state.isHoldingBlock || (state.blockTimer || 0) > 0) {
           const isShieldBlock = Boolean(
-            state.blockingWeaponId && state.blockingWeaponId.includes('shield')
+            (state.blockingWeaponId &&
+              (state.blockingWeaponId.includes('shield') ||
+                state.blockingWeaponId.includes('aegis'))) ||
+              activeHooks.has('UNBREAKABLE_DIRECTIONAL_GUARD')
           );
           const blockWpnMod = getWeaponGemCombatModifiers(
             state,
@@ -353,7 +435,9 @@ export function resolveEnemyMeleeAttacks(
             e.stateMaxTimer = e.stateTimer;
             triggerEntityFlash(e, '#ffffff', 0.2, 'stagger');
             triggerEntityFlash(state, '#fde047', 0.18, 'parry');
-            state.hitstopTimer = Math.max(state.hitstopTimer || 0, 0.06);
+            state.hitstopTimer = activeHooks.has('ZERO_HIT_STOP')
+              ? 0
+              : Math.max(state.hitstopTimer || 0, 0.06);
             state.shields.overloaded = false;
             state.shields.capacity = Math.min(
               state.shields.maxCapacity,
@@ -363,6 +447,54 @@ export function resolveEnemyMeleeAttacks(
             soundSystem.playPowerup();
             soundSystem.playSword();
             ctx.spawnParticles(state.x, state.y, state.z + 10, 12, '#fde047', '');
+
+            // Aegis of the Gorgon (BYPASS_BOSS_CC_IMMUNITY_PETRIFY): Perfect Block unleashes Gorgon's Gaze
+            if (activeHooks.has('BYPASS_BOSS_CC_IMMUNITY_PETRIFY')) {
+              const gazeAngle = Math.atan2(e.y - state.y, e.x - state.x);
+              triggerGorgonsGazeCone(state, ctx, gazeAngle);
+            }
+
+            // Balmung (PERFECT_BLOCK_MELEE_AUTO_COUNTER): Perfect Block against melee strike triggers Siegfried's Riposte
+            if (activeHooks.has('PERFECT_BLOCK_MELEE_AUTO_COUNTER')) {
+              const riposteAngle = Math.atan2(e.y - state.y, e.x - state.x);
+              state.bladeTrails = state.bladeTrails || [];
+              state.bladeTrails.push({
+                x: state.x,
+                y: state.y,
+                z: state.z,
+                angle: riposteAngle,
+                arcSpan: Math.PI * 0.95,
+                radius: 38,
+                style: 'slash',
+                color: '#38bdf8',
+                coreColor: '#fde047',
+                life: 0.24,
+                maxLife: 0.24,
+              });
+              applyDamageToLayers(
+                e.shields,
+                e.armor,
+                e.frame,
+                28,
+                'Impact',
+                (count, color) =>
+                  ctx.spawnParticles(e.x, e.y, e.z + 8, count, color, ''),
+                {
+                  hitQuality: 'sweet',
+                  armorBypassRatio: 0.35,
+                  onFlash: (color, dur, kind) =>
+                    triggerEntityFlash(e, color, dur, kind),
+                }
+              );
+              ctx.spawnParticles(
+                e.x,
+                e.y,
+                e.z + 12,
+                8,
+                '#38bdf8',
+                "SIEGFRIED'S RIPOSTE!"
+              );
+            }
             continue;
           }
 
@@ -370,17 +502,34 @@ export function resolveEnemyMeleeAttacks(
             state.heat = Math.max(0, state.heat - compHeatVentOnBlock);
           }
 
-          const baseBlockMult = isShieldBlock
-            ? 0.15
-            : hasOffHandDeflection
-              ? 0.21
-              : 0.28;
+          // Aegis (UNBREAKABLE_DIRECTIONAL_GUARD): Guard can never be staggered, crushed, or guard-broken
+          if (activeHooks.has('UNBREAKABLE_DIRECTIONAL_GUARD')) {
+            state.staggerRecoveryTimer = 0;
+            state.knockdownTimer = 0;
+            state.knockbackVx = 0;
+            state.knockbackVy = 0;
+          }
+
+          const baseBlockMult = activeHooks.has('UNBREAKABLE_DIRECTIONAL_GUARD')
+            ? 0.12
+            : isShieldBlock
+              ? 0.15
+              : hasOffHandDeflection
+                ? 0.21
+                : 0.28;
           const blockMult = Math.max(0.05, baseBlockMult / compGuardMitigationMult);
           const blockedDamage = Math.max(0, Math.round(hitDamage * blockMult));
           e.stun = Math.max(e.stun, isShieldBlock ? 0.95 : 0.7);
           triggerEntityFlash(state, '#38bdf8', 0.12, 'shield');
           soundSystem.playSword();
-          ctx.spawnParticles(state.x, state.y, state.z + 8, 7, '#38bdf8', '');
+          ctx.spawnParticles(
+            state.x,
+            state.y,
+            state.z + 8,
+            7,
+            '#38bdf8',
+            activeHooks.has('UNBREAKABLE_DIRECTIONAL_GUARD') ? 'AEGIS UNBREAKABLE' : ''
+          );
           if (blockedDamage > 0) {
             applyDamageToLayers(
               state.shields,
@@ -426,7 +575,7 @@ export function resolveEnemyMeleeAttacks(
           state.knockbackVx || 0,
           state.knockbackVy || 0
         );
-        const inertiaRes = resolveHitInertia({
+        const rawInertiaRes = resolveHitInertia({
           impulseJ,
           defenderWeight: playerProf.totalBaseWeight,
           defenderMu: playerDefenderMu,
@@ -435,6 +584,17 @@ export function resolveEnemyMeleeAttacks(
           defenderShieldsActive: state.shields.capacity > 0,
           existingKnockbackSpeedPx: existingPlayerKbSpeed,
         });
+        // Balmung (ALWAYS_HYPER_ARMOR): Grants unconditional Hyper Armor at all times while equipped
+        const inertiaRes = activeHooks.has('ALWAYS_HYPER_ARMOR')
+          ? {
+              ...rawInertiaRes,
+              outcome: 'none' as const,
+              displacementSpeedPx: 0,
+              recoverySec: 0,
+              knockdownSec: 0,
+              hitstopSec: 0,
+            }
+          : rawInertiaRes;
 
         state.knockbackVx =
           (state.knockbackVx || 0) + impDx * inertiaRes.displacementSpeedPx;
@@ -444,12 +604,21 @@ export function resolveEnemyMeleeAttacks(
         state.lastInertiaOutcomeTimer = 0.75;
         state.lastImpactDv = inertiaRes.dv;
         state.lastImpactDvEff = inertiaRes.dvEff;
-        state.hitstopTimer = Math.max(state.hitstopTimer || 0, inertiaRes.hitstopSec);
+        state.hitstopTimer = activeHooks.has('ZERO_HIT_STOP')
+          ? 0
+          : Math.max(state.hitstopTimer || 0, inertiaRes.hitstopSec);
 
         if (inertiaRes.outcome === 'none') {
-          // Charging heavy / high-stability frame shrugged off the hit inside k1·S deadband!
+          // Charging heavy / high-stability frame or Balmung Hyper Armor shrugged off the hit!
           triggerEntityFlash(state, '#94a3b8', 0.09, 'armor_deflect');
-          ctx.spawnParticles(state.x, state.y, state.z + 12, 4, '#94a3b8', '');
+          ctx.spawnParticles(
+            state.x,
+            state.y,
+            state.z + 12,
+            4,
+            '#94a3b8',
+            activeHooks.has('ALWAYS_HYPER_ARMOR') ? 'HYPER ARMOR' : ''
+          );
         } else if (inertiaRes.outcome === 'flinch') {
           state.staggerRecoveryTimer = Math.max(
             state.staggerRecoveryTimer || 0,

@@ -2289,7 +2289,17 @@ export function doesLoadoutMatchSpecialistStance(
           stance.offhandCategories
         )
     );
-    const singleOr2HOk = Boolean(stance.allowsSingleOrTwoHandMain && !slot2Id);
+    const fusedTwinBladeMatchesOffhand = Boolean(
+      mainProfile?.baseId === 'leg_yawarakai_te' &&
+        (eq?.installedLoreBoundRelics?.[slot1Id || ''] === 'leg_juuchi_yosamu' ||
+          eq?.installedLoreBoundRelics?.leg_yawarakai_te === 'leg_juuchi_yosamu') &&
+        stance.offhandFunctionalTypes.some(
+          (ft) => ft.trim().toLowerCase() === 'katana'
+        )
+    );
+    const singleOr2HOk = Boolean(
+      (stance.allowsSingleOrTwoHandMain && !slot2Id) || fusedTwinBladeMatchesOffhand
+    );
 
     if (!sideMatches && !auxMatches && !singleOr2HOk) {
       return {

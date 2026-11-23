@@ -7,6 +7,7 @@ import {
   ActionDefinition,
   DamageFamily,
   DamageType,
+  LegendaryWeaponDefinition,
   MagitechArchitectureTier,
   MagitechWeaponDefinition,
   MeleeComboStepSpec,
@@ -208,6 +209,8 @@ const EXPLICIT_FUNCTIONAL_TYPE_BY_ID: Record<string, string> = {
   vx10_eclipse_disc: 'Disc',
   aux3_ti_aegis_hardlight: 'Disc',
   aux3_arc_prismatic_barrier: 'Rhom',
+  leg_aegis: 'Scutum',
+  aegis: 'Scutum',
 
   // Bows
   m300_cantabrian_recurve: 'Recurve Bow',
@@ -240,7 +243,7 @@ const EXPLICIT_FUNCTIONAL_TYPE_BY_ID: Record<string, string> = {
   wz200_manacore_staff: 'Partisan',
   hl310_sarissa_pike: 'Pike',
   hl220_lightburst_lance: 'Lance',
-  avalon_siege_lance: 'Lance',
+  avalon_siege_lance: 'Bastard Sword',
 
   // Impact & Axes
   cl210_sanctum_mace: 'Mace',
@@ -253,8 +256,14 @@ const EXPLICIT_FUNCTIONAL_TYPE_BY_ID: Record<string, string> = {
   // Blades: Curved
   s4_whisper_wakizashi: 'Wakizashi',
   s8_ghost_katana: 'Katana',
+  leg_yawarakai_te: 'Katana',
+  yawarakai_te: 'Katana',
+  leg_juuchi_yosamu: 'Katana',
+  juuchi_yosamu: 'Katana',
   s2_turbine_khopesh: 'Khopesh',
   khopesh: 'Khopesh',
+  leg_lake_of_fire_knife: 'Khopesh',
+  knives_of_the_lake_of_fire: 'Khopesh',
   s9_turbine_odachi: 'Odachi',
   b40_ripper_falx: 'Falx',
 
@@ -269,9 +278,13 @@ const EXPLICIT_FUNCTIONAL_TYPE_BY_ID: Record<string, string> = {
   tig_edge: 'Arming Sword',
   long_sword: 'Arming Sword',
   hl110_dawnblade: 'Bastard Sword',
+  leg_excalibur: 'Bastard Sword',
+  excalibur: 'Bastard Sword',
   s6_phantom_messer: 'Messer',
   s6_phantom_edge: 'Messer',
   b80_doppelsoldner_greatsword: 'Zweihander',
+  leg_balmung: 'Zweihander',
+  balmung: 'Zweihander',
   straight_09_executioner: 'Executioner Sword',
 
   // Carriers & Munitions
@@ -364,6 +377,8 @@ export function resolveWeaponCategory(
     cleanId === 'buckler_shield' ||
     cleanId === 'heater_shield' ||
     cleanId === 'pavise_shield' ||
+    cleanId === 'leg_aegis' ||
+    cleanId === 'aegis' ||
     equipmentRole === 'shield'
   ) {
     return 'Shields';
@@ -411,7 +426,6 @@ export function resolveWeaponCategory(
     cleanId === 'ls900_swordspear' ||
     cleanId === 'hl310_sarissa_pike' ||
     cleanId === 'hl220_lightburst_lance' ||
-    cleanId === 'avalon_siege_lance' ||
     cleanId === 'wz200_manacore_staff' ||
     cleanCls.includes('polearm') ||
     cleanCls.includes('lance') ||
@@ -448,12 +462,18 @@ export function resolveWeaponCategory(
     cleanId === 's8_ghost_katana' ||
     cleanId === 's4_whisper_wakizashi' ||
     cleanId === 'b40_ripper_falx' ||
-    cleanId === 'khopesh'
+    cleanId === 'khopesh' ||
+    cleanId === 'leg_yawarakai_te' ||
+    cleanId === 'yawarakai_te' ||
+    cleanId === 'leg_juuchi_yosamu' ||
+    cleanId === 'juuchi_yosamu' ||
+    cleanId === 'leg_lake_of_fire_knife' ||
+    cleanId === 'knives_of_the_lake_of_fire'
   ) {
     return 'Blades: Curved';
   }
 
-  // 7. Blades: Straight (including N-60 Limitanei Spatha, N-75 Praetorian Spatha, HL-110 Dawnblade, S-6 Phantom Messer, SV-22 Stiletto Spatha, S-5 Whisper Cinquedea, B-80 Doppelsöldner Greatsword, WZ-310 Aether Spatha)
+  // 7. Blades: Straight (including N-60 Limitanei Spatha, N-75 Praetorian Spatha, HL-110 Dawnblade, S-6 Phantom Messer, SV-22 Stiletto Spatha, S-5 Whisper Cinquedea, B-80 Doppelsöldner Greatsword, WZ-310 Aether Spatha, Excalibur, Balmung)
   if (
     cleanId.startsWith('straight_') ||
     cleanId === 'n60_limitanei_spatha' ||
@@ -469,6 +489,11 @@ export function resolveWeaponCategory(
     cleanId === 's4_whisper_blade' ||
     cleanId === 's6_phantom_edge' ||
     cleanId === 'grace_edge' ||
+    cleanId === 'leg_excalibur' ||
+    cleanId === 'excalibur' ||
+    cleanId === 'avalon_siege_lance' ||
+    cleanId === 'leg_balmung' ||
+    cleanId === 'balmung' ||
     equipmentRole === 'melee'
   ) {
     return 'Blades: Straight';
@@ -728,6 +753,8 @@ export interface MagitechWeaponSeed {
   resonanceGemSlots?: 1;
   action1Signature?: string;
   puristResonance?: PuristResonancePassive;
+  legendarySpec?: LegendaryWeaponDefinition;
+  isLegendary?: boolean;
   category?: WeaponCategory;
   weaponTier?: WeaponTier;
   archetypeNumber?: string;
@@ -821,7 +848,12 @@ export function buildMagitechWeapon(seed: MagitechWeaponSeed): WeaponDefinition 
     seed.weaponClass,
     seed.name
   );
-  const subtypeLabel = resolvedTier === 'unique' ? 'Magitech' : 'Custom';
+  const subtypeLabel =
+    resolvedTier === 'legendary'
+      ? 'Legendary'
+      : resolvedTier === 'unique'
+        ? 'Magitech'
+        : 'Custom';
   const strip =
     seed.customStripBase64 ||
     getDefaultPlaceholderStripForCategory(
@@ -842,7 +874,7 @@ export function buildMagitechWeapon(seed: MagitechWeaponSeed): WeaponDefinition 
     ? seed.futureAssetPlanned ||
       `Dedicated custom ${resolvedCategory} (${seed.name}) sprite strip & hardpoint render planned. Currently using placeholder ${resolvedCategory.toLowerCase()} asset.`
     : undefined;
-  const defaultStripRow = resolvedTier === 'unique' ? 12 : 0;
+  const defaultStripRow = resolvedTier === 'legendary' ? 13 : resolvedTier === 'unique' ? 12 : 0;
 
   const defaultAttackWeight =
     seed.baseAttackWeight ??
@@ -861,8 +893,10 @@ export function buildMagitechWeapon(seed: MagitechWeaponSeed): WeaponDefinition 
       : undefined);
 
   const resolvedOpenDomains: ModDomain[] =
-    seed.openDomains ??
-    (resolvedTier === 'unique' ? [] : ['CONTACT', 'DELIVERY', 'REGULATION']);
+    resolvedTier === 'legendary'
+      ? []
+      : seed.openDomains ??
+        (resolvedTier === 'unique' ? [] : ['CONTACT', 'DELIVERY', 'REGULATION']);
   const resolvedArchitectureTier: MagitechArchitectureTier | undefined =
     seed.architectureTier ??
     (resolvedTier === 'unique'
@@ -887,6 +921,8 @@ export function buildMagitechWeapon(seed: MagitechWeaponSeed): WeaponDefinition 
       seed.allowOneHandGrip ??
       (seed.gripMode === 'VERSATILE' ? true : undefined),
     allowSideSlot: seed.allowSideSlot,
+    isLegendary: seed.isLegendary ?? (resolvedTier === 'legendary' ? true : undefined),
+    legendarySpec: seed.legendarySpec,
     architectureTier: resolvedArchitectureTier,
     openDomains: resolvedOpenDomains,
     sealedDomains: seed.sealedDomains,
@@ -1546,13 +1582,27 @@ export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): Weapon
         ? Math.max(32, Math.min(44, baseRange))
         : Math.max(22, Math.min(36, baseRange));
 
-    const comboSequence = buildWeaponUniqueComboSequence(
-      weapon.id,
+    // Yawarakai-Te and Juuchi Yosamu share the exact same base Katana choreography
+    // with asymmetric solo windup/active hit frame splits (+20%/-20% vs -20%/+20%) and ~0.80× solo Katana BCU.
+    const isYawarakaiTe = weapon.id === 'leg_yawarakai_te';
+    const isJuuchiYosamu = weapon.id === 'leg_juuchi_yosamu';
+    const choreographySeedId =
+      isYawarakaiTe || isJuuchiYosamu ? 'leg_yawarakai_te' : weapon.id;
+
+    const rawComboSequence = buildWeaponUniqueComboSequence(
+      choreographySeedId,
       category,
       functionalType,
       weightClass,
       meleeRange
     );
+    const tellScale = isYawarakaiTe ? 1.2 : isJuuchiYosamu ? 0.8 : 1.0;
+    const actionScale = isYawarakaiTe ? 0.8 : isJuuchiYosamu ? 1.2 : 1.0;
+    const comboSequence: MeleeComboStepSpec[] = rawComboSequence.map((step) => ({
+      ...step,
+      tellDurationSec: Number((step.tellDurationSec * tellScale).toFixed(2)),
+      actionDurationSec: Number((step.actionDurationSec * actionScale).toFixed(2)),
+    }));
     const totalComboDuration = Number(
       comboSequence
         .reduce((acc, s) => acc + s.tellDurationSec + s.actionDurationSec, 0)
@@ -1562,7 +1612,7 @@ export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): Weapon
     // Full combo chain BCU budget:
     // Shields: 45 (Light) / 48 (Medium) / 52 (Heavy)
     // Melee:   54 (Light, 1.00× BCU) / 58 (Medium, 1.07× BCU) / 64 (Heavy, 1.18× BCU)
-    const targetChainBcu = isShield
+    const baseChainBcu = isShield
       ? weightClass === 'light'
         ? 45
         : weightClass === 'heavy'
@@ -1573,8 +1623,10 @@ export function normalizeWeaponCombatFunctions(weapon: WeaponDefinition): Weapon
         : weightClass === 'heavy'
           ? 64
           : 58;
+    const targetChainBcu =
+      isYawarakaiTe || isJuuchiYosamu ? Math.round(baseChainBcu * 0.8) : baseChainBcu;
     const perStepDamage = Math.max(
-      10,
+      8,
       Math.round(targetChainBcu / Math.max(1, comboSequence.length))
     );
 

@@ -40,11 +40,11 @@ export const ENEMY_EQUIPMENT_DROP_POOLS: Record<
       'arc_conductor',
       'n20_rotary_bandolier',
       'n12_plumbata_pod',
-      'sensory_a_sonar_pulse_transceiver',
+      'sensory_a_mat_copper_capacitor',
       'sensory_b_inertial_gyro_telemetry',
-      'legs_pnsy_all_terrain_treads',
-      'optics_embersight',
-      'arms_cd_striker_vambraces',
+      'optics_mat_quartz_vent_lens',
+      'actuators_mat_torsion_counterweight',
+      'legs_mat_baffled_radiator_strut',
     ],
     baseChance: 0.18,
   },
@@ -56,9 +56,9 @@ export const ENEMY_EQUIPMENT_DROP_POOLS: Record<
       'cl210_sanctum_mace',
       'cl150_ward_mote',
       'arc_conductor',
-      'reactor_arc_mana_core',
-      'optics_arc_omniscient',
-      'sensory_a_aether_anomaly_scanner',
+      'optics_mat_quartz_vent_lens',
+      'sensory_a_mat_copper_capacitor',
+      'legs_mat_baffled_radiator_strut',
     ],
     baseChance: 0.35,
   },
@@ -71,10 +71,9 @@ export const ENEMY_EQUIPMENT_DROP_POOLS: Record<
       'm300_cantabrian_recurve',
       'vx15_ghost_yebira',
       'vx10_eclipse_disc',
-      'optics_veilsight',
-      'arms_vx_whisperblade_gauntlets',
-      'legs_vx_shadow_striders',
-      'sensory_b_threat_vector_predictor',
+      'optics_mat_quartz_vent_lens',
+      'sensory_b_inertial_gyro_telemetry',
+      'actuators_mat_torsion_counterweight',
     ],
     baseChance: 0.22,
   },
@@ -88,10 +87,9 @@ export const ENEMY_EQUIPMENT_DROP_POOLS: Record<
       'm450_arbalest_greatbow',
       'ln1200_avalanche',
       'lg950_tomahawk',
-      'optics_be_foresight',
-      'arms_be_siegebreaker_pauldrons',
-      'legs_rad_piledriver_anchors',
-      'reactor_rad_ichor_furnace',
+      'actuators_mat_torsion_counterweight',
+      'legs_mat_baffled_radiator_strut',
+      'sensory_a_mat_copper_capacitor',
     ],
     baseChance: 0.3,
   },
@@ -104,8 +102,9 @@ export const ENEMY_EQUIPMENT_DROP_POOLS: Record<
       'ti400_aegis_scutum',
       'hl110_dawnblade',
       'hl220_lightburst_lance',
-      'optics_aegis_radiant',
-      'arms_aegis_radiant_vambraces',
+      'actuators_mat_torsion_counterweight',
+      'sensory_b_inertial_gyro_telemetry',
+      'legs_mat_baffled_radiator_strut',
     ],
     baseChance: 0.36,
   },
@@ -135,7 +134,7 @@ export const ENEMY_EQUIPMENT_DROP_POOLS: Record<
       'vx10_eclipse_disc',
       'optics_veilsight',
       'reactor_vx_ether_turbine',
-      'sensory_a_echolocation_array',
+      'sensory_a_vx_phantom_net',
     ],
     baseChance: 1.0,
   },
@@ -184,9 +183,10 @@ export interface ContextualLootQuery {
 /**
  * Resolves a contextual weapon, auxiliary, armor, reactor, or sensor drop across the hierarchy:
  * `Enemy Archetype -> Room Pool -> Area Pool -> Region Pool -> Universal Catalog`.
- * Enforces Exterior Armor Acquisition Rules (§1 Rule 5 & §4.1):
- * - `forge_blueprint` exterior armor pieces (`Sets 12–15`) NEVER drop directly as ready-to-wear gear.
- * - `starter_post_boss` exterior armor pieces (`Sets 0–5`) are placed in Camelot post-boss chambers/caches (`!query.enemyType`), rather than direct enemy/boss drop tables.
+ * Enforces Exterior Armor & Internal Sub-System Acquisition Rules:
+ * - `forge_blueprint` exterior armor pieces (`Sets 12–15`) and `material_crafted` internal sub-modules NEVER drop directly as ready-to-wear gear.
+ * - `starter_post_boss` exterior armor pieces (`Sets 0–5`) and `mech_unique_tech` internal sub-modules are discovered in Camelot post-boss chambers/caches (`!query.enemyType`), rather than direct enemy drop tables.
+ * - `material_looted` internal sub-modules (`5` modules) drop from enemies and field salvage caches.
  */
 export function resolveContextualEquipmentDrop(
   state: OrionState,
@@ -209,12 +209,23 @@ export function resolveContextualEquipmentDrop(
     }
     const hwDef = findHardwareItemByNameOrId(id);
     if (!hwDef) return false;
-    // Rule 5 & §4.1: forge_blueprint pieces never drop directly as ready-to-wear gear
-    if (hwDef.acquisition === 'forge_blueprint') return false;
-    // Rule 5: starter_post_boss exterior armor sets are placed in post-boss chambers/caches, not direct enemy drops
+    // forge_blueprint exterior armor and material_crafted sub-modules never drop as ready-to-wear loot
+    if (
+      hwDef.acquisition === 'forge_blueprint' ||
+      hwDef.subSystemOrigin === 'material_crafted' ||
+      hwDef.origin === 'crafted'
+    ) {
+      return false;
+    }
+    // starter_post_boss exterior armor sets and mech_unique_tech sub-modules are placed in post-boss chambers/caches, not random enemy drops
     const isExteriorArmor =
       hwDef.slot === 'plating' || hwDef.slot === 'head' || hwDef.slot === 'arms';
-    if (isExteriorArmor && isDirectEnemyDrop) return false;
+    if (
+      (isExteriorArmor || hwDef.subSystemOrigin === 'mech_unique_tech') &&
+      isDirectEnemyDrop
+    ) {
+      return false;
+    }
     return true;
   };
 

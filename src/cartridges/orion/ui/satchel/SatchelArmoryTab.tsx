@@ -26,7 +26,6 @@ import {
   CanonicalHardwareItemDefinition,
   CHASSIS_HARDWARE_CATALOG,
   computePlayerLoadMetrics,
-  CRAFTED_SUBMODULE_HARDWARE,
   createInitialEquipmentSlots,
   evaluateEquipmentFeatHandling,
   findHardwareItemByNameOrId,
@@ -60,6 +59,7 @@ import {
   removeGemModFromEquipment,
   removeLoreBoundRelicFromLegendary,
   resolveWeaponModificationProfile,
+  sanitizeAndRefundInvalidHardwareSockets,
   socketGemIntoWeaponComponent,
   socketResonanceGemIntoMagitechWeapon,
   unlockEquipmentItem,
@@ -245,6 +245,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
   if (!state.equipmentSlots) {
     state.equipmentSlots = createInitialEquipmentSlots(state.traitLine);
   }
+  sanitizeAndRefundInvalidHardwareSockets(state);
   const eq = state.equipmentSlots;
   const loadMetrics = computePlayerLoadMetrics(state);
 
@@ -1365,6 +1366,30 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
           prismaticUniversalAffinity,
         })
       : undefined;
+
+    if (!isWeaponItem && maxSlots === 0) {
+      return (
+        <div className="p-2.5 bg-[#070b12] rounded-xs border border-[#334155] space-y-1">
+          <div className="flex flex-wrap items-center justify-between gap-1">
+            <span className="text-[10px] font-bold text-[#7dd3fc]">
+              ⚙ 0G PURE MECHANICAL / ELECTRONIC HARDWARE ({hwItem?.canonicalSlotLabel.toUpperCase() || 'SUB-MODULE'})
+            </span>
+            <span className="px-1.5 py-0.5 rounded-xs bg-[#1e293b] text-[#94a3b8] text-[8px] font-bold">
+              0 GEMSTONE SOCKETS (0G)
+            </span>
+          </div>
+          <div className="text-[9px] text-[#94a3b8] leading-snug">
+            Sensory Arrays (<b className="text-[#e2e8f0]">Sensory A / B</b>),{' '}
+            <b className="text-[#e2e8f0]">Arm Actuators</b>, and{' '}
+            <b className="text-[#e2e8f0]">Leg Striders</b> are pure mechanical or electronic
+            assemblies and do not expose crystalline gemstone sockets. Among internal sub-systems,
+            only <b className="text-[#fde047]">Reactor Cores (1G–2G)</b> and{' '}
+            <b className="text-[#38bdf8]">Head Optics (1G)</b> house gemstone conduits.
+          </div>
+        </div>
+      );
+    }
+
     const socketEval = hwItem?.socketEvalResult;
     const activeAnatomicalSlotName = anatomicalSlots[clampedSlotIdx];
     const currentSlotGem = slotGems[clampedSlotIdx] || null;
@@ -1392,7 +1417,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                 ? `UNIQUE MAGITECH · FIXED COMPONENTS & 1 RESONANCE GEM SOCKET (${installedGems.length}/${maxSlots} OCCUPIED)`
                 : socketEval
                   ? `EXTERIOR ARMOR GEMSTONE HARMONICS (${installedGems.length}/${maxSlots}G · 100% / 70% / 40% DUPLICATE CURVE)`
-                  : `ANY-ORDER HARDWARE GEM SOCKETS (${installedGems.length}/${maxSlots} OCCUPIED)`}
+                  : `SUB-SYSTEM GEMSTONE CONDUITS (${installedGems.length}/${maxSlots}G · ${hwItem?.slot === 'reactor' ? '100% / 70% DUPLICATE CURVE' : '1G OPTICAL LENS'})`}
             </div>
             <div className="text-[9px] text-[#94a3b8]">
               {isUniqueWeapon ? (
@@ -2175,10 +2200,8 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
               activeHardwareSlot === 'plating' ||
               activeHardwareSlot === 'arms';
 
-            const candidateHardwareItems: CanonicalHardwareItemDefinition[] = [
-              ...CHASSIS_HARDWARE_CATALOG.filter((h) => h.slot === activeHardwareSlot),
-              ...CRAFTED_SUBMODULE_HARDWARE.filter((h) => h.slot === activeHardwareSlot),
-            ];
+            const candidateHardwareItems: CanonicalHardwareItemDefinition[] =
+              CHASSIS_HARDWARE_CATALOG.filter((h) => h.slot === activeHardwareSlot);
             const slotForgeRecipes = isExteriorArmor
               ? FORGE_RECIPES.filter(
                   (r) => EXTERIOR_ARMOR_BY_ID[r.outputArmorId]?.slot === activeHardwareSlot
@@ -2228,6 +2251,18 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                                       : 'Starter / Post-Boss Reliquary'}
                                   </b>
                                 </>
+                              ) : currentHw.subSystemOrigin ? (
+                                <>
+                                  {' '}
+                                  · Origin:{' '}
+                                  <b className="text-[#fde047]">
+                                    {currentHw.subSystemOrigin === 'mech_unique_tech'
+                                      ? `Mech-Unique Tech (${currentHw.heritageOrMaterial || 'Archetype'})`
+                                      : currentHw.subSystemOrigin === 'material_looted'
+                                        ? `Material Salvage (${currentHw.heritageOrMaterial || 'Field Loot'})`
+                                        : `Material Crafted (${currentHw.heritageOrMaterial || 'Workbench'})`}
+                                  </b>
+                                </>
                               ) : null}
                             </div>
                           </div>
@@ -2240,7 +2275,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                           >
                             {isExteriorArmor
                               ? `EXTERIOR ARMOR PLATING (${getEquipmentMaxModSlots(currentHw.id)}G)`
-                              : 'INTERNAL SUB-MODULE (0 ARMOR VALUE)'}
+                              : `INTERNAL SUB-MODULE (${getEquipmentMaxModSlots(currentHw.id)}G · 0 ARMOR)`}
                           </span>
                         </div>
                         <div className="text-[9px] text-[#cbd5e1]">{currentHw.description}</div>
@@ -2273,6 +2308,11 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                           {currentHw.attackMassBonus ? (
                             <span className="px-1.5 py-0.5 bg-[#451a03] text-[#fdba74] rounded-xs font-bold">
                               +{currentHw.attackMassBonus} Strike Mass
+                            </span>
+                          ) : null}
+                          {currentHw.enablesInertiaHud ? (
+                            <span className="px-1.5 py-0.5 bg-[#052e16] text-[#86efac] rounded-xs font-bold">
+                              ✦ UNLOCKS LIVE INERTIA HUD
                             </span>
                           ) : null}
                           {currentHw.baseModifiers &&
@@ -2451,8 +2491,15 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
 
                 {/* Install / Swap Sub-Module or Hardware Piece */}
                 <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">
-                  <div className="text-[9px] font-bold text-[#86efac]">
-                    INSTALL OR CRAFT [{activeHardwareSlot.toUpperCase()}] HARDWARE / SUB-MODULE:
+                  <div className="flex flex-wrap items-center justify-between gap-1">
+                    <div className="text-[9px] font-bold text-[#86efac]">
+                      INSTALL OR CRAFT [{activeHardwareSlot.toUpperCase()}] HARDWARE / SUB-MODULE:
+                    </div>
+                    {!isExteriorArmor && (
+                      <span className="px-1.5 py-0.5 rounded-xs bg-[#1e293b] text-[#ffd27d] text-[8px] font-bold">
+                        SCRAP POUCH: {isCheatMode ? '∞' : state.salvageScrap} SCRAP
+                      </span>
+                    )}
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                     {candidateHardwareItems.map((hw) => {
@@ -2464,15 +2511,28 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                       const forgeStatus = isForgeBpPiece
                         ? canForgeExteriorArmorPiece(state, hw.id)
                         : null;
-                      const isCrafted = hw.origin === 'crafted' && (hw.gemCost?.length || 0) > 0;
-                      const canCraft =
-                        isCrafted &&
-                        (isCheatMode ||
-                          (hw.gemCost || []).every(
-                            (r) => getInventoryGemCount(state, r.gemId) >= r.count
-                          ));
+                      const isCrafted =
+                        hw.subSystemOrigin === 'material_crafted' ||
+                        (hw.origin === 'crafted' && (hw.gemCost?.length || 0) > 0);
+                      const requiredScrap = hw.scrapCost ?? 0;
+                      const hasEnoughScrap =
+                        isCheatMode || (state.salvageScrap ?? 0) >= requiredScrap;
+                      const hasEnoughGems =
+                        isCheatMode ||
+                        (hw.gemCost || []).every(
+                          (r) => getInventoryGemCount(state, r.gemId) >= r.count
+                        );
+                      const canCraft = isCrafted && hasEnoughScrap && hasEnoughGems;
                       const isEquipped =
                         currentHw?.id === resolvedHw.id || currentHwId === resolvedHw.name;
+                      const originBadgeLabel =
+                        hw.subSystemOrigin === 'mech_unique_tech'
+                          ? `MECH-UNIQUE (${hw.heritageOrMaterial || 'TECH'})`
+                          : hw.subSystemOrigin === 'material_looted'
+                            ? `MATERIAL SALVAGE (${hw.heritageOrMaterial || 'LOOTED'})`
+                            : hw.subSystemOrigin === 'material_crafted'
+                              ? 'MATERIAL CRAFTED'
+                              : null;
 
                       return (
                         <div
@@ -2484,16 +2544,32 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                           }`}
                         >
                           <div className="flex items-center justify-between gap-1">
-                            <span className="font-bold text-[9px] text-[#e2e8f0] truncate">
-                              {resolvedHw.name}
-                            </span>
+                            <div className="flex items-center gap-1 min-w-0">
+                              <span className="font-bold text-[9px] text-[#e2e8f0] truncate">
+                                {resolvedHw.name}
+                              </span>
+                              {originBadgeLabel && (
+                                <span
+                                  className={`text-[8px] px-1 py-0.2 rounded-[2px] font-bold shrink-0 ${
+                                    hw.subSystemOrigin === 'mech_unique_tech'
+                                      ? 'bg-[#1e1b4b] text-[#c4b5fd] border border-[#818cf8]/40'
+                                      : hw.subSystemOrigin === 'material_looted'
+                                        ? 'bg-[#052e16] text-[#86efac] border border-[#22c55e]/40'
+                                        : 'bg-[#3b0764] text-[#e9d5ff] border border-[#c084fc]/40'
+                                  }`}
+                                >
+                                  {originBadgeLabel}
+                                </span>
+                              )}
+                            </div>
                             <span className="text-[9px] text-[#94a3b8] shrink-0">
                               {getHardwareBaseWeight(resolvedHw)} WT
                               {resolvedHw.baseLoadCapacityNumber
                                 ? ` · ${resolvedHw.baseLoadCapacityNumber} CAP`
                                 : getHardwareCapacityBonus(resolvedHw) > 0
                                   ? ` · +${getHardwareCapacityBonus(resolvedHw)} CAP`
-                                  : ''}
+                                  : ''}{' '}
+                              · {getEquipmentMaxModSlots(resolvedHw.id)}G
                             </span>
                           </div>
                           <div className="text-[9px] text-[#cbd5e1]">
@@ -2504,13 +2580,13 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                               {isForgeBpPiece
                                 ? `Cyclopean Forge · ${getEquipmentMaxModSlots(resolvedHw.id)}G`
                                 : isCrafted
-                                  ? `Craft Cost: ${(hw.gemCost || [])
+                                  ? `Craft Cost: ${requiredScrap > 0 ? `${requiredScrap} Scrap + ` : ''}${(hw.gemCost || [])
                                       .map(
                                         (r) =>
                                           `${r.count} ${GEMSTONE_REGISTRY[r.gemId]?.name || r.gemId}`
                                       )
                                       .join(' + ')}`
-                                  : `Max Gem Sockets: ${getEquipmentMaxModSlots(resolvedHw.id)}G`}
+                                  : `Sockets: ${getEquipmentMaxModSlots(resolvedHw.id)}G`}
                             </span>
                             <button
                               type="button"
@@ -2533,6 +2609,12 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                                   }
                                 } else if (!unlocked && isCrafted && canCraft) {
                                   if (!isCheatMode) {
+                                    if (requiredScrap > 0) {
+                                      state.salvageScrap = Math.max(
+                                        0,
+                                        (state.salvageScrap ?? 0) - requiredScrap
+                                      );
+                                    }
                                     for (const req of hw.gemCost || []) {
                                       const slot = state.inventorySlots.find(
                                         (s) => s.itemId === req.gemId

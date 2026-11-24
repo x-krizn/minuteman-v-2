@@ -764,6 +764,71 @@ export interface ExteriorArmorSocketEvalResult {
 }
 
 /**
+ * Internal Chassis Sub-System anatomical slot identifier (`Project Orion — AI Studio Implementation Spec (Internal Sub-Systems).md` §2).
+ */
+export type SubSystemSlot =
+  | 'reactor'
+  | 'optics'
+  | 'sensory_a'
+  | 'sensory_b'
+  | 'actuators'
+  | 'legs'
+  | 'aux_3'
+  | 'aux_4'
+  | 'utility';
+
+/**
+ * Two-Tier Internal Sub-System classification (`Project Orion — AI Studio Implementation Spec (Internal Sub-Systems).md` §1 & §2):
+ * - `'mech_unique_tech'`: Proprietary manufacturer systems native to the 6 Starting Loadout Kits (`Sets 0–5`).
+ * - `'material_looted'`: Field-salvaged sub-system parts named strictly by physical/material construction.
+ * - `'material_crafted'`: Workbench-crafted sub-system parts synthesized from Scrap + Gemstones.
+ */
+export type SubSystemOrigin =
+  | 'mech_unique_tech'
+  | 'material_looted'
+  | 'material_crafted';
+
+/**
+ * Structured stat modifiers for Internal Chassis Sub-Systems and Reactor/Optics Gemstone sockets (`Project Orion — AI Studio Implementation Spec (Internal Sub-Systems).md` §2–§4).
+ */
+export interface SubSystemStatDelta {
+  loadCapacity?: number;
+  effectiveWeightDelta?: number;
+  weight?: number;
+  shield?: number;
+  stability?: number;
+  strikeMass?: number;
+  strideSpeedPct?: number;
+  heatVentingPct?: number;
+  cooldownPct?: number;
+  swingWindupPct?: number;
+  lockAccuracyPct?: number;
+  staggerDamagePct?: number;
+  lightRadius?: number;
+  enablesInertiaHud?: boolean;
+}
+
+/**
+ * Canonical Internal Chassis Sub-System Module definition (`Project Orion — AI Studio Implementation Spec (Internal Sub-Systems).md` §2 & §3).
+ */
+export interface SubSystemModule {
+  id: string;
+  name: string;
+  slot: SubSystemSlot;
+  origin: SubSystemOrigin;
+  heritageOrMaterial: string;
+  reactorFamily?: ExteriorReactorFamily;
+  weight: number;
+  capacityBonus?: number;
+  maxGemSlots: 0 | 1 | 2;
+  modifiers: SubSystemStatDelta;
+  craftRecipe?: {
+    scrapCost: number;
+    gemCosts: Partial<Record<GemstoneId, number>>;
+  };
+}
+
+/**
  * Type contract for `LoadPenaltySummary` (load penalty summary) in `equipment.ts`.
  */
 export interface LoadPenaltySummary {

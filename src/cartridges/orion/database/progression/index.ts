@@ -960,13 +960,16 @@ export function getEquipmentDisplayName(
 }
 
 /**
- * Computes the maximum number of Gem/Component mod slots (`1` to `3`) for any equipment or mod item:
+ * Computes the maximum number of Gem/Component mod slots (`0` to `3`) for any equipment or mod item:
  * - **72 Customizable Weapons (`weaponTier === 'customizable'`)**: `3` anatomical component & gem slots.
  * - **29 Unique Magitech Weapons (`weaponTier === 'unique'`)**: `1` Resonance Gem socket (fixed internal components).
- * - **Crafted Mod Parts (`origin === 'crafted'`)**: Strictly capped at `1` additional gem slot (`maxGemSlots: 0 | 1`).
- * - **Looted Standalone Armor & Hardware (`origin === 'looted'`)**: `1` to `3` gem slots depending on the item.
+ * - **Internal Chassis Sub-Modules**:
+ *   - `sensoryA`, `sensoryB`, `actuators`, `legs`: `0` gem slots (`0G` Pure Mechanical/Electronic Hardware).
+ *   - `optics`, Energy Storage modules, and Crafted Reactors: `1` gem slot (`1G`).
+ *   - `mech_unique_tech` Reactor Cores: `2` gem slots (`2G`).
+ * - **Exterior Armor (`plating`, `head`, `arms`)**: `2` to `3` gem slots (`maxGemSlots: 2 | 3`).
  */
-export function getEquipmentMaxModSlots(idOrName: string | null | undefined): 1 | 2 | 3 {
+export function getEquipmentMaxModSlots(idOrName: string | null | undefined): 0 | 1 | 2 | 3 {
   if (!idOrName) return 1;
   const { baseId } = parseEquipmentInstanceId(idOrName);
   const wDef = getWeaponDefinition(baseId);
@@ -979,14 +982,20 @@ export function getEquipmentMaxModSlots(idOrName: string | null | undefined): 1 
   }
   const hwDef = findHardwareItemByNameOrId(baseId);
   if (hwDef) {
-    if (hwDef.origin === 'crafted') {
-      return 1;
+    if (typeof hwDef.maxGemSlots === 'number') {
+      return Math.min(3, Math.max(0, hwDef.maxGemSlots)) as 0 | 1 | 2 | 3;
     }
-    if (typeof hwDef.maxGemSlots === 'number' && hwDef.maxGemSlots >= 1) {
-      return Math.min(3, Math.max(1, hwDef.maxGemSlots)) as 1 | 2 | 3;
+    if (
+      hwDef.slot === 'sensoryA' ||
+      hwDef.slot === 'sensoryB' ||
+      hwDef.slot === 'actuators' ||
+      hwDef.slot === 'legs'
+    ) {
+      return 0;
     }
-    if (hwDef.slot === 'plating' || hwDef.slot === 'reactor') return 3;
-    if (hwDef.slot === 'sensoryA' || hwDef.slot === 'sensoryB') return 1;
+    if (hwDef.slot === 'optics') return 1;
+    if (hwDef.origin === 'crafted') return 1;
+    if (hwDef.slot === 'plating') return 3;
     return 2;
   }
   return 2;
@@ -1319,6 +1328,143 @@ export function getOwnedWeaponCount(state: OrionState, itemIdOrName: string): nu
 }
 
 /**
+ * Sanitizes existing saves and loadouts that have gemstones socketed in `0G` hardware slots
+ * (`Sensory A`, `Sensory B`, `Actuators`, `Legs`) or excess gemstones beyond `1G`/`2G` on
+ * `Optics` or `Reactor Core`, stripping invalid socketed gems and refunding them to `state.inventorySlots`.
+ */
+export function sanitizeAndRefundInvalidHardwareSockets(
+  state: OrionState,
+  ctx?: { say: (text: string) => void }
+): number {
+  const eq = state.equipmentSlots;
+  if (!eq) return 0;
+
+  let totalRefundedGems = 0;
+
+  const normalizeAndRefundHardwareId = (
+    rawId: string | null | undefined,
+    copyCount: number
+  ): string | null | undefined => {
+    if (!rawId) return rawId;
+    const { baseId, installedGems, slotGems } = parseEquipmentInstanceId(rawId);
+    if (installedGems.length === 0) return rawId;
+    const hwDef = findHardwareItemByNameOrId(baseId);
+    if (!hwDef) return rawId;
+
+    const maxSlots = getEquipmentMaxModSlots(baseId);
+    if (installedGems.length <= maxSlots && slotGems.length <= maxSlots) {
+      return rawId;
+    }
+
+    const effectiveCopies = Math.max(1, copyCount);
+    const activeSlots = slotGems.length > 0 ? slotGems : installedGems;
+    const keptSlots = maxSlots > 0 ? activeSlots.slice(0, maxSlots) : [];
+    const strippedSlots = activeSlots.slice(maxSlots);
+
+    for (const strippedGem of strippedSlots) {
+      if (strippedGem && isCanonicalGemId(strippedGem)) {
+        refundInventoryGem(state, strippedGem, effectiveCopies);
+        totalRefundedGems += effectiveCopies;
+      }
+    }
+
+    return buildEquipmentInstanceId(hwDef.id, keptSlots);
+  };
+
+  // 1. Migrate ownedWeaponCounts map first so copy counts are accurate for gem refunds
+  const counts = eq.ownedWeaponCounts || {};
+  const processedKeys = new Set<string>();
+  const nextCounts: Record<string, number> = {};
+
+  for (const [rawKey, count] of Object.entries(counts)) {
+    if (typeof count !== 'number' || count <= 0) continue;
+    const normKey = normalizeEquipmentInstanceKey(rawKey);
+    const { baseId, installedGems } = parseEquipmentInstanceId(normKey);
+    const hwDef = findHardwareItemByNameOrId(baseId);
+    const maxSlots = hwDef ? getEquipmentMaxModSlots(baseId) : 3;
+
+    if (hwDef && installedGems.length > maxSlots) {
+      const cleanedId = normalizeAndRefundHardwareId(normKey, count) || hwDef.id;
+      processedKeys.add(normKey);
+      nextCounts[cleanedId] = (nextCounts[cleanedId] || 0) + count;
+    } else {
+      nextCounts[rawKey] = (nextCounts[rawKey] || 0) + count;
+    }
+  }
+  eq.ownedWeaponCounts = nextCounts;
+
+  // 2. Migrate unlockedEquipment list (refunding 1 copy only if not already refunded in ownedWeaponCounts)
+  if (Array.isArray(eq.unlockedEquipment)) {
+    const nextUnlocked = new Set<string>();
+    for (const rawU of eq.unlockedEquipment) {
+      const normU = normalizeEquipmentInstanceKey(rawU);
+      const { baseId, installedGems } = parseEquipmentInstanceId(normU);
+      const hwDef = findHardwareItemByNameOrId(baseId);
+      const maxSlots = hwDef ? getEquipmentMaxModSlots(baseId) : 3;
+
+      if (hwDef && installedGems.length > maxSlots) {
+        const shouldRefundHere = !processedKeys.has(normU);
+        processedKeys.add(normU);
+        const cleanedU =
+          (shouldRefundHere
+            ? normalizeAndRefundHardwareId(normU, 1)
+            : buildEquipmentInstanceId(
+                hwDef.id,
+                maxSlots > 0 ? installedGems.slice(0, maxSlots) : []
+              )) || hwDef.id;
+        nextUnlocked.add(cleanedU);
+      } else {
+        nextUnlocked.add(rawU);
+      }
+    }
+    eq.unlockedEquipment = Array.from(nextUnlocked);
+  }
+
+  // 3. Migrate equipped hardware slots
+  const migrateEquippedSlot = (val: string | null | undefined): string | null | undefined => {
+    if (!val) return val;
+    const normVal = normalizeEquipmentInstanceKey(val);
+    const { baseId, installedGems } = parseEquipmentInstanceId(normVal);
+    const hwDef = findHardwareItemByNameOrId(baseId);
+    const maxSlots = hwDef ? getEquipmentMaxModSlots(baseId) : 3;
+    if (!hwDef || installedGems.length <= maxSlots) return val;
+
+    const shouldRefundHere = !processedKeys.has(normVal);
+    processedKeys.add(normVal);
+    const cleaned =
+      (shouldRefundHere
+        ? normalizeAndRefundHardwareId(normVal, 1)
+        : buildEquipmentInstanceId(
+            hwDef.id,
+            maxSlots > 0 ? installedGems.slice(0, maxSlots) : []
+          )) || hwDef.id;
+    if (!eq.ownedWeaponCounts) eq.ownedWeaponCounts = {};
+    eq.ownedWeaponCounts[cleaned] = Math.max(1, eq.ownedWeaponCounts[cleaned] || 1);
+    if (!eq.unlockedEquipment?.includes(cleaned)) {
+      eq.unlockedEquipment = [...(eq.unlockedEquipment || []), cleaned];
+    }
+    return cleaned;
+  };
+
+  eq.head = migrateEquippedSlot(eq.head) ?? null;
+  eq.headOptics = migrateEquippedSlot(eq.headOptics) ?? null;
+  eq.sensoryA = migrateEquippedSlot(eq.sensoryA) ?? null;
+  eq.sensoryB = migrateEquippedSlot(eq.sensoryB) ?? null;
+  eq.arms = migrateEquippedSlot(eq.arms) ?? null;
+  eq.armActuators = migrateEquippedSlot(eq.armActuators) ?? null;
+  eq.plating = migrateEquippedSlot(eq.plating) ?? null;
+  eq.reactorCore = migrateEquippedSlot(eq.reactorCore) ?? null;
+  eq.legs = migrateEquippedSlot(eq.legs) ?? null;
+
+  if (totalRefundedGems > 0 && ctx) {
+    ctx.say(
+      `MIGRATED 0G/SUB-SYSTEM HARDWARE SOCKETS · REFUNDED ${totalRefundedGems} GEMSTONE${totalRefundedGems > 1 ? 'S' : ''} TO SATCHEL`
+    );
+  }
+  return totalRefundedGems;
+}
+
+/**
  * Returns all distinct owned equipment instance IDs (`baseId` and any `baseId::gem1+gem2` variants)
  * matching a given base weapon or hardware item.
  */
@@ -1326,6 +1472,7 @@ export function getOwnedEquipmentInstances(
   state: OrionState,
   baseIdOrName: string
 ): string[] {
+  sanitizeAndRefundInvalidHardwareSockets(state);
   const normBase = parseEquipmentInstanceId(normalizeEquipmentInstanceKey(baseIdOrName)).baseId;
   if (!normBase) return [];
 
@@ -1418,6 +1565,12 @@ export function installGemModOnEquipment(
     return null;
   }
   const maxSlots = getEquipmentMaxModSlots(baseId);
+  if (maxSlots === 0) {
+    ctx?.say(
+      `${getEquipmentDisplayName(normSource).toUpperCase()} IS 0G PURE MECHANICAL/ELECTRONIC HARDWARE (NO GEMSTONE SOCKETS)`
+    );
+    return null;
+  }
   const weaponSlots = getWeaponComponentSlots(baseId);
 
   // Resolve target slot index (0..maxSlots-1) in any order

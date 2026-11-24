@@ -236,7 +236,11 @@ All weapons in Project Orion are classified into **8 broad Weapon Classes** (`We
     - **`LOOTED` Field Salvage (`33` total)**: Recovered from starter salvage pools, world reliquaries/caches, and enemy/boss drops (`recipe: null`), expose **`1–3` Gem Sockets (`maxGemSlots: 1..3`)**, and cannot be forged at the workbench.
   - **Deterministic `CONTACT`-Only Damage-Type Conversion**: A weapon's Action 1 `DamageType` (`Impact`, `Pierce`, `Beam`, `Blast`, `Pulse`, `Wave`) is determined by its base profile unless overridden by an installed **`CONTACT`** domain component (`damageTypeOverride`). When a Magitech relic's `CONTACT` domain is factory-sealed, its Action 1 `DamageType` is immutable. **`DELIVERY`**, **`REGULATION`**, and socketed Gemstones are strictly forbidden from changing a weapon's `DamageType`.
   - **Modified items use semantic `Custom` placement (`formatModifiedEquipmentName`)**: **`Custom <BaseName>`** for standard weapon and armor nouns (e.g., `Custom Camelot Longsword`, `Custom Heater`) and **`<BaseName> Custom`** for alphanumeric model designations, Magitech Purist relics, and manufacturer-coded hardware (e.g., `N-55 Gladius Custom`, `S-2 Turbine Khopesh Custom +II`), followed by **`+II`** or **`+III`** when 2 or 3 open component mounts are populated.
-- **Slot-Adaptive Gemstones**: Socketing a Gemstone into exterior armor modifies physical mitigation/durability/shielding, whereas socketing the same Gemstone into an internal sub-module or weapon component gem socket adapts its bonus to that slot's physical function.
+- **Slot-Adaptive Gemstones & Restricted Internal `0G / 1G / 2G` Gem Socket Law**: Socketing a Gemstone into exterior armor modifies physical mitigation/durability/shielding, whereas socketing the same Gemstone into an internal **`reactor`** (`2G` on the `6` Mech-Unique Reactors with `[1.0, 0.7]` duplicate scaling; `1G` on the `2` Energy Storage Reservoirs and `3` Material-Crafted Reactors) or **`optics`** (`1G` focal lens socket on all `9` Optics Suites) adapts its bonus to that slot's physical function. Pure mechanical and electronic internal slots (**`sensoryA`**, **`sensoryB`**, **`actuators`**, **`legs`**) are strictly **`0G`** (`maxGemSlots: 0`).
+- **Internal Sub-System Origin Taxonomy (`54` Internal Chassis Sub-Systems)**:
+  - **`mech_unique_tech` (`39` Modules)**: Proprietary manufacturer assemblies (PNSY, RAD, Trinity, VX, Arcanum, Sanctum, Crystal Dynamics, Black Earth, Federated, NDS, Solbright) recovered from starting kits and Camelot post-boss chambers/caches.
+  - **`material_looted` (`4` Modules)**: Universal field-salvaged material sub-modules (*Quartz-Etched Thermal-Vent Lens*, *Copper-Braid Capacitor Grid*, *Torsion-Spring Counterweight Joints*, *Baffled Radiator-Strut Legs*) dropped by enemies and field caches.
+  - **`material_crafted` (`11` Modules)**: Synthesized at the Armory Workbench using **`25–45` Scrap + `1–3` Gemstones** (`scrapCost` + `gemCosts`); never drop in random world loot.
 - **Physical Domain Separation (`Shields` Only for Layer 2 Armor)**: Weapon components on non-`Shields` classes (`Blades`, `Impact & Axes`, `Spears`, `Bows`, `Casters`, `Carriers & Munitions`) never grant Layer 2 Armor stats (`DUR`, `RTG`, `THR`). Only `Shields` components (*Reinforced Face Plate*, *Layered Sacrificial Confront*, *Spiked Boss & Rim*) modify Layer 2 Armor Durability, Threshold, or Rating.
 - **Zero-Sum Trade-Off Law**: Every stat increase carries a paired negative draw on another stat or equip weight (`drawbackDescription`), and cumulative Combat Tempo multipliers are hard-clamped to **`[0.70×, 1.30×]` (`±30%`)**.
 - **Percentage Load Limit Brackets**: Total weight capacity is defined by Frame Plating base capacity (`84..140 WT`), Frame sub-mods (Reactor Core + Leg Actuators + Mobility Kit), and System Feats (`+22 WT` per step):
@@ -271,20 +275,21 @@ The 6 deprecated core-only variant IDs (`hw_plating_reactive`, `hw_plating_harde
 | `bp_armor_novarin_keshig` | **Blueprint: Novarin Royal Keshig Scale** | Novarin (`Royal Yurt Reliquary`) | Set 14 | `plating_novarin_keshig` (`65 Scrap` + `1 Hematite` + `1 Spinel`) | `head_novarin_keshig` (`40 Scrap` + `1 Hematite`) | `arms_novarin_keshig` (`45 Scrap` + `1 Spinel` + `1 Carnelian`) |
 | `bp_armor_novarin_tarkhan` | **Blueprint: Novarin Iron Tarkhan Barding** | Novarin (`Siege Foundry Vault`) | Set 15 | `plating_novarin_tarkhan` (`75 Scrap` + `2 Carnelian` + `1 Hematite`) | `head_novarin_tarkhan` (`45 Scrap` + `1 Carnelian` + `1 Hematite`) | `arms_novarin_tarkhan` (`50 Scrap` + `2 Carnelian`) |
 
-## 3. CORE SYSTEMS (REACTORS & ENERGY STORAGE — `10 Modules`)
+## 3. CORE SYSTEMS (REACTORS & ENERGY STORAGE — `11 Modules`)
 
-| ID | Name | Trait Line | Slot / Type | Weight & Cap Bonus | Gem Slots | Identity & Zero-Sum Trade-Off |
+| ID | Name | Origin & Trait Line | Slot / Type | Weight & Cap Bonus | Gem Slots | Identity & Zero-Sum Trade-Off |
 |---|---|---|---|---|---|---|
-| `reactor_pnsy_turbine_mk4` | **PNSY Alchemic Turbine Core Mk.IV** | Warrior | Frame Mod 1 (Reactor · `Ichor`) | `8 WT` (`+24 WT` Cap) | `3G` | `+12%` Heat Venting, `-4%` Cooldowns / `-3` Gyro Stability |
-| `reactor_rad_battleheart_mk5` | **RAD Battleheart Ether Reactor Mk.V** | Marauder | Frame Mod 1 (Reactor · `Ichor`) | `14 WT` (`+26 WT` Cap) | `3G` | `+16%` Heat Venting, `+6` Shield, `+6` Stability / `-3%` Stride Speed |
-| `reactor_ti_manaheart_mk4` | **TI Manaheart Reactor Mk.IV** | Guardian | Frame Mod 1 (Reactor · `Mana`) | `8 WT` (`+24 WT` Cap) | `3G` | `+14` Shield Capacity, `+8%` Heat Venting / `+3%` Swing Windup |
-| `reactor_vx_phantom_mk3` | **VX Phantom Core Mk.III** | Rogue | Frame Mod 1 (Reactor · `Ether`) | `4 WT` (`+28 WT` Cap) | `3G` | `+14%` Heat Venting, `-6%` Cooldowns / `-4` Stability |
-| `reactor_arc_infinite_well_mk6` | **ARC Infinite Well Reactor Mk.VI** | Wizard | Frame Mod 1 (Reactor · `Ether`) | `8 WT` (`+26 WT` Cap) | `3G` | `+12` Shield Capacity, `+12%` Heat Venting, `-6%` Cooldowns / `-4` Stability |
-| `reactor_sanc_heartwell_mk4` | **SANC Heartwell Reactor Mk.IV** | Cleric | Frame Mod 1 (Reactor · `Mana`) | `8 WT` (`+24 WT` Cap) | `3G` | `+12` Shield Capacity, `-6%` Cooldowns, `+8%` Heat Venting / `-3` Strike Mass |
-| `storage_cd_erd_lodestone` | **Crystal Dynamics ERD Lodestone** | Warrior | Frame Mod 1 (Storage · `Ichor`) | `8 WT` (`+24 WT` Cap) | `3G` | `-8%` Cooldowns, `+10%` Heat Venting / `-3` Gyro Stability |
-| `storage_vx_shadow_capacitor` | **VX Shadow Capacitor** | Rogue | Frame Mod 1 (Storage · `Ether`) | `4 WT` (`+28 WT` Cap) | `3G` | `-8%` Cooldowns, `+12%` Heat Venting / `-5` Stability |
-| `reactor_crafted_hematite_furnace` | **Synthesized Ichor Overbore Core** | Warrior | Frame Mod 1 (`Crafted`: `2 Hematite + 1 Carnelian` · `Ichor`) | `18 WT` (`+28 WT` Cap) | `1G` | `+18%` Heat Venting, `-6%` Cooldowns / `+18 WT` Heavy Boiler Mass |
-| `reactor_crafted_moonstone_well` | **Synthesized Harmonic Mana Condenser** | Guardian | Frame Mod 1 (`Crafted`: `1 Moonstone + 1 Demantoid` · `Mana`) | `11 WT` (`+18 WT` Cap) | `1G` | `+20` Shield Capacity, `+10%` Heat Venting / `+11 WT` & lower `+18 WT` Cap |
+| `reactor_pnsy_turbine_mk4` | **PNSY Alchemic Turbine Core Mk.IV** | `mech_unique_tech` (`Warrior · PNSY`) | Frame Mod 1 (Reactor · `Ichor`) | `8 WT` (`+24 WT` Cap) | `2G` | `+12%` Heat Venting, `-4%` Cooldowns / `-3` Gyro Stability |
+| `reactor_rad_battleheart_mk5` | **RAD Battleheart Ether Reactor Mk.V** | `mech_unique_tech` (`Marauder · RAD`) | Frame Mod 1 (Reactor · `Ichor`) | `14 WT` (`+26 WT` Cap) | `2G` | `+16%` Heat Venting, `+6` Shield, `+6` Stability / `-3%` Stride Speed |
+| `reactor_ti_manaheart_mk4` | **TI Manaheart Reactor Mk.IV** | `mech_unique_tech` (`Guardian · Trinity`) | Frame Mod 1 (Reactor · `Mana`) | `8 WT` (`+24 WT` Cap) | `2G` | `+14` Shield Capacity, `+8%` Heat Venting / `+3%` Swing Windup |
+| `reactor_vx_phantom_mk3` | **VX Phantom Core Mk.III** | `mech_unique_tech` (`Rogue · VX`) | Frame Mod 1 (Reactor · `Ether`) | `4 WT` (`+28 WT` Cap) | `2G` | `+14%` Heat Venting, `-6%` Cooldowns / `-4` Stability |
+| `reactor_arc_infinite_well_mk6` | **ARC Infinite Well Reactor Mk.VI** | `mech_unique_tech` (`Wizard · Arcanum`) | Frame Mod 1 (Reactor · `Ether`) | `8 WT` (`+26 WT` Cap) | `2G` | `+12` Shield Capacity, `+12%` Heat Venting, `-6%` Cooldowns / `-4` Stability |
+| `reactor_sanc_heartwell_mk4` | **SANC Heartwell Reactor Mk.IV** | `mech_unique_tech` (`Cleric · Sanctum`) | Frame Mod 1 (Reactor · `Mana`) | `8 WT` (`+24 WT` Cap) | `2G` | `+12` Shield Capacity, `-6%` Cooldowns, `+8%` Heat Venting / `-3` Strike Mass |
+| `storage_cd_erd_lodestone` | **Crystal Dynamics ERD Lodestone** | `mech_unique_tech` (`Warrior · Storage`) | Frame Mod 1 (Storage · `Ichor`) | `8 WT` (`+24 WT` Cap) | `1G` | `-8%` Cooldowns, `+10%` Heat Venting / `-3` Gyro Stability |
+| `storage_vx_shadow_capacitor` | **VX Shadow Capacitor** | `mech_unique_tech` (`Rogue · Storage`) | Frame Mod 1 (Storage · `Ether`) | `4 WT` (`+28 WT` Cap) | `1G` | `-8%` Cooldowns, `+12%` Heat Venting / `-5` Stability |
+| `reactor_crafted_hematite_furnace` | **Synthesized Ichor Overbore Core** | `material_crafted` (`Warrior`) | Frame Mod 1 (`40 Scrap + 2 Hematite + 1 Carnelian` · `Ichor`) | `18 WT` (`+28 WT` Cap) | `1G` | `+18%` Heat Venting, `-6%` Cooldowns / `+18 WT` Heavy Boiler Mass |
+| `reactor_crafted_moonstone_well` | **Synthesized Harmonic Mana Condenser** | `material_crafted` (`Guardian`) | Frame Mod 1 (`35 Scrap + 1 Moonstone + 1 Demantoid` · `Mana`) | `11 WT` (`+18 WT` Cap) | `1G` | `+20` Shield Capacity, `+10%` Heat Venting / `+11 WT` & lower `+18 WT` Cap |
+| `reactor_crafted_rubellite_well` | **Synthesized Ether Phase-Well Core** | `material_crafted` (`Wizard / Rogue`) | Frame Mod 1 (`35 Scrap + 1 Rubellite + 1 Kyanite` · `Ether`) | `6 WT` (`+22 WT` Cap) | `1G` | `+14` Shield, `-8%` Cooldowns, `+10%` Heat Venting / `-5` Gyro Stability |
 
 ## 4. AUX / UTILITY SYSTEMS & ASSIGNABLE TRIGGER MODULES (`25 Modules`)
 
@@ -323,7 +328,7 @@ The 6 deprecated core-only variant IDs (`hw_plating_reactive`, `hw_plating_harde
 | `reactor_overdrive` | **Reactor Overdrive** | Reactor (`Output`) | `10.0s` · `+20 Heat` | Surges reactor output to grant `+30%` weapon and skill damage and rapid reload recovery for `6.0s`. |
 | `reactor_aegis_pulse` | **Aegis Barrier Pulse** | Reactor (`Shields`) | `7.5s` · `+18 Heat` | Channels reactor energy into Layer 1 Shields, restoring `+35` Shield Capacity and clearing Shield Overload. |
 
-## 5. HEAD DOME PLATES (`10`), OPTICS (`8`) & BATTLEFIELD SENSORS (`15`)
+## 5. HEAD DOME PLATES (`10`), OPTICS (`9`) & BATTLEFIELD SENSORS (`16`)
 
 ### 5A. Exterior Head Dome Plates (`10 Items` · Grant Layer 2 Armor)
 
@@ -340,44 +345,46 @@ The 6 deprecated core-only variant IDs (`hw_plating_reactive`, `hw_plating_harde
 | `head_novarin_keshig` | **Novarin Keshig Plumed Spangenhelm** | Set 14 (`forge_blueprint`) | `7 WT` | `20 / 1 / 1` | `+5` | `2G` | `+5` Stability, `+4%` Heat Venting / `-2%` Accuracy |
 | `head_novarin_tarkhan` | **Novarin Tarkhan War-Mask** | Set 15 (`forge_blueprint`) | `13 WT` | `24 / 2 / 1` | `+5` | `2G` | `+8` Stability / `+4%` Cooldowns |
 
-### 5B. Internal Head Mod 1 — Optics Suites (`8 Items` · `0` Armor)
+### 5B. Internal Head Mod 1 — Optics Suites (`9 Items` · `0` Armor · All `1G`)
 
-| ID | Name | Trait Line | Acquisition | Weight | Gem Slots | Optical Domain Modifiers & Zero-Sum Trade-Off |
+| ID | Name | Trait Line | Origin & Acquisition | Weight | Gem Slots | Optical Domain Modifiers & Zero-Sum Trade-Off |
 |---|---|---|---|---|---|---|
-| `optics_embersight` | **Crystal Dynamics EmberSight Suite** | Warrior | `LOOTED` | `2 WT` | `2G` | `+0.5` Light, `+8%` Lock Accuracy, `+6%` Stagger Damage / `-3%` Heat Venting |
-| `optics_be_foresight` | **BE Foresight Targeting Array** | Marauder | `LOOTED` | `5 WT` | `2G` | `+1.0` Light, `+14%` Lock Accuracy, `+8%` Stagger Damage / `+4%` Swing Windup |
-| `optics_aegis_radiant` | **Aegis Radiant Targeting Array** | Guardian | `LOOTED` | `2 WT` | `2G` | `+0.5` Light, `+8` Shield, `+6%` Accuracy, `-5%` Cooldowns / `-3%` Heat Venting |
-| `optics_veilsight` | **Veilsight Targeting Suite** | Rogue | `LOOTED` | `1 WT` | `2G` | `+1.0` Light, `+12%` Stagger Damage, `+8%` Accuracy / `-3` Stability |
-| `optics_arc_omniscient` | **ARC Omniscient Array** | Wizard | `LOOTED` | `3 WT` | `3G` | `+1.0` Light, `+12%` Accuracy, `+8%` Stagger Damage, `+6` Shield / `-4%` Heat Venting |
-| `optics_sanc_providence` | **SANC Providence Scanner** | Cleric | `LOOTED` | `2 WT` | `2G` | `+0.5` Light, `+8` Shield, `-8%` Cooldowns, `+6%` Accuracy / `-4%` Stagger Damage |
-| `optics_crafted_kyanite_pinpoint` | **Synthesized Arclight Pinpoint Lens** | Wizard | `CRAFTED` (`1 Kyanite + 1 Rubellite`) | `3 WT` | `1G` | `+1.0` Light, `+12%` Accuracy, `+8%` Stagger Damage, `+4` Shield / `-4%` Heat Venting |
-| `optics_crafted_charoite_nightglass` | **Synthesized Phantom Nightglass** | Rogue | `CRAFTED` (`1 Charoite`) | `1 WT` | `1G` | `+0.5` Light, `+10%` Stagger Damage at ultralight `1 WT` / `-4` Stability |
+| `optics_embersight` | **Crystal Dynamics EmberSight Suite** | Warrior | `mech_unique_tech` (`Post-Boss / Kit`) | `2 WT` | `1G` | `+0.5` Light, `+8%` Lock Accuracy, `+6%` Stagger Damage / `-3%` Heat Venting |
+| `optics_be_foresight` | **BE Foresight Targeting Array** | Marauder | `mech_unique_tech` (`Post-Boss / Kit`) | `5 WT` | `1G` | `+1.0` Light, `+14%` Lock Accuracy, `+8%` Stagger Damage / `+4%` Swing Windup |
+| `optics_aegis_radiant` | **Aegis Radiant Targeting Array** | Guardian | `mech_unique_tech` (`Post-Boss / Kit`) | `2 WT` | `1G` | `+0.5` Light, `+8` Shield, `+6%` Accuracy, `-5%` Cooldowns / `-3%` Heat Venting |
+| `optics_veilsight` | **Veilsight Targeting Suite** | Rogue | `mech_unique_tech` (`Post-Boss / Kit`) | `1 WT` | `1G` | `+1.0` Light, `+12%` Stagger Damage, `+8%` Accuracy / `-3` Stability |
+| `optics_arc_omniscient` | **ARC Omniscient Array** | Wizard | `mech_unique_tech` (`Post-Boss / Kit`) | `3 WT` | `1G` | `+1.0` Light, `+12%` Accuracy, `+8%` Stagger Damage, `+6` Shield / `-4%` Heat Venting |
+| `optics_sanc_providence` | **SANC Providence Scanner** | Cleric | `mech_unique_tech` (`Post-Boss / Kit`) | `2 WT` | `1G` | `+0.5` Light, `+8` Shield, `-8%` Cooldowns, `+6%` Accuracy / `-4%` Stagger Damage |
+| `optics_mat_quartz_vent_lens` | **Quartz-Etched Thermal-Vent Lens** | Universal | `material_looted` (`Field Salvage`) | `2 WT` | `1G` | `+0.5` Light, `+8%` Heat Venting / `-4%` Lock Accuracy |
+| `optics_crafted_kyanite_pinpoint` | **Synthesized Arclight Pinpoint Lens** | Wizard | `material_crafted` (`30 Scrap + 1 Kyanite + 1 Rubellite`) | `3 WT` | `1G` | `+1.0` Light, `+12%` Accuracy, `+8%` Stagger Damage, `+4` Shield / `-4%` Heat Venting |
+| `optics_crafted_charoite_nightglass` | **Synthesized Phantom Nightglass** | Rogue | `material_crafted` (`25 Scrap + 1 Charoite`) | `1 WT` | `1G` | `+0.5` Light, `+10%` Stagger Damage at ultralight `1 WT` / `-4` Stability |
 
-### 5C. Internal Head Mod 2 & Mod 3 — Battlefield Sensory Arrays (`15 Items` · `0` Armor)
+### 5C. Internal Head Mod 2 & Mod 3 — Battlefield Sensory Arrays (`16 Items` · `0` Armor · All `0G`)
 
-| ID | Name | Trait Line | Slot (`Acquisition`) | Weight | Gem Slots | Sensory Domain Modifiers & Zero-Sum Trade-Off |
+| ID | Name | Trait Line | Slot (`Origin & Acquisition`) | Weight | Gem Slots | Sensory Domain Modifiers & Zero-Sum Trade-Off |
 |---|---|---|---|---|---|---|
-| `sensory_a_federated_t7` | **Federated T7 Sensor Array** | Warrior | Sensory A (`LOOTED`) | `2 WT` | `2G` | `+0.5` Light, `+6%` Lock Accuracy / `+2%` Cooldowns |
-| `sensory_a_nds_arcpulse` | **NDS ArcPulse Sensor Grid** | Marauder | Sensory A (`LOOTED`) | `4 WT` | `2G` | `+8%` Stagger Damage, `+6` Stability / `+3%` Swing Windup |
-| `sensory_a_solbright_flux` | **Solbright Flux Sensor Grid** | Guardian | Sensory A (`LOOTED`) | `2 WT` | `2G` | `+8` Shield, `+0.5` Light / `-3%` Heat Venting |
-| `sensory_a_vx_phantom_net` | **VX Phantom Network Sensor** | Rogue | Sensory A (`LOOTED`) | `1 WT` | `2G` | `+0.5` Light, `+8%` Stagger Damage / `-3` Stability |
-| `sensory_a_arc_manaflow` | **ARC Manaflow Analyzer** | Wizard | Sensory A (`LOOTED`) | `2 WT` | `2G` | `-6%` Cooldowns, `+6%` Accuracy / `-3` Stability |
-| `sensory_a_sanc_lifeline` | **SANC Lifeline Monitor** | Cleric | Sensory A (`LOOTED`) | `2 WT` | `2G` | `+6` Shield, `-5%` Cooldowns / `-3%` Stagger Damage |
-| `sensory_a_crafted_demantoid_pulse` | **Synthesized Harmonic Field Sensor** | Cleric | Sensory A (`CRAFTED`: `1 Demantoid`) | `4 WT` | `1G` | `+8` Shield, `+0.5` Light, `-6%` Cooldowns / `+4 WT` Draw |
-| `sensory_b_federated_echopulse` | **Federated EchoPulse Scanner** | Warrior | Sensory B (`LOOTED`) | `2 WT` | `2G` | `+6%` Lock Accuracy, `+5%` Stagger Damage / `-2%` Heat Venting |
-| `sensory_b_nds_echostorm` | **NDS EchoStorm Threat Analyzer** | Marauder | Sensory B (`LOOTED`) | `4 WT` | `2G` | `+10%` Lock Accuracy, `+6` Stability / `+3%` Cooldowns |
-| `sensory_b_aegis_lightveil` | **Aegis Lightveil Analyzer** | Guardian | Sensory B (`LOOTED`) | `2 WT` | `2G` | `+6` Shield, `+8` Stability / `+3%` Swing Windup |
-| `sensory_b_vx_echonull` | **VX Echo-Null Scanner** | Rogue | Sensory B (`LOOTED`) | `1 WT` | `2G` | `+10%` Stagger Damage, `-5%` Cooldowns / `-3` Stability |
-| `sensory_b_arc_convergence` | **ARC Convergence Predictor** | Wizard | Sensory B (`LOOTED`) | `2 WT` | `2G` | `+10%` Lock Accuracy, `+6%` Stagger Damage / `-3%` Heat Venting |
-| `sensory_b_sanc_blessing_grid` | **SANC Blessing Resonance Grid** | Cleric | Sensory B (`LOOTED`) | `2 WT` | `2G` | `-7%` Cooldowns, `+6` Shield / `-3%` Lock Accuracy |
-| `sensory_b_inertial_gyro_telemetry` | **Inertial Gyro-Telemetry Array** | Telemetry | Sensory B (`LOOTED`) | `3 WT` | `2G` | Enables live HUD Inertia (`m_eff`, `μ`, `k1·S`) readout + `+12` Stability, `+4%` Acc / `+3%` CD |
-| `sensory_b_crafted_titanite_gyro` | **Synthesized Aegis Gyro-Scanner** | Guardian | Sensory B (`CRAFTED`: `1 Titanite + 1 Moonstone`) | `6 WT` | `1G` | `+14` Gyro Stability, `+8` Shield, `+6%` Accuracy / `+6 WT` Housing |
+| `sensory_a_federated_t7` | **Federated T7 Sensor Array** | Warrior | Sensory A (`mech_unique_tech`) | `2 WT` | `0G` | `+0.5` Light, `+6%` Lock Accuracy / `+2%` Cooldowns |
+| `sensory_a_nds_arcpulse` | **NDS ArcPulse Sensor Grid** | Marauder | Sensory A (`mech_unique_tech`) | `4 WT` | `0G` | `+8%` Stagger Damage, `+6` Stability / `+3%` Swing Windup |
+| `sensory_a_solbright_flux` | **Solbright Flux Sensor Grid** | Guardian | Sensory A (`mech_unique_tech`) | `2 WT` | `0G` | `+8` Shield, `+0.5` Light / `-3%` Heat Venting |
+| `sensory_a_vx_phantom_net` | **VX Phantom Network Sensor** | Rogue | Sensory A (`mech_unique_tech`) | `1 WT` | `0G` | `+0.5` Light, `+8%` Stagger Damage / `-3` Stability |
+| `sensory_a_arc_manaflow` | **ARC Manaflow Analyzer** | Wizard | Sensory A (`mech_unique_tech`) | `2 WT` | `0G` | `-6%` Cooldowns, `+6%` Accuracy / `-3` Stability |
+| `sensory_a_sanc_lifeline` | **SANC Lifeline Monitor** | Cleric | Sensory A (`mech_unique_tech`) | `2 WT` | `0G` | `+6` Shield, `-5%` Cooldowns / `-3%` Stagger Damage |
+| `sensory_a_mat_copper_capacitor` | **Copper-Braid Capacitor Grid** | Universal | Sensory A (`material_looted`) | `2 WT` | `0G` | `-6%` Cooldowns, `+4%` Heat Venting / `-3` Stability |
+| `sensory_a_crafted_demantoid_pulse` | **Synthesized Harmonic Field Sensor** | Cleric | Sensory A (`material_crafted`: `25 Scrap + 1 Demantoid`) | `4 WT` | `0G` | `+8` Shield, `+0.5` Light, `-6%` Cooldowns / `+4 WT` Draw |
+| `sensory_b_federated_echopulse` | **Federated EchoPulse Scanner** | Warrior | Sensory B (`mech_unique_tech`) | `2 WT` | `0G` | `+6%` Lock Accuracy, `+5%` Stagger Damage / `-2%` Heat Venting |
+| `sensory_b_nds_echostorm` | **NDS EchoStorm Threat Analyzer** | Marauder | Sensory B (`mech_unique_tech`) | `4 WT` | `0G` | `+10%` Lock Accuracy, `+6` Stability / `+3%` Cooldowns |
+| `sensory_b_aegis_lightveil` | **Aegis Lightveil Analyzer** | Guardian | Sensory B (`mech_unique_tech`) | `2 WT` | `0G` | `+6` Shield, `+8` Stability / `+3%` Swing Windup |
+| `sensory_b_vx_echonull` | **VX Echo-Null Scanner** | Rogue | Sensory B (`mech_unique_tech`) | `1 WT` | `0G` | `+10%` Stagger Damage, `-5%` Cooldowns / `-3` Stability |
+| `sensory_b_arc_convergence` | **ARC Convergence Predictor** | Wizard | Sensory B (`mech_unique_tech`) | `2 WT` | `0G` | `+10%` Lock Accuracy, `+6%` Stagger Damage / `-3%` Heat Venting |
+| `sensory_b_sanc_blessing_grid` | **SANC Blessing Resonance Grid** | Cleric | Sensory B (`mech_unique_tech`) | `2 WT` | `0G` | `-7%` Cooldowns, `+6` Shield / `-3%` Lock Accuracy |
+| `sensory_b_inertial_gyro_telemetry` | **Inertial Gyro-Telemetry Array** | Telemetry | Sensory B (`mech_unique_tech`) | `3 WT` | `0G` | Enables live HUD Inertia (`m_eff`, `μ`, `k1·S`) readout + `+12` Stability, `+4%` Acc / `+3%` CD |
+| `sensory_b_crafted_titanite_gyro` | **Synthesized Aegis Gyro-Scanner** | Guardian | Sensory B (`material_crafted`: `35 Scrap + 1 Titanite + 1 Moonstone`) | `6 WT` | `0G` | `+14` Gyro Stability, `+8` Shield, `+6%` Accuracy / `+6 WT` Housing |
 
-## 6. ARM ASSEMBLIES (`10`), ACTUATORS (`8`) & LEG STRIDERS (`8`)
+## 6. ARM ASSEMBLIES (`10`), ACTUATORS (`9`) & LEG STRIDERS (`9`)
 
-### 6A. Exterior Arm Aperture Plates (`10 Items` · Grant Layer 2 Armor) & Internal Arm Actuators (`8 Items` · `0` Armor)
+### 6A. Exterior Arm Aperture Plates (`10 Items` · Grant Layer 2 Armor) & Internal Arm Actuators (`9 Items` · `0` Armor · All `0G`)
 
-| ID | Name | Set / Heritage (`Acquisition`) | Weight | Armor (`DUR / RTG / THR`) | Shield | Gem Slots | Mechanical Domain & Zero-Sum Trade-Off |
+| ID | Name | Set / Heritage (`Origin & Acquisition`) | Weight | Armor (`DUR / RTG / THR`) | Shield | Gem Slots | Mechanical Domain & Zero-Sum Trade-Off |
 |---|---|---|---|---|---|---|---|
 | `arms_bwi_twinstrike` | **BWI Twinstrike Gauntlets** | Set 0 (`starter_post_boss`) | `8 WT` | `24 / 1 / 1` | `0` | `2G` | `+6` Stability, `+4%` Accuracy / `+3%` Cooldowns |
 | `arms_fire_ice_line_holder` | **Fire & Ice Line Holder** | Set 1 (`starter_post_boss`) | `16 WT` | `34 / 2 / 1` | `0` | `2G` | `+10` Stability, `+6` Strike Mass / `+5%` Swing Windup |
@@ -389,27 +396,29 @@ The 6 deprecated core-only variant IDs (`hw_plating_reactive`, `hw_plating_harde
 | `arms_novarin_outrider` | **Novarin Outrider Bow-Bracers** | Set 13 (`forge_blueprint`) | `4 WT` | `16 / 1 / 0` | `0` | `2G` | `-6%` Swing Windup, `+5%` Accuracy / `-3` Stability |
 | `arms_novarin_keshig` | **Novarin KeshigSplint Vambraces** | Set 14 (`forge_blueprint`) | `10 WT` | `26 / 2 / 1` | `0` | `2G` | `+6` Stability, `+4` Strike Mass / `+3%` Cooldowns |
 | `arms_novarin_tarkhan` | **Novarin Tarkhan Crusher Gauntlets** | Set 15 (`forge_blueprint`) | `18 WT` | `34 / 2 / 1` | `0` | `2G` | `+10` Stability, `+8` Strike Mass / `+6%` Swing Windup |
-| `arms_cd_striker_vambraces` | **Crystal Dynamics Striker Vambraces** | Warrior (`Arms Mod 1 · LOOTED`) | `4 WT` | `0 / 0 / 0` | `0` | `2G` | `-12%` Swing Windup, `+6` Strike Mass, `-6%` Cooldowns / `-4%` Heat Venting |
-| `arms_be_siegebreaker_pauldrons` | **BE Siegebreaker Stabilizer Servos** | Marauder (`Arms Mod 1 · LOOTED`) | `8 WT` | `0 / 0 / 0` | `0` | `3G` | `+16` Recoil Stability, `+10` Strike Mass / `+5%` Swing Windup |
-| `arms_aegis_radiant_vambraces` | **Aegis Radiant Coupler Actuators** | Guardian (`Arms Mod 1 · LOOTED`) | `4 WT` | `0 / 0 / 0` | `+10` | `2G` | `+10` Shield, `+10` Stability, `-6%` Cooldowns / `+3%` Swing Windup |
-| `arms_vx_whisperblade_gauntlets` | **VX Whisperblade Micro-Gyros** | Rogue (`Arms Mod 1 · LOOTED`) | `2 WT` | `0 / 0 / 0` | `0` | `2G` | `-15%` Swing Windup, `+8` Stability, `-5%` Cooldowns / `-4` Strike Mass |
-| `arms_arc_prism_refractors` | **ARC Prism Refractor Servos** | Wizard (`Arms Mod 1 · LOOTED`) | `4 WT` | `0 / 0 / 0` | `+12` | `2G` | `+12` Shield, `+8%` Accuracy, `-6%` Cooldowns, `+0.5` Light / `-4` Stability |
-| `arms_sanc_seraphic_pinions` | **SANC Seraphic Pinion Actuators** | Cleric (`Arms Mod 1 · LOOTED`) | `4 WT` | `0 / 0 / 0` | `+10` | `2G` | `+10` Shield, `-10%` Cooldowns, `+8` Stability / `-3` Strike Mass |
-| `actuators_crafted_carnelian_piston` | **Synthesized Heavy Siege Pistons** | Marauder (`CRAFTED`: `1 Carnelian + 1 Hematite`) | `12 WT` | `0 / 0 / 0` | `0` | `1G` | `+14` Strike Mass, `+12` Stability / `+12 WT` & `+6%` Swing Windup |
-| `actuators_crafted_spinel_overdrive` | **Synthesized Assault Torque Servos** | Warrior (`CRAFTED`: `1 Spinel`) | `5 WT` | `0 / 0 / 0` | `0` | `1G` | `-14%` Swing Windup, `+6` Strike Mass, `-7%` Cooldowns / `-5%` Heat Venting |
+| `arms_cd_striker_vambraces` | **Crystal Dynamics Striker Vambraces** | Warrior (`Arms Mod 1 · mech_unique_tech`) | `4 WT` | `0 / 0 / 0` | `0` | `0G` | `-12%` Swing Windup, `+6` Strike Mass, `-6%` Cooldowns / `-4%` Heat Venting |
+| `arms_be_siegebreaker_pauldrons` | **BE Siegebreaker Stabilizer Servos** | Marauder (`Arms Mod 1 · mech_unique_tech`) | `8 WT` | `0 / 0 / 0` | `0` | `0G` | `+16` Recoil Stability, `+10` Strike Mass / `+5%` Swing Windup |
+| `arms_aegis_radiant_vambraces` | **Aegis Radiant Coupler Actuators** | Guardian (`Arms Mod 1 · mech_unique_tech`) | `4 WT` | `0 / 0 / 0` | `+10` | `0G` | `+10` Shield, `+10` Stability, `-6%` Cooldowns / `+3%` Swing Windup |
+| `arms_vx_whisperblade_gauntlets` | **VX Whisperblade Micro-Gyros** | Rogue (`Arms Mod 1 · mech_unique_tech`) | `2 WT` | `0 / 0 / 0` | `0` | `0G` | `-15%` Swing Windup, `+8` Stability, `-5%` Cooldowns / `-4` Strike Mass |
+| `arms_arc_prism_refractors` | **ARC Prism Refractor Servos** | Wizard (`Arms Mod 1 · mech_unique_tech`) | `4 WT` | `0 / 0 / 0` | `+12` | `0G` | `+12` Shield, `+8%` Accuracy, `-6%` Cooldowns, `+0.5` Light / `-4` Stability |
+| `arms_sanc_seraphic_pinions` | **SANC Seraphic Pinion Actuators** | Cleric (`Arms Mod 1 · mech_unique_tech`) | `4 WT` | `0 / 0 / 0` | `+10` | `0G` | `+10` Shield, `-10%` Cooldowns, `+8` Stability / `-3` Strike Mass |
+| `actuators_mat_torsion_counterweight` | **Torsion-Spring Counterweight Joints** | Universal (`Arms Mod 1 · material_looted`) | `5 WT` | `0 / 0 / 0` | `0` | `0G` | `+8` Stability, `-6%` Swing Windup / `-4` Strike Mass |
+| `actuators_crafted_carnelian_piston` | **Synthesized Heavy Siege Pistons** | Marauder (`material_crafted`: `30 Scrap + 1 Carnelian + 1 Hematite`) | `12 WT` | `0 / 0 / 0` | `0` | `0G` | `+14` Strike Mass, `+12` Stability / `+12 WT` & `+6%` Swing Windup |
+| `actuators_crafted_spinel_overdrive` | **Synthesized Assault Torque Servos** | Warrior (`material_crafted`: `25 Scrap + 1 Spinel`) | `5 WT` | `0 / 0 / 0` | `0` | `0G` | `-14%` Swing Windup, `+6` Strike Mass, `-7%` Cooldowns / `-5%` Heat Venting |
 
-### 6B. Leg Striders & Stabilizer Actuators (`8 Items` · `0` Armor)
+### 6B. Leg Striders & Stabilizer Actuators (`9 Items` · `0` Armor · All `0G`)
 
-| ID | Name | Trait Line | Acquisition | Weight & Cap Bonus | Gem Slots | Mobility / Stability Modifiers & Zero-Sum Trade-Off |
+| ID | Name | Trait Line | Origin & Acquisition | Weight & Cap Bonus | Gem Slots | Mobility / Stability Modifiers & Zero-Sum Trade-Off |
 |---|---|---|---|---|---|---|
-| `legs_bwi_gatecrasher` | **BWI Gatecrasher Striders** | Warrior | `LOOTED` | `7 WT` (`+24 WT` Cap) | `2G` | `+4%` Stride Speed, `+6` Stability / `-3%` Heat Venting |
-| `legs_fire_ice_outrigger` | **Fire & Ice Outrigger Striders** | Marauder | `LOOTED` | `14 WT` (`+26 WT` Cap) | `2G` | `+16` Grounding Stability / `-4%` Stride Speed |
-| `legs_dawnforge_stabilizer` | **Dawnforge Stabilizer Striders** | Guardian | `LOOTED` | `7 WT` (`+26 WT` Cap) | `2G` | `+12` Grounding Stability / `-2%` Stride Speed |
-| `legs_shadowcraft_ghost` | **Shadowcraft Ghost Striders** | Rogue | `LOOTED` | `3 WT` (`+24 WT` Cap) | `2G` | `+7%` Stride Speed at ultralight `3 WT` / `-4` Stability |
-| `legs_arcanum_anchor` | **Arcanum Anchor Striders** | Wizard | `LOOTED` | `7 WT` (`+24 WT` Cap) | `2G` | `+10` Stability, `+6` Shield / `-2%` Stride Speed |
-| `legs_sanctum_steadfast` | **Sanctum Steadfast Striders** | Cleric | `LOOTED` | `7 WT` (`+26 WT` Cap) | `2G` | `+10` Stability, `+3%` Stride Speed / `+2%` Cooldowns |
-| `legs_crafted_carnelian_outriggers` | **Synthesized Siege Load-Bearing Striders** | Marauder | `CRAFTED` (`2 Carnelian + 1 Titanite`) | `16 WT` (`+32 WT` Cap) | `1G` | `+32` Load Capacity, `+16` Stability / `+16 WT` & `-5%` Stride Speed |
-| `legs_crafted_charoite_featherstep` | **Synthesized Phantom Featherstep Striders** | Rogue | `CRAFTED` (`1 Charoite + 1 Rubellite`) | `5 WT` (`+12 WT` Cap) | `1G` | `+8%` Stride Speed at `5 WT` / Lower `+12 WT` Cap & `-4` Stability |
+| `legs_bwi_gatecrasher` | **BWI Gatecrasher Striders** | Warrior | `mech_unique_tech` (`Post-Boss / Kit`) | `7 WT` (`+24 WT` Cap) | `0G` | `+4%` Stride Speed, `+6` Stability / `-3%` Heat Venting |
+| `legs_fire_ice_outrigger` | **Fire & Ice Outrigger Striders** | Marauder | `mech_unique_tech` (`Post-Boss / Kit`) | `14 WT` (`+26 WT` Cap) | `0G` | `+16` Grounding Stability / `-4%` Stride Speed |
+| `legs_dawnforge_stabilizer` | **Dawnforge Stabilizer Striders** | Guardian | `mech_unique_tech` (`Post-Boss / Kit`) | `7 WT` (`+26 WT` Cap) | `0G` | `+12` Grounding Stability / `-2%` Stride Speed |
+| `legs_shadowcraft_ghost` | **Shadowcraft Ghost Striders** | Rogue | `mech_unique_tech` (`Post-Boss / Kit`) | `3 WT` (`+24 WT` Cap) | `0G` | `+7%` Stride Speed at ultralight `3 WT` / `-4` Stability |
+| `legs_arcanum_anchor` | **Arcanum Anchor Striders** | Wizard | `mech_unique_tech` (`Post-Boss / Kit`) | `7 WT` (`+24 WT` Cap) | `0G` | `+10` Stability, `+6` Shield / `-2%` Stride Speed |
+| `legs_sanctum_steadfast` | **Sanctum Steadfast Striders** | Cleric | `mech_unique_tech` (`Post-Boss / Kit`) | `7 WT` (`+26 WT` Cap) | `0G` | `+10` Stability, `+3%` Stride Speed / `+2%` Cooldowns |
+| `legs_mat_baffled_radiator_strut` | **Baffled Radiator-Strut Legs** | Universal | `material_looted` (`Field Salvage`) | `8 WT` (`+26 WT` Cap) | `0G` | `+26` Load Cap, `+8%` Heat Venting, `+6` Stability / `-2%` Stride Speed |
+| `legs_crafted_carnelian_outriggers` | **Synthesized Siege Load-Bearing Striders** | Marauder | `material_crafted` (`45 Scrap + 2 Carnelian + 1 Titanite`) | `16 WT` (`+32 WT` Cap) | `0G` | `+32` Load Capacity, `+16` Stability / `+16 WT` & `-5%` Stride Speed |
+| `legs_crafted_charoite_featherstep` | **Synthesized Phantom Featherstep Striders** | Rogue | `material_crafted` (`30 Scrap + 1 Charoite + 1 Rubellite`) | `5 WT` (`+12 WT` Cap) | `0G` | `+8%` Stride Speed at `5 WT` / Lower `+12 WT` Cap & `-4` Stability |
 
 ## 6C. GEMSTONES, BELT FLASKS, CONSUMABLES, CURRENCIES & QUEST / RELIC ITEMS (`40 Items`)
 
@@ -428,6 +437,21 @@ Duplicate gems socketed into the same exterior armor piece scale at **`100%` (1s
 | `charoite` | **Charoite** (`Purple`) | Ether (`Rogue`) | `-4 WT` Ultralight, `+6` Shield, `+3%` Stride / `-8` DUR, `-3` Stability | `-2 WT`, `+0.5` Light, `+6%` Stagger/Crit / `-4` DUR, `-2` Stability | `-2 WT`, `-6%` Swing Windup, `-8%` Swap CD / `-4` DUR, `-3` Strike Mass | `+8%` Combat Tempo & `-1 WT` Ultralight / `-8%` Impulse (`J`) |
 | `rubellite` | **Rubellite** (`Magenta`) | Ether Core (`Rogue`, `Wizard`) | `+12` Shield, `+10` DUR / `+3 WT`, `+3%` Heat Cost | `+8` Shield, `+5%` Stagger/Crit / `+2 WT`, `-3%` Venting | `+6` Shield, `-4%` Swing Windup, `+4%` Acc / `+2 WT`, `+4%` Heat Cost | `+8%` Finisher / Step-1 BCU & `+10%` Shield Dmg / `+8%` Heat Cost |
 | `hematite` | **Hematite** (`Black`) | Ichor Core (`Warrior`, `Marauder`) | `+22` DUR, `+8%` Venting / `+5 WT`, `-6` Shield | `+12` DUR, `+5%` Venting / `+3 WT`, `-4` Shield | `+10` DUR, `+4` Strike Mass, `-5%` Heat Cost / `+3 WT`, `-4` Shield | `-12%` Reactor Heat Cost & `+2` `THR` Pierce / `-3` Stability (`S`) |
+
+#### Internal Sub-System Gemstone Tuning (`Reactor 1G–2G` & `Optics 1G`)
+Only **`reactor`** (`2G` on Mech-Unique Reactors with `[1.0, 0.7]` duplicate scaling; `1G` on Energy Storage and Material-Crafted Reactors) and **`optics`** (`1G` focal lens socket) accept socketed Gemstones (`sensoryA`, `sensoryB`, `actuators`, and `legs` are strictly `0G`):
+
+| Gem ID | Name (`Core`) | Reactor Core Socket (`reactor` · `1G–2G`) | Head Optics Socket (`optics` · `1G`) |
+|---|---|---|---|
+| `hematite` | **Hematite** (`Ichor Core`) | `+6%` Heat Venting, `+4` Load Cap / `-2` Stability | `+4%` Heat Venting, `+0.25` Light / `-2%` Lock Accuracy |
+| `spinel` | **Spinel** (`Ichor / Warrior`) | `+5%` Heat Venting, `-3%` Skill CD / `+1 WT` | `+5%` Lock Accuracy, `-2%` Swing Windup / `-2%` Heat Venting |
+| `carnelian` | **Carnelian** (`Ichor / Marauder`) | `+6` Load Cap, `+4` Stability / `-1%` Stride Speed | `+5%` Stagger Damage, `+3` Stability / `+2%` Swing Windup |
+| `moonstone` | **Moonstone** (`Mana Core`) | `+10` Shield Capacity, `+3%` Heat Venting / `+1 WT` | `+6` Shield Capacity, `+0.3` Light / `-2%` Stagger Damage |
+| `titanite` | **Titanite** (`Mana / Guardian`) | `+6` Shield Capacity, `+5` Stability / `+2%` Swing Windup | `+5` Stability, `+4` Shield Capacity / `+2%` Skill CD |
+| `demantoid` | **Demantoid** (`Mana / Cleric`) | `-4%` Skill CD, `+4%` Heat Venting / `-2` Strike Mass | `-4%` Skill CD, `+4` Shield Capacity / `-2%` Lock Accuracy |
+| `rubellite` | **Rubellite** (`Ether Core`) | `+8` Shield Capacity, `-3%` Skill CD / `-2` Stability | `+6%` Stagger Damage, `+4` Shield Capacity / `-2%` Heat Venting |
+| `kyanite` | **Kyanite** (`Ether / Wizard`) | `+6` Shield Capacity, `-4%` Skill CD / `-2` Stability | `+0.5` Light, `+6%` Lock Accuracy / `-2` Stability |
+| `charoite` | **Charoite** (`Ether / Rogue`) | `+4` Load Cap, `-3%` Skill CD / `-3` Stability | `+0.35` Light, `+6%` Stagger Damage / `-2` Stability |
 
 ### 6C.2 Belt Flasks, Gem-Infused Elixirs & Field Consumables (`11 Items`)
 

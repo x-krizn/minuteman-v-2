@@ -431,6 +431,9 @@ export interface ActorInertiaProfile {
 export function hasInertialTelemetryModEquipped(state: OrionState): boolean {
   const slots = state.equipmentSlots;
   if (!slots) return false;
+  if (resolveEquippedHardwareStats(state).enablesInertiaHud) {
+    return true;
+  }
   if (
     parseEquipmentInstanceId(slots.sensoryA).baseId === INERTIAL_TELEMETRY_SENSORY_ID ||
     parseEquipmentInstanceId(slots.sensoryB).baseId === INERTIAL_TELEMETRY_SENSORY_ID ||

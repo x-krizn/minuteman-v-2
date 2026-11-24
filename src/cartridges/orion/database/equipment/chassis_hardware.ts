@@ -3,9 +3,24 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { FrameLoadCapacity, GemId, ModPartOrigin, OrionState } from '../../types';
+import {
+  ArmorAcquisitionType,
+  ArmorGemResonanceCombo,
+  ExteriorArmorSocketEvalResult,
+  FrameLoadCapacity,
+  GemId,
+  ModPartOrigin,
+  OrionState,
+  StatDelta,
+} from '../../types';
 import { TRAIT_REGISTRY } from '../characters';
 import { CANONICAL_ARMS } from './arms';
+import {
+  evaluateExteriorArmorPieceSockets,
+  formatStatDeltaBadges,
+  getPerSlotGemstoneHarmonicText,
+  sumStatDeltas,
+} from './exterior_armor_harmonics';
 import { CANONICAL_HEAD_OPTICS } from './head';
 import { CANONICAL_LEGS } from './legs';
 import {
@@ -62,9 +77,9 @@ export interface CanonicalHardwareItemDefinition {
     | 'aux4';
   canonicalSlotLabel: string;
   subtype: string;
-  /** Optional visual set index (0..11 for the 12 baseline sets; omit for standalone pieces without a full set) */
+  /** Optional visual set index (0..15 for canonical sets; omit for standalone pieces without a full set) */
   setIndex?: number;
-  /** Optional set identifier for grouping matching pieces (omit for standalone pieces) */
+  /** Optional set identifier for grouping matching pieces (`'set_00'..'set_05'`, `'set_12'..'set_15'`) */
   setId?: string;
   /** 4-frame (64x16px, 16x16px per frame) aligned sprite strip configuration for head, arms, or frame plating */
   partSprite?: MechPartSpriteStripConfig;
@@ -89,6 +104,8 @@ export interface CanonicalHardwareItemDefinition {
   };
   armorType?: 'Ablative' | 'Reactive' | 'Hardened' | 'Layered';
   baseLoadCapacity?: FrameLoadCapacity;
+  /** Exact numeric Base Load Capacity in WT (`84`, `90`, `94`, `112`, `116`) for Core Frame Plating (`slot: 'plating'`) */
+  baseLoadCapacityNumber?: number;
   armorThreshold?: number;
   armorRating?: number;
   armorDurability?: number;
@@ -117,7 +134,15 @@ export interface CanonicalHardwareItemDefinition {
   attackMassBonus?: number;
   /** Whether this hardware/sub-mod part is crafted from gems (<=1 gem slot) or looted standalone (1..3 gem slots) */
   origin?: ModPartOrigin;
-  /** Maximum additional gem slots on this hardware/sub-mod part (0..1 if crafted, 1..3 if looted) */
+  /** Acquisition pathway for Exterior Armor (`'starter_post_boss' | 'forge_blueprint'`) */
+  acquisition?: ArmorAcquisitionType;
+  /** Required Cyclopean Dwarf Forge blueprint ID if `acquisition === 'forge_blueprint'` */
+  blueprintId?: string;
+  /** Structured base stat modifiers from Exterior Armor Spec §3 */
+  baseModifiers?: StatDelta;
+  /** Evaluated socket harmonics & combo breakdown when socketed with gemstones */
+  socketEvalResult?: ExteriorArmorSocketEvalResult;
+  /** Maximum additional gem slots on this hardware/sub-mod part (0..1 if crafted sub-mod, 2..3 if exterior armor) */
   maxGemSlots?: 0 | 1 | 2 | 3;
   /** Variable gem cost when origin === 'crafted' */
   gemCost?: Array<{ gemId: GemId; count: number }>;
@@ -291,8 +316,6 @@ export type ChassisHardwareItemDefinition = CanonicalHardwareItemDefinition;
 /** Master registry of all canonical exterior armor pieces, internal sub-modules, and crafted hardware parts. */
 export const CHASSIS_HARDWARE_CATALOG: ChassisHardwareItemDefinition[] = CANONICAL_HARDWARE_CATALOG;
 
-const MODIFIED_HARDWARE_CACHE: Record<string, CanonicalHardwareItemDefinition> = {};
-
 /**
  * Computes default physical weight (`WT`) for any hardware/armor/sub-mod piece if not explicitly set.
  * Scaled by chassis weight class (Light Recon vs. Medium Tactical/Arcane/Sanctum vs. Heavy Siege).
@@ -310,6 +333,7 @@ export function getHardwareBaseWeight(item: CanonicalHardwareItemDefinition | un
     text.includes('whisperblade') ||
     text.includes('ghost') ||
     text.includes('phantom') ||
+    text.includes('outrider') ||
     text.includes('ablative');
   const isHeavyHardware =
     item.baseLoadCapacity === 'heavy' ||
@@ -326,14 +350,15 @@ export function getHardwareBaseWeight(item: CanonicalHardwareItemDefinition | un
     text.includes('outrigger') ||
     text.includes('battleheart') ||
     text.includes('camelot') ||
+    text.includes('tarkhan') ||
     text.includes('hardened');
 
   switch (item.slot) {
     case 'plating':
       if (item.baseLoadCapacity === 'superheavy') return 36;
       if (isHeavyHardware) return 32;
-      if (isLightHardware) return 7;
-      return text.includes('dawnforge') ? 17 : 15;
+      if (isLightHardware) return 8;
+      return text.includes('dawnforge') ? 26 : 16;
     case 'head':
       if (isHeavyHardware) return 12;
       if (isLightHardware) return 3;
@@ -371,7 +396,9 @@ export function getHardwareBaseWeight(item: CanonicalHardwareItemDefinition | un
 /**
  * Computes the Frame Load Capacity bonus granted by Frame sub-mods (`Reactor Core` and `Leg Actuators`).
  */
-export function getHardwareCapacityBonus(item: CanonicalHardwareItemDefinition | undefined): number {
+export function getHardwareCapacityBonus(
+  item: CanonicalHardwareItemDefinition | undefined
+): number {
   if (!item) return 0;
   if (typeof item.capacityBonus === 'number') return item.capacityBonus;
   const descLower = `${item.name} ${item.subtype} ${item.description}`.toLowerCase();
@@ -379,7 +406,11 @@ export function getHardwareCapacityBonus(item: CanonicalHardwareItemDefinition |
     if (descLower.includes('phantom') || descLower.includes('shadow')) {
       return 28;
     }
-    if (descLower.includes('infinite') || descLower.includes('battleheart') || descLower.includes('furnace')) {
+    if (
+      descLower.includes('infinite') ||
+      descLower.includes('battleheart') ||
+      descLower.includes('furnace')
+    ) {
       return 26;
     }
     return 24;
@@ -403,33 +434,14 @@ export function getHardwareCapacityBonus(item: CanonicalHardwareItemDefinition |
 
 /**
  * Returns a concise slot-adaptive summary of what socketing a Gemstone into a given hardware slot does.
+ * For Exterior Armor (`'plating' | 'head' | 'arms'`), returns the exact §5 Per-Slot Gemstone Harmonic payload.
  */
 export function getHardwareGemBonusDescription(
   slot: CanonicalHardwareItemDefinition['slot'],
   gem: GemId
 ): string {
-  const isExteriorArmor = slot === 'plating' || slot === 'head' || slot === 'arms';
-  if (isExteriorArmor) {
-    switch (gem) {
-      case 'titanite':
-        return '+12 Shield, +1 Armor Rating / +6 WT';
-      case 'moonstone':
-        return '+10 Shield / +3 WT, -4 Armor Dur';
-      case 'hematite':
-        return '+18 Armor Durability / +5 WT, -4 Shield';
-      case 'carnelian':
-        return `+15 Armor Dur, +1 Threshold${slot === 'plating' ? ', +6 Cap' : ''} / +8 WT`;
-      case 'spinel':
-        return '+8 Shield, +8 Armor Dur / +4 WT';
-      case 'demantoid':
-        return '+8 Shield, +10 Armor Dur / +3 WT';
-      case 'kyanite':
-        return '+6 Shield, +0.5 Light / +2 WT, -3 Dur';
-      case 'charoite':
-        return '+6 Shield, -4 WT Ultralight / -6 Armor Dur';
-      case 'rubellite':
-        return '+10 Shield, +10 Armor Dur / +4 WT';
-    }
+  if (slot === 'plating' || slot === 'head' || slot === 'arms') {
+    return getPerSlotGemstoneHarmonicText(slot, gem);
   }
   if (slot === 'actuators') {
     switch (gem) {
@@ -522,17 +534,22 @@ export function getHardwareGemBonusDescription(
 
 /**
  * Finds a canonical hardware item by its ID, display name, or Gem-modified composite instance ID
- * (`<baseId>::<gem1>+<gem2>`). Applies slot-adaptive physical domain bonuses and zero-sum trade-offs per Gem.
- * Exterior Armor (`plating`, `head`, `arms`) receives Armor Durability/Rating/Threshold, while internal
- * sub-modules (`actuators`, `optics`, `sensoryA`, `sensoryB`, `reactor`, `legs`) receive domain-accurate stats.
+ * (`<baseId>::<gem1>+<gem2>`).
+ * - For Exterior Armor (`'plating' | 'head' | 'arms'`), runs the §6.1 5-Step Socket Calculation Engine:
+ *   - Step 1: Duplicate Gemstone Diminishing Returns (`100% -> 70% -> 40%`)
+ *   - Step 2: Piece-Local Combo Detection (Tier 3 Triad or Tier 2 Pair)
+ *   - Step 3: Reactor Core Harmonic Resonance (`+20%` positive when matching active `ReactorFamily`, plus `+10%` Prismatic Universal Affinity on `'head' | 'arms'`)
+ *   - Step 4: Final Per-Socket Stat Calculation & Rounding
+ * - For Internal Sub-Modules (`actuators`, `optics`, `sensoryA`, `sensoryB`, `reactor`, `legs`), applies domain-accurate sub-module gem modifiers and enforces `0` Armor (`durability: 0, rating: 0, threshold: 0`).
  */
 export function findHardwareItemByNameOrId(
-  nameOrId: string | undefined | null
+  nameOrId: string | undefined | null,
+  options?: {
+    reactorFamily?: string | null;
+    prismaticUniversalAffinity?: boolean;
+  }
 ): CanonicalHardwareItemDefinition | undefined {
   if (!nameOrId) return undefined;
-  if (MODIFIED_HARDWARE_CACHE[nameOrId]) {
-    return MODIFIED_HARDWARE_CACHE[nameOrId];
-  }
 
   const { baseId, installedGems, slotGems } = parseEquipmentInstanceId(nameOrId);
   const norm = baseId.trim().toLowerCase();
@@ -545,13 +562,114 @@ export function findHardwareItemByNameOrId(
   if (!baseItem) return undefined;
   if (installedGems.length === 0) return baseItem;
 
-  const isExteriorArmor =
-    baseItem.slot === 'plating' || baseItem.slot === 'head' || baseItem.slot === 'arms';
+  const baseWeight = getHardwareBaseWeight(baseItem);
+  const baseCap = getHardwareCapacityBonus(baseItem);
+  const canonicalCompositeId = buildEquipmentInstanceId(
+    baseItem.id,
+    slotGems.length > 0 ? slotGems : installedGems
+  );
 
+  // ─── Exterior Armor 5-Step Socket Calculation Engine (§5 & §6) ──────────────
+  if (baseItem.slot === 'plating' || baseItem.slot === 'head' || baseItem.slot === 'arms') {
+    const gemSocketsCount: 2 | 3 = baseItem.maxGemSlots === 3 ? 3 : 2;
+    const socketArray = slotGems.length > 0 ? slotGems : installedGems;
+    const evalResult = evaluateExteriorArmorPieceSockets(
+      {
+        id: baseItem.id,
+        slot: baseItem.slot,
+        gemSockets: gemSocketsCount,
+      },
+      socketArray,
+      {
+        reactorFamily: options?.reactorFamily,
+        prismaticUniversalAffinity: options?.prismaticUniversalAffinity,
+      }
+    );
+
+    const gemDelta = evalResult.totalGemAndComboDelta;
+    const combinedPieceModifiers = sumStatDeltas(baseItem.baseModifiers, gemDelta);
+
+    const extraArmorDurability = gemDelta.armorDurability ?? 0;
+    const extraArmorRating = gemDelta.armorRating ?? 0;
+    const extraArmorThreshold = gemDelta.armorThreshold ?? 0;
+    const extraShield = gemDelta.shieldCapacity ?? 0;
+    const extraStability = (gemDelta.stability ?? 0) + (gemDelta.chargeStability ?? 0);
+    const extraCapacity = gemDelta.loadCapacity ?? 0;
+    const extraWeight = gemDelta.effectiveWeightDelta ?? 0;
+    const extraLight = (gemDelta.lightRadiusM ?? 0) + (gemDelta.opticsRangeM ?? 0);
+
+    const moveSpeedMult = (baseItem.moveSpeedMult ?? 1.0) * (1 + (gemDelta.moveSpeedPct ?? 0));
+    const heatVentMult =
+      (baseItem.heatVentMult ?? 1.0) * (1 + (gemDelta.heatDissipationPct ?? 0));
+    const tellDurationMult =
+      (baseItem.tellDurationMult ?? 1.0) * Math.max(0.5, 1 - (gemDelta.meleeTempoPct ?? 0));
+    const cooldownMult =
+      (baseItem.cooldownMult ?? 1.0) *
+      Math.max(0.5, 1 - ((gemDelta.reloadDrawSpeedPct ?? 0) * 0.5 + (gemDelta.heatCostPct ? -gemDelta.heatCostPct * 0.5 : 0)));
+    const accuracyMult =
+      (baseItem.accuracyMult ?? 1.0) *
+      (1 +
+        (gemDelta.lockOnSpeedPct ?? 0) * 0.5 +
+        (gemDelta.projectileTrackingPct ?? 0) * 0.5 +
+        (gemDelta.recoilControlPct ?? 0) * 0.5);
+
+    const comboLabel = evalResult.activeCombo ? `[${evalResult.activeCombo.name}]` : null;
+    const deltaBadges = formatStatDeltaBadges(gemDelta);
+
+    return {
+      ...baseItem,
+      id: canonicalCompositeId,
+      name: formatModifiedEquipmentName(baseItem.name, installedGems),
+      weight: Math.max(1, baseWeight + extraWeight),
+      capacityBonus:
+        baseCap + extraCapacity !== 0 ? baseCap + extraCapacity : baseItem.capacityBonus,
+      baseLoadCapacityNumber: baseItem.baseLoadCapacityNumber,
+      baseModifiers: combinedPieceModifiers,
+      socketEvalResult: evalResult,
+      drawbackDescription: [
+        baseItem.drawbackDescription,
+        comboLabel,
+        deltaBadges.length > 0 ? deltaBadges.join(', ') : null,
+      ]
+        .filter(Boolean)
+        .join(' · '),
+      shieldBonus: Math.max(0, (baseItem.shieldBonus ?? 0) + extraShield),
+      armorDurability: Math.max(1, (baseItem.armorDurability ?? 0) + extraArmorDurability),
+      armorRating: Math.max(0, (baseItem.armorRating ?? 0) + extraArmorRating),
+      armorThreshold: Math.max(0, (baseItem.armorThreshold ?? 0) + extraArmorThreshold),
+      lightBonus:
+        (baseItem.lightBonus ?? 0) + extraLight !== 0
+          ? Number(((baseItem.lightBonus ?? 0) + extraLight).toFixed(2))
+          : baseItem.lightBonus,
+      stabilityBonus:
+        (baseItem.stabilityBonus ?? 0) + extraStability !== 0
+          ? (baseItem.stabilityBonus ?? 0) + extraStability
+          : baseItem.stabilityBonus,
+      moveSpeedMult:
+        Math.abs(moveSpeedMult - 1.0) > 0.001
+          ? Number(moveSpeedMult.toFixed(3))
+          : baseItem.moveSpeedMult,
+      heatVentMult:
+        Math.abs(heatVentMult - 1.0) > 0.001
+          ? Number(heatVentMult.toFixed(3))
+          : baseItem.heatVentMult,
+      cooldownMult:
+        Math.abs(cooldownMult - 1.0) > 0.001
+          ? Number(cooldownMult.toFixed(3))
+          : baseItem.cooldownMult,
+      tellDurationMult:
+        Math.abs(tellDurationMult - 1.0) > 0.001
+          ? Number(tellDurationMult.toFixed(3))
+          : baseItem.tellDurationMult,
+      accuracyMult:
+        Math.abs(accuracyMult - 1.0) > 0.001
+          ? Number(accuracyMult.toFixed(3))
+          : baseItem.accuracyMult,
+    };
+  }
+
+  // ─── Internal Chassis Sub-Modules (`actuators`, `optics`, `sensoryA/B`, `reactor`, `legs`) ───
   let extraShield = 0;
-  let extraArmorDurability = 0;
-  let extraArmorRating = 0;
-  let extraArmorThreshold = 0;
   let extraLight = 0;
   let extraWeight = 0;
   let extraCapacity = 0;
@@ -566,69 +684,7 @@ export function findHardwareItemByNameOrId(
   const drawbackNotes: string[] = [];
 
   for (const gem of installedGems) {
-    if (isExteriorArmor) {
-      switch (gem) {
-        case 'titanite':
-          extraShield += 12;
-          extraArmorRating += 1;
-          extraWeight += 6;
-          drawbackNotes.push('Aegis (+6 WT)');
-          break;
-        case 'moonstone':
-          extraShield += 10;
-          extraWeight += 3;
-          extraArmorDurability -= 4;
-          drawbackNotes.push('Harmonic (+3 WT, -4 Dur)');
-          break;
-        case 'hematite':
-          extraArmorDurability += 18;
-          extraWeight += 5;
-          extraShield -= 4;
-          drawbackNotes.push('Ichor (+5 WT, -4 Shield)');
-          break;
-        case 'carnelian':
-          extraArmorDurability += 15;
-          extraArmorThreshold += 1;
-          extraWeight += 8;
-          if (baseItem.slot === 'plating') {
-            extraCapacity += 6;
-          }
-          drawbackNotes.push('Heavy (+8 WT Inertia/Equip Mass)');
-          break;
-        case 'spinel':
-          extraShield += 8;
-          extraArmorDurability += 8;
-          extraWeight += 4;
-          drawbackNotes.push('Assault (+4 WT Overclock)');
-          break;
-        case 'demantoid':
-          extraShield += 8;
-          extraArmorDurability += 10;
-          extraWeight += 3;
-          drawbackNotes.push('Radiant (+3 WT)');
-          break;
-        case 'kyanite':
-          extraLight += 0.5;
-          extraShield += 6;
-          extraWeight += 2;
-          extraArmorDurability -= 3;
-          drawbackNotes.push('Arclight (+2 WT, -3 Dur)');
-          break;
-        case 'charoite':
-          extraLight += 0.5;
-          extraShield += 6;
-          extraWeight -= 4;
-          extraArmorDurability -= 6;
-          drawbackNotes.push('Phantom (-4 WT Ultralight, -6 Dur)');
-          break;
-        case 'rubellite':
-          extraShield += 10;
-          extraArmorDurability += 10;
-          extraWeight += 4;
-          drawbackNotes.push('Volatile (+4 WT)');
-          break;
-      }
-    } else if (baseItem.slot === 'actuators') {
+    if (baseItem.slot === 'actuators') {
       switch (gem) {
         case 'carnelian':
           extraAttackMass += 8;
@@ -875,13 +931,7 @@ export function findHardwareItemByNameOrId(
     }
   }
 
-  const baseWeight = getHardwareBaseWeight(baseItem);
-  const baseCap = getHardwareCapacityBonus(baseItem);
-  const canonicalCompositeId = buildEquipmentInstanceId(
-    baseItem.id,
-    slotGems.length > 0 ? slotGems : installedGems
-  );
-  const derived: CanonicalHardwareItemDefinition = {
+  return {
     ...baseItem,
     id: canonicalCompositeId,
     name: formatModifiedEquipmentName(baseItem.name, installedGems),
@@ -895,25 +945,10 @@ export function findHardwareItemByNameOrId(
       (baseItem.shieldBonus || 0) + extraShield > 0
         ? (baseItem.shieldBonus || 0) + extraShield
         : baseItem.shieldBonus,
-    armorDurability: isExteriorArmor
-      ? (baseItem.armorDurability || 0) + extraArmorDurability > 0
-        ? Math.max(2, (baseItem.armorDurability || 0) + extraArmorDurability)
-        : baseItem.armorDurability
-      : undefined,
-    armorRating: isExteriorArmor
-      ? typeof baseItem.armorRating === 'number'
-        ? baseItem.armorRating + extraArmorRating
-        : extraArmorRating > 0
-          ? extraArmorRating
-          : baseItem.armorRating
-      : undefined,
-    armorThreshold: isExteriorArmor
-      ? typeof baseItem.armorThreshold === 'number'
-        ? baseItem.armorThreshold + extraArmorThreshold
-        : extraArmorThreshold > 0
-          ? extraArmorThreshold
-          : baseItem.armorThreshold
-      : undefined,
+    // Spec §1 Rule 2: Internal Chassis Modules MUST always have 0 Armor
+    armorDurability: undefined,
+    armorRating: undefined,
+    armorThreshold: undefined,
     lightBonus:
       (baseItem.lightBonus || 0) + extraLight > 0
         ? Number(((baseItem.lightBonus || 0) + extraLight).toFixed(2))
@@ -951,19 +986,20 @@ export function findHardwareItemByNameOrId(
         ? Number(staggerDamageMult.toFixed(3))
         : baseItem.staggerDamageMult,
   };
-  MODIFIED_HARDWARE_CACHE[nameOrId] = derived;
-  MODIFIED_HARDWARE_CACHE[canonicalCompositeId] = derived;
-  return derived;
 }
 
 /**
  * Resolves the pilot's active Frame Plating, Dome Plate + Optics/Sensory, Aperture Plate + Actuators,
  * Reactor Core, and Leg Actuators stats dynamically from equipped gear.
- * Enforces physical intuition: ONLY exterior armor plating (`plating`, `head`, `arms`) and physical/ward
- * shields grant Armor Threshold, Armor Rating, and Armor Durability.
+ * Enforces physical intuition (§1) and the 5-Step Socket Calculation Engine (§6.1):
+ * - ONLY exterior armor plating (`plating`, `head`, `arms`) and physical/ward shields grant Armor Threshold, Armor Rating, and Armor Durability.
+ * - Evaluates Reactor Core first so `reactorFamily` (`Ichor` | `Mana` | `Ether`) provides the `+20%` Tier 1 Reactor Core Harmonic Resonance to matching exterior armor gems.
+ * - Evaluates Core Frame (`plating`) first so `prismatic_core` Triad propagates `+10%` Prismatic Universal Affinity to Head and Arms.
+ * - Clamps cumulative combat tempo & stride speed modifiers to `[-0.30, +0.30]` (`0.70x` to `1.30x` — §6.1 Step 5).
  */
 export function resolveEquippedHardwareStats(state: OrionState): {
   baseLoadCapacity: FrameLoadCapacity;
+  baseLoadCapacityNumber: number;
   armorType: 'Ablative' | 'Reactive' | 'Hardened' | 'Layered';
   armorThreshold: number;
   armorRating: number;
@@ -981,14 +1017,42 @@ export function resolveEquippedHardwareStats(state: OrionState): {
   staggerDamageMult: number;
   stabilityBonus: number;
   attackMassBonus: number;
+  chargeMassPct: number;
+  chargeStabilityBonus: number;
+  heatCapacityBonus: number;
+  shieldRechargeRateMult: number;
+  shieldRechargeDelayMult: number;
+  parryWindowBonusSec: number;
+  supportRepairPowerMult: number;
+  armorRepairEfficiencyMult: number;
+  effectiveWeightDelta: number;
+  prismaticUniversalAffinity: boolean;
+  activeArmorCombos: Array<{ slot: 'plating' | 'head' | 'arms'; combo: ArmorGemResonanceCombo }>;
 } {
   const fallbackProfile = TRAIT_REGISTRY[state.traitLine] || TRAIT_REGISTRY.Warrior;
 
-  const equippedTorsoItem = findHardwareItemByNameOrId(state.equipmentSlots?.plating);
   const equippedReactorItem = findHardwareItemByNameOrId(state.equipmentSlots?.reactorCore);
-  const equippedHeadItem = findHardwareItemByNameOrId(state.equipmentSlots?.head);
+  const reactorFamily: 'Ichor' | 'Mana' | 'Ether' =
+    equippedReactorItem?.reactorFamily || state.reactor || fallbackProfile.reactor || 'Ichor';
+
+  // Evaluate Core Frame first to detect Prismatic Core Triad (`prismaticUniversalAffinity`)
+  const equippedTorsoItem = findHardwareItemByNameOrId(state.equipmentSlots?.plating, {
+    reactorFamily,
+    prismaticUniversalAffinity: false,
+  });
+  const prismaticUniversalAffinity =
+    equippedTorsoItem?.socketEvalResult?.activeCombo?.id === 'prismatic_core';
+
+  const equippedHeadItem = findHardwareItemByNameOrId(state.equipmentSlots?.head, {
+    reactorFamily,
+    prismaticUniversalAffinity,
+  });
+  const equippedArmsItem = findHardwareItemByNameOrId(state.equipmentSlots?.arms, {
+    reactorFamily,
+    prismaticUniversalAffinity,
+  });
+
   const equippedOpticsItem = findHardwareItemByNameOrId(state.equipmentSlots?.headOptics);
-  const equippedArmsItem = findHardwareItemByNameOrId(state.equipmentSlots?.arms);
   const equippedActuatorsItem = findHardwareItemByNameOrId(state.equipmentSlots?.armActuators);
   const equippedLegsItem = findHardwareItemByNameOrId(state.equipmentSlots?.legs);
   const equippedSensoryA = findHardwareItemByNameOrId(state.equipmentSlots?.sensoryA);
@@ -999,19 +1063,35 @@ export function resolveEquippedHardwareStats(state: OrionState): {
     (fallbackProfile.weightClass as FrameLoadCapacity) ||
     'medium';
 
+  const defaultLoadCapByClass =
+    baseLoadCapacity === 'superheavy'
+      ? 140
+      : baseLoadCapacity === 'heavy'
+        ? 112
+        : baseLoadCapacity === 'light'
+          ? 84
+          : 90;
+
+  const baseLoadCapacityNumber =
+    equippedTorsoItem?.baseLoadCapacityNumber ?? defaultLoadCapByClass;
+
   const armorType: 'Ablative' | 'Reactive' | 'Hardened' | 'Layered' =
     equippedTorsoItem?.armorType || fallbackProfile.baseArmor?.type || 'Reactive';
 
   // Only exterior plating (Frame Plating, Dome Plate, Aperture Plate) contributes to Armor Threshold & Rating
-  const armorThreshold =
+  const armorThreshold = Math.max(
+    0,
     (equippedTorsoItem?.armorThreshold ?? fallbackProfile.baseArmor?.threshold ?? 6) +
-    (equippedHeadItem?.armorThreshold ?? 0) +
-    (equippedArmsItem?.armorThreshold ?? 0);
+      (equippedHeadItem?.armorThreshold ?? 0) +
+      (equippedArmsItem?.armorThreshold ?? 0)
+  );
 
-  const armorRating =
+  const armorRating = Math.max(
+    0,
     (equippedTorsoItem?.armorRating ?? fallbackProfile.baseArmor?.rating ?? 10) +
-    (equippedHeadItem?.armorRating ?? 0) +
-    (equippedArmsItem?.armorRating ?? 0);
+      (equippedHeadItem?.armorRating ?? 0) +
+      (equippedArmsItem?.armorRating ?? 0)
+  );
 
   const baseArmorDurability =
     equippedTorsoItem?.armorDurability ?? fallbackProfile.baseArmor?.durability ?? 130;
@@ -1086,11 +1166,43 @@ export function resolveEquippedHardwareStats(state: OrionState): {
     }
   }
 
-  const reactorFamily: 'Ichor' | 'Mana' | 'Ether' =
-    equippedReactorItem?.reactorFamily || state.reactor || fallbackProfile.reactor || 'Ichor';
+  // Aggregate combined Exterior Armor StatDeltas (baseModifiers + socketed gem & combo deltas)
+  const combinedExteriorModifiers = sumStatDeltas(
+    equippedTorsoItem?.baseModifiers,
+    equippedHeadItem?.baseModifiers,
+    equippedArmsItem?.baseModifiers
+  );
+
+  // §6.1 Step 5: Global Clamp on cumulative combat tempo and stride speed modifiers to [0.70, 1.30]
+  moveSpeedMult = Math.max(0.7, Math.min(1.3, moveSpeedMult));
+  tellDurationMult = Math.max(0.7, Math.min(1.3, tellDurationMult));
+
+  const activeArmorCombos: Array<{
+    slot: 'plating' | 'head' | 'arms';
+    combo: ArmorGemResonanceCombo;
+  }> = [];
+  if (equippedTorsoItem?.socketEvalResult?.activeCombo) {
+    activeArmorCombos.push({
+      slot: 'plating',
+      combo: equippedTorsoItem.socketEvalResult.activeCombo,
+    });
+  }
+  if (equippedHeadItem?.socketEvalResult?.activeCombo) {
+    activeArmorCombos.push({
+      slot: 'head',
+      combo: equippedHeadItem.socketEvalResult.activeCombo,
+    });
+  }
+  if (equippedArmsItem?.socketEvalResult?.activeCombo) {
+    activeArmorCombos.push({
+      slot: 'arms',
+      combo: equippedArmsItem.socketEvalResult.activeCombo,
+    });
+  }
 
   return {
     baseLoadCapacity,
+    baseLoadCapacityNumber,
     armorType,
     armorThreshold,
     armorRating,
@@ -1108,7 +1220,27 @@ export function resolveEquippedHardwareStats(state: OrionState): {
     staggerDamageMult: Number(staggerDamageMult.toFixed(3)),
     stabilityBonus,
     attackMassBonus,
+    chargeMassPct: combinedExteriorModifiers.chargeMassPct ?? 0,
+    chargeStabilityBonus: combinedExteriorModifiers.chargeStability ?? 0,
+    heatCapacityBonus: combinedExteriorModifiers.heatCapacity ?? 0,
+    shieldRechargeRateMult: Number(
+      (1 + (combinedExteriorModifiers.shieldRechargeRatePct ?? 0)).toFixed(3)
+    ),
+    shieldRechargeDelayMult: Number(
+      Math.max(0.4, 1 + (combinedExteriorModifiers.shieldRechargeDelayPct ?? 0)).toFixed(3)
+    ),
+    parryWindowBonusSec: combinedExteriorModifiers.parryWindowSec ?? 0,
+    supportRepairPowerMult: Number(
+      (1 + (combinedExteriorModifiers.supportRepairPowerPct ?? 0)).toFixed(3)
+    ),
+    armorRepairEfficiencyMult: Number(
+      (1 + (combinedExteriorModifiers.armorRepairEfficiencyPct ?? 0)).toFixed(3)
+    ),
+    effectiveWeightDelta: combinedExteriorModifiers.effectiveWeightDelta ?? 0,
+    prismaticUniversalAffinity,
+    activeArmorCombos,
   };
 }
+
 
 

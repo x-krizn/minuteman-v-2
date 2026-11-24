@@ -40,6 +40,7 @@ export {
 export * from './armor_sheets';
 export * from './arms';
 export * from './chassis_hardware';
+export * from './exterior_armor_harmonics';
 export * from './head';
 export * from './legs';
 export * from './mod_naming';

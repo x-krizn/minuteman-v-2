@@ -14,9 +14,14 @@ import {
   TILE_SIZE,
 } from '../../constants';
 import {
+  isArmorBlueprintUnlocked,
+  unlockArmorBlueprint,
+} from '../../database/equipment/exterior_armor_harmonics';
+import {
   getWeaponDefinition,
   WEAPON_REGISTRY,
 } from '../../database/equipment/weapons';
+import { ARMOR_BLUEPRINTS } from '../../database/items/blueprints';
 import {
   ACTION_MODIFICATION_CATALOG,
   CANONICAL_HARDWARE_CATALOG,
@@ -894,6 +899,17 @@ export function performDirectWorldInteraction(
         gearSuffix = ` · ${gearName.toUpperCase()}`;
       }
 
+      if (isChest) {
+        const nextBlueprint = ARMOR_BLUEPRINTS.find(
+          (bp) => !isArmorBlueprintUnlocked(state, bp.id)
+        );
+        if (nextBlueprint) {
+          unlockArmorBlueprint(state, nextBlueprint.id);
+          addOrionInventoryItem(state, nextBlueprint.id, 1);
+          gearSuffix += ` · ${nextBlueprint.name.toUpperCase()}`;
+        }
+      }
+
       if (Number(state.flags.bedivere_list_items || 0) < 3) {
         state.flags.bedivere_list_items = Number(state.flags.bedivere_list_items || 0) + 1;
         addOrionInventoryItem(state, 'bedivere_relic', 1);
@@ -932,6 +948,10 @@ export function performDirectWorldInteraction(
         for (const hw of CANONICAL_HARDWARE_CATALOG) {
           unlockEquipmentItem(state, hw.id);
         }
+        for (const bp of ARMOR_BLUEPRINTS) {
+          unlockArmorBlueprint(state, bp.id);
+          addOrionInventoryItem(state, bp.id, 1);
+        }
         for (const part of LOOTED_WEAPON_COMPONENT_POOL) {
           unlockEquipmentItem(state, part.id);
           unlockEquipmentItem(state, part.id);
@@ -941,7 +961,7 @@ export function performDirectWorldInteraction(
         }
         syncStateGates(state);
         soundSystem.playPowerup();
-        ctx.say('UNLOCKED ALL WEAPONS, AUXILIARIES, HARDWARE, LOOTED COMPONENTS & ACTION MODS');
+        ctx.say('UNLOCKED ALL WEAPONS, AUXILIARIES, HARDWARE, BLUEPRINTS, LOOTED COMPONENTS & ACTION MODS');
         notifyOrionStateChange();
         return true;
       }

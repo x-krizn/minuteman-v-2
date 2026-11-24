@@ -3,10 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { FrameLoadCapacity } from '../../../types';
+import { ArmorAcquisitionType, FrameLoadCapacity, StatDelta } from '../../../types';
 import {
   plating_ablative_cuirass,
-  plating_arcanum_conduit,
   plating_arcanum_projector,
   plating_bwi_bastion,
   plating_camelot_knight,
@@ -14,8 +13,6 @@ import {
   plating_fire_ice_fortress,
   plating_hardened_sanctum,
   plating_layered_weave,
-  plating_reactive_blastplate,
-  plating_sanctum_reliquary,
   plating_sanctum_support,
   plating_shadowcraft_recon,
 } from './sprites';
@@ -31,14 +28,16 @@ export interface FramePlatingDefinition {
   slot: 'plating';
   canonicalSlotLabel: 'Frame Plating';
   subtype: string;
-  /** Optional set index (0..11 for the 12 baseline sets; omit for standalone pieces that aren't part of a set) */
+  /** Set index (`0..5` for starter/post-boss sets, `12..15` for Cyclopean Dwarf Forge sets) */
   setIndex?: number;
-  /** Optional set identifier for grouping matching pieces (omit for standalone pieces) */
+  /** Canonical set identifier (`'set_00'..'set_05'`, `'set_12'..'set_15'`) */
   setId?: string;
   /** Optional 4-frame (64x16px or 64x64px 4-dir) Torso/Legs animation sheet */
   partSprite?: MechPartSpriteStripConfig;
   armorType: 'Ablative' | 'Reactive' | 'Hardened' | 'Layered';
   baseLoadCapacity: FrameLoadCapacity;
+  /** Exact numeric Base Load Capacity in WT (`84`, `90`, `94`, `112`, `116`) per Exterior Armor Spec §3.1 */
+  baseLoadCapacityNumber: number;
   armorThreshold: number;
   armorRating: number;
   armorDurability: number;
@@ -51,7 +50,13 @@ export interface FramePlatingDefinition {
   heatVentMult?: number;
   cooldownMult?: number;
   origin?: 'looted' | 'crafted';
-  maxGemSlots?: 1 | 2 | 3;
+  /** Acquisition type (`'starter_post_boss' | 'forge_blueprint'`) */
+  acquisition: ArmorAcquisitionType;
+  /** Required Cyclopean Dwarf Forge blueprint ID if `acquisition === 'forge_blueprint'` */
+  blueprintId?: string;
+  /** Structured base stat modifiers from Exterior Armor Spec §3.1 */
+  baseModifiers: StatDelta;
+  maxGemSlots: 3;
   drawbackDescription: string;
   linkedActionId: string;
   description: string;
@@ -73,19 +78,28 @@ export interface FramePlatingDefinition {
 export type CoreplateDefinition = FramePlatingDefinition;
 
 /**
- * Canonical database definition for `CANONICAL_FRAME_PLATING` (`BWI Bastion Frame Plating`, id `'coreplate_bwi_bastion'`, slot `'plating'`) — Heavy frontal torso & leg plating with turbine shielding (+140 Dur, 9 RTG, 5 THR, +45 Shield, +6 Stability, +6....
+ * Canonical 10 Core Frame Platings (`slot: 'plating'` · `3G` Each — Exterior Armor & Gem Socketing Spec §3.1).
+ * Note: The 6 deprecated core-only variant IDs (`hw_plating_reactive`, `hw_plating_hardened`, `hw_plating_layered`,
+ * `hw_plating_ablative`, `hw_plating_arcanum_conduit`, `hw_plating_sanctum_reliquary`) are mapped via `legacyNames`
+ * so older saves continue to resolve cleanly.
  */
 export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = [
-  // ─── SET 0: BWI Bastion Frame Plating ─────────────────────────────────────
+  // ─── SET 0: BWI C-140 Bastion Frame (`set_00`) ────────────────────────────
   {
     id: 'coreplate_bwi_bastion',
-    name: 'BWI Bastion Frame Plating',
-    legacyNames: ['BWI Bastion Coreplate'],
+    name: 'BWI C-140 Bastion Frame',
+    legacyNames: [
+      'BWI Bastion Frame Plating',
+      'BWI Bastion Coreplate',
+      'hw_plating_reactive',
+      'Reactive Blast-Plate Frame Plating',
+      'Reactive Blast-Plate Cuirass',
+    ],
     slot: 'plating',
     canonicalSlotLabel: 'Frame Plating',
     subtype: 'Physical / Reactive',
     setIndex: 0,
-    setId: 'set_01_bastion',
+    setId: 'set_00',
     partSprite: {
       base64: plating_bwi_bastion,
       frameCount: 4,
@@ -95,20 +109,25 @@ export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = [
     },
     armorType: 'Reactive',
     baseLoadCapacity: 'medium',
-    armorThreshold: 5,
-    armorRating: 9,
-    armorDurability: 140,
+    baseLoadCapacityNumber: 90,
+    armorThreshold: 4,
+    armorRating: 8,
+    armorDurability: 135,
     shieldBonus: 45,
     stabilityBonus: 6,
-    heatVentMult: 1.06,
-    moveSpeedMult: 0.98,
-    weight: 15,
+    heatVentMult: 1.08,
+    weight: 16,
     origin: 'looted',
+    acquisition: 'starter_post_boss',
+    baseModifiers: {
+      stability: 6,
+      heatDissipationPct: 0.08,
+    },
     maxGemSlots: 3,
-    drawbackDescription: '+15 WT Frontal Turbine Plating Mass & -2% Stride Speed',
+    drawbackDescription: 'Balanced baseline',
     linkedActionId: 'mod_torso_reactive_burst',
     description:
-      'Heavy frontal torso & leg plating with turbine shielding (+140 Dur, 9 RTG, 5 THR, +45 Shield, +6 Stability, +6% Venting / 15 WT, -2% Speed).',
+      'Balanced BWI C-140 frontal torso & leg plating (+135 DUR, 8 RTG, 4 THR, +45 Shield, +6 Stability, +8% Heat Dissipation / 16 WT, Cap 90 WT).',
     isPlaceholderAsset: false,
     spriteTheme: {
       baseArmorColor: '#962d2d',
@@ -120,16 +139,22 @@ export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = [
       torsoStyle: 'angular',
     },
   },
-  // ─── SET 1: Fire & Ice Fortress Frame Plating ─────────────────────────────
+  // ─── SET 1: B&E H-380 Fortress Plate (`set_01`) ───────────────────────────
   {
     id: 'coreplate_fire_ice_fortress',
-    name: 'Fire & Ice Fortress Frame Plating',
-    legacyNames: ['Fire & Ice Fortress Coreplate'],
+    name: 'B&E H-380 Fortress Plate',
+    legacyNames: [
+      'Fire & Ice Fortress Frame Plating',
+      'Fire & Ice Fortress Coreplate',
+      'hw_plating_hardened',
+      'Hardened Sanctum Frame Plating',
+      'Hardened Sanctum Carapace',
+    ],
     slot: 'plating',
     canonicalSlotLabel: 'Frame Plating',
     subtype: 'Physical / Hardened',
     setIndex: 1,
-    setId: 'set_02_fortress',
+    setId: 'set_01',
     partSprite: {
       base64: plating_fire_ice_fortress,
       frameCount: 4,
@@ -139,19 +164,26 @@ export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = [
     },
     armorType: 'Hardened',
     baseLoadCapacity: 'heavy',
+    baseLoadCapacityNumber: 112,
     armorThreshold: 8,
     armorRating: 12,
     armorDurability: 180,
-    shieldBonus: 35,
-    stabilityBonus: 14,
-    moveSpeedMult: 0.94,
-    weight: 32,
+    shieldBonus: 30,
+    stabilityBonus: 15,
+    moveSpeedMult: 0.92,
+    weight: 28,
     origin: 'looted',
+    acquisition: 'starter_post_boss',
+    baseModifiers: {
+      stability: 15,
+      heatCapacity: 20,
+      moveSpeedPct: -0.08,
+    },
     maxGemSlots: 3,
-    drawbackDescription: '+32 WT Siege Bulwark Mass & -6% Stride Speed',
+    drawbackDescription: '-8% Move Speed',
     linkedActionId: 'mod_torso_reactive_burst',
     description:
-      'Heavy siege frontal torso & leg plating with outrigging stabilizers (+180 Dur, 12 RTG, 8 THR, +35 Shield, +14 Stability / 32 WT, -6% Speed).',
+      'Heavy B&E H-380 siege torso & leg plating with thermal expansion sinks (+180 DUR, 12 RTG, 8 THR, +30 Shield, +15 Stability, +20 Heat Cap / 28 WT, Cap 112 WT, -8% Move Speed).',
     isPlaceholderAsset: false,
     spriteTheme: {
       baseArmorColor: '#999999',
@@ -163,16 +195,22 @@ export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = [
       torsoStyle: 'heavy',
     },
   },
-  // ─── SET 2: Dawnforge Guardian Frame Plating ──────────────────────────────
+  // ─── SET 2: Aegis Solis Bulwark Plate (`set_02`) ──────────────────────────
   {
     id: 'coreplate_dawnforge_guardian',
-    name: 'Dawnforge Guardian Frame Plating',
-    legacyNames: ['Dawnforge Guardian Coreplate'],
+    name: 'Aegis Solis Bulwark Plate',
+    legacyNames: [
+      'Dawnforge Guardian Frame Plating',
+      'Dawnforge Guardian Coreplate',
+      'hw_plating_layered',
+      'Layered Weave Frame Plating',
+      'Layered Weave Laminate',
+    ],
     slot: 'plating',
     canonicalSlotLabel: 'Frame Plating',
     subtype: 'Physical / Layered',
     setIndex: 2,
-    setId: 'set_03_dawnforge',
+    setId: 'set_02',
     partSprite: {
       base64: plating_dawnforge_guardian,
       frameCount: 4,
@@ -181,20 +219,27 @@ export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = [
       cellHeight: 16,
     },
     armorType: 'Layered',
-    baseLoadCapacity: 'medium',
+    baseLoadCapacity: 'heavy',
+    baseLoadCapacityNumber: 112,
     armorThreshold: 6,
     armorRating: 10,
-    armorDurability: 155,
-    shieldBonus: 75,
-    stabilityBonus: 8,
-    cooldownMult: 1.04,
-    weight: 17,
+    armorDurability: 160,
+    shieldBonus: 60,
+    stabilityBonus: 10,
+    moveSpeedMult: 0.95,
+    weight: 26,
     origin: 'looted',
+    acquisition: 'starter_post_boss',
+    baseModifiers: {
+      stability: 10,
+      shieldRechargeRatePct: 0.12,
+      moveSpeedPct: -0.05,
+    },
     maxGemSlots: 3,
-    drawbackDescription: '+17 WT Layered Barrier Plating & +4% Cooldown Draw',
+    drawbackDescription: '-5% Move Speed',
     linkedActionId: 'mod_torso_reactive_burst',
     description:
-      'Medium vanguard torso & leg plating with stabilizer anchors and shield emitters (+155 Dur, 10 RTG, 6 THR, +75 Shield, +8 Stability / 17 WT, +4% CD).',
+      'Radiant vanguard torso & leg bulwark with integrated barrier relays (+160 DUR, 10 RTG, 6 THR, +60 Shield, +10 Stability, +12% Shield Recharge / 26 WT, Cap 112 WT, -5% Move Speed).',
     isPlaceholderAsset: false,
     spriteTheme: {
       baseArmorColor: '#965a1e',
@@ -206,16 +251,22 @@ export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = [
       torsoStyle: 'layered',
     },
   },
-  // ─── SET 3: Shadowcraft Recon Frame Plating ───────────────────────────────
+  // ─── SET 3: Vanguard-X Recon Carapace (`set_03`) ──────────────────────────
   {
     id: 'coreplate_shadowcraft_recon',
-    name: 'Shadowcraft Recon Frame Plating',
-    legacyNames: ['Shadowcraft Recon Coreplate'],
+    name: 'Vanguard-X Recon Carapace',
+    legacyNames: [
+      'Shadowcraft Recon Frame Plating',
+      'Shadowcraft Recon Coreplate',
+      'hw_plating_ablative',
+      'Ablative Cuirass Frame Plating',
+      'Ablative Cuirass Plating',
+    ],
     slot: 'plating',
     canonicalSlotLabel: 'Frame Plating',
     subtype: 'Physical / Ablative',
     setIndex: 3,
-    setId: 'set_04_shadowcraft',
+    setId: 'set_03',
     partSprite: {
       base64: plating_shadowcraft_recon,
       frameCount: 4,
@@ -225,20 +276,27 @@ export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = [
     },
     armorType: 'Ablative',
     baseLoadCapacity: 'light',
-    armorThreshold: 3,
+    baseLoadCapacityNumber: 84,
+    armorThreshold: 2,
     armorRating: 5,
-    armorDurability: 105,
-    shieldBonus: 40,
-    moveSpeedMult: 1.06,
-    cooldownMult: 0.96,
-    stabilityBonus: -6,
-    weight: 7,
+    armorDurability: 100,
+    shieldBonus: 35,
+    moveSpeedMult: 1.08,
+    stabilityBonus: -4,
+    weight: 9,
     origin: 'looted',
+    acquisition: 'starter_post_boss',
+    baseModifiers: {
+      moveSpeedPct: 0.08,
+      dashIFrameSec: 0.04,
+      stealthSignaturePct: -0.25,
+      stability: -4,
+    },
     maxGemSlots: 3,
-    drawbackDescription: '-6 Poise Stability & Light Ablative Shell (7 WT)',
+    drawbackDescription: '-4 Stability',
     linkedActionId: 'mod_torso_reactive_burst',
     description:
-      'Lightweight stealth torso & leg plating with emission dampeners (+105 Dur, 5 RTG, 3 THR, +40 Shield, +6% Speed, -4% CD / 7 WT, -6 Stability).',
+      'Low-observable Vanguard-X infiltration carapace (+100 DUR, 5 RTG, 2 THR, +35 Shield, +8% Move Speed, +0.04s Dash i-Frames, -25% Stealth Signature / 9 WT, Cap 84 WT, -4 Stability).',
     isPlaceholderAsset: false,
     spriteTheme: {
       baseArmorColor: '#968f26',
@@ -250,16 +308,21 @@ export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = [
       torsoStyle: 'sleek',
     },
   },
-  // ─── SET 4: Arcanum Heavy Projector Frame Plating ─────────────────────────
+  // ─── SET 4: Arcanum Resonant Plate (`set_04`) ─────────────────────────────
   {
     id: 'coreplate_arcanum_projector',
-    name: 'Arcanum Heavy Projector Frame Plating',
-    legacyNames: ['Arcanum Heavy Projector Coreplate'],
+    name: 'Arcanum Resonant Plate',
+    legacyNames: [
+      'Arcanum Heavy Projector Frame Plating',
+      'Arcanum Heavy Projector Coreplate',
+      'hw_plating_arcanum_conduit',
+      'Arcanum Conduit Frame Plating',
+    ],
     slot: 'plating',
     canonicalSlotLabel: 'Frame Plating',
     subtype: 'Physical / Layered',
     setIndex: 4,
-    setId: 'set_05_arcanum',
+    setId: 'set_04',
     partSprite: {
       base64: plating_arcanum_projector,
       frameCount: 4,
@@ -268,21 +331,25 @@ export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = [
       cellHeight: 16,
     },
     armorType: 'Layered',
-    baseLoadCapacity: 'medium',
-    armorThreshold: 4,
-    armorRating: 6,
-    armorDurability: 110,
-    shieldBonus: 65,
-    heatVentMult: 1.08,
-    cooldownMult: 0.96,
-    stabilityBonus: -4,
-    weight: 15,
+    baseLoadCapacity: 'light',
+    baseLoadCapacityNumber: 84,
+    armorThreshold: 2,
+    armorRating: 4,
+    armorDurability: 90,
+    shieldBonus: 85,
+    heatVentMult: 1.18,
+    weight: 10,
     origin: 'looted',
+    acquisition: 'starter_post_boss',
+    baseModifiers: {
+      heatDissipationPct: 0.18,
+      shieldRechargeRatePct: 0.15,
+    },
     maxGemSlots: 3,
-    drawbackDescription: '+15 WT Crystal Lattice Mass & -4 Poise Stability',
+    drawbackDescription: 'Low Layer 2 THR (2)',
     linkedActionId: 'mod_torso_reactive_burst',
     description:
-      'Reinforced crystal lattice torso & leg plating with beam stabilizers (+110 Dur, 6 RTG, 4 THR, +65 Shield, +8% Venting, -4% CD / 15 WT, -4 Stability).',
+      'High-capacitance Arcanum crystal lattice frame (+90 DUR, 4 RTG, 2 THR, +85 Shield, +18% Heat Dissipation, +15% Shield Recharge / 10 WT, Cap 84 WT).',
     isPlaceholderAsset: false,
     spriteTheme: {
       baseArmorColor: '#1e871e',
@@ -294,16 +361,22 @@ export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = [
       torsoStyle: 'prism',
     },
   },
-  // ─── SET 5: Sanctum Support Frame Plating ─────────────────────────────────
+  // ─── SET 5: Sanctum Aegis Frame (`set_05`) ────────────────────────────────
   {
     id: 'coreplate_sanctum_support',
-    name: 'Sanctum Support Frame Plating',
-    legacyNames: ['Sanctum Support Coreplate'],
+    name: 'Sanctum Aegis Frame',
+    legacyNames: [
+      'Sanctum Support Frame Plating',
+      'Sanctum Support Coreplate',
+      'hw_plating_sanctum_reliquary',
+      'Sanctum Reliquary Frame Plating',
+      'plating_sanc_reliquary_vestments',
+    ],
     slot: 'plating',
     canonicalSlotLabel: 'Frame Plating',
     subtype: 'Physical / Reactive',
     setIndex: 5,
-    setId: 'set_06_sanctum',
+    setId: 'set_05',
     partSprite: {
       base64: plating_sanctum_support,
       frameCount: 4,
@@ -313,20 +386,25 @@ export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = [
     },
     armorType: 'Reactive',
     baseLoadCapacity: 'medium',
-    armorThreshold: 4,
-    armorRating: 8,
-    armorDurability: 130,
-    shieldBonus: 60,
-    cooldownMult: 0.95,
-    heatVentMult: 1.06,
-    moveSpeedMult: 0.98,
-    weight: 15,
+    baseLoadCapacityNumber: 90,
+    armorThreshold: 5,
+    armorRating: 9,
+    armorDurability: 145,
+    shieldBonus: 55,
+    stabilityBonus: 8,
+    weight: 17,
     origin: 'looted',
+    acquisition: 'starter_post_boss',
+    baseModifiers: {
+      supportRepairPowerPct: 0.15,
+      stability: 8,
+      meleeTempoPct: -0.03,
+    },
     maxGemSlots: 3,
-    drawbackDescription: '+15 WT Reliquary Buffer Mass & -2% Stride Speed',
+    drawbackDescription: '-3% Melee Tempo',
     linkedActionId: 'mod_torso_reactive_burst',
     description:
-      'Balanced torso & leg plating with distributed buffer systems (+130 Dur, 8 RTG, 4 THR, +60 Shield, -5% CD, +6% Venting / 15 WT, -2% Speed).',
+      'Consecrated Sanctum support chassis with harmonic restoration relays (+145 DUR, 9 RTG, 5 THR, +55 Shield, +15% Support/Repair Power, +8 Stability / 17 WT, Cap 90 WT, -3% Melee Tempo).',
     isPlaceholderAsset: false,
     spriteTheme: {
       baseArmorColor: '#4b5478',
@@ -338,273 +416,16 @@ export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = [
       torsoStyle: 'winged',
     },
   },
-  // ─── SET 6: Reactive Blast-Plate Frame Plating ────────────────────────────
-  {
-    id: 'hw_plating_reactive',
-    name: 'Reactive Blast-Plate Frame Plating',
-    legacyNames: ['Reactive Blast-Plate Cuirass'],
-    slot: 'plating',
-    canonicalSlotLabel: 'Frame Plating',
-    subtype: 'Reactive Armor',
-    setIndex: 6,
-    setId: 'set_07_blastplate',
-    partSprite: {
-      base64: plating_reactive_blastplate,
-      frameCount: 4,
-      directionalRows: 4,
-      cellWidth: 16,
-      cellHeight: 16,
-    },
-    armorType: 'Reactive',
-    baseLoadCapacity: 'medium',
-    armorThreshold: 6,
-    armorRating: 9,
-    armorDurability: 145,
-    shieldBonus: 45,
-    stabilityBonus: 8,
-    heatVentMult: 0.95,
-    weight: 16,
-    origin: 'looted',
-    maxGemSlots: 3,
-    drawbackDescription: '+16 WT Explosive Counter-Plates & -5% Heat Venting',
-    linkedActionId: 'mod_torso_reactive_burst',
-    description:
-      'Explosive counter-charge torso & leg frame plating that repels close-quarters attackers (+145 Dur, 9 RTG, 6 THR, +45 Shield, +8 Stability / 16 WT, -5% Venting).',
-    isPlaceholderAsset: false,
-    spriteTheme: {
-      baseArmorColor: '#5a3596',
-      trimColor: '#9659fa',
-      reactorGlowColor: '#fb923c',
-      legColor: '#3c2364',
-      chassisWidth: 8,
-      chassisHeight: 7,
-      torsoStyle: 'angular',
-    },
-  },
-  // ─── SET 7: Hardened Sanctum Frame Plating ────────────────────────────────
-  {
-    id: 'hw_plating_hardened',
-    name: 'Hardened Sanctum Frame Plating',
-    legacyNames: ['Hardened Sanctum Carapace'],
-    slot: 'plating',
-    canonicalSlotLabel: 'Frame Plating',
-    subtype: 'Hardened Armor',
-    setIndex: 7,
-    setId: 'set_08_siegebreaker',
-    partSprite: {
-      base64: plating_hardened_sanctum,
-      frameCount: 4,
-      directionalRows: 4,
-      cellWidth: 16,
-      cellHeight: 16,
-    },
-    armorType: 'Hardened',
-    baseLoadCapacity: 'heavy',
-    armorThreshold: 7,
-    armorRating: 11,
-    armorDurability: 170,
-    shieldBonus: 40,
-    stabilityBonus: 12,
-    moveSpeedMult: 0.95,
-    weight: 30,
-    origin: 'looted',
-    maxGemSlots: 3,
-    drawbackDescription: '+30 WT Cathedral Alloy Mass & -5% Stride Speed',
-    linkedActionId: 'mod_torso_reactive_burst',
-    description:
-      'Dense cathedral-forged alloy frame plating with high damage threshold against light fire (+170 Dur, 11 RTG, 7 THR, +40 Shield, +12 Stability / 30 WT, -5% Speed).',
-    isPlaceholderAsset: false,
-    spriteTheme: {
-      baseArmorColor: '#872d5a',
-      trimColor: '#e14b96',
-      reactorGlowColor: '#fbbf24',
-      legColor: '#5a1e3c',
-      chassisWidth: 10,
-      chassisHeight: 8,
-      torsoStyle: 'heavy',
-    },
-  },
-  // ─── SET 8: Layered Weave Frame Plating ───────────────────────────────────
-  {
-    id: 'hw_plating_layered',
-    name: 'Layered Weave Frame Plating',
-    legacyNames: ['Layered Weave Laminate'],
-    slot: 'plating',
-    canonicalSlotLabel: 'Frame Plating',
-    subtype: 'Layered Armor',
-    setIndex: 8,
-    setId: 'set_09_radiant',
-    partSprite: {
-      base64: plating_layered_weave,
-      frameCount: 4,
-      directionalRows: 4,
-      cellWidth: 16,
-      cellHeight: 16,
-    },
-    armorType: 'Layered',
-    baseLoadCapacity: 'medium',
-    armorThreshold: 5,
-    armorRating: 8,
-    armorDurability: 130,
-    shieldBonus: 55,
-    heatVentMult: 1.12,
-    stabilityBonus: -4,
-    weight: 14,
-    origin: 'looted',
-    maxGemSlots: 3,
-    drawbackDescription: '+14 WT Composite Laminate & -4 Poise Stability',
-    linkedActionId: 'mod_torso_reactive_burst',
-    description:
-      'Flexible composite weave frame plating favored by agile frames for rapid heat dissipation (+130 Dur, 8 RTG, 5 THR, +55 Shield, +12% Venting / 14 WT, -4 Stability).',
-    isPlaceholderAsset: false,
-    spriteTheme: {
-      baseArmorColor: '#69694b',
-      trimColor: '#afaf7d',
-      reactorGlowColor: '#7dd3fc',
-      legColor: '#464632',
-      chassisWidth: 8,
-      chassisHeight: 7,
-      torsoStyle: 'layered',
-    },
-  },
-  // ─── SET 9: Ablative Cuirass Frame Plating ────────────────────────────────
-  {
-    id: 'hw_plating_ablative',
-    name: 'Ablative Cuirass Frame Plating',
-    legacyNames: ['Ablative Cuirass Plating'],
-    slot: 'plating',
-    canonicalSlotLabel: 'Frame Plating',
-    subtype: 'Ablative Armor',
-    setIndex: 9,
-    setId: 'set_10_whisperblade',
-    partSprite: {
-      base64: plating_ablative_cuirass,
-      frameCount: 4,
-      directionalRows: 4,
-      cellWidth: 16,
-      cellHeight: 16,
-    },
-    armorType: 'Ablative',
-    baseLoadCapacity: 'light',
-    armorThreshold: 4,
-    armorRating: 6,
-    armorDurability: 115,
-    shieldBonus: 40,
-    moveSpeedMult: 1.05,
-    stabilityBonus: -5,
-    weight: 8,
-    origin: 'looted',
-    maxGemSlots: 3,
-    drawbackDescription: '-5 Poise Stability & Sacrificial Ceramic Shell (8 WT)',
-    linkedActionId: 'mod_torso_reactive_burst',
-    description:
-      'High-durability sacrificial ceramic torso & leg plates with balanced threshold (+115 Dur, 6 RTG, 4 THR, +40 Shield, +5% Speed / 8 WT, -5 Stability).',
-    isPlaceholderAsset: false,
-    spriteTheme: {
-      baseArmorColor: '#52705a',
-      trimColor: '#89bc96',
-      reactorGlowColor: '#e879f9',
-      legColor: '#374b3c',
-      chassisWidth: 7,
-      chassisHeight: 7,
-      torsoStyle: 'sleek',
-    },
-  },
-  // ─── SET 10: Arcanum Conduit Frame Plating ────────────────────────────────
-  {
-    id: 'hw_plating_arcanum_conduit',
-    name: 'Arcanum Conduit Frame Plating',
-    slot: 'plating',
-    canonicalSlotLabel: 'Frame Plating',
-    subtype: 'Layered / Æther Lattice',
-    setIndex: 10,
-    setId: 'set_11_conduit',
-    partSprite: {
-      base64: plating_arcanum_conduit,
-      frameCount: 4,
-      directionalRows: 4,
-      cellWidth: 16,
-      cellHeight: 16,
-    },
-    armorType: 'Layered',
-    baseLoadCapacity: 'medium',
-    armorThreshold: 5,
-    armorRating: 7,
-    armorDurability: 120,
-    shieldBonus: 70,
-    lightBonus: 0.5,
-    cooldownMult: 0.94,
-    stabilityBonus: -5,
-    weight: 16,
-    origin: 'looted',
-    maxGemSlots: 3,
-    drawbackDescription: '+16 WT Æther Conduit Mass & -5 Poise Stability',
-    linkedActionId: 'mod_torso_reactive_burst',
-    description:
-      'High-refraction Æther conduit torso & leg plating for sustained artillery channeling (+120 Dur, 7 RTG, 5 THR, +70 Shield, +0.5 Light, -6% CD / 16 WT, -5 Stability).',
-    isPlaceholderAsset: false,
-    spriteTheme: {
-      baseArmorColor: '#87704b',
-      trimColor: '#e1bc7d',
-      reactorGlowColor: '#67e8f9',
-      legColor: '#5a4b32',
-      chassisWidth: 8,
-      chassisHeight: 7,
-      torsoStyle: 'prism',
-    },
-  },
-  // ─── SET 11: Sanctum Reliquary Frame Plating ──────────────────────────────
-  {
-    id: 'hw_plating_sanctum_reliquary',
-    name: 'Sanctum Reliquary Frame Plating',
-    slot: 'plating',
-    canonicalSlotLabel: 'Frame Plating',
-    subtype: 'Reactive / Harmonic',
-    setIndex: 11,
-    setId: 'set_12_reliquary',
-    partSprite: {
-      base64: plating_sanctum_reliquary,
-      frameCount: 4,
-      directionalRows: 4,
-      cellWidth: 16,
-      cellHeight: 16,
-    },
-    armorType: 'Reactive',
-    baseLoadCapacity: 'heavy',
-    armorThreshold: 6,
-    armorRating: 10,
-    armorDurability: 155,
-    shieldBonus: 65,
-    cooldownMult: 0.94,
-    moveSpeedMult: 0.95,
-    weight: 28,
-    origin: 'looted',
-    maxGemSlots: 3,
-    drawbackDescription: '+28 WT Consecrated Reliquary Mass & -5% Stride Speed',
-    linkedActionId: 'mod_torso_reactive_burst',
-    description:
-      'Consecrated reliquary torso & leg plating with harmonic barrier stabilizers (+155 Dur, 10 RTG, 6 THR, +65 Shield, -6% CD / 28 WT, -5% Speed).',
-    isPlaceholderAsset: false,
-    spriteTheme: {
-      baseArmorColor: '#323232',
-      trimColor: '#646464',
-      reactorGlowColor: '#34d399',
-      legColor: '#1e1e1e',
-      chassisWidth: 9,
-      chassisHeight: 7,
-      torsoStyle: 'winged',
-    },
-  },
-  // ─── CAMELOT KNIGHT SET: Camelot Knight Frame Plating ─────────────────────
+  // ─── SET 12: Camelot Knight Errant Cuirass (`set_12`) ─────────────────────
   {
     id: 'plating_camelot_knight',
-    name: 'Camelot Knight Frame Plating',
-    legacyNames: ['Camelot Knight Coreplate', 'Camelot Knight'],
+    name: 'Camelot Knight Errant Cuirass',
+    legacyNames: ['Camelot Knight Frame Plating', 'Camelot Knight Coreplate', 'Camelot Knight'],
     slot: 'plating',
     canonicalSlotLabel: 'Frame Plating',
     subtype: 'Chivalric / Hardened Alloy',
     setIndex: 12,
-    setId: 'set_camelot_knight',
+    setId: 'set_12',
     partSprite: {
       base64: plating_camelot_knight,
       frameCount: 4,
@@ -614,19 +435,26 @@ export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = [
     },
     armorType: 'Hardened',
     baseLoadCapacity: 'heavy',
+    baseLoadCapacityNumber: 112,
     armorThreshold: 7,
-    armorRating: 11,
-    armorDurability: 165,
-    shieldBonus: 55,
-    stabilityBonus: 12,
-    moveSpeedMult: 0.96,
-    weight: 30,
-    origin: 'looted',
+    armorRating: 12,
+    armorDurability: 175,
+    shieldBonus: 50,
+    stabilityBonus: 14,
+    moveSpeedMult: 0.95,
+    weight: 31,
+    origin: 'crafted',
+    acquisition: 'forge_blueprint',
+    blueprintId: 'bp_armor_camelot_knight',
+    baseModifiers: {
+      stability: 14,
+      moveSpeedPct: -0.05,
+    },
     maxGemSlots: 3,
-    drawbackDescription: '+30 WT Chivalric Plate Mass & -4% Stride Speed',
+    drawbackDescription: '-5% Move Speed',
     linkedActionId: 'mod_torso_reactive_burst',
     description:
-      'Polished silver-steel chivalric torso & leg frame plating forged for frontline knightly lancers (+165 Dur, 11 RTG, 7 THR, +55 Shield, +12 Stability / 30 WT, -4% Speed).',
+      'Cyclopean-forged Camelot Knight Errant chivalric cuirass (+175 DUR, 12 RTG, 7 THR, +50 Shield, +14 Stability / 31 WT, Cap 112 WT, -5% Move Speed).',
     isPlaceholderAsset: false,
     spriteTheme: {
       baseArmorColor: '#999999',
@@ -638,18 +466,171 @@ export const CANONICAL_FRAME_PLATING: FramePlatingDefinition[] = [
       torsoStyle: 'layered',
     },
   },
+  // ─── SET 13: Novarin Steppe Outrider Brigandine (`set_13`) ────────────────
+  {
+    id: 'plating_novarin_outrider',
+    name: 'Novarin Steppe Outrider Brigandine',
+    slot: 'plating',
+    canonicalSlotLabel: 'Frame Plating',
+    subtype: 'Steppe Cavalry / Ablative Brigandine',
+    setIndex: 13,
+    setId: 'set_13',
+    partSprite: {
+      base64: plating_ablative_cuirass,
+      frameCount: 4,
+      directionalRows: 4,
+      cellWidth: 16,
+      cellHeight: 16,
+    },
+    armorType: 'Ablative',
+    baseLoadCapacity: 'light',
+    baseLoadCapacityNumber: 84,
+    armorThreshold: 3,
+    armorRating: 6,
+    armorDurability: 110,
+    shieldBonus: 35,
+    moveSpeedMult: 1.08,
+    stabilityBonus: -3,
+    weight: 8,
+    origin: 'crafted',
+    acquisition: 'forge_blueprint',
+    blueprintId: 'bp_armor_novarin_outrider',
+    baseModifiers: {
+      moveSpeedPct: 0.08,
+      reloadDrawSpeedPct: 0.06,
+      stability: -3,
+    },
+    maxGemSlots: 3,
+    drawbackDescription: '-3 Stability',
+    linkedActionId: 'mod_torso_reactive_burst',
+    description:
+      'Cyclopean-forged Novarin Steppe Outrider riveted brigandine (+110 DUR, 6 RTG, 3 THR, +35 Shield, +8% Move Speed, +6% Reload/Draw Speed / 8 WT, Cap 84 WT, -3 Stability).',
+    isPlaceholderAsset: false,
+    spriteTheme: {
+      baseArmorColor: '#52705a',
+      trimColor: '#89bc96',
+      reactorGlowColor: '#a855f7',
+      legColor: '#374b3c',
+      chassisWidth: 7,
+      chassisHeight: 7,
+      torsoStyle: 'sleek',
+    },
+  },
+  // ─── SET 14: Novarin Royal Keshig Lamellar (`set_14`) ─────────────────────
+  {
+    id: 'plating_novarin_keshig',
+    name: 'Novarin Royal Keshig Lamellar',
+    slot: 'plating',
+    canonicalSlotLabel: 'Frame Plating',
+    subtype: 'Royal Vanguard / Layered Lamellar',
+    setIndex: 14,
+    setId: 'set_14',
+    partSprite: {
+      base64: plating_layered_weave,
+      frameCount: 4,
+      directionalRows: 4,
+      cellWidth: 16,
+      cellHeight: 16,
+    },
+    armorType: 'Layered',
+    baseLoadCapacity: 'medium',
+    baseLoadCapacityNumber: 94,
+    armorThreshold: 5,
+    armorRating: 10,
+    armorDurability: 150,
+    shieldBonus: 40,
+    stabilityBonus: 9,
+    heatVentMult: 1.1,
+    weight: 18,
+    origin: 'crafted',
+    acquisition: 'forge_blueprint',
+    blueprintId: 'bp_armor_novarin_keshig',
+    baseModifiers: {
+      stability: 9,
+      heatDissipationPct: 0.1,
+    },
+    maxGemSlots: 3,
+    drawbackDescription: 'Slightly heavier than BWI (18 WT)',
+    linkedActionId: 'mod_torso_reactive_burst',
+    description:
+      'Cyclopean-forged Novarin Royal Keshig laced steel lamellar (+150 DUR, 10 RTG, 5 THR, +40 Shield, +9 Stability, +10% Heat Dissipation / 18 WT, Cap 94 WT).',
+    isPlaceholderAsset: false,
+    spriteTheme: {
+      baseArmorColor: '#87704b',
+      trimColor: '#e1bc7d',
+      reactorGlowColor: '#f97316',
+      legColor: '#5a4b32',
+      chassisWidth: 8,
+      chassisHeight: 7,
+      torsoStyle: 'layered',
+    },
+  },
+  // ─── SET 15: Novarin Iron Tarkhan Cataphract Barding (`set_15`) ───────────
+  {
+    id: 'plating_novarin_tarkhan',
+    name: 'Novarin Iron Tarkhan Cataphract Barding',
+    slot: 'plating',
+    canonicalSlotLabel: 'Frame Plating',
+    subtype: 'Cataphract / Hardened Barding',
+    setIndex: 15,
+    setId: 'set_15',
+    partSprite: {
+      base64: plating_hardened_sanctum,
+      frameCount: 4,
+      directionalRows: 4,
+      cellWidth: 16,
+      cellHeight: 16,
+    },
+    armorType: 'Hardened',
+    baseLoadCapacity: 'heavy',
+    baseLoadCapacityNumber: 116,
+    armorThreshold: 8,
+    armorRating: 13,
+    armorDurability: 190,
+    shieldBonus: 25,
+    stabilityBonus: 18,
+    moveSpeedMult: 0.9,
+    weight: 34,
+    origin: 'crafted',
+    acquisition: 'forge_blueprint',
+    blueprintId: 'bp_armor_novarin_tarkhan',
+    baseModifiers: {
+      stability: 18,
+      chargeMassPct: 0.1,
+      moveSpeedPct: -0.1,
+    },
+    maxGemSlots: 3,
+    drawbackDescription: '-10% Move Speed',
+    linkedActionId: 'mod_torso_reactive_burst',
+    description:
+      'Cyclopean-forged Novarin Iron Tarkhan heavy cataphract barding (+190 DUR, 13 RTG, 8 THR, +25 Shield, +18 Stability, +10% Directional Charge Mass / 34 WT, Cap 116 WT, -10% Move Speed).',
+    isPlaceholderAsset: false,
+    spriteTheme: {
+      baseArmorColor: '#5a1e3c',
+      trimColor: '#e14b96',
+      reactorGlowColor: '#fbbf24',
+      legColor: '#321020',
+      chassisWidth: 10,
+      chassisHeight: 8,
+      torsoStyle: 'heavy',
+    },
+  },
 ];
 
 /**
  * Executes `getFramePlatingDefinition` (get frame plating definition) in `coreplates.ts`.
  */
-export function getFramePlatingDefinition(idOrName?: string | null): FramePlatingDefinition | undefined {
+export function getFramePlatingDefinition(
+  idOrName?: string | null
+): FramePlatingDefinition | undefined {
   if (!idOrName) return undefined;
   const norm = idOrName.trim().toLowerCase();
   return (
     CANONICAL_FRAME_PLATING.find((p) => p.id.toLowerCase() === norm) ||
     CANONICAL_FRAME_PLATING.find((p) => p.name.toLowerCase() === norm) ||
     CANONICAL_FRAME_PLATING.find((p) => p.legacyNames?.some((l) => l.toLowerCase() === norm)) ||
-    CANONICAL_FRAME_PLATING.find((p) => norm.includes(p.id.replace('coreplate_', '').replace('hw_plating_', '')))
+    CANONICAL_FRAME_PLATING.find((p) =>
+      norm.includes(p.id.replace('coreplate_', '').replace('plating_', ''))
+    )
   );
 }

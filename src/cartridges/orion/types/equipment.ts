@@ -608,9 +608,159 @@ export interface OrionEquipmentSlots {
   ownedLoreBoundRelics?: Record<string, number>;
   /** Inventory counts of salvaged `LOOTED` weapon components owned by the pilot (`partId -> count`) */
   ownedLootedComponents?: Record<string, number>;
+  /** Unlocked Cyclopean Dwarf Forge Armor Blueprint IDs (`bp_armor_camelot_knight`, `bp_armor_novarin_outrider`, `bp_armor_novarin_keshig`, `bp_armor_novarin_tarkhan`) */
+  unlockedBlueprints?: string[];
   unlockedMods?: string[];
   unlockedEquipment?: string[];
   weaponGemMods?: Record<string, GemId | null>;
+}
+
+/**
+ * Exterior Armor anatomical slot identifier (`Project Orion — AI Studio Implementation Spec (Exterior Armor & Gem Socketing).md` §2).
+ */
+export type ExteriorArmorSlot = 'plating' | 'head' | 'arms';
+
+/**
+ * Acquisition pathway for an Exterior Armor piece (`Project Orion — AI Studio Implementation Spec (Exterior Armor & Gem Socketing).md` §2).
+ * - `'starter_post_boss'`: Chosen as starter archetype or recovered from Camelot post-boss chambers/caches.
+ * - `'forge_blueprint'`: Crafted exclusively at a Cyclopean Dwarf Forge from a salvaged blueprint + Scrap + Gemstones.
+ */
+export type ArmorAcquisitionType = 'starter_post_boss' | 'forge_blueprint';
+
+/**
+ * Canonical Gemstone identifier alias (`Project Orion — AI Studio Implementation Spec (Exterior Armor & Gem Socketing).md` §2).
+ */
+export type GemstoneId = GemId;
+
+/**
+ * Lowercase reactor family identifier (`'ichor' | 'mana' | 'ether'`) used by the Exterior Armor Socket Calculation Engine (§2 & §6).
+ */
+export type ExteriorReactorFamily = 'ichor' | 'mana' | 'ether';
+
+/**
+ * Unified stat delta payload for Exterior Armor base modifiers, per-slot Gemstone sockets, and 3-tier Resonance Combos
+ * (`Project Orion — AI Studio Implementation Spec (Exterior Armor & Gem Socketing).md` §2, §5, & §6).
+ */
+export interface StatDelta {
+  armorDurability?: number;
+  armorRating?: number;
+  armorThreshold?: number;
+  shieldCapacity?: number;
+  shieldRechargeRatePct?: number; // e.g. +0.06 = +6%
+  shieldRechargeDelayPct?: number; // e.g. -0.10 = -10%
+  stability?: number;
+  heatCapacity?: number;
+  heatDissipationPct?: number; // e.g. +0.08 = +8%
+  heatCostPct?: number; // e.g. -0.08 = -8%
+  energyCapacityPct?: number; // e.g. +0.10 = +10%
+  moveSpeedPct?: number; // e.g. -0.05 = -5%
+  dashIFrameSec?: number; // e.g. +0.04 = +0.04s
+  stealthSignaturePct?: number; // e.g. -0.10 = -10%
+  opticsRangeM?: number; // e.g. +1.5 = +1.5m
+  lightRadiusM?: number; // e.g. +1.0 = +1.0m
+  lockOnSpeedPct?: number; // e.g. +0.12 = +12%
+  projectileTrackingPct?: number; // e.g. +0.10 = +10%
+  meleeTempoPct?: number; // e.g. +0.06 = +6%
+  reloadDrawSpeedPct?: number; // e.g. +0.08 = +8%
+  weaponSwapSpeedPct?: number; // e.g. +0.15 = +15%
+  recoilControlPct?: number; // e.g. +0.12 = +12%
+  guardMitigationPct?: number; // e.g. +0.08 = +8%
+  parryWindowSec?: number; // e.g. +0.04 = +0.04s
+  supportRepairPowerPct?: number; // e.g. +0.10 = +10%
+  armorRepairEfficiencyPct?: number; // e.g. +0.12 = +12%
+  loadCapacity?: number; // e.g. +4 = +4 WT capacity
+  effectiveWeightDelta?: number; // e.g. -2 = -2 WT effective weight
+  chargeMassPct?: number; // e.g. +0.10 = +10% directional charge mass
+  chargeStability?: number; // e.g. +4 stability during directional charge
+}
+
+/**
+ * Canonical Exterior Armor Piece definition (`Project Orion — AI Studio Implementation Spec (Exterior Armor & Gem Socketing).md` §2 & §3).
+ */
+export interface ExteriorArmorPiece {
+  id: string;
+  name: string;
+  slot: ExteriorArmorSlot;
+  setId: string; // 'set_00' .. 'set_05', 'set_12' .. 'set_15'
+  weight: number;
+  baseLoadCapacity?: number; // Only defined on 'plating' slot (84..116 WT)
+  armor: {
+    durability: number;
+    rating: number;
+    threshold: number;
+  };
+  shieldBonus: number;
+  gemSockets: 2 | 3;
+  acquisition: ArmorAcquisitionType;
+  blueprintId?: string; // Defined if acquisition === 'forge_blueprint'
+  baseModifiers: StatDelta;
+  tradeOffSummary: string;
+}
+
+/**
+ * Cyclopean Dwarf Forge recipe definition (`Project Orion — AI Studio Implementation Spec (Exterior Armor & Gem Socketing).md` §2 & §4).
+ */
+export interface ForgeRecipe {
+  outputArmorId: string;
+  blueprintId: string;
+  scrapCost: number;
+  gemCosts: Array<{ gemId: GemstoneId; count: number }>;
+}
+
+/**
+ * Active Gemstone Resonance Combo descriptor (Tier 2 Two-Gem Pair or Tier 3 Three-Gem Triad on an Exterior Armor piece).
+ */
+export interface ArmorGemResonanceCombo {
+  id:
+    | 'ichor_crucible'
+    | 'mana_sanctuary'
+    | 'ether_astral'
+    | 'prismatic_core'
+    | 'tempered_crux'
+    | 'siege_bastion'
+    | 'aegis_lattice'
+    | 'sanctum_choir'
+    | 'prism_conduit'
+    | 'veil_specter'
+    | 'forge_quench'
+    | 'mirrored_glaze'
+    | 'dusk_striker';
+  name: string;
+  tier: 2 | 3;
+  positiveBoost: number;
+  boostedGems: 'ALL' | [GemstoneId, GemstoneId];
+  flatBonus: StatDelta;
+  grantsPrismaticUniversalAffinity?: boolean;
+  summary: string;
+}
+
+/**
+ * Per-socket evaluation breakdown returned by the Exterior Armor Socket Calculation Engine (§6).
+ */
+export interface ExteriorArmorSocketDetail {
+  socketIndex: number;
+  gemId: GemstoneId;
+  occurrenceIndex: number; // 0 = 1st copy (1.0), 1 = 2nd copy (0.7), 2 = 3rd copy (0.4)
+  duplicateScalar: number; // 1.0 | 0.7 | 0.4
+  comboPositiveBoost: number; // 0 | 0.25 | 0.30 | 0.35
+  reactorBoost: number; // 0 | 0.20
+  prismaticBoost: number; // 0 | 0.10
+  positiveMultiplier: number;
+  drawbackMultiplier: number;
+  scaledPositive: StatDelta;
+  scaledDrawback: StatDelta;
+}
+
+/**
+ * Complete evaluation result for a single Exterior Armor piece's socketed gemstones and active resonance combos (§6).
+ */
+export interface ExteriorArmorSocketEvalResult {
+  pieceId: string;
+  slot: ExteriorArmorSlot;
+  activeCombo: ArmorGemResonanceCombo | null;
+  prismaticUniversalAffinityActive: boolean;
+  socketDetails: ExteriorArmorSocketDetail[];
+  totalGemAndComboDelta: StatDelta;
 }
 
 /**
@@ -805,7 +955,7 @@ export interface WeaponDefinition {
 export interface ItemWikiDefinition {
   id: string;
   name: string;
-  category: 'consumable' | 'equipment' | 'key' | 'valuable';
+  category: 'consumable' | 'equipment' | 'key' | 'valuable' | 'blueprint';
   description: string;
   lore: string;
   buyPrice: number;

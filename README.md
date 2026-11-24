@@ -36,12 +36,12 @@
 7. **[Complete Equipment, Weapons, Hardware & Items Reference](#7-complete-equipment-weapons-hardware--items-reference)**
    - [7.1 All 115 Canonical Weapons Across the 8 Weapon Classes (`72 Custom` + `37 Magitech` + `6 Legendary` + `3 Lore-Bound Relics` + `9 Starting-Kit Field Weapons`)](#71-all-115-canonical-weapons-across-the-8-weapon-classes-72-custom--37-magitech--6-legendary--3-lore-bound-relics--9-starting-kit-field-weapons)
    - [7.2 All 61 Bespoke Weapon Modification Components (`28 Crafted` + `33 Looted`)](#72-all-61-bespoke-weapon-modification-components-28-crafted--33-looted)
-   - [7.3 Core Frame Platings (`13 Coreplates`)](#73-core-frame-platings-13-coreplates)
+   - [7.3 Core Frame Platings (`10 Coreplates`) & Cyclopean Dwarf Forge Armor Blueprints (`4 Blueprints` · `12 Recipes`)](#73-core-frame-platings-10-coreplates--cyclopean-dwarf-forge-armor-blueprints-4-blueprints--12-recipes)
    - [7.4 Core Systems, Reactors & Energy Storage (`10 Modules`)](#74-core-systems-reactors--energy-storage-10-modules)
    - [7.5 Auxiliary, Tactical Utility & Active Hardware/Reactor Trigger Modules (`25 Modules`)](#75-auxiliary-tactical-utility--active-hardwarereactor-trigger-modules-25-modules)
-   - [7.6 Head Dome Plates (`7`), Optics (`8`) & Battlefield Sensory Arrays (`15`)](#76-head-dome-plates-7-optics-8--battlefield-sensory-arrays-15)
-   - [7.7 Arm Aperture Plates (`7`), Arm Actuators (`8`) & Leg Striders (`8`)](#77-arm-aperture-plates-7-arm-actuators-8--leg-striders-8)
-   - [7.8 The 9 Canonical Gemstones, Belt Flasks, Consumables, Currencies & Quest/Relic Items](#78-the-9-canonical-gemstones-belt-flasks-consumables-currencies--questrelic-items)
+   - [7.6 Head Dome Plates (`10`), Optics (`8`) & Battlefield Sensory Arrays (`15`)](#76-head-dome-plates-10-optics-8--battlefield-sensory-arrays-15)
+   - [7.7 Arm Aperture Plates (`10`), Arm Actuators (`8`) & Leg Striders (`8`)](#77-arm-aperture-plates-10-arm-actuators-8--leg-striders-8)
+   - [7.8 The 9 Canonical Gemstones (Per-Slot Harmonics & 3-Tier Combos), Belt Flasks, Consumables, Currencies & Quest/Relic Items](#78-the-9-canonical-gemstones-per-slot-harmonics--3-tier-combos-belt-flasks-consumables-currencies--questrelic-items)
 8. **[Complete Canonical Feats Catalog (113-Node Constellation)](#8-complete-canonical-feats-catalog-113-node-constellation)**
    - [8.0 Five Golden Rules (`P-01`–`P-05`), 3 Macro-Umbrellas & 18 Selective Chains](#80-five-golden-rules-p-01p-05-3-macro-umbrellas--18-selective-chains)
    - [8.1 Tier I Core Feats (15 Nodes)](#81-tier-i-core-feats-15-nodes)
@@ -267,8 +267,17 @@ You never need to read equations to master inertia—just remember the **Dynamic
     - **`Magitech` Subtype (`37` Unique Purist Relics)**: Share the same 8 Weapon Classes and 9 Functional Weapon Types per class while defining named manufacturer relics governed by **Four Hardware Architecture Tiers** (`0–3` open physical component mounts + `1G` dedicated Factory Resonance Gem Socket) and **Purist Resonance Passives** paired with the 22 Specialist Martial Stances and 5 Core Feat Chains (`C-03`, `C-04`, `C-10`, `C-14`, `C-18`).
     - **`Legendary` Subtype (`6` Playable Folklore Artifacts across 5 World Entries + `3` Lore-Bound Companion Mounts)**: Reject standard physical components (`allowStandardMods: false`) and elemental gemstones (`maxGemSlots: 0`). Each carries a permanent rule-breaking **Engine Hook** (`LegendaryEngineHook`) tied to its origin world's folklore, and 3 of the 5 entries expose **1 Lore-Bound Companion Mount** (*The Scabbard of Avalon* on *Excalibur*, *Juuchi Yosamu* on *Yawarakai-Te*, and *Medusa's Head* on *Aegis*).
   - **Non-Sequential Slot Order & `CONTACT`-Only Damage Conversion**: Install, replace, or strip modifications in **any slot order** (`Slot 1`, `Slot 2`, or `Slot 3`). Only **`CONTACT`** domain components can convert a weapon's Action 1 `DamageType`.
-  - **Physical Domain Separation**: Only exterior armor (**Dome Plates**, **Aperture Plates**, **Frame Platings**) and **Shields** grant Armor (`Durability`, `Rating`, `Threshold`). Internal sub-modules (`Optics`, `Sensory A/B`, `Actuators`, `Reactor Core`, `Leg Actuators`) and non-`Shields` weapon components grant `0` Armor and instead tune vision radius, accuracy, tell duration, attack mass, stability, heat venting, cooldowns, mobility, and weight capacity.
-  - **Crafted vs. Looted Mod Parts**: Mod parts crafted at the workbench (`28` weapon components + `8` crafted chassis sub-modules) cost Scrap + Gemstones and have `1` gem socket (`maxGemSlots: 1`), whereas standalone parts looted in the field (`33` weapon components + `60` looted chassis items) have `1–3` gem sockets.
+  - **Physical Domain Separation (`30` Exterior Armor Pieces Across `10` Complete Sets)**: Only exterior armor (**`10` Core Frame Platings**, **`10` Head Dome Plates**, **`10` Arm Aperture Plates**) and **Shields** grant Layer 2 Armor (`Durability`, `Rating`, `Threshold`). Internal sub-modules (`Optics`, `Sensory A/B`, `Actuators`, `Reactor Core`, `Leg Actuators`) and non-`Shields` weapon components strictly grant **`0` Armor** (`durability: 0, rating: 0, threshold: 0`) and instead tune vision radius, accuracy, tell duration, attack mass, stability, heat venting, cooldowns, mobility, and weight capacity.
+  - **Starter/Post-Boss Reliquaries (`Sets 0–5`) vs. Cyclopean Dwarf Forge Blueprints (`Sets 12–15`)**:
+    - **`starter_post_boss` (`Sets 0–5` · `18` Pieces)**: The 6 Heritage Sets (`BWI Bastion`, `Fire & Ice Fortress`, `Dawnforge Guardian`, `Shadowcraft Recon`, `Arcanum Heavy Projector`, `Sanctum Support`) begin equipped on their respective Starting Loadout Kits and can be recovered from post-boss reliquary chambers (`!query.enemyType`—never dropped directly by normal enemies).
+    - **`forge_blueprint` (`Sets 12–15` · `12` Pieces across `4` Blueprints)**: **Set 12 (`Camelot Knight Errant`)**, **Set 13 (`Novarin Steppe Outrider`)**, **Set 14 (`Novarin Royal Keshig`)**, and **Set 15 (`Novarin Iron Tarkhan`)** never drop as ready-to-wear gear. Pilots recover their **4 Armor Blueprints** (`bp_armor_camelot_knight`, `bp_armor_novarin_outrider`, `bp_armor_novarin_keshig`, `bp_armor_novarin_tarkhan`) from Reliquary Chests and forge each piece at the **Cyclopean Dwarf Forge** inside the Armory using **Scrap + Gemstones**.
+  - **Per-Slot Gemstone Harmonics (`100% / 70% / 40%` Duplicate Scaling & 3-Tier Combos)**:
+    - Every Gemstone delivers a distinct physical payload depending on whether it is socketed into **`plating`** (`3G`), **`head`** (`2G` standard / `3G` on `head_camelot_knight`), or **`arms`** (`2G` standard / `3G` on `arms_camelot_knight`).
+    - **Diminishing Duplicate Curve (`[1.0, 0.7, 0.4]`)**: Socketing identical gems into the same exterior armor piece scales both positive gains and drawbacks at **`100%`** (1st copy), **`70%`** (2nd copy), and **`40%`** (3rd copy).
+    - **3-Tier Gemstone Resonance Combos**:
+      - **Tier 1 — Reactor Core Harmonic Resonance (`+20%`)**: Any gem matching your equipped Reactor Family (`Ichor`: `Hematite`/`Spinel`/`Carnelian`; `Mana`: `Moonstone`/`Titanite`/`Demantoid`; `Ether`: `Rubellite`/`Kyanite`/`Charoite`) gains **`+20%`** to its positive stats (drawbacks stay at `1.0×`).
+      - **Tier 2 — 9 Named Two-Gem Pairs (`+25%` + Flat Bonus)**: Socketing two distinct paired gems on any `2G` or `3G` piece (when no Tier 3 Triad is active) boosts both paired gems' positive stats by **`+25%`** and grants a flat domain bonus (*Tempered Crux*, *Siege Bastion*, *Aegis Lattice*, *Sanctum Choir*, *Prism Conduit*, *Veil Specter*, *Forge Quench*, *Mirrored Glaze*, *Dusk Striker*).
+      - **Tier 3 — 4 Named Three-Gem Triads (`+35% / +30%` + Apex Bonus)**: Socketing a 3-gem Triad on any `3G` piece (`plating`, `head_camelot_knight`, or `arms_camelot_knight`) grants **`+35%`** positive gem boost + flat apex bonus for *Crucible of Ichor*, *Sanctuary of Mana*, or *Astral Ether Lattice*, or **`+30%`** positive gem boost + **Chassis-Wide Prismatic Universal Affinity (`+10%` positive gem stats on Head & Arms)** for *Prismatic Core Triad* (`Hematite + Moonstone + Rubellite`).
   - **Semantic `Custom` Naming**: Modified gear automatically earns a `Custom` designation—**`Custom <BaseName>`** for traditional weapons/shields (e.g., `Custom Katana`, `Custom Buckler`) or **`<BaseName> Custom`** for manufacturer model codes and Magitech relics (e.g., `N-55 Gladius Custom`, `BWI Bastion Frame Plating Custom`), appending **`+II`** or **`+III`** when 2 or 3 modification slots are populated.
 
 ---
@@ -774,25 +783,31 @@ Every `Custom` weapon (`3` open mounts) and every non-monolith `Magitech` Purist
 
 ---
 
-### 7.3 Core Frame Platings (`13 Coreplates`)
+#### 7.3 Core Frame Platings (`10 Coreplates`) & Cyclopean Dwarf Forge Armor Blueprints (`4 Blueprints` · `12 Recipes`)
 
-All 13 canonical exterior Frame Platings (`slot: 'plating'`, `maxGemSlots: 3`) in `CANONICAL_FRAME_PLATING`, spanning the 6 Starting Heritage Sets (`set_01`–`set_06`), 6 Looted Variant Sets (`set_07`–`set_12`), and the Chivalric Boss Set (`set_camelot_knight`):
+#### 1. All 10 Canonical Core Frame Platings (`slot: 'plating'`, `3G` Gem Sockets Each)
+The 6 deprecated core-only variant IDs (`hw_plating_reactive`, `hw_plating_hardened`, `hw_plating_layered`, `hw_plating_ablative`, `hw_plating_arcanum_conduit`, `hw_plating_sanctum_reliquary`) are retired from the active catalog (with backward-compatible save migration via `legacyNames`), leaving **10 complete 3-piece Exterior Armor Sets** (`Sets 0–5` `starter_post_boss` + `Sets 12–15` `forge_blueprint`):
 
-| ID | Coreplate Name | Set / Heritage | Plating Type | Base Capacity | Weight | Armor (`DUR / RTG / THR`) | Shield | Gem Slots | Built-In Modifiers & Zero-Sum Trade-Off |
-| :--- | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :--- |
-| `coreplate_bwi_bastion` | **BWI Bastion Frame Plating** | Set 0 (`Warrior`) | Physical / Reactive | Medium (`90 WT`) | `15 WT` | `140 / 9 / 5` | `+45` | `3G` | `+6` Stability, `+6%` Heat Venting / `-2%` Stride Speed |
-| `coreplate_fire_ice_fortress` | **Fire & Ice Fortress Frame Plating** | Set 1 (`Marauder`) | Physical / Hardened | Heavy (`112 WT`) | `32 WT` | `180 / 12 / 8` | `+35` | `3G` | `+14` Stability / `-6%` Stride Speed |
-| `coreplate_dawnforge_guardian` | **Dawnforge Guardian Frame Plating** | Set 2 (`Guardian`) | Physical / Layered | Medium (`90 WT`) | `17 WT` | `155 / 10 / 6` | `+75` | `3G` | `+8` Stability / `+4%` Cooldown Draw |
-| `coreplate_shadowcraft_recon` | **Shadowcraft Recon Frame Plating** | Set 3 (`Rogue`) | Physical / Ablative | Light (`84 WT`) | `7 WT` | `105 / 5 / 3` | `+40` | `3G` | `+6%` Stride Speed, `-4%` Cooldowns / `-6` Stability |
-| `coreplate_arcanum_projector` | **Arcanum Heavy Projector Frame Plating** | Set 4 (`Wizard`) | Physical / Layered | Medium (`90 WT`) | `15 WT` | `110 / 6 / 4` | `+65` | `3G` | `+8%` Heat Venting, `-4%` Cooldowns / `-4` Stability |
-| `coreplate_sanctum_support` | **Sanctum Support Frame Plating** | Set 5 (`Cleric`) | Physical / Reactive | Medium (`90 WT`) | `15 WT` | `130 / 8 / 4` | `+60` | `3G` | `-5%` Cooldowns, `+6%` Heat Venting / `-2%` Stride Speed |
-| `hw_plating_reactive` | **Reactive Blast-Plate Frame Plating** | Set 6 (`Blastplate`) | Reactive Armor | Medium (`90 WT`) | `16 WT` | `145 / 9 / 6` | `+45` | `3G` | `+8` Stability / `-5%` Heat Venting |
-| `hw_plating_hardened` | **Hardened Sanctum Frame Plating** | Set 7 (`Siegebreaker`) | Hardened Armor | Heavy (`112 WT`) | `30 WT` | `170 / 11 / 7` | `+40` | `3G` | `+12` Stability / `-5%` Stride Speed |
-| `hw_plating_layered` | **Layered Weave Frame Plating** | Set 8 (`Radiant`) | Layered Armor | Medium (`90 WT`) | `14 WT` | `130 / 8 / 5` | `+55` | `3G` | `+12%` Heat Venting / `-4` Stability |
-| `hw_plating_ablative` | **Ablative Cuirass Frame Plating** | Set 9 (`Whisperblade`) | Ablative Armor | Light (`84 WT`) | `8 WT` | `115 / 6 / 4` | `+40` | `3G` | `+5%` Stride Speed / `-5` Stability |
-| `hw_plating_arcanum_conduit` | **Arcanum Conduit Frame Plating** | Set 10 (`Conduit`) | Layered / Æther Lattice | Medium (`90 WT`) | `16 WT` | `120 / 7 / 5` | `+70` | `3G` | `+0.5` Light Radius, `-6%` Cooldowns / `-5` Stability |
-| `hw_plating_sanctum_reliquary` | **Sanctum Reliquary Frame Plating** | Set 11 (`Reliquary`) | Reactive / Harmonic | Heavy (`112 WT`) | `28 WT` | `155 / 10 / 6` | `+65` | `3G` | `-6%` Cooldowns / `-5%` Stride Speed |
-| `plating_camelot_knight` | **Camelot Knight Frame Plating** | Set 12 (`Camelot Knight`) | Hardened / Chivalric Plate | Heavy (`112 WT`) | `31 WT` | `175 / 12 / 7` | `+50` | `3G` | `+14` Stability / `-5%` Stride Speed |
+| ID | Coreplate Name | Set (`Acquisition`) | Base Capacity | Weight | Armor (`DUR / RTG / THR`) | Shield | Gem Slots | Built-In Modifiers & Zero-Sum Trade-Off |
+| :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :--- |
+| `coreplate_bwi_bastion` | **BWI Bastion Frame Plating** | Set 0 (`starter_post_boss`) | `90 WT` | `15 WT` | `140 / 9 / 5` | `+45` | `3G` | `+6` Stability, `+6%` Heat Venting / `-2%` Stride Speed |
+| `coreplate_fire_ice_fortress` | **Fire & Ice Fortress Frame Plating** | Set 1 (`starter_post_boss`) | `112 WT` | `32 WT` | `180 / 12 / 8` | `+35` | `3G` | `+14` Stability / `-6%` Stride Speed |
+| `coreplate_dawnforge_guardian` | **Dawnforge Guardian Frame Plating** | Set 2 (`starter_post_boss`) | `90 WT` | `17 WT` | `155 / 10 / 6` | `+75` | `3G` | `+8` Stability / `+4%` Cooldown Draw |
+| `coreplate_shadowcraft_recon` | **Shadowcraft Recon Frame Plating** | Set 3 (`starter_post_boss`) | `84 WT` | `7 WT` | `105 / 5 / 3` | `+40` | `3G` | `+6%` Stride Speed, `-4%` Cooldowns / `-6` Stability |
+| `coreplate_arcanum_projector` | **Arcanum Heavy Projector Frame Plating** | Set 4 (`starter_post_boss`) | `90 WT` | `15 WT` | `110 / 6 / 4` | `+65` | `3G` | `+8%` Heat Venting, `-4%` Cooldowns / `-4` Stability |
+| `coreplate_sanctum_support` | **Sanctum Support Frame Plating** | Set 5 (`starter_post_boss`) | `90 WT` | `15 WT` | `130 / 8 / 4` | `+60` | `3G` | `-5%` Cooldowns, `+6%` Heat Venting / `-2%` Stride Speed |
+| `plating_camelot_knight` | **Camelot Knight Frame Plating** | Set 12 (`forge_blueprint`) | `112 WT` | `31 WT` | `175 / 12 / 7` | `+50` | `3G` | `+14` Stability / `-5%` Stride Speed |
+| `plating_novarin_outrider` | **Novarin Outrider Lamellar Harness** | Set 13 (`forge_blueprint`) | `84 WT` | `8 WT` | `110 / 6 / 3` | `+35` | `3G` | `+7%` Stride Speed, `+8%` Heat Venting / `-5` Stability |
+| `plating_novarin_keshig` | **Novarin Keshig Scale Cuirass** | Set 14 (`forge_blueprint`) | `94 WT` | `18 WT` | `150 / 10 / 5` | `+40` | `3G` | `+10` Stability, `+8%` Heat Venting / `-3%` Stride Speed |
+| `plating_novarin_tarkhan` | **Novarin Tarkhan Siege Barding** | Set 15 (`forge_blueprint`) | `116 WT` | `34 WT` | `190 / 13 / 8` | `+25` | `3G` | `+16` Stability, `+10%` Directional Charge Mass (`μ`) / `-7%` Stride Speed |
+
+#### 2. Cyclopean Dwarf Forge Armor Blueprints (`4 Blueprints` · `12 Craftable Pieces`)
+| Blueprint ID | Blueprint Name | World Origin | Unlocks Set | Core Frame Recipe (`plating`) | Head Dome Recipe (`head`) | Arm Aperture Recipe (`arms`) |
+| :--- | :--- | :--- | :---: | :--- | :--- | :--- |
+| `bp_armor_camelot_knight` | **Blueprint: Camelot Knight Errant Harness** | Belldor (`Camelot Vaults`) | Set 12 | `plating_camelot_knight` (`70 Scrap` + `2 Titanite` + `1 Moonstone`) | `head_camelot_knight` (`45 Scrap` + `1 Titanite` + `1 Moonstone`) | `arms_camelot_knight` (`50 Scrap` + `1 Titanite` + `1 Spinel`) |
+| `bp_armor_novarin_outrider` | **Blueprint: Novarin Steppe Outrider Harness** | Novarin (`Steppe Caches`) | Set 13 | `plating_novarin_outrider` (`50 Scrap` + `1 Charoite` + `1 Spinel`) | `head_novarin_outrider` (`30 Scrap` + `1 Charoite`) | `arms_novarin_outrider` (`35 Scrap` + `1 Spinel`) |
+| `bp_armor_novarin_keshig` | **Blueprint: Novarin Royal Keshig Scale** | Novarin (`Royal Yurt Reliquary`) | Set 14 | `plating_novarin_keshig` (`65 Scrap` + `1 Hematite` + `1 Spinel`) | `head_novarin_keshig` (`40 Scrap` + `1 Hematite`) | `arms_novarin_keshig` (`45 Scrap` + `1 Spinel` + `1 Carnelian`) |
+| `bp_armor_novarin_tarkhan` | **Blueprint: Novarin Iron Tarkhan Barding** | Novarin (`Siege Foundry Vault`) | Set 15 | `plating_novarin_tarkhan` (`75 Scrap` + `2 Carnelian` + `1 Hematite`) | `head_novarin_tarkhan` (`45 Scrap` + `1 Carnelian` + `1 Hematite`) | `arms_novarin_tarkhan` (`50 Scrap` + `2 Carnelian`) |
 
 ---
 
@@ -852,20 +867,23 @@ All 10 Frame Mod 1 (`slot: 'reactor'`) items—comprising **6 Canonical Heritage
 
 ---
 
-### 7.6 Head Dome Plates (`7`), Optics (`8`) & Battlefield Sensory Arrays (`15`)
+### 7.6 Head Dome Plates (`10`), Optics (`8`) & Battlefield Sensory Arrays (`15`)
 
-#### 1. Exterior Head Dome Plates (`7 Dome Plates` · Grant Layer 2 Armor)
-| ID | Dome Plate Name | Set / Heritage | Armor Type | Armor (`DUR / RTG / THR`) | Shield | Weight | Gem Slots | Domain Modifiers & Trade-Off |
-| :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :--- |
-| `head_cd_g341_murmillio` | **Crystal Dynamics G341 Murmillio** | Set 0 (`Warrior`) | Reactive | `20 / 1 / 1` | `+6` | `6 WT` | `2G` | `+4%` Heat Venting / `-2%` Lock Accuracy |
-| `head_be_ironveil_dome` | **BE Ironveil Command Dome** | Set 1 (`Marauder`) | Hardened | `24 / 2 / 1` | `+8` | `12 WT` | `2G` | `+6` Stability / `+3%` Cooldowns |
-| `head_aegis_halo_dome` | **Aegis Halo Command Dome** | Set 2 (`Guardian`) | Layered | `18 / 2 / 1` | `+12` | `7 WT` | `2G` | `+4` Stability / `-3%` Heat Venting |
-| `head_vx_veilsight_helm` | **VX Veilsight Command Helm** | Set 3 (`Rogue`) | Ablative | `10 / 1 / 0` | `+4` | `3 WT` | `2G` | `+0.5` Light, `+5%` Accuracy / `-3` Stability |
-| `head_arc_omniscient_dome` | **ARC Omniscient Command Dome** | Set 4 (`Wizard`) | Layered | `14 / 1 / 1` | `+10` | `6 WT` | `2G` | `+0.5` Light, `+6%` Accuracy / `-3` Stability |
-| `head_sanc_providence_helm` | **SANC Providence Command Helm** | Set 5 (`Cleric`) | Reactive | `16 / 1 / 1` | `+10` | `6 WT` | `2G` | `-4%` Cooldowns / `+3%` Swing Windup |
-| `head_camelot_knight` | **Camelot Knight Greathelm** | Set 12 (`Camelot Knight`) | Hardened | `22 / 2 / 1` | `+10` | `13 WT` | `3G` | `+6` Stability, `+4%` Accuracy / `-4%` Heat Venting |
+#### 1. Exterior Head Dome Plates (`10 Dome Plates` · Grant Layer 2 Armor)
+| ID | Dome Plate Name | Set (`Acquisition`) | Armor (`DUR / RTG / THR`) | Shield | Weight | Gem Slots | Domain Modifiers & Trade-Off |
+| :--- | :--- | :--- | :---: | :---: | :---: | :---: | :--- |
+| `head_cd_g341_murmillio` | **Crystal Dynamics G341 Murmillio** | Set 0 (`starter_post_boss`) | `20 / 1 / 1` | `+6` | `6 WT` | `2G` | `+4%` Heat Venting / `-2%` Lock Accuracy |
+| `head_be_ironveil_dome` | **BE Ironveil Command Dome** | Set 1 (`starter_post_boss`) | `24 / 2 / 1` | `+8` | `12 WT` | `2G` | `+6` Stability / `+3%` Cooldowns |
+| `head_aegis_halo_dome` | **Aegis Halo Command Dome** | Set 2 (`starter_post_boss`) | `18 / 2 / 1` | `+12` | `7 WT` | `2G` | `+4` Stability / `-3%` Heat Venting |
+| `head_vx_veilsight_helm` | **VX Veilsight Command Helm** | Set 3 (`starter_post_boss`) | `10 / 1 / 0` | `+4` | `3 WT` | `2G` | `+0.5` Light, `+5%` Accuracy / `-3` Stability |
+| `head_arc_omniscient_dome` | **ARC Omniscient Command Dome** | Set 4 (`starter_post_boss`) | `14 / 1 / 1` | `+10` | `6 WT` | `2G` | `+0.5` Light, `+6%` Accuracy / `-3` Stability |
+| `head_sanc_providence_helm` | **SANC Providence Command Helm** | Set 5 (`starter_post_boss`) | `16 / 1 / 1` | `+10` | `6 WT` | `2G` | `-4%` Cooldowns / `+3%` Swing Windup |
+| `head_camelot_knight` | **Camelot Knight Greathelm** | Set 12 (`forge_blueprint`) | `22 / 2 / 1` | `+10` | `13 WT` | `3G` | `+6` Stability, `+4%` Accuracy / `-4%` Heat Venting |
+| `head_novarin_outrider` | **Novarin Outrider Ridge-Cap** | Set 13 (`forge_blueprint`) | `12 / 1 / 0` | `+5` | `3 WT` | `2G` | `+0.5` Light, `+6%` Accuracy / `-3` Stability |
+| `head_novarin_keshig` | **Novarin Keshig Plumed Spangenhelm** | Set 14 (`forge_blueprint`) | `20 / 1 / 1` | `+5` | `7 WT` | `2G` | `+5` Stability, `+4%` Heat Venting / `-2%` Accuracy |
+| `head_novarin_tarkhan` | **Novarin Tarkhan War-Mask** | Set 15 (`forge_blueprint`) | `24 / 2 / 1` | `+5` | `13 WT` | `2G` | `+8` Stability / `+4%` Cooldowns |
 
-#### 2. Head Mod 1 — Optics Suites (`8 Modules` = `6 Looted` + `2 Crafted`)
+#### 2. Head Mod 1 — Optics Suites (`8 Modules` = `6 Looted` + `2 Crafted` · `0` Armor)
 | ID | Optics Module Name | Heritage / Origin | Light Bonus | Weight | Gem Slots | Domain Modifiers & Zero-Sum Trade-Off |
 | :--- | :--- | :--- | :---: | :---: | :---: | :--- |
 | `optics_embersight` | **Crystal Dynamics EmberSight Suite** | Warrior (`Looted`) | `+0.5` | `2 WT` | `2G` | `+8%` Lock Accuracy, `+6%` Stagger Dmg / `-3%` Heat Venting |
@@ -877,7 +895,7 @@ All 10 Frame Mod 1 (`slot: 'reactor'`) items—comprising **6 Canonical Heritage
 | `optics_crafted_kyanite_pinpoint` | **Synthesized Arclight Pinpoint Lens** | `Crafted` (`1 Kyanite + 1 Rubellite`) | `+1.0` | `3 WT` | `1G` | `+12%` Accuracy, `+8%` Stagger Dmg, `+4` Shield / `-4%` Heat Venting |
 | `optics_crafted_charoite_nightglass` | **Synthesized Phantom Nightglass** | `Crafted` (`1 Charoite`) | `+0.5` | `1 WT` | `1G` | `+10%` Stagger Dmg at ultralight `1 WT` / `-4` Stability |
 
-#### 3. Head Mods 2 & 3 — Battlefield Sensory Arrays (`15 Modules` = `13 Looted` + `2 Crafted`)
+#### 3. Head Mods 2 & 3 — Battlefield Sensory Arrays (`15 Modules` = `13 Looted` + `2 Crafted` · `0` Armor)
 | ID | Sensory Module Name | Internal Slot | Heritage / Origin | Weight | Gem Slots | Sensor Function & Zero-Sum Trade-Off |
 | :--- | :--- | :---: | :--- | :---: | :---: | :--- |
 | `sensory_a_federated_t7` | **Federated T7 Sensor Array** | `Sensory A` | Warrior (`Looted`) | `2 WT` | `2G` | `+0.5` Light, `+6%` Lock Accuracy / `+2%` Cooldowns |
@@ -898,20 +916,23 @@ All 10 Frame Mod 1 (`slot: 'reactor'`) items—comprising **6 Canonical Heritage
 
 ---
 
-### 7.7 Arm Aperture Plates (`7`), Arm Actuators (`8`) & Leg Striders (`8`)
+### 7.7 Arm Aperture Plates (`10`), Arm Actuators (`8`) & Leg Striders (`8`)
 
-#### 1. Exterior Arm Aperture Plates (`7 Aperture Plates` · Grant Layer 2 Armor)
-| ID | Aperture Plate Name | Set / Heritage | Armor Type | Armor (`DUR / RTG / THR`) | Shield | Weight | Gem Slots | Domain Modifiers & Trade-Off |
-| :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :--- |
-| `arms_bwi_twinstrike` | **BWI Twinstrike Gauntlets** | Set 0 (`Warrior`) | Reactive | `24 / 1 / 1` | `0` | `8 WT` | `2G` | `+6` Stability, `+4%` Accuracy / `+3%` Cooldowns |
-| `arms_fire_ice_line_holder` | **Fire & Ice Line Holder** | Set 1 (`Marauder`) | Hardened | `34 / 2 / 1` | `0` | `16 WT` | `2G` | `+10` Stability, `+6` Strike Mass / `+5%` Swing Windup |
-| `arms_solbright_cleaver` | **Solbright Cleaver Assemblies** | Set 2 (`Guardian`) | Layered | `26 / 1 / 1` | `+10` | `9 WT` | `2G` | `+4` Strike Mass / `-3%` Heat Venting |
-| `arms_shadowcraft_silencer` | **Shadowcraft Silencer Gauntlets** | Set 3 (`Rogue`) | Ablative | `14 / 1 / 0` | `0` | `4 WT` | `2G` | `-7%` Swing Windup, `+4%` Accuracy / `-4` Stability |
-| `arms_arcanum_channeler` | **Arcanum Channeler Assemblies** | Set 4 (`Wizard`) | Layered | `18 / 1 / 1` | `+12` | `8 WT` | `2G` | `+6%` Lock Accuracy / `-3` Stability |
-| `arms_sanctum_benediction` | **Sanctum Benediction Assemblies** | Set 5 (`Cleric`) | Reactive | `22 / 1 / 1` | `+10` | `8 WT` | `2G` | `-4%` Cooldowns / `-3` Strike Mass |
-| `arms_camelot_knight` | **Camelot Knight Gauntlets** | Set 12 (`Camelot Knight`) | Hardened | `28 / 2 / 1` | `+10` | `17 WT` | `3G` | `+8` Stability, `+6` Strike Mass / `+4%` Swing Windup |
+#### 1. Exterior Arm Aperture Plates (`10 Aperture Plates` · Grant Layer 2 Armor)
+| ID | Aperture Plate Name | Set (`Acquisition`) | Armor (`DUR / RTG / THR`) | Shield | Weight | Gem Slots | Domain Modifiers & Trade-Off |
+| :--- | :--- | :--- | :---: | :---: | :---: | :---: | :--- |
+| `arms_bwi_twinstrike` | **BWI Twinstrike Gauntlets** | Set 0 (`starter_post_boss`) | `24 / 1 / 1` | `0` | `8 WT` | `2G` | `+6` Stability, `+4%` Accuracy / `+3%` Cooldowns |
+| `arms_fire_ice_line_holder` | **Fire & Ice Line Holder** | Set 1 (`starter_post_boss`) | `34 / 2 / 1` | `0` | `16 WT` | `2G` | `+10` Stability, `+6` Strike Mass / `+5%` Swing Windup |
+| `arms_solbright_cleaver` | **Solbright Cleaver Assemblies** | Set 2 (`starter_post_boss`) | `26 / 1 / 1` | `+10` | `9 WT` | `2G` | `+4` Strike Mass / `-3%` Heat Venting |
+| `arms_shadowcraft_silencer` | **Shadowcraft Silencer Gauntlets** | Set 3 (`starter_post_boss`) | `14 / 1 / 0` | `0` | `4 WT` | `2G` | `-7%` Swing Windup, `+4%` Accuracy / `-4` Stability |
+| `arms_arcanum_channeler` | **Arcanum Channeler Assemblies** | Set 4 (`starter_post_boss`) | `18 / 1 / 1` | `+12` | `8 WT` | `2G` | `+6%` Lock Accuracy / `-3` Stability |
+| `arms_sanctum_benediction` | **Sanctum Benediction Assemblies** | Set 5 (`starter_post_boss`) | `22 / 1 / 1` | `+10` | `8 WT` | `2G` | `-4%` Cooldowns / `-3` Strike Mass |
+| `arms_camelot_knight` | **Camelot Knight Gauntlets** | Set 12 (`forge_blueprint`) | `28 / 2 / 1` | `+10` | `17 WT` | `3G` | `+8` Stability, `+6` Strike Mass / `+4%` Swing Windup |
+| `arms_novarin_outrider` | **Novarin Outrider Bow-Bracers** | Set 13 (`forge_blueprint`) | `16 / 1 / 0` | `0` | `4 WT` | `2G` | `-6%` Swing Windup, `+5%` Accuracy / `-3` Stability |
+| `arms_novarin_keshig` | **Novarin KeshigSplint Vambraces** | Set 14 (`forge_blueprint`) | `26 / 2 / 1` | `0` | `10 WT` | `2G` | `+6` Stability, `+4` Strike Mass / `+3%` Cooldowns |
+| `arms_novarin_tarkhan` | **Novarin Tarkhan Crusher Gauntlets** | Set 15 (`forge_blueprint`) | `34 / 2 / 1` | `0` | `18 WT` | `2G` | `+10` Stability, `+8` Strike Mass / `+6%` Swing Windup |
 
-#### 2. Arms Mod 1 — Forearm & Shoulder Actuators (`8 Modules` = `6 Looted` + `2 Crafted`)
+#### 2. Arms Mod 1 — Forearm & Shoulder Actuators (`8 Modules` = `6 Looted` + `2 Crafted` · `0` Armor)
 | ID | Actuator Module Name | Heritage / Origin | Weight | Gem Slots | Domain Modifiers & Zero-Sum Trade-Off |
 | :--- | :--- | :--- | :---: | :---: | :--- |
 | `arms_cd_striker_vambraces` | **Crystal Dynamics Striker Vambraces** | Warrior (`Looted`) | `4 WT` | `2G` | `-12%` Swing Windup, `+6` Strike Mass, `-6%` Cooldowns / `-4%` Heat Venting |
@@ -923,7 +944,7 @@ All 10 Frame Mod 1 (`slot: 'reactor'`) items—comprising **6 Canonical Heritage
 | `actuators_crafted_carnelian_piston` | **Synthesized Heavy Siege Pistons** | `Crafted` (`1 Carnelian + 1 Hematite`) | `12 WT` | `1G` | `+14` Strike Mass, `+12` Stability / `+12 WT` & `+6%` Swing Windup |
 | `actuators_crafted_spinel_overdrive` | **Synthesized Assault Torque Servos** | `Crafted` (`1 Spinel`) | `5 WT` | `1G` | `-14%` Swing Windup, `+6` Strike Mass, `-7%` Cooldowns / `-5%` Heat Venting |
 
-#### 3. Frame Mod 2 — Leg Striders & Actuators (`8 Modules` = `6 Looted` + `2 Crafted`)
+#### 3. Frame Mod 2 — Leg Striders & Actuators (`8 Modules` = `6 Looted` + `2 Crafted` · `0` Armor)
 | ID | Leg Strider Name | Heritage / Origin | Capacity Bonus | Weight | Gem Slots | Domain Modifiers & Zero-Sum Trade-Off |
 | :--- | :--- | :--- | :---: | :---: | :---: | :--- |
 | `legs_bwi_gatecrasher` | **BWI Gatecrasher Striders** | Warrior (`Looted`) | `+24 WT` | `7 WT` | `2G` | `+4%` Stride Speed, `+6` Stability / `-3%` Heat Venting |
@@ -937,22 +958,41 @@ All 10 Frame Mod 1 (`slot: 'reactor'`) items—comprising **6 Canonical Heritage
 
 ---
 
-### 7.8 The 9 Canonical Gemstones, Belt Flasks, Consumables, Currencies & Quest/Relic Items
+### 7.8 The 9 Canonical Gemstones (Per-Slot Harmonics & 3-Tier Combos), Belt Flasks, Consumables, Currencies & Quest/Relic Items
 
-#### 1. The 9 Canonical Gemstones (`GEMSTONE_CATALOG` · Unified Skill, Feat & Modification Currency)
-| Gem ID | Name & Color | Assignment & Funded Skills | Buy / Sell | Exterior Armor Socket Effect | Weapon Component / Resonance Socket Effect |
-| :--- | :--- | :--- | :---: | :--- | :--- |
-| `moonstone` | **Moonstone** (`White`) | Mana Core · Funds `Guardian`, `Cleric` | `25g / 12g` | `+10` Shield / `+3 WT`, `-4` Armor Dur | `+12%` Layer 1 Shield Dmg & `-6%` Heat Cost / `-4%` BCU |
-| `spinel` | **Spinel** (`Red`) | Assault Ballistics · Funds `Warrior` | `25g / 12g` | `+8` Shield, `+8` Armor Dur / `+4 WT` | `+6%` Combat Tempo & `+5%` BCU / `+6%` Heat Cost |
-| `carnelian` | **Carnelian** (`Orange`) | Heavy Siege · Funds `Marauder` | `25g / 12g` | `+15` Armor Dur, `+1` THR (`+6` Cap on Torso) / `+8 WT` | `+12%` Impulse (`J`) & `+10%` Armor `DUR` Shred / `-5%` Tempo, `+1 WT` |
-| `titanite` | **Titanite** (`Yellow`) | Aegis Vanguard · Funds `Guardian` | `25g / 12g` | `+12` Shield, `+1` Armor RTG / `+6 WT` | `+4` Stability (`S`) & `-12%` Recoil / `+1 WT` |
-| `demantoid` | **Demantoid** (`Green`) | Harmonic Support · Funds `Cleric` | `25g / 12g` | `+8` Shield, `+10` Armor Dur / `+3 WT` | Vents `-2` Reactor Heat on hit & `+6%` Swap Speed / `-4%` Impulse (`J`) |
-| `kyanite` | **Kyanite** (`Blue`) | Beam Artillery · Funds `Wizard` | `25g / 12g` | `+6` Shield, `+0.5` Light / `+2 WT`, `-3` Dur | `+10%` Effective Range & `+8%` Projectile Velocity / `+5%` Heat Cost |
-| `charoite` | **Charoite** (`Purple`) | Recon & CQC · Funds `Rogue` | `25g / 12g` | `+6` Shield, `-4 WT` Ultralight / `-6` Armor Dur | `+8%` Combat Tempo & `-1 WT` Ultralight / `-8%` Impulse (`J`) |
-| `rubellite` | **Rubellite** (`Magenta`) | Ether Core · Funds `Rogue`, `Wizard` | `25g / 12g` | `+10` Shield, `+10` Armor Dur / `+4 WT` | `+8%` Finisher / Step-1 BCU & `+10%` Shield Dmg / `+8%` Heat Cost |
-| `hematite` | **Hematite** (`Black`) | Ichor Core · Funds `Warrior`, `Marauder` | `25g / 12g` | `+18` Armor Durability / `+5 WT`, `-4` Shield | `-12%` Reactor Heat Cost & `+2` `THR` Pierce / `-3` Stability (`S`) |
+#### 1. The 9 Canonical Gemstones (`GEMSTONE_CATALOG` · Per-Slot Exterior Armor Harmonics & Weapon Sockets)
+Duplicate gems socketed into the same exterior armor piece scale at **`100%` (1st) → `70%` (2nd) → `40%` (3rd)** (`DUPLICATE_CURVE = [1.0, 0.7, 0.4]`). Gems matching your equipped Reactor Family (`Ichor`: `Hematite`/`Spinel`/`Carnelian`; `Mana`: `Moonstone`/`Titanite`/`Demantoid`; `Ether`: `Rubellite`/`Kyanite`/`Charoite`) gain **`+20%` Tier 1 Reactor Core Harmonic Resonance** to their positive stats:
 
-#### 2. Gem-Infused Belt Flasks, Tactical Consumables & Field Kits (`11 Items`)
+| Gem ID | Name & Color | Core / Discipline | Core Frame Socket (`plating` · `3G`) | Head Dome Socket (`head` · `2G/3G`) | Arm Aperture Socket (`arms` · `2G/3G`) | Weapon Component / Resonance Socket |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `moonstone` | **Moonstone** (`White`) | Mana Core (`Guardian`, `Cleric`) | `+14` Shield, `-5%` Shield Regen Delay / `+2 WT`, `-5` DUR | `+10` Shield, `+0.4` Light / `+1 WT`, `-3` DUR | `+8` Shield, `-4%` Guard/Skill Energy / `+1 WT`, `-2` Strike Mass | `+12%` Layer 1 Shield Dmg & `-6%` Heat Cost / `-4%` BCU |
+| `spinel` | **Spinel** (`Red`) | Ichor (`Warrior`) | `+10` DUR, `+8%` Venting / `+3 WT`, `-4` Shield | `+6%` Lock Acc, `-3%` Skill CD / `+2 WT`, `-3%` Venting | `-5%` Swing Windup, `+3` Strike Mass / `+2 WT`, `+4%` Heat Cost | `+6%` Combat Tempo & `+5%` BCU / `+6%` Heat Cost |
+| `carnelian` | **Carnelian** (`Orange`) | Ichor (`Marauder`) | `+18` DUR, `+1` THR, `+6` Load Cap / `+6 WT`, `-2%` Stride | `+10` DUR, `+5` Stability / `+4 WT`, `+2%` Windup | `+6` Strike Mass, `+6` Recoil Stability / `+4 WT`, `+4%` Windup | `+12%` Impulse (`J`) & `+10%` Armor `DUR` Shred / `-5%` Tempo, `+1 WT` |
+| `titanite` | **Titanite** (`Yellow`) | Mana (`Guardian`) | `+12` Shield, `+1` RTG, `+6` Stability / `+5 WT`, `-2%` Stride | `+8` Shield, `+1` RTG, `+4` Stability / `+3 WT`, `-2%` Venting | `+6` Shield, `+6` Guard Stability, `-5%` Block Cost / `+3 WT`, `+3%` Windup | `+4` Stability (`S`) & `-12%` Recoil / `+1 WT` |
+| `demantoid` | **Demantoid** (`Green`) | Mana (`Cleric`) | `+10` Shield, `+10` DUR, `+6%` Venting / `+3 WT`, `-2` Strike Mass | `-5%` Skill CD, `+6` Shield / `+2 WT`, `-3%` Stagger Dmg | `-5%` Skill CD, `+4%` Venting / `+2 WT`, `-2` Strike Mass | Vents `-2` Reactor Heat on hit & `+6%` Swap Speed / `-4%` Impulse (`J`) |
+| `kyanite` | **Kyanite** (`Blue`) | Ether (`Wizard`) | `+12` Shield, `-4%` Skill CD / `+2 WT`, `-4` DUR | `+0.6` Light, `+7%` Lock Acc / `+1 WT`, `-3` Stability | `+6%` Ranged Acc, `+5%` Proj Velocity / `+2 WT`, `-3` Stability | `+10%` Effective Range & `+8%` Projectile Velocity / `+5%` Heat Cost |
+| `charoite` | **Charoite** (`Purple`) | Ether (`Rogue`) | `-4 WT` Ultralight, `+6` Shield, `+3%` Stride / `-8` DUR, `-3` Stability | `-2 WT`, `+0.5` Light, `+6%` Stagger/Crit / `-4` DUR, `-2` Stability | `-2 WT`, `-6%` Swing Windup, `-8%` Swap CD / `-4` DUR, `-3` Strike Mass | `+8%` Combat Tempo & `-1 WT` Ultralight / `-8%` Impulse (`J`) |
+| `rubellite` | **Rubellite** (`Magenta`) | Ether Core (`Rogue`, `Wizard`) | `+12` Shield, `+10` DUR / `+3 WT`, `+3%` Heat Cost | `+8` Shield, `+5%` Stagger/Crit / `+2 WT`, `-3%` Venting | `+6` Shield, `-4%` Swing Windup, `+4%` Acc / `+2 WT`, `+4%` Heat Cost | `+8%` Finisher / Step-1 BCU & `+10%` Shield Dmg / `+8%` Heat Cost |
+| `hematite` | **Hematite** (`Black`) | Ichor Core (`Warrior`, `Marauder`) | `+22` DUR, `+8%` Venting / `+5 WT`, `-6` Shield | `+12` DUR, `+5%` Venting / `+3 WT`, `-4` Shield | `+10` DUR, `+4` Strike Mass, `-5%` Heat Cost / `+3 WT`, `-4` Shield | `-12%` Reactor Heat Cost & `+2` `THR` Pierce / `-3` Stability (`S`) |
+
+#### 2. Exterior Armor Gemstone Resonance Combos (`Tier 2 Pairs` & `Tier 3 Triads`)
+| Tier | Combo ID & Name | Required Gems (Unordered Set) | Eligible Armor Slots | Positive Gem Boost & Flat Resonance Bonus |
+| :---: | :--- | :--- | :---: | :--- |
+| **Tier 2 Pair** | `tempered_crux` — **Tempered Crux** | `Hematite + Spinel` | Any `2G` or `3G` Exterior Piece | **`+25%`** to paired gems' positive stats + **`+6%` Heat Venting** & **`-3%` Swing Windup** |
+| **Tier 2 Pair** | `siege_bastion` — **Siege Bastion** | `Hematite + Carnelian` | Any `2G` or `3G` Exterior Piece | **`+25%`** to paired gems' positive stats + **`+8` Armor DUR** & **`+4` Charge Stability (`S`)** |
+| **Tier 2 Pair** | `aegis_lattice` — **Aegis Lattice** | `Moonstone + Titanite` | Any `2G` or `3G` Exterior Piece | **`+25%`** to paired gems' positive stats + **`+8` Layer 1 Shield** & **`+4` Guard Stability** |
+| **Tier 2 Pair** | `sanctum_choir` — **Sanctum Choir** | `Moonstone + Demantoid` | Any `2G` or `3G` Exterior Piece | **`+25%`** to paired gems' positive stats + **`-5%` Skill Cooldowns** & **`+6` Layer 1 Shield** |
+| **Tier 2 Pair** | `prism_conduit` — **Prism Conduit** | `Rubellite + Kyanite` | Any `2G` or `3G` Exterior Piece | **`+25%`** to paired gems' positive stats + **`+6%` Ranged Accuracy** & **`+0.4` Light Radius** |
+| **Tier 2 Pair** | `veil_specter` — **Veil Specter** | `Rubellite + Charoite` | Any `2G` or `3G` Exterior Piece | **`+25%`** to paired gems' positive stats + **`-2 WT` Equip Weight** & **`+3%` Stride Speed** |
+| **Tier 2 Pair** | `forge_quench` — **Forge Quench** | `Spinel + Demantoid` | Any `2G` or `3G` Exterior Piece | **`+25%`** to paired gems' positive stats + **`+8%` Heat Venting** & **`+6` Armor DUR** |
+| **Tier 2 Pair** | `mirrored_glaze` — **Mirrored Glaze** | `Titanite + Kyanite` | Any `2G` or `3G` Exterior Piece | **`+25%`** to paired gems' positive stats + **`+1` Armor Rating (`RTG`)** & **`+6` Shield** |
+| **Tier 2 Pair** | `dusk_striker` — **Dusk Striker** | `Carnelian + Charoite` | Any `2G` or `3G` Exterior Piece | **`+25%`** to paired gems' positive stats + **`+4` Strike Mass** & **`-3%` Swing Windup** |
+| **Tier 3 Triad** | `ichor_crucible` — **Crucible of Ichor** | `Hematite + Spinel + Carnelian` | Any `3G` Piece (`plating`, `head_camelot_knight`, `arms_camelot_knight`) | **`+35%`** to all 3 gems' positive stats + **`+12` Armor DUR**, **`+1` Armor THR**, & **`+10%` Heat Venting** |
+| **Tier 3 Triad** | `mana_sanctuary` — **Sanctuary of Mana** | `Moonstone + Titanite + Demantoid` | Any `3G` Piece (`plating`, `head_camelot_knight`, `arms_camelot_knight`) | **`+35%`** to all 3 gems' positive stats + **`+15` Shield**, **`+1` Armor RTG**, & **`-6%` Skill Cooldowns** |
+| **Tier 3 Triad** | `ether_astral` — **Astral Ether Lattice** | `Rubellite + Kyanite + Charoite` | Any `3G` Piece (`plating`, `head_camelot_knight`, `arms_camelot_knight`) | **`+35%`** to all 3 gems' positive stats + **`-3 WT` Equip Weight**, **`+4%` Stride Speed**, & **`+0.6` Light** |
+| **Tier 3 Triad** | `prismatic_core` — **Prismatic Core Triad** | `Hematite + Moonstone + Rubellite` | Any `3G` Piece (`plating`, `head_camelot_knight`, `arms_camelot_knight`) | **`+30%`** to all 3 gems' positive stats + **Chassis-Wide Prismatic Universal Affinity (`+10%` positive gem stats on Head & Arms)** |
+
+#### 3. Gem-Infused Belt Flasks, Tactical Consumables & Field Kits (`11 Items`)
 | Item ID | Item Name | Category | Buy / Sell | Tactical Effect on Activation / Equip |
 | :--- | :--- | :---: | :---: | :--- |
 | `grail_water` | **Moonstone Grail Flask** | `consumable` | `35g / 15g` | Restores **`+45` Layer 1 Shield Capacity** and clears Shield Overload. |
@@ -967,14 +1007,14 @@ All 10 Frame Mod 1 (`slot: 'reactor'`) items—comprising **6 Canonical Heritage
 | `orc_war_paint` | **Orc War Paint** | `consumable` | `25g / 10g` | Applies ceremonial ochre pigment: **`+15%` Weapon Damage Overdrive** & **`+10%` Stagger Impact** for `8.0s` (`+10` Presence). |
 | `booster_kit` | **Basic Booster Kit** | `equipment` | `100g / 45g` | `0 WT` passive thruster rig found on the fallen scout in M00 The Bog; enables **`[B]` Evasive Dash** (`0.18s` vector burst, `1.4s` CD, `+8` Heat). |
 
-#### 3. Scrap & Coin Pickups (`3 Tiers`)
+#### 4. Scrap & Coin Pickups (`3 Tiers`)
 | Currency Tier | Value Range | Sprite Asset | Usage |
 | :--- | :---: | :--- | :--- |
 | **Small Coin** | `1 – 4 Scrap` | `SMALL_COIN_BASE64` (`16×16`) | Field salvage currency dropped by minor patrols; funds Armory Workbench component crafting and merchant trades. |
 | **Large Coin** | `5 – 14 Scrap` | `LARGE_COIN_BASE64` (`16×16`) | Mid-tier salvage currency dropped by elite enemies and supply containers. |
 | **Coin Bag** | `15+ Scrap` | `COIN_BAG_BASE64` (`16×16`) | High-value salvage pouch recovered from boss sanctums, hidden caches, and raid rewards. |
 
-#### 4. Campaign Quest Items, Keys, Relics & Lore-Bound Attachments (`13 Items`)
+#### 5. Campaign Quest Items, Keys, Relics & Lore-Bound Attachments (`13 Items`)
 | Item ID | Item Name | Category | Origin / World | Passive / Narrative Function |
 | :--- | :--- | :---: | :--- | :--- |
 | `bedivere_ring` | **Bedivere's Signet Ring** | `key` | Belldor (`M00 The Bog`) | `0 WT` signet artifact (`+2` Light Resonance). Unlocks Camelot Vanguard dialogue gates; causes loyalist merchants in Border Town to treat you as a grave robber if taken. |

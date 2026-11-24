@@ -3378,8 +3378,16 @@ export function computePlayerLoadMetrics(state: OrionState): PlayerLoadMetrics {
   const eq = state.equipmentSlots;
 
   // 1. Frame Load Capacity (Frame Plating + Frame Mod 1 Reactor + Frame Mod 2 Legs + Frame Mod 3 Mobility Kit + Feats)
-  const platingItem = findHardwareItemByNameOrId(eq?.plating);
   const reactorItem = findHardwareItemByNameOrId(eq?.reactorCore);
+  const reactorFamily = reactorItem?.reactorFamily || state.reactor || trait.reactor || 'Ichor';
+
+  const platingItem = findHardwareItemByNameOrId(eq?.plating, {
+    reactorFamily,
+    prismaticUniversalAffinity: false,
+  });
+  const prismaticUniversalAffinity =
+    platingItem?.socketEvalResult?.activeCombo?.id === 'prismatic_core';
+
   const legsItem = findHardwareItemByNameOrId(eq?.legs);
   const mobilityMod = ACTION_MODIFICATION_CATALOG.find(
     (m) => m.id === eq?.installedMods?.mobility
@@ -3387,7 +3395,7 @@ export function computePlayerLoadMetrics(state: OrionState): PlayerLoadMetrics {
 
   const baseLoadClass: FrameLoadCapacity =
     platingItem?.baseLoadCapacity || trait.weightClass || 'medium';
-  const baseFrameCapacity =
+  const defaultFrameCapacity =
     baseLoadClass === 'superheavy'
       ? 140
       : baseLoadClass === 'heavy'
@@ -3395,6 +3403,7 @@ export function computePlayerLoadMetrics(state: OrionState): PlayerLoadMetrics {
         : baseLoadClass === 'light'
           ? 84
           : 90;
+  const baseFrameCapacity = platingItem?.baseLoadCapacityNumber ?? defaultFrameCapacity;
 
   const frameModsCapacity =
     getHardwareCapacityBonus(reactorItem) +
@@ -3413,7 +3422,10 @@ export function computePlayerLoadMetrics(state: OrionState): PlayerLoadMetrics {
   const maxCapacity = Math.max(60, baseFrameCapacity + frameModsCapacity + featsCapacity);
 
   // 2. Equipped Weight (Head + Arms + Frame + Weapons)
-  const headItem = findHardwareItemByNameOrId(eq?.head);
+  const headItem = findHardwareItemByNameOrId(eq?.head, {
+    reactorFamily,
+    prismaticUniversalAffinity,
+  });
   const opticsItem = findHardwareItemByNameOrId(eq?.headOptics);
   const sensoryAItem = findHardwareItemByNameOrId(eq?.sensoryA);
   const sensoryBItem = findHardwareItemByNameOrId(eq?.sensoryB);
@@ -3423,7 +3435,10 @@ export function computePlayerLoadMetrics(state: OrionState): PlayerLoadMetrics {
     (sensoryAItem ? getHardwareBaseWeight(sensoryAItem) : 0) +
     (sensoryBItem ? getHardwareBaseWeight(sensoryBItem) : 0);
 
-  const armsItem = findHardwareItemByNameOrId(eq?.arms);
+  const armsItem = findHardwareItemByNameOrId(eq?.arms, {
+    reactorFamily,
+    prismaticUniversalAffinity,
+  });
   const actuatorsItem = findHardwareItemByNameOrId(eq?.armActuators);
   const structureMod = ACTION_MODIFICATION_CATALOG.find(
     (m) => m.id === eq?.installedMods?.melee

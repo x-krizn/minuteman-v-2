@@ -39,6 +39,7 @@ export function getItemDefinition(id: string): ItemWikiDefinition | undefined {
   return ITEM_REGISTRY[id];
 }
 
+export * from './blueprints';
 export * from './consumables';
 export * from './currency';
 export * from './gemstones';

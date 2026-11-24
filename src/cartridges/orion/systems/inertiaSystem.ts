@@ -527,6 +527,10 @@ export function resolvePlayerInertiaProfile(state: OrionState): ActorInertiaProf
   // Aggregate stability and servo strike mass from equipped chassis hardware & sub-modules
   const hwStats = resolveEquippedHardwareStats(state);
   stabilityFlat += hwStats.stabilityBonus;
+  const playerSpeed = Math.hypot(state.vx || 0, state.vy || 0);
+  if (playerSpeed > 8 && hwStats.chargeStabilityBonus) {
+    stabilityFlat += hwStats.chargeStabilityBonus;
+  }
   weaponMass += hwStats.attackMassBonus;
 
   const aux3Item = findHardwareItemByNameOrId(state.equipmentSlots?.aux3);
@@ -548,9 +552,13 @@ export function resolvePlayerInertiaProfile(state: OrionState): ActorInertiaProf
   const loadMetrics = computePlayerLoadMetrics(state);
   const hardwareAndModMassDelta = Math.max(-24, loadMetrics.equippedWeight - 52);
 
+  const chargeMassMultiplier =
+    playerSpeed > 8 && hwStats.chargeMassPct ? 1 + hwStats.chargeMassPct : 1.0;
+
   const totalBaseWeight = Math.round(
     (baseFrameMass + weaponMass * 0.45 + offhandMass + hardwareAndModMassDelta + weightFlat) *
-      weightMult
+      weightMult *
+      chargeMassMultiplier
   );
   const armorRating = state.armor?.rating ?? 8;
   const stability = computeStability(totalBaseWeight, armorRating, {
@@ -558,7 +566,7 @@ export function resolvePlayerInertiaProfile(state: OrionState): ActorInertiaProf
     stabilityMult,
   });
   const shrugOffDeadbandDv = Math.round(INERTIA_CONSTANTS.K1_DEADBAND * stability);
-  const maxChargeWeight = Math.round(totalBaseWeight * 2);
+  const maxChargeWeight = Math.round(totalBaseWeight * (2 + (hwStats.chargeMassPct ?? 0)));
 
   const recoilAbsorptionLabel =
     stability >= 75

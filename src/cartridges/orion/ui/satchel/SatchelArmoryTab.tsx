@@ -6,9 +6,19 @@
 import React, { useEffect, useState } from 'react';
 import { soundSystem } from '../../../../engine/core/soundSystem';
 import {
+  canForgeExteriorArmorPiece,
+  EXTERIOR_ARMOR_BY_ID,
+  FORGE_RECIPES,
+  forgeExteriorArmorPieceAtCyclopeanForge,
+  formatStatDeltaBadges,
+  isArmorBlueprintUnlocked,
+  REACTOR_FAMILY_GEMS,
+} from '../../database/equipment/exterior_armor_harmonics';
+import {
   getWeaponDefinition,
   WEAPON_REGISTRY,
 } from '../../database/equipment/weapons';
+import { ARMOR_BLUEPRINTS } from '../../database/items/blueprints';
 import {
   acquireAdditionalWeaponCopy,
   ACTION_MODIFICATION_CATALOG,
@@ -1340,7 +1350,22 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
       ? getWeaponComponentSlots(baseId)
       : (['grip', 'focus', 'sight'] as WeaponComponentSlotId[]);
     const compMap = eq.installedWeaponComponents?.[targetInstanceId] || {};
-    const hwItem = !isWeaponItem ? findHardwareItemByNameOrId(targetInstanceId) : undefined;
+    const activeReactorFamily =
+      findHardwareItemByNameOrId(eq.reactorCore)?.reactorFamily || state.reactor || 'Ichor';
+    const coreplateEval = !isWeaponItem
+      ? findHardwareItemByNameOrId(eq.plating, {
+          reactorFamily: activeReactorFamily,
+          prismaticUniversalAffinity: false,
+        })?.socketEvalResult
+      : undefined;
+    const prismaticUniversalAffinity = coreplateEval?.activeCombo?.id === 'prismatic_core';
+    const hwItem = !isWeaponItem
+      ? findHardwareItemByNameOrId(targetInstanceId, {
+          reactorFamily: activeReactorFamily,
+          prismaticUniversalAffinity,
+        })
+      : undefined;
+    const socketEval = hwItem?.socketEvalResult;
     const activeAnatomicalSlotName = anatomicalSlots[clampedSlotIdx];
     const currentSlotGem = slotGems[clampedSlotIdx] || null;
     const currentInstalledPartId =
@@ -1365,7 +1390,9 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
             <div className="text-[10px] font-bold text-[#fde047]">
               {isUniqueWeapon
                 ? `UNIQUE MAGITECH · FIXED COMPONENTS & 1 RESONANCE GEM SOCKET (${installedGems.length}/${maxSlots} OCCUPIED)`
-                : `ANY-ORDER HARDWARE GEM SOCKETS (${installedGems.length}/${maxSlots} OCCUPIED)`}
+                : socketEval
+                  ? `EXTERIOR ARMOR GEMSTONE HARMONICS (${installedGems.length}/${maxSlots}G · 100% / 70% / 40% DUPLICATE CURVE)`
+                  : `ANY-ORDER HARDWARE GEM SOCKETS (${installedGems.length}/${maxSlots} OCCUPIED)`}
             </div>
             <div className="text-[9px] text-[#94a3b8]">
               {isUniqueWeapon ? (
@@ -1376,6 +1403,16 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                     {formatModifiedEquipmentName(baseName, ['spinel'])}
                   </span>
                   ).
+                </>
+              ) : socketEval ? (
+                <>
+                  Duplicate gems on the same armor piece scale along the{' '}
+                  <b className="text-[#7dd3fc]">100% → 70% → 40%</b> diminishing harmonic curve.
+                  Matching your{' '}
+                  <b className="text-[#fde047]">{activeReactorFamily} Reactor Core</b> grants{' '}
+                  <b className="text-[#86efac]">+20% Tier 1 Harmonic</b>; Two-Gem Pairs grant{' '}
+                  <b className="text-[#38bdf8]">+25% Tier 2</b>; Three-Gem Triads grant{' '}
+                  <b className="text-[#c084fc]">+35% / +30% Tier 3</b>.
                 </>
               ) : (
                 <>
@@ -1401,6 +1438,63 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
           )}
         </div>
 
+        {/* 3-Tier Gemstone Resonance Combo Telemetry Banner for Exterior Armor */}
+        {socketEval && (
+          <div className="p-2 rounded-xs bg-[#090d14] border border-[#334155] space-y-1">
+            <div className="flex flex-wrap items-center justify-between gap-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[9px] font-bold text-[#fde047]">
+                  ACTIVE HARMONIC RESONANCE:
+                </span>
+                {socketEval.activeCombo?.tier === 3 ? (
+                  <span className="px-1.5 py-0.5 rounded-xs bg-[#3b0764] text-[#e9d5ff] border border-[#c084fc]/60 text-[8px] font-bold">
+                    ✦ TIER 3 TRIAD · {socketEval.activeCombo.name.toUpperCase()} (+
+                    {Math.round(socketEval.activeCombo.positiveBoost * 100)}% GEM POSITIVES ·{' '}
+                    {formatStatDeltaBadges(socketEval.activeCombo.flatBonus).join(', ') ||
+                      '+10% Universal Gem Affinity'})
+                  </span>
+                ) : socketEval.activeCombo?.tier === 2 ? (
+                  <span className="px-1.5 py-0.5 rounded-xs bg-[#082f49] text-[#7dd3fc] border border-[#38bdf8]/60 text-[8px] font-bold">
+                    ✦ TIER 2 PAIR · {socketEval.activeCombo.name.toUpperCase()} (+
+                    {Math.round(socketEval.activeCombo.positiveBoost * 100)}% PAIRED GEM
+                    POSITIVES · {formatStatDeltaBadges(socketEval.activeCombo.flatBonus).join(', ')})
+                  </span>
+                ) : (
+                  <span className="text-[8px] text-[#64748b] italic">
+                    No Tier 2 Pair or Tier 3 Triad active on this piece — socket distinct paired or
+                    triad gemstones to unlock +25% to +35% resonance.
+                  </span>
+                )}
+              </div>
+              {prismaticUniversalAffinity && hwItem?.slot !== 'plating' && (
+                <span className="px-1.5 py-0.5 rounded-xs bg-[#052e16] text-[#86efac] border border-[#22c55e]/50 text-[8px] font-bold">
+                  PRISMATIC CORE AFFINITY: +10% ALL GEM POSITIVES
+                </span>
+              )}
+            </div>
+            {formatStatDeltaBadges(socketEval.totalGemAndComboDelta).length > 0 && (
+              <div className="flex flex-wrap items-center gap-1 pt-0.5 border-t border-[#1e293b]">
+                <span className="text-[8px] font-bold text-[#94a3b8]">NET SOCKET DELTAS:</span>
+                {formatStatDeltaBadges(socketEval.totalGemAndComboDelta).map((badge, bIdx) => (
+                  <span
+                    key={`delta-badge-${bIdx}`}
+                    className={`px-1.5 py-0.2 rounded-[2px] text-[8px] font-bold ${
+                      badge.startsWith('-') &&
+                      !badge.includes('CD') &&
+                      !badge.includes('Delay') &&
+                      !badge.includes('Cost')
+                        ? 'bg-[#450a0a] text-[#fca5a5]'
+                        : 'bg-[#052e16] text-[#86efac]'
+                    }`}
+                  >
+                    {badge}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Interactive Slot Selector Buttons */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
           {Array.from({ length: maxSlots }).map((_, idx) => {
@@ -1410,6 +1504,7 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
               ? 'RESONANCE SOCKET'
               : `${hwItem?.canonicalSlotLabel.toUpperCase() || 'HARDWARE'} SOCKET ${idx + 1}`;
             const isSelected = clampedSlotIdx === idx;
+            const socketDetail = socketEval?.socketDetails.find((d) => d.socketIndex === idx);
 
             return (
               <div
@@ -1433,15 +1528,26 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                   <span className="text-[9px] font-bold text-[#7dd3fc]">
                     SLOT {idx + 1} · [{slotLabel}]
                   </span>
-                  <span
-                    className={`text-[9px] px-1 py-0.2 rounded-[2px] font-bold ${
-                      sGem
-                        ? 'bg-[#052e16] text-[#86efac] border border-[#22c55e]/40'
-                        : 'bg-[#1e293b] text-[#94a3b8]'
-                    }`}
-                  >
-                    {sGem ? 'INSTALLED' : 'EMPTY'}
-                  </span>
+                  <div className="flex items-center gap-1">
+                    {socketDetail && (
+                      <span
+                        className="text-[8px] px-1 py-0.2 rounded-[2px] font-mono font-bold bg-[#1e1b4b] text-[#c4b5fd] border border-[#818cf8]/40"
+                        title={`Duplicate Curve: ${Math.round(socketDetail.duplicateScalar * 100)}% | Positive Multiplier: ${Math.round(socketDetail.positiveMultiplier * 100)}%`}
+                      >
+                        {Math.round(socketDetail.duplicateScalar * 100)}% DUP →{' '}
+                        {Math.round(socketDetail.positiveMultiplier * 100)}% POS
+                      </span>
+                    )}
+                    <span
+                      className={`text-[9px] px-1 py-0.2 rounded-[2px] font-bold ${
+                        sGem
+                          ? 'bg-[#052e16] text-[#86efac] border border-[#22c55e]/40'
+                          : 'bg-[#1e293b] text-[#94a3b8]'
+                      }`}
+                    >
+                      {sGem ? 'INSTALLED' : 'EMPTY'}
+                    </span>
+                  </div>
                 </div>
 
                 {gemInfo ? (
@@ -1457,6 +1563,11 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                       >
                         {`${gemInfo.name} Socket`}
                       </span>
+                      {socketDetail && socketDetail.reactorBoost > 0 && (
+                        <span className="text-[8px] px-1 py-0.2 rounded-[2px] bg-[#052e16] text-[#86efac] font-bold shrink-0">
+                          +20% {activeReactorFamily.toUpperCase()}
+                        </span>
+                      )}
                     </div>
                     <button
                       type="button"
@@ -1508,6 +1619,14 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                 ? WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS[gem.id]
                 : getHardwareGemBonusDescription(hwItem?.slot || 'plating', gem.id);
               const wtDelta = WEAPON_GEM_WEIGHT_DELTA[gem.id];
+              const reactorFamilyKey = activeReactorFamily.toLowerCase() as
+                | 'ichor'
+                | 'mana'
+                | 'ether';
+              const isReactorHarmonic =
+                !isWeaponItem &&
+                Boolean(socketEval) &&
+                (REACTOR_FAMILY_GEMS[reactorFamilyKey] || []).includes(gem.id);
 
               return (
                 <button
@@ -1549,6 +1668,11 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                         sizeClass="w-3.5 h-3.5"
                       />
                       {gem.name}
+                      {isReactorHarmonic && (
+                        <span className="px-1 py-0.2 rounded-[2px] bg-[#052e16] text-[#86efac] text-[8px] font-bold">
+                          +20% {activeReactorFamily.toUpperCase()}
+                        </span>
+                      )}
                     </span>
                     <span className="text-[9px] text-[#94a3b8] font-bold">
                       {isCheatMode ? '∞' : `×${invCount}`}
@@ -2030,7 +2154,20 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
           {/* Active Hardware / Sub-Module Inspection + Gem Socket Matrix + Sub-Module Swapper */}
           {(() => {
             const currentHwId = getEquippedHardwareIdForSlot(activeHardwareSlot);
-            const currentHw = findHardwareItemByNameOrId(currentHwId);
+            const activeReactorFamily =
+              findHardwareItemByNameOrId(eq.reactorCore)?.reactorFamily ||
+              state.reactor ||
+              'Ichor';
+            const coreplateEval = findHardwareItemByNameOrId(eq.plating, {
+              reactorFamily: activeReactorFamily,
+              prismaticUniversalAffinity: false,
+            })?.socketEvalResult;
+            const prismaticUniversalAffinity =
+              coreplateEval?.activeCombo?.id === 'prismatic_core';
+            const currentHw = findHardwareItemByNameOrId(currentHwId, {
+              reactorFamily: activeReactorFamily,
+              prismaticUniversalAffinity,
+            });
             const baseHwId = parseEquipmentInstanceId(currentHw?.id || currentHwId).baseId;
             const baseHw = findHardwareItemByNameOrId(baseHwId) || currentHw;
             const isExteriorArmor =
@@ -2042,6 +2179,11 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
               ...CHASSIS_HARDWARE_CATALOG.filter((h) => h.slot === activeHardwareSlot),
               ...CRAFTED_SUBMODULE_HARDWARE.filter((h) => h.slot === activeHardwareSlot),
             ];
+            const slotForgeRecipes = isExteriorArmor
+              ? FORGE_RECIPES.filter(
+                  (r) => EXTERIOR_ARMOR_BY_ID[r.outputArmorId]?.slot === activeHardwareSlot
+                )
+              : [];
 
             return (
               <div className="space-y-2">
@@ -2071,9 +2213,22 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                               <b className="text-[#e2e8f0]">
                                 {getHardwareBaseWeight(currentHw)} WT
                               </b>
-                              {getHardwareCapacityBonus(currentHw) > 0
-                                ? ` · Capacity: +${getHardwareCapacityBonus(currentHw)} WT`
-                                : ''}
+                              {currentHw.baseLoadCapacityNumber
+                                ? ` · Max Load Capacity: ${currentHw.baseLoadCapacityNumber} WT`
+                                : getHardwareCapacityBonus(currentHw) > 0
+                                  ? ` · Capacity: +${getHardwareCapacityBonus(currentHw)} WT`
+                                  : ''}
+                              {currentHw.acquisition ? (
+                                <>
+                                  {' '}
+                                  · Source:{' '}
+                                  <b className="text-[#fde047]">
+                                    {currentHw.acquisition === 'forge_blueprint'
+                                      ? 'Cyclopean Dwarf Forge Blueprint'
+                                      : 'Starter / Post-Boss Reliquary'}
+                                  </b>
+                                </>
+                              ) : null}
                             </div>
                           </div>
                           <span
@@ -2084,8 +2239,8 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                             }`}
                           >
                             {isExteriorArmor
-                              ? 'EXTERIOR ARMOR PLATING'
-                              : 'INTERNAL SUB-MODULE (NO ARMOR VALUE)'}
+                              ? `EXTERIOR ARMOR PLATING (${getEquipmentMaxModSlots(currentHw.id)}G)`
+                              : 'INTERNAL SUB-MODULE (0 ARMOR VALUE)'}
                           </span>
                         </div>
                         <div className="text-[9px] text-[#cbd5e1]">{currentHw.description}</div>
@@ -2120,6 +2275,17 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                               +{currentHw.attackMassBonus} Strike Mass
                             </span>
                           ) : null}
+                          {currentHw.baseModifiers &&
+                            formatStatDeltaBadges(currentHw.baseModifiers).map(
+                              (bText, bIdx) => (
+                                <span
+                                  key={`ext-mod-${bIdx}`}
+                                  className="px-1.5 py-0.5 bg-[#1e1b4b] text-[#c4b5fd] rounded-xs font-bold"
+                                >
+                                  {bText}
+                                </span>
+                              )
+                            )}
                         </div>
                       </div>
                     </div>
@@ -2136,6 +2302,153 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                   </>
                 )}
 
+                {/* Cyclopean Dwarf Forge Panel for Blueprint-Crafted Exterior Armor (Sets 12–15) */}
+                {isExteriorArmor && slotForgeRecipes.length > 0 && (
+                  <div className="p-2 bg-[#090d14] rounded-xs border border-[#fb923c]/50 space-y-1.5">
+                    <div className="flex flex-wrap items-center justify-between gap-1">
+                      <div>
+                        <div className="text-[10px] font-bold text-[#fb923c]">
+                          ⚒ CYCLOPEAN DWARF FORGE — [{activeHardwareSlot.toUpperCase()}] BLUEPRINT
+                          ARMOR FOUNDRY (SETS 12–15)
+                        </div>
+                        <div className="text-[9px] text-[#94a3b8]">
+                          Recover <b className="text-[#fde047]">Armor Blueprints</b> from world
+                          Reliquary Chests, then spend <b className="text-[#ffd27d]">Scrap</b> +{' '}
+                          <b className="text-[#c084fc]">Gemstones</b> to forge Camelot &amp; Novarin
+                          Steppes exterior armor pieces.
+                        </div>
+                      </div>
+                      <span className="px-1.5 py-0.5 rounded-xs bg-[#1e293b] text-[#ffd27d] text-[9px] font-bold">
+                        SCRAP: {isCheatMode ? '∞' : state.salvageScrap}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      {slotForgeRecipes.map((recipe) => {
+                        const piece = EXTERIOR_ARMOR_BY_ID[recipe.outputArmorId];
+                        if (!piece) return null;
+                        const bpDef = ARMOR_BLUEPRINTS.find((b) => b.id === recipe.blueprintId);
+                        const bpUnlocked =
+                          isCheatMode || isArmorBlueprintUnlocked(state, recipe.blueprintId);
+                        const alreadyOwned =
+                          isCheatMode || isEquipmentUnlocked(state, piece.id);
+                        const forgeCheck = canForgeExteriorArmorPiece(
+                          state,
+                          recipe.outputArmorId
+                        );
+                        const isEquipped =
+                          baseHwId === piece.id || currentHwId === piece.name;
+                        const gemCostLabel = recipe.gemCosts
+                          .map((gc) => {
+                            const gName = GEMSTONE_REGISTRY[gc.gemId]?.name || gc.gemId;
+                            const owned = isCheatMode
+                              ? '∞'
+                              : getInventoryGemCount(state, gc.gemId);
+                            return `${gc.count}× ${gName} (${owned})`;
+                          })
+                          .join(' + ');
+
+                        return (
+                          <div
+                            key={recipe.outputArmorId}
+                            className={`p-2 rounded-xs border flex flex-col justify-between gap-1 ${
+                              isEquipped
+                                ? 'bg-[#172554]/60 border-[#fde047]'
+                                : bpUnlocked
+                                  ? 'bg-[#05070a] border-[#334155]'
+                                  : 'bg-[#05070a]/60 border-[#1e293b] opacity-75'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="font-bold text-[9px] text-[#fde047] truncate">
+                                {piece.name}
+                              </span>
+                              <span
+                                className={`text-[8px] px-1.5 py-0.2 rounded-[2px] font-bold shrink-0 ${
+                                  bpUnlocked
+                                    ? 'bg-[#052e16] text-[#86efac] border border-[#22c55e]/40'
+                                    : 'bg-[#450a0a] text-[#fca5a5] border border-[#ef4444]/40'
+                                }`}
+                              >
+                                {bpUnlocked ? 'BLUEPRINT UNLOCKED' : 'BLUEPRINT LOCKED'}
+                              </span>
+                            </div>
+
+                            <div className="text-[8px] text-[#7dd3fc] font-bold">
+                              Set {piece.setId} · {piece.weight} WT
+                              {piece.baseLoadCapacity
+                                ? ` · Cap ${piece.baseLoadCapacity} WT`
+                                : ''}{' '}
+                              · {piece.armor.durability} DUR / {piece.armor.rating} RTG /{' '}
+                              {piece.armor.threshold} THR
+                              {piece.shieldBonus > 0 ? ` · +${piece.shieldBonus} SHD` : ''} ·{' '}
+                              {piece.gemSockets}G
+                            </div>
+
+                            <div className="text-[8px] text-[#cbd5e1] leading-snug">
+                              {formatStatDeltaBadges(piece.baseModifiers).join(' · ')}
+                            </div>
+
+                            <div className="flex items-center justify-between gap-1 pt-1 border-t border-[#1e293b]">
+                              <div className="text-[8px] text-[#ffd27d]">
+                                <div>
+                                  BP: <b className="text-[#e2e8f0]">{bpDef?.name || recipe.blueprintId}</b>
+                                </div>
+                                <div>
+                                  Cost: <b>{recipe.scrapCost} Scrap</b> + <b>{gemCostLabel}</b>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                disabled={
+                                  isEquipped ||
+                                  (!alreadyOwned && !forgeCheck.canForge)
+                                }
+                                onClick={() => {
+                                  if (!alreadyOwned) {
+                                    const ok = forgeExteriorArmorPieceAtCyclopeanForge(
+                                      state,
+                                      piece.id,
+                                      sayCtx
+                                    );
+                                    if (!ok) {
+                                      soundSystem.playMenuBeep();
+                                      return;
+                                    }
+                                  }
+                                  soundSystem.playPowerup();
+                                  const instances = getOwnedEquipmentInstances(state, piece.id);
+                                  const targetId = instances[0] || piece.id;
+                                  setEquippedHardwareIdForSlot(activeHardwareSlot, targetId);
+                                  sayCtx.say(
+                                    `FORGED & EQUIPPED ${piece.name.toUpperCase()} IN ${activeHardwareSlot.toUpperCase()}`
+                                  );
+                                  notifyOrionStateChange();
+                                }}
+                                className={`px-2 py-0.5 rounded-xs text-[8px] font-bold border cursor-pointer shrink-0 ${
+                                  isEquipped
+                                    ? 'bg-[#1e293b] text-[#fde047] border-[#fde047]/50 cursor-default'
+                                    : alreadyOwned
+                                      ? 'bg-[#052e16] hover:bg-[#14532d] text-[#86efac] border-[#22c55e]/60'
+                                      : forgeCheck.canForge
+                                        ? 'bg-[#431407] hover:bg-[#7c2d12] text-[#fdba74] border-[#f97316]/60'
+                                        : 'bg-[#0f172a] text-[#475569] border-[#1e293b] cursor-not-allowed'
+                                }`}
+                              >
+                                {isEquipped
+                                  ? 'EQUIPPED'
+                                  : alreadyOwned
+                                    ? 'EQUIP FORGED PIECE'
+                                    : '⚒ FORGE & EQUIP'}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* Install / Swap Sub-Module or Hardware Piece */}
                 <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">
                   <div className="text-[9px] font-bold text-[#86efac]">
@@ -2147,6 +2460,10 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                       const targetId = instances[0] || hw.id;
                       const resolvedHw = findHardwareItemByNameOrId(targetId) || hw;
                       const unlocked = isCheatMode || isEquipmentUnlocked(state, hw.id);
+                      const isForgeBpPiece = hw.acquisition === 'forge_blueprint';
+                      const forgeStatus = isForgeBpPiece
+                        ? canForgeExteriorArmorPiece(state, hw.id)
+                        : null;
                       const isCrafted = hw.origin === 'crafted' && (hw.gemCost?.length || 0) > 0;
                       const canCraft =
                         isCrafted &&
@@ -2172,9 +2489,11 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                             </span>
                             <span className="text-[9px] text-[#94a3b8] shrink-0">
                               {getHardwareBaseWeight(resolvedHw)} WT
-                              {getHardwareCapacityBonus(resolvedHw) > 0
-                                ? ` · +${getHardwareCapacityBonus(resolvedHw)} CAP`
-                                : ''}
+                              {resolvedHw.baseLoadCapacityNumber
+                                ? ` · ${resolvedHw.baseLoadCapacityNumber} CAP`
+                                : getHardwareCapacityBonus(resolvedHw) > 0
+                                  ? ` · +${getHardwareCapacityBonus(resolvedHw)} CAP`
+                                  : ''}
                             </span>
                           </div>
                           <div className="text-[9px] text-[#cbd5e1]">
@@ -2182,20 +2501,37 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                           </div>
                           <div className="flex items-center justify-between gap-1 pt-0.5">
                             <span className="text-[9px] text-[#7dd3fc]">
-                              {isCrafted
-                                ? `Craft Cost: ${(hw.gemCost || [])
-                                    .map(
-                                      (r) =>
-                                        `${r.count} ${GEMSTONE_REGISTRY[r.gemId]?.name || r.gemId}`
-                                    )
-                                    .join(' + ')}`
-                                : `Max Gem Sockets: ${getEquipmentMaxModSlots(resolvedHw.id)}`}
+                              {isForgeBpPiece
+                                ? `Cyclopean Forge · ${getEquipmentMaxModSlots(resolvedHw.id)}G`
+                                : isCrafted
+                                  ? `Craft Cost: ${(hw.gemCost || [])
+                                      .map(
+                                        (r) =>
+                                          `${r.count} ${GEMSTONE_REGISTRY[r.gemId]?.name || r.gemId}`
+                                      )
+                                      .join(' + ')}`
+                                  : `Max Gem Sockets: ${getEquipmentMaxModSlots(resolvedHw.id)}G`}
                             </span>
                             <button
                               type="button"
-                              disabled={isEquipped || (!unlocked && !canCraft)}
+                              disabled={
+                                isEquipped ||
+                                (!unlocked &&
+                                  !canCraft &&
+                                  !(isForgeBpPiece && forgeStatus?.canForge))
+                              }
                               onClick={() => {
-                                if (!unlocked && isCrafted && canCraft) {
+                                if (!unlocked && isForgeBpPiece && forgeStatus?.canForge) {
+                                  const ok = forgeExteriorArmorPieceAtCyclopeanForge(
+                                    state,
+                                    hw.id,
+                                    sayCtx
+                                  );
+                                  if (!ok) {
+                                    soundSystem.playMenuBeep();
+                                    return;
+                                  }
+                                } else if (!unlocked && isCrafted && canCraft) {
                                   if (!isCheatMode) {
                                     for (const req of hw.gemCost || []) {
                                       const slot = state.inventorySlots.find(
@@ -2222,16 +2558,20 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                               className={`px-2 py-0.5 rounded-xs text-[9px] font-bold border cursor-pointer ${
                                 isEquipped
                                   ? 'bg-[#1e293b] text-[#fde047] border-[#fde047]/50 cursor-default'
-                                  : unlocked || canCraft
+                                  : unlocked || canCraft || (isForgeBpPiece && forgeStatus?.canForge)
                                     ? 'bg-[#052e16] hover:bg-[#14532d] text-[#86efac] border-[#22c55e]/60'
                                     : 'bg-[#0f172a] text-[#475569] border-[#1e293b] cursor-not-allowed'
                               }`}
                             >
                               {isEquipped
                                 ? 'EQUIPPED'
-                                : !unlocked && isCrafted
-                                  ? 'CRAFT & INSTALL'
-                                  : 'INSTALL'}
+                                : !unlocked && isForgeBpPiece
+                                  ? forgeStatus?.canForge
+                                    ? '⚒ FORGE & INSTALL'
+                                    : 'BLUEPRINT / MATS REQ'
+                                  : !unlocked && isCrafted
+                                    ? 'CRAFT & INSTALL'
+                                    : 'INSTALL'}
                             </button>
                           </div>
                         </div>

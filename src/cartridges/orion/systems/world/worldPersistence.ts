@@ -43,9 +43,8 @@ export const ENEMY_EQUIPMENT_DROP_POOLS: Record<
       'sensory_a_sonar_pulse_transceiver',
       'sensory_b_inertial_gyro_telemetry',
       'legs_pnsy_all_terrain_treads',
-      'head_pnsy_field_visor',
-      'head_s07_visor',
-      'arms_s07_gauntlets',
+      'optics_embersight',
+      'arms_cd_striker_vambraces',
     ],
     baseChance: 0.18,
   },
@@ -58,7 +57,7 @@ export const ENEMY_EQUIPMENT_DROP_POOLS: Record<
       'cl150_ward_mote',
       'arc_conductor',
       'reactor_arc_mana_core',
-      'plating_arc_conduit_weave',
+      'optics_arc_omniscient',
       'sensory_a_aether_anomaly_scanner',
     ],
     baseChance: 0.35,
@@ -72,8 +71,8 @@ export const ENEMY_EQUIPMENT_DROP_POOLS: Record<
       'm300_cantabrian_recurve',
       'vx15_ghost_yebira',
       'vx10_eclipse_disc',
-      'head_vx_stealth_optics',
-      'arms_vx_whisper_servos',
+      'optics_veilsight',
+      'arms_vx_whisperblade_gauntlets',
       'legs_vx_shadow_striders',
       'sensory_b_threat_vector_predictor',
     ],
@@ -89,8 +88,8 @@ export const ENEMY_EQUIPMENT_DROP_POOLS: Record<
       'm450_arbalest_greatbow',
       'ln1200_avalanche',
       'lg950_tomahawk',
-      'plating_rad_juggernaut_carapace',
-      'arms_rad_hydraulic_crushers',
+      'optics_be_foresight',
+      'arms_be_siegebreaker_pauldrons',
       'legs_rad_piledriver_anchors',
       'reactor_rad_ichor_furnace',
     ],
@@ -105,8 +104,8 @@ export const ENEMY_EQUIPMENT_DROP_POOLS: Record<
       'ti400_aegis_scutum',
       'hl110_dawnblade',
       'hl220_lightburst_lance',
-      'plating_ti_paladin_wardplate',
-      'arms_ti_bastion_pauldrons',
+      'optics_aegis_radiant',
+      'arms_aegis_radiant_vambraces',
     ],
     baseChance: 0.36,
   },
@@ -119,9 +118,8 @@ export const ENEMY_EQUIPMENT_DROP_POOLS: Record<
       'hl220_lightburst_lance',
       'rs450_radiant_projector',
       's3_viper_partisan',
-      'plating_ti_paladin_wardplate',
-      'head_ti_halo_crest',
-      'arms_ti_bastion_pauldrons',
+      'optics_aegis_radiant',
+      'arms_aegis_radiant_vambraces',
       'reactor_ti_radiant_condenser',
     ],
     baseChance: 1.0,
@@ -135,7 +133,7 @@ export const ENEMY_EQUIPMENT_DROP_POOLS: Record<
       's5_whisper_cinquedea',
       's6_phantom_messer',
       'vx10_eclipse_disc',
-      'plating_vx_nightveil_shroud',
+      'optics_veilsight',
       'reactor_vx_ether_turbine',
       'sensory_a_echolocation_array',
     ],
@@ -150,8 +148,8 @@ export const ENEMY_EQUIPMENT_DROP_POOLS: Record<
       'n55_gladius',
       'n20_rotary_bandolier',
       's9_turbine_odachi',
-      'plating_pnsy_ironclad_rig',
-      'arms_pnsy_heavy_actuators',
+      'optics_be_foresight',
+      'arms_be_siegebreaker_pauldrons',
       'reactor_pnsy_combat_boiler',
     ],
     baseChance: 1.0,
@@ -164,8 +162,8 @@ export const ENEMY_EQUIPMENT_DROP_POOLS: Record<
       'cl210_sanctum_mace',
       'cl150_ward_mote',
       'cl500_absolution',
-      'plating_sanc_reliquary_vestments',
-      'head_sanc_seraph_crown',
+      'optics_sanc_providence',
+      'arms_sanc_seraphic_pinions',
       'reactor_sanc_chalice_well',
     ],
     baseChance: 1.0,
@@ -186,6 +184,9 @@ export interface ContextualLootQuery {
 /**
  * Resolves a contextual weapon, auxiliary, armor, reactor, or sensor drop across the hierarchy:
  * `Enemy Archetype -> Room Pool -> Area Pool -> Region Pool -> Universal Catalog`.
+ * Enforces Exterior Armor Acquisition Rules (§1 Rule 5 & §4.1):
+ * - `forge_blueprint` exterior armor pieces (`Sets 12–15`) NEVER drop directly as ready-to-wear gear.
+ * - `starter_post_boss` exterior armor pieces (`Sets 0–5`) are placed in Camelot post-boss chambers/caches (`!query.enemyType`), rather than direct enemy/boss drop tables.
  */
 export function resolveContextualEquipmentDrop(
   state: OrionState,
@@ -198,6 +199,24 @@ export function resolveContextualEquipmentDrop(
   const regionId =
     query.regionId || meta?.regionId || state.regionId || areaDef?.regionId || 'region_belldor_outskirts';
   const regionDef = REGION_REGISTRY[regionId];
+
+  const isDirectEnemyDrop = Boolean(query.enemyType);
+  const isEligibleDropId = (id: string): boolean => {
+    const wDef = getWeaponDefinition(id);
+    if (wDef) {
+      // Legendary folklore relics never drop from random loot pools
+      return wDef.weaponTier !== 'legendary';
+    }
+    const hwDef = findHardwareItemByNameOrId(id);
+    if (!hwDef) return false;
+    // Rule 5 & §4.1: forge_blueprint pieces never drop directly as ready-to-wear gear
+    if (hwDef.acquisition === 'forge_blueprint') return false;
+    // Rule 5: starter_post_boss exterior armor sets are placed in post-boss chambers/caches, not direct enemy drops
+    const isExteriorArmor =
+      hwDef.slot === 'plating' || hwDef.slot === 'head' || hwDef.slot === 'arms';
+    if (isExteriorArmor && isDirectEnemyDrop) return false;
+    return true;
+  };
 
   const enemyPool = query.enemyType
     ? ENEMY_EQUIPMENT_DROP_POOLS[query.enemyType]?.equipmentIds || []
@@ -217,7 +236,7 @@ export function resolveContextualEquipmentDrop(
       ...universalWeaponIds,
       ...universalHardwareIds,
     ])
-  ).filter((id) => Boolean(getWeaponDefinition(id) || findHardwareItemByNameOrId(id)));
+  ).filter(isEligibleDropId);
 
   const firstCopyId = combinedOrderedPool.find((id) => !isEquipmentUnlocked(state, id));
   if (firstCopyId) {
@@ -231,7 +250,7 @@ export function resolveContextualEquipmentDrop(
         ...(state.equippedWeapons || []),
         ...(state.equipmentSlots?.unlockedEquipment || []),
       ])
-    );
+    ).filter(isEligibleDropId);
     const secondCopyId = secondCopyCandidates.find((id) => {
       const wDef = getWeaponDefinition(id);
       const hwDef = findHardwareItemByNameOrId(id);

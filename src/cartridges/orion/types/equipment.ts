@@ -116,13 +116,44 @@ export type FeatChainId =
   | 'C-18';
 
 /**
+ * Canonical v2.3 top-level root domain in the 113-node Nested Constellation (`interface` = 59 nodes, `frame` = 53 nodes).
+ */
+export type FeatRootDomain = 'interface' | 'frame';
+
+/**
+ * Canonical v2.3 functional sub-branch inside the 113-node Nested Constellation:
+ * - `'1A_combat_records'`: Combat Records & Martial Mastery (`40` nodes)
+ * - `'1B_tactical_links'`: Tactical Input & Link Protocols (`19` nodes)
+ * - `'2A_defensive_architecture'`: Defensive Architecture: Shield, Armor & Guard Systems (`24` nodes)
+ * - `'2B_subsystem_tuning'`: Sub-System, Load & Reactor Tuning (`29` nodes)
+ */
+export type FeatSubBranch =
+  | '1A_combat_records'
+  | '1B_tactical_links'
+  | '2A_defensive_architecture'
+  | '2B_subsystem_tuning';
+
+/**
+ * Mutually exclusive Action 4 (`[Y]`) defensive mode (`Rule P-10`):
+ * - `'block'`: Mode A — Sustained Directional Guard (continuous mitigation while held)
+ * - `'parry'`: Mode B — Active Timing Deflection (discrete `0.34s` deflection window + interrupt/heat vent, cannot be held)
+ */
+export type Action4DefensiveMode = 'block' | 'parry';
+
+/**
  * Type contract for `FrameFeatDefinition` (frame feat definition) in `equipment.ts`.
  */
 export interface FrameFeatDefinition {
   id: string;
+  /** Canonical v2.3 specification slug (e.g. `'if_sweetspot_calibration'`, `'doc_spear_buckler'`, `'fr_directional_brace'`, `'sub_load_bearing_struts_1'`, `'apex_ichor_meltdown_override'`) */
+  v23Id?: string;
   name: string;
   tier: FeatTier;
   kind: FeatKind;
+  /** Top-level v2.3 architectural domain (`'interface'` [59 nodes] vs `'frame'` [53 nodes]) */
+  rootDomain?: FeatRootDomain;
+  /** Functional v2.3 sub-branch (`'1A_combat_records'`, `'1B_tactical_links'`, `'2A_defensive_architecture'`, `'2B_subsystem_tuning'`) */
+  subBranch?: FeatSubBranch;
   requiredSkillId: PilotSkillId;
   requiredSkillLevel: number;
   /** Macro-hemisphere umbrella ('Fighter' | 'Scholar' | 'Rogue') in the 113-node Constellation */
@@ -143,7 +174,9 @@ export interface FrameFeatDefinition {
   requiredEquipment?: string;
   gainDescription: string;
   costDescription: string;
-  /** Specific Gem Socket requirements (retained in build, refunded on unsocket) */
+  /** Explicit min-max physical/thermal/tactical trade-off (`Rule P-09`) */
+  tradeOffDescription?: string;
+  /** Specific Gem Socket requirements (retained in build, refunded on unsocket; `Rule P-01`: Tier I/II = 1G, Tier III/IV = 2G, Tier V = 3G) */
   gemSockets: Array<{ gemId: GemId; count: number }>;
   /** Equipment or mod capability unlocked by this feat */
   unlocksDescription?: string;
@@ -559,6 +592,12 @@ export interface OrionEquipmentSlots {
   auxActive?: boolean;
   /** Active Specialist Stance override mode ('auto' = Active Specialist Doctrine when requirements met, 'base' = Base Weapon Moveset). */
   stanceOverrideMode?: 'auto' | 'base';
+  /** Explicitly selected Specialist Stance featId (or stanceId) when multiple socketed stances match the current weapon loadout. */
+  selectedSpecialistStanceId?: string | null;
+  /** Mutually exclusive Action 4 (`[Y]`) defensive mode (`'block'` = Sustained Directional Guard, `'parry'` = Active Timing Deflection; `Rule P-10`). */
+  action4Mode?: Action4DefensiveMode;
+  /** True when Reverse-Grip Dual Katana mode is toggled on for paired Katanas/Wakizashi (`mast_reverse_grip_dual_katana`). */
+  reverseGripKatana?: boolean;
   /** Tracks how many separate instances of each weapon ID the pilot owns (Paired stance requires 2 separate items). */
   ownedWeaponCounts?: Record<string, number>;
   /**

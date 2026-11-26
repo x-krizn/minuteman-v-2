@@ -6,6 +6,7 @@
 import { soundSystem } from '../../../../engine/core/soundSystem';
 import { WEAPON_SWAP_COOLDOWN } from '../../constants';
 import {
+  findHardwareItemByNameOrId,
   getClassUtilityDefinition,
   getResolvedActionDescriptor,
 } from '../../database/equipment';
@@ -32,6 +33,7 @@ import {
   getWeaponGemCombatModifiers,
   getWeaponGemVisuals,
   parseEquipmentInstanceId,
+  resolveActiveAction4DefensiveMode,
   resolveEquippedHardwareStats,
 } from '../../database/progression';
 import {
@@ -39,6 +41,7 @@ import {
   ArmorState,
   DamageType,
   FrameState,
+  OrionActionDescriptor,
   OrionCombatContext,
   OrionState,
   ShieldState,
@@ -79,7 +82,7 @@ import {
   resolveSkillBehaviorProfile,
 } from './skillBehaviors';
 
-// ─── 1. ASSIGNABLE [L] & [R] MULTI-SOURCE ACTIONS ────────────────────────────
+// ─── 1. ASSIGNABLE [L], [B] & [R] MULTI-SOURCE ACTIONS ───────────────────────
 
 /**
  * Executes `isActionUnlocked` (is action unlocked) in `skillExecution.ts`.
@@ -180,15 +183,464 @@ export function isActionUnlocked(
  */
 export function assignTriggerAction(
   state: OrionState,
-  trigger: 'L' | 'R',
+  trigger: 'L' | 'R' | 'B',
   actionId: string
 ): void {
   state.assignedActions = state.assignedActions || {
-    L: 'weapon_skill_1',
+    L: 'weapon_swap',
     R: 'weapon_skill_2',
+    B: 'booster_dash',
   };
   state.assignedActions[trigger] = actionId;
   notifyOrionStateChange();
+}
+
+/**
+ * Resolves the active `L (Q)` Long-Press binding ID, defaulting to `'weapon_swap'`
+ * (Weapon / Auxiliary Swap) when unset or when holding the legacy `'weapon_skill_1'` placeholder.
+ * Does not mutate `state: OrionState`.
+ */
+export function getEffectiveLHoldActionId(state: OrionState): string {
+  const raw = state.assignedActions?.L;
+  if (!raw || raw === 'weapon_swap' || raw === 'weapon_skill_1') {
+    return 'weapon_swap';
+  }
+  return raw;
+}
+
+/**
+ * Resolves the active `B (K)` Boost binding ID, defaulting to `'booster_dash'`
+ * (Booster Thrusters: Tap Dash / Hold Continuous Boost) when unset.
+ * Does not mutate `state: OrionState`.
+ */
+export function getEffectiveBActionId(state: OrionState): string {
+  const raw = state.assignedActions?.B;
+  if (!raw || raw === 'booster_dash') {
+    return 'booster_dash';
+  }
+  return raw;
+}
+
+/**
+ * Candidate action entry derived strictly from the pilot's currently equipped items
+ * for binding to `Weapon Swap (L [Q] Hold)` or `Boost (B [K])`, enforcing multi-source duplicate prevention.
+ */
+export interface EquippedAssignableActionCandidate {
+  /** Action ID to store in `state.assignedActions[targetSlot]` */
+  bindId: string;
+  /** Resolved action descriptor for UI display */
+  descriptor: OrionActionDescriptor;
+  /** Number of distinct currently equipped item sources providing this action */
+  availableSourceCount: number;
+  /** Number of times this action is already equipped across active combat slots and the other editable slot */
+  equippedCount: number;
+  /** Human-readable list of equipped items providing this action */
+  equippedSourceNames: string[];
+  /** Human-readable list of slots where this action is currently equipped */
+  equippedSlotLabels: string[];
+  /** True if this action is currently bound to `targetSlot` */
+  isAssignedHere: boolean;
+  /** True if this action can be bound to `targetSlot` (`isAssignedHere || availableSourceCount > equippedCount`) */
+  canBind: boolean;
+  /** Explanation when `canBind` is false due to single-source duplication */
+  duplicateReason?: string;
+}
+
+/**
+ * Builds the list of assignable action candidates derived strictly from the pilot's **currently equipped items**
+ * for `Weapon Swap (L [Q] Long-Press)` or `Boost (B [K])`.
+ * Enforces the multi-source deduplication rule: an already equipped action cannot be equipped again
+ * unless it is available from multiple currently equipped sources (`availableSourceCount > equippedCount`).
+ * Does not mutate `state: OrionState`.
+ */
+export function getEquippedAssignableActionCandidates(
+  state: OrionState,
+  targetSlot: 'L' | 'B',
+  isCheatMode: boolean = false
+): EquippedAssignableActionCandidate[] {
+  const eq = state.equipmentSlots;
+  const currentL = getEffectiveLHoldActionId(state);
+  const currentB = getEffectiveBActionId(state);
+  const currentThisSlot = targetSlot === 'L' ? currentL : currentB;
+  const currentOtherSlot = targetSlot === 'L' ? currentB : currentL;
+  const otherSlotLabel = targetSlot === 'L' ? 'Boost B [K]' : 'Weapon Swap L [Q] Hold';
+
+  const slot1Id = eq?.slot1 || state.equippedWeapons?.[0] || null;
+  const slot2Id = eq?.slot2 || null;
+  const slot3Id = eq?.slot3 || null;
+  const w1 = slot1Id ? getWeaponDefinition(slot1Id) : undefined;
+  const w2 = slot2Id ? getWeaponDefinition(slot2Id) : undefined;
+  const w3 = slot3Id ? getWeaponDefinition(slot3Id) : undefined;
+  const is2HGrip = getEffectiveMainGrip(state) === '2h';
+
+  // Count distinct equipped weapon sources for each weapon action signature (move name)
+  const weaponMoveSources = new Map<string, string[]>();
+  const recordWeaponMoves = (w: ReturnType<typeof getWeaponDefinition>, slotTag: string) => {
+    if (!w) return;
+    for (let idx = 1; idx < w.moveset.length; idx++) {
+      const mv = w.moveset[idx];
+      if (!mv || mv.isBlock) continue;
+      const key = mv.name.trim().toLowerCase();
+      const list = weaponMoveSources.get(key) || [];
+      list.push(`${w.name} (${slotTag})`);
+      weaponMoveSources.set(key, list);
+    }
+  };
+  recordWeaponMoves(w1, 'Main Hand');
+  if (w2 && slot2Id) {
+    recordWeaponMoves(w2, is2HGrip ? 'Side Hand [Holstered]' : 'Side Hand');
+  }
+  if (w3 && slot3Id) {
+    recordWeaponMoves(w3, 'Aux Back');
+  }
+
+  // Active combat skills currently occupying X / Y / R
+  const activeSkills = getResolvedCombatSkills(state);
+  const activeDeckSkillSlots: Array<{ nameKey: string; label: string }> = [];
+  if (activeSkills.skill2?.available && activeSkills.skill2.name) {
+    activeDeckSkillSlots.push({
+      nameKey: activeSkills.skill2.name.trim().toLowerCase(),
+      label: 'Y [I] Tap (Skill 2)',
+    });
+  }
+  if (activeSkills.skill3?.available && activeSkills.skill3.name) {
+    activeDeckSkillSlots.push({
+      nameKey: activeSkills.skill3.name.trim().toLowerCase(),
+      label: 'R [E] Tap (Skill 3)',
+    });
+  }
+  if (
+    activeSkills.skill4?.available &&
+    !activeSkills.skill4.isBlock &&
+    activeSkills.skill4.name
+  ) {
+    activeDeckSkillSlots.push({
+      nameKey: activeSkills.skill4.name.trim().toLowerCase(),
+      label: 'Y [I] Hold (Skill 4)',
+    });
+  }
+  if (activeSkills.skill5?.available && activeSkills.skill5.name) {
+    activeDeckSkillSlots.push({
+      nameKey: activeSkills.skill5.name.trim().toLowerCase(),
+      label: 'R [E] Hold (Skill 5)',
+    });
+  }
+
+  // Inspect equipped hardware pieces and count how many equipped hardware modules link to each hardware/reactor action
+  const hardwareSources = new Map<string, string[]>();
+  const addHardwareSource = (rawId: string | null | undefined, slotLabel: string) => {
+    if (!rawId) return;
+    const hw = findHardwareItemByNameOrId(rawId);
+    if (!hw || !hw.linkedActionId) return;
+    const list = hardwareSources.get(hw.linkedActionId) || [];
+    list.push(`${hw.name} (${slotLabel})`);
+    hardwareSources.set(hw.linkedActionId, list);
+  };
+  addHardwareSource(eq?.head, 'Head Dome');
+  addHardwareSource(eq?.headOptics, 'Head Optics');
+  addHardwareSource(eq?.sensoryA, 'Sensory A');
+  addHardwareSource(eq?.sensoryB, 'Sensory B');
+  addHardwareSource(eq?.plating, 'Torso Plating');
+  addHardwareSource(eq?.reactorCore, 'Reactor Core');
+  addHardwareSource(eq?.arms, 'Arms');
+  addHardwareSource(eq?.armActuators, 'Arm Actuators');
+  addHardwareSource(eq?.legs, 'Legs');
+
+  const candidates: EquippedAssignableActionCandidate[] = [];
+
+  const pushCandidate = (
+    bindId: string,
+    descriptor: OrionActionDescriptor,
+    equippedSourceNames: string[],
+    activeDeckUsedLabels: string[],
+    alsoUsedOnOtherTrigger: boolean
+  ) => {
+    const availableSourceCount = equippedSourceNames.length;
+    if (availableSourceCount <= 0) return;
+
+    const equippedSlotLabels = [...activeDeckUsedLabels];
+    if (alsoUsedOnOtherTrigger) {
+      equippedSlotLabels.push(otherSlotLabel);
+    }
+    const equippedCount = equippedSlotLabels.length;
+    const isAssignedHere = currentThisSlot === bindId;
+    const canBind = isAssignedHere || availableSourceCount > equippedCount;
+    const duplicateReason = !canBind
+      ? `Already equipped on ${equippedSlotLabels.join(' & ')} (${availableSourceCount}/${availableSourceCount} equipped source in use — equip a second source to bind again)`
+      : undefined;
+
+    candidates.push({
+      bindId,
+      descriptor,
+      availableSourceCount,
+      equippedCount,
+      equippedSourceNames,
+      equippedSlotLabels,
+      isAssignedHere,
+      canBind,
+      duplicateReason,
+    });
+  };
+
+  // 1. Equipped Chassis Hardware & Reactor Core Actions (strictly from equipped hardware modules)
+  const hwAndReactorActionIds = [
+    'mod_head_optic_scan',
+    'mod_torso_reactive_burst',
+    'mod_arms_shock_grapple',
+    'mod_legs_seismic_stomp',
+    'reactor_thermal_vent',
+    'reactor_overdrive',
+    'reactor_aegis_pulse',
+  ];
+  for (const actId of hwAndReactorActionIds) {
+    if (!isCheatMode && !isActionUnlocked(state, actId).unlocked) continue;
+    const sources = hardwareSources.get(actId) || [];
+    if (sources.length === 0) continue;
+    const desc = getResolvedActionDescriptor(state, actId);
+    const usedOnOther = currentOtherSlot === actId;
+    pushCandidate(actId, desc, sources, [], usedOnOther);
+  }
+
+  // 2. Equipped Tactical Utility Module (`class_utility_slot`)
+  const hasEquippedUtility = Boolean(eq?.utility || state.traitLine);
+  if (hasEquippedUtility && (isCheatMode || isActionUnlocked(state, 'class_utility_slot').unlocked)) {
+    const utilDef = getClassUtilityDefinition(eq?.utility, state.traitLine);
+    const desc = getResolvedActionDescriptor(state, 'class_utility_slot');
+    // Check if an auxiliary slot also provides the same utility module
+    const utilSources = [`${utilDef.name} (Utility Slot)`];
+    if (slot3Id && parseEquipmentInstanceId(slot3Id).baseId === utilDef.id) {
+      utilSources.push(`${utilDef.name} (Aux Back)`);
+    }
+    const usedOnOther = currentOtherSlot === 'class_utility_slot';
+    pushCandidate('class_utility_slot', desc, utilSources, [], usedOnOther);
+  }
+
+  // 3. Equipped Belt Consumable Slots (`belt_slot_1..4` — only when a non-empty item is equipped in that belt slot)
+  const beltItems = eq?.belt || [null, null, null, null];
+  const beltItemSourceCounts = new Map<string, string[]>();
+  beltItems.forEach((itemId, idx) => {
+    if (!itemId) return;
+    const def = getItemDefinition(itemId);
+    const list = beltItemSourceCounts.get(itemId) || [];
+    list.push(`${def?.name || itemId} (Belt Slot ${idx + 1})`);
+    beltItemSourceCounts.set(itemId, list);
+  });
+  if (slot2Id && getItemDefinition(slot2Id)) {
+    const def = getItemDefinition(slot2Id);
+    const list = beltItemSourceCounts.get(slot2Id) || [];
+    list.push(`${def?.name || slot2Id} (Side Hand)`);
+    beltItemSourceCounts.set(slot2Id, list);
+  }
+
+  const seenBeltItemIds = new Set<string>();
+  for (let idx = 0; idx < 4; idx++) {
+    const itemId = beltItems[idx];
+    if (!itemId || seenBeltItemIds.has(itemId)) continue;
+    const beltActId = `belt_slot_${idx + 1}`;
+    if (!isCheatMode && !isActionUnlocked(state, beltActId).unlocked) continue;
+    seenBeltItemIds.add(itemId);
+    const desc = getResolvedActionDescriptor(state, beltActId);
+    const sources = beltItemSourceCounts.get(itemId) || [`Belt Slot ${idx + 1}`];
+    const otherDesc =
+      currentOtherSlot.startsWith('belt_slot_')
+        ? getResolvedActionDescriptor(state, currentOtherSlot)
+        : null;
+    const usedOnOther =
+      currentOtherSlot === beltActId ||
+      Boolean(
+        otherDesc &&
+          otherDesc.sourceCategory === 'belt' &&
+          typeof otherDesc.beltSlotIndex === 'number' &&
+          beltItems[otherDesc.beltSlotIndex] === itemId
+      );
+    const activeDeckLabels: string[] = [];
+    if (activeSkills.skill5?.available && activeSkills.skill5.itemId === itemId) {
+      activeDeckLabels.push('R [E] Hold (Side Consumable)');
+    }
+    pushCandidate(beltActId, desc, sources, activeDeckLabels, usedOnOther);
+  }
+
+  // 4. Equipped Weapon Skills (`weapon_skill_1..4`)
+  const weaponSkillActionIds = [
+    { rawId: 'weapon_skill_1', bindId: 'weapon_skill_1_explicit' },
+    { rawId: 'weapon_skill_2', bindId: 'weapon_skill_2' },
+    { rawId: 'weapon_skill_3', bindId: 'weapon_skill_3' },
+    { rawId: 'weapon_skill_4', bindId: 'weapon_skill_4' },
+  ];
+  for (const { rawId, bindId } of weaponSkillActionIds) {
+    if (!isCheatMode && !isActionUnlocked(state, rawId).unlocked) continue;
+    const desc = getResolvedActionDescriptor(state, rawId);
+    if (desc.isBlock) continue;
+    const moveKey = desc.name.trim().toLowerCase();
+    const sources = weaponMoveSources.get(moveKey) || (w1 ? [`${w1.name} (Main Hand)`] : []);
+    if (sources.length === 0) continue;
+    const activeLabels = activeDeckSkillSlots
+      .filter((s) => s.nameKey === moveKey)
+      .map((s) => s.label);
+    const usedOnOther = currentOtherSlot === bindId || currentOtherSlot === rawId;
+    pushCandidate(bindId, desc, sources, activeLabels, usedOnOther);
+  }
+
+  return candidates;
+}
+
+/**
+ * Shared internal helper to execute any bound non-default action ID from `ASSIGNABLE_ACTION_CATALOG`
+ * on either `L (Q) Long-Press` or `B (K)`.
+ * Mutates `state: OrionState`.
+ */
+function executeBoundCatalogAction(
+  state: OrionState,
+  ctx: OrionCombatContext,
+  actionId: string
+): boolean {
+  // Delegate weapon skill slots directly to activateResolvedCombatSkill for unified block/ammo/stance handling
+  if (actionId === 'weapon_skill_2') {
+    return activateResolvedCombatSkill(state, ctx, 3);
+  }
+  if (actionId === 'weapon_skill_3' || actionId === 'weapon_slot2_skill4') {
+    return activateResolvedCombatSkill(state, ctx, 4);
+  }
+  if (actionId === 'weapon_skill_4' || actionId === 'weapon_slot2_skill5') {
+    return activateResolvedCombatSkill(state, ctx, 5);
+  }
+  if (actionId === 'weapon_skill_1_explicit' || actionId === 'weapon_skill_1') {
+    return activateResolvedCombatSkill(state, ctx, 2);
+  }
+
+  if (state.activeActionId) {
+    return false;
+  }
+
+  const unlockCheck = isActionUnlocked(state, actionId);
+  if (!unlockCheck.unlocked) {
+    soundSystem.playMenuBeep();
+    ctx.say(unlockCheck.reason);
+    notifyOrionStateChange();
+    return false;
+  }
+
+  const currentCd = getActionCooldown(state, actionId);
+  if (currentCd > 0) {
+    soundSystem.playMenuBeep();
+    ctx.say(`ACTION COOLDOWN (${currentCd.toFixed(1)}S)`);
+    notifyOrionStateChange();
+    return false;
+  }
+
+  const desc = getResolvedActionDescriptor(state, actionId);
+
+  // Instant Belt Consumable Flask activation
+  if (desc.sourceCategory === 'belt') {
+    const beltIdx = desc.beltSlotIndex ?? 0;
+    const itemId = desc.itemId || state.equipmentSlots?.belt?.[beltIdx] || null;
+    if (!itemId) {
+      soundSystem.playMenuBeep();
+      ctx.say(`BELT SLOT ${beltIdx + 1} EMPTY`);
+      notifyOrionStateChange();
+      return false;
+    }
+    const invIdx = state.inventorySlots.findIndex((s) => s.itemId === itemId);
+    const itemDef = getItemDefinition(itemId);
+    if (invIdx < 0 || !itemDef) {
+      soundSystem.playMenuBeep();
+      ctx.say(`${itemDef?.name?.toUpperCase() || 'BELT ITEM'} DEPLETED`);
+      notifyOrionStateChange();
+      return false;
+    }
+    const used = itemDef.onUse
+      ? itemDef.onUse(state, { say: ctx.say, sound: ctx.sound })
+      : false;
+    if (used) {
+      state.inventorySlots[invIdx].count -= 1;
+      if (state.inventorySlots[invIdx].count <= 0) {
+        state.inventorySlots.splice(invIdx, 1);
+      }
+      state.actionCooldowns = state.actionCooldowns || {};
+      state.actionCooldowns[actionId] = desc.cooldownSec || 2.5;
+      triggerEntityFlash(state, itemDef.iconColor || '#fbbf24', 0.14, 'ready');
+      ctx.spawnParticles(
+        state.x,
+        state.y,
+        state.z + 8,
+        10,
+        itemDef.iconColor || '#fbbf24',
+        ''
+      );
+      notifyOrionStateChange();
+      return true;
+    }
+    return false;
+  }
+
+  // Standard Hardware / Utility / Reactor action tell & payload cycle
+  const featMods = computeInterfaceFeatModifiers(state.equippedFeats || []);
+  const heatPenaltyMult = state.gates?.loadPenalty?.heatMult ?? 1.0;
+  const rawHeat = desc.heatCost ?? 0;
+  if (rawHeat > 0) {
+    const scaledHeat = rawHeat * heatPenaltyMult * featMods.heatGenMult;
+    state.heat = Math.min(state.maxHeat, state.heat + scaledHeat);
+    state.heatDecayDelayTimer = Math.max(state.heatDecayDelayTimer || 0, 0.45);
+  } else if (rawHeat < 0) {
+    state.heat = Math.max(0, state.heat + rawHeat);
+  }
+
+  const hwStats = resolveEquippedHardwareStats(state);
+  const cdScale = clampTempoMultiplier(featMods.cooldownMult * hwStats.cooldownMult);
+  const tellScale = clampTempoMultiplier(hwStats.tellDurationMult);
+  const finalCd = Math.max(1.5, (desc.cooldownSec || 4.5) * cdScale);
+
+  state.actionCooldowns = state.actionCooldowns || {};
+  state.actionCooldowns[actionId] = finalCd;
+  state.activeSkillSlot = 4;
+  state.activeActionId = actionId;
+  state.activeSkillCooldownKey = actionId;
+  state.skillTellTimer = Math.max(0.08, (desc.tellDurationSec || 0.14) * tellScale);
+  state.skillTellMaxTimer = state.skillTellTimer;
+  state.skillActionTimer = Math.max(0.22, (desc.actionDurationSec || 0.28) * tellScale);
+  state.skillActionMaxTimer = state.skillActionTimer;
+  state.revealedTimer = 0.75;
+
+  soundSystem.playCharge();
+  notifyOrionStateChange();
+  return true;
+}
+
+/**
+ * Executes the pilot's bound `L (Q)` Long-Press action: defaults to `performAuxiliarySwap`
+ * (`'weapon_swap'`), or activates any bound equipped action.
+ * Mutates `state: OrionState`.
+ */
+export function activateAssignedLHoldAction(
+  state: OrionState,
+  ctx: OrionCombatContext
+): boolean {
+  const actionId = getEffectiveLHoldActionId(state);
+  if (actionId === 'weapon_swap') {
+    performAuxiliarySwap(state, ctx);
+    return true;
+  }
+  return executeBoundCatalogAction(state, ctx, actionId);
+}
+
+/**
+ * Executes the pilot's custom bound `B (K)` action when `B` is overridden from `'booster_dash'`
+ * to an equipped item action (or `'weapon_swap'`).
+ * Mutates `state: OrionState`.
+ */
+export function activateAssignedBAction(
+  state: OrionState,
+  ctx: OrionCombatContext
+): boolean {
+  const actionId = getEffectiveBActionId(state);
+  if (actionId === 'booster_dash') {
+    return false;
+  }
+  if (actionId === 'weapon_swap') {
+    performAuxiliarySwap(state, ctx);
+    return true;
+  }
+  return executeBoundCatalogAction(state, ctx, actionId);
 }
 
 /**
@@ -1610,11 +2062,96 @@ export function executeActionPayload(
       return;
     }
 
-    // ─── SLOT 3 (SKILL 4): BLOCK FOR ALL BLOCKING WEAPONS / SUPPRESSION FOR RANGED ───
+    // ─── SLOT 3 (SKILL 4): RULE P-10 ACTION 4 BLOCK VS. PARRY & KAAD OVERRIDES ───
     if (slot === 3) {
+      const action4Profile = resolveActiveAction4DefensiveMode(state);
+
+      if (action4Profile.overrideKind === 'kaad_iron_bind') {
+        soundSystem.playSword();
+        state.bladeTrails.push({
+          x: state.x,
+          y: state.y,
+          z: state.z,
+          angle: aimAngle,
+          arcSpan: Math.PI * 0.65,
+          radius: 36,
+          width: 16,
+          style: 'bash',
+          color: '#fb923c',
+          coreColor: '#fde047',
+          life: 0.28,
+          maxLife: 0.28,
+        });
+        for (const e of state.enemies) {
+          if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
+          if (isTargetInDirectionalArc(state.x, state.y, aimAngle, 42, Math.PI * 0.75, e.x, e.y)) {
+            const pullDx = state.x + aim.dx * 14 - e.x;
+            const pullDy = state.y + aim.dy * 14 - e.y;
+            e.x += pullDx * 0.55;
+            e.y += pullDy * 0.55;
+            e.stun = Math.max(e.stun, 1.2);
+            e.state = 'stagger';
+            e.stateTimer = 1.2;
+            e.stateMaxTimer = 1.2;
+            applyHitToEnemy(e, Math.max(18, action.damage), 'Impact', 1.2, 6);
+          }
+        }
+        ctx.spawnParticles(
+          state.x + aim.dx * 12,
+          state.y + aim.dy * 12,
+          state.z + 8,
+          10,
+          '#fb923c',
+          'IRON-BIND GRAPPLE (1.2S ROOT)'
+        );
+        return;
+      }
+
+      if (action4Profile.overrideKind === 'kaad_sanctified_palm') {
+        soundSystem.playPowerup();
+        state.shields.overloaded = false;
+        state.shields.overloadTimer = 0;
+        state.shields.capacity = Math.min(
+          state.shields.maxCapacity,
+          state.shields.capacity + 18
+        );
+        state.heat = Math.max(0, state.heat - 14);
+        state.bladeTrails.push({
+          x: state.x,
+          y: state.y,
+          z: state.z,
+          angle: aimAngle,
+          arcSpan: Math.PI * 0.9,
+          radius: 34,
+          width: 18,
+          style: 'shockwave',
+          color: '#fde047',
+          coreColor: '#ffffff',
+          life: 0.28,
+          maxLife: 0.28,
+        });
+        for (const e of state.enemies) {
+          if (e.isSubmerged || (e.type === 'town_npc' && e.npcDisposition !== 'feral')) continue;
+          if (isTargetInDirectionalArc(state.x, state.y, aimAngle, 36, Math.PI * 0.9, e.x, e.y)) {
+            applyHitToEnemy(e, Math.max(20, action.damage), 'Pulse', 1.0, 14);
+          }
+        }
+        ctx.spawnParticles(
+          state.x + aim.dx * 10,
+          state.y + aim.dy * 10,
+          state.z + 8,
+          10,
+          '#fde047',
+          'SANCTIFIED PALM (+18 SHD)'
+        );
+        return;
+      }
+
       if (action.isBlock || isBlockingWeapon(currentWeaponId)) {
         const isShieldEquip = arch.isShield;
-        state.isHoldingBlock = true;
+        const isParryMode = action4Profile.mode === 'parry';
+        // Mode B (Timed Parry) triggers a discrete 0.34s deflection window and cannot hold sustained block
+        state.isHoldingBlock = !isParryMode;
         state.blockHoldTimer = 0;
         state.blockTimer = 0.34;
         state.blockingWeaponId = currentWeaponId;
@@ -1628,8 +2165,8 @@ export function executeActionPayload(
           arcSpan: isShieldEquip ? Math.PI * 0.95 : Math.PI * 0.75,
           radius: isShieldEquip ? 24 : 20,
           width: isShieldEquip ? 16 : 13,
-          style: 'bash',
-          color: '#38bdf8',
+          style: isParryMode ? 'slash' : 'bash',
+          color: isParryMode ? '#fde047' : '#38bdf8',
           coreColor: '#ffffff',
           life: 0.34,
           maxLife: 0.34,
@@ -1640,8 +2177,8 @@ export function executeActionPayload(
           state.y + aim.dy * 10,
           state.z + 8,
           8,
-          '#38bdf8',
-          'BLOCK (0.34s PERFECT)'
+          isParryMode ? '#fde047' : '#38bdf8',
+          isParryMode ? 'PARRY (0.34s DEFLECT)' : 'BLOCK (HELD GUARD)'
         );
       } else if (
         arch.isBow ||
@@ -3283,9 +3820,13 @@ export function startHoldingBlock(
   ctx?: OrionCombatContext,
   weaponIdOverride?: string
 ): boolean {
+  const action4Profile = resolveActiveAction4DefensiveMode(state);
+  if (!action4Profile.available || action4Profile.overrideKind !== 'none') {
+    return false;
+  }
   const skills = getResolvedCombatSkills(state);
   const blockSkill = skills.skill4;
-  if (!blockSkill || !blockSkill.available || !blockSkill.isBlock) {
+  if (!blockSkill || !blockSkill.available) {
     return false;
   }
   if (state.activeActionId) {
@@ -3307,6 +3848,7 @@ export function startHoldingBlock(
     'long_sword';
   const weapon = getWeaponDefinition(blockWpnId);
   const isShieldEquip = weapon?.equipmentRole === 'shield';
+  const isParryMode = action4Profile.mode === 'parry';
   const aim = getCombatAimVector(state);
   const aimAngle = Math.atan2(aim.dy, aim.dx);
   const specEval = evaluateActiveSpecialistStance(state);
@@ -3317,6 +3859,44 @@ export function startHoldingBlock(
     PERFECT_BLOCK_WINDOW_SEC +
     specEval.passiveModifiers.perfectBlockWindowBonusSec +
     compParryBonusSec;
+
+  if (isParryMode) {
+    if ((state.blockTimer || 0) <= 0) {
+      state.isHoldingBlock = false;
+      state.blockHoldTimer = 0;
+      state.blockTimer = effectiveBlockWindow;
+      state.blockingWeaponId = blockWpnId;
+
+      soundSystem.playSword();
+      triggerEntityFlash(state, '#fde047', 0.12, 'shield');
+      state.bladeTrails = state.bladeTrails || [];
+      state.bladeTrails.push({
+        x: state.x,
+        y: state.y,
+        z: state.z,
+        angle: aimAngle,
+        arcSpan: isShieldEquip ? Math.PI * 0.95 : Math.PI * 0.75,
+        radius: isShieldEquip ? 24 : 20,
+        width: isShieldEquip ? 16 : 13,
+        style: 'slash',
+        color: '#fde047',
+        coreColor: '#ffffff',
+        life: effectiveBlockWindow,
+        maxLife: effectiveBlockWindow,
+      });
+
+      ctx?.spawnParticles(
+        state.x + aim.dx * 8,
+        state.y + aim.dy * 8,
+        state.z + 8,
+        6,
+        '#fde047',
+        'PARRY (0.34s DEFLECT)'
+      );
+      notifyOrionStateChange();
+    }
+    return true;
+  }
 
   if (!state.isHoldingBlock) {
     state.isHoldingBlock = true;

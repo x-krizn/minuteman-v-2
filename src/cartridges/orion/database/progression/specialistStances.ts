@@ -12,6 +12,7 @@
  */
 
 import {
+  Action4DefensiveMode,
   ActionDefinition,
   ConstellationUmbrellaId,
   DamageFamily,
@@ -2110,7 +2111,63 @@ export const SPECIALIST_STANCE_LIST: SpecialistStanceDefinition[] = [
 ];
 
 /**
- * Legacy and display-slug alias map so any old save or reference resolves to its canonical 22 Specialist Feat ID.
+ * Canonical v2.3 `doc_*` slug for each of the 22 Specialist Martial Stances (`1A Combat Records & Martial Mastery`).
+ */
+export const SPECIALIST_V23_ID_BY_FEAT_ID: Record<string, string> = {
+  spear_buckler_specialist: 'doc_spear_buckler',
+  sword_buckler_specialist: 'doc_sword_buckler',
+  pistol_cutlass_specialist: 'doc_boarder_cqc',
+  limitanei_specialist: 'doc_limitanei_dart',
+  longbow_specialist: 'doc_yeoman_warbow',
+  repeating_arbalest_specialist: 'doc_repeating_arbalest',
+  daisho_specialist: 'doc_daisho_niten',
+  rapier_dagger_specialist: 'doc_rapier_main_gauche',
+  mounted_archer_specialist: 'doc_parthian_archer',
+  legionary_specialist: 'doc_legionary_scutum',
+  spear_shield_specialist: 'doc_hoplite_aspis',
+  knightly_bastard_specialist: 'doc_chivalric_armizare',
+  shield_breaker_specialist: 'doc_rhomphaia_hook',
+  viking_raider_specialist: 'doc_huscarl_axe',
+  battlemage_specialist: 'doc_spellblade_conduit',
+  scepter_orb_specialist: 'doc_hierophant_ward',
+  odachi_specialist: 'doc_nodachi_battojutsu',
+  phalanx_specialist: 'doc_syntagma_phalanx',
+  cataphract_specialist: 'doc_cataphract_contus',
+  zweihander_specialist: 'doc_landsknecht_montante',
+  artillery_battery_specialist: 'doc_bombardier_battery',
+  manacore_staff_specialist: 'doc_astral_fulcrum',
+};
+
+/**
+ * Canonical `Rule P-09` physical/thermal/tactical min-max trade-off for each of the 22 Specialist Martial Stances.
+ */
+export const SPECIALIST_TRADEOFF_BY_FEAT_ID: Record<string, string> = {
+  spear_buckler_specialist: 'Inactive in Heavy Load; -15% cleave width',
+  sword_buckler_specialist: 'Inactive in Heavy Load; -20% sustained block mitigation',
+  pistol_cutlass_specialist: '+12% sidearm recoil heat; inactive in Heavy Load',
+  limitanei_specialist: 'Darts consume carrier ammo; inactive in Heavy Load',
+  longbow_specialist: '-25% glide speed while drawing; +10% draw heat',
+  repeating_arbalest_specialist: '-18% single-bolt THR pierce; +15% ammo consumption',
+  daisho_specialist: 'Inactive in Heavy Load; disables sustained Block (Parry only)',
+  rapier_dagger_specialist: '-25% cleave damage vs multiple targets; inactive in Heavy Load',
+  mounted_archer_specialist: '-15% max range; inactive in Heavy Load',
+  legionary_specialist: 'Inactive in Light Load; -12% sprint acceleration',
+  spear_shield_specialist: 'Inactive in Light Load; narrow 25° thrust arc',
+  knightly_bastard_specialist: 'Inactive in Light Load; +10% Action 5 heat cost',
+  shield_breaker_specialist: '-15% guard mitigation on Action 4; +10% swing recovery',
+  viking_raider_specialist: '-10% attack glide floor (0.48×); +2 Heat per hook',
+  battlemage_specialist: 'Inactive in Heavy Load; +15% shield recharge delay',
+  scepter_orb_specialist: '-12% attack tempo; short 38px melee reach',
+  odachi_specialist: 'Requires 2H grip (no off-hand); inactive in Heavy Load',
+  phalanx_specialist: 'Inactive in Light Load; 0.40× attack glide floor; sour-spot penalty <25px',
+  cataphract_specialist: 'Inactive in Light Load; +20% turn-rate inertia while charging',
+  zweihander_specialist: 'Requires 2H grip (no off-hand); inactive in Light Load',
+  artillery_battery_specialist: 'Inactive in Light Load; 0.50× attack glide floor; high ammo draw',
+  manacore_staff_specialist: '-15% physical Armor Rating while channeling Action 5',
+};
+
+/**
+ * Legacy and v2.3 `doc_*` display-slug alias map so any old save or v2.3 reference resolves to its canonical 22 Specialist Feat ID.
  */
 export const LEGACY_SPECIALIST_FEAT_ID_MAP: Record<string, string> = {
   boarder_specialist: 'pistol_cutlass_specialist',
@@ -2135,6 +2192,28 @@ export const LEGACY_SPECIALIST_FEAT_ID_MAP: Record<string, string> = {
   great_blade_specialist: 'zweihander_specialist',
   battery_conduit_specialist: 'manacore_staff_specialist',
   ordnance_munitions_specialist: 'artillery_battery_specialist',
+  doc_spear_buckler: 'spear_buckler_specialist',
+  doc_sword_buckler: 'sword_buckler_specialist',
+  doc_boarder_cqc: 'pistol_cutlass_specialist',
+  doc_limitanei_dart: 'limitanei_specialist',
+  doc_yeoman_warbow: 'longbow_specialist',
+  doc_repeating_arbalest: 'repeating_arbalest_specialist',
+  doc_daisho_niten: 'daisho_specialist',
+  doc_rapier_main_gauche: 'rapier_dagger_specialist',
+  doc_parthian_archer: 'mounted_archer_specialist',
+  doc_legionary_scutum: 'legionary_specialist',
+  doc_hoplite_aspis: 'spear_shield_specialist',
+  doc_chivalric_armizare: 'knightly_bastard_specialist',
+  doc_rhomphaia_hook: 'shield_breaker_specialist',
+  doc_huscarl_axe: 'viking_raider_specialist',
+  doc_spellblade_conduit: 'battlemage_specialist',
+  doc_hierophant_ward: 'scepter_orb_specialist',
+  doc_nodachi_battojutsu: 'odachi_specialist',
+  doc_syntagma_phalanx: 'phalanx_specialist',
+  doc_cataphract_contus: 'cataphract_specialist',
+  doc_landsknecht_montante: 'zweihander_specialist',
+  doc_bombardier_battery: 'artillery_battery_specialist',
+  doc_astral_fulcrum: 'manacore_staff_specialist',
 };
 
 /**
@@ -2160,30 +2239,44 @@ export const SPECIALIST_STANCE_CATALOG: Record<string, SpecialistStanceDefinitio
 
 /**
  * Converts the 22 Specialist Stance definitions into standalone `FrameFeatDefinition` entries
- * (`isSpecialistStance: true`, zero prerequisite feats per Rule P-04) so they integrate seamlessly
- * into `CANONICAL_FRAME_FEAT_CATALOG` and the 113-Node Feat Constellation.
+ * (`isSpecialistStance: true`, zero prerequisite feats per Rule P-04, `Rule P-01` gem socket counts:
+ * Tier I/II = 1 Gem, Tier III = 2 Gems) so they integrate seamlessly into `CANONICAL_FRAME_FEAT_CATALOG`
+ * and the 113-Node Feat Constellation (`1A Combat Records & Martial Mastery`).
  */
-export const SPECIALIST_FRAME_FEATS: FrameFeatDefinition[] = SPECIALIST_STANCE_LIST.map((s) => ({
-  id: s.featId,
-  name: s.featName,
-  tier: s.tier,
-  kind: 'interface',
-  requiredSkillId: s.skillId,
-  requiredSkillLevel: 1,
-  umbrella: s.umbrella,
-  isSpecialistStance: true,
-  synergyCategory: s.synergyCategory,
-  requiredEquipment: s.requiredEquipmentLabel,
-  gainDescription: `${s.doctrineSummary} [Unlocks ${s.stanceName}]`,
-  costDescription: `Standalone Martial Stance: ${s.requiredEquipmentLabel} (${s.umbrella} · ${s.skillId})`,
-  gemSockets: s.gemSockets,
-  unlocksDescription: `Requires: ${s.requiredEquipmentLabel}`,
-  modifiers: {
-    damageMult: s.passiveModifiers.damageMult,
-    armorDurabilityDelta: s.passiveModifiers.stabilityBonusFlat,
-    cooldownMult: 0.94,
-  },
-}));
+export const SPECIALIST_FRAME_FEATS: FrameFeatDefinition[] = SPECIALIST_STANCE_LIST.map((s) => {
+  const ruleP01GemSockets =
+    s.tier === 'I' || s.tier === 'II'
+      ? [{ gemId: s.gemSockets[0].gemId, count: 1 }]
+      : s.gemSockets.map((g) => ({ gemId: g.gemId, count: 1 }));
+  const tradeOff =
+    SPECIALIST_TRADEOFF_BY_FEAT_ID[s.featId] ||
+    'Requires specific historical weapon & load bracket pairing';
+  return {
+    id: s.featId,
+    v23Id: SPECIALIST_V23_ID_BY_FEAT_ID[s.featId],
+    name: s.featName,
+    tier: s.tier,
+    kind: 'interface',
+    rootDomain: 'interface',
+    subBranch: '1A_combat_records',
+    requiredSkillId: s.skillId,
+    requiredSkillLevel: 1,
+    umbrella: s.umbrella,
+    isSpecialistStance: true,
+    synergyCategory: s.synergyCategory,
+    requiredEquipment: s.requiredEquipmentLabel,
+    gainDescription: `${s.doctrineSummary} [Unlocks ${s.stanceName}]`,
+    costDescription: `Standalone Martial Stance: ${s.requiredEquipmentLabel} · Trade-Off: ${tradeOff}`,
+    tradeOffDescription: tradeOff,
+    gemSockets: ruleP01GemSockets,
+    unlocksDescription: `Requires: ${s.requiredEquipmentLabel}`,
+    modifiers: {
+      damageMult: s.passiveModifiers.damageMult,
+      armorDurabilityDelta: s.passiveModifiers.stabilityBonusFlat,
+      cooldownMult: 0.94,
+    },
+  };
+});
 
 /**
  * Resolves the canonical functional weapon type and broad category for a weapon ID or definition.
@@ -2349,8 +2442,35 @@ export function doesPilotMeetSpecialistFeatRequirement(
 }
 
 /**
+ * Returns all Specialist Stances whose feat is currently socketed by the pilot
+ * AND whose weapon/loadout requirements are currently satisfied.
+ * Does not mutate `state: OrionState`.
+ */
+export function getEligibleSpecialistStances(
+  state: OrionState | undefined
+): SpecialistStanceDefinition[] {
+  if (!state) return [];
+  const equippedFeats = state.equippedFeats || [];
+  const seen = new Set<string>();
+  const eligible: SpecialistStanceDefinition[] = [];
+
+  for (const rawFeatId of equippedFeats) {
+    const normId = LEGACY_SPECIALIST_FEAT_ID_MAP[rawFeatId] || rawFeatId;
+    const stance = SPECIALIST_STANCE_BY_FEAT_ID[normId] || SPECIALIST_STANCE_BY_FEAT_ID[rawFeatId];
+    if (!stance || seen.has(stance.featId)) continue;
+    const check = doesLoadoutMatchSpecialistStance(state, stance);
+    if (check.matched) {
+      seen.add(stance.featId);
+      eligible.push(stance);
+    }
+  }
+  return eligible;
+}
+
+/**
  * Evaluates the pilot's socketed Feats and equipped loadout to determine if a Specialist Stance
- * is currently available and active.
+ * is currently available and active. Respects `state.equipmentSlots.selectedSpecialistStanceId`
+ * when multiple socketed stances match the current loadout.
  * Does not mutate `state: OrionState`.
  */
 export function evaluateActiveSpecialistStance(
@@ -2370,32 +2490,43 @@ export function evaluateActiveSpecialistStance(
   const mode: 'auto' | 'base' =
     state.equipmentSlots?.stanceOverrideMode === 'base' ? 'base' : 'auto';
   const equippedFeats = state.equippedFeats || [];
+  const eligible = getEligibleSpecialistStances(state);
+
+  if (eligible.length > 0) {
+    const preferredId = state.equipmentSlots?.selectedSpecialistStanceId;
+    const chosenStance =
+      (preferredId
+        ? eligible.find(
+            (s) => s.featId === preferredId || s.stanceId === preferredId
+          )
+        : undefined) || eligible[0];
+    const isActive = mode === 'auto';
+    return {
+      active: isActive,
+      available: true,
+      mode,
+      stance: chosenStance,
+      statusReason: isActive
+        ? `${chosenStance.stanceName} (${chosenStance.shortTag})`
+        : `${chosenStance.stanceName} Standby (Base Moveset Mode)`,
+      passiveModifiers: isActive
+        ? chosenStance.passiveModifiers
+        : NEUTRAL_SPECIALIST_PASSIVE_MODIFIERS,
+    };
+  }
 
   let firstSocketedSpecialist: SpecialistStanceDefinition | null = null;
   let firstUnmetReason = '';
 
-  for (const featId of equippedFeats) {
-    const stance = SPECIALIST_STANCE_BY_FEAT_ID[featId];
+  for (const rawFeatId of equippedFeats) {
+    const normId = LEGACY_SPECIALIST_FEAT_ID_MAP[rawFeatId] || rawFeatId;
+    const stance = SPECIALIST_STANCE_BY_FEAT_ID[normId] || SPECIALIST_STANCE_BY_FEAT_ID[rawFeatId];
     if (!stance) continue;
     if (!firstSocketedSpecialist) {
       firstSocketedSpecialist = stance;
     }
     const check = doesLoadoutMatchSpecialistStance(state, stance);
-    if (check.matched) {
-      const isActive = mode === 'auto';
-      return {
-        active: isActive,
-        available: true,
-        mode,
-        stance,
-        statusReason: isActive
-          ? `${stance.stanceName} (${stance.shortTag})`
-          : `${stance.stanceName} Standby (Base Moveset Mode)`,
-        passiveModifiers: isActive
-          ? stance.passiveModifiers
-          : NEUTRAL_SPECIALIST_PASSIVE_MODIFIERS,
-      };
-    } else if (!firstUnmetReason) {
+    if (!check.matched && !firstUnmetReason) {
       firstUnmetReason = check.reason;
     }
   }
@@ -2410,6 +2541,46 @@ export function evaluateActiveSpecialistStance(
       : 'No Specialist Stance feat socketed',
     passiveModifiers: NEUTRAL_SPECIALIST_PASSIVE_MODIFIERS,
   };
+}
+
+/**
+ * Sets the active combat stance from a drop-down selection (`'base'` for Base Weapon Moveset,
+ * or a specific eligible Specialist Stance `featId` / `stanceId`).
+ * Mutates `state: OrionState` (`state.equipmentSlots.stanceOverrideMode` and `selectedSpecialistStanceId`).
+ */
+export function setActiveSpecialistStance(
+  state: OrionState,
+  targetFeatOrBase: 'base' | string,
+  ctx?: { say: (text: string) => void }
+): 'auto' | 'base' {
+  if (!state.equipmentSlots) return 'auto';
+  if (!targetFeatOrBase || targetFeatOrBase === 'base') {
+    state.equipmentSlots.stanceOverrideMode = 'base';
+    state.equipmentSlots.selectedSpecialistStanceId = null;
+    if (ctx) {
+      ctx.say('STANCE OVERRIDE: BASE WEAPON MOVESET ACTIVE');
+    }
+    return 'base';
+  }
+
+  const eligible = getEligibleSpecialistStances(state);
+  const matched = eligible.find(
+    (s) => s.featId === targetFeatOrBase || s.stanceId === targetFeatOrBase
+  );
+  state.equipmentSlots.stanceOverrideMode = 'auto';
+  state.equipmentSlots.selectedSpecialistStanceId = matched
+    ? matched.featId
+    : targetFeatOrBase;
+
+  const evalRes = evaluateActiveSpecialistStance(state);
+  if (ctx) {
+    if (evalRes.active && evalRes.stance) {
+      ctx.say(`STANCE DOCTRINE ENGAGED: ${evalRes.stance.stanceName.toUpperCase()}`);
+    } else {
+      ctx.say('STANCE OVERRIDE: BASE WEAPON MOVESET ACTIVE');
+    }
+  }
+  return 'auto';
 }
 
 /**
@@ -2452,16 +2623,433 @@ export function toggleSpecialistStanceMode(
 ): 'auto' | 'base' {
   if (!state.equipmentSlots) return 'auto';
   const current = state.equipmentSlots.stanceOverrideMode === 'base' ? 'base' : 'auto';
-  const next: 'auto' | 'base' = current === 'auto' ? 'base' : 'auto';
-  state.equipmentSlots.stanceOverrideMode = next;
+  if (current === 'auto') {
+    return setActiveSpecialistStance(state, 'base', ctx);
+  }
+  const eligible = getEligibleSpecialistStances(state);
+  return setActiveSpecialistStance(
+    state,
+    eligible[0]?.featId || state.equipmentSlots.selectedSpecialistStanceId || 'auto',
+    ctx
+  );
+}
 
-  const evalRes = evaluateActiveSpecialistStance(state);
-  if (ctx) {
-    if (next === 'auto' && evalRes.stance) {
-      ctx.say(`STANCE DOCTRINE ENGAGED: ${evalRes.stance.stanceName.toUpperCase()}`);
-    } else {
-      ctx.say('STANCE OVERRIDE: BASE WEAPON MOVESET ACTIVE');
+/**
+ * Resolved `Rule P-10` Action 4 (`[Y]`) Defensive Mode and Precedence Hierarchy profile (`v2.3` §1 & §2).
+ */
+export interface ResolvedAction4DefensiveProfile {
+  /** Effective Action 4 defensive mode (`'block'` = Mode A Sustained Guard, `'parry'` = Mode B Active Timing Deflection) */
+  mode: Action4DefensiveMode;
+  /** True when the pilot's active loadout and feats actually provide a Guard, Parry, or P1/P2 defensive override on Action 4 (`[Y]`) */
+  available: boolean;
+  /** True only when the pilot's socketed defensive mastery feats + compatible loadout unlock manual switching between Guard (`Block`) and `Parry` */
+  canManualSelect: boolean;
+  /** Precedence priority tier (`1` = Legendary Balmung override, `2` = Single-Weapon Kaad Mastery replacement, `3` = Loadout/Feat Guard vs. Parry) */
+  priorityTier: 1 | 2 | 3;
+  /** Specific override identifier when Priority 1 (`'balmung_gram_counter'`), Priority 2 (`'kaad_iron_bind' | 'kaad_sanctified_palm'`), or Reverse-Grip Katana lock (`'reverse_grip_parry'`) is active */
+  overrideKind:
+    | 'none'
+    | 'balmung_gram_counter'
+    | 'kaad_iron_bind'
+    | 'kaad_sanctified_palm'
+    | 'reverse_grip_parry'
+    | 'daisho_niten_parry';
+  /** True when the LOADOUT Block/Parry mode toggle is locked by automatic loadout/feat resolution, Priority 1/2 override, or lack of a Guard/Parry weapon */
+  isModeLocked: boolean;
+  /** Short UI badge label for the LOADOUT Guard/Parry row */
+  badgeLabel: string;
+  /** Concise explanation of why Guard/Parry is auto-selected, manually unlocked, or unavailable */
+  statusReason: string;
+  /** Detailed mechanical summary for the LOADOUT inspector */
+  summary: string;
+  /** True when Reverse-Grip Dual Katana mastery can be toggled on the current loadout */
+  canToggleReverseGripKatana: boolean;
+  /** True when Reverse-Grip Dual Katana mode is currently active */
+  reverseGripKatanaActive: boolean;
+}
+
+/**
+ * Resolves the pilot's active `Action 4` (`[Y]`) defensive behavior under `Rule P-10` (`v2.3` §1 & §2):
+ * - **Restrictive Availability**: Guard and Parry are only available when the pilot equips a Shield, a Parry-capable Melee weapon, or sockets an off-hand deflection / P1 / P2 feat; pure ranged loadouts without a shield or deflection feat do not have Guard/Parry (`available: false`).
+ * - **Automatic Swapping by Feats & Loadout**: By default, Guard (`Mode A: Block`) and Parry (`Mode B: Parry`) swap automatically based on equipped items (Shield -> Guard; Melee weapon without Shield -> Parry) and active Stance/Feat overrides (`P1 Balmung`, `P2 Kaad`, `Reverse-Grip Katana`, `Daisho`, `Phalanx`, `Legionary`, `Aegis`).
+ * - **Manual Selection Gated by Versatile Defensive Feats**: Manual switching between Guard (`Block`) and `Parry` (`canManualSelect: true`) is only unlocked when the pilot sockets a qualifying versatile defensive mastery feat (such as `off_hand_deflection`, `cleave_counter`, `attrition_riposte`, `disruption_riposte`, `sword_buckler_specialist`, `spear_buckler_specialist`, `knightly_bastard_specialist`, `viking_raider_specialist`, or `shield_breaker_specialist`) with a compatible melee/shield loadout.
+ * Does not mutate `state: OrionState`.
+ */
+export function resolveActiveAction4DefensiveMode(
+  state: OrionState | undefined
+): ResolvedAction4DefensiveProfile {
+  if (!state) {
+    return {
+      mode: 'block',
+      available: true,
+      canManualSelect: false,
+      priorityTier: 3,
+      overrideKind: 'none',
+      isModeLocked: true,
+      badgeLabel: 'AUTO: GUARD [BLOCK]',
+      statusReason: 'Auto-selected by default Shield/Melee loadout',
+      summary:
+        'Sustained Directional Guard (65%–85% mitigation while [Y] is held; 0.34s Perfect Block window).',
+      canToggleReverseGripKatana: false,
+      reverseGripKatanaActive: false,
+    };
+  }
+
+  const eq = state.equipmentSlots;
+  const slot1Id = eq?.slot1 || state.equippedWeapons?.[0] || null;
+  const slot2Id = eq?.slot2 || null;
+  const slot3Id = eq?.slot3 || null;
+  const mainProfile = resolveSlotWeaponProfile(slot1Id);
+  const sideProfile = resolveSlotWeaponProfile(slot2Id);
+  const isAuxActive = Boolean(eq?.auxActive && slot3Id);
+  const equippedFeats = state.equippedFeats || [];
+
+  // Check Reverse-Grip Dual Katana eligibility (paired Katanas/Wakizashi + backstab_mastery / mast_reverse_grip_dual_katana)
+  const hasReverseGripFeat =
+    equippedFeats.includes('backstab_mastery') ||
+    equippedFeats.includes('mast_reverse_grip_dual_katana');
+  const isPairedKatanaLoadout = Boolean(
+    mainProfile &&
+      (mainProfile.functionalType === 'Katana' || mainProfile.functionalType === 'Wakizashi') &&
+      ((sideProfile &&
+        (sideProfile.functionalType === 'Katana' ||
+          sideProfile.functionalType === 'Wakizashi')) ||
+        (mainProfile.baseId === 'leg_yawarakai_te' &&
+          (eq?.installedLoreBoundRelics?.[slot1Id || ''] === 'leg_juuchi_yosamu' ||
+            eq?.installedLoreBoundRelics?.leg_yawarakai_te === 'leg_juuchi_yosamu')))
+  );
+  const canToggleReverseGripKatana = Boolean(hasReverseGripFeat && isPairedKatanaLoadout);
+  const reverseGripKatanaActive = Boolean(
+    canToggleReverseGripKatana && eq?.reverseGripKatana
+  );
+
+  // If Back Auxiliary Launcher is currently swapped into active Skill 4/5 ownership, Guard/Parry is temporarily suspended
+  if (isAuxActive) {
+    return {
+      mode: 'block',
+      available: false,
+      canManualSelect: false,
+      priorityTier: 3,
+      overrideKind: 'none',
+      isModeLocked: true,
+      badgeLabel: 'UNAVAILABLE [AUX ACTIVE]',
+      statusReason: 'Back Auxiliary Launcher owns Y [I] Hold (swap back via L [Q] Hold for Guard/Parry)',
+      summary:
+        'Auxiliary Dorsal Launcher is active and owns Action 4 [Y] Hold. Swap back to Main/Side weapons to engage Guard or Parry.',
+      canToggleReverseGripKatana,
+      reverseGripKatanaActive,
+    };
+  }
+
+  // Priority 1 — Legendary Weapon Override (Balmung)
+  if (mainProfile?.baseId === 'leg_balmung' || sideProfile?.baseId === 'leg_balmung') {
+    return {
+      mode: 'parry',
+      available: true,
+      canManualSelect: false,
+      priorityTier: 1,
+      overrideKind: 'balmung_gram_counter',
+      isModeLocked: true,
+      badgeLabel: 'P1: GRAM COUNTER-SLASH',
+      statusReason: 'Auto-locked by Legendary Balmung (Priority 1 Override)',
+      summary:
+        'Priority 1 Legendary Override (Balmung): Action 4 [Y] is locked to Gram Counter-Slash (0.34s Perfect Block window negates 100% melee damage and auto-triggers a 180 BCU counter-slash with 1.5× Stagger).',
+      canToggleReverseGripKatana: false,
+      reverseGripKatanaActive: false,
+    };
+  }
+
+  // Priority 2 — Single-Weapon Mastery Override (Solo Kaad Grapple / Sanctified Palm)
+  const isSoloKaad =
+    (mainProfile?.functionalType === 'Kaad' && !sideProfile) ||
+    (!mainProfile && sideProfile?.functionalType === 'Kaad') ||
+    (mainProfile?.functionalType === 'Kaad' && sideProfile?.functionalType === 'Kaad');
+  if (isSoloKaad) {
+    const hasSanctifiedPalm =
+      equippedFeats.includes('mercy_strike') ||
+      equippedFeats.includes('mast_kaad_sanctified_palm');
+    const hasIronBind =
+      equippedFeats.includes('arcane_ambush') ||
+      equippedFeats.includes('mast_kaad_iron_bind');
+    if (hasSanctifiedPalm) {
+      return {
+        mode: 'parry',
+        available: true,
+        canManualSelect: false,
+        priorityTier: 2,
+        overrideKind: 'kaad_sanctified_palm',
+        isModeLocked: true,
+        badgeLabel: 'P2: SANCTIFIED PALM',
+        statusReason: 'Auto-locked by Solo Kaad + Sanctified Palm Mastery (Priority 2)',
+        summary:
+          'Priority 2 Single-Weapon Mastery (Kaad: Sanctified Palm): Action 4 [Y] emits a harmonic concussive wave that cleanses 1 debuff and restores +18 Shield (disables sustained Block).',
+        canToggleReverseGripKatana: false,
+        reverseGripKatanaActive: false,
+      };
+    }
+    if (hasIronBind) {
+      return {
+        mode: 'parry',
+        available: true,
+        canManualSelect: false,
+        priorityTier: 2,
+        overrideKind: 'kaad_iron_bind',
+        isModeLocked: true,
+        badgeLabel: 'P2: IRON-BIND GRAPPLE',
+        statusReason: 'Auto-locked by Solo Kaad + Iron-Bind Mastery (Priority 2)',
+        summary:
+          'Priority 2 Single-Weapon Mastery (Kaad: Iron-Bind Grapple): Action 4 [Y] executes a close-range grapple pull + 1.2s root (disables sustained Block).',
+        canToggleReverseGripKatana: false,
+        reverseGripKatanaActive: false,
+      };
     }
   }
+
+  // Priority 3A — Strict Feat / Doctrine Locks (Reverse-Grip Dual Katana, Daisho Niten Ichi-Ryu, Rapier & Dagger, Phalanx, Legionary, Aegis)
+  if (reverseGripKatanaActive) {
+    return {
+      mode: 'parry',
+      available: true,
+      canManualSelect: false,
+      priorityTier: 3,
+      overrideKind: 'reverse_grip_parry',
+      isModeLocked: true,
+      badgeLabel: 'AUTO: PARRY [REV-GRIP]',
+      statusReason: 'Auto-locked to Parry by Reverse-Grip Dual Katana Mastery',
+      summary:
+        'Reverse-Grip Dual Katana Mastery Active: +18% attack tempo, +0.10s Parry window, +35% flank damage (-20% melee reach; sustained Block disabled).',
+      canToggleReverseGripKatana,
+      reverseGripKatanaActive: true,
+    };
+  }
+
+  const activeStance = evaluateActiveSpecialistStance(state);
+  const activeStanceFeatId = activeStance.active ? activeStance.stance?.featId : undefined;
+
+  if (
+    activeStanceFeatId === 'daisho_specialist' ||
+    activeStanceFeatId === 'rapier_dagger_specialist'
+  ) {
+    const isDaisho = activeStanceFeatId === 'daisho_specialist';
+    return {
+      mode: 'parry',
+      available: true,
+      canManualSelect: false,
+      priorityTier: 3,
+      overrideKind: 'daisho_niten_parry',
+      isModeLocked: true,
+      badgeLabel: isDaisho ? 'AUTO: PARRY [JUJI-DOME]' : 'AUTO: PARRY [MAIN-GAUCHE]',
+      statusReason: `Auto-locked to Parry by ${activeStance.stance?.stanceName || 'Dual-Blade Doctrine'}`,
+      summary: isDaisho
+        ? 'Niten Ichi-Ryu Daisho Doctrine Active: Action 4 [Y] uses Cross-Bind Parry (Juji-Dome, +0.08s window, vents -14 Heat & staggers attacker; sustained Block disabled).'
+        : 'Main-Gauche Duelist Doctrine Active: Action 4 [Y] uses parrying dagger deflection (+0.08s Parry window & riposte lunge; sustained Block disabled).',
+      canToggleReverseGripKatana,
+      reverseGripKatanaActive,
+    };
+  }
+
+  const hasAegisShield =
+    mainProfile?.baseId === 'leg_aegis' || sideProfile?.baseId === 'leg_aegis';
+  if (
+    hasAegisShield ||
+    activeStanceFeatId === 'phalanx_specialist' ||
+    activeStanceFeatId === 'legionary_specialist' ||
+    activeStanceFeatId === 'hoplite_specialist'
+  ) {
+    const lockSource = hasAegisShield
+      ? 'Legendary Aegis of the Gorgon'
+      : activeStance.stance?.stanceName || 'Heavy Shield-Wall Doctrine';
+    return {
+      mode: 'block',
+      available: true,
+      canManualSelect: false,
+      priorityTier: 3,
+      overrideKind: 'none',
+      isModeLocked: true,
+      badgeLabel: hasAegisShield ? 'AUTO: GUARD [AEGIS]' : 'AUTO: GUARD [SHIELD-WALL]',
+      statusReason: `Auto-locked to Guard by ${lockSource}`,
+      summary:
+        'Mode A — Block (Sustained Directional Guard): Continuous frontal mitigation (75%–88%) while [Y] is held with initial 0.34s Perfect Block window.',
+      canToggleReverseGripKatana,
+      reverseGripKatanaActive,
+    };
+  }
+
+  // Evaluate equipped weapon defensive capabilities
+  const mainDef = slot1Id ? getWeaponDefinition(slot1Id) : undefined;
+  const sideDef = slot2Id ? getWeaponDefinition(slot2Id) : undefined;
+  const is2HGrip =
+    eq?.mainGrip === '2h' || !slot2Id || Boolean(mainDef && isTwoHandWeapon(mainDef));
+  const activeSideProfile = !is2HGrip ? sideProfile : null;
+  const activeSideDef = !is2HGrip ? sideDef : undefined;
+
+  const hasShieldEquipped = Boolean(
+    mainProfile?.category === 'Shields' || activeSideProfile?.category === 'Shields'
+  );
+  const isMeleeCategory = (cat?: WeaponCategory) =>
+    cat === 'Spears' ||
+    cat === 'Impact & Axes' ||
+    cat === 'Blades: Curved' ||
+    cat === 'Blades: Straight';
+  const hasMeleeParryWeapon = Boolean(
+    (mainProfile && (isMeleeCategory(mainProfile.category) || mainDef?.canBlock)) ||
+      (activeSideProfile &&
+        (isMeleeCategory(activeSideProfile.category) || activeSideDef?.canBlock))
+  );
+  const hasOffHandDeflectionFeat = equippedFeats.some((f) =>
+    ['off_hand_deflection', 'cqc_deflection', 'feat_def_09'].includes(f)
+  );
+
+  // Restrictive Availability Check: Pure ranged loadouts without a shield, melee weapon, or Off-Hand Deflection have neither Guard nor Parry
+  if (!hasShieldEquipped && !hasMeleeParryWeapon && !hasOffHandDeflectionFeat) {
+    return {
+      mode: 'block',
+      available: false,
+      canManualSelect: false,
+      priorityTier: 3,
+      overrideKind: 'none',
+      isModeLocked: true,
+      badgeLabel: 'UNAVAILABLE [RANGED LOADOUT]',
+      statusReason: 'Requires an equipped Shield, Melee weapon, or Off-Hand Deflection feat',
+      summary:
+        'Guard & Parry are restrictively unavailable on pure ranged loadouts without a Shield, Melee weapon, or Off-Hand Deflection feat (Y [I] Hold executes Ranged Skill 4).',
+      canToggleReverseGripKatana,
+      reverseGripKatanaActive,
+    };
+  }
+
+  // Check if socketed feats unlock manual selection between Guard (Block) and Parry
+  const MANUAL_GUARD_PARRY_FEAT_NAMES: Record<string, string> = {
+    off_hand_deflection: 'Off-Hand Deflection',
+    cqc_deflection: 'CQC Deflection',
+    feat_def_09: 'Off-Hand Deflection',
+    attrition_riposte: 'Attrition Riposte',
+    feat_def_10: 'Attrition Riposte',
+    disruption_riposte: 'Disruption Riposte',
+    feat_def_11: 'Disruption Riposte',
+    cleave_counter: 'Cleave Counter',
+    feat_def_12: 'Cleave Counter',
+    sword_buckler_specialist: 'Sword & Buckler Specialist',
+    spear_buckler_specialist: 'Spear & Buckler Specialist',
+    knightly_bastard_specialist: 'Knightly Bastard Specialist',
+    viking_raider_specialist: 'Viking Raider Specialist',
+    shield_breaker_specialist: 'Shield-Breaker Specialist',
+  };
+  const unlockingManualFeatId = equippedFeats.find(
+    (f) => MANUAL_GUARD_PARRY_FEAT_NAMES[f] !== undefined
+  );
+  const canManualSelect = Boolean(unlockingManualFeatId);
+
+  // Default automatic posture determined by equipped loadout:
+  // - Equipped Shield -> Guard (Mode A: Block)
+  // - Melee Weapon / Off-Hand Deflection without Shield -> Parry (Mode B: Parry)
+  const autoDefaultMode: Action4DefensiveMode = hasShieldEquipped ? 'block' : 'parry';
+  const effectiveMode: Action4DefensiveMode = canManualSelect
+    ? eq?.action4Mode === 'block' || eq?.action4Mode === 'parry'
+      ? eq.action4Mode
+      : autoDefaultMode
+    : autoDefaultMode;
+
+  const unlockingFeatName = unlockingManualFeatId
+    ? MANUAL_GUARD_PARRY_FEAT_NAMES[unlockingManualFeatId] || 'Defensive Mastery Feat'
+    : null;
+
+  if (effectiveMode === 'parry') {
+    return {
+      mode: 'parry',
+      available: true,
+      canManualSelect,
+      priorityTier: 3,
+      overrideKind: 'none',
+      isModeLocked: !canManualSelect,
+      badgeLabel: canManualSelect ? 'MANUAL: PARRY [0.34s]' : 'AUTO: PARRY [0.34s]',
+      statusReason: canManualSelect
+        ? `Manual Guard/Parry unlocked by ${unlockingFeatName}`
+        : 'Auto-selected by Melee loadout (equip a Shield for Guard or socket Off-Hand Deflection / Riposte feat for manual selection)',
+      summary:
+        'Mode B — Parry (Active Timing Deflection): Discrete 0.34s deflection window (cannot be held for continuous guard). Deflects 100% frontal damage, interrupts melee swings, and vents -12 Heat (0.28s whiff recovery).',
+      canToggleReverseGripKatana,
+      reverseGripKatanaActive,
+    };
+  }
+
+  return {
+    mode: 'block',
+    available: true,
+    canManualSelect,
+    priorityTier: 3,
+    overrideKind: 'none',
+    isModeLocked: !canManualSelect,
+    badgeLabel: canManualSelect ? 'MANUAL: GUARD [HOLD]' : 'AUTO: GUARD [HOLD]',
+    statusReason: canManualSelect
+      ? `Manual Guard/Parry unlocked by ${unlockingFeatName}`
+      : 'Auto-selected by equipped Shield (swap to Melee without Shield for Parry or socket Off-Hand Deflection / Riposte feat for manual selection)',
+    summary:
+      'Mode A — Block (Sustained Directional Guard): Continuous frontal mitigation (65%–85%) while [Y] is held (+4–7 Heat/sec drain, 68%–100% glide speed floor, initial 0.34s Perfect Block window).',
+    canToggleReverseGripKatana,
+    reverseGripKatanaActive,
+  };
+}
+
+/**
+ * Explicitly sets or toggles the pilot's `Action 4` (`[Y]`) defensive mode between `'block'` (Mode A)
+ * and `'parry'` (Mode B) on the `LOADOUT` screen (`Rule P-10`) when unlocked by feats (`canManualSelect`).
+ * Mutates `state: OrionState` (`state.equipmentSlots.action4Mode`).
+ */
+export function toggleLoadoutAction4Mode(
+  state: OrionState,
+  explicitMode?: Action4DefensiveMode,
+  ctx?: { say: (text: string) => void }
+): Action4DefensiveMode {
+  if (!state.equipmentSlots) return 'block';
+  const profile = resolveActiveAction4DefensiveMode(state);
+  if (!profile.available) {
+    ctx?.say(`GUARD / PARRY UNAVAILABLE: ${profile.statusReason.toUpperCase()}`);
+    return profile.mode;
+  }
+  if (!profile.canManualSelect || profile.isModeLocked) {
+    ctx?.say(`${profile.badgeLabel}: ${profile.statusReason.toUpperCase()}`);
+    return profile.mode;
+  }
+  const nextMode: Action4DefensiveMode =
+    explicitMode || (profile.mode === 'block' ? 'parry' : 'block');
+  state.equipmentSlots.action4Mode = nextMode;
+  ctx?.say(
+    nextMode === 'parry'
+      ? 'GUARD / PARRY [Y] SET TO PARRY (0.34s ACTIVE DEFLECTION · SUSTAINED GUARD DISABLED)'
+      : 'GUARD / PARRY [Y] SET TO GUARD (SUSTAINED DIRECTIONAL BLOCK)'
+  );
+  return nextMode;
+}
+
+/**
+ * Toggles Reverse-Grip Dual Katana mode (`state.equipmentSlots.reverseGripKatana`) when paired Katanas/Wakizashi
+ * are equipped alongside `backstab_mastery` (`mast_reverse_grip_dual_katana`).
+ * Mutates `state: OrionState` (`state.equipmentSlots.reverseGripKatana` and `action4Mode`).
+ */
+export function toggleReverseGripKatanaMode(
+  state: OrionState,
+  ctx?: { say: (text: string) => void }
+): boolean {
+  if (!state.equipmentSlots) return false;
+  const profile = resolveActiveAction4DefensiveMode(state);
+  if (!profile.canToggleReverseGripKatana) {
+    ctx?.say(
+      'REVERSE-GRIP DUAL KATANA REQUIRES PAIRED KATANAS/WAKIZASHI + BACKSTAB MASTERY FEAT'
+    );
+    return false;
+  }
+  const next = !state.equipmentSlots.reverseGripKatana;
+  state.equipmentSlots.reverseGripKatana = next;
+  if (next) {
+    state.equipmentSlots.action4Mode = 'parry';
+  }
+  ctx?.say(
+    next
+      ? 'REVERSE-GRIP DUAL KATANA ENGAGED (+18% TEMPO, +0.10s PARRY, -20% REACH, PARRY ONLY)'
+      : 'STANDARD GRIP DUAL KATANA RESTORED'
+  );
   return next;
 }
+
+

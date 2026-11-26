@@ -18,7 +18,6 @@ import {
   getWeaponSubtypeInfo,
   isEquipmentUnlocked,
   WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS,
-  WEAPON_GEM_WEIGHT_DELTA,
 } from '../../database/progression';
 import { AREA_REGISTRY, LOCAL_ROOM_REGISTRY, REGION_REGISTRY } from '../../database/world';
 import { formatOrionLoreLabel, getOrionGraphicsSettings } from '../../systems';
@@ -64,7 +63,6 @@ export function isEnemyDiscoveredInCodex(state: OrionState, def: EnemyWikiDefini
   if (state.discoveredCodex?.enemies?.[def.type]) {
     return true;
   }
-  // Check active visible/engaged enemies in the current room
   for (const e of state.enemies || []) {
     if (e.type !== def.type) continue;
     const dist = Math.hypot(e.x - state.x, e.y - state.y);
@@ -133,13 +131,14 @@ export function isItemDiscoveredInCodex(state: OrionState, def: ItemWikiDefiniti
 }
 
 /**
- * Renders the discovery-gated in-game Pilot Codex (`BESTIARY`, `ARSENAL`, `RELICS`, and `CHRONICLES`).
- * Only entries that the pilot has actually encountered, salvaged, or explored are displayed.
+ * Renders the discovery-gated in-game Pilot Codex (`BESTIARY`, `ARSENAL`, `RELICS`, and `CHRONICLES`)
+ * using a Single-Focus Full-Width Compact List and a Slide-Over Codex Entry Detail Inspector.
  */
 export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
   const [category, setCategory] = useState<CodexCategoryTab>('bestiary');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [isInspectorOpen, setIsInspectorOpen] = useState<boolean>(false);
 
   const [arsenalClassFilter, setArsenalClassFilter] = useState<'ALL' | WeaponCategory>('ALL');
   const [arsenalSubtypeFilter, setArsenalSubtypeFilter] = useState<
@@ -234,7 +233,14 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
         .sort((a, b) => a.name.localeCompare(b.name)),
       unlockedCount: unlocked.length,
     };
-  }, [state, state.inventorySlots, state.equipmentSlots, state.salvageScrap, state.discoveredCodex, q]);
+  }, [
+    state,
+    state.inventorySlots,
+    state.equipmentSlots,
+    state.salvageScrap,
+    state.discoveredCodex,
+    q,
+  ]);
 
   const discoveredChronicles = useMemo(() => {
     const entries: ChronicleCodexEntry[] = [];
@@ -330,7 +336,16 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
           c.lore.toLowerCase().includes(q)
       ),
     };
-  }, [state, state.room, state.areaId, state.regionId, state.exploredTiles, state.clearedRooms, q, devMode]);
+  }, [
+    state,
+    state.room,
+    state.areaId,
+    state.regionId,
+    state.exploredTiles,
+    state.clearedRooms,
+    q,
+    devMode,
+  ]);
 
   const totalDiscovered =
     discoveredEnemies.unlockedCount +
@@ -344,190 +359,122 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
     discoveredItems.totalCount +
     discoveredChronicles.totalCount;
 
+  const activeEnemy =
+    category === 'bestiary'
+      ? discoveredEnemies.items.find((e) => e.type === selectedId) || null
+      : null;
+  const activeWeapon =
+    category === 'arsenal'
+      ? discoveredWeapons.items.find((w) => w.id === selectedId) || null
+      : null;
+  const activeItem =
+    category === 'relics'
+      ? discoveredItems.items.find((it) => it.id === selectedId) || null
+      : null;
+  const activeChronicle =
+    category === 'chronicles'
+      ? discoveredChronicles.items.find((c) => c.id === selectedId) || null
+      : null;
+
+  const openEntryInspector = (id: string) => {
+    soundSystem.playSelect();
+    setSelectedId(id);
+    setIsInspectorOpen(true);
+  };
+
   return (
-    <div className="flex-1 min-h-0 flex flex-col space-y-1.5 overflow-hidden text-[10px]">
-      {/* Codex Header & Discovery Progress */}
-      <div className="flex flex-wrap items-center justify-between gap-1.5 px-2 py-1 bg-[#090d14] border border-[#1e293b] rounded-xs">
-        <div className="flex items-center gap-1.5">
-          <span className="text-[#50fa7b] font-bold tracking-wide">
-            📖 PILOT FIELD CODEX
-          </span>
-          <span className="text-[#64748b]">·</span>
-          <span className="text-[#94a3b8] text-[9px]">
-            ONLY SIGHTED & SALVAGED ENTRIES RECORDED
+    <div className="relative flex-1 min-h-0 flex flex-col space-y-1.5 overflow-hidden text-[10px]">
+      {/* Clean Two-Row Codex Header: Category Tabs + Recorded Progress on Row 1, Search + Filters on Row 2 */}
+      <div className="flex flex-col gap-1 px-2 py-1.5 bg-[#090d14] border border-[#1e293b] rounded-xs shrink-0">
+        {/* Row 1: Category Tabs + Total Recorded Progress */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1 overflow-x-auto min-w-0">
+            {(
+              [
+                {
+                  id: 'bestiary' as const,
+                  label: 'Bestiary',
+                  count: discoveredEnemies.unlockedCount,
+                  total: discoveredEnemies.totalCount,
+                  activeCls: 'bg-[#f43f5e] text-[#05070a]',
+                },
+                {
+                  id: 'arsenal' as const,
+                  label: 'Arsenal',
+                  count: discoveredWeapons.unlockedCount,
+                  total: discoveredWeapons.totalCount,
+                  activeCls: 'bg-[#ffd27d] text-[#05070a]',
+                },
+                {
+                  id: 'relics' as const,
+                  label: 'Relics & Items',
+                  count: discoveredItems.unlockedCount,
+                  total: discoveredItems.totalCount,
+                  activeCls: 'bg-[#50fa7b] text-[#05070a]',
+                },
+                {
+                  id: 'chronicles' as const,
+                  label: 'Chronicles',
+                  count: discoveredChronicles.unlockedCount,
+                  total: discoveredChronicles.totalCount,
+                  activeCls: 'bg-[#38bdf8] text-[#05070a]',
+                },
+              ] as const
+            ).map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => {
+                  soundSystem.playMenuBeep();
+                  setCategory(t.id);
+                  setSelectedId(null);
+                  setIsInspectorOpen(false);
+                }}
+                className={`px-2 py-0.5 rounded-xs font-bold text-[10px] transition-colors cursor-pointer shrink-0 ${
+                  category === t.id
+                    ? t.activeCls
+                    : 'bg-[#0f172a] text-[#94a3b8] hover:text-[#e2e8f0] border border-[#1e293b]'
+                }`}
+              >
+                {t.label} ({t.count}/{t.total})
+              </button>
+            ))}
+          </div>
+
+          <span className="text-[9px] font-mono tabular-nums text-[#94a3b8] shrink-0">
+            Recorded <b className="text-[#38bdf8]">{totalDiscovered}/{totalCatalog}</b>
           </span>
         </div>
-        <span className="text-[10px] font-bold text-[#38bdf8]">
-          RECORDED: {totalDiscovered} / {totalCatalog}
-        </span>
-      </div>
 
-      {/* Category Tabs & Search Input */}
-      <div className="flex flex-wrap items-center justify-between gap-1.5">
-        <div className="flex items-center gap-1 overflow-x-auto">
-          {(
-            [
-              {
-                id: 'bestiary' as const,
-                label: 'BESTIARY',
-                count: discoveredEnemies.unlockedCount,
-                total: discoveredEnemies.totalCount,
-                activeCls: 'bg-[#f43f5e] text-[#05070a]',
-              },
-              {
-                id: 'arsenal' as const,
-                label: 'ARSENAL',
-                count: discoveredWeapons.unlockedCount,
-                total: discoveredWeapons.totalCount,
-                activeCls: 'bg-[#ffd27d] text-[#05070a]',
-              },
-              {
-                id: 'relics' as const,
-                label: 'RELICS & ITEMS',
-                count: discoveredItems.unlockedCount,
-                total: discoveredItems.totalCount,
-                activeCls: 'bg-[#50fa7b] text-[#05070a]',
-              },
-              {
-                id: 'chronicles' as const,
-                label: 'CHRONICLES',
-                count: discoveredChronicles.unlockedCount,
-                total: discoveredChronicles.totalCount,
-                activeCls: 'bg-[#38bdf8] text-[#05070a]',
-              },
-            ] as const
-          ).map((t) => (
-            <button
-              key={t.id}
-              onClick={() => {
-                soundSystem.playMenuBeep();
-                setCategory(t.id);
-                setSelectedId(null);
-              }}
-              className={`px-2 py-0.5 rounded-xs font-bold text-[10px] transition-colors cursor-pointer shrink-0 ${
-                category === t.id
-                  ? t.activeCls
-                  : 'bg-[#0f172a] text-[#94a3b8] hover:bg-[#1e293b] border border-[#1e293b]'
-              }`}
-            >
-              {t.label} ({t.count}/{t.total})
-            </button>
-          ))}
-        </div>
+        {/* Row 2: Search Input + Optional Arsenal Class & Subtype Filters */}
+        <div className="flex items-center justify-between gap-2 pt-1 border-t border-[#1e293b]/70">
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search codex entries..."
+            className="px-2 py-0.5 bg-[#05070a] border border-[#334155] rounded-xs text-[11px] text-[#e2e8f0] placeholder-[#64748b] focus:outline-none focus:border-[#50fa7b] w-44 sm:w-52 shrink-0"
+          />
 
-        <input
-          type="search"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search recorded codex..."
-          className="px-2 py-0.5 bg-[#090d14] border border-[#334155] rounded-xs text-[11px] text-[#e2e8f0] placeholder-[#64748b] focus:outline-none focus:border-[#50fa7b] w-44 max-w-full"
-        />
-      </div>
-
-      {/* Discovered Entries View */}
-      <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5 pr-0.5">
-        {category === 'bestiary' &&
-          (discoveredEnemies.items.length === 0 ? (
-            <div className="p-4 text-center text-[#64748b] bg-[#090d14]/70 border border-[#1e293b] rounded-xs italic">
-              No bestiary sightings match your query yet. Approach entities within your light radius
-              or engage them in the bog to log their codex dossier.
-            </div>
-          ) : (
-            discoveredEnemies.items.map((enemy) => {
-              const isExpanded = selectedId === enemy.type;
-              return (
-                <div
-                  key={enemy.type}
-                  role="button"
-                  tabIndex={0}
-                  data-menu-focusable="true"
-                  onClick={() => {
-                    soundSystem.playSelect();
-                    setSelectedId(isExpanded ? null : enemy.type);
-                  }}
-                  className="p-2 bg-[#0f172a]/90 hover:bg-[#1e293b]/90 border border-[#334155] rounded-xs cursor-pointer transition-colors"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      {enemy.sprite?.base64 ? (
-                        <SpriteCanvasIcon
-                          base64={enemy.sprite.base64}
-                          cellWidth={enemy.sprite.cellWidth || 16}
-                          cellHeight={enemy.sprite.cellHeight || 16}
-                          sizeClass="w-5 h-5"
-                        />
-                      ) : (
-                        <span
-                          className="w-3.5 h-3.5 rounded-xs inline-block border border-black/40"
-                          style={{ backgroundColor: enemy.emissiveColor || '#f43f5e' }}
-                        />
-                      )}
-                      <div>
-                        <span className="font-bold text-[#f8fafc] text-[11px]">
-                          {enemy.name}
-                        </span>
-                        {devMode && (
-                          <span className="ml-1.5 text-[9px] text-[#64748b] font-mono">
-                            [{enemy.type}]
-                          </span>
-                        )}
-                        <span className="ml-2 text-[9px] uppercase text-[#94a3b8]">
-                          {(enemy.faction || 'hostile').toUpperCase()} · {enemy.damageType} ({enemy.damage} DMG)
-                        </span>
-                      </div>
-                    </div>
-                    <span className="text-[9px] text-[#38bdf8]">
-                      SHLD {enemy.shields.capacity} · ARM {enemy.armor.threshold}/{enemy.armor.rating} · FRM {enemy.frameIntegrity}
-                    </span>
-                  </div>
-
-                  <p className="mt-1 text-[#cbd5e1] text-[10px] leading-snug">
-                    {enemy.description}
-                  </p>
-
-                  {isExpanded && (
-                    <div className="mt-1.5 pt-1.5 border-t border-[#334155]/80 space-y-1 text-[10px]">
-                      <div className="text-[#fde68a] italic leading-snug">
-                        “{enemy.lore}”
-                      </div>
-                      <div className="flex flex-wrap gap-3 text-[9px] text-[#94a3b8] pt-0.5">
-                        <span>Armor Type: {enemy.armor.type}</span>
-                        <span>Armor Durability: {enemy.armor.durability}</span>
-                        <span>Weight Class: {(enemy.weightClass || 'medium').toUpperCase()}</span>
-                        <span>Speed: {enemy.speed}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          ))}
-
-        {category === 'arsenal' && (
-          <div className="p-1.5 bg-[#090d14] border border-[#1e293b] rounded-xs space-y-1">
-            <div className="flex flex-wrap items-center justify-between gap-1">
-              <div className="flex flex-wrap items-center gap-1">
-                <span className="text-[9px] font-bold text-[#ffd27d]">8 WEAPON CLASSES:</span>
-                {(['ALL', ...WEAPON_CATEGORIES] as const).map((catOpt) => (
-                  <button
-                    key={catOpt}
-                    type="button"
-                    onClick={() => {
-                      soundSystem.playSelect();
-                      setArsenalClassFilter(catOpt);
-                    }}
-                    className={`px-1.5 py-0.2 rounded-xs text-[9px] font-bold border cursor-pointer ${
-                      arsenalClassFilter === catOpt
-                        ? 'bg-[#ffd27d] text-[#05070a] border-[#fde047]'
-                        : 'bg-[#05070a] text-[#94a3b8] border-[#1e293b]'
-                    }`}
-                  >
-                    {catOpt.toUpperCase()}
-                  </button>
+          {category === 'arsenal' && (
+            <div className="flex items-center gap-1.5 min-w-0">
+              <select
+                value={arsenalClassFilter}
+                onChange={(e) => {
+                  soundSystem.playSelect();
+                  setArsenalClassFilter(e.target.value as 'ALL' | WeaponCategory);
+                }}
+                className="max-w-[155px] truncate px-2 py-0.5 bg-[#05070a] border border-[#334155] rounded-xs text-[11px] text-[#ffd27d] font-bold focus:outline-none cursor-pointer"
+              >
+                <option value="ALL">All 8 Classes</option>
+                {WEAPON_CATEGORIES.map((catOpt) => (
+                  <option key={catOpt} value={catOpt}>
+                    {catOpt}
+                  </option>
                 ))}
-              </div>
-              <div className="flex items-center gap-1 flex-wrap">
-                <span className="text-[9px] text-[#94a3b8] font-bold">SUBTYPE:</span>
+              </select>
+
+              <div className="flex items-center gap-1 shrink-0">
                 {(['ALL', 'Custom', 'Magitech', 'Legendary'] as const).map((subOpt) => (
                   <button
                     key={subOpt}
@@ -536,392 +483,491 @@ export const SatchelCodexTab: React.FC<SatchelCodexTabProps> = ({ state }) => {
                       soundSystem.playSelect();
                       setArsenalSubtypeFilter(subOpt);
                     }}
-                    className={`px-1.5 py-0.2 rounded-xs text-[9px] font-bold border cursor-pointer ${
+                    className={`px-1.5 py-0.5 rounded-xs text-[9px] font-bold border cursor-pointer ${
                       arsenalSubtypeFilter === subOpt
-                        ? subOpt === 'Legendary'
-                          ? 'bg-[#78350f] text-[#fde047] border-[#f59e0b]'
-                          : subOpt === 'Magitech'
-                            ? 'bg-[#a21caf] text-[#f8fafc] border-[#e879f9]'
-                            : subOpt === 'Custom'
-                              ? 'bg-[#15803d] text-[#f8fafc] border-[#86efac]'
-                              : 'bg-[#ffd27d] text-[#05070a] border-[#fde047]'
-                        : 'bg-[#05070a] text-[#94a3b8] border-[#1e293b]'
+                        ? 'bg-[#ffd27d] text-[#05070a] border-[#fde047]'
+                        : 'bg-[#05070a] text-[#94a3b8] border-[#1e293b] hover:text-[#e2e8f0]'
                     }`}
                   >
-                    {subOpt.toUpperCase()}
+                    {subOpt}
                   </button>
                 ))}
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
+      </div>
+
+      {/* Full-Width Compact Scannable Codex List */}
+      <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-[#1e293b]/80 bg-[#090d14]/90 border border-[#1e293b] rounded-xs">
+        {category === 'bestiary' &&
+          (discoveredEnemies.items.length === 0 ? (
+            <div className="p-6 text-center text-[#64748b] italic">
+              No bestiary sightings match your query yet. Approach entities within your light radius
+              or engage them in the bog to log their codex dossier.
+            </div>
+          ) : (
+            discoveredEnemies.items.map((enemy) => (
+              <button
+                key={enemy.type}
+                type="button"
+                data-menu-focusable="true"
+                onClick={() => openEntryInspector(enemy.type)}
+                className="w-full px-2.5 py-2 hover:bg-[#1e293b]/70 flex items-center justify-between gap-2 text-left transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  {enemy.sprite?.base64 ? (
+                    <SpriteCanvasIcon
+                      base64={enemy.sprite.base64}
+                      cellWidth={enemy.sprite.cellWidth || 16}
+                      cellHeight={enemy.sprite.cellHeight || 16}
+                      sizeClass="w-5 h-5 shrink-0"
+                    />
+                  ) : (
+                    <span
+                      className="w-3.5 h-3.5 rounded-xs inline-block border border-black/40 shrink-0"
+                      style={{ backgroundColor: enemy.emissiveColor || '#f43f5e' }}
+                    />
+                  )}
+                  <div className="min-w-0 truncate">
+                    <span className="font-bold text-[#f8fafc] text-[11px]">{enemy.name}</span>
+                    <span className="text-[#64748b] mx-1.5">·</span>
+                    <span className="text-[9px] text-[#94a3b8]">
+                      {(enemy.faction || 'hostile').toUpperCase()} · {enemy.damageType} ({enemy.damage} DMG)
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 text-[9px] font-mono tabular-nums text-[#38bdf8]">
+                  <span>
+                    SHLD {enemy.shields.capacity} · ARM {enemy.armor.threshold}/{enemy.armor.rating} · FRM {enemy.frameIntegrity}
+                  </span>
+                  <span className="text-[#64748b]">Inspect →</span>
+                </div>
+              </button>
+            ))
+          ))}
 
         {category === 'arsenal' &&
           (discoveredWeapons.items.length === 0 ? (
-            <div className="p-4 text-center text-[#64748b] bg-[#090d14]/70 border border-[#1e293b] rounded-xs italic">
+            <div className="p-6 text-center text-[#64748b] italic">
               No armaments recorded matching your filter. Salvage weapons or shields in the bog to
               unlock their technical schematics.
             </div>
           ) : (
             discoveredWeapons.items.map((w) => {
-              const isExpanded = selectedId === w.id;
               const wt = getWeaponInstanceEquipWeight(w.id, state);
-              const compSlots = getWeaponComponentSlots(w.id).join(' / ').toUpperCase();
+              const stInfo = getWeaponSubtypeInfo(w.id);
               const primaryAction = w.moveset?.[0];
               const primaryFamily = primaryAction?.damageFamily || 'Kinetic';
-              const primaryRange = primaryAction?.range ?? 64;
-              const stInfo = getWeaponSubtypeInfo(w.id);
-              const isMagitech = stInfo.variantSubtype === 'Magitech';
-              const isLegendary = stInfo.variantSubtype === 'Legendary';
               return (
-                <div
+                <button
                   key={w.id}
-                  role="button"
-                  tabIndex={0}
+                  type="button"
                   data-menu-focusable="true"
-                  onClick={() => {
-                    soundSystem.playSelect();
-                    setSelectedId(isExpanded ? null : w.id);
-                  }}
-                  className="p-2 bg-[#0f172a]/90 hover:bg-[#1e293b]/90 border border-[#334155] rounded-xs cursor-pointer transition-colors"
+                  onClick={() => openEntryInspector(w.id)}
+                  className="w-full px-2.5 py-2 hover:bg-[#1e293b]/70 flex items-center justify-between gap-2 text-left transition-colors cursor-pointer"
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      {w.iconSprite?.base64 && (
-                        <SpriteCanvasIcon
-                          base64={w.iconSprite.base64}
-                          col={w.iconSprite.col || 0}
-                          row={w.iconSprite.row || 0}
-                          cellWidth={w.iconSprite.cellWidth || 16}
-                          cellHeight={w.iconSprite.cellHeight || 16}
-                          sizeClass="w-5 h-5"
-                        />
-                      )}
-                      <div>
-                        <span className="font-bold text-[#ffd27d] text-[11px]">
-                          {w.name}
-                        </span>
-                        {devMode && (
-                          <span className="ml-1.5 text-[9px] text-[#64748b] font-mono">
-                            [{w.id}]
-                          </span>
-                        )}
-                        <span
-                          className={`ml-1.5 px-1 py-0.1 rounded-[2px] text-[9px] font-bold ${
-                            isLegendary
-                              ? 'bg-[#451a03] text-[#fde047] border border-[#f59e0b]/60'
-                              : isMagitech
-                                ? 'bg-[#311042] text-[#e879f9] border border-[#a21caf]/50'
-                                : 'bg-[#052e16] text-[#86efac] border border-[#22c55e]/40'
-                          }`}
-                        >
-                          {stInfo.variantSubtype.toUpperCase()}
-                        </span>
-                        <span className="ml-2 text-[9px] text-[#94a3b8]">
-                          {stInfo.category} ▸ {stInfo.functionalType} · {wt} WT ({(w.weightClass || 'medium').toUpperCase()}) · {w.handing || '1-hand'} · [
-                          {isLegendary
-                            ? `0 MODS · 0G · ${w.legendarySpec?.boundRelicSlots.length ?? 0} LORE-BOUND`
-                            : isMagitech
-                              ? '1 GEM SOCKET'
-                              : `3 SLOTS: ${compSlots}`}
-                          ]
-                        </span>
-                      </div>
+                  <div className="flex items-center gap-2 min-w-0">
+                    {w.iconSprite?.base64 && (
+                      <SpriteCanvasIcon
+                        base64={w.iconSprite.base64}
+                        col={w.iconSprite.col || 0}
+                        row={w.iconSprite.row || 0}
+                        cellWidth={w.iconSprite.cellWidth || 16}
+                        cellHeight={w.iconSprite.cellHeight || 16}
+                        sizeClass="w-5 h-5 shrink-0"
+                      />
+                    )}
+                    <div className="min-w-0 truncate">
+                      <span className="font-bold text-[#ffd27d] text-[11px]">{w.name}</span>
+                      <span className="text-[#64748b] mx-1.5">·</span>
+                      <span className="text-[9px] text-[#94a3b8]">
+                        {stInfo.variantSubtype} · {stInfo.category} ({stInfo.functionalType}) · {wt} WT
+                      </span>
                     </div>
-                    <span className="text-[9px] text-[#4ade80] font-bold">
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 text-[9px] font-mono tabular-nums">
+                    <span className="text-[#4ade80] font-bold">
                       {w.damagePerShot > 0
-                        ? primaryAction?.isChargeable
-                          ? `${w.damagePerShot}–${Math.round(w.damagePerShot * 1.85)} ${w.primaryDamageType} (${primaryFamily}) · 1-SHOT CHARGE BOW`
-                          : primaryAction?.noReload || w.equipmentRole === 'melee' || w.equipmentRole === 'shield'
-                            ? `${w.damagePerShot} ${w.primaryDamageType} (${primaryFamily}) · ${primaryAction?.comboSequence?.length || w.shotsPerChain}-STEP COMBO`
-                            : `${w.damagePerShot} ${w.primaryDamageType} (${primaryFamily}) · ${w.shotsPerChain} AMMO`
-                        : `SUPPORT / GUARD (${w.primaryDamageType} · ${primaryFamily})`}
+                        ? `${w.damagePerShot} ${w.primaryDamageType} (${primaryFamily})`
+                        : `Guard (${w.primaryDamageType})`}
                     </span>
+                    <span className="text-[#64748b]">Inspect →</span>
                   </div>
-
-                  <div className="mt-1 flex flex-wrap items-center gap-1 text-[9px]">
-                    <span className="px-1 py-0.2 rounded-[2px] bg-[#090d14] text-[#94a3b8] border border-[#1e293b]">
-                      {primaryAction?.noReload || w.equipmentRole === 'melee' || w.equipmentRole === 'shield'
-                        ? `NO RELOAD (${primaryAction?.comboResetWindowSec ?? 1.1}s RESET) · ${primaryRange}px RNG`
-                        : primaryAction?.isChargeable
-                          ? `${primaryAction.maxChargeSec ?? 0.78}s CHARGE · ${w.reloadDurationSec}s NOCK · ${primaryRange}px RNG`
-                          : `${w.reloadDurationSec}s BASIC RLD · ${primaryRange}px RNG`}
-                    </span>
-                    {w.adaptiveDamageTypes && w.adaptiveDamageTypes.length > 1 && (
-                      <span className="px-1 py-0.2 rounded-[2px] bg-[#311042] text-[#e879f9] border border-[#a21caf]/50">
-                        ADAPTIVE [{w.adaptiveDamageTypes.join('/')}]
-                      </span>
-                    )}
-                    {w.canBlock && (
-                      <span className="px-1 py-0.2 rounded-[2px] bg-[#052e16]/80 text-[#86efac] border border-[#22c55e]/40">
-                        BLOCK GUARD
-                      </span>
-                    )}
-                    {w.passiveShieldBonus ? (
-                      <span className="px-1 py-0.2 rounded-[2px] bg-[#052e16]/80 text-[#86efac] border border-[#22c55e]/40">
-                        +{w.passiveShieldBonus} SHD
-                      </span>
-                    ) : null}
-                    {w.passiveArmorBonus &&
-                    (w.equipmentRole === 'shield' || w.id.includes('martyrdom_plating')) ? (
-                      <span className="px-1 py-0.2 rounded-[2px] bg-[#052e16]/80 text-[#86efac] border border-[#22c55e]/40">
-                        +{w.passiveArmorBonus} ARM DUR
-                      </span>
-                    ) : null}
-                    {w.passiveLightBonus ? (
-                      <span
-                        className={`px-1 py-0.2 rounded-[2px] ${
-                          w.passiveLightBonus > 0
-                            ? 'bg-[#052e16]/80 text-[#86efac] border border-[#22c55e]/40'
-                            : 'bg-[#450a0a]/80 text-[#fca5a5] border border-[#ef4444]/40'
-                        }`}
-                      >
-                        {w.passiveLightBonus > 0 ? `+${w.passiveLightBonus}` : w.passiveLightBonus} LGT
-                      </span>
-                    ) : null}
-                    {w.supportPulseOnHit && (
-                      <span className="px-1 py-0.2 rounded-[2px] bg-[#172554] text-[#7dd3fc] border border-[#38bdf8]/40">
-                        ON HIT:{' '}
-                        {[
-                          w.supportPulseOnHit.shieldRestore
-                            ? `+${w.supportPulseOnHit.shieldRestore} SHD`
-                            : '',
-                          w.supportPulseOnHit.armorRestore
-                            ? `+${w.supportPulseOnHit.armorRestore} ARM`
-                            : '',
-                          w.supportPulseOnHit.heatVent
-                            ? `-${w.supportPulseOnHit.heatVent} HEAT`
-                            : '',
-                        ]
-                          .filter(Boolean)
-                          .join(' / ')}
-                      </span>
-                    )}
-                  </div>
-
-                  <p className="mt-1 text-[#cbd5e1] text-[10px] leading-snug">
-                    {w.description}
-                  </p>
-
-                  {isExpanded && (
-                    <div className="mt-1.5 pt-1.5 border-t border-[#334155]/80 space-y-1 text-[10px]">
-                      <div className="text-[#fde68a] italic leading-snug">
-                        “{w.lore}”
-                      </div>
-                      {w.legendarySpec && (
-                        <div className="p-1.5 bg-[#090d14] border border-[#f59e0b]/50 rounded-xs space-y-1 text-[9px]">
-                          <div className="flex flex-wrap items-center justify-between gap-1">
-                            <span className="font-bold text-[#fde047]">
-                              ★ FOLKLORE ORIGIN ({w.legendarySpec.originWorldId.replace(/_/g, ' ').toUpperCase()}) ·{' '}
-                              {w.legendarySpec.folkloreTradition.toUpperCase()}
-                            </span>
-                            <span className="text-[#86efac] font-mono">
-                              {w.legendarySpec.innateEngineHooks.join(' · ')}
-                            </span>
-                          </div>
-                          <div className="text-[#cbd5e1]">{w.legendarySpec.innateMechanicSummary}</div>
-                          <div className="text-[#7dd3fc]">
-                            <b>World &amp; Hazard Link:</b> {w.legendarySpec.areaLoreConnection}
-                          </div>
-                          {w.legendarySpec.boundRelicSlots[0] && (
-                            <div className="text-[#e9d5ff] pt-0.5 border-t border-[#1e293b]">
-                              <b>Lore-Bound Companion Mount ({w.legendarySpec.boundRelicSlots[0].name}):</b>{' '}
-                              {w.legendarySpec.boundRelicSlots[0].mechanicSummary}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      {primaryAction?.comboSequence && primaryAction.comboSequence.length > 0 && (
-                        <div className="px-1.5 py-0.5 bg-[#090d14] border border-[#f472b6]/40 rounded-xs text-[9px] text-[#f472b6]">
-                          <span className="font-bold">FLUID COMBO SEQUENCE: </span>
-                          {primaryAction.comboSequence
-                            .map((c, idx) => `${idx + 1}. ${c.label} (${Math.round(c.damageMult * 100)}% DMG)`)
-                            .join(' ▸ ')}
-                        </div>
-                      )}
-                      <div className="grid grid-cols-1 gap-1 pt-1">
-                        {w.moveset.map((act, idx) => {
-                          const skillAmmoNote =
-                            idx === 0
-                              ? act.isChargeable
-                                ? '1-Shot Hold Charge · '
-                                : act.noReload
-                                  ? 'No Reload · '
-                                  : `${w.shotsPerChain} Ammo (Basic Reload) · `
-                              : act.internalCharges && act.internalCharges > 1
-                                ? `${act.internalCharges} Internal Charges (${act.ammoCount || 1}/Shot, ${act.internalCycleSec || 0.35}s Cycle) · `
-                                : act.ammoCount && act.ammoCount > 1
-                                  ? `${act.ammoCount}-Round Salvo · `
-                                  : '';
-                          return (
-                            <div
-                              key={`${act.name}-${idx}`}
-                              className="px-1.5 py-0.5 bg-[#090d14] border border-[#1e293b] rounded-xs flex flex-wrap items-center justify-between gap-1 text-[9px]"
-                            >
-                              <span className="text-[#38bdf8] font-bold">
-                                S{idx + 1}: {act.name}
-                              </span>
-                              <span className="text-[#94a3b8]">
-                                {act.damage > 0 ? `${act.damage} DMG · ` : ''}
-                                {skillAmmoNote}
-                                {act.damageType} ({act.damageFamily}) · CD {act.cooldownSec}s · {act.heatCost} Heat · {act.range}px RNG
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                </button>
               );
             })
           ))}
 
         {category === 'relics' &&
           (discoveredItems.items.length === 0 ? (
-            <div className="p-4 text-center text-[#64748b] bg-[#090d14]/70 border border-[#1e293b] rounded-xs italic">
+            <div className="p-6 text-center text-[#64748b] italic">
               No relics, consumables, or gemstones recorded yet. Loot caches and fallen foes to
               log field specimens.
             </div>
           ) : (
             discoveredItems.items.map((item) => {
-              const isExpanded = selectedId === item.id;
               const isGem = item.id in GEMSTONE_REGISTRY;
               return (
-                <div
+                <button
                   key={item.id}
-                  role="button"
-                  tabIndex={0}
+                  type="button"
                   data-menu-focusable="true"
-                  onClick={() => {
-                    soundSystem.playSelect();
-                    setSelectedId(isExpanded ? null : item.id);
-                  }}
-                  className="p-2 bg-[#0f172a]/90 hover:bg-[#1e293b]/90 border border-[#334155] rounded-xs cursor-pointer transition-colors"
+                  onClick={() => openEntryInspector(item.id)}
+                  className="w-full px-2.5 py-2 hover:bg-[#1e293b]/70 flex items-center justify-between gap-2 text-left transition-colors cursor-pointer"
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      {item.iconSprite?.base64 ? (
-                        <SpriteCanvasIcon
-                          base64={item.iconSprite.base64}
-                          cellWidth={item.iconSprite.cellWidth || 16}
-                          cellHeight={item.iconSprite.cellHeight || 16}
-                          sizeClass="w-5 h-5"
-                        />
-                      ) : (
-                        <span
-                          className="w-3.5 h-3.5 rounded-xs inline-block border border-black/40"
-                          style={{ backgroundColor: item.iconColor }}
-                        />
-                      )}
-                      <div>
-                        <span className="font-bold text-[#50fa7b] text-[11px]">
-                          {item.name}
-                        </span>
-                        {devMode && (
-                          <span className="ml-1.5 text-[9px] text-[#64748b] font-mono">
-                            [{item.id}]
-                          </span>
-                        )}
-                        <span className="ml-2 text-[9px] uppercase text-[#94a3b8]">
-                          0 WT · {isGem ? 'GEMSTONE' : item.category}
-                          {item.lightBonus
-                            ? ` · ${item.lightBonus > 0 ? `+${item.lightBonus}` : item.lightBonus} LIGHT`
-                            : ''}
-                        </span>
-                      </div>
+                  <div className="flex items-center gap-2 min-w-0">
+                    {item.iconSprite?.base64 ? (
+                      <SpriteCanvasIcon
+                        base64={item.iconSprite.base64}
+                        cellWidth={item.iconSprite.cellWidth || 16}
+                        cellHeight={item.iconSprite.cellHeight || 16}
+                        sizeClass="w-5 h-5 shrink-0"
+                      />
+                    ) : (
+                      <span
+                        className="w-3.5 h-3.5 rounded-xs inline-block border border-black/40 shrink-0"
+                        style={{ backgroundColor: item.iconColor }}
+                      />
+                    )}
+                    <div className="min-w-0 truncate">
+                      <span className="font-bold text-[#50fa7b] text-[11px]">{item.name}</span>
+                      <span className="text-[#64748b] mx-1.5">·</span>
+                      <span className="text-[9px] text-[#94a3b8]">
+                        {isGem ? 'GEMSTONE' : item.category.toUpperCase()}
+                        {item.lightBonus
+                          ? ` · ${item.lightBonus > 0 ? `+${item.lightBonus}` : item.lightBonus} Light`
+                          : ''}
+                      </span>
                     </div>
-                    <span className="text-[9px] text-[#ffd27d]">
-                      BUY {item.buyPrice || 0}g · SELL {item.sellPrice || 0}g
-                    </span>
                   </div>
-
-                  <p className="mt-1 text-[#cbd5e1] text-[10px] leading-snug">
-                    {item.description}
-                  </p>
-
-                  {isGem && (
-                    <div className="mt-1 space-y-0.5 text-[9px]">
-                      <div className="text-[#86efac]">
-                        + WEAPON MOD ({GEM_MOD_PREFIX_BY_ID[item.id as GemId]}):{' '}
-                        {WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS[item.id as GemId]} (
-                        {WEAPON_GEM_WEIGHT_DELTA[item.id as GemId] >= 0
-                          ? `+${WEAPON_GEM_WEIGHT_DELTA[item.id as GemId]}`
-                          : WEAPON_GEM_WEIGHT_DELTA[item.id as GemId]}{' '}
-                        WT)
-                      </div>
-                      <div className="text-[#7dd3fc]">
-                        + EXTERIOR ARMOR MOD: {getHardwareGemBonusDescription('plating', item.id as GemId)}
-                      </div>
-                    </div>
-                  )}
-
-                  {isExpanded && (
-                    <div className="mt-1.5 pt-1.5 border-t border-[#334155]/80 text-[#fde68a] italic text-[10px] leading-snug">
-                      “{item.lore}”
-                    </div>
-                  )}
-                </div>
+                  <div className="flex items-center gap-2 shrink-0 text-[9px] font-mono tabular-nums text-[#ffd27d]">
+                    <span>
+                      Buy {item.buyPrice || 0}g · Sell {item.sellPrice || 0}g
+                    </span>
+                    <span className="text-[#64748b]">Inspect →</span>
+                  </div>
+                </button>
               );
             })
           ))}
 
         {category === 'chronicles' &&
           (discoveredChronicles.items.length === 0 ? (
-            <div className="p-4 text-center text-[#64748b] bg-[#090d14]/70 border border-[#1e293b] rounded-xs italic">
+            <div className="p-6 text-center text-[#64748b] italic">
               No chronicle entries match your filter.
             </div>
           ) : (
-            discoveredChronicles.items.map((entry) => {
-              const isExpanded = selectedId === entry.id;
-              return (
-                <div
-                  key={entry.id}
-                  role="button"
-                  tabIndex={0}
-                  data-menu-focusable="true"
-                  onClick={() => {
-                    soundSystem.playSelect();
-                    setSelectedId(isExpanded ? null : entry.id);
-                  }}
-                  className="p-2 bg-[#0f172a]/90 hover:bg-[#1e293b]/90 border border-[#334155] rounded-xs cursor-pointer transition-colors"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <span
-                        className="font-bold text-[11px]"
-                        style={{ color: entry.badgeColor }}
-                      >
-                        {entry.title}
-                      </span>
-                      {devMode && (
-                        <span className="ml-1.5 text-[9px] text-[#64748b] font-mono">
-                          [{entry.id}]
-                        </span>
-                      )}
-                      <span className="ml-2 text-[9px] text-[#94a3b8]">
-                        {entry.subtitle}
-                      </span>
-                    </div>
-                    <span className="text-[9px] uppercase text-[#64748b]">
-                      {entry.kind}
-                    </span>
-                  </div>
-
-                  <p className="mt-1 text-[#cbd5e1] text-[10px] leading-snug">
-                    {entry.description}
-                  </p>
-
-                  {isExpanded && (
-                    <div className="mt-1.5 pt-1.5 border-t border-[#334155]/80 text-[#fde68a] italic text-[10px] leading-snug">
-                      “{entry.lore}”
-                    </div>
-                  )}
+            discoveredChronicles.items.map((entry) => (
+              <button
+                key={entry.id}
+                type="button"
+                data-menu-focusable="true"
+                onClick={() => openEntryInspector(entry.id)}
+                className="w-full px-2.5 py-2 hover:bg-[#1e293b]/70 flex items-center justify-between gap-2 text-left transition-colors cursor-pointer"
+              >
+                <div className="min-w-0 truncate">
+                  <span className="font-bold text-[11px]" style={{ color: entry.badgeColor }}>
+                    {entry.title}
+                  </span>
+                  <span className="text-[#64748b] mx-1.5">·</span>
+                  <span className="text-[9px] text-[#94a3b8]">{entry.subtitle}</span>
                 </div>
-              );
-            })
+                <div className="flex items-center gap-2 shrink-0 text-[9px] text-[#94a3b8]">
+                  <span className="uppercase">{entry.kind}</span>
+                  <span className="text-[#64748b]">Inspect →</span>
+                </div>
+              </button>
+            ))
           ))}
       </div>
+
+      {/* Pop-Up / Slide-Over Codex Entry Detail Inspector */}
+      {isInspectorOpen &&
+        (activeEnemy || activeWeapon || activeItem || activeChronicle) && (
+          <div className="absolute inset-0 z-30 bg-[#05070a]/95 backdrop-blur-xs border border-[#38bdf8]/50 rounded-xs flex flex-col p-3 overflow-hidden">
+            <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#1e293b] shrink-0">
+              <button
+                type="button"
+                data-menu-back="true"
+                onClick={() => {
+                  soundSystem.playMenuBeep();
+                  setIsInspectorOpen(false);
+                }}
+                className="px-2.5 py-1 bg-[#1e293b] hover:bg-[#334155] text-[#f8fafc] font-bold text-[10px] rounded-xs border border-[#475569] cursor-pointer"
+              >
+                ← Back to Codex List
+              </button>
+              <span className="text-[9px] text-[#94a3b8] uppercase font-bold tracking-wider">
+                Codex Archive Dossier · {category.toUpperCase()}
+              </span>
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 pr-1">
+              {activeEnemy && (
+                <>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      {activeEnemy.sprite?.base64 && (
+                        <SpriteCanvasIcon
+                          base64={activeEnemy.sprite.base64}
+                          cellWidth={activeEnemy.sprite.cellWidth || 16}
+                          cellHeight={activeEnemy.sprite.cellHeight || 16}
+                          sizeClass="w-8 h-8"
+                        />
+                      )}
+                      <div>
+                        <div className="text-[13px] font-bold text-[#f8fafc]">
+                          {activeEnemy.name}
+                          {devMode && (
+                            <span className="ml-2 text-[9px] text-[#64748b] font-mono">
+                              [{activeEnemy.type}]
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[9px] text-[#94a3b8]">
+                          Faction: {(activeEnemy.faction || 'hostile').toUpperCase()} · Weight:{' '}
+                          {(activeEnemy.weightClass || 'medium').toUpperCase()} · Speed:{' '}
+                          {activeEnemy.speed}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[9px] font-mono">
+                    <div className="p-2 bg-[#090d14] border border-[#1e293b] rounded-xs">
+                      <div className="text-[#94a3b8]">ATTACK</div>
+                      <div className="text-[#f43f5e] font-bold text-[10px]">
+                        {activeEnemy.damage} {activeEnemy.damageType}
+                      </div>
+                    </div>
+                    <div className="p-2 bg-[#090d14] border border-[#1e293b] rounded-xs">
+                      <div className="text-[#94a3b8]">SHIELD (L1)</div>
+                      <div className="text-[#77c7ff] font-bold text-[10px]">
+                        {activeEnemy.shields.capacity} ({activeEnemy.shields.type})
+                      </div>
+                    </div>
+                    <div className="p-2 bg-[#090d14] border border-[#1e293b] rounded-xs">
+                      <div className="text-[#94a3b8]">ARMOR (L2)</div>
+                      <div className="text-[#ffd27d] font-bold text-[10px]">
+                        {activeEnemy.armor.type} · {activeEnemy.armor.threshold}/{activeEnemy.armor.rating} ({activeEnemy.armor.durability} DUR)
+                      </div>
+                    </div>
+                    <div className="p-2 bg-[#090d14] border border-[#1e293b] rounded-xs">
+                      <div className="text-[#94a3b8]">FRAME (L3)</div>
+                      <div className="text-[#8dd7ad] font-bold text-[10px]">
+                        {activeEnemy.frameIntegrity} HP
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 bg-[#090d14] border border-[#1e293b] rounded-xs space-y-1.5">
+                    <div className="text-[#e2e8f0] text-[10px] leading-relaxed">
+                      {activeEnemy.description}
+                    </div>
+                    <div className="pt-1.5 border-t border-[#1e293b] text-[#fde68a] italic text-[10px] leading-relaxed">
+                      “{activeEnemy.lore}”
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {activeWeapon && (
+                <>
+                  {(() => {
+                    const wt = getWeaponInstanceEquipWeight(activeWeapon.id, state);
+                    const compSlots = getWeaponComponentSlots(activeWeapon.id)
+                      .join(' / ')
+                      .toUpperCase();
+                    const stInfo = getWeaponSubtypeInfo(activeWeapon.id);
+                    const primaryAction = activeWeapon.moveset?.[0];
+                    const primaryFamily = primaryAction?.damageFamily || 'Kinetic';
+                    const isLegendary = stInfo.variantSubtype === 'Legendary';
+                    const isMagitech = stInfo.variantSubtype === 'Magitech';
+
+                    return (
+                      <>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2.5">
+                            {activeWeapon.iconSprite?.base64 && (
+                              <SpriteCanvasIcon
+                                base64={activeWeapon.iconSprite.base64}
+                                col={activeWeapon.iconSprite.col || 0}
+                                row={activeWeapon.iconSprite.row || 0}
+                                cellWidth={activeWeapon.iconSprite.cellWidth || 16}
+                                cellHeight={activeWeapon.iconSprite.cellHeight || 16}
+                                sizeClass="w-8 h-8"
+                              />
+                            )}
+                            <div>
+                              <div className="text-[13px] font-bold text-[#ffd27d]">
+                                {activeWeapon.name}
+                                {devMode && (
+                                  <span className="ml-2 text-[9px] text-[#64748b] font-mono">
+                                    [{activeWeapon.id}]
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[9px] text-[#94a3b8]">
+                                {stInfo.variantSubtype} · {stInfo.category} ▸ {stInfo.functionalType}{' '}
+                                · {wt} WT ({(activeWeapon.weightClass || 'medium').toUpperCase()}) ·{' '}
+                                {activeWeapon.handing || '1-hand'} ·{' '}
+                                {isLegendary
+                                  ? `${activeWeapon.legendarySpec?.boundRelicSlots.length ?? 0} Lore-Bound Mount`
+                                  : isMagitech
+                                    ? '1 Gem Socket'
+                                    : `3 Slots (${compSlots})`}
+                              </div>
+                            </div>
+                          </div>
+
+                          <span className="text-[10px] font-bold text-[#4ade80] font-mono">
+                            {activeWeapon.damagePerShot > 0
+                              ? `${activeWeapon.damagePerShot} ${activeWeapon.primaryDamageType} (${primaryFamily})`
+                              : `Support / Guard (${activeWeapon.primaryDamageType})`}
+                          </span>
+                        </div>
+
+                        <div className="p-2.5 bg-[#090d14] border border-[#1e293b] rounded-xs space-y-1.5">
+                          <div className="text-[#e2e8f0] text-[10px] leading-relaxed">
+                            {activeWeapon.description}
+                          </div>
+                          <div className="pt-1.5 border-t border-[#1e293b] text-[#fde68a] italic text-[10px] leading-relaxed">
+                            “{activeWeapon.lore}”
+                          </div>
+                        </div>
+
+                        {activeWeapon.legendarySpec && (
+                          <div className="p-2.5 bg-[#090d14] border border-[#f59e0b]/50 rounded-xs space-y-1 text-[9px]">
+                            <div className="font-bold text-[#fde047]">
+                              ★ Folklore Origin (
+                              {activeWeapon.legendarySpec.originWorldId
+                                .replace(/_/g, ' ')
+                                .toUpperCase()}
+                              ) · {activeWeapon.legendarySpec.folkloreTradition.toUpperCase()}
+                            </div>
+                            <div className="text-[#cbd5e1]">
+                              {activeWeapon.legendarySpec.innateMechanicSummary}
+                            </div>
+                            <div className="text-[#7dd3fc]">
+                              <b>World &amp; Hazard Link:</b>{' '}
+                              {activeWeapon.legendarySpec.areaLoreConnection}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="space-y-1">
+                          <div className="text-[9px] font-bold text-[#94a3b8] uppercase">
+                            Weapon Moveset &amp; Action Spec
+                          </div>
+                          {activeWeapon.moveset.map((act, idx) => (
+                            <div
+                              key={`${act.name}-${idx}`}
+                              className="px-2.5 py-1.5 bg-[#090d14] border border-[#1e293b] rounded-xs flex flex-wrap items-center justify-between gap-1 text-[9px]"
+                            >
+                              <span className="text-[#38bdf8] font-bold">
+                                S{idx + 1}: {act.name}
+                              </span>
+                              <span className="text-[#94a3b8] font-mono">
+                                {act.damage > 0 ? `${act.damage} DMG · ` : ''}
+                                {act.damageType} ({act.damageFamily}) · CD {act.cooldownSec}s ·{' '}
+                                {act.heatCost} Heat · {act.range}px RNG
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    );
+                  })()}
+                </>
+              )}
+
+              {activeItem && (
+                <>
+                  {(() => {
+                    const isGem = activeItem.id in GEMSTONE_REGISTRY;
+                    return (
+                      <>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2.5">
+                            {activeItem.iconSprite?.base64 ? (
+                              <SpriteCanvasIcon
+                                base64={activeItem.iconSprite.base64}
+                                cellWidth={activeItem.iconSprite.cellWidth || 16}
+                                cellHeight={activeItem.iconSprite.cellHeight || 16}
+                                sizeClass="w-8 h-8"
+                              />
+                            ) : (
+                              <span
+                                className="w-5 h-5 rounded-xs inline-block border border-black/40"
+                                style={{ backgroundColor: activeItem.iconColor }}
+                              />
+                            )}
+                            <div>
+                              <div className="text-[13px] font-bold text-[#50fa7b]">
+                                {activeItem.name}
+                              </div>
+                              <div className="text-[9px] text-[#94a3b8]">
+                                0 WT · {isGem ? 'GEMSTONE' : activeItem.category.toUpperCase()} ·
+                                Buy {activeItem.buyPrice || 0}g · Sell {activeItem.sellPrice || 0}g
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="p-2.5 bg-[#090d14] border border-[#1e293b] rounded-xs space-y-1.5">
+                          <div className="text-[#e2e8f0] text-[10px] leading-relaxed">
+                            {activeItem.description}
+                          </div>
+                          {isGem && (
+                            <div className="pt-1.5 border-t border-[#1e293b] space-y-1 text-[9px]">
+                              <div className="text-[#86efac]">
+                                + Weapon Socket ({GEM_MOD_PREFIX_BY_ID[activeItem.id as GemId]}):{' '}
+                                {WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS[activeItem.id as GemId]}
+                              </div>
+                              <div className="text-[#7dd3fc]">
+                                + Exterior Armor Socket:{' '}
+                                {getHardwareGemBonusDescription('plating', activeItem.id as GemId)}
+                              </div>
+                            </div>
+                          )}
+                          <div className="pt-1.5 border-t border-[#1e293b] text-[#fde68a] italic text-[10px] leading-relaxed">
+                            “{activeItem.lore}”
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </>
+              )}
+
+              {activeChronicle && (
+                <>
+                  <div>
+                    <div
+                      className="text-[13px] font-bold"
+                      style={{ color: activeChronicle.badgeColor }}
+                    >
+                      {activeChronicle.title}
+                    </div>
+                    <div className="text-[9px] text-[#94a3b8]">
+                      {activeChronicle.kind.toUpperCase()} · {activeChronicle.subtitle}
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 bg-[#090d14] border border-[#1e293b] rounded-xs space-y-1.5">
+                    <div className="text-[#e2e8f0] text-[10px] leading-relaxed">
+                      {activeChronicle.description}
+                    </div>
+                    <div className="pt-1.5 border-t border-[#1e293b] text-[#fde68a] italic text-[10px] leading-relaxed">
+                      “{activeChronicle.lore}”
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
     </div>
   );
 };

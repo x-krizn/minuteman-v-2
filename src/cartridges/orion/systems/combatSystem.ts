@@ -27,11 +27,11 @@ import { cycleTargetLock, triggerEntityFlash } from './combat/combatHelpers';
 import { applyDamageToLayers, resolveEnemyMeleeAttacks } from './combat/damageSystem';
 import { executeBasicAttackShot, firePrimarySalvoShot } from './combat/projectileSystem';
 import {
+  activateAssignedLHoldAction,
   activateResolvedCombatSkill,
   executeActionPayload,
   getResolvedCombatSkills,
   getSkillCooldownKey,
-  performAuxiliarySwap,
   releaseHeldBlock,
   startHoldingBlock,
   triggerTacticalReload,
@@ -358,7 +358,7 @@ export function handleCombatInput(
       state.combatInputTimers.l = 0;
       if (!state.combatHoldTriggered.l) {
         state.combatHoldTriggered.l = true;
-        performAuxiliarySwap(state, ctx);
+        activateAssignedLHoldAction(state, ctx);
       }
     }
   } else {

@@ -32,6 +32,9 @@ import { canEquipOffhandWithLegendary } from './legendary_weapons';
 // Auto-discover all weapon entity modules in this directory (including subfolders) via Vite import.meta.glob
 const modules = import.meta.glob<Record<string, unknown>>('./**/*.ts', { eager: true });
 
+/**
+ * Canonical mapping from legacy weapon IDs and shorthand slugs to their active `v0.8` weapon definition IDs.
+ */
 export const LEGACY_WEAPON_ID_ALIASES: Record<string, string> = {
   gladius_boltcaster: 'n55_gladius',
   khopesh: 's2_turbine_khopesh',

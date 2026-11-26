@@ -324,6 +324,7 @@ export interface OrionActionDescriptor extends OrionActionTemplate {
  * Type contract for `OrionAssignedActions` (orion assigned actions) in `combat.ts`.
  */
 export interface OrionAssignedActions {
-  L: string; // Default: 'weapon_skill_1'
+  L: string; // Default: 'weapon_swap'
   R: string; // Default: 'weapon_skill_2'
+  B?: string; // Default: 'booster_dash'
 }

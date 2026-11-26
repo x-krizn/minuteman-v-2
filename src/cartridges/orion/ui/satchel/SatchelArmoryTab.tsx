@@ -1722,28 +1722,14 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
 
   return (
     <div className="flex-1 overflow-y-auto space-y-2 pr-0.5 text-[10px]">
-      {/* Armory Header & Workbench Category Bar */}
-      <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <div className="text-[11px] font-bold text-[#fb923c] flex items-center gap-2">
-            <span>⚙ ARMORY MODIFICATION WORKBENCH</span>
-            <span className="text-[9px] px-1.5 py-0.5 rounded-xs bg-[#1e293b] text-[#fde047]">
-              LOAD: {loadMetrics.equippedWeight}/{loadMetrics.maxCapacity} WT (
-              {loadMetrics.loadPct}% · {loadMetrics.loadBracket.toUpperCase()})
-            </span>
-          </div>
-          <div className="text-[9px] text-[#94a3b8]">
-            Install weapon component parts, internal chassis sub-modules, action modifications,
-            and gemstone sockets in any slot order.
-          </div>
-        </div>
-
+      {/* Single Compact Armory Top Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-1.5 px-2 py-1 bg-[#090d14] border border-[#1e293b] rounded-xs">
         <div className="flex flex-wrap items-center gap-1">
           {(
             [
-              { id: 'weapons', label: '1. Weapon & Aux Mods' },
-              { id: 'chassis', label: '2. Chassis Sub-Modules & Sockets' },
-              { id: 'action_mods', label: '3. Action Modifications' },
+              { id: 'weapons', label: 'Weapons & Aux' },
+              { id: 'chassis', label: 'Chassis & Armor' },
+              { id: 'action_mods', label: 'Action Mods' },
             ] as Array<{ id: ArmoryWorkbenchCategory; label: string }>
           ).map((tabItem) => (
             <button
@@ -1753,15 +1739,21 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                 soundSystem.playSelect();
                 setCategory(tabItem.id);
               }}
-              className={`px-2 py-1 rounded-xs text-[9px] font-bold border cursor-pointer ${
+              className={`px-2.5 py-0.5 rounded-xs text-[10px] font-bold border cursor-pointer ${
                 category === tabItem.id
                   ? 'bg-[#fb923c] text-[#05070a] border-[#fdba74]'
-                  : 'bg-[#0f172a] text-[#94a3b8] border-[#334155] hover:border-[#fb923c]'
+                  : 'bg-[#0f172a] text-[#94a3b8] border-[#1e293b] hover:text-[#e2e8f0]'
               }`}
             >
               {tabItem.label}
             </button>
           ))}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] font-mono tabular-nums text-[#94a3b8]">
+            Load <b className="text-[#fde047]">{loadMetrics.equippedWeight}/{loadMetrics.maxCapacity} WT</b> ({loadMetrics.loadPct}%)
+          </span>
           {onReturnToLoadout && (
             <button
               type="button"
@@ -1769,9 +1761,9 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
                 soundSystem.playSelect();
                 onReturnToLoadout();
               }}
-              className="px-2 py-1 rounded-xs text-[9px] font-bold bg-[#1e293b] hover:bg-[#334155] text-[#ffd27d] border border-[#ffd27d]/50 cursor-pointer"
+              className="px-2 py-0.5 rounded-xs text-[9px] font-bold bg-[#1e293b] hover:bg-[#334155] text-[#ffd27d] border border-[#ffd27d]/50 cursor-pointer"
             >
-              ↩ MECH DOLL LOADOUT
+              ← Equipped Slots
             </button>
           )}
         </div>
@@ -1780,110 +1772,140 @@ export const SatchelArmoryTab: React.FC<SatchelArmoryTabProps> = ({
       {/* ─── WORKBENCH 1: WEAPONS & AUXILIARIES MODIFICATION ─── */}
       {category === 'weapons' && activeWeaponDef && activeWeaponBaseDef && (
         <div className="space-y-2">
-          {/* Quick Equipped + Owned Weapon Selector with 8-Category Filter */}
-          <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">
-            <div className="flex flex-wrap items-center justify-between gap-1">
-              <div className="text-[9px] font-bold text-[#ffd27d]">
-                SELECT WEAPON OR AUXILIARY TO MODIFY:
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {(['ALL', ...WEAPON_CATEGORIES] as const).map((catOpt) => (
+          {/* Clean Two-Row Target Weapon & Class Selector Bar */}
+          <div className="flex flex-col gap-1.5 px-2.5 py-1.5 bg-[#090d14] rounded-xs border border-[#1e293b]">
+            {/* Row 1: Class Filter & Target Weapon Instance Dropdown */}
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-[9px] font-bold text-[#ffd27d] shrink-0">Class:</span>
+              <select
+                value={weaponCategoryFilter}
+                onChange={(e) => {
+                  soundSystem.playSelect();
+                  const nextCat = e.target.value as 'ALL' | WeaponCategory;
+                  setWeaponCategoryFilter(nextCat);
+                  const firstMatch = ownedWeaponInstances.find(
+                    ({ baseW }) => nextCat === 'ALL' || baseW.category === nextCat
+                  );
+                  if (firstMatch) {
+                    setSelectedWeaponInstanceId(firstMatch.instanceId);
+                    setSelectedModSlotIndex(0);
+                  }
+                }}
+                className="max-w-[155px] truncate px-2 py-0.5 bg-[#05070a] text-[#fde047] border border-[#334155] rounded-xs text-[11px] font-bold cursor-pointer focus:outline-none shrink-0"
+              >
+                <option value="ALL">All 8 Weapon Classes</option>
+                {WEAPON_CATEGORIES.map((catOpt) => (
+                  <option key={catOpt} value={catOpt}>
+                    {catOpt}
+                  </option>
+                ))}
+              </select>
+
+              <span className="text-[9px] font-bold text-[#38bdf8] shrink-0 ml-1">Target:</span>
+              <select
+                value={selectedWeaponInstanceId}
+                onChange={(e) => {
+                  soundSystem.playSelect();
+                  setSelectedWeaponInstanceId(e.target.value);
+                  setSelectedModSlotIndex(0);
+                }}
+                className="flex-1 min-w-0 truncate px-2 py-0.5 bg-[#05070a] text-[#f8fafc] border border-[#38bdf8]/60 rounded-xs text-[11px] font-bold cursor-pointer focus:outline-none"
+              >
+                {ownedWeaponInstances
+                  .filter(
+                    ({ baseW }) =>
+                      weaponCategoryFilter === 'ALL' || baseW.category === weaponCategoryFilter
+                  )
+                  .map(({ instanceId }) => {
+                    const w = getWeaponDefinition(instanceId);
+                    if (!w) return null;
+                    const isMain = eq.slot1 === instanceId;
+                    const isSide = eq.slot2 === instanceId;
+                    const isAux = eq.slot3 === instanceId;
+                    const stInfo = getWeaponSubtypeInfo(w.id);
+                    const displayName = getEquipmentDisplayName(instanceId, state);
+                    const slotTag = isMain
+                      ? ' [MAIN]'
+                      : isSide
+                        ? ' [SIDE]'
+                        : isAux
+                          ? ' [AUX]'
+                          : '';
+                    return (
+                      <option key={instanceId} value={instanceId}>
+                        {displayName} · {stInfo.functionalType} ({stInfo.variantSubtype}){slotTag}
+                      </option>
+                    );
+                  })}
+              </select>
+            </div>
+
+            {/* Row 2: Equipped Hardpoint Quick-Target Buttons */}
+            <div className="flex items-center justify-between gap-2 pt-1 border-t border-[#1e293b]/70">
+              <div className="flex items-center gap-1">
+                <span className="text-[9px] font-bold text-[#94a3b8] mr-1">Equipped Quick-Target:</span>
+                {eq.slot1 && (
                   <button
-                    key={catOpt}
                     type="button"
                     onClick={() => {
                       soundSystem.playSelect();
-                      setWeaponCategoryFilter(catOpt);
+                      setSelectedWeaponInstanceId(eq.slot1!);
+                      setSelectedModSlotIndex(0);
                     }}
-                    className={`px-1.5 py-0.5 rounded-xs text-[9px] font-bold border cursor-pointer ${
-                      weaponCategoryFilter === catOpt
-                        ? 'bg-[#ffd27d] text-[#05070a] border-[#fde047]'
-                        : 'bg-[#05070a] text-[#94a3b8] border-[#1e293b] hover:border-[#ffd27d]/60'
+                    className={`px-2 py-0.5 rounded-xs text-[9px] font-bold border cursor-pointer ${
+                      selectedWeaponInstanceId === eq.slot1
+                        ? 'bg-[#fde047] text-[#05070a] border-[#fde047]'
+                        : 'bg-[#05070a] text-[#fde047] border-[#334155]'
                     }`}
                   >
-                    {catOpt}
+                    Main Hand
                   </button>
-                ))}
+                )}
+                {eq.slot2 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      soundSystem.playSelect();
+                      setSelectedWeaponInstanceId(eq.slot2!);
+                      setSelectedModSlotIndex(0);
+                    }}
+                    className={`px-2 py-0.5 rounded-xs text-[9px] font-bold border cursor-pointer ${
+                      selectedWeaponInstanceId === eq.slot2
+                        ? 'bg-[#38bdf8] text-[#05070a] border-[#38bdf8]'
+                        : 'bg-[#05070a] text-[#38bdf8] border-[#334155]'
+                    }`}
+                  >
+                    Side Hand
+                  </button>
+                )}
+                {eq.slot3 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      soundSystem.playSelect();
+                      setSelectedWeaponInstanceId(eq.slot3!);
+                      setSelectedModSlotIndex(0);
+                    }}
+                    className={`px-2 py-0.5 rounded-xs text-[9px] font-bold border cursor-pointer ${
+                      selectedWeaponInstanceId === eq.slot3
+                        ? 'bg-[#c084fc] text-[#05070a] border-[#c084fc]'
+                        : 'bg-[#05070a] text-[#c084fc] border-[#334155]'
+                    }`}
+                  >
+                    Aux Back
+                  </button>
+                )}
               </div>
-            </div>
-            <div className="flex flex-wrap gap-1">
-              {ownedWeaponInstances
-                .filter(
-                  ({ baseW }) =>
-                    weaponCategoryFilter === 'ALL' || baseW.category === weaponCategoryFilter
-                )
-                .map(({ instanceId }) => {
-                  const w = getWeaponDefinition(instanceId);
-                  if (!w) return null;
-                  const isMain = eq.slot1 === instanceId;
-                  const isSide = eq.slot2 === instanceId;
-                  const isAux = eq.slot3 === instanceId;
-                  const isSelected = selectedWeaponInstanceId === instanceId;
-                  const gemVis = getWeaponGemVisuals(state, instanceId);
-                  const strip = w.variantStripBase64 || w.hardpointSprite?.base64;
-                  const isUnique = w.weaponTier === 'unique';
-                  const isLegendary = w.weaponTier === 'legendary';
-                  const stInfo = getWeaponSubtypeInfo(w.id);
-                  const displayName = getEquipmentDisplayName(instanceId, state);
 
-                  return (
-                    <button
-                      key={instanceId}
-                      type="button"
-                      onClick={() => {
-                        soundSystem.playSelect();
-                        setSelectedWeaponInstanceId(instanceId);
-                        setSelectedModSlotIndex(0);
-                      }}
-                      className={`px-2 py-1 rounded-xs border text-[9px] font-bold flex items-center gap-1.5 cursor-pointer ${
-                        isSelected
-                          ? 'bg-[#172554] text-[#fde047] border-[#fde047]'
-                          : 'bg-[#05070a] text-[#cbd5e1] border-[#1e293b] hover:border-[#38bdf8]'
-                      }`}
-                    >
-                      <SpriteCanvasIcon
-                        base64={strip}
-                        col={gemVis.colIndex}
-                        row={!gemVis.gemId ? (w.hardpointSprite?.row ?? 0) : 0}
-                        sizeClass="w-3.5 h-3.5"
-                      />
-                      <span>{displayName}</span>
-                      <span className="text-[9px] text-[#7dd3fc]">
-                        [{stInfo.functionalType}]
-                      </span>
-                      <span
-                        className={`text-[9px] font-mono ${
-                          isLegendary
-                            ? 'text-[#fde047]'
-                            : isUnique
-                              ? 'text-[#c084fc]'
-                              : 'text-[#86efac]'
-                        }`}
-                      >
-                        {isLegendary
-                          ? `· Legendary (${w.legendarySpec?.boundRelicSlots.length ?? 0} Relic)`
-                          : isUnique
-                            ? `· Magitech (${w.openDomains?.length ?? 0}S+1G)`
-                            : '· Custom (3S)'}
-                      </span>
-                      {isMain && (
-                        <span className="px-1 py-0.2 bg-[#fde047]/20 text-[#fde047] rounded-[2px] text-[9px]">
-                          MAIN
-                        </span>
-                      )}
-                      {isSide && (
-                        <span className="px-1 py-0.2 bg-[#38bdf8]/20 text-[#38bdf8] rounded-[2px] text-[9px]">
-                          SIDE
-                        </span>
-                      )}
-                      {isAux && (
-                        <span className="px-1 py-0.2 bg-[#c084fc]/20 text-[#c084fc] rounded-[2px] text-[9px]">
-                          AUX
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
+              <span className="text-[9px] text-[#94a3b8] font-mono">
+                {
+                  ownedWeaponInstances.filter(
+                    ({ baseW }) =>
+                      weaponCategoryFilter === 'ALL' || baseW.category === weaponCategoryFilter
+                  ).length
+                }{' '}
+                available
+              </span>
             </div>
           </div>
 

@@ -8,6 +8,7 @@ import {
   evaluateActiveSpecialistStance,
   getActiveLegendaryEngineHooks,
   getWeaponGemCombatModifiers,
+  resolveActiveAction4DefensiveMode,
 } from '../../database/progression';
 import {
   ArmorState,
@@ -400,8 +401,13 @@ export function resolveEnemyMeleeAttacks(
           hitDamage = Math.max(1, Math.round(hitDamage * 0.8));
         }
 
-        // Active Skill 4 Held Block mitigation (0.34s Perfect Block window + Specialist Stance + Weapon Component bonus)
-        if (state.isHoldingBlock || (state.blockTimer || 0) > 0) {
+        // Rule P-10 Action 4 [Y] Defensive Resolution: Mode A (Sustained Directional Block) vs. Mode B (Timed Parry)
+        const action4Profile = resolveActiveAction4DefensiveMode(state);
+        const isParryMode = action4Profile.mode === 'parry';
+        const isDefending = isParryMode
+          ? (state.blockTimer || 0) > 0
+          : state.isHoldingBlock || (state.blockTimer || 0) > 0;
+        if (isDefending) {
           const isShieldBlock = Boolean(
             (state.blockingWeaponId &&
               (state.blockingWeaponId.includes('shield') ||
@@ -417,18 +423,19 @@ export function resolveEnemyMeleeAttacks(
           const compGuardMitigationMult = blockWpnMod?.guardMitigationMultiplier ?? 1.0;
 
           const hasOffHandDeflection = (state.equippedFeats || []).some((f) =>
-            ['off_hand_deflection', 'cqc_deflection'].includes(f)
+            ['off_hand_deflection', 'cqc_deflection', 'feat_def_09'].includes(f)
           );
           const specEval = evaluateActiveSpecialistStance(state);
-          const isPerfectBlock =
+          const isPerfectParryOrCounter =
+            (isParryMode || action4Profile.overrideKind === 'balmung_gram_counter') &&
             (state.blockHoldTimer ?? 0) <=
-            PERFECT_BLOCK_WINDOW_SEC +
-              specEval.passiveModifiers.perfectBlockWindowBonusSec +
-              compParryBonusSec +
-              (hasOffHandDeflection ? 0.06 : 0);
+              PERFECT_BLOCK_WINDOW_SEC +
+                specEval.passiveModifiers.perfectBlockWindowBonusSec +
+                compParryBonusSec +
+                (hasOffHandDeflection ? 0.06 : 0);
 
-          if (isPerfectBlock) {
-            // 0.34s Perfect Block: 0 damage taken, heavy parry stagger, shield restore & heat vent!
+          if (isPerfectParryOrCounter) {
+            // Mode B (Timed Parry) or Priority 1 Balmung Gram Counter: 0 damage taken, heavy parry stagger, shield restore & heat vent!
             e.stun = Math.max(e.stun, isShieldBlock ? 1.85 : 1.55);
             e.state = 'stagger';
             e.stateTimer = isShieldBlock ? 1.85 : 1.55;

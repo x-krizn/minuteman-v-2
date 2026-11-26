@@ -33,34 +33,42 @@ import {
   CHASSIS_HARDWARE_CATALOG,
   computePlayerLoadMetrics,
   createInitialEquipmentSlots,
+  doesLoadoutMatchSpecialistStance,
   evaluateActiveSpecialistStance,
   evaluateEquipmentFeatHandling,
   GEMSTONE_REGISTRY,
   getEffectiveMainGrip,
+  getEligibleSpecialistStances,
   getEquipmentDisplayName,
   getEquipmentMaxModSlots,
   getOwnedEquipmentInstances,
   getOwnedWeaponCount,
-  getWeaponComponentSlots,
   getWeaponGemCombatModifiers,
   getWeaponGemVisuals,
   getWeaponInstanceEquipWeight,
   getWeaponSubtypeInfo,
   isEquipmentUnlocked,
+  normalizeCanonicalFeatId,
+  resolveActiveAction4DefensiveMode,
+  setActiveSpecialistStance,
   setMainWeaponGrip,
-  toggleSpecialistStanceMode,
+  SPECIALIST_STANCE_BY_FEAT_ID,
+  SPECIALIST_STANCE_LIST,
+  toggleLoadoutAction4Mode,
+  toggleReverseGripKatanaMode,
   WEAPON_FUNCTIONAL_TYPES_BY_CATEGORY,
   WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS,
   WEAPON_GEM_WEIGHT_DELTA,
 } from '../../database/progression';
 import {
   addOrionInventoryItem,
-  ASSIGNABLE_ACTION_CATALOG,
   assignTriggerAction,
   consolidateInventorySlots,
   getActiveWeaponStance,
+  getEffectiveBActionId,
+  getEffectiveLHoldActionId,
+  getEquippedAssignableActionCandidates,
   getOrionGraphicsSettings,
-  isActionUnlocked,
   notifyOrionStateChange,
   performAuxiliarySwap,
   syncStateGates,
@@ -68,6 +76,7 @@ import {
 import {
   GemId,
   OrionState,
+  PilotSkillId,
   TraitLine,
   WEAPON_CATEGORIES,
   WeaponCategory,
@@ -208,93 +217,56 @@ export const WeaponStatReadout: React.FC<{
   }
 
   return (
-    <div className="mt-1 space-y-0.5 text-[9px]">
-      <div className="flex flex-wrap items-center gap-1 tabular-nums">
+    <div className="mt-1 space-y-1 text-[9px]">
+      <div className="flex flex-wrap items-center gap-1.5 text-[#cbd5e1] tabular-nums">
         <span
-          className={`px-1 py-0.2 rounded-[2px] font-bold border ${
+          className={`font-bold ${
             handling.proficiencyTier === 'mastered'
-              ? 'bg-[#052e16] text-[#86efac] border-[#22c55e]/50'
+              ? 'text-[#86efac]'
               : handling.proficiencyTier === 'proficient'
-                ? 'bg-[#0c4a6e] text-[#7dd3fc] border-[#38bdf8]/50'
+                ? 'text-[#7dd3fc]'
                 : handling.proficiencyTier === 'locked'
-                  ? 'bg-[#450a0a] text-[#fca5a5] border-[#ef4444]/60'
-                  : 'bg-[#0f172a] text-[#cbd5e1] border-[#334155]'
+                  ? 'text-[#fca5a5]'
+                  : 'text-[#cbd5e1]'
           }`}
         >
           {handling.badgeLabel}
         </span>
-        {w.category && (
-          <span className="px-1 py-0.2 rounded-[2px] bg-[#0f172a] text-[#fde047] border border-[#fde047]/40 font-bold">
-            {w.category.toUpperCase()} ▸ {(w.weaponClass || w.name).toUpperCase()}
-          </span>
-        )}
-        <span
-          className={`px-1 py-0.2 rounded-[2px] font-bold ${
-            w.weaponTier === 'legendary'
-              ? 'bg-[#451a03] text-[#fde047] border border-[#f59e0b]/60'
-              : w.weaponTier === 'unique'
-                ? 'bg-[#311042] text-[#e879f9] border border-[#a21caf]/50'
-                : 'bg-[#052e16] text-[#86efac] border border-[#22c55e]/40'
-          }`}
-        >
-          {w.weaponTier === 'legendary'
-            ? `SUBTYPE: LEGENDARY · ${w.legendarySpec?.boundRelicSlots.length ?? 0} LORE-BOUND`
-            : w.weaponTier === 'unique'
-              ? 'SUBTYPE: MAGITECH · 1 GEM'
-              : 'SUBTYPE: CUSTOM · 3 SLOTS'}
+        <span className="text-[#64748b]">·</span>
+        <span className="text-[#fde047] font-bold">
+          {w.category ? `${w.category} ▸ ${w.weaponClass || w.name}` : w.name}
         </span>
-        <span className="px-1 py-0.2 rounded-[2px] bg-[#0f172a] text-[#94a3b8] border border-[#334155]">
-          {w.weaponTier === 'legendary'
-            ? `TRADITION: ${w.legendarySpec?.folkloreTradition.toUpperCase() || 'FOLKLORE RELIC'}`
-            : `MODS: ${getWeaponComponentSlots(instanceId).join(' / ').toUpperCase()}`}
-        </span>
-        <span className="px-1 py-0.2 rounded-[2px] bg-[#1e293b] text-[#ffd27d] font-bold">
+        <span className="text-[#64748b]">·</span>
+        <span className="text-[#ffd27d] font-bold">
           {totalWt} WT ({(w.weightClass || 'medium').toUpperCase()})
         </span>
-        <span className="px-1 py-0.2 rounded-[2px] bg-[#0f172a] text-[#cbd5e1] border border-[#334155]">
-          {handingLabel}
-        </span>
-        <span className="px-1 py-0.2 rounded-[2px] bg-[#172554] text-[#7dd3fc] font-bold">
+        <span className="text-[#64748b]">·</span>
+        <span>{handingLabel}</span>
+        <span className="text-[#64748b]">·</span>
+        <span className="text-[#7dd3fc] font-bold">
           {effectiveDmg > 0
             ? primaryAction?.isChargeable
-              ? `${effectiveDmg}–${Math.round(effectiveDmg * 1.85)} DMG · SINGLE-SHOT CHARGE BOW`
+              ? `${effectiveDmg}–${Math.round(effectiveDmg * 1.85)} DMG (Charge Bow)`
               : primaryAction?.noReload || w.equipmentRole === 'melee' || w.equipmentRole === 'shield'
-                ? `${effectiveDmg} DMG · ${primaryAction?.comboSequence?.length || w.shotsPerChain}-STEP COMBO (NO RELOAD)`
-                : `${effectiveDmg} DMG × ${effectiveChain} AMMO`
-            : 'SUPPORT / GUARD'}
+                ? `${effectiveDmg} DMG (${primaryAction?.comboSequence?.length || w.shotsPerChain}-Step Combo)`
+                : `${effectiveDmg} DMG × ${effectiveChain} Ammo`
+            : 'Support / Guard'}
         </span>
-        <span className="px-1 py-0.2 rounded-[2px] bg-[#0f172a] text-[#38bdf8] border border-[#1e3a8a]">
-          {w.primaryDamageType.toUpperCase()} · {primaryFamily.toUpperCase()}
-        </span>
-        {w.adaptiveDamageTypes && w.adaptiveDamageTypes.length > 1 && (
-          <span className="px-1 py-0.2 rounded-[2px] bg-[#311042] text-[#e879f9] border border-[#a21caf]/50">
-            ADAPTIVE [{w.adaptiveDamageTypes.join('/')}]
-          </span>
-        )}
-        <span className="px-1 py-0.2 rounded-[2px] bg-[#0f172a] text-[#94a3b8]">
-          {primaryAction?.noReload || w.equipmentRole === 'melee' || w.equipmentRole === 'shield'
-            ? `NO RELOAD (${primaryAction?.comboResetWindowSec ?? 1.1}s RESET) · ${primaryRange}px RNG`
-            : primaryAction?.isChargeable
-              ? `${primaryAction.maxChargeSec ?? 0.78}s DRAW · ${w.reloadDurationSec}s NOCK · ${primaryRange}px RNG`
-              : `${w.reloadDurationSec}s BASIC RLD · ${primaryRange}px RNG`}
+        <span className="text-[#64748b]">·</span>
+        <span className="text-[#38bdf8]">
+          {w.primaryDamageType} ({primaryFamily}) · {primaryRange}px RNG
         </span>
       </div>
 
       {(incBadges.length > 0 || decBadges.length > 0) && (
-        <div className="flex flex-wrap items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1.5">
           {incBadges.map((b, i) => (
-            <span
-              key={`inc-${i}`}
-              className="px-1 py-0.1 rounded-[2px] bg-[#052e16]/80 text-[#86efac] border border-[#22c55e]/40 font-semibold"
-            >
-              {b}
+            <span key={`inc-${i}`} className="text-[#86efac] font-semibold">
+              +{b.replace(/^\+/, '')}
             </span>
           ))}
           {decBadges.map((b, i) => (
-            <span
-              key={`dec-${i}`}
-              className="px-1 py-0.1 rounded-[2px] bg-[#450a0a]/80 text-[#fca5a5] border border-[#ef4444]/40 font-semibold"
-            >
+            <span key={`dec-${i}`} className="text-[#fca5a5] font-semibold">
               {b}
             </span>
           ))}
@@ -302,34 +274,22 @@ export const WeaponStatReadout: React.FC<{
       )}
 
       {!compact && w.moveset && w.moveset.length > 0 && (
-        <div className="text-[9px] text-[#94a3b8] leading-tight pt-0.5 border-t border-[#1e293b]/70 space-y-0.5">
+        <div className="text-[9px] text-[#94a3b8] leading-tight pt-1 border-t border-[#1e293b]/70 space-y-0.5">
           <div>
             <span className="text-[#cbd5e1] font-bold">MOVESET: </span>
             {w.moveset
               .map((s) => {
-                const ammoTag =
-                  s.slot === 1
-                    ? s.isChargeable
-                      ? ' · 1-SHOT CHARGE'
-                      : s.noReload
-                        ? ` · ${s.comboSequence?.length || 3}-STEP NO-RLD`
-                        : ` · ${effectiveChain} AMMO`
-                    : s.internalCharges && s.internalCharges > 1
-                      ? ` · ${s.internalCharges} CHG (${s.ammoCount || 1}/SHOT)`
-                      : s.ammoCount && s.ammoCount > 1
-                        ? ` · ×${s.ammoCount} SALVO`
-                        : '';
                 return `[S${s.slot} ${s.name}: ${
                   s.damage > 0 ? `${s.damage} ${s.damageType}` : s.damageType
-                }${ammoTag} · ${s.cooldownSec}s CD · ${s.heatCost}H]`;
+                } · ${s.cooldownSec}s CD · ${s.heatCost}H]`;
               })
               .join(' · ')}
           </div>
           {primaryAction?.comboSequence && primaryAction.comboSequence.length > 0 && (
             <div className="text-[#f472b6]">
-              <span className="font-bold">FLUID COMBO CHAIN: </span>
+              <span className="font-bold">COMBO: </span>
               {primaryAction.comboSequence
-                .map((c, idx) => `${idx + 1}. ${c.label} (${Math.round(c.damageMult * 100)}% DMG)`)
+                .map((c, idx) => `${idx + 1}. ${c.label} (${Math.round(c.damageMult * 100)}%)`)
                 .join(' ▸ ')}
             </div>
           )}
@@ -365,14 +325,9 @@ export const HardwareStatReadout: React.FC<{
   const incBadges: string[] = [];
   const decBadges: string[] = [];
 
-  if (basePlatingCap > 0) {
-    incBadges.push(`${basePlatingCap} BASE CAP`);
-  }
-  if (hwCap > 0) {
-    incBadges.push(`+${hwCap} CAP`);
-  } else if (hwCap < 0) {
-    decBadges.push(`${hwCap} CAP`);
-  }
+  if (basePlatingCap > 0) incBadges.push(`${basePlatingCap} BASE CAP`);
+  if (hwCap > 0) incBadges.push(`+${hwCap} CAP`);
+  else if (hwCap < 0) decBadges.push(`${hwCap} CAP`);
 
   if (hw.shieldBonus) {
     if (hw.shieldBonus > 0) incBadges.push(`+${hw.shieldBonus} SHD`);
@@ -386,88 +341,36 @@ export const HardwareStatReadout: React.FC<{
     if (hw.stabilityBonus > 0) incBadges.push(`+${hw.stabilityBonus} STB`);
     else decBadges.push(`${hw.stabilityBonus} STB`);
   }
-  if (hw.attackMassBonus) {
-    if (hw.attackMassBonus > 0) incBadges.push(`+${hw.attackMassBonus} ATK MASS`);
-    else decBadges.push(`${hw.attackMassBonus} ATK MASS`);
-  }
-  if (hw.tellDurationMult && hw.tellDurationMult !== 1) {
-    const pct = Math.round((hw.tellDurationMult - 1) * 100);
-    if (pct < 0) incBadges.push(`${pct}% WINDUP`);
-    else decBadges.push(`+${pct}% WINDUP`);
-  }
-  if (hw.moveSpeedMult && hw.moveSpeedMult !== 1) {
-    const pct = Math.round((hw.moveSpeedMult - 1) * 100);
-    if (pct > 0) incBadges.push(`+${pct}% MOVE SPD`);
-    else decBadges.push(`${pct}% MOVE SPD`);
-  }
-  if (hw.heatVentMult && hw.heatVentMult !== 1) {
-    const pct = Math.round((hw.heatVentMult - 1) * 100);
-    if (pct > 0) incBadges.push(`+${pct}% HEAT VENT`);
-    else decBadges.push(`${pct}% HEAT VENT`);
-  }
-  if (hw.accuracyMult && hw.accuracyMult !== 1) {
-    const pct = Math.round((hw.accuracyMult - 1) * 100);
-    if (pct > 0) incBadges.push(`+${pct}% ACCURACY`);
-    else decBadges.push(`${pct}% ACCURACY`);
-  }
-  if (hw.staggerDamageMult && hw.staggerDamageMult !== 1) {
-    const pct = Math.round((hw.staggerDamageMult - 1) * 100);
-    if (pct > 0) incBadges.push(`+${pct}% STG DMG`);
-    else decBadges.push(`${pct}% STG DMG`);
-  }
-  if (hw.cooldownMult && hw.cooldownMult !== 1) {
-    const pct = Math.round((hw.cooldownMult - 1) * 100);
-    if (pct < 0) incBadges.push(`${pct}% SKILL CD`);
-    else decBadges.push(`+${pct}% SKILL CD`);
-  }
 
   return (
     <div className="mt-1 space-y-0.5 text-[9px]">
-      <div className="flex flex-wrap items-center gap-1">
-        <span className="px-1 py-0.2 rounded-[2px] bg-[#1e293b] text-[#ffd27d] font-bold">
-          {hwWeight} WT
-        </span>
+      <div className="flex flex-wrap items-center gap-1.5 text-[#cbd5e1] tabular-nums">
+        <span className="text-[#ffd27d] font-bold">{hwWeight} WT</span>
+        <span className="text-[#64748b]">·</span>
         {isExteriorArmor ? (
-          <>
-            <span className="px-1 py-0.2 rounded-[2px] bg-[#172554] text-[#7dd3fc] font-bold">
-              {(hw.armorType || 'Medium').toUpperCase()} ARMOR
-            </span>
-            <span className="px-1 py-0.2 rounded-[2px] bg-[#0f172a] text-[#38bdf8] border border-[#1e3a8a] font-semibold">
-              +{hw.armorDurability ?? 0} DUR · +{hw.armorRating ?? 0} RTG · +{hw.armorThreshold ?? 0} THR
-            </span>
-          </>
+          <span className="text-[#7dd3fc] font-bold">
+            {(hw.armorType || 'Medium').toUpperCase()} ARMOR · +{hw.armorDurability ?? 0} DUR · +{hw.armorRating ?? 0} RTG · +{hw.armorThreshold ?? 0} THR
+          </span>
         ) : (
-          <span className="px-1 py-0.2 rounded-[2px] bg-[#0f172a] text-[#94a3b8] border border-[#334155]">
-            INTERNAL MODULE (0 ARMOR)
-          </span>
-        )}
-        {hw.reactorFamily && (
-          <span className="px-1 py-0.2 rounded-[2px] bg-[#311042] text-[#e879f9] border border-[#a21caf]/50 font-bold">
-            {hw.reactorFamily.toUpperCase()} CORE
-          </span>
+          <span className="text-[#94a3b8]">INTERNAL MODULE</span>
         )}
         {maxGemSlots !== undefined && (
-          <span className="px-1 py-0.2 rounded-[2px] bg-[#0f172a] text-[#cbd5e1]">
-            {hw.origin === 'crafted' ? `CRAFTED (${maxGemSlots}G MAX)` : `LOOTED (${maxGemSlots}G)`}
-          </span>
+          <>
+            <span className="text-[#64748b]">·</span>
+            <span>{hw.origin === 'crafted' ? `Crafted (${maxGemSlots}G)` : `Looted (${maxGemSlots}G)`}</span>
+          </>
         )}
       </div>
 
       {(incBadges.length > 0 || decBadges.length > 0) && (
-        <div className="flex flex-wrap items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1.5">
           {incBadges.map((b, i) => (
-            <span
-              key={`hw-inc-${i}`}
-              className="px-1 py-0.1 rounded-[2px] bg-[#052e16]/80 text-[#86efac] border border-[#22c55e]/40 font-semibold"
-            >
+            <span key={`hw-inc-${i}`} className="text-[#86efac] font-semibold">
               {b}
             </span>
           ))}
           {decBadges.map((b, i) => (
-            <span
-              key={`hw-dec-${i}`}
-              className="px-1 py-0.1 rounded-[2px] bg-[#450a0a]/80 text-[#fca5a5] border border-[#ef4444]/40 font-semibold"
-            >
+            <span key={`hw-dec-${i}`} className="text-[#fca5a5] font-semibold">
               {b}
             </span>
           ))}
@@ -501,10 +404,8 @@ export interface SatchelLoadoutTabProps {
 }
 
 /**
- * Renders the Mech Doll `LOADOUT` screen:
- * - Clean 2-pane split layout: Mech Doll & Slot Inspector on the left (`sm:col-span-5`),
- *   Anatomical Hardpoint List on the right (`sm:col-span-7`) with zero nested scrollbars.
- * - Integrates hybrid Feat Prerequisite gating and Handling Proficiency bonuses from the 118-feat constellation.
+ * Renders the `LOADOUT · Equipped Slots` screen using a Single-Focus Full-Width Slot List
+ * with an optional Mech Doll Schematic Pop-Up and a Slide-Over Slot Inspector & Equipment Picker.
  */
 export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
   state,
@@ -515,17 +416,20 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
   loadoutSubtypeFilter,
   setLoadoutSubtypeFilter,
   openSlotEditor,
-  onOpenInventoryTab,
+  onOpenInventoryTab: _onOpenInventoryTab,
   onOpenArmory,
   onLocateFeat,
 }) => {
-  const [contextMenuSlot, setContextMenuSlot] = useState<EditableLoadoutSlot | null>('slot1');
-  const [hoveredSlot, setHoveredSlot] = useState<EditableLoadoutSlot | null>(null);
+  const [contextMenuSlot, setContextMenuSlot] = useState<EditableLoadoutSlot | null>(null);
+  const [showDollOverlay, setShowDollOverlay] = useState<boolean>(false);
   const [previewCandidateId, setPreviewCandidateId] = useState<string | null>(null);
   const [loadoutSelectedClass, setLoadoutSelectedClass] = useState<WeaponCategory | null>(null);
   const [loadoutVariantFilter, setLoadoutVariantFilter] = useState<
     'ALL' | 'Custom' | 'Magitech' | 'Legendary'
   >('ALL');
+  const [stanceDisciplineFilter, setStanceDisciplineFilter] = useState<'ALL' | PilotSkillId>(
+    'ALL'
+  );
 
   if (!state.equipmentSlots) {
     state.equipmentSlots = createInitialEquipmentSlots(state.traitLine);
@@ -543,7 +447,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
     },
   };
 
-  // Resolve equipped items for each anatomical node on the Mech Doll
+  // Resolve equipped items for each anatomical node
   const headItem = findHardwareItemByNameOrId(eq.head);
   const opticsItem = findHardwareItemByNameOrId(eq.headOptics);
   const sensoryAItem = findHardwareItemByNameOrId(eq.sensoryA);
@@ -561,14 +465,43 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
   const sideWeapon = slot2Id ? getWeaponDefinition(slot2Id) : undefined;
   const auxWeapon = slot3Id ? getWeaponDefinition(slot3Id) : undefined;
 
-  const leftAction = getResolvedActionDescriptor(
-    state,
-    state.assignedActions?.L || 'weapon_skill_1'
-  );
-  const rightAction = getResolvedActionDescriptor(
-    state,
-    state.assignedActions?.R || 'weapon_skill_2'
-  );
+  const lHoldActionId = getEffectiveLHoldActionId(state);
+  const isDefaultLHoldSwap = lHoldActionId === 'weapon_swap';
+  const leftAction = isDefaultLHoldSwap
+    ? {
+        id: 'weapon_swap',
+        name: 'Weapon / Auxiliary Swap',
+        shortLabel: 'WEAPON / AUX SWAP',
+        sourceCategory: 'weapon' as const,
+        sourceLabel: 'Default L [Q] Long-Press',
+        description:
+          'Toggles active Skill 4 & 5 ownership with your Auxiliary Back Launcher or swaps active off-hand/grip state.',
+      }
+    : getResolvedActionDescriptor(state, lHoldActionId);
+
+  const bActionId = getEffectiveBActionId(state);
+  const isDefaultBBooster = bActionId === 'booster_dash';
+  const boostAction = isDefaultBBooster
+    ? {
+        id: 'booster_dash',
+        name: `Booster Thrusters (${legsItem?.name || 'Standard Striders'})`,
+        shortLabel: 'BOOSTER THRUSTERS',
+        sourceCategory: 'hardware' as const,
+        sourceLabel: `Default B [K] · ${legsItem?.name || 'Leg Striders'}`,
+        description:
+          'Tap B [K] for directional thruster dash burst · Hold B [K] for continuous boost glide.',
+      }
+    : bActionId === 'weapon_swap'
+      ? {
+          id: 'weapon_swap',
+          name: 'Weapon / Auxiliary Swap',
+          shortLabel: 'WEAPON / AUX SWAP',
+          sourceCategory: 'weapon' as const,
+          sourceLabel: 'Swapped from L [Q] Hold',
+          description:
+            'Toggles active Skill 4 & 5 ownership with your Auxiliary Back Launcher or swaps active off-hand/grip state.',
+        }
+      : getResolvedActionDescriptor(state, bActionId);
 
   const getEquippedIdForSlot = (slot: EditableLoadoutSlot): string | null => {
     switch (slot) {
@@ -597,7 +530,9 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
       case 'legs':
         return legsItem?.id || eq.legs || null;
       case 'bind_l':
-        return state.assignedActions?.L || 'weapon_skill_1';
+        return lHoldActionId;
+      case 'bind_b':
+        return bActionId;
       case 'bind_r':
         return state.assignedActions?.R || 'weapon_skill_2';
       default:
@@ -635,9 +570,9 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
   };
 
   /**
-   * Renders one selectable anatomical hardpoint node on the Mech Doll screen.
+   * Renders one compact full-width scannable row for an anatomical hardpoint slot.
    */
-  const renderDollSlotNode = (config: {
+  const renderCompactSlotRow = (config: {
     slot: EditableLoadoutSlot;
     title: string;
     itemId: string | null;
@@ -645,10 +580,8 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
     subtitle: string;
     wtLabel: string;
     accentColor: string;
-    subModulesSummary?: string;
     badgeText?: string;
   }) => {
-    const isSelected = contextMenuSlot === config.slot;
     return (
       <div
         key={config.slot}
@@ -659,109 +592,227 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
           soundSystem.playSelect();
           setContextMenuSlot(config.slot);
         }}
-        onFocus={() => setHoveredSlot(config.slot)}
-        onBlur={() => setHoveredSlot(null)}
-        onMouseEnter={() => setHoveredSlot(config.slot)}
-        onMouseLeave={() => setHoveredSlot(null)}
-        className={`p-1.5 rounded-xs border transition-all cursor-pointer flex items-center gap-2 ${
-          isSelected
-            ? 'bg-[#172554]/85 border-[#fde047] shadow-md'
-            : 'bg-[#090d14] border-[#1e293b] hover:border-[#38bdf8]'
-        }`}
+        className="px-2.5 py-2 hover:bg-[#1e293b]/70 transition-colors cursor-pointer flex items-center justify-between gap-2"
       >
-        <HighResEquipmentArtCanvas
-          state={state}
-          itemIdOrName={config.itemId}
-          slotHint={config.slot}
-          sizeClass="w-12 h-12"
-        />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-1">
-            <span
-              className="text-[9px] font-bold tracking-tight"
-              style={{ color: config.accentColor }}
-            >
-              {config.title}
-            </span>
-            <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          <HighResEquipmentArtCanvas
+            state={state}
+            itemIdOrName={config.itemId}
+            slotHint={config.slot}
+            sizeClass="w-8 h-8 shrink-0"
+          />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span
+                className="text-[9px] font-bold tracking-wide w-28 shrink-0"
+                style={{ color: config.accentColor }}
+              >
+                {config.title}
+              </span>
+              <span className="font-bold text-[11px] text-[#f8fafc] truncate">
+                {config.itemName}
+              </span>
               {config.badgeText && (
-                <span className="px-1 py-0.1 rounded-[2px] bg-[#1e293b] text-[#fde047] text-[9px] font-bold">
-                  {config.badgeText}
+                <span className="text-[9px] text-[#fde047] font-mono">
+                  · {config.badgeText}
                 </span>
               )}
-              <span className="text-[9px] font-bold text-[#ffd27d]">{config.wtLabel}</span>
-              {renderModGemPips(config.itemId)}
+              <span className="text-[9px] text-[#94a3b8] truncate hidden sm:inline">
+                · {config.subtitle}
+              </span>
+            </div>
+            <div className="text-[9px] text-[#94a3b8] truncate sm:hidden">
+              {config.subtitle}
             </div>
           </div>
-          <div className="font-bold text-[9px] text-[#e2e8f0] truncate">{config.itemName}</div>
-          <div className="text-[9px] text-[#94a3b8] truncate">{config.subtitle}</div>
-          {config.subModulesSummary && (
-            <div className="text-[9px] text-[#7dd3fc] truncate mt-0.5">
-              ⚙ {config.subModulesSummary}
-            </div>
-          )}
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          {renderModGemPips(config.itemId)}
+          <span className="text-[9px] font-mono tabular-nums font-bold text-[#ffd27d] w-12 text-right">
+            {config.wtLabel}
+          </span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              soundSystem.playSelect();
+              setPreviewCandidateId(config.itemId);
+              openSlotEditor(config.slot);
+            }}
+            className="px-2 py-0.5 bg-[#172554] hover:bg-[#1e3a8a] text-[#fde047] border border-[#38bdf8]/50 rounded-xs text-[9px] font-bold cursor-pointer"
+          >
+            Swap
+          </button>
         </div>
       </div>
     );
   };
 
   /**
-   * Renders the High-Resolution Slot Equipment Selector Drawer when `isEditingLoadout` is true.
+   * Renders the Full-Width Equipment Picker Overlay when `isEditingLoadout` is true.
    */
   const renderSlotEquipmentSelector = () => {
     const currentId = getEquippedIdForSlot(editingSlot);
     const isWeaponSlot =
       editingSlot === 'slot1' || editingSlot === 'slot2' || editingSlot === 'slot3';
-    const isTriggerSlot = editingSlot === 'bind_l' || editingSlot === 'bind_r';
+    const isTriggerSlot =
+      editingSlot === 'bind_l' || editingSlot === 'bind_b' || editingSlot === 'bind_r';
 
     if (isTriggerSlot) {
-      const side: 'L' | 'R' = editingSlot === 'bind_l' ? 'L' : 'R';
+      const targetTrigger: 'L' | 'B' = editingSlot === 'bind_b' ? 'B' : 'L';
+      const isEditingBoost = targetTrigger === 'B';
+      const isDefaultAssigned = isEditingBoost ? isDefaultBBooster : isDefaultLHoldSwap;
+      const equippedCandidates = getEquippedAssignableActionCandidates(
+        state,
+        targetTrigger,
+        isCheatMode
+      );
+
       return (
         <div
           data-menu-scope="true"
-          className="p-2.5 bg-[#090d14] rounded-xs border border-[#fde047] space-y-2"
+          className="flex-1 min-h-0 flex flex-col p-2.5 bg-[#090d14] rounded-xs border border-[#fde047] space-y-2 overflow-hidden"
         >
-          <div className="flex items-center justify-between border-b border-[#1e293b] pb-1.5">
-            <span className="text-[10px] font-bold text-[#fde047]">
-              ASSIGN {side === 'L' ? 'LEFT TRIGGER [J / LMB]' : 'RIGHT TRIGGER [K / RMB]'} COMBAT ACTION
-            </span>
+          <div className="flex items-center justify-between border-b border-[#1e293b] pb-1.5 shrink-0">
+            <div className="min-w-0">
+              <div className="text-[11px] font-bold text-[#fde047]">
+                {isEditingBoost
+                  ? 'ASSIGN BOOST (B [K]) EQUIPPED ACTION'
+                  : 'ASSIGN WEAPON SWAP (L [Q] LONG-PRESS) EQUIPPED ACTION'}
+              </div>
+              <div className="text-[9px] text-[#94a3b8]">
+                Only actions from currently equipped items are listed · An already equipped action
+                cannot be bound again unless available from multiple equipped sources
+              </div>
+            </div>
             <button
               type="button"
               data-menu-back="true"
               onClick={() => setIsEditingLoadout(false)}
-              className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#e2e8f0] rounded-xs text-[9px] font-bold cursor-pointer"
+              className="px-2.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#e2e8f0] rounded-xs text-[10px] font-bold cursor-pointer shrink-0"
             >
-              ✕ BACK TO MECH DOLL
+              ← Back to Slots
             </button>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-            {ASSIGNABLE_ACTION_CATALOG.filter(
-              (act) => isCheatMode || isActionUnlocked(state, act.id)
-            ).map((act) => {
-              const desc = getResolvedActionDescriptor(state, act.id);
-              const isAssigned = state.assignedActions?.[side] === act.id;
+          <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-[#1e293b] pr-0.5">
+            {/* Default Option for the selected slot */}
+            <button
+              type="button"
+              onClick={() => {
+                if (isEditingBoost) {
+                  assignTriggerAction(state, 'B', 'booster_dash');
+                  sayCtx.say('BOUND B [K] TO BOOSTER THRUSTERS (DEFAULT)');
+                } else {
+                  assignTriggerAction(state, 'L', 'weapon_swap');
+                  sayCtx.say('BOUND L [Q] LONG-PRESS TO WEAPON / AUXILIARY SWAP (DEFAULT)');
+                }
+                soundSystem.playPowerup();
+                setIsEditingLoadout(false);
+                notifyOrionStateChange();
+              }}
+              className={`w-full p-2 text-left flex items-center justify-between gap-2 cursor-pointer transition-colors ${
+                isDefaultAssigned ? 'bg-[#172554]/80' : 'hover:bg-[#1e293b]/60'
+              }`}
+            >
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-bold text-[11px] text-[#fde047]">
+                    {isEditingBoost
+                      ? `Booster Thrusters · ${legsItem?.name || 'Standard Striders'} (Default)`
+                      : 'Weapon / Auxiliary Swap (Default)'}
+                  </span>
+                  <span className="text-[9px] text-[#86efac]">
+                    · {isEditingBoost ? 'Standard B [K] Mobility' : 'Standard L [Q] Hold'}
+                  </span>
+                </div>
+                <div className="text-[9px] text-[#cbd5e1] mt-0.5">
+                  {isEditingBoost
+                    ? 'Tap B [K] for directional thruster dash burst · Hold B [K] for continuous boost glide.'
+                    : 'Toggles active Skill 4 & 5 ownership with your Auxiliary Back Launcher or swaps active weapon stance.'}
+                </div>
+              </div>
+              <span className="px-2 py-0.5 rounded-xs text-[9px] font-bold bg-[#1e293b] text-[#fde047] shrink-0">
+                {isDefaultAssigned ? 'Assigned' : 'Bind'}
+              </span>
+            </button>
+
+            {/* Equipped-Item-Derived Candidate Actions with Multi-Source Duplicate Enforcement */}
+            {equippedCandidates.map((cand) => {
+              const desc = cand.descriptor;
               return (
                 <button
-                  key={act.id}
+                  key={cand.bindId}
                   type="button"
+                  disabled={!cand.canBind}
                   onClick={() => {
-                    assignTriggerAction(state, side, act.id);
-                    sayCtx.say(`ASSIGNED ${desc.name.toUpperCase()} TO ${side === 'L' ? 'LEFT' : 'RIGHT'} TRIGGER`);
+                    if (!cand.canBind) {
+                      soundSystem.playMenuBeep();
+                      sayCtx.say(
+                        (cand.duplicateReason || 'ACTION ALREADY EQUIPPED FROM SINGLE SOURCE').toUpperCase()
+                      );
+                      notifyOrionStateChange();
+                      return;
+                    }
+                    assignTriggerAction(state, targetTrigger, cand.bindId);
+                    sayCtx.say(
+                      `BOUND ${desc.name.toUpperCase()} TO ${
+                        isEditingBoost ? 'BOOST B [K]' : 'L [Q] LONG-PRESS'
+                      }`
+                    );
                     soundSystem.playPowerup();
                     setIsEditingLoadout(false);
                     notifyOrionStateChange();
                   }}
-                  className={`p-2 rounded-xs border text-left cursor-pointer ${
-                    isAssigned
-                      ? 'bg-[#172554] border-[#fde047]'
-                      : 'bg-[#05070a] border-[#1e293b] hover:border-[#38bdf8]'
+                  className={`w-full p-2 text-left flex items-center justify-between gap-2 transition-colors ${
+                    cand.isAssignedHere
+                      ? 'bg-[#172554]/80 cursor-pointer'
+                      : cand.canBind
+                        ? 'hover:bg-[#1e293b]/60 cursor-pointer'
+                        : 'bg-[#05070a]/70 opacity-60 cursor-not-allowed'
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-[9px] text-[#fde047]">{desc.name}</span>
-                    <span className="text-[9px] text-[#7dd3fc]">{desc.sourceLabel}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span
+                        className={`font-bold text-[11px] ${
+                          cand.canBind ? 'text-[#fde047]' : 'text-[#94a3b8]'
+                        }`}
+                      >
+                        {desc.name}
+                      </span>
+                      <span className="text-[9px] text-[#7dd3fc]">
+                        · Equipped Source ({cand.availableSourceCount}):{' '}
+                        {cand.equippedSourceNames.join(' + ')}
+                      </span>
+                      {cand.availableSourceCount > 1 && (
+                        <span className="px-1.5 py-0.2 rounded-xs bg-[#052e16] text-[#86efac] border border-[#22c55e]/50 text-[8px] font-bold">
+                          MULTI-SOURCE ×{cand.availableSourceCount}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[9px] text-[#cbd5e1] mt-0.5">{desc.description}</div>
+                    {!cand.canBind && cand.duplicateReason && (
+                      <div className="text-[9px] text-[#fca5a5] font-semibold mt-0.5">
+                        Locked: {cand.duplicateReason}
+                      </div>
+                    )}
                   </div>
-                  <div className="text-[9px] text-[#cbd5e1] mt-0.5">{desc.description}</div>
+                  <span
+                    className={`px-2 py-0.5 rounded-xs text-[9px] font-bold shrink-0 ${
+                      cand.isAssignedHere
+                        ? 'bg-[#1e293b] text-[#fde047] border border-[#fde047]/60'
+                        : cand.canBind
+                          ? 'bg-[#052e16] text-[#86efac] border border-[#22c55e]/50'
+                          : 'bg-[#450a0a] text-[#fca5a5] border border-[#ef4444]/40'
+                    }`}
+                  >
+                    {cand.isAssignedHere
+                      ? 'Assigned'
+                      : cand.canBind
+                        ? 'Bind'
+                        : `In Use (${cand.equippedCount}/${cand.availableSourceCount})`}
+                  </span>
                 </button>
               );
             })}
@@ -821,13 +872,6 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
           }));
         });
 
-      const groupedByFunctionalType = functionalTypesInClass
-        .map((funcType) => ({
-          funcType,
-          items: candidates.filter((c) => c.stInfo.functionalType === funcType),
-        }))
-        .filter((g) => g.items.length > 0);
-
       const inspectedId =
         previewCandidateId || currentId || candidates[0]?.instanceId || 'long_sword';
       const inspectedWeapon = getWeaponDefinition(inspectedId);
@@ -844,10 +888,6 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
         }
         soundSystem.playPowerup();
 
-        // Groomed slot rules:
-        // - Launchers (`isLauncherEquipment`) -> Side Hand (`slot2`) or Aux Slot (`slot3`, Back Mount), always rendering dorsally on the back.
-        // - 2H weapons (`isTwoHandOnlyWeapon(w, state)`) -> Main Slot (`slot1`) only unless overridden by Feat/Unique/Legendary.
-        // - 1H weapons & Shields -> Main (`slot1`) or Side (`slot2`) slot only.
         let targetSlot: 'slot1' | 'slot2' | 'slot3' =
           editingSlot === 'slot1' || editingSlot === 'slot2' || editingSlot === 'slot3'
             ? editingSlot
@@ -867,7 +907,6 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
           eq.weaponSet1 = [instanceId, null];
           eq.auxActive = false;
           if (isTwoHandOnlyWeapon(w, state)) {
-            // Side weapon (`eq.slot2`) stays in `slot2` (holstered at hip) and Launcher (`eq.slot3`) stays on the back!
             eq.mainGrip = '2h';
           }
         } else if (targetSlot === 'slot2') {
@@ -880,7 +919,6 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
           eq.weaponSet2 = [instanceId, null];
           eq.auxActive = false;
           if (isTwoHandOnlyWeapon(eq.slot1, state)) {
-            // Main Hand requires 2H -> newly equipped Side weapon stays in `slot2` as HOLSTERED while Launcher stays on back (`slot3`)
             eq.mainGrip = '2h';
           } else if (!eq.mainGrip) {
             eq.mainGrip = '1h';
@@ -910,27 +948,29 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
       return (
         <div
           data-menu-scope="true"
-          className="p-2.5 bg-[#090d14] rounded-xs border border-[#fde047] space-y-2"
+          className="flex-1 min-h-0 flex flex-col p-2.5 bg-[#090d14] rounded-xs border border-[#fde047] space-y-2 overflow-hidden"
         >
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#1e293b] pb-1.5">
-            <div>
-              <div className="text-[10px] font-bold text-[#fde047]">
-                NESTED ARSENAL SELECTOR ·{' '}
-                {editingSlot === 'slot1'
-                  ? 'MAIN HAND [RIGHT]'
-                  : editingSlot === 'slot2'
-                    ? 'SIDE HAND [LEFT]'
-                    : 'AUXILIARY [BACK]'}
+          {/* Two-Row Selector Header: Back + Slot Title on Row 1, Class/Type/Subtype Dropdowns on Row 2 */}
+          <div className="flex flex-col gap-1.5 border-b border-[#1e293b] pb-1.5 shrink-0">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <button
+                  type="button"
+                  data-menu-back="true"
+                  onClick={() => setIsEditingLoadout(false)}
+                  className="px-2.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#e2e8f0] rounded-xs text-[10px] font-bold cursor-pointer shrink-0"
+                >
+                  ← Back to Slots
+                </button>
+                <span className="text-[11px] font-bold text-[#fde047] truncate">
+                  {editingSlot === 'slot1'
+                    ? 'MAIN HAND [RIGHT]'
+                    : editingSlot === 'slot2'
+                      ? 'SIDE HAND [LEFT]'
+                      : 'AUXILIARY [BACK]'}
+                </span>
               </div>
-              <div className="text-[9px] text-[#94a3b8]">
-                Select one of the <span className="text-[#fde047] font-semibold">8 Weapon Classes</span>{' '}
-                ▸ choose a <span className="text-[#38bdf8] font-semibold">Functional Weapon Class</span>{' '}
-                (e.g. Khopesh) to compare <span className="text-[#86efac] font-semibold">Custom</span>{' '}
-                (3 Slots), <span className="text-[#e879f9] font-semibold">Magitech</span> (Unique · 1 Gem), &amp;{' '}
-                <span className="text-[#fde047] font-semibold">Legendary</span> (Folklore · Lore-Bound) variants.
-              </div>
-            </div>
-            <div className="flex items-center gap-1">
+
               {(editingSlot === 'slot2' || editingSlot === 'slot3') && currentId && (
                 <button
                   type="button"
@@ -948,39 +988,81 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                     setIsEditingLoadout(false);
                     notifyOrionStateChange();
                   }}
-                  className="px-2 py-0.5 bg-[#450a0a] hover:bg-[#7f1d1d] text-[#fca5a5] border border-[#ef4444]/50 rounded-xs text-[9px] font-bold cursor-pointer"
+                  className="px-2 py-0.5 bg-[#450a0a] hover:bg-[#7f1d1d] text-[#fca5a5] border border-[#ef4444]/50 rounded-xs text-[9px] font-bold cursor-pointer shrink-0"
                 >
-                  UNEQUIP SLOT
+                  Unequip Slot
                 </button>
               )}
-              <button
-                type="button"
-                data-menu-back="true"
-                onClick={() => setIsEditingLoadout(false)}
-                className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#e2e8f0] rounded-xs text-[9px] font-bold cursor-pointer"
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <select
+                value={activeWeaponClass}
+                onChange={(e) => {
+                  soundSystem.playSelect();
+                  setLoadoutSelectedClass(e.target.value as WeaponCategory);
+                  setLoadoutSubtypeFilter('ALL');
+                }}
+                className="flex-1 min-w-0 truncate px-2 py-0.5 bg-[#05070a] border border-[#334155] rounded-xs text-[11px] font-bold text-[#fde047] focus:outline-none cursor-pointer"
               >
-                ✕ BACK TO MECH DOLL
-              </button>
+                {WEAPON_CATEGORIES.map((cat) => (
+                  <option key={cat} value={cat}>
+                    Class: {cat}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={activeFunctionalFilter}
+                onChange={(e) => {
+                  soundSystem.playSelect();
+                  setLoadoutSubtypeFilter(e.target.value);
+                }}
+                className="flex-1 min-w-0 truncate px-2 py-0.5 bg-[#05070a] border border-[#334155] rounded-xs text-[11px] font-bold text-[#7dd3fc] focus:outline-none cursor-pointer"
+              >
+                <option value="ALL">All {activeWeaponClass} Types</option>
+                {functionalTypesInClass.map((ft) => (
+                  <option key={ft} value={ft}>
+                    {ft}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={loadoutVariantFilter}
+                onChange={(e) => {
+                  soundSystem.playSelect();
+                  setLoadoutVariantFilter(
+                    e.target.value as 'ALL' | 'Custom' | 'Magitech' | 'Legendary'
+                  );
+                }}
+                className="flex-1 min-w-0 truncate px-2 py-0.5 bg-[#05070a] border border-[#334155] rounded-xs text-[11px] font-bold text-[#e2e8f0] focus:outline-none cursor-pointer"
+              >
+                <option value="ALL">All Subtypes</option>
+                <option value="Custom">Custom (3 Slots)</option>
+                <option value="Magitech">Magitech (1 Gem)</option>
+                <option value="Legendary">Legendary</option>
+              </select>
             </div>
           </div>
 
-          {/* High-Resolution Inspection Banner */}
+          {/* Focused Preview Banner for Highlighted Weapon */}
           {inspectedWeapon && (
-            <div className="p-2 bg-[#05070a] rounded-xs border border-[#334155] flex flex-col sm:flex-row items-center gap-3">
+            <div className="p-2 bg-[#05070a] rounded-xs border border-[#334155] flex items-center gap-3 shrink-0">
               <HighResEquipmentArtCanvas
                 state={state}
                 itemIdOrName={inspectedId}
                 slotHint={editingSlot}
-                sizeClass="w-24 h-24"
+                sizeClass="w-14 h-14 shrink-0"
               />
               <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-1">
+                <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="font-bold text-[10px] text-[#fde047]">
+                    <span className="font-bold text-[11px] text-[#fde047]">
                       {getEquipmentDisplayName(inspectedId, state)}
                     </span>
-                    <span className="text-[9px] text-[#7dd3fc] font-semibold">
-                      [{getWeaponSubtypeInfo(inspectedWeapon.id).subtype}]
+                    <span className="text-[9px] text-[#7dd3fc]">
+                      · {getWeaponSubtypeInfo(inspectedWeapon.id).subtype}
                     </span>
                   </div>
                   {onOpenArmory && (
@@ -990,362 +1072,127 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                         setIsEditingLoadout(false);
                         onOpenArmory(editingSlot, inspectedId);
                       }}
-                      className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#fb923c] border border-[#fb923c]/50 rounded-xs text-[9px] font-bold cursor-pointer"
+                      className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#fb923c] border border-[#fb923c]/50 rounded-xs text-[9px] font-bold cursor-pointer shrink-0"
                     >
-                      ⚙ MODIFY IN ARMORY
+                      ⚙ Armory
                     </button>
                   )}
-                </div>
-                <div className="text-[9px] text-[#cbd5e1] mt-0.5">
-                  {inspectedWeapon.description}
                 </div>
                 <WeaponStatReadout
                   w={inspectedWeapon}
                   instanceId={inspectedId}
                   state={state}
+                  compact
                 />
-                {(() => {
-                  const inspectedHandling = evaluateEquipmentFeatHandling(state, inspectedId);
-                  const recFeat = inspectedHandling.recommendedFeatId
-                    ? CANONICAL_FRAME_FEAT_REGISTRY[inspectedHandling.recommendedFeatId]
-                    : undefined;
-                  return (
-                    <div className="mt-1 p-1.5 bg-[#090d14] rounded-xs border border-[#1e293b] flex flex-wrap items-center justify-between gap-1 text-[9px]">
-                      <span
-                        className={
-                          inspectedHandling.canEquip ? 'text-[#cbd5e1]' : 'text-[#fca5a5] font-bold'
-                        }
-                      >
-                        {inspectedHandling.statusSummary}
-                      </span>
-                      {recFeat && onLocateFeat && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            soundSystem.playSelect();
-                            setIsEditingLoadout(false);
-                            onLocateFeat(recFeat.id);
-                          }}
-                          className="px-1.5 py-0.5 rounded-xs bg-[#1e1b4b] hover:bg-[#312e81] text-[#e9d5ff] border border-[#818cf8]/60 font-bold cursor-pointer shrink-0"
-                        >
-                          {inspectedHandling.canEquip
-                            ? `VIEW HANDLING FEAT: ${recFeat.name.toUpperCase()} →`
-                            : `LOCATE PREREQ FEAT: ${recFeat.name.toUpperCase()} →`}
-                        </button>
-                      )}
-                    </div>
-                  );
-                })()}
               </div>
             </div>
           )}
 
-          {/* TIER 1: THE 8 WEAPON CLASSES (Nested Top-Level Folders) */}
-          <div className="p-1.5 bg-[#05070a] rounded-xs border border-[#1e293b] space-y-1">
-            <div className="flex items-center justify-between text-[9px]">
-              <span className="font-bold text-[#fde047]">
-                1. SELECT WEAPON CLASS (8 CLASSES):
-              </span>
-              <span className="text-[#94a3b8]">
-                ACTIVE CLASS: <span className="text-[#fde047] font-bold">{activeWeaponClass.toUpperCase()}</span>
-              </span>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1">
-              {WEAPON_CATEGORIES.map((cat) => {
-                const classItems = allUnlockedWeapons.filter(
-                  (w) => getWeaponSubtypeInfo(w.id).category === cat
-                );
-                const customCount = classItems.filter(
-                  (w) => w.weaponTier !== 'unique' && w.weaponTier !== 'legendary'
-                ).length;
-                const magitechCount = classItems.filter(
-                  (w) => w.weaponTier === 'unique'
-                ).length;
-                const legendaryCount = classItems.filter(
-                  (w) => w.weaponTier === 'legendary'
-                ).length;
-                const isSelected = activeWeaponClass === cat;
-                const hasEquippedInClass = currentSubtypeInfo?.category === cat;
-                return (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => {
-                      soundSystem.playSelect();
-                      setLoadoutSelectedClass(cat);
-                      setLoadoutSubtypeFilter('ALL');
-                    }}
-                    className={`p-1.5 rounded-xs border text-left cursor-pointer transition-colors ${
-                      isSelected
-                        ? 'bg-[#172554] border-[#fde047] text-[#fde047]'
-                        : 'bg-[#090d14] border-[#1e293b] hover:border-[#38bdf8] text-[#e2e8f0]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="font-bold text-[9px] truncate">
-                        {isSelected ? '▾ ' : '▸ '}
-                        {cat.toUpperCase()}
-                      </span>
-                      {hasEquippedInClass && (
-                        <span className="px-1 py-0.1 rounded-[2px] bg-[#fde047]/20 text-[#fde047] text-[9px] font-bold">
-                          EQP
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-[9px] text-[#94a3b8] mt-0.5 flex items-center gap-1 flex-wrap">
-                      <span className="text-[#86efac]">{customCount} Custom</span>
-                      <span>·</span>
-                      <span className="text-[#e879f9]">{magitechCount} Magitech</span>
-                      {legendaryCount > 0 && (
-                        <>
-                          <span>·</span>
-                          <span className="text-[#fde047]">{legendaryCount} Legendary</span>
-                        </>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* TIER 2: NESTED FUNCTIONAL WEAPON TYPES & SUBTYPE FILTER (Custom vs Magitech) */}
-          <div className="p-1.5 bg-[#05070a] rounded-xs border border-[#1e293b] space-y-1.5">
-            <div className="flex flex-wrap items-center justify-between gap-1">
-              <span className="text-[9px] font-bold text-[#38bdf8]">
-                2. {activeWeaponClass.toUpperCase()} ▸ FUNCTIONAL WEAPON TYPE:
-              </span>
-              <div className="flex items-center gap-1 flex-wrap">
-                <span className="text-[9px] text-[#94a3b8] font-bold">SUBTYPE:</span>
-                {(['ALL', 'Custom', 'Magitech', 'Legendary'] as const).map((variantOpt) => (
-                  <button
-                    key={variantOpt}
-                    type="button"
-                    onClick={() => {
-                      soundSystem.playSelect();
-                      setLoadoutVariantFilter(variantOpt);
-                    }}
-                    className={`px-1.5 py-0.2 rounded-xs text-[9px] font-bold border cursor-pointer ${
-                      loadoutVariantFilter === variantOpt
-                        ? variantOpt === 'Legendary'
-                          ? 'bg-[#78350f] text-[#fde047] border-[#f59e0b]'
-                          : variantOpt === 'Magitech'
-                            ? 'bg-[#a21caf] text-[#f8fafc] border-[#e879f9]'
-                            : variantOpt === 'Custom'
-                              ? 'bg-[#15803d] text-[#f8fafc] border-[#86efac]'
-                              : 'bg-[#fde047] text-[#05070a] border-[#facc15]'
-                        : 'bg-[#090d14] text-[#94a3b8] border-[#1e293b]'
-                    }`}
-                  >
-                    {variantOpt === 'ALL'
-                      ? 'ALL SUBTYPES'
-                      : variantOpt === 'Custom'
-                        ? 'CUSTOM (3 SLOTS)'
-                        : variantOpt === 'Magitech'
-                          ? 'MAGITECH (1G)'
-                          : 'LEGENDARY (FOLKLORE)'}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-1">
-              <button
-                type="button"
-                onClick={() => {
-                  soundSystem.playSelect();
-                  setLoadoutSubtypeFilter('ALL');
-                }}
-                className={`px-1.5 py-0.5 rounded-xs text-[9px] font-bold border cursor-pointer ${
-                  activeFunctionalFilter === 'ALL'
-                    ? 'bg-[#38bdf8] text-[#05070a] border-[#7dd3fc]'
-                    : 'bg-[#090d14] text-[#94a3b8] border-[#1e293b] hover:border-[#38bdf8]'
-                }`}
-              >
-                ALL {activeWeaponClass.toUpperCase()} ({functionalTypesInClass.length} TYPES)
-              </button>
-              {functionalTypesInClass.map((funcType) => {
-                const matchingInType = allUnlockedWeapons.filter((w) => {
-                  const info = getWeaponSubtypeInfo(w.id);
-                  return info.category === activeWeaponClass && info.functionalType === funcType;
-                });
-                if (matchingInType.length === 0) return null;
-                const hasMagitech = matchingInType.some((w) => w.weaponTier === 'unique');
-                const isSelected = activeFunctionalFilter === funcType;
-                return (
-                  <button
-                    key={funcType}
-                    type="button"
-                    onClick={() => {
-                      soundSystem.playSelect();
-                      setLoadoutSubtypeFilter(funcType);
-                    }}
-                    className={`px-1.5 py-0.5 rounded-xs text-[9px] font-bold border cursor-pointer flex items-center gap-1 ${
-                      isSelected
-                        ? 'bg-[#38bdf8] text-[#05070a] border-[#7dd3fc]'
-                        : 'bg-[#090d14] text-[#cbd5e1] border-[#1e293b] hover:border-[#38bdf8]'
-                    }`}
-                  >
-                    <span>{funcType.toUpperCase()}</span>
-                    <span
-                      className={`text-[9px] ${
-                        isSelected
-                          ? 'text-[#05070a]'
-                          : hasMagitech
-                            ? 'text-[#e879f9]'
-                            : 'text-[#64748b]'
-                      }`}
-                    >
-                      ({matchingInType.length})
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* TIER 3: NESTED FUNCTIONAL CLASS GROUPS (Presenting Custom & Magitech Together) */}
-          <div className="space-y-2">
-            {groupedByFunctionalType.length === 0 ? (
-              <div className="p-3 bg-[#05070a] rounded-xs border border-[#1e293b] text-center text-[9px] text-[#94a3b8]">
+          {/* Full-Width Compact Scannable Weapon Candidates List */}
+          <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-[#1e293b] bg-[#05070a] border border-[#1e293b] rounded-xs">
+            {candidates.length === 0 ? (
+              <div className="p-4 text-center text-[#94a3b8] text-[10px]">
                 No unlocked weapons match the selected filter in {activeWeaponClass}.
               </div>
             ) : (
-              groupedByFunctionalType.map(({ funcType, items }) => (
-                <div
-                  key={funcType}
-                  className="p-1.5 bg-[#05070a]/90 rounded-xs border border-[#1e293b] space-y-1"
-                >
-                  <div className="flex items-center justify-between border-b border-[#1e293b]/80 pb-0.5">
-                    <span className="text-[9px] font-bold text-[#7dd3fc]">
-                      {activeWeaponClass.toUpperCase()} ▸ {funcType.toUpperCase()}
-                    </span>
-                    <span className="text-[9px] text-[#94a3b8]">
-                      {items.filter((i) => i.stInfo.variantSubtype === 'Custom').length} Custom ·{' '}
-                      {items.filter((i) => i.stInfo.variantSubtype === 'Magitech').length} Magitech
-                      {items.some((i) => i.stInfo.variantSubtype === 'Legendary')
-                        ? ` · ${items.filter((i) => i.stInfo.variantSubtype === 'Legendary').length} Legendary`
-                        : ''}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                    {items.map(({ instanceId, resolvedW, stInfo }) => {
-                      const isEquippedHere = currentId === instanceId;
-                      const copies = getOwnedWeaponCount(state, instanceId);
-                      const isMagitech = stInfo.variantSubtype === 'Magitech';
-                      const isLegendary = stInfo.variantSubtype === 'Legendary';
-                      const itemHandling = evaluateEquipmentFeatHandling(state, instanceId);
-                      const slotsLabel =
-                        resolvedW.weaponTier === 'legendary'
-                          ? `0 MODS · 0G (${resolvedW.legendarySpec?.boundRelicSlots.length ?? 0} LORE-BOUND)`
-                          : resolvedW.weaponTier === 'unique'
-                            ? '1 GEM SOCKET (FIXED PARTS)'
-                            : `3 SLOTS (${getWeaponComponentSlots(instanceId).join('/').toUpperCase()})`;
-                      return (
-                        <div
-                          key={instanceId}
-                          onMouseEnter={() => setPreviewCandidateId(instanceId)}
-                          className={`p-1.5 rounded-xs border flex items-center justify-between gap-2 ${
-                            isEquippedHere
-                              ? 'bg-[#172554]/70 border-[#fde047]'
-                              : !itemHandling.canEquip
-                                ? 'bg-[#090d14]/75 border-[#ef4444]/40'
-                                : 'bg-[#090d14] border-[#1e293b] hover:border-[#38bdf8]'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <HighResEquipmentArtCanvas
-                              state={state}
-                              itemIdOrName={instanceId}
-                              slotHint={editingSlot}
-                              sizeClass="w-11 h-11"
-                            />
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1 flex-wrap">
-                                <span className="font-bold text-[9px] text-[#e2e8f0] truncate">
-                                  {getEquipmentDisplayName(instanceId, state)}
-                                </span>
-                                <span className="text-[9px] text-[#94a3b8]">×{copies}</span>
-                                <span
-                                  className={`px-1 py-0.1 rounded-[2px] text-[9px] font-bold ${
-                                    isLegendary
-                                      ? 'bg-[#451a03] text-[#fde047] border border-[#f59e0b]/60'
-                                      : isMagitech
-                                        ? 'bg-[#311042] text-[#e879f9] border border-[#a21caf]/50'
-                                        : 'bg-[#052e16] text-[#86efac] border border-[#22c55e]/40'
-                                  }`}
-                                >
-                                  {stInfo.variantSubtype.toUpperCase()}
-                                </span>
-                                <span
-                                  className={`px-1 py-0.1 rounded-[2px] text-[9px] font-bold ${
-                                    itemHandling.proficiencyTier === 'mastered'
-                                      ? 'bg-[#052e16] text-[#86efac]'
-                                      : itemHandling.proficiencyTier === 'proficient'
-                                        ? 'bg-[#0c4a6e] text-[#7dd3fc]'
-                                        : itemHandling.proficiencyTier === 'locked'
-                                          ? 'bg-[#450a0a] text-[#fca5a5]'
-                                          : 'bg-[#1e293b] text-[#94a3b8]'
-                                  }`}
-                                >
-                                  {itemHandling.proficiencyTier === 'locked'
-                                    ? 'PREREQ LOCKED'
-                                    : itemHandling.proficiencyTier.toUpperCase()}
-                                </span>
-                              </div>
-                              <div className="text-[9px] text-[#7dd3fc] truncate">
-                                {funcType} · {slotsLabel} ·{' '}
-                                {getWeaponInstanceEquipWeight(instanceId, state)} WT
-                              </div>
-                              <div className="text-[9px] text-[#94a3b8] truncate">
-                                {!itemHandling.canEquip
-                                  ? itemHandling.statusSummary
-                                  : `S1: ${resolvedW.moveset?.[1]?.name || '—'} · S2: ${resolvedW.moveset?.[2]?.name || '—'}`}
-                              </div>
-                            </div>
-                          </div>
-                          {!itemHandling.canEquip && itemHandling.recommendedFeatId && onLocateFeat ? (
-                            <button
-                              type="button"
-                              onFocus={() => setPreviewCandidateId(instanceId)}
-                              onClick={() => {
-                                soundSystem.playSelect();
-                                setIsEditingLoadout(false);
-                                if (itemHandling.recommendedFeatId) {
-                                  onLocateFeat(itemHandling.recommendedFeatId);
-                                }
-                              }}
-                              className="px-2 py-1 rounded-xs text-[9px] font-bold border bg-[#450a0a] hover:bg-[#7f1d1d] text-[#fca5a5] border-[#ef4444]/60 cursor-pointer shrink-0"
-                            >
-                              FEAT GRID →
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onFocus={() => setPreviewCandidateId(instanceId)}
-                              onClick={() => handleEquipWeaponInSlot(instanceId)}
-                              className={`px-2 py-1 rounded-xs text-[9px] font-bold border cursor-pointer shrink-0 ${
-                                isEquippedHere
-                                  ? 'bg-[#1e293b] text-[#fde047] border-[#fde047]/60'
-                                  : 'bg-[#052e16] hover:bg-[#14532d] text-[#86efac] border-[#22c55e]/60'
-                              }`}
-                            >
-                              {isEquippedHere ? 'EQUIPPED' : 'EQUIP'}
-                            </button>
-                          )}
+              candidates.map(({ instanceId, resolvedW, stInfo }) => {
+                const isEquippedHere = currentId === instanceId;
+                const copies = getOwnedWeaponCount(state, instanceId);
+                const itemHandling = evaluateEquipmentFeatHandling(state, instanceId);
+                const wt = getWeaponInstanceEquipWeight(instanceId, state);
+                return (
+                  <div
+                    key={instanceId}
+                    onMouseEnter={() => setPreviewCandidateId(instanceId)}
+                    onClick={() => setPreviewCandidateId(instanceId)}
+                    className={`px-2.5 py-1.5 flex items-center justify-between gap-2 cursor-pointer transition-colors ${
+                      previewCandidateId === instanceId
+                        ? 'bg-[#172554]/60'
+                        : 'hover:bg-[#1e293b]/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <HighResEquipmentArtCanvas
+                        state={state}
+                        itemIdOrName={instanceId}
+                        slotHint={editingSlot}
+                        sizeClass="w-8 h-8 shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-[11px] text-[#f8fafc] truncate">
+                            {getEquipmentDisplayName(instanceId, state)}
+                          </span>
+                          <span className="text-[9px] text-[#94a3b8]">×{copies}</span>
+                          <span className="text-[9px] text-[#7dd3fc]">
+                            · {stInfo.functionalType} ({stInfo.variantSubtype})
+                          </span>
+                          <span className="text-[9px] text-[#ffd27d] font-mono">
+                            · {wt} WT
+                          </span>
+                          <span
+                            className={`text-[9px] font-bold ${
+                              itemHandling.proficiencyTier === 'mastered'
+                                ? 'text-[#86efac]'
+                                : itemHandling.proficiencyTier === 'proficient'
+                                  ? 'text-[#7dd3fc]'
+                                  : itemHandling.proficiencyTier === 'locked'
+                                    ? 'text-[#fca5a5]'
+                                    : 'text-[#94a3b8]'
+                            }`}
+                          >
+                            · {itemHandling.badgeLabel}
+                          </span>
                         </div>
-                      );
-                    })}
+                        <div className="text-[9px] text-[#94a3b8] truncate">
+                          {!itemHandling.canEquip
+                            ? itemHandling.statusSummary
+                            : `${resolvedW.damagePerShot} ${resolvedW.primaryDamageType} · S1: ${resolvedW.moveset?.[1]?.name || '—'} · S2: ${resolvedW.moveset?.[2]?.name || '—'}`}
+                        </div>
+                      </div>
+                    </div>
+
+                    {!itemHandling.canEquip && itemHandling.recommendedFeatId && onLocateFeat ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          soundSystem.playSelect();
+                          setIsEditingLoadout(false);
+                          if (itemHandling.recommendedFeatId) {
+                            onLocateFeat(itemHandling.recommendedFeatId);
+                          }
+                        }}
+                        className="px-2 py-1 rounded-xs text-[9px] font-bold border bg-[#450a0a] hover:bg-[#7f1d1d] text-[#fca5a5] border-[#ef4444]/60 cursor-pointer shrink-0"
+                      >
+                        Feat →
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEquipWeaponInSlot(instanceId);
+                        }}
+                        className={`px-2.5 py-1 rounded-xs text-[9px] font-bold border cursor-pointer shrink-0 ${
+                          isEquippedHere
+                            ? 'bg-[#1e293b] text-[#fde047] border-[#fde047]/60'
+                            : 'bg-[#052e16] hover:bg-[#14532d] text-[#86efac] border-[#22c55e]/60'
+                        }`}
+                      >
+                        {isEquippedHere ? 'Equipped' : 'Equip'}
+                      </button>
+                    )}
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
       );
     }
 
-    // Hardware Slot Selector (Head, Torso Plating, Arms, Legs)
+    // Hardware Slot Selector
     const hwSlotKey =
       editingSlot === 'head' ||
       editingSlot === 'plating' ||
@@ -1428,48 +1275,46 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
     return (
       <div
         data-menu-scope="true"
-        className="p-2.5 bg-[#090d14] rounded-xs border border-[#fde047] space-y-2"
+        className="flex-1 min-h-0 flex flex-col p-2.5 bg-[#090d14] rounded-xs border border-[#fde047] space-y-2 overflow-hidden"
       >
-        <div className="flex items-center justify-between border-b border-[#1e293b] pb-1.5">
-          <span className="text-[10px] font-bold text-[#fde047]">
-            SELECT CHASSIS HARDWARE FOR [{hwSlotKey.toUpperCase()}]
-          </span>
-          <button
-            type="button"
-            data-menu-back="true"
-            onClick={() => setIsEditingLoadout(false)}
-            className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#e2e8f0] rounded-xs text-[9px] font-bold cursor-pointer"
-          >
-            ✕ BACK TO MECH DOLL
-          </button>
+        <div className="flex items-center justify-between border-b border-[#1e293b] pb-1.5 shrink-0">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              data-menu-back="true"
+              onClick={() => setIsEditingLoadout(false)}
+              className="px-2.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#e2e8f0] rounded-xs text-[10px] font-bold cursor-pointer"
+            >
+              ← Back to Slots
+            </button>
+            <span className="text-[11px] font-bold text-[#fde047]">
+              SELECT HARDWARE · [{hwSlotKey.toUpperCase()}]
+            </span>
+          </div>
+          {inspectedHw && onOpenArmory && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsEditingLoadout(false);
+                onOpenArmory(editingSlot, inspectedHw.id);
+              }}
+              className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#fb923c] border border-[#fb923c]/50 rounded-xs text-[9px] font-bold cursor-pointer"
+            >
+              ⚙ Modify in Armory
+            </button>
+          )}
         </div>
 
         {inspectedHw && (
-          <div className="p-2 bg-[#05070a] rounded-xs border border-[#334155] flex flex-col sm:flex-row items-center gap-3">
+          <div className="p-2 bg-[#05070a] rounded-xs border border-[#334155] flex items-center gap-3 shrink-0">
             <HighResEquipmentArtCanvas
               state={state}
               itemIdOrName={inspectedHw.id}
               slotHint={editingSlot}
-              sizeClass="w-24 h-24"
+              sizeClass="w-14 h-14 shrink-0"
             />
             <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-1">
-                <span className="font-bold text-[10px] text-[#38bdf8]">
-                  {inspectedHw.name}
-                </span>
-                {onOpenArmory && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsEditingLoadout(false);
-                      onOpenArmory(editingSlot, inspectedHw.id);
-                    }}
-                    className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#fb923c] border border-[#fb923c]/50 rounded-xs text-[9px] font-bold cursor-pointer"
-                  >
-                    ⚙ MODIFY SUB-MODULES & SOCKETS IN ARMORY
-                  </button>
-                )}
-              </div>
+              <div className="font-bold text-[11px] text-[#38bdf8]">{inspectedHw.name}</div>
               <HardwareStatReadout
                 hw={inspectedHw}
                 maxGemSlots={getEquipmentMaxModSlots(inspectedHw.id)}
@@ -1478,7 +1323,7 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+        <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-[#1e293b] bg-[#05070a] border border-[#1e293b] rounded-xs">
           {hwCandidates.map(({ instanceId, resolvedHw }) => {
             const isEquippedHere =
               currentId === instanceId || currentId === resolvedHw.name;
@@ -1487,54 +1332,52 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
               <div
                 key={instanceId}
                 onMouseEnter={() => setPreviewCandidateId(instanceId)}
-                className={`p-1.5 rounded-xs border flex items-center justify-between gap-2 ${
-                  isEquippedHere
-                    ? 'bg-[#172554]/70 border-[#fde047]'
-                    : !hwEval.canEquip
-                      ? 'bg-[#05070a]/70 border-[#ef4444]/40'
-                      : 'bg-[#05070a] border-[#1e293b] hover:border-[#38bdf8]'
+                onClick={() => setPreviewCandidateId(instanceId)}
+                className={`px-2.5 py-1.5 flex items-center justify-between gap-2 cursor-pointer transition-colors ${
+                  previewCandidateId === instanceId
+                    ? 'bg-[#172554]/60'
+                    : 'hover:bg-[#1e293b]/50'
                 }`}
               >
-                <div className="flex items-center gap-2 min-w-0">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
                   <HighResEquipmentArtCanvas
                     state={state}
                     itemIdOrName={resolvedHw.id}
                     slotHint={editingSlot}
-                    sizeClass="w-11 h-11"
+                    sizeClass="w-8 h-8 shrink-0"
                   />
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1 flex-wrap">
-                      <span className="font-bold text-[9px] text-[#e2e8f0] truncate">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-bold text-[11px] text-[#e2e8f0] truncate">
                         {resolvedHw.name}
                       </span>
+                      <span className="text-[9px] text-[#ffd27d] font-mono">
+                        · {getHardwareBaseWeight(resolvedHw)} WT
+                      </span>
                       <span
-                        className={`px-1 py-0.1 rounded-[2px] text-[9px] font-bold ${
+                        className={`text-[9px] font-bold ${
                           hwEval.proficiencyTier === 'mastered'
-                            ? 'bg-[#052e16] text-[#86efac]'
+                            ? 'text-[#86efac]'
                             : hwEval.proficiencyTier === 'proficient'
-                              ? 'bg-[#0c4a6e] text-[#7dd3fc]'
+                              ? 'text-[#7dd3fc]'
                               : hwEval.proficiencyTier === 'locked'
-                                ? 'bg-[#450a0a] text-[#fca5a5]'
-                                : 'bg-[#1e293b] text-[#94a3b8]'
+                                ? 'text-[#fca5a5]'
+                                : 'text-[#94a3b8]'
                         }`}
                       >
-                        {hwEval.proficiencyTier === 'locked'
-                          ? 'PREREQ LOCKED'
-                          : hwEval.proficiencyTier.toUpperCase()}
+                        · {hwEval.badgeLabel}
                       </span>
                     </div>
                     <div className="text-[9px] text-[#94a3b8] truncate">
-                      {!hwEval.canEquip
-                        ? hwEval.statusSummary
-                        : `${resolvedHw.subtype} · ${getHardwareBaseWeight(resolvedHw)} WT`}
+                      {!hwEval.canEquip ? hwEval.statusSummary : resolvedHw.description}
                     </div>
                   </div>
                 </div>
                 {!hwEval.canEquip && hwEval.recommendedFeatId && onLocateFeat ? (
                   <button
                     type="button"
-                    onFocus={() => setPreviewCandidateId(instanceId)}
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       soundSystem.playSelect();
                       setIsEditingLoadout(false);
                       if (hwEval.recommendedFeatId) {
@@ -1543,20 +1386,22 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
                     }}
                     className="px-2 py-1 rounded-xs text-[9px] font-bold border bg-[#450a0a] hover:bg-[#7f1d1d] text-[#fca5a5] border-[#ef4444]/60 cursor-pointer shrink-0"
                   >
-                    FEAT GRID →
+                    Feat →
                   </button>
                 ) : (
                   <button
                     type="button"
-                    onFocus={() => setPreviewCandidateId(instanceId)}
-                    onClick={() => handleEquipHardwareInSlot(instanceId)}
-                    className={`px-2 py-1 rounded-xs text-[9px] font-bold border cursor-pointer shrink-0 ${
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEquipHardwareInSlot(instanceId);
+                    }}
+                    className={`px-2.5 py-1 rounded-xs text-[9px] font-bold border cursor-pointer shrink-0 ${
                       isEquippedHere
                         ? 'bg-[#1e293b] text-[#fde047] border-[#fde047]/60'
                         : 'bg-[#052e16] hover:bg-[#14532d] text-[#86efac] border-[#22c55e]/60'
                     }`}
                   >
-                    {isEquippedHere ? 'EQUIPPED' : 'EQUIP'}
+                    {isEquippedHere ? 'Equipped' : 'Equip'}
                   </button>
                 )}
               </div>
@@ -1567,493 +1412,831 @@ export const SatchelLoadoutTab: React.FC<SatchelLoadoutTabProps> = ({
     );
   };
 
+  const eligibleStances = getEligibleSpecialistStances(state);
+  const eligibleFeatIdSet = new Set(eligibleStances.map((s) => s.featId));
+  const equippedFeatIdSet = new Set(
+    (state.equippedFeats || []).map((id) => normalizeCanonicalFeatId(id))
+  );
+  const socketedUnmetStances = SPECIALIST_STANCE_LIST.filter(
+    (st) => equippedFeatIdSet.has(st.featId) && !eligibleFeatIdSet.has(st.featId)
+  );
+  const sandboxUnsocketedStances = isCheatMode
+    ? SPECIALIST_STANCE_LIST.filter((st) => !equippedFeatIdSet.has(st.featId))
+    : [];
+
+  const filteredReadyStances = eligibleStances.filter(
+    (st) => stanceDisciplineFilter === 'ALL' || st.skillId === stanceDisciplineFilter
+  );
+  const filteredSocketedUnmetStances = socketedUnmetStances.filter(
+    (st) => stanceDisciplineFilter === 'ALL' || st.skillId === stanceDisciplineFilter
+  );
+  const filteredSandboxStances = sandboxUnsocketedStances.filter(
+    (st) => stanceDisciplineFilter === 'ALL' || st.skillId === stanceDisciplineFilter
+  );
+
+  const specEval = evaluateActiveSpecialistStance(state);
+  const action4Profile = resolveActiveAction4DefensiveMode(state);
+  const activeStanceValue =
+    specEval.available && specEval.mode === 'auto' && specEval.stance
+      ? specEval.stance.featId
+      : 'base';
+
+  const handleSelectLoadoutStance = (val: string) => {
+    if (val === 'base') {
+      setActiveSpecialistStance(state, 'base', sayCtx);
+      soundSystem.playPowerup();
+      notifyOrionStateChange();
+      return;
+    }
+
+    const stanceDef = SPECIALIST_STANCE_BY_FEAT_ID[val];
+    if (!stanceDef) return;
+
+    if (isCheatMode && !equippedFeatIdSet.has(stanceDef.featId)) {
+      state.equippedFeats = [...(state.equippedFeats || []), stanceDef.featId];
+      syncStateGates(state);
+    }
+
+    const gearCheck = doesLoadoutMatchSpecialistStance(state, stanceDef);
+    if (!gearCheck.matched) {
+      soundSystem.playMenuBeep();
+      sayCtx.say(
+        `${stanceDef.stanceName.toUpperCase()} REQUIRES: ${stanceDef.requiredEquipmentLabel.toUpperCase()}`
+      );
+      notifyOrionStateChange();
+      return;
+    }
+
+    setActiveSpecialistStance(state, stanceDef.featId, sayCtx);
+    soundSystem.playPowerup();
+    notifyOrionStateChange();
+  };
+
   return (
-    <div className="flex-1 overflow-y-auto space-y-2 pr-0.5 text-[10px]">
-      {/* Top Load Limit Bar & Kit Preset Bar */}
-      <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold text-[#ffd27d]">
-              MECH DOLL LOADOUT & ANATOMICAL HARDPOINTS
-            </span>
-            <span
-              className={`px-1.5 py-0.5 rounded-xs text-[9px] font-bold border ${
-                loadMetrics.loadBracket === 'light'
-                  ? 'bg-[#052e16] text-[#86efac] border-[#22c55e]/50'
-                  : loadMetrics.loadBracket === 'medium'
-                    ? 'bg-[#0c4a6e] text-[#7dd3fc] border-[#38bdf8]/50'
-                    : loadMetrics.loadBracket === 'heavy'
-                      ? 'bg-[#451a03] text-[#fde047] border-[#f59e0b]/50'
-                      : 'bg-[#450a0a] text-[#fca5a5] border-[#ef4444]/60'
-              }`}
-            >
-              {loadMetrics.loadBracket.toUpperCase()} LOAD · {loadMetrics.equippedWeight}/
-              {loadMetrics.maxCapacity} WT ({loadMetrics.loadPct}%)
-            </span>
-            <span className="px-1.5 py-0.5 rounded-xs bg-[#1e293b] text-[#e2e8f0] text-[9px] font-bold">
-              STANCE: {activeStance.shortTag.toUpperCase()} ({mainGrip.toUpperCase()})
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1">
-            {onOpenArmory && (
-              <button
-                type="button"
-                onClick={() => {
-                  soundSystem.playSelect();
-                  onOpenArmory(
-                    contextMenuSlot || 'slot1',
-                    getEquippedIdForSlot(contextMenuSlot || 'slot1') || undefined
-                  );
-                }}
-                className="px-2 py-0.5 bg-[#451a03] hover:bg-[#78350f] text-[#fdba74] border border-[#fb923c] rounded-xs text-[9px] font-bold cursor-pointer"
-              >
-                ⚙ OPEN ARMORY WORKBENCH
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => {
-                soundSystem.playSelect();
-                onOpenInventoryTab();
-              }}
-              className="px-2 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#8dd7ad] border border-[#8dd7ad]/50 rounded-xs text-[9px] font-bold cursor-pointer"
-            >
-              VIEW INVENTORY
-            </button>
-          </div>
-        </div>
-
-        {/* Visual Load Progress Bar */}
-        <div className="w-full h-2 bg-[#020617] rounded-xs overflow-hidden border border-[#1e293b] relative">
-          <div
-            className="h-full transition-all"
-            style={{
-              width: `${Math.min(100, loadMetrics.loadPct)}%`,
-              backgroundColor:
-                loadMetrics.loadBracket === 'light'
-                  ? '#22c55e'
-                  : loadMetrics.loadBracket === 'medium'
-                    ? '#38bdf8'
-                    : loadMetrics.loadBracket === 'heavy'
-                      ? '#f59e0b'
-                      : '#ef4444',
-            }}
-          />
-          <div className="absolute inset-y-0 left-[30%] w-px bg-[#475569]" title="30% Light Cap" />
-          <div className="absolute inset-y-0 left-[65%] w-px bg-[#475569]" title="65% Medium Cap" />
-        </div>
-
-        {/* Starting Kit Presets in Cheat/Sandbox Mode */}
-        {isCheatMode && (
-          <div className="flex flex-wrap items-center gap-1 pt-0.5">
-            <span className="text-[9px] font-bold text-[#94a3b8]">LOAD KIT PRESET:</span>
-            {ALL_TRAIT_LINES.map((kitId: TraitLine) => {
-              const kit = TRAIT_REGISTRY[kitId];
-              return (
-                <button
-                  key={kitId}
-                  type="button"
-                  onClick={() => {
-                    soundSystem.playPowerup();
-                    state.traitLine = kitId;
-                    state.equipmentSlots = createInitialEquipmentSlots(kitId);
-                    state.equippedWeapons = [...(kit.startingWeapons || ['long_sword'])];
-                    syncStateGates(state);
-                    sayCtx.say(`LOADED ${kit.name.toUpperCase()} PRESET`);
-                    notifyOrionStateChange();
-                  }}
-                  className={`px-1.5 py-0.2 rounded-xs text-[9px] font-bold border cursor-pointer ${
-                    state.traitLine === kitId
-                      ? 'bg-[#ffd27d] text-[#05070a] border-[#fbbf24]'
-                      : 'bg-[#05070a] text-[#94a3b8] border-[#1e293b] hover:border-[#ffd27d]'
-                  }`}
-                >
-                  {kit.name}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
+    <div className="relative flex-1 min-h-0 flex flex-col space-y-1.5 overflow-hidden text-[10px]">
       {isEditingLoadout ? (
         renderSlotEquipmentSelector()
       ) : (
-        /* ─── MECH DOLL 2-PANE SPLIT LAYOUT (LEFT: MECH DOLL & INSPECTOR, RIGHT: HARDPOINTS) ─── */
-        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-start">
-          {/* LEFT PANE (5 COLS): HIGH-RES MECH DOLL & ACTIVE SLOT CONTEXT INSPECTOR */}
-          <div className="sm:col-span-5 flex flex-col items-center bg-[#090d14] p-2 rounded-xs border border-[#1e293b] space-y-2">
-            <HighResMechDollCanvas
-              state={state}
-              selectedSlot={contextMenuSlot}
-              hoveredSlot={hoveredSlot}
-              onSelectSlot={(s) => setContextMenuSlot(s)}
-            />
+        <>
+          {/* Clean Two-Row Loadout Header: Row 1 (Grip, Schematic, Kit Preset, Weight) & Row 2 (Broken-Up Stance Selector) */}
+          <div className="flex flex-col gap-1.5 px-2 py-1.5 bg-[#090d14] border border-[#1e293b] rounded-xs shrink-0">
+            {/* Row 1: Grip Toggle + Mech Schematic + Sandbox Kit Preset + Total Load Weight */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                {!isTwoHandOnlyWeapon(slot1Id, state) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const targetGrip = mainGrip === '2h' ? '1h' : '2h';
+                      const changed = setMainWeaponGrip(state, targetGrip, sayCtx);
+                      if (changed) soundSystem.playPowerup();
+                      else soundSystem.playMenuBeep();
+                      notifyOrionStateChange();
+                    }}
+                    className="px-2 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#7dd3fc] border border-[#38bdf8]/50 rounded-xs text-[9px] font-bold cursor-pointer shrink-0"
+                  >
+                    Grip: {mainGrip.toUpperCase()}
+                  </button>
+                )}
 
-            {/* Contextual Action Menu & Feat Handling Readout for Selected Mech Doll Slot */}
-            {contextMenuSlot && (
-              <div className="w-full p-2 bg-[#05070a] rounded-xs border border-[#fde047]/80 space-y-1.5">
-                <div className="flex items-center justify-between border-b border-[#1e293b] pb-1">
-                  <span className="text-[9px] font-bold text-[#fde047]">
-                    SLOT INSPECTOR: [{contextMenuSlot.toUpperCase()}]
+                <button
+                  type="button"
+                  onClick={() => {
+                    soundSystem.playSelect();
+                    setShowDollOverlay(true);
+                  }}
+                  className="px-2 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#cbd5e1] border border-[#334155] rounded-xs text-[9px] font-bold cursor-pointer shrink-0"
+                >
+                  Mech Schematic
+                </button>
+
+                {action4Profile.canToggleReverseGripKatana && (
+                  <button
+                    type="button"
+                    title="Dual Katana Doctrine: Toggle Reverse-Grip (+18% Tempo, +0.10s Parry, -20% Reach, locks Guard/Parry to Parry)"
+                    onClick={() => {
+                      toggleReverseGripKatanaMode(state, sayCtx);
+                      soundSystem.playPowerup();
+                      notifyOrionStateChange();
+                    }}
+                    className={`px-2 py-0.5 rounded-xs text-[9px] font-bold border cursor-pointer shrink-0 ${
+                      action4Profile.reverseGripKatanaActive
+                        ? 'bg-purple-950/70 text-[#e9d5ff] border-[#c084fc]/70'
+                        : 'bg-[#0f172a] hover:bg-[#1e293b] text-[#cbd5e1] border-[#334155]'
+                    }`}
+                  >
+                    Katana Grip:{' '}
+                    {action4Profile.reverseGripKatanaActive ? 'REVERSE-GRIP' : 'STANDARD'}
+                  </button>
+                )}
+
+                <span className="text-[9px] text-[#94a3b8] truncate">
+                  Active Moveset:{' '}
+                  <b className="text-[#fde047]">{activeStance.shortTag.toUpperCase()}</b>
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                {isCheatMode && (
+                  <select
+                    aria-label="Load Starting Kit Preset"
+                    value={state.traitLine}
+                    onChange={(e) => {
+                      const kitId = e.target.value as TraitLine;
+                      const kit = TRAIT_REGISTRY[kitId];
+                      soundSystem.playPowerup();
+                      state.traitLine = kitId;
+                      state.equipmentSlots = createInitialEquipmentSlots(kitId);
+                      state.equippedWeapons = [...(kit.startingWeapons || ['long_sword'])];
+                      syncStateGates(state);
+                      sayCtx.say(`LOADED ${kit.name.toUpperCase()} PRESET`);
+                      notifyOrionStateChange();
+                    }}
+                    className="max-w-[145px] truncate px-1.5 py-0.5 bg-[#05070a] text-[#ffd27d] border border-[#334155] rounded-xs text-[11px] font-bold cursor-pointer focus:outline-none"
+                  >
+                    {ALL_TRAIT_LINES.map((kitId: TraitLine) => (
+                      <option key={kitId} value={kitId}>
+                        Kit: {TRAIT_REGISTRY[kitId].name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                <span
+                  className={`text-[9px] font-mono tabular-nums font-bold ${
+                    loadMetrics.loadBracket === 'light'
+                      ? 'text-[#6ee7b7]'
+                      : loadMetrics.loadBracket === 'medium'
+                        ? 'text-[#7dd3fc]'
+                        : loadMetrics.loadBracket === 'heavy'
+                          ? 'text-[#fcd34d]'
+                          : 'text-[#fca5a5]'
+                  }`}
+                >
+                  {loadMetrics.equippedWeight}/{loadMetrics.maxCapacity} WT ({loadMetrics.loadPct}
+                  %)
+                </span>
+              </div>
+            </div>
+
+            {/* Two-Line Stance Selector: Line 1 (Discipline Filter + Base/Inspect) & Line 2 (Full-Width Active Stance Select) */}
+            <div className="flex flex-col gap-1 pt-1 border-t border-[#1e293b]/80">
+              <div className="flex items-center justify-between gap-1.5">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-[9px] font-bold text-[#fde047] shrink-0">
+                    Stance Discipline:
                   </span>
-                  <span className="text-[9px] text-[#7dd3fc] truncate max-w-[140px]">
-                    {getEquipmentDisplayName(getEquippedIdForSlot(contextMenuSlot), state)}
-                    {devMode && getEquippedIdForSlot(contextMenuSlot)
-                      ? ` [${getEquippedIdForSlot(contextMenuSlot)}]`
-                      : ''}
-                  </span>
+                  <select
+                    aria-label="Filter Stances by Discipline"
+                    value={stanceDisciplineFilter}
+                    onChange={(e) => {
+                      soundSystem.playSelect();
+                      setStanceDisciplineFilter(e.target.value as 'ALL' | PilotSkillId);
+                    }}
+                    className="px-2 py-0.5 bg-[#05070a] text-[#cbd5e1] border border-[#334155] rounded-xs text-[11px] font-bold cursor-pointer focus:outline-none"
+                  >
+                    <option value="ALL">All 6 Disciplines</option>
+                    <option value="Warrior">Warrior (Fighter)</option>
+                    <option value="Guardian">Guardian (Fighter)</option>
+                    <option value="Wizard">Wizard (Scholar)</option>
+                    <option value="Cleric">Cleric (Scholar)</option>
+                    <option value="Marauder">Marauder (Rogue)</option>
+                    <option value="Rogue">Rogue (Rogue)</option>
+                  </select>
                 </div>
 
-                {/* High-Res Artwork + Quick Actions */}
-                <div className="flex items-center gap-2">
-                  <HighResEquipmentArtCanvas
-                    state={state}
-                    itemIdOrName={getEquippedIdForSlot(contextMenuSlot)}
-                    slotHint={contextMenuSlot}
-                    sizeClass="w-16 h-16"
-                  />
-                  <div className="flex-1 grid grid-cols-1 gap-1">
-                    {/* Action 1: Equip or Swap */}
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectLoadoutStance('base')}
+                    className={`px-2 py-0.5 rounded-xs text-[9px] font-bold border cursor-pointer ${
+                      activeStanceValue === 'base'
+                        ? 'bg-[#fde047] text-[#05070a] border-[#fde047]'
+                        : 'bg-[#05070a] text-[#94a3b8] border-[#334155] hover:text-[#e2e8f0]'
+                    }`}
+                  >
+                    Base Moveset
+                  </button>
+                  {activeStanceValue !== 'base' && onLocateFeat && (
                     <button
                       type="button"
                       onClick={() => {
                         soundSystem.playSelect();
-                        setPreviewCandidateId(getEquippedIdForSlot(contextMenuSlot));
-                        openSlotEditor(contextMenuSlot);
+                        onLocateFeat(activeStanceValue);
                       }}
-                      className="w-full px-2 py-1 bg-[#172554] hover:bg-[#1e3a8a] text-[#fde047] border border-[#38bdf8]/60 rounded-xs text-[9px] font-bold text-left cursor-pointer"
+                      className="px-2 py-0.5 rounded-xs bg-[#172554] hover:bg-[#1e3a8a] text-[#7dd3fc] border border-[#38bdf8]/50 text-[9px] font-bold cursor-pointer"
                     >
-                      1. EQUIP / SWAP ITEM
+                      Inspect Stance
                     </button>
-
-                    {/* Action 2: Unequip (Side Hand / Auxiliary) */}
-                    {(contextMenuSlot === 'slot2' || contextMenuSlot === 'slot3') &&
-                      getEquippedIdForSlot(contextMenuSlot) && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            soundSystem.playSelect();
-                            if (contextMenuSlot === 'slot2') {
-                              eq.slot2 = null;
-                              eq.mainGrip = '2h';
-                              sayCtx.say('UNEQUIPPED SIDE HAND [L] → MAIN HAND NOW 2H');
-                            } else {
-                              eq.slot3 = null;
-                              sayCtx.say('UNEQUIPPED AUXILIARY [BACK]');
-                            }
-                            notifyOrionStateChange();
-                          }}
-                          className="w-full px-2 py-1 bg-[#450a0a] hover:bg-[#7f1d1d] text-[#fca5a5] border border-[#ef4444]/50 rounded-xs text-[9px] font-bold text-left cursor-pointer"
-                        >
-                          2. UNEQUIP SLOT
-                        </button>
-                      )}
-
-                    {/* Action 3: Stance or Grip Toggle */}
-                    {contextMenuSlot === 'slot1' && !isTwoHandOnlyWeapon(slot1Id, state) && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const targetGrip = mainGrip === '2h' ? '1h' : '2h';
-                          const changed = setMainWeaponGrip(state, targetGrip, sayCtx);
-                          if (changed) soundSystem.playPowerup();
-                          else soundSystem.playMenuBeep();
-                          notifyOrionStateChange();
-                        }}
-                        className="w-full px-2 py-1 bg-[#0f172a] hover:bg-[#1e293b] text-[#7dd3fc] border border-[#38bdf8]/50 rounded-xs text-[9px] font-bold text-left cursor-pointer"
-                      >
-                        3. TOGGLE GRIP: {mainGrip === '2h' ? 'SWITCH TO 1H' : 'SWITCH TO 2H'}
-                      </button>
-                    )}
-
-                    {(contextMenuSlot === 'slot2' || contextMenuSlot === 'slot3') && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          performAuxiliarySwap(state, sayCtx);
-                          soundSystem.playSelect();
-                          notifyOrionStateChange();
-                        }}
-                        className="w-full px-2 py-1 bg-[#0f172a] hover:bg-[#1e293b] text-[#c084fc] border border-[#c084fc]/50 rounded-xs text-[9px] font-bold text-left cursor-pointer"
-                      >
-                        3. TOGGLE BACK LAUNCHER [L]
-                      </button>
-                    )}
-
-                    {(contextMenuSlot === 'slot1' ||
-                      contextMenuSlot === 'slot2' ||
-                      contextMenuSlot === 'slot3') &&
-                      (() => {
-                        const specEval = evaluateActiveSpecialistStance(state);
-                        if (!specEval.available || !specEval.stance) return null;
-                        return (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              toggleSpecialistStanceMode(state, sayCtx);
-                              soundSystem.playPowerup();
-                              notifyOrionStateChange();
-                            }}
-                            className="w-full px-2 py-1 bg-[#1e1b4b] hover:bg-[#312e81] text-[#fde047] border border-[#eab308]/60 rounded-xs text-[9px] font-bold text-left cursor-pointer"
-                          >
-                            {specEval.mode === 'auto'
-                              ? `STANCE: ${specEval.stance.shortTag} (SWITCH TO BASE)`
-                              : `STANCE: BASE MOVESET (SWITCH TO ${specEval.stance.shortTag})`}
-                          </button>
-                        );
-                      })()}
-
-                    {/* Action 4: Modify in Armory */}
-                    {onOpenArmory &&
-                      contextMenuSlot !== 'bind_l' &&
-                      contextMenuSlot !== 'bind_r' && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            soundSystem.playSelect();
-                            onOpenArmory(
-                              contextMenuSlot,
-                              getEquippedIdForSlot(contextMenuSlot) || undefined
-                            );
-                          }}
-                          className="w-full px-2 py-1 bg-[#451a03] hover:bg-[#78350f] text-[#fdba74] border border-[#fb923c]/70 rounded-xs text-[9px] font-bold text-left cursor-pointer"
-                        >
-                          4. MODIFY IN ARMORY ⚙
-                        </button>
-                      )}
-                  </div>
+                  )}
                 </div>
-
-                {/* Feat Handling & Prerequisite Card for Active Slot */}
-                {contextMenuSlot !== 'bind_l' &&
-                  contextMenuSlot !== 'bind_r' &&
-                  getEquippedIdForSlot(contextMenuSlot) &&
-                  (() => {
-                    const slotItemId = getEquippedIdForSlot(contextMenuSlot);
-                    const handlingEval = evaluateEquipmentFeatHandling(state, slotItemId);
-                    const recFeat = handlingEval.recommendedFeatId
-                      ? CANONICAL_FRAME_FEAT_REGISTRY[handlingEval.recommendedFeatId]
-                      : undefined;
-                    return (
-                      <div className="p-1.5 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1 text-[9px]">
-                        <div className="flex items-center justify-between gap-1">
-                          <span className="font-bold text-[#94a3b8]">FEAT HANDLING:</span>
-                          <span
-                            className={`px-1 py-0.2 rounded-[2px] font-bold border ${
-                              handlingEval.proficiencyTier === 'mastered'
-                                ? 'bg-[#052e16] text-[#86efac] border-[#22c55e]/50'
-                                : handlingEval.proficiencyTier === 'proficient'
-                                  ? 'bg-[#0c4a6e] text-[#7dd3fc] border-[#38bdf8]/50'
-                                  : handlingEval.proficiencyTier === 'locked'
-                                    ? 'bg-[#450a0a] text-[#fca5a5] border-[#ef4444]/60'
-                                    : 'bg-[#1e293b] text-[#cbd5e1] border-[#334155]'
-                            }`}
-                          >
-                            {handlingEval.badgeLabel}
-                          </span>
-                        </div>
-                        <div className="text-[#cbd5e1] leading-snug">
-                          {handlingEval.statusSummary}
-                        </div>
-                        {recFeat && onLocateFeat && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              soundSystem.playSelect();
-                              onLocateFeat(recFeat.id);
-                            }}
-                            className="w-full px-1.5 py-0.5 rounded-xs bg-[#1e1b4b] hover:bg-[#312e81] text-[#e9d5ff] border border-[#818cf8]/50 font-bold text-center cursor-pointer"
-                          >
-                            LOCATE [{recFeat.name.toUpperCase()}] IN FEAT GRID →
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })()}
               </div>
-            )}
+
+              <div className="flex items-center gap-1.5 w-full">
+                <span className="text-[9px] font-bold text-[#94a3b8] shrink-0">
+                  Active Stance:
+                </span>
+                <select
+                  aria-label="Active Specialist Stance"
+                  value={activeStanceValue}
+                  onChange={(e) => handleSelectLoadoutStance(e.target.value)}
+                  className="w-full min-w-0 truncate px-2 py-0.5 bg-[#05070a] text-[#fde047] border border-[#eab308]/60 rounded-xs text-[11px] font-bold cursor-pointer focus:outline-none"
+                >
+                  <option value="base">
+                    Base Weapon Moveset ({activeStance.shortTag.toUpperCase()} ·{' '}
+                    {mainGrip.toUpperCase()})
+                  </option>
+                  {filteredReadyStances.length > 0 && (
+                    <optgroup label="Ready (Socketed & Gear Met)">
+                      {filteredReadyStances.map((st) => (
+                        <option key={st.featId} value={st.featId}>
+                          {st.stanceName} [{st.shortTag}] · {st.skillId} (
+                          {st.requiredEquipmentLabel})
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {filteredSocketedUnmetStances.length > 0 && (
+                    <optgroup label="Socketed (Gear Requirement Unmet)">
+                      {filteredSocketedUnmetStances.map((st) => (
+                        <option key={st.featId} value={st.featId}>
+                          {st.stanceName} · {st.skillId} (Need: {st.requiredEquipmentLabel})
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {filteredSandboxStances.length > 0 && (
+                    <optgroup label="Sandbox Stances (Select to Socket)">
+                      {filteredSandboxStances.map((st) => {
+                        const gearOk = doesLoadoutMatchSpecialistStance(state, st).matched;
+                        return (
+                          <option key={st.featId} value={st.featId}>
+                            {st.stanceName} · {st.skillId}{' '}
+                            {gearOk ? '[Gear Met]' : `[Need ${st.requiredEquipmentLabel}]`}
+                          </option>
+                        );
+                      })}
+                    </optgroup>
+                  )}
+                </select>
+              </div>
+            </div>
           </div>
 
-          {/* RIGHT PANE (7 COLS): GROUPED ANATOMICAL HARDPOINT NODES */}
-          <div className="sm:col-span-7 space-y-2">
+          {/* 100% Full-Width Scannable Anatomical Hardpoint List */}
+          <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-[#1e293b]/80 bg-[#090d14]/90 border border-[#1e293b] rounded-xs">
             {/* Group A: Ordnance & Trigger Hardpoints */}
-            <div className="space-y-1">
-              <div className="text-[9px] font-bold text-[#fde047] px-1">
-                ORDNANCE &amp; TRIGGER HARDPOINTS (CLICK SLOT TO INSPECT OR SWAP)
-              </div>
-              {renderDollSlotNode({
-                slot: 'slot1',
-                title: 'MAIN HAND [RIGHT]',
-                itemId: slot1Id,
-                itemName: getEquipmentDisplayName(slot1Id, state),
-                subtitle: mainWeapon
-                  ? `${getWeaponSubtypeInfo(mainWeapon.id).subtype} · ${mainWeapon.damagePerShot} DMG`
-                  : 'Primary Weapon (1H or 2H)',
-                wtLabel: `${getWeaponInstanceEquipWeight(slot1Id, state)} WT`,
-                accentColor: '#fde047',
-                badgeText: mainGrip.toUpperCase(),
-                subModulesSummary:
-                  mainWeapon?.weaponTier === 'legendary'
-                    ? `Tradition: ${mainWeapon.legendarySpec?.folkloreTradition || 'Folklore Relic'}`
-                    : `Slots: [${getWeaponComponentSlots(slot1Id).join('/').toUpperCase()}]`,
-              })}
+            <div className="px-2.5 py-1 bg-[#05070a] text-[9px] font-bold text-[#fde047] flex items-center justify-between">
+              <span>ORDNANCE &amp; TRIGGER HARDPOINTS</span>
+              <span className="text-[#94a3b8] font-normal">Click row to inspect · Click Swap to change</span>
+            </div>
 
-              {renderDollSlotNode({
-                slot: 'slot2',
-                title: 'SIDE HAND [LEFT]',
-                itemId: slot2Id,
-                itemName: sideWeapon
-                  ? getEquipmentDisplayName(slot2Id, state)
-                  : mainGrip === '2h'
-                    ? `${getEquipmentDisplayName(slot1Id, state)} (2H Grip)`
-                    : 'Empty Off-Hand (1H / Shield)',
-                subtitle: sideWeapon
-                  ? mainGrip === '2h'
-                    ? `${getWeaponSubtypeInfo(sideWeapon.id).subtype} · Holstered at Hip while Main is 2H`
-                    : `${getWeaponSubtypeInfo(sideWeapon.id).subtype} · Active Side Hand`
-                  : 'Two-Handing Main Weapon (+Stagger / +Impulse)',
-                wtLabel:
-                  slot2Id && slot2Id !== slot1Id
-                    ? `${getWeaponInstanceEquipWeight(slot2Id, state)} WT`
-                    : '0 WT',
-                accentColor: '#38bdf8',
-                badgeText: sideWeapon
-                  ? mainGrip === '2h'
-                    ? 'HOLSTERED (2H)'
-                    : eq.auxActive
-                      ? 'STANDBY (AUX ON)'
-                      : 'ACTIVE'
-                  : '2H GRIP',
-              })}
+            {renderCompactSlotRow({
+              slot: 'slot1',
+              title: 'MAIN HAND [R]',
+              itemId: slot1Id,
+              itemName: getEquipmentDisplayName(slot1Id, state),
+              subtitle: mainWeapon
+                ? `${getWeaponSubtypeInfo(mainWeapon.id).subtype} · ${mainWeapon.damagePerShot} DMG`
+                : 'Primary Weapon',
+              wtLabel: `${getWeaponInstanceEquipWeight(slot1Id, state)} WT`,
+              accentColor: '#fde047',
+              badgeText: mainGrip.toUpperCase(),
+            })}
 
-              {renderDollSlotNode({
-                slot: 'slot3',
-                title: 'AUXILIARY [BACK]',
-                itemId: slot3Id,
-                itemName: auxWeapon ? auxWeapon.name : 'Empty Back Mount (Carrier / Launcher)',
-                subtitle: auxWeapon
-                  ? `${getWeaponSubtypeInfo(auxWeapon.id).subtype} · Stays on Back (50% WT)`
-                  : 'Back-Mounted Launcher / Carrier / Quiver / Catalyst',
-                wtLabel:
-                  slot3Id && slot3Id !== slot1Id && slot3Id !== slot2Id
-                    ? `${Math.round(getWeaponInstanceEquipWeight(slot3Id, state) * 0.5)} WT`
-                    : '0 WT',
-                accentColor: '#c084fc',
-                badgeText: eq.auxActive ? 'ACTIVE [AC4–5]' : 'BACK MOUNT [L]',
-              })}
+            {renderCompactSlotRow({
+              slot: 'slot2',
+              title: 'SIDE HAND [L]',
+              itemId: slot2Id,
+              itemName: sideWeapon
+                ? getEquipmentDisplayName(slot2Id, state)
+                : mainGrip === '2h'
+                  ? `${getEquipmentDisplayName(slot1Id, state)} (2H Grip)`
+                  : 'Empty Off-Hand',
+              subtitle: sideWeapon
+                ? mainGrip === '2h'
+                  ? `${getWeaponSubtypeInfo(sideWeapon.id).subtype} · Holstered while 2H`
+                  : `${getWeaponSubtypeInfo(sideWeapon.id).subtype}`
+                : 'Two-Handing Main Weapon',
+              wtLabel:
+                slot2Id && slot2Id !== slot1Id
+                  ? `${getWeaponInstanceEquipWeight(slot2Id, state)} WT`
+                  : '0 WT',
+              accentColor: '#38bdf8',
+              badgeText: sideWeapon ? (mainGrip === '2h' ? 'HOLSTERED' : 'ACTIVE') : '2H',
+            })}
 
-              {/* Trigger Bindings Node Pair */}
-              <div className="grid grid-cols-2 gap-1.5">
-                <div
-                  role="button"
-                  tabIndex={0}
-                  data-menu-focusable="true"
-                  onClick={() => {
-                    soundSystem.playSelect();
-                    setContextMenuSlot('bind_l');
-                  }}
-                  className={`p-1.5 rounded-xs border cursor-pointer ${
-                    contextMenuSlot === 'bind_l'
-                      ? 'bg-[#172554] border-[#fde047]'
-                      : 'bg-[#090d14] border-[#1e293b] hover:border-[#fde047]'
-                  }`}
-                >
-                  <div className="text-[9px] font-bold text-[#fde047]">LEFT TRIGGER [J/LMB]</div>
-                  <div className="font-bold text-[9px] text-[#e2e8f0] truncate">
+            {renderCompactSlotRow({
+              slot: 'slot3',
+              title: 'AUXILIARY [BACK]',
+              itemId: slot3Id,
+              itemName: auxWeapon ? auxWeapon.name : 'Empty Back Mount',
+              subtitle: auxWeapon
+                ? `${getWeaponSubtypeInfo(auxWeapon.id).subtype} · Dorsal Mount (50% WT)`
+                : 'Carrier / Launcher / Catalyst',
+              wtLabel:
+                slot3Id && slot3Id !== slot1Id && slot3Id !== slot2Id
+                  ? `${Math.round(getWeaponInstanceEquipWeight(slot3Id, state) * 0.5)} WT`
+                  : '0 WT',
+              accentColor: '#c084fc',
+              badgeText: eq.auxActive ? 'ACTIVE' : 'BACK [L]',
+            })}
+
+            {/* Combat Actions Section: Strictly Weapon Swap, Boost, and Guard / Parry */}
+            <div className="px-2.5 py-1 bg-[#05070a] text-[9px] font-bold text-[#fde047] flex items-center justify-between">
+              <span>COMBAT ACTIONS (WEAPON SWAP, BOOST &amp; GUARD / PARRY)</span>
+              <span className="text-[#94a3b8] font-normal">
+                Swap &amp; Boost editable from equipped items · Guard/Parry auto-swaps by gear/feats
+              </span>
+            </div>
+
+            {/* 1. WEAPON SWAP (L [Q] LONG-PRESS) — Editable based on equipped items */}
+            <div
+              role="button"
+              tabIndex={0}
+              data-menu-focusable="true"
+              onClick={() => {
+                soundSystem.playSelect();
+                openSlotEditor('bind_l');
+              }}
+              className="px-2.5 py-1.5 hover:bg-[#1e293b]/70 transition-colors cursor-pointer flex items-center justify-between gap-2"
+            >
+              <div className="min-w-0 flex-1 space-y-0.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-[9px] font-bold text-[#fde047] w-28 shrink-0">
+                    WEAPON SWAP [L]
+                  </span>
+                  <span className="font-bold text-[11px] text-[#e2e8f0] truncate">
                     {leftAction.name}
-                  </div>
-                  <div className="text-[9px] text-[#94a3b8] truncate">
-                    {leftAction.sourceLabel}
-                  </div>
+                  </span>
+                  <span className="text-[9px] text-[#7dd3fc] truncate">
+                    · {leftAction.sourceLabel}
+                  </span>
                 </div>
-                <div
-                  role="button"
-                  tabIndex={0}
-                  data-menu-focusable="true"
-                  onClick={() => {
+                <div className="text-[9px] text-[#94a3b8] pl-30 truncate">
+                  L [Q] Long-Press: <b className="text-[#fde047]">{leftAction.name}</b> · Tap: Target Lock / Cycle · Double-Tap: Unlock
+                </div>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                {!isDefaultLHoldSwap && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      assignTriggerAction(state, 'L', 'weapon_swap');
+                      sayCtx.say('RESET WEAPON SWAP (L [Q] HOLD) TO DEFAULT');
+                      soundSystem.playSelect();
+                      notifyOrionStateChange();
+                    }}
+                    className="px-2 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#94a3b8] hover:text-[#e2e8f0] border border-[#334155] rounded-xs text-[9px] font-bold cursor-pointer"
+                  >
+                    Reset Swap
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
                     soundSystem.playSelect();
-                    setContextMenuSlot('bind_r');
+                    openSlotEditor('bind_l');
                   }}
-                  className={`p-1.5 rounded-xs border cursor-pointer ${
-                    contextMenuSlot === 'bind_r'
-                      ? 'bg-[#172554] border-[#fde047]'
-                      : 'bg-[#090d14] border-[#1e293b] hover:border-[#38bdf8]'
-                  }`}
+                  className="px-2 py-0.5 bg-[#172554] hover:bg-[#1e3a8a] text-[#fde047] border border-[#38bdf8]/50 rounded-xs text-[9px] font-bold cursor-pointer"
                 >
-                  <div className="text-[9px] font-bold text-[#38bdf8]">RIGHT TRIGGER [K/RMB]</div>
-                  <div className="font-bold text-[9px] text-[#e2e8f0] truncate">
-                    {rightAction.name}
-                  </div>
-                  <div className="text-[9px] text-[#94a3b8] truncate">
-                    {rightAction.sourceLabel}
-                  </div>
+                  Edit Action
+                </button>
+              </div>
+            </div>
+
+            {/* 2. BOOST (B [K]) — Editable based on equipped items */}
+            <div
+              role="button"
+              tabIndex={0}
+              data-menu-focusable="true"
+              onClick={() => {
+                soundSystem.playSelect();
+                openSlotEditor('bind_b');
+              }}
+              className="px-2.5 py-1.5 hover:bg-[#1e293b]/70 transition-colors cursor-pointer flex items-center justify-between gap-2"
+            >
+              <div className="min-w-0 flex-1 space-y-0.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-[9px] font-bold text-[#4ade80] w-28 shrink-0">
+                    BOOST [B / K]
+                  </span>
+                  <span className="font-bold text-[11px] text-[#e2e8f0] truncate">
+                    {boostAction.name}
+                  </span>
+                  <span className="text-[9px] text-[#86efac] truncate">
+                    · {boostAction.sourceLabel}
+                  </span>
                 </div>
+                <div className="text-[9px] text-[#94a3b8] pl-30 truncate">
+                  {isDefaultBBooster ? (
+                    <>
+                      Tap B [K]: Directional Thruster Dash · Hold B [K]: Continuous Boost Glide
+                    </>
+                  ) : (
+                    <>
+                      B [K] Custom Equipped Action: <b className="text-[#86efac]">{boostAction.name}</b>
+                    </>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                {!isDefaultBBooster && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      assignTriggerAction(state, 'B', 'booster_dash');
+                      sayCtx.say('RESET BOOST (B [K]) TO BOOSTER THRUSTERS');
+                      soundSystem.playSelect();
+                      notifyOrionStateChange();
+                    }}
+                    className="px-2 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#94a3b8] hover:text-[#e2e8f0] border border-[#334155] rounded-xs text-[9px] font-bold cursor-pointer"
+                  >
+                    Reset Boost
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    soundSystem.playSelect();
+                    openSlotEditor('bind_b');
+                  }}
+                  className="px-2 py-0.5 bg-[#172554] hover:bg-[#1e3a8a] text-[#fde047] border border-[#38bdf8]/50 rounded-xs text-[9px] font-bold cursor-pointer"
+                >
+                  Edit Action
+                </button>
+              </div>
+            </div>
+
+            {/* 3. GUARD / PARRY (Y [I] HOLD) — Restrictively available & auto-swaps by feats/loadout unless feats allow manual selection */}
+            <div
+              role="button"
+              tabIndex={0}
+              data-menu-focusable="true"
+              title={action4Profile.summary}
+              onClick={() => {
+                if (!action4Profile.canManualSelect || action4Profile.isModeLocked) {
+                  soundSystem.playMenuBeep();
+                  sayCtx.say(
+                    `${action4Profile.badgeLabel}: ${action4Profile.statusReason.toUpperCase()}`
+                  );
+                  notifyOrionStateChange();
+                  return;
+                }
+                toggleLoadoutAction4Mode(state, undefined, sayCtx);
+                soundSystem.playPowerup();
+                notifyOrionStateChange();
+              }}
+              className="px-2.5 py-1.5 hover:bg-[#1e293b]/70 transition-colors cursor-pointer flex items-center justify-between gap-2"
+            >
+              <div className="min-w-0 flex-1 space-y-0.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-[9px] font-bold text-[#fbbf24] w-28 shrink-0">
+                    GUARD / PARRY
+                  </span>
+                  <span
+                    className={`font-bold text-[11px] truncate ${
+                      !action4Profile.available
+                        ? 'text-[#fca5a5]'
+                        : action4Profile.priorityTier < 3
+                          ? 'text-[#fde047]'
+                          : action4Profile.mode === 'parry'
+                            ? 'text-[#fde047]'
+                            : 'text-[#7dd3fc]'
+                    }`}
+                  >
+                    {action4Profile.badgeLabel}
+                  </span>
+                  <span className="text-[9px] text-[#94a3b8] truncate">
+                    · Y [I] Hold
+                  </span>
+                </div>
+                <div className="text-[9px] text-[#94a3b8] pl-30 truncate">
+                  {action4Profile.statusReason}
+                </div>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                {action4Profile.canManualSelect && !action4Profile.isModeLocked ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleLoadoutAction4Mode(state, undefined, sayCtx);
+                      soundSystem.playPowerup();
+                      notifyOrionStateChange();
+                    }}
+                    className="px-2 py-0.5 bg-[#172554] hover:bg-[#1e3a8a] text-[#fde047] border border-[#38bdf8]/60 rounded-xs text-[9px] font-bold cursor-pointer"
+                  >
+                    Switch to {action4Profile.mode === 'block' ? 'Parry' : 'Guard'}
+                  </button>
+                ) : (
+                  <span
+                    className={`px-2 py-0.5 rounded-xs text-[9px] font-bold border ${
+                      !action4Profile.available
+                        ? 'bg-[#450a0a]/60 text-[#fca5a5] border-[#ef4444]/40'
+                        : 'bg-[#0f172a] text-[#94a3b8] border-[#334155]'
+                    }`}
+                  >
+                    {!action4Profile.available ? 'Unavailable' : 'Auto (Feat / Gear)'}
+                  </span>
+                )}
               </div>
             </div>
 
             {/* Group B: Chassis Armor & Sub-Module Hardpoints */}
-            <div className="space-y-1">
-              <div className="text-[9px] font-bold text-[#38bdf8] px-1">
-                CHASSIS ARMOR &amp; INTERNAL SUB-MODULE HARDPOINTS
-              </div>
-              {renderDollSlotNode({
-                slot: 'head',
-                title: 'HEAD · DOME PLATE',
-                itemId: headItem?.id || eq.head || null,
-                itemName: headItem?.name || eq.head || 'None',
-                subtitle: headItem
-                  ? `+${headItem.armorDurability ?? 0} ARM DUR · +${headItem.armorRating ?? 0} RTG · +${headItem.armorThreshold ?? 0} THR`
-                  : 'No Dome Plate',
-                wtLabel: `${loadMetrics.breakdown.headWeight} WT`,
-                accentColor: '#38bdf8',
-                subModulesSummary: `Optics: ${opticsItem?.name.split(' ').slice(-2).join(' ') || 'Std'} · Sens: ${sensoryAItem?.name.split(' ').slice(-2).join(' ') || 'Std'}`,
-              })}
-
-              {renderDollSlotNode({
-                slot: 'plating',
-                title: 'TORSO · FRAME PLATING',
-                itemId: platingItem?.id || eq.plating || null,
-                itemName: platingItem?.name || eq.plating || 'None',
-                subtitle: platingItem
-                  ? `${(platingItem.armorType || 'Reactive').toUpperCase()} · +${platingItem.armorDurability ?? 0} DUR · +${platingItem.armorRating ?? 0} RTG`
-                  : 'No Frame Plating',
-                wtLabel: `${loadMetrics.breakdown.frameWeight} WT`,
-                accentColor: '#a855f7',
-                subModulesSummary: `Reactor: ${reactorItem?.name || eq.reactorCore || 'Std'} (${state.reactor})`,
-              })}
-
-              {renderDollSlotNode({
-                slot: 'arms',
-                title: 'ARMS · APERTURE PLATE',
-                itemId: armsItem?.id || eq.arms || null,
-                itemName: armsItem?.name || eq.arms || 'None',
-                subtitle: armsItem
-                  ? `+${armsItem.armorDurability ?? 0} ARM DUR · +${armsItem.armorRating ?? 0} RTG · +${armsItem.shieldBonus ?? 0} SHD`
-                  : 'No Aperture Plate',
-                wtLabel: `${loadMetrics.breakdown.armsWeight} WT`,
-                accentColor: '#fb923c',
-                subModulesSummary: `Actuators: ${actuatorsItem?.name.split(' ').slice(-2).join(' ') || 'Std'}`,
-              })}
-
-              {renderDollSlotNode({
-                slot: 'legs',
-                title: 'LEGS · STRIDERS',
-                itemId: legsItem?.id || eq.legs || null,
-                itemName: legsItem?.name || eq.legs || 'None',
-                subtitle: legsItem
-                  ? `+${getHardwareCapacityBonus(legsItem)} LOAD CAP · ${legsItem.stabilityBonus ? `+${legsItem.stabilityBonus} STB` : 'Agile Stride'}`
-                  : 'No Leg Striders',
-                wtLabel: `${legsItem ? getHardwareBaseWeight(legsItem) : 12} WT`,
-                accentColor: '#4ade80',
-                subModulesSummary: eq.installedMods?.mobility
-                  ? `Mobility Mod: ${ACTION_MODIFICATION_CATALOG.find((m) => m.id === eq.installedMods?.mobility)?.name || 'Active'}`
-                  : 'Mobility Kit: Standard Dash',
-              })}
+            <div className="px-2.5 py-1 bg-[#05070a] text-[9px] font-bold text-[#38bdf8]">
+              CHASSIS ARMOR &amp; INTERNAL SUB-MODULES
             </div>
+
+            {renderCompactSlotRow({
+              slot: 'head',
+              title: 'HEAD · DOME',
+              itemId: headItem?.id || eq.head || null,
+              itemName: headItem?.name || eq.head || 'None',
+              subtitle: headItem
+                ? `+${headItem.armorDurability ?? 0} DUR · +${headItem.armorRating ?? 0} RTG · Optics: ${opticsItem?.name.split(' ').slice(-2).join(' ') || 'Std'}`
+                : 'No Dome Plate',
+              wtLabel: `${loadMetrics.breakdown.headWeight} WT`,
+              accentColor: '#38bdf8',
+            })}
+
+            {renderCompactSlotRow({
+              slot: 'plating',
+              title: 'TORSO · PLATING',
+              itemId: platingItem?.id || eq.plating || null,
+              itemName: platingItem?.name || eq.plating || 'None',
+              subtitle: platingItem
+                ? `${(platingItem.armorType || 'Reactive').toUpperCase()} · +${platingItem.armorDurability ?? 0} DUR · Reactor: ${state.reactor}`
+                : 'No Frame Plating',
+              wtLabel: `${loadMetrics.breakdown.frameWeight} WT`,
+              accentColor: '#a855f7',
+            })}
+
+            {renderCompactSlotRow({
+              slot: 'arms',
+              title: 'ARMS · APERTURE',
+              itemId: armsItem?.id || eq.arms || null,
+              itemName: armsItem?.name || eq.arms || 'None',
+              subtitle: armsItem
+                ? `+${armsItem.armorDurability ?? 0} DUR · +${armsItem.shieldBonus ?? 0} SHD · Actuators: ${actuatorsItem?.name.split(' ').slice(-2).join(' ') || 'Std'}`
+                : 'No Aperture Plate',
+              wtLabel: `${loadMetrics.breakdown.armsWeight} WT`,
+              accentColor: '#fb923c',
+            })}
+
+            {renderCompactSlotRow({
+              slot: 'legs',
+              title: 'LEGS · STRIDERS',
+              itemId: legsItem?.id || eq.legs || null,
+              itemName: legsItem?.name || eq.legs || 'None',
+              subtitle: legsItem
+                ? `+${getHardwareCapacityBonus(legsItem)} LOAD CAP · ${legsItem.stabilityBonus ? `+${legsItem.stabilityBonus} STB` : 'Agile Stride'}`
+                : 'No Leg Striders',
+              wtLabel: `${legsItem ? getHardwareBaseWeight(legsItem) : 12} WT`,
+              accentColor: '#4ade80',
+            })}
           </div>
-        </div>
+
+          {/* Pop-Up / Slide-Over Slot Detail Inspector */}
+          {contextMenuSlot && (
+            <div className="absolute inset-0 z-30 bg-[#05070a]/95 backdrop-blur-xs border border-[#fde047]/60 rounded-xs flex flex-col p-3 overflow-hidden">
+              <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#1e293b] shrink-0">
+                <button
+                  type="button"
+                  data-menu-back="true"
+                  onClick={() => {
+                    soundSystem.playMenuBeep();
+                    setContextMenuSlot(null);
+                  }}
+                  className="px-2.5 py-1 bg-[#1e293b] hover:bg-[#334155] text-[#f8fafc] font-bold text-[10px] rounded-xs border border-[#475569] cursor-pointer"
+                >
+                  ← Back to Slots
+                </button>
+                <span className="text-[10px] font-bold text-[#fde047] uppercase">
+                  Slot Inspector · [{contextMenuSlot.toUpperCase()}]
+                </span>
+              </div>
+
+              <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
+                {(() => {
+                  const slotItemId = getEquippedIdForSlot(contextMenuSlot);
+                  const slotWpn = slotItemId ? getWeaponDefinition(slotItemId) : undefined;
+                  const slotHw = slotItemId ? findHardwareItemByNameOrId(slotItemId) : undefined;
+                  const handlingEval =
+                    contextMenuSlot !== 'bind_l' &&
+                    contextMenuSlot !== 'bind_b' &&
+                    contextMenuSlot !== 'bind_r' &&
+                    slotItemId
+                      ? evaluateEquipmentFeatHandling(state, slotItemId)
+                      : null;
+                  const recFeat = handlingEval?.recommendedFeatId
+                    ? CANONICAL_FRAME_FEAT_REGISTRY[handlingEval.recommendedFeatId]
+                    : undefined;
+
+                  return (
+                    <>
+                      <div className="flex flex-col sm:flex-row items-center gap-3 p-2.5 bg-[#090d14] border border-[#1e293b] rounded-xs">
+                        <HighResEquipmentArtCanvas
+                          state={state}
+                          itemIdOrName={slotItemId}
+                          slotHint={contextMenuSlot}
+                          sizeClass="w-20 h-20 shrink-0"
+                        />
+                        <div className="flex-1 min-w-0 space-y-1.5 w-full">
+                          <div className="text-[13px] font-bold text-[#fde047]">
+                            {getEquipmentDisplayName(slotItemId, state)}
+                            {devMode && slotItemId ? (
+                              <span className="ml-2 text-[9px] text-[#64748b] font-mono">
+                                [{slotItemId}]
+                              </span>
+                            ) : null}
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                soundSystem.playSelect();
+                                setPreviewCandidateId(slotItemId);
+                                openSlotEditor(contextMenuSlot);
+                                setContextMenuSlot(null);
+                              }}
+                              className="px-3 py-1 bg-[#172554] hover:bg-[#1e3a8a] text-[#fde047] border border-[#38bdf8]/60 rounded-xs text-[10px] font-bold cursor-pointer"
+                            >
+                              Equip / Swap Item
+                            </button>
+
+                            {(contextMenuSlot === 'slot2' || contextMenuSlot === 'slot3') &&
+                              slotItemId && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    soundSystem.playSelect();
+                                    if (contextMenuSlot === 'slot2') {
+                                      eq.slot2 = null;
+                                      eq.mainGrip = '2h';
+                                      sayCtx.say('UNEQUIPPED SIDE HAND [L] → MAIN HAND NOW 2H');
+                                    } else {
+                                      eq.slot3 = null;
+                                      sayCtx.say('UNEQUIPPED AUXILIARY [BACK]');
+                                    }
+                                    setContextMenuSlot(null);
+                                    notifyOrionStateChange();
+                                  }}
+                                  className="px-3 py-1 bg-[#450a0a] hover:bg-[#7f1d1d] text-[#fca5a5] border border-[#ef4444]/50 rounded-xs text-[10px] font-bold cursor-pointer"
+                                >
+                                  Unequip Slot
+                                </button>
+                              )}
+
+                            {contextMenuSlot === 'slot1' && !isTwoHandOnlyWeapon(slot1Id, state) && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const targetGrip = mainGrip === '2h' ? '1h' : '2h';
+                                  const changed = setMainWeaponGrip(state, targetGrip, sayCtx);
+                                  if (changed) soundSystem.playPowerup();
+                                  else soundSystem.playMenuBeep();
+                                  notifyOrionStateChange();
+                                }}
+                                className="px-3 py-1 bg-[#0f172a] hover:bg-[#1e293b] text-[#7dd3fc] border border-[#38bdf8]/50 rounded-xs text-[10px] font-bold cursor-pointer"
+                              >
+                                Toggle Grip ({mainGrip === '2h' ? 'Switch to 1H' : 'Switch to 2H'})
+                              </button>
+                            )}
+
+                            {(contextMenuSlot === 'slot2' || contextMenuSlot === 'slot3') && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  performAuxiliarySwap(state, sayCtx);
+                                  soundSystem.playSelect();
+                                  notifyOrionStateChange();
+                                }}
+                                className="px-3 py-1 bg-[#0f172a] hover:bg-[#1e293b] text-[#c084fc] border border-[#c084fc]/50 rounded-xs text-[10px] font-bold cursor-pointer"
+                              >
+                                Toggle Back Launcher [L]
+                              </button>
+                            )}
+
+                            {onOpenArmory &&
+                              contextMenuSlot !== 'bind_l' &&
+                              contextMenuSlot !== 'bind_b' &&
+                              contextMenuSlot !== 'bind_r' && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    soundSystem.playSelect();
+                                    const targetSlot = contextMenuSlot;
+                                    setContextMenuSlot(null);
+                                    onOpenArmory(targetSlot, slotItemId || undefined);
+                                  }}
+                                  className="px-3 py-1 bg-[#451a03] hover:bg-[#78350f] text-[#fdba74] border border-[#fb923c]/70 rounded-xs text-[10px] font-bold cursor-pointer"
+                                >
+                                  ⚙ Modify in Armory
+                                </button>
+                              )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {slotWpn && slotItemId && (
+                        <div className="p-2.5 bg-[#090d14] border border-[#1e293b] rounded-xs space-y-1.5">
+                          <div className="text-[10px] text-[#cbd5e1]">{slotWpn.description}</div>
+                          <WeaponStatReadout w={slotWpn} instanceId={slotItemId} state={state} />
+                        </div>
+                      )}
+
+                      {slotHw && (
+                        <div className="p-2.5 bg-[#090d14] border border-[#1e293b] rounded-xs space-y-1.5">
+                          <HardwareStatReadout
+                            hw={slotHw}
+                            maxGemSlots={getEquipmentMaxModSlots(slotHw.id)}
+                          />
+                        </div>
+                      )}
+
+                      {handlingEval && (
+                        <div className="p-2.5 bg-[#090d14] rounded-xs border border-[#1e293b] flex flex-wrap items-center justify-between gap-2 text-[9px]">
+                          <div className="space-y-0.5">
+                            <div className="font-bold text-[#94a3b8]">
+                              FEAT HANDLING ·{' '}
+                              <span
+                                className={
+                                  handlingEval.proficiencyTier === 'mastered'
+                                    ? 'text-[#86efac]'
+                                    : handlingEval.proficiencyTier === 'proficient'
+                                      ? 'text-[#7dd3fc]'
+                                      : handlingEval.proficiencyTier === 'locked'
+                                        ? 'text-[#fca5a5]'
+                                        : 'text-[#cbd5e1]'
+                                }
+                              >
+                                {handlingEval.badgeLabel}
+                              </span>
+                            </div>
+                            <div className="text-[#cbd5e1]">{handlingEval.statusSummary}</div>
+                          </div>
+                          {recFeat && onLocateFeat && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                soundSystem.playSelect();
+                                setContextMenuSlot(null);
+                                onLocateFeat(recFeat.id);
+                              }}
+                              className="px-2.5 py-1 rounded-xs bg-[#1e1b4b] hover:bg-[#312e81] text-[#e9d5ff] border border-[#818cf8]/50 font-bold cursor-pointer"
+                            >
+                              Locate [{recFeat.name}] in Feats →
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
+
+          {/* Optional Pop-Up Mech Doll Schematic Overlay */}
+          {showDollOverlay && (
+            <div className="absolute inset-0 z-30 bg-[#05070a]/95 backdrop-blur-xs border border-[#38bdf8]/50 rounded-xs flex flex-col p-3 overflow-hidden">
+              <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#1e293b] shrink-0">
+                <button
+                  type="button"
+                  data-menu-back="true"
+                  onClick={() => {
+                    soundSystem.playMenuBeep();
+                    setShowDollOverlay(false);
+                  }}
+                  className="px-2.5 py-1 bg-[#1e293b] hover:bg-[#334155] text-[#f8fafc] font-bold text-[10px] rounded-xs border border-[#475569] cursor-pointer"
+                >
+                  ← Back to Slots
+                </button>
+                <span className="text-[10px] font-bold text-[#38bdf8] uppercase">
+                  Anatomical Mech Doll Schematic (Click Hardpoint to Inspect)
+                </span>
+              </div>
+              <div className="flex-1 min-h-0 flex flex-col items-center justify-center overflow-y-auto">
+                <HighResMechDollCanvas
+                  state={state}
+                  selectedSlot={contextMenuSlot || 'slot1'}
+                  hoveredSlot={null}
+                  onSelectSlot={(s) => {
+                    soundSystem.playSelect();
+                    setShowDollOverlay(false);
+                    setContextMenuSlot(s);
+                  }}
+                />
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -2076,9 +2259,8 @@ export interface SatchelInventoryTabProps {
 }
 
 /**
- * Renders the `INVENTORY` menu (renamed from `SATCHEL`).
- * Lists all owned Weapons, Auxiliaries, Chassis Hardware, Action Mods, Consumables, Gemstones, and Relics
- * with direct actions to equip in `LOADOUT` or modify in `ARMORY`.
+ * Renders the `CARGO INVENTORY` menu using a Single Compact Filter Bar, a 100% Full-Width Scannable
+ * 1-Line Row List, and a Pop-Up Inventory Item Detail Inspector.
  */
 export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
   state,
@@ -2092,10 +2274,13 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
   onOpenArmory,
   handleUseItem,
 }) => {
-  const [invWeaponFuncFilter, setInvWeaponFuncFilter] = useState<string>('ALL');
   const [invWeaponVariantFilter, setInvWeaponVariantFilter] = useState<
     'ALL' | 'Custom' | 'Magitech' | 'Legendary'
   >('ALL');
+  const [inspectedEntry, setInspectedEntry] = useState<{
+    kind: 'weapon' | 'hardware' | 'mod' | 'consumable';
+    id: string;
+  } | null>(null);
   const devMode = getOrionGraphicsSettings().devModeEnabled;
 
   const subtypeOptionsByCat: Record<EquipmentInventoryCategory, string[]> = {
@@ -2126,531 +2311,659 @@ export const SatchelInventoryTab: React.FC<SatchelInventoryTabProps> = ({
     consumable: ['ALL', 'consumable', 'gemstone', 'relic'],
   };
   const activeSubtypes = subtypeOptionsByCat[invCategory] || ['ALL'];
-  const selectedInvWeaponClass = WEAPON_CATEGORIES.includes(invSubtype as WeaponCategory)
-    ? (invSubtype as WeaponCategory)
-    : null;
-  const invFunctionalTypes = selectedInvWeaponClass
-    ? WEAPON_FUNCTIONAL_TYPES_BY_CATEGORY[selectedInvWeaponClass]
-    : [];
 
   return (
-    <div className="flex-1 overflow-y-auto space-y-2 pr-0.5 text-[10px]">
-      {/* Equipment Inventory Category & Subtype Filter Header */}
-      <div className="p-2 bg-[#090d14] rounded-xs border border-[#1e293b] space-y-1.5">
-        <div className="flex flex-wrap items-center justify-between gap-1">
-          <span className="text-[10px] font-bold text-[#8dd7ad]">
-            PILOT INVENTORY (WEAPONS · AUXILIARIES · HARDWARE · MODS · CONSUMABLES):
-          </span>
-          {isCheatMode && (
-            <div className="flex items-center gap-1">
+    <div className="relative flex-1 min-h-0 flex flex-col space-y-1.5 overflow-hidden text-[10px]">
+      {/* Clean Two-Row Filter & Subtype Toolbar */}
+      <div className="flex flex-col gap-1 px-2 py-1.5 bg-[#090d14] border border-[#1e293b] rounded-xs shrink-0">
+        {/* Row 1: Primary Inventory Category Buttons + Sandbox Utility */}
+        <div className="flex items-center justify-between gap-1.5">
+          <div className="flex flex-wrap items-center gap-1">
+            {(
+              [
+                { id: 'all', label: 'All' },
+                { id: 'weapon', label: 'Weapons' },
+                { id: 'auxiliary', label: 'Auxiliaries' },
+                { id: 'hardware', label: 'Hardware' },
+                { id: 'mod', label: 'Action Mods' },
+                { id: 'consumable', label: 'Consumables & Gems' },
+              ] as Array<{ id: EquipmentInventoryCategory; label: string }>
+            ).map((cat) => (
               <button
+                key={cat.id}
                 type="button"
                 onClick={() => {
-                  soundSystem.playPowerup();
-                  for (const flaskId of [
-                    'grail_water',
-                    'demantoid_flask',
-                    'spinel_flask',
-                    'carnelian_flask',
-                    'titanite_flask',
-                    'kyanite_flask',
-                    'charoite_flask',
-                    'rubellite_flask',
-                    'hematite_flask',
-                  ]) {
-                    addOrionInventoryItem(state, flaskId, 1);
-                  }
-                  state.toastText = 'ADDED +1 OF ALL 9 GEMSTONE BELT FLASKS TO INVENTORY';
-                  state.toastTimer = 2.5;
-                  notifyOrionStateChange();
+                  soundSystem.playSelect();
+                  setInvCategory(cat.id);
+                  setInvSubtype('ALL');
                 }}
-                className="px-1.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#8dd7ad]/60 rounded-xs font-bold text-[9px] text-[#8dd7ad] cursor-pointer"
-              >
-                +1 ALL FLASKS
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  soundSystem.playPowerup();
-                  for (const relicId of [
-                    'rusted_gate_key',
-                    'sanctum_lock',
-                    'bedivere_ring',
-                    'bedivere_list',
-                    'bedivere_relic',
-                  ]) {
-                    addOrionInventoryItem(state, relicId, 1);
-                  }
-                  state.toastText = 'ADDED RELICS & KEYS TO INVENTORY';
-                  state.toastTimer = 2.5;
-                  notifyOrionStateChange();
-                }}
-                className="px-1.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#ffd27d]/60 rounded-xs font-bold text-[9px] text-[#ffd27d] cursor-pointer"
-              >
-                +1 RELICS & KEYS
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Primary Equipment Type Filter */}
-        <div className="flex flex-wrap items-center gap-1">
-          {(
-            [
-              { id: 'all', label: 'All Inventory' },
-              { id: 'weapon', label: 'Weapons' },
-              { id: 'auxiliary', label: 'Auxiliaries' },
-              { id: 'hardware', label: 'Chassis Hardware' },
-              { id: 'mod', label: 'Action Mods' },
-              { id: 'consumable', label: 'Consumables & Gems' },
-            ] as Array<{ id: EquipmentInventoryCategory; label: string }>
-          ).map((cat) => (
-            <button
-              key={cat.id}
-              type="button"
-              onClick={() => {
-                soundSystem.playSelect();
-                setInvCategory(cat.id);
-                setInvSubtype('ALL');
-                setInvWeaponFuncFilter('ALL');
-              }}
-              className={`px-2 py-0.5 rounded-xs text-[9px] font-bold border cursor-pointer ${
-                invCategory === cat.id
-                  ? 'bg-[#8dd7ad] text-[#05070a] border-[#6ee7b7]'
-                  : 'bg-[#0f172a] text-[#94a3b8] border-[#334155] hover:border-[#8dd7ad]'
-              }`}
-            >
-              {cat.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Nested Class / Subtype Filter */}
-        {activeSubtypes.length > 1 && (
-          <div className="flex flex-wrap items-center gap-1 pt-0.5">
-            <span className="text-[9px] text-[#94a3b8] font-bold">
-              {invCategory === 'all' || invCategory === 'weapon' || invCategory === 'auxiliary'
-                ? 'WEAPON CLASS:'
-                : 'SUBTYPE:'}
-            </span>
-            {activeSubtypes.map((st) => (
-              <button
-                key={st}
-                type="button"
-                onClick={() => {
-                  setInvSubtype(st);
-                  setInvWeaponFuncFilter('ALL');
-                }}
-                className={`px-1.5 py-0.2 rounded-xs text-[9px] font-bold border cursor-pointer ${
-                  invSubtype === st
-                    ? 'bg-[#ffd27d] text-[#05070a] border-[#fbbf24]'
-                    : 'bg-[#090d14] text-[#94a3b8] border-[#1e293b]'
+                className={`px-2 py-0.5 rounded-xs text-[9px] font-bold border cursor-pointer ${
+                  invCategory === cat.id
+                    ? 'bg-[#8dd7ad] text-[#05070a] border-[#6ee7b7]'
+                    : 'bg-[#0f172a] text-[#94a3b8] border-[#1e293b] hover:text-[#e2e8f0]'
                 }`}
               >
-                {st.toUpperCase()}
+                {cat.label}
               </button>
             ))}
           </div>
-        )}
 
-        {/* Nested Functional Type & Custom/Magitech Subtype Filter when viewing Weapons/Auxiliaries */}
-        {(invCategory === 'all' || invCategory === 'weapon' || invCategory === 'auxiliary') && (
-          <div className="flex flex-wrap items-center justify-between gap-1 pt-0.5 border-t border-[#1e293b]/70">
-            {selectedInvWeaponClass ? (
-              <div className="flex flex-wrap items-center gap-1">
-                <span className="text-[9px] text-[#38bdf8] font-bold">
-                  {selectedInvWeaponClass.toUpperCase()} TYPE:
-                </span>
-                {(['ALL', ...invFunctionalTypes] as const).map((ft) => (
-                  <button
-                    key={ft}
-                    type="button"
-                    onClick={() => setInvWeaponFuncFilter(ft)}
-                    className={`px-1.5 py-0.2 rounded-xs text-[9px] font-bold border cursor-pointer ${
-                      invWeaponFuncFilter === ft
-                        ? 'bg-[#38bdf8] text-[#05070a] border-[#7dd3fc]'
-                        : 'bg-[#05070a] text-[#cbd5e1] border-[#1e293b]'
-                    }`}
-                  >
-                    {ft.toUpperCase()}
-                  </button>
+          {isCheatMode && (
+            <button
+              type="button"
+              onClick={() => {
+                soundSystem.playPowerup();
+                for (const flaskId of [
+                  'grail_water',
+                  'demantoid_flask',
+                  'spinel_flask',
+                  'carnelian_flask',
+                  'titanite_flask',
+                  'kyanite_flask',
+                  'charoite_flask',
+                  'rubellite_flask',
+                  'hematite_flask',
+                ]) {
+                  addOrionInventoryItem(state, flaskId, 1);
+                }
+                state.toastText = 'ADDED +1 OF ALL 9 GEMSTONE BELT FLASKS';
+                state.toastTimer = 2.5;
+                notifyOrionStateChange();
+              }}
+              className="px-1.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#8dd7ad]/60 rounded-xs font-bold text-[9px] text-[#8dd7ad] cursor-pointer shrink-0"
+            >
+              +1 Flasks
+            </button>
+          )}
+        </div>
+
+        {/* Row 2: Class / Slot & Subtype Dropdowns */}
+        <div className="flex items-center gap-2 pt-1 border-t border-[#1e293b]/70">
+          {activeSubtypes.length > 1 && (
+            <div className="flex items-center gap-1 min-w-0">
+              <span className="text-[9px] font-bold text-[#94a3b8] shrink-0">Class/Slot:</span>
+              <select
+                value={invSubtype}
+                onChange={(e) => {
+                  soundSystem.playSelect();
+                  setInvSubtype(e.target.value);
+                }}
+                className="max-w-[180px] truncate px-2 py-0.5 bg-[#05070a] border border-[#334155] rounded-xs text-[11px] font-bold text-[#ffd27d] focus:outline-none cursor-pointer"
+              >
+                {activeSubtypes.map((st) => (
+                  <option key={st} value={st}>
+                    {st === 'ALL' ? 'All Classes / Slots' : st.toUpperCase()}
+                  </option>
                 ))}
-              </div>
-            ) : (
-              <span className="text-[9px] text-[#94a3b8]">
-                Select a Weapon Class above to drill into its 9 shared Functional Types.
-              </span>
-            )}
-            <div className="flex items-center gap-1 flex-wrap">
-              <span className="text-[9px] text-[#94a3b8] font-bold">SUBTYPE:</span>
-              {(['ALL', 'Custom', 'Magitech', 'Legendary'] as const).map((vOpt) => (
-                <button
-                  key={vOpt}
-                  type="button"
-                  onClick={() => setInvWeaponVariantFilter(vOpt)}
-                  className={`px-1.5 py-0.2 rounded-xs text-[9px] font-bold border cursor-pointer ${
-                    invWeaponVariantFilter === vOpt
-                      ? vOpt === 'Legendary'
-                        ? 'bg-[#78350f] text-[#fde047] border-[#f59e0b]'
-                        : vOpt === 'Magitech'
-                          ? 'bg-[#a21caf] text-[#f8fafc] border-[#e879f9]'
-                          : vOpt === 'Custom'
-                            ? 'bg-[#15803d] text-[#f8fafc] border-[#86efac]'
-                            : 'bg-[#ffd27d] text-[#05070a] border-[#fbbf24]'
-                      : 'bg-[#05070a] text-[#94a3b8] border-[#1e293b]'
-                  }`}
-                >
-                  {vOpt.toUpperCase()}
-                </button>
-              ))}
+              </select>
             </div>
-          </div>
-        )}
+          )}
+
+          {(invCategory === 'all' || invCategory === 'weapon' || invCategory === 'auxiliary') && (
+            <div className="flex items-center gap-1 min-w-0">
+              <span className="text-[9px] font-bold text-[#94a3b8] shrink-0">Subtype:</span>
+              <select
+                value={invWeaponVariantFilter}
+                onChange={(e) => {
+                  soundSystem.playSelect();
+                  setInvWeaponVariantFilter(
+                    e.target.value as 'ALL' | 'Custom' | 'Magitech' | 'Legendary'
+                  );
+                }}
+                className="max-w-[160px] truncate px-2 py-0.5 bg-[#05070a] border border-[#334155] rounded-xs text-[11px] font-bold text-[#e2e8f0] focus:outline-none cursor-pointer"
+              >
+                <option value="ALL">All Subtypes</option>
+                <option value="Custom">Custom</option>
+                <option value="Magitech">Magitech</option>
+                <option value="Legendary">Legendary</option>
+              </select>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* 1. Owned Weapons & Auxiliaries Inventory */}
-      {(invCategory === 'all' || invCategory === 'weapon' || invCategory === 'auxiliary') && (
-        <div className="space-y-1">
-          <div className="text-[9px] font-bold text-[#ffd27d]">
-            OWNED WEAPONS & AUXILIARIES (SHARED FUNCTIONAL CLASSES · CUSTOM, MAGITECH &amp; LEGENDARY):
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-            {Object.values(WEAPON_REGISTRY)
-              .filter((w) => {
-                if (
-                  w.id.startsWith('utility_') ||
-                  w.id.startsWith('aux3_') ||
-                  w.id.startsWith('aux4_')
-                ) {
-                  return false;
-                }
-                const unlocked = isCheatMode || isEquipmentUnlocked(state, w.id);
-                if (!unlocked) return false;
-                const isAux = isAuxiliaryEquipment(w);
-                if (invCategory === 'weapon' && isAux) return false;
-                if (invCategory === 'auxiliary' && !isAux) return false;
-                const stInfo = getWeaponSubtypeInfo(w.id);
-                if (invSubtype !== 'ALL' && stInfo.category !== invSubtype) return false;
-                if (
-                  selectedInvWeaponClass &&
-                  invWeaponFuncFilter !== 'ALL' &&
-                  stInfo.functionalType !== invWeaponFuncFilter
-                ) {
-                  return false;
-                }
-                if (
-                  invWeaponVariantFilter !== 'ALL' &&
-                  stInfo.variantSubtype !== invWeaponVariantFilter
-                ) {
-                  return false;
-                }
-                return true;
-              })
-              .flatMap((baseW) => {
-                const instances = getOwnedEquipmentInstances(state, baseW.id);
-                const instanceIds = instances.length > 0 ? instances : [baseW.id];
-                return instanceIds.map((instanceId) => ({ baseW, instanceId }));
-              })
-              .map(({ baseW, instanceId }) => {
-                const w = getWeaponDefinition(instanceId) || baseW;
-                const stInfo = getWeaponSubtypeInfo(baseW.id);
-                const copies = getOwnedWeaponCount(state, instanceId);
-                const gemVis = getWeaponGemVisuals(state, instanceId);
-                const strip = w.variantStripBase64 || w.hardpointSprite?.base64;
-                const inMain = state.equipmentSlots?.slot1 === instanceId;
-                const inSide = state.equipmentSlots?.slot2 === instanceId;
-                const inAux = state.equipmentSlots?.slot3 === instanceId;
+      {/* 100% Full-Width Compact Scannable Inventory List */}
+      <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-[#1e293b]/80 bg-[#090d14]/90 border border-[#1e293b] rounded-xs">
+        {/* 1. Owned Weapons & Auxiliaries */}
+        {(invCategory === 'all' || invCategory === 'weapon' || invCategory === 'auxiliary') &&
+          Object.values(WEAPON_REGISTRY)
+            .filter((w) => {
+              if (
+                w.id.startsWith('utility_') ||
+                w.id.startsWith('aux3_') ||
+                w.id.startsWith('aux4_')
+              ) {
+                return false;
+              }
+              const unlocked = isCheatMode || isEquipmentUnlocked(state, w.id);
+              if (!unlocked) return false;
+              const isAux = isAuxiliaryEquipment(w);
+              if (invCategory === 'weapon' && isAux) return false;
+              if (invCategory === 'auxiliary' && !isAux) return false;
+              const stInfo = getWeaponSubtypeInfo(w.id);
+              if (invSubtype !== 'ALL' && stInfo.category !== invSubtype) return false;
+              if (
+                invWeaponVariantFilter !== 'ALL' &&
+                stInfo.variantSubtype !== invWeaponVariantFilter
+              ) {
+                return false;
+              }
+              return true;
+            })
+            .flatMap((baseW) => {
+              const instances = getOwnedEquipmentInstances(state, baseW.id);
+              const instanceIds = instances.length > 0 ? instances : [baseW.id];
+              return instanceIds.map((instanceId) => ({ baseW, instanceId }));
+            })
+            .map(({ baseW, instanceId }) => {
+              const w = getWeaponDefinition(instanceId) || baseW;
+              const stInfo = getWeaponSubtypeInfo(baseW.id);
+              const copies = getOwnedWeaponCount(state, instanceId);
+              const gemVis = getWeaponGemVisuals(state, instanceId);
+              const strip = w.variantStripBase64 || w.hardpointSprite?.base64;
+              const wt = getWeaponInstanceEquipWeight(instanceId, state);
+              const inMain = state.equipmentSlots?.slot1 === instanceId;
+              const inSide = state.equipmentSlots?.slot2 === instanceId;
+              const inAux = state.equipmentSlots?.slot3 === instanceId;
 
-                return (
-                  <div
-                    key={instanceId}
-                    className="p-1.5 bg-[#090d14] rounded-xs border border-[#1e293b] flex flex-col justify-between gap-1"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <SpriteCanvasIcon
-                          base64={strip}
-                          col={gemVis.colIndex}
-                          row={!gemVis.gemId ? (w.hardpointSprite?.row ?? 0) : 0}
-                          sizeClass="w-4 h-4"
-                        />
-                        <div className="min-w-0">
-                          <div className="font-bold text-[9px] text-[#ffd27d] truncate">
-                            {getEquipmentDisplayName(instanceId, state)}{' '}
-                            <span className="text-[#94a3b8]">×{copies}</span>
-                            {devMode && (
-                              <span className="ml-1 text-[9px] text-[#64748b] font-mono">
-                                [{instanceId}]
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-[9px] text-[#7dd3fc] truncate">
-                            {stInfo.subtype} ·{' '}
-                            {w.weaponTier === 'legendary'
-                              ? `[0 MODS · 0G · ${w.legendarySpec?.boundRelicSlots.length ?? 0} LORE-BOUND]`
-                              : `[${getWeaponComponentSlots(instanceId).join(' / ').toUpperCase()}]`}
-                            {inMain ? ' · [MAIN]' : ''}
-                            {inSide ? ' · [SIDE]' : ''}
-                            {inAux ? ' · [AUX]' : ''}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        {onOpenArmory && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              onOpenArmory(isAuxiliaryEquipment(w) ? 'slot2' : 'slot1', instanceId)
-                            }
-                            className="px-1.5 py-0.5 bg-[#451a03] hover:bg-[#78350f] text-[#fdba74] border border-[#fb923c]/60 rounded-xs text-[9px] font-bold cursor-pointer"
-                          >
-                            ⚙ ARMORY
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => openSlotEditor(isAuxiliaryEquipment(w) ? 'slot2' : 'slot1')}
-                          className="px-1.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#38bdf8] border border-[#38bdf8]/50 rounded-xs text-[9px] font-bold cursor-pointer"
-                        >
-                          LOADOUT
-                        </button>
-                      </div>
-                    </div>
-                    <WeaponStatReadout w={w} instanceId={instanceId} state={state} compact />
-                  </div>
-                );
-              })}
-          </div>
-        </div>
-      )}
-
-      {/* 2. Chassis Hardware & Retained Action Mods Inventory */}
-      {(invCategory === 'all' || invCategory === 'hardware' || invCategory === 'mod') && (
-        <div className="space-y-1">
-          <div className="text-[9px] font-bold text-[#38bdf8]">
-            CHASSIS HARDWARE & ACTION MODS:
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-            {(invCategory === 'all' || invCategory === 'hardware') &&
-              CHASSIS_HARDWARE_CATALOG.filter((hw) => {
-                if (invSubtype !== 'ALL' && hw.slot !== invSubtype) return false;
-                return isCheatMode || isEquipmentUnlocked(state, hw.id);
-              })
-                .flatMap((baseHw) => {
-                  const instances = getOwnedEquipmentInstances(state, baseHw.id);
-                  const instanceIds = instances.length > 0 ? instances : [baseHw.id];
-                  return instanceIds.map((instanceId) => ({ baseHw, instanceId }));
-                })
-                .map(({ baseHw, instanceId }) => {
-                  const hw = findHardwareItemByNameOrId(instanceId) || baseHw;
-                  const count = getOwnedWeaponCount(state, instanceId);
-                  const maxGemSlots = getEquipmentMaxModSlots(instanceId);
-                  const editTargetSlot: EditableLoadoutSlot =
-                    baseHw.slot === 'aux3' || baseHw.slot === 'aux4' ? 'slot3' : baseHw.slot;
-                  return (
-                    <div
-                      key={instanceId}
-                      className="p-1.5 bg-[#090d14] rounded-xs border border-[#1e293b] flex flex-col justify-between gap-1"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="font-bold text-[9px] text-[#e2e8f0] truncate">
-                            {hw.name} <span className="text-[#94a3b8]">×{count}</span>
-                            {devMode && (
-                              <span className="ml-1 text-[9px] text-[#64748b] font-mono">
-                                [{instanceId}]
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-[9px] text-[#94a3b8] truncate">
-                            Hardware · {hw.slot.toUpperCase()} · {hw.subtype}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          {onOpenArmory && (
-                            <button
-                              type="button"
-                              onClick={() => onOpenArmory(editTargetSlot, instanceId)}
-                              className="px-1.5 py-0.5 bg-[#451a03] hover:bg-[#78350f] text-[#fdba74] border border-[#fb923c]/60 rounded-xs text-[9px] font-bold cursor-pointer"
-                            >
-                              ⚙ ARMORY
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => openSlotEditor(editTargetSlot)}
-                            className="px-1.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#38bdf8] border border-[#38bdf8]/50 rounded-xs text-[9px] font-bold cursor-pointer"
-                          >
-                            LOADOUT
-                          </button>
-                        </div>
-                      </div>
-                      <HardwareStatReadout hw={hw} maxGemSlots={maxGemSlots} />
-                    </div>
-                  );
-                })}
-
-            {(invCategory === 'all' || invCategory === 'mod') &&
-              ACTION_MODIFICATION_CATALOG.filter((m) => {
-                const retained =
-                  (state.equipmentSlots?.unlockedMods || []).includes(m.id) ||
-                  Boolean(state.bypassProgressionGates);
-                if (!retained && invCategory === 'all') return false;
-                if (invSubtype !== 'ALL' && m.targetCategory !== invSubtype) return false;
-                return true;
-              }).map((m) => (
+              return (
                 <div
-                  key={m.id}
-                  className="p-1.5 bg-[#090d14] rounded-xs border border-[#1e293b] flex flex-col justify-between gap-1"
+                  key={instanceId}
+                  role="button"
+                  tabIndex={0}
+                  data-menu-focusable="true"
+                  onClick={() => {
+                    soundSystem.playSelect();
+                    setInspectedEntry({ kind: 'weapon', id: instanceId });
+                  }}
+                  className="px-2.5 py-1.5 hover:bg-[#1e293b]/70 flex items-center justify-between gap-2 cursor-pointer transition-colors"
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="font-bold text-[9px] text-[#c084fc] truncate">
-                        {m.name}
-                        {devMode && (
-                          <span className="ml-1 text-[9px] text-[#64748b] font-mono">
-                            [{m.id}]
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[9px] text-[#94a3b8] truncate">
-                        Action Mod · {m.targetCategory.toUpperCase()} ·{' '}
-                        {(m.weightDelta ?? 0) >= 0 ? `+${m.weightDelta ?? 0}` : m.weightDelta} WT
-                      </div>
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <SpriteCanvasIcon
+                      base64={strip}
+                      col={gemVis.colIndex}
+                      row={!gemVis.gemId ? (w.hardpointSprite?.row ?? 0) : 0}
+                      sizeClass="w-5 h-5 shrink-0"
+                    />
+                    <div className="min-w-0 truncate">
+                      <span className="font-bold text-[11px] text-[#ffd27d]">
+                        {getEquipmentDisplayName(instanceId, state)}
+                      </span>
+                      <span className="text-[9px] text-[#94a3b8] ml-1">×{copies}</span>
+                      <span className="text-[#64748b] mx-1.5">·</span>
+                      <span className="text-[9px] text-[#7dd3fc]">{stInfo.subtype}</span>
+                      <span className="text-[#64748b] mx-1.5">·</span>
+                      <span className="text-[9px] text-[#94a3b8] font-mono">
+                        {wt} WT · {w.damagePerShot} {w.primaryDamageType}
+                      </span>
+                      {(inMain || inSide || inAux) && (
+                        <span className="ml-1.5 text-[9px] text-[#4ade80] font-bold">
+                          · {inMain ? 'MAIN' : inSide ? 'SIDE' : 'AUX'}
+                        </span>
+                      )}
                     </div>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
                     {onOpenArmory && (
                       <button
                         type="button"
-                        onClick={() =>
-                          onOpenArmory(
-                            m.targetCategory === 'melee'
-                              ? 'mod_melee'
-                              : m.targetCategory === 'mobility'
-                                ? 'mod_mobility'
-                                : 'mod_ranged'
-                          )
-                        }
-                        className="px-2 py-0.5 bg-[#451a03] hover:bg-[#78350f] text-[#fdba74] border border-[#fb923c]/60 rounded-xs text-[9px] font-bold cursor-pointer shrink-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenArmory(isAuxiliaryEquipment(w) ? 'slot2' : 'slot1', instanceId);
+                        }}
+                        className="px-2 py-0.5 bg-[#451a03] hover:bg-[#78350f] text-[#fdba74] border border-[#fb923c]/60 rounded-xs text-[9px] font-bold cursor-pointer"
                       >
-                        ⚙ INSTALL IN ARMORY
+                        Armory
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openSlotEditor(isAuxiliaryEquipment(w) ? 'slot2' : 'slot1');
+                      }}
+                      className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#38bdf8] border border-[#38bdf8]/50 rounded-xs text-[9px] font-bold cursor-pointer"
+                    >
+                      Equip
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+
+        {/* 2. Chassis Hardware */}
+        {(invCategory === 'all' || invCategory === 'hardware') &&
+          CHASSIS_HARDWARE_CATALOG.filter((hw) => {
+            if (invSubtype !== 'ALL' && hw.slot !== invSubtype) return false;
+            return isCheatMode || isEquipmentUnlocked(state, hw.id);
+          })
+            .flatMap((baseHw) => {
+              const instances = getOwnedEquipmentInstances(state, baseHw.id);
+              const instanceIds = instances.length > 0 ? instances : [baseHw.id];
+              return instanceIds.map((instanceId) => ({ baseHw, instanceId }));
+            })
+            .map(({ baseHw, instanceId }) => {
+              const hw = findHardwareItemByNameOrId(instanceId) || baseHw;
+              const count = getOwnedWeaponCount(state, instanceId);
+              const editTargetSlot: EditableLoadoutSlot =
+                baseHw.slot === 'aux3' || baseHw.slot === 'aux4' ? 'slot3' : baseHw.slot;
+              return (
+                <div
+                  key={instanceId}
+                  role="button"
+                  tabIndex={0}
+                  data-menu-focusable="true"
+                  onClick={() => {
+                    soundSystem.playSelect();
+                    setInspectedEntry({ kind: 'hardware', id: instanceId });
+                  }}
+                  className="px-2.5 py-1.5 hover:bg-[#1e293b]/70 flex items-center justify-between gap-2 cursor-pointer transition-colors"
+                >
+                  <div className="min-w-0 truncate flex-1">
+                    <span className="font-bold text-[11px] text-[#e2e8f0]">{hw.name}</span>
+                    <span className="text-[9px] text-[#94a3b8] ml-1">×{count}</span>
+                    <span className="text-[#64748b] mx-1.5">·</span>
+                    <span className="text-[9px] text-[#38bdf8]">
+                      {hw.slot.toUpperCase()} ({hw.subtype})
+                    </span>
+                    <span className="text-[#64748b] mx-1.5">·</span>
+                    <span className="text-[9px] text-[#ffd27d] font-mono">
+                      {getHardwareBaseWeight(hw)} WT
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {onOpenArmory && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenArmory(editTargetSlot, instanceId);
+                        }}
+                        className="px-2 py-0.5 bg-[#451a03] hover:bg-[#78350f] text-[#fdba74] border border-[#fb923c]/60 rounded-xs text-[9px] font-bold cursor-pointer"
+                      >
+                        Armory
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openSlotEditor(editTargetSlot);
+                      }}
+                      className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#38bdf8] border border-[#38bdf8]/50 rounded-xs text-[9px] font-bold cursor-pointer"
+                    >
+                      Equip
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+
+        {/* 3. Retained Action Mods */}
+        {(invCategory === 'all' || invCategory === 'mod') &&
+          ACTION_MODIFICATION_CATALOG.filter((m) => {
+            const retained =
+              (state.equipmentSlots?.unlockedMods || []).includes(m.id) ||
+              Boolean(state.bypassProgressionGates);
+            if (!retained && invCategory === 'all') return false;
+            if (invSubtype !== 'ALL' && m.targetCategory !== invSubtype) return false;
+            return true;
+          }).map((m) => (
+            <div
+              key={m.id}
+              role="button"
+              tabIndex={0}
+              data-menu-focusable="true"
+              onClick={() => {
+                soundSystem.playSelect();
+                setInspectedEntry({ kind: 'mod', id: m.id });
+              }}
+              className="px-2.5 py-1.5 hover:bg-[#1e293b]/70 flex items-center justify-between gap-2 cursor-pointer transition-colors"
+            >
+              <div className="min-w-0 truncate flex-1">
+                <span className="font-bold text-[11px] text-[#c084fc]">{m.name}</span>
+                <span className="text-[#64748b] mx-1.5">·</span>
+                <span className="text-[9px] text-[#94a3b8]">
+                  Action Mod ({m.targetCategory.toUpperCase()}) ·{' '}
+                  {(m.weightDelta ?? 0) >= 0 ? `+${m.weightDelta ?? 0}` : m.weightDelta} WT
+                </span>
+                <span className="text-[#64748b] mx-1.5">·</span>
+                <span className="text-[9px] text-[#86efac]">{m.gainDescription}</span>
+              </div>
+              {onOpenArmory && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenArmory(
+                      m.targetCategory === 'melee'
+                        ? 'mod_melee'
+                        : m.targetCategory === 'mobility'
+                          ? 'mod_mobility'
+                          : 'mod_ranged'
+                    );
+                  }}
+                  className="px-2 py-0.5 bg-[#451a03] hover:bg-[#78350f] text-[#fdba74] border border-[#fb923c]/60 rounded-xs text-[9px] font-bold cursor-pointer shrink-0"
+                >
+                  Install
+                </button>
+              )}
+            </div>
+          ))}
+
+        {/* 4. Consumables, Gemstones & Relics */}
+        {(invCategory === 'all' || invCategory === 'consumable') &&
+          consolidateInventorySlots(state.inventorySlots)
+            .filter((slot) => {
+              const def = getItemDefinition(slot.itemId);
+              if (!def) return false;
+              const isGem = slot.itemId in GEMSTONE_REGISTRY;
+              const cat = isGem ? 'gemstone' : def.category;
+              if (invCategory === 'consumable' && invSubtype !== 'ALL' && cat !== invSubtype) {
+                return false;
+              }
+              return true;
+            })
+            .map((slot, idx) => {
+              const def = getItemDefinition(slot.itemId);
+              if (!def) return null;
+              const isGem = slot.itemId in GEMSTONE_REGISTRY;
+              return (
+                <div
+                  key={`${slot.itemId}-${idx}`}
+                  role="button"
+                  tabIndex={0}
+                  data-menu-focusable="true"
+                  onClick={() => {
+                    soundSystem.playSelect();
+                    setInspectedEntry({ kind: 'consumable', id: slot.itemId });
+                  }}
+                  className="px-2.5 py-1.5 hover:bg-[#1e293b]/70 flex items-center justify-between gap-2 cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    {def.iconSprite?.base64 ? (
+                      <SpriteCanvasIcon
+                        base64={def.iconSprite.base64}
+                        col={def.iconSprite.col || 0}
+                        row={def.iconSprite.row || 0}
+                        sizeClass="w-5 h-5 shrink-0"
+                      />
+                    ) : (
+                      <span className="text-[#38bdf8]">◆</span>
+                    )}
+                    <div className="min-w-0 truncate">
+                      <span className="font-bold text-[11px] text-[#50fa7b]">{def.name}</span>
+                      <span className="text-[9px] text-[#94a3b8] ml-1">×{slot.count}</span>
+                      <span className="text-[#64748b] mx-1.5">·</span>
+                      <span className="text-[9px] text-[#7dd3fc]">
+                        {(isGem ? 'gemstone' : def.category).toUpperCase()}
+                      </span>
+                      <span className="text-[#64748b] mx-1.5">·</span>
+                      <span className="text-[9px] text-[#cbd5e1]">{def.description}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {isGem && onOpenArmory && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          soundSystem.playSelect();
+                          onOpenArmory('slot1');
+                        }}
+                        className="px-2 py-0.5 bg-[#451a03] hover:bg-[#78350f] text-[#fdba74] font-bold rounded-xs border border-[#fb923c]/60 text-[9px] cursor-pointer"
+                      >
+                        Armory
+                      </button>
+                    )}
+                    {isGem && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          soundSystem.playSelect();
+                          onOpenProgressionTab();
+                        }}
+                        className="px-2 py-0.5 bg-[#172554] hover:bg-[#1e3a8a] text-[#7dd3fc] font-bold rounded-xs border border-[#38bdf8]/60 text-[9px] cursor-pointer"
+                      >
+                        Feats
+                      </button>
+                    )}
+                    {def.onUse && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleUseItem(slot.itemId);
+                        }}
+                        className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#38bdf8] font-bold rounded-xs border border-[#475569] text-[9px] cursor-pointer"
+                      >
+                        Use
                       </button>
                     )}
                   </div>
-                  <div className="text-[9px] text-[#86efac]">+ {m.gainDescription}</div>
-                  {m.drawbackDescription && (
-                    <div className="text-[9px] text-[#f87171]">− {m.drawbackDescription}</div>
-                  )}
                 </div>
-              ))}
-          </div>
-        </div>
-      )}
+              );
+            })}
+      </div>
 
-      {/* 3. Consumables, Gemstones & Relics Inventory */}
-      {(invCategory === 'all' || invCategory === 'consumable') && (
-        <div className="space-y-1">
-          <div className="text-[9px] font-bold text-[#8dd7ad]">
-            SALVAGED CONSUMABLES, GEMSTONES & RELICS:
+      {/* Pop-Up / Slide-Over Inventory Item Inspector */}
+      {inspectedEntry && (
+        <div className="absolute inset-0 z-30 bg-[#05070a]/95 backdrop-blur-xs border border-[#8dd7ad]/60 rounded-xs flex flex-col p-3 overflow-hidden">
+          <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#1e293b] shrink-0">
+            <button
+              type="button"
+              data-menu-back="true"
+              onClick={() => {
+                soundSystem.playMenuBeep();
+                setInspectedEntry(null);
+              }}
+              className="px-2.5 py-1 bg-[#1e293b] hover:bg-[#334155] text-[#f8fafc] font-bold text-[10px] rounded-xs border border-[#475569] cursor-pointer"
+            >
+              ← Back to Cargo List
+            </button>
+            <span className="text-[10px] font-bold text-[#8dd7ad] uppercase">
+              Cargo Item Inspector · {inspectedEntry.kind.toUpperCase()}
+            </span>
           </div>
-          {state.inventorySlots.length === 0 ? (
-            <div className="text-center text-[#64748b] py-4 italic">
-              No salvage in inventory. Explore drop-pod marshlands and loot caches.
-            </div>
-          ) : (
-            consolidateInventorySlots(state.inventorySlots)
-              .filter((slot) => {
-                const def = getItemDefinition(slot.itemId);
-                if (!def) return false;
-                const isGem = slot.itemId in GEMSTONE_REGISTRY;
-                const cat = isGem ? 'gemstone' : def.category;
-                if (invCategory === 'consumable' && invSubtype !== 'ALL' && cat !== invSubtype) {
-                  return false;
-                }
-                return true;
-              })
-              .map((slot, idx) => {
-                const def = getItemDefinition(slot.itemId);
-                if (!def) return null;
-                const isGem = slot.itemId in GEMSTONE_REGISTRY;
+
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 pr-1">
+            {inspectedEntry.kind === 'weapon' &&
+              (() => {
+                const w = getWeaponDefinition(inspectedEntry.id);
+                if (!w) return null;
                 return (
-                  <div
-                    key={`${slot.itemId}-${idx}`}
-                    className="flex items-center justify-between p-1.5 bg-[#090d14] rounded-xs border border-[#1e293b]"
-                  >
-                    <div className="space-y-0.5 min-w-0 flex-1">
-                      <div className="font-bold text-[#ffd27d] flex items-center gap-1.5 flex-wrap">
-                        {def.iconSprite?.base64 ? (
-                          <SpriteCanvasIcon
-                            base64={def.iconSprite.base64}
-                            col={def.iconSprite.col || 0}
-                            row={def.iconSprite.row || 0}
-                            sizeClass="w-4 h-4"
-                          />
-                        ) : (
-                          <span className="text-[#38bdf8]">◆</span>
-                        )}
-                        <span>{def.name}</span>
+                  <div className="p-2.5 bg-[#090d14] border border-[#1e293b] rounded-xs space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-[13px] font-bold text-[#ffd27d]">
+                        {getEquipmentDisplayName(inspectedEntry.id, state)}
                         {devMode && (
-                          <span className="text-[9px] text-[#64748b] font-mono">
-                            [{slot.itemId}]
+                          <span className="ml-2 text-[9px] text-[#64748b] font-mono">
+                            [{inspectedEntry.id}]
                           </span>
                         )}
-                        <span className="text-[#94a3b8]">×{slot.count}</span>
-                        <span className="text-[9px] px-1 py-0.2 rounded-[2px] bg-[#1e293b] text-[#7dd3fc]">
-                          0 WT · {(isGem ? 'gemstone' : def.category).toUpperCase()}
-                        </span>
                       </div>
-                      <div className="text-[9px] text-[#cbd5e1]">{def.description}</div>
-                      {isGem && GEMSTONE_REGISTRY[slot.itemId as GemId] && (
-                        <div className="text-[9px] text-[#86efac]">
-                          + ARMORY MOD ({formatModifiedEquipmentName('Weapon', [slot.itemId as GemId])}):{' '}
-                          {WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS[slot.itemId as GemId]} ·{' '}
-                          {WEAPON_GEM_WEIGHT_DELTA[slot.itemId as GemId] >= 0
-                            ? `+${WEAPON_GEM_WEIGHT_DELTA[slot.itemId as GemId]}`
-                            : WEAPON_GEM_WEIGHT_DELTA[slot.itemId as GemId]}{' '}
-                          WT
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0 ml-2">
-                      {isGem && onOpenArmory && (
+                      <div className="flex items-center gap-1.5">
+                        {onOpenArmory && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setInspectedEntry(null);
+                              onOpenArmory(
+                                isAuxiliaryEquipment(w) ? 'slot2' : 'slot1',
+                                inspectedEntry.id
+                              );
+                            }}
+                            className="px-2.5 py-1 bg-[#451a03] hover:bg-[#78350f] text-[#fdba74] border border-[#fb923c]/60 rounded-xs text-[10px] font-bold cursor-pointer"
+                          >
+                            ⚙ Modify in Armory
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => {
-                            soundSystem.playSelect();
-                            onOpenArmory('slot1');
+                            setInspectedEntry(null);
+                            openSlotEditor(isAuxiliaryEquipment(w) ? 'slot2' : 'slot1');
                           }}
-                          className="px-1.5 py-1 bg-[#451a03] hover:bg-[#78350f] text-[#fdba74] font-bold rounded-xs border border-[#fb923c]/60 text-[9px] cursor-pointer"
+                          className="px-2.5 py-1 bg-[#1e293b] hover:bg-[#334155] text-[#38bdf8] border border-[#38bdf8]/50 rounded-xs text-[10px] font-bold cursor-pointer"
                         >
-                          ⚙ ARMORY
+                          Open Loadout Slot
                         </button>
-                      )}
-                      {isGem && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            soundSystem.playSelect();
-                            onOpenProgressionTab();
-                          }}
-                          className="px-1.5 py-1 bg-[#172554] hover:bg-[#1e3a8a] text-[#7dd3fc] font-bold rounded-xs border border-[#38bdf8]/60 text-[9px] cursor-pointer"
-                        >
-                          SKILLS & FEATS
-                        </button>
-                      )}
-                      {def.onUse && (
-                        <button
-                          type="button"
-                          onClick={() => handleUseItem(slot.itemId)}
-                          className="px-2 py-1 bg-[#1e293b] hover:bg-[#334155] text-[#38bdf8] font-bold rounded-xs border border-[#475569] text-[9px] cursor-pointer"
-                        >
-                          USE
-                        </button>
-                      )}
+                      </div>
                     </div>
+                    <div className="text-[10px] text-[#cbd5e1]">{w.description}</div>
+                    <WeaponStatReadout w={w} instanceId={inspectedEntry.id} state={state} />
                   </div>
                 );
-              })
-          )}
+              })()}
+
+            {inspectedEntry.kind === 'hardware' &&
+              (() => {
+                const hw = findHardwareItemByNameOrId(inspectedEntry.id);
+                if (!hw) return null;
+                const editTargetSlot: EditableLoadoutSlot =
+                  hw.slot === 'aux3' || hw.slot === 'aux4' ? 'slot3' : hw.slot;
+                return (
+                  <div className="p-2.5 bg-[#090d14] border border-[#1e293b] rounded-xs space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-[13px] font-bold text-[#38bdf8]">{hw.name}</div>
+                      <div className="flex items-center gap-1.5">
+                        {onOpenArmory && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setInspectedEntry(null);
+                              onOpenArmory(editTargetSlot, inspectedEntry.id);
+                            }}
+                            className="px-2.5 py-1 bg-[#451a03] hover:bg-[#78350f] text-[#fdba74] border border-[#fb923c]/60 rounded-xs text-[10px] font-bold cursor-pointer"
+                          >
+                            ⚙ Modify in Armory
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setInspectedEntry(null);
+                            openSlotEditor(editTargetSlot);
+                          }}
+                          className="px-2.5 py-1 bg-[#1e293b] hover:bg-[#334155] text-[#38bdf8] border border-[#38bdf8]/50 rounded-xs text-[10px] font-bold cursor-pointer"
+                        >
+                          Open Loadout Slot
+                        </button>
+                      </div>
+                    </div>
+                    <HardwareStatReadout
+                      hw={hw}
+                      maxGemSlots={getEquipmentMaxModSlots(inspectedEntry.id)}
+                    />
+                  </div>
+                );
+              })()}
+
+            {inspectedEntry.kind === 'mod' &&
+              (() => {
+                const m = ACTION_MODIFICATION_CATALOG.find((x) => x.id === inspectedEntry.id);
+                if (!m) return null;
+                return (
+                  <div className="p-2.5 bg-[#090d14] border border-[#1e293b] rounded-xs space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-[13px] font-bold text-[#c084fc]">{m.name}</div>
+                      {onOpenArmory && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setInspectedEntry(null);
+                            onOpenArmory(
+                              m.targetCategory === 'melee'
+                                ? 'mod_melee'
+                                : m.targetCategory === 'mobility'
+                                  ? 'mod_mobility'
+                                  : 'mod_ranged'
+                            );
+                          }}
+                          className="px-2.5 py-1 bg-[#451a03] hover:bg-[#78350f] text-[#fdba74] border border-[#fb923c]/60 rounded-xs text-[10px] font-bold cursor-pointer"
+                        >
+                          ⚙ Install in Armory
+                        </button>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-[#86efac]">+ {m.gainDescription}</div>
+                    {m.drawbackDescription && (
+                      <div className="text-[10px] text-[#f87171]">− {m.drawbackDescription}</div>
+                    )}
+                  </div>
+                );
+              })()}
+
+            {inspectedEntry.kind === 'consumable' &&
+              (() => {
+                const def = getItemDefinition(inspectedEntry.id);
+                if (!def) return null;
+                const isGem = inspectedEntry.id in GEMSTONE_REGISTRY;
+                return (
+                  <div className="p-2.5 bg-[#090d14] border border-[#1e293b] rounded-xs space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-[13px] font-bold text-[#50fa7b]">{def.name}</div>
+                      <div className="flex items-center gap-1.5">
+                        {isGem && onOpenArmory && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setInspectedEntry(null);
+                              onOpenArmory('slot1');
+                            }}
+                            className="px-2.5 py-1 bg-[#451a03] hover:bg-[#78350f] text-[#fdba74] font-bold rounded-xs border border-[#fb923c]/60 text-[10px] cursor-pointer"
+                          >
+                            ⚙ Socket in Armory
+                          </button>
+                        )}
+                        {isGem && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setInspectedEntry(null);
+                              onOpenProgressionTab();
+                            }}
+                            className="px-2.5 py-1 bg-[#172554] hover:bg-[#1e3a8a] text-[#7dd3fc] font-bold rounded-xs border border-[#38bdf8]/60 text-[10px] cursor-pointer"
+                          >
+                            Socket in Feats
+                          </button>
+                        )}
+                        {def.onUse && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleUseItem(inspectedEntry.id);
+                              setInspectedEntry(null);
+                            }}
+                            className="px-2.5 py-1 bg-[#1e293b] hover:bg-[#334155] text-[#38bdf8] font-bold rounded-xs border border-[#475569] text-[10px] cursor-pointer"
+                          >
+                            Use Item
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-[10px] text-[#cbd5e1]">{def.description}</div>
+                    {isGem && GEMSTONE_REGISTRY[inspectedEntry.id as GemId] && (
+                      <div className="text-[9px] text-[#86efac]">
+                        + Weapon Socket (
+                        {formatModifiedEquipmentName('Weapon', [inspectedEntry.id as GemId])}):{' '}
+                        {WEAPON_GEM_COMBAT_BONUS_DESCRIPTIONS[inspectedEntry.id as GemId]} (
+                        {WEAPON_GEM_WEIGHT_DELTA[inspectedEntry.id as GemId] >= 0
+                          ? `+${WEAPON_GEM_WEIGHT_DELTA[inspectedEntry.id as GemId]}`
+                          : WEAPON_GEM_WEIGHT_DELTA[inspectedEntry.id as GemId]}{' '}
+                        WT)
+                      </div>
+                    )}
+                    {def.lore && (
+                      <div className="pt-1.5 border-t border-[#1e293b] text-[10px] text-[#fde68a] italic">
+                        “{def.lore}”
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+          </div>
         </div>
       )}
     </div>

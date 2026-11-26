@@ -48,10 +48,9 @@ export interface OrionGameMenuProps {
 type MenuSubView = 'main' | 'new_pilot' | 'load_roster' | 'world_map' | 'controls' | 'codex';
 
 /**
- * Renders the `[START]` pause menu for Project Orion, providing pilot roster save/load,
- * new pilot creation, `-4,0` Training Sandbox access, view-only Cosmic World Map (`accessMode="menu"`),
- * and display/audio toggles. Supports both HUD modes (React overlay HUD and pixel canvas HUD)
- * and mutates `state: OrionState` through `getOrionStateRef()` when saving, loading, or toggling options.
+ * Renders the `[START]` pause menu for Project Orion with a clean, spacious vertical command list
+ * and dedicated full-width sub-views (`Pilot Roster [Save / Load / New]`, `Exploration Map`, `Field Codex`,
+ * `Settings & Controls`, and `Training Sandbox`).
  */
 export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
   soundEnabled,
@@ -196,212 +195,199 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
       data-universal-menu="true"
       className="absolute inset-0 z-20 bg-[#05070a]/95 backdrop-blur-xs flex flex-col p-2.5 sm:p-3 overflow-hidden text-[#e2e8f0] font-mono select-none"
     >
-      {/* Top Header */}
-      <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-[#1e293b]">
-        <div className="flex items-center gap-1.5 font-bold text-[12px] sm:text-[13px] text-[#ffd27d] tracking-wider">
-          <span>PROJECT ORION — BELLDOR EXPEDITION</span>
-          <span className="text-[10px] text-[#94a3b8] bg-[#1e293b] px-1 py-0.5 rounded-xs">
-            START
-          </span>
-        </div>
+      {/* Single Compact Top Header */}
+      <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-[#1e293b] shrink-0">
         <div className="flex items-center gap-2">
+          <span className="font-bold text-[12px] sm:text-[13px] text-[#ffd27d] tracking-wider">
+            ORION COMMAND
+          </span>
           {activeState && (
-            <span className="text-[9px] text-[#38bdf8] bg-[#0f172a] border border-[#1e293b] px-1.5 py-0.5 rounded-xs">
-              {activeState.pilotName} · {(TRAIT_REGISTRY[activeState.traitLine]?.frameModel || 'Mark-IV')} Lv.{activeState.level}
+            <span className="text-[10px] text-[#94a3b8]">
+              · <b className="text-[#38bdf8]">{activeState.pilotName}</b> ({TRAIT_REGISTRY[activeState.traitLine]?.frameModel || 'Mark-IV'} Lv.{activeState.level})
             </span>
           )}
+        </div>
+        <div className="flex items-center gap-1.5">
+          {subView !== 'main' && (
+            <button
+              type="button"
+              data-menu-back="true"
+              onClick={() => {
+                soundSystem.playMenuBeep();
+                setSubView('main');
+              }}
+              className="text-[10px] px-2.5 py-0.5 bg-[#0f172a] hover:bg-[#1e293b] text-[#e2e8f0] rounded-xs font-bold border border-[#334155] cursor-pointer"
+            >
+              ← Menu
+            </button>
+          )}
           <button
+            type="button"
             onClick={() => {
               soundSystem.playSelect();
               onResume();
             }}
-            className="text-[10px] px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#facc15] rounded-xs font-bold border border-[#475569]"
+            className="text-[10px] px-2.5 py-0.5 bg-[#1e293b] hover:bg-[#334155] text-[#facc15] rounded-xs font-bold border border-[#475569] cursor-pointer"
           >
-            ✕ RESUME
+            Resume [Start]
           </button>
         </div>
       </div>
 
       {feedback && (
-        <div className="mb-2 py-1.5 px-2.5 bg-[#1e293b] border border-[#facc15] text-center text-[11px] leading-snug text-[#facc15] font-bold animate-pulse rounded-xs shadow-sm whitespace-normal break-words">
+        <div className="mb-2 py-1.5 px-2.5 bg-[#1e293b] border border-[#facc15] text-center text-[11px] leading-snug text-[#facc15] font-bold animate-pulse rounded-xs shadow-sm whitespace-normal break-words shrink-0">
           {feedback}
         </div>
       )}
 
       {subView === 'new_pilot' ? (
-        /* Subview 1: §2.4 NEW GAME — PILOT CREATION (Starting Kit -> Pilot Name -> Level 1 Start) */
-        <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-[10px] leading-snug">
-          <div className="flex items-center justify-between pb-1 border-b border-[#334155]">
-            <span className="font-bold text-[#facc15]">
-              §2.4 NEW GAME — PILOT & FRAME BONDING (LEVEL 1 START)
+        /* Subview 1: NEW PILOT CREATION */
+        <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 text-[10px] leading-snug">
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-[#facc15] text-[11px]">
+              DEPLOY NEW PILOT &amp; CHASSIS (LEVEL 1 START)
             </span>
             <button
-              data-menu-back="true"
+              type="button"
               onClick={() => {
                 soundSystem.playMenuBeep();
-                setSubView('main');
+                setSubView('load_roster');
               }}
-              className="text-[10px] underline text-[#94a3b8] hover:text-white"
+              className="text-[10px] text-[#38bdf8] hover:underline cursor-pointer"
             >
-              ← Back
+              View Saved Roster ({roster.length}) →
             </button>
           </div>
 
-          {/* Step 1: Starting Loadout Kit Selection */}
-          <div>
-            <div className="text-[9px] text-[#94a3b8] font-bold mb-1">
-              1. SELECT STARTING LOADOUT KIT & MECH CHASSIS (CLASSLESS)
-            </div>
-            <div className="grid grid-cols-3 gap-1">
-              {TRAIT_LIST.map((t) => {
-                const isSelected = t.id === selectedTrait;
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => {
-                      soundSystem.playSelect();
-                      setSelectedTrait(t.id);
-                      if (
-                        Object.values(DEFAULT_CALLSIGNS).includes(newPilotName) ||
-                        !newPilotName.trim()
-                      ) {
-                        setNewPilotName(DEFAULT_CALLSIGNS[t.id]);
-                      }
-                    }}
-                    className={`p-1.5 rounded-xs border text-left transition-colors ${
-                      isSelected
-                        ? 'bg-[#1e293b] border-[#facc15] text-white'
-                        : 'bg-[#090d16] border-[#1e293b] text-[#94a3b8] hover:border-[#475569]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-[10px] text-[#ffd27d]">{t.name}</span>
-                      <span className="text-[9px] px-1 bg-[#0f172a] text-[#38bdf8] rounded-xs">
-                        {t.reactor}
-                      </span>
-                    </div>
-                    <div className="text-[9px] text-[#cbd5e1] mt-0.5">
-                      {t.frameModel || 'Mark-IV'} · {(t.weightClass || 'medium').toUpperCase()}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+            {TRAIT_LIST.map((t) => {
+              const isSelected = t.id === selectedTrait;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => {
+                    soundSystem.playSelect();
+                    setSelectedTrait(t.id);
+                    if (
+                      Object.values(DEFAULT_CALLSIGNS).includes(newPilotName) ||
+                      !newPilotName.trim()
+                    ) {
+                      setNewPilotName(DEFAULT_CALLSIGNS[t.id]);
+                    }
+                  }}
+                  className={`p-2 rounded-xs border text-left transition-colors cursor-pointer ${
+                    isSelected
+                      ? 'bg-[#1e293b] border-[#facc15] text-white'
+                      : 'bg-[#090d16] border-[#1e293b] text-[#94a3b8] hover:border-[#475569]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-[10px] text-[#ffd27d]">{t.name}</span>
+                    <span className="text-[9px] text-[#38bdf8]">{t.reactor}</span>
+                  </div>
+                  <div className="text-[9px] text-[#cbd5e1] mt-0.5">
+                    {t.frameModel || 'Mark-IV'} · {(t.weightClass || 'medium').toUpperCase()}
+                  </div>
+                </button>
+              );
+            })}
           </div>
 
-          {/* Selected Frame Telemetry Preview */}
-          <div className="p-2 bg-[#0b111e] border border-[#334155] rounded-xs space-y-1">
-            <div className="flex items-center justify-between">
+          {/* Selected Frame Telemetry Summary */}
+          <div className="p-2.5 bg-[#0b111e] border border-[#334155] rounded-xs space-y-1.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="font-bold text-[#38bdf8] text-[10px]">
-                CHASSIS: {traitProfile.frameModel} ({traitProfile.name.toUpperCase()})
+                {traitProfile.frameModel} ({traitProfile.name.toUpperCase()})
               </span>
-              <span className="text-[9px] px-1.5 py-0.5 bg-[#1e293b] text-[#facc15] rounded-xs font-bold">
-                LOAD: {(traitProfile.weightClass || 'medium').toUpperCase()}
-                {devMode ? ' · HP: 200' : ''}
+              <span className="text-[9px] text-[#94a3b8] font-mono">
+                Shield: <b className="text-[#7dd3fc]">{traitProfile.baseShield.type.toUpperCase()}</b> · Armor:{' '}
+                <b className="text-[#fbbf24]">{traitProfile.baseArmor.type}</b> · Lv.6 Utility:{' '}
+                <b className="text-[#4ade80]">{utilityDef.shortLabel}</b>
               </span>
             </div>
-            <div className="text-[9px] text-[#cbd5e1]">{traitProfile.identity}</div>
-            <div className="grid grid-cols-3 gap-1 pt-1 text-[9px]">
-              <div className="p-1 bg-[#090d16] border border-[#1e293b] rounded-xs">
-                <div className="text-[#94a3b8]">SHIELD (L1)</div>
-                <div className="text-[#7dd3fc] font-bold">
-                  {devMode
-                    ? `${traitProfile.baseShield.capacity} (${traitProfile.baseShield.type.toUpperCase()})`
-                    : traitProfile.baseShield.type.toUpperCase()}
-                </div>
-              </div>
-              <div className="p-1 bg-[#090d16] border border-[#1e293b] rounded-xs">
-                <div className="text-[#94a3b8]">ARMOR (L2)</div>
-                <div className="text-[#fbbf24] font-bold">
-                  {devMode
-                    ? `${traitProfile.baseArmor.type} · ${traitProfile.baseArmor.durability} DUR`
-                    : traitProfile.baseArmor.type}
-                </div>
-              </div>
-              <div className="p-1 bg-[#090d16] border border-[#1e293b] rounded-xs">
-                <div className="text-[#94a3b8]">LV.6 UTILITY</div>
-                <div className="text-[#4ade80] font-bold truncate">{utilityDef.shortLabel}</div>
-              </div>
-            </div>
+            <div className="text-[10px] text-[#cbd5e1]">{traitProfile.identity}</div>
           </div>
 
-          {/* Step 2: Pilot Name */}
-          <div className="p-2 bg-[#0b111e] border border-[#334155] rounded-xs">
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-[9px] text-[#94a3b8] font-bold">
-                2. ENTER PILOT CALLSIGN / NAME
-              </label>
-              <button
-                type="button"
-                onClick={() => {
-                  soundSystem.playMenuBeep();
-                  setNewPilotName(DEFAULT_CALLSIGNS[selectedTrait]);
-                }}
-                className="text-[9px] text-[#38bdf8] hover:underline"
-              >
-                Use Default ({DEFAULT_CALLSIGNS[selectedTrait]})
-              </button>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <input
-                type="text"
-                maxLength={22}
-                value={newPilotName}
-                onChange={(e) => setNewPilotName(e.target.value)}
-                placeholder="Enter Pilot Name..."
-                className="flex-1 bg-[#020617] border border-[#475569] focus:border-[#facc15] rounded-xs px-2 py-1 text-[11px] text-white font-mono outline-none"
-              />
-              <button
-                type="button"
-                onClick={handleCreateNewPilot}
-                className="px-3 py-1 bg-[#facc15] hover:bg-[#fde047] text-[#05070a] font-bold text-[10px] rounded-xs shadow-xs"
-              >
-                🚀 DEPLOY LV.1 ({devMode ? 'M00 BOG' : 'THE BOG'})
-              </button>
-            </div>
+          {/* Callsign & Deploy Action */}
+          <div className="p-2.5 bg-[#0b111e] border border-[#334155] rounded-xs flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              maxLength={22}
+              value={newPilotName}
+              onChange={(e) => setNewPilotName(e.target.value)}
+              placeholder="Enter Pilot Callsign..."
+              className="flex-1 min-w-[160px] bg-[#020617] border border-[#475569] focus:border-[#facc15] rounded-xs px-2.5 py-1 text-[11px] text-white font-mono outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                soundSystem.playMenuBeep();
+                setNewPilotName(DEFAULT_CALLSIGNS[selectedTrait]);
+              }}
+              className="px-2 py-1 bg-[#1e293b] hover:bg-[#334155] text-[#cbd5e1] text-[10px] rounded-xs border border-[#334155] cursor-pointer"
+            >
+              Default Name
+            </button>
+            <button
+              type="button"
+              onClick={handleCreateNewPilot}
+              className="px-3 py-1 bg-[#facc15] hover:bg-[#fde047] text-[#05070a] font-bold text-[10px] rounded-xs cursor-pointer"
+            >
+              🚀 Deploy Lv.1 Pilot
+            </button>
           </div>
         </div>
       ) : subView === 'load_roster' ? (
-        /* Subview 2: §2.4 LOAD GAME — PILOT CHARACTER ROSTER */
+        /* Subview 2: PILOT ROSTER (SAVE / LOAD / NEW PILOT) */
         <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-[10px] leading-snug">
-          <div className="flex items-center justify-between pb-1 border-b border-[#334155]">
-            <span className="font-bold text-[#facc15]">
-              §2.4 LOAD GAME — SAVED PILOT CHARACTER ROSTER ({roster.length})
+          <div className="flex flex-wrap items-center justify-between gap-2 pb-1.5 border-b border-[#334155]">
+            <span className="font-bold text-[#facc15] text-[11px]">
+              PILOT ROSTER ({roster.length} SAVED)
             </span>
-            <button
-              data-menu-back="true"
-              onClick={() => {
-                soundSystem.playMenuBeep();
-                setSubView('main');
-              }}
-              className="text-[10px] underline text-[#94a3b8] hover:text-white"
-            >
-              ← Back
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={handleSave}
+                className="px-2.5 py-1 bg-[#065f46] hover:bg-[#047857] text-[#a7f3d0] border border-[#10b981]/50 font-bold text-[10px] rounded-xs cursor-pointer"
+              >
+                💾 Save Active Pilot
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  soundSystem.playSelect();
+                  setSubView('new_pilot');
+                }}
+                className="px-2.5 py-1 bg-[#facc15] hover:bg-[#fde047] text-[#05070a] font-bold text-[10px] rounded-xs cursor-pointer"
+              >
+                + New Pilot
+              </button>
+            </div>
           </div>
 
           {roster.length === 0 ? (
-            <div className="p-4 bg-[#0b111e] border border-[#1e293b] rounded-xs text-center space-y-2">
-              <div className="text-[#94a3b8] text-[10px]">
-                NO SAVED PILOTS IN ROSTER YET.
-              </div>
+            <div className="p-6 bg-[#0b111e] border border-[#1e293b] rounded-xs text-center space-y-2">
+              <div className="text-[#94a3b8] text-[10px]">No saved pilots in roster yet.</div>
               <div className="flex justify-center gap-2">
                 <button
+                  type="button"
                   onClick={() => setSubView('new_pilot')}
-                  className="px-2.5 py-1 bg-[#facc15] text-[#05070a] font-bold rounded-xs text-[10px]"
+                  className="px-3 py-1 bg-[#facc15] text-[#05070a] font-bold rounded-xs text-[10px] cursor-pointer"
                 >
-                  + CREATE NEW PILOT
+                  + Create New Pilot
                 </button>
                 <button
+                  type="button"
                   onClick={handleQuickLoadLast}
-                  className="px-2.5 py-1 bg-[#1e293b] border border-[#475569] text-[#e2e8f0] font-bold rounded-xs text-[10px]"
+                  className="px-3 py-1 bg-[#1e293b] border border-[#475569] text-[#e2e8f0] font-bold rounded-xs text-[10px] cursor-pointer"
                 >
-                  TRY LEGACY SLOT
+                  Restore Last Autosave
                 </button>
               </div>
             </div>
           ) : (
-            <div className="space-y-1.5">
+            <div className="divide-y divide-[#1e293b] bg-[#090d14] border border-[#1e293b] rounded-xs">
               {roster.map((entry) => {
                 const isCurrent = activeState?.pilotId === entry.pilotId;
                 const rawZoneLabel =
@@ -415,45 +401,38 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
                 return (
                   <div
                     key={entry.pilotId}
-                    className={`p-2 rounded-xs border flex items-center justify-between gap-2 ${
-                      isCurrent
-                        ? 'bg-[#1e293b]/90 border-[#38bdf8]'
-                        : 'bg-[#0b111e] border-[#334155]'
+                    className={`p-2.5 flex items-center justify-between gap-2 ${
+                      isCurrent ? 'bg-[#1e293b]/60' : ''
                     }`}
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-[11px] text-[#ffd27d] truncate">
                           {entry.pilotName}
                         </span>
-                        <span className="text-[9px] px-1 py-0.2 bg-[#090d16] text-[#38bdf8] border border-[#1e293b] rounded-xs font-bold">
-                          LV.{entry.level} {(kitProfile?.name || entry.frameModel).toUpperCase()}
+                        <span className="text-[9px] text-[#38bdf8] font-bold">
+                          Lv.{entry.level} {(kitProfile?.name || entry.frameModel).toUpperCase()}
                         </span>
                         <span className="text-[9px] text-[#94a3b8]">
-                          [{entry.frameModel} · {entry.reactor}]
+                          · {entry.frameModel} · {zoneLabel}
                         </span>
                         {isCurrent && (
-                          <span className="text-[9px] px-1 bg-[#22c55e]/20 text-[#4ade80] rounded-xs font-bold">
-                            ACTIVE
-                          </span>
+                          <span className="text-[9px] text-[#4ade80] font-bold">· ACTIVE</span>
                         )}
                       </div>
-                      <div className="text-[9px] text-[#94a3b8] mt-0.5">
-                        Zone: <span className="text-[#cbd5e1]">{zoneLabel}</span>
-                        {devMode ? ` (${entry.room})` : ''} ·{' '}
-                        {entry.tutorialActive ? 'Tutorial Onboarding' : 'Standard Progression'}
-                      </div>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex items-center gap-1.5 shrink-0">
                       <button
+                        type="button"
                         onClick={() => handleLoadPilotEntry(entry.pilotId, entry.pilotName)}
-                        className="px-2 py-1 bg-[#0284c7] hover:bg-[#0369a1] text-white font-bold text-[10px] rounded-xs"
+                        className="px-2.5 py-1 bg-[#0284c7] hover:bg-[#0369a1] text-white font-bold text-[10px] rounded-xs cursor-pointer"
                       >
-                        LOAD
+                        Load
                       </button>
                       <button
+                        type="button"
                         onClick={() => handleDeletePilotEntry(entry.pilotId, entry.pilotName)}
-                        className="px-1.5 py-1 bg-[#1e293b] hover:bg-[#7f1d1d] text-[#fca5a5] font-bold text-[9px] rounded-xs border border-[#334155]"
+                        className="px-2 py-1 bg-[#1e293b] hover:bg-[#7f1d1d] text-[#fca5a5] font-bold text-[9px] rounded-xs border border-[#334155] cursor-pointer"
                         title="Delete Pilot Save"
                       >
                         ✕
@@ -466,23 +445,8 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
           )}
         </div>
       ) : subView === 'world_map' && activeState ? (
-        /* Subview 3: Local Mini-Map (Progressive Exploration Cartography) */
-        <div className="flex-1 min-h-0 flex flex-col space-y-1.5 overflow-hidden">
-          <div className="flex items-center justify-between pb-1 border-b border-[#334155]">
-            <span className="font-bold text-[#22d3ee] text-[11px]">
-              LOCAL MINI-MAP (EXPLORATION CARTOGRAPHY)
-            </span>
-            <button
-              data-menu-back="true"
-              onClick={() => {
-                soundSystem.playMenuBeep();
-                setSubView('main');
-              }}
-              className="text-[10px] underline text-[#94a3b8] hover:text-white cursor-pointer"
-            >
-              ← Back to Menu
-            </button>
-          </div>
+        /* Subview 3: Exploration Mini-Map */
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           <SatchelWorldTab
             state={activeState}
             isCheatMode={
@@ -494,24 +458,8 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
           />
         </div>
       ) : subView === 'controls' ? (
-        /* Subview 4: Unified 3-Tab Settings (Controls, Graphics, Audio & HUD) */
-        <div className="flex-1 min-h-0 flex flex-col space-y-1.5 overflow-hidden">
-          <div className="flex items-center justify-between pb-1 border-b border-[#334155] shrink-0">
-            <span className="font-bold text-[#facc15] text-[11px]">
-              SYSTEM SETTINGS — CONTROLS, GRAPHICS & AUDIO
-            </span>
-            <button
-              data-menu-back="true"
-              onClick={() => {
-                soundSystem.playMenuBeep();
-                setSubView('main');
-              }}
-              className="text-[10px] underline text-[#94a3b8] hover:text-white cursor-pointer"
-            >
-              ← Back to Menu [B]
-            </button>
-          </div>
-
+        /* Subview 4: Unified Settings (Controls, Graphics, Audio & HUD) */
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           <OrionSettingsPanel
             soundEnabled={soundEnabled}
             scanlinesEnabled={scanlinesEnabled}
@@ -524,266 +472,236 @@ export const OrionGameMenu: React.FC<OrionGameMenuProps> = ({
         </div>
       ) : subView === 'codex' && activeState ? (
         /* Subview 5: Discovery-Gated In-Game Pilot Codex */
-        <div className="flex-1 min-h-0 flex flex-col space-y-1.5 overflow-hidden">
-          <div className="flex items-center justify-between pb-1 border-b border-[#334155]">
-            <span className="font-bold text-[#50fa7b] text-[11px]">
-              PILOT FIELD CODEX (DISCOVERED ARCHIVES)
-            </span>
-            <button
-              data-menu-back="true"
-              onClick={() => {
-                soundSystem.playMenuBeep();
-                setSubView('main');
-              }}
-              className="text-[10px] underline text-[#94a3b8] hover:text-white cursor-pointer"
-            >
-              ← Back to Menu
-            </button>
-          </div>
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           <SatchelCodexTab state={activeState} />
         </div>
       ) : (
-        /* Main Menu Grid */
-        <div className="flex-1 flex flex-col justify-between overflow-y-auto pr-0.5">
-          <div className="grid grid-cols-2 gap-1.5 mb-2">
+        /* Main Pause View: Clean Centered Command Stack + Single Quick-Toggle Bar */
+        <div className="flex-1 min-h-0 flex flex-col justify-between overflow-y-auto">
+          <div className="max-w-md w-full mx-auto space-y-1.5 my-auto py-1">
             <button
+              type="button"
               onClick={() => {
                 soundSystem.playSelect();
-                setSubView('new_pilot');
+                onResume();
               }}
-              className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#facc15]/60 rounded-xs text-[11px] font-bold text-left flex items-center justify-between cursor-pointer"
+              className="w-full py-2 px-3 bg-[#1e293b] hover:bg-[#334155] border border-[#facc15]/70 rounded-xs text-[11px] font-bold flex items-center justify-between cursor-pointer"
             >
-              <span className="text-[#ffd27d]">✨ NEW</span>
-              <span className="text-[9px] text-[#94a3b8]">NEW PILOT</span>
+              <span className="text-[#fde047]">▶ RESUME EXPEDITION</span>
+              <span className="text-[9px] text-[#94a3b8]">RETURN TO FIELD</span>
             </button>
 
-            <button
-              onClick={handleOpenLoadRoster}
-              className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#38bdf8]/60 rounded-xs text-[11px] font-bold text-left flex items-center justify-between cursor-pointer"
-            >
-              <span className="text-[#7dd3fc]">📂 LOAD</span>
-              <span className="text-[9px] text-[#94a3b8]">ROSTER ({roster.length})</span>
-            </button>
-
-            <button
-              onClick={() => {
-                const state = getOrionStateRef();
-                if (state) {
-                  enterTrainingSandboxRoom(state);
-                  onResume();
-                }
-              }}
-              className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#3b82f6] rounded-xs text-[11px] font-bold text-left flex items-center justify-between cursor-pointer"
-            >
-              <span className="text-[#93c5fd]">
-                {activeState?.room === '-4,0' ? '↩ EXIT TRAINING' : '⚔ TRAINING ROOM'}
-              </span>
-              <span className="text-[9px] text-[#60a5fa]">
-                {activeState?.room === '-4,0'
-                  ? 'RETURN TO FIELD'
-                  : devMode
-                    ? 'POD & WAYGATE [-4,0]'
-                    : 'POD & WAYGATE'}
-              </span>
-            </button>
-
-            <button
-              onClick={() => {
-                soundSystem.playSelect();
-                setSubView('world_map');
-              }}
-              className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#a855f7]/70 rounded-xs text-[11px] font-bold text-left flex items-center justify-between cursor-pointer"
-            >
-              <span className="text-[#e9d5ff]">🗺 MINI-MAP</span>
-              <span className="text-[9px] text-[#c084fc]">LOCAL MAP →</span>
-            </button>
-
-            <button
-              onClick={handleSave}
-              className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#475569] rounded-xs text-[11px] font-bold text-left flex items-center justify-between cursor-pointer"
-            >
-              <span>💾 SAVE PILOT</span>
-              <span className="text-[9px] text-[#4ade80]">SYNC ROSTER</span>
-            </button>
-
-            <button
-              onClick={() => {
-                soundSystem.playSelect();
-                setSubView('controls');
-              }}
-              className="py-1.5 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#facc15]/60 rounded-xs text-[11px] font-bold text-left flex items-center justify-between cursor-pointer"
-            >
-              <span className="text-[#fde047]">⚙ SETTINGS</span>
-              <span className="text-[9px] text-[#facc15]">CONTROLS · GFX →</span>
-            </button>
-
-            <button
-              onClick={() => {
-                soundSystem.playSelect();
-                setSubView('codex');
-              }}
-              className="col-span-2 py-1.5 px-2 bg-[#16201a] hover:bg-[#1e2e24] border border-[#50fa7b]/50 rounded-xs text-[11px] font-bold text-left flex items-center justify-between cursor-pointer"
-            >
-              <span className="text-[#50fa7b]">📖 PILOT CODEX</span>
-              <span className="text-[9px] text-[#9aa8a0]">BESTIARY · ARSENAL · RELICS · CHRONICLES →</span>
-            </button>
-          </div>
-
-          {/* Quick Options Strip */}
-          <div className="space-y-1 mb-2 bg-[#020617]/40 p-1.5 rounded-xs border border-[#1e293b]">
-            {devMode &&
-              (activeState?.room === '-4,0' || Boolean(activeState?.bypassProgressionGates)) && (
-                <div className="flex items-center justify-between text-[10px]">
-                  <span>TUTORIAL STATE MODE</span>
-                  <button
-                    onClick={() => {
-                      const state = getOrionStateRef();
-                      if (state) {
-                        setTutorialStateActive(state, !state.tutorialActive);
-                        showToast(
-                          state.tutorialActive
-                            ? 'TUTORIAL STATE: ACTIVE (STANDARD PROGRESSION LOCKED)'
-                            : 'TUTORIAL CLEARED: STANDARD PROGRESSION UNLOCKED',
-                          1500
-                        );
-                        soundSystem.playSelect();
-                        setTick((t) => t + 1);
-                      }
-                    }}
-                    className={`px-1.5 py-0.5 rounded-xs font-bold text-[9px] ${
-                      (getOrionStateRef()?.tutorialActive ?? true)
-                        ? 'bg-[#4f46e5]/40 text-[#c7d2fe] border border-[#818cf8]/60'
-                        : 'bg-[#22c55e]/20 text-[#4ade80] border border-[#22c55e]/40'
-                    }`}
-                  >
-                    {(getOrionStateRef()?.tutorialActive ?? true)
-                      ? 'TUTORIAL LOCKOUT'
-                      : 'STANDARD UNLOCKED'}
-                  </button>
-                </div>
-              )}
-
-            <div className="flex items-center justify-between text-[10px]">
-              <span>CHIPTUNE AUDIO</span>
+            <div className="grid grid-cols-2 gap-1.5">
               <button
-                onClick={onToggleSound}
-                className={`px-1.5 py-0.5 rounded-xs font-bold text-[9px] ${
-                  soundEnabled
-                    ? 'bg-[#22c55e]/20 text-[#4ade80] border border-[#22c55e]/40'
-                    : 'bg-[#ef4444]/20 text-[#f87171] border border-[#ef4444]/40'
-                }`}
+                type="button"
+                onClick={handleSave}
+                className="py-2 px-3 bg-[#0f172a] hover:bg-[#1e293b] border border-[#334155] rounded-xs text-[11px] font-bold flex items-center justify-between cursor-pointer"
               >
-                {soundEnabled ? 'ON' : 'MUTED'}
+                <span className="text-[#4ade80]">💾 SAVE PILOT</span>
+                <span className="text-[9px] text-[#94a3b8]">QUICK SYNC</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleOpenLoadRoster}
+                className="py-2 px-3 bg-[#0f172a] hover:bg-[#1e293b] border border-[#38bdf8]/50 rounded-xs text-[11px] font-bold flex items-center justify-between cursor-pointer"
+              >
+                <span className="text-[#7dd3fc]">📂 PILOT ROSTER</span>
+                <span className="text-[9px] text-[#94a3b8]">LOAD / NEW ({roster.length}) →</span>
               </button>
             </div>
 
-            <div className="flex items-center justify-between text-[10px]">
-              <span>RETRO SCANLINES</span>
+            <div className="grid grid-cols-2 gap-1.5">
               <button
-                onClick={onToggleScanlines}
-                className={`px-1.5 py-0.5 rounded-xs font-bold text-[9px] ${
-                  scanlinesEnabled
-                    ? 'bg-[#22c55e]/20 text-[#4ade80] border border-[#22c55e]/40'
-                    : 'bg-[#334155] text-[#94a3b8] border border-[#475569]'
-                }`}
+                type="button"
+                onClick={() => {
+                  soundSystem.playSelect();
+                  setSubView('world_map');
+                }}
+                className="py-2 px-3 bg-[#0f172a] hover:bg-[#1e293b] border border-[#334155] rounded-xs text-[11px] font-bold flex items-center justify-between cursor-pointer"
               >
-                {scanlinesEnabled ? 'CRT ON' : 'OFF'}
+                <span className="text-[#e9d5ff]">🗺 LOCAL MAP</span>
+                <span className="text-[9px] text-[#94a3b8]">CARTOGRAPHY →</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  soundSystem.playSelect();
+                  setSubView('codex');
+                }}
+                className="py-2 px-3 bg-[#0f172a] hover:bg-[#1e293b] border border-[#334155] rounded-xs text-[11px] font-bold flex items-center justify-between cursor-pointer"
+              >
+                <span className="text-[#50fa7b]">📖 FIELD CODEX</span>
+                <span className="text-[9px] text-[#94a3b8]">ARCHIVES →</span>
               </button>
             </div>
 
-            <div className="flex items-center justify-between text-[10px]">
-              <span>HUD STYLE</span>
+            <div className="grid grid-cols-2 gap-1.5">
               <button
+                type="button"
+                onClick={() => {
+                  soundSystem.playSelect();
+                  setSubView('controls');
+                }}
+                className="py-2 px-3 bg-[#0f172a] hover:bg-[#1e293b] border border-[#334155] rounded-xs text-[11px] font-bold flex items-center justify-between cursor-pointer"
+              >
+                <span className="text-[#fde047]">⚙ SETTINGS</span>
+                <span className="text-[9px] text-[#94a3b8]">CONTROLS · GFX →</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => {
                   const state = getOrionStateRef();
                   if (state) {
-                    const nextHires = !(state.useStandardResolutionHud ?? true);
-                    state.useStandardResolutionHud = nextHires;
-                    updateOrionGraphicsSettings({
-                      hudResolution: nextHires ? 'hires' : 'pixel',
-                    });
+                    enterTrainingSandboxRoom(state);
+                    onResume();
+                  }
+                }}
+                className="py-2 px-3 bg-[#0f172a] hover:bg-[#1e293b] border border-[#3b82f6]/60 rounded-xs text-[11px] font-bold flex items-center justify-between cursor-pointer"
+              >
+                <span className="text-[#93c5fd]">
+                  {activeState?.room === '-4,0' ? '↩ EXIT SANDBOX' : '⚔ TRAINING ROOM'}
+                </span>
+                <span className="text-[9px] text-[#60a5fa]">
+                  {activeState?.room === '-4,0' ? 'FIELD' : 'POD & WAYGATE'}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Bottom Bar: Inline Quick Toggles + Exit Controls */}
+          <div className="pt-2 border-t border-[#1e293b] space-y-1.5 shrink-0">
+            <div className="flex flex-wrap items-center justify-between gap-1.5 px-2 py-1 bg-[#090d14] border border-[#1e293b] rounded-xs text-[9px]">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={onToggleSound}
+                  className={`px-2 py-0.5 rounded-xs font-bold border cursor-pointer ${
+                    soundEnabled
+                      ? 'bg-[#22c55e]/20 text-[#4ade80] border-[#22c55e]/40'
+                      : 'bg-[#ef4444]/20 text-[#f87171] border-[#ef4444]/40'
+                  }`}
+                >
+                  Audio: {soundEnabled ? 'ON' : 'MUTED'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={onToggleScanlines}
+                  className={`px-2 py-0.5 rounded-xs font-bold border cursor-pointer ${
+                    scanlinesEnabled
+                      ? 'bg-[#22c55e]/20 text-[#4ade80] border-[#22c55e]/40'
+                      : 'bg-[#1e293b] text-[#94a3b8] border-[#334155]'
+                  }`}
+                >
+                  CRT: {scanlinesEnabled ? 'ON' : 'OFF'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const state = getOrionStateRef();
+                    if (state) {
+                      const nextHires = !(state.useStandardResolutionHud ?? true);
+                      state.useStandardResolutionHud = nextHires;
+                      updateOrionGraphicsSettings({
+                        hudResolution: nextHires ? 'hires' : 'pixel',
+                      });
+                      notifyOrionStateChange();
+                      showToast(
+                        nextHires
+                          ? 'HUD: TACTICAL RETRO OVERLAY'
+                          : 'HUD: COMPACT RETRO OVERLAY',
+                        1500
+                      );
+                      soundSystem.playSelect();
+                      setTick((t) => t + 1);
+                    }
+                  }}
+                  className="px-2 py-0.5 rounded-xs font-bold bg-[#0284c7]/25 text-[#38bdf8] border border-[#0284c7]/50 cursor-pointer"
+                >
+                  HUD:{' '}
+                  {(getOrionStateRef()?.useStandardResolutionHud ?? true) ? 'TACTICAL' : 'COMPACT'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextDev = toggleOrionDevMode();
                     notifyOrionStateChange();
                     showToast(
-                      nextHires
-                        ? 'HUD: TACTICAL RETRO OVERLAY'
-                        : 'HUD: COMPACT RETRO OVERLAY',
+                      nextDev
+                        ? 'DEVELOPER MODE: ON (ENGINE METADATA VISIBLE)'
+                        : 'DEVELOPER MODE: OFF (CLEAN UI)',
                       1500
                     );
                     soundSystem.playSelect();
                     setTick((t) => t + 1);
-                  }
-                }}
-                className="px-1.5 py-0.5 rounded-xs font-bold text-[9px] bg-[#0284c7]/30 text-[#38bdf8] border border-[#0284c7]/50"
-              >
-                {(getOrionStateRef()?.useStandardResolutionHud ?? true)
-                  ? 'TACTICAL RETRO'
-                  : 'COMPACT RETRO'}
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between text-[10px]">
-              <span className="flex items-center gap-1">
-                <span>DEVELOPER MODE</span>
-                <span className="text-[9px] text-[#94a3b8]">[F3 / `]</span>
-              </span>
-              <button
-                onClick={() => {
-                  const nextDev = toggleOrionDevMode();
-                  notifyOrionStateChange();
-                  showToast(
-                    nextDev
-                      ? 'DEVELOPER MODE: ON (ENGINE METADATA VISIBLE)'
-                      : 'DEVELOPER MODE: OFF (CLEAN UI)',
-                    1500
-                  );
-                  soundSystem.playSelect();
-                  setTick((t) => t + 1);
-                }}
-                className={`px-1.5 py-0.5 rounded-xs font-bold text-[9px] ${
-                  devMode
-                    ? 'bg-[#f59e0b]/25 text-[#fde047] border border-[#f59e0b]/70'
-                    : 'bg-[#1e293b] text-[#94a3b8] border border-[#475569]'
-                }`}
-              >
-                {devMode ? 'DEV ON' : 'OFF'}
-              </button>
-            </div>
-
-            {devMode && onToggleFullscreen && (
-              <div className="flex items-center justify-between text-[10px]">
-                <span>DISPLAY MODE</span>
-                <button
-                  onClick={onToggleFullscreen}
-                  className="px-1.5 py-0.5 rounded-xs font-bold text-[9px] bg-[#1e293b] text-[#e2e8f0] border border-[#475569]"
+                  }}
+                  className={`px-2 py-0.5 rounded-xs font-bold border cursor-pointer ${
+                    devMode
+                      ? 'bg-[#f59e0b]/25 text-[#fde047] border-[#f59e0b]/70'
+                      : 'bg-[#1e293b] text-[#94a3b8] border-[#334155]'
+                  }`}
                 >
-                  {isFullscreen ? 'EXIT FULLSCREEN' : 'FULLSCREEN'}
+                  Dev: {devMode ? 'ON' : 'OFF'}
+                </button>
+
+                {devMode &&
+                  (activeState?.room === '-4,0' ||
+                    Boolean(activeState?.bypassProgressionGates)) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const state = getOrionStateRef();
+                        if (state) {
+                          setTutorialStateActive(state, !state.tutorialActive);
+                          showToast(
+                            state.tutorialActive
+                              ? 'TUTORIAL STATE: ACTIVE'
+                              : 'TUTORIAL CLEARED: STANDARD PROGRESSION',
+                            1500
+                          );
+                          soundSystem.playSelect();
+                          setTick((t) => t + 1);
+                        }
+                      }}
+                      className="px-2 py-0.5 rounded-xs font-bold bg-[#4f46e5]/30 text-[#c7d2fe] border border-[#818cf8]/50 cursor-pointer"
+                    >
+                      {(getOrionStateRef()?.tutorialActive ?? true)
+                        ? 'Tutorial Lockout'
+                        : 'Standard Unlocked'}
+                    </button>
+                  )}
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const state = getOrionStateRef();
+                    if (state) {
+                      saveOrionGame(state);
+                      state.atTitleMenu = true;
+                    }
+                    soundSystem.playSelect();
+                    onResume();
+                  }}
+                  className="px-2 py-0.5 bg-[#1e293b] hover:bg-[#334155] border border-[#38bdf8]/40 rounded-xs font-bold text-[#7dd3fc] cursor-pointer"
+                >
+                  Title Screen
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveAndExit}
+                  className="px-2 py-0.5 bg-[#7f1d1d]/60 hover:bg-[#991b1b] border border-[#ef4444]/50 rounded-xs font-bold text-[#fecaca] cursor-pointer"
+                >
+                  Save &amp; Exit
                 </button>
               </div>
-            )}
-          </div>
-
-          {/* Bottom Exit Bar */}
-          <div className="flex items-center gap-1.5 pt-1.5 border-t border-[#1e293b]">
-            <button
-              onClick={() => {
-                const state = getOrionStateRef();
-                if (state) {
-                  saveOrionGame(state);
-                  state.atTitleMenu = true;
-                }
-                soundSystem.playSelect();
-                onResume();
-              }}
-              className="flex-1 py-1 px-2 bg-[#1e293b] hover:bg-[#334155] border border-[#38bdf8]/50 rounded-xs text-[10px] font-bold text-[#7dd3fc] text-center cursor-pointer"
-            >
-              MAIN TITLE / PILOT MENU
-            </button>
-            <button
-              onClick={handleSaveAndExit}
-              className="flex-1 py-1 px-2 bg-[#7f1d1d]/60 hover:bg-[#991b1b] border border-[#ef4444]/50 rounded-xs text-[10px] font-bold text-[#fecaca] text-center cursor-pointer"
-            >
-              SAVE & EXIT CARTRIDGE
-            </button>
+            </div>
           </div>
         </div>
       )}

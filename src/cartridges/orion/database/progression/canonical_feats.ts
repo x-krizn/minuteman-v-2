@@ -6,6 +6,8 @@
 import {
   ConstellationUmbrellaId,
   FeatChainId,
+  FeatRootDomain,
+  FeatSubBranch,
   FeatSynergyCategory,
   FeatTier,
   FrameFeatDefinition,
@@ -41,7 +43,575 @@ export const FEAT_CHAIN_NAMES: Record<FeatChainId, string> = {
 };
 
 /**
- * Legacy Core Feat ID normalization map so saves referencing retired/merged feat IDs resolve cleanly to their groomed 90-feat equivalents.
+ * Canonical v2.3 Nested Constellation metadata (`v23Id`, `rootDomain`, `subBranch`, and `Rule P-09` `tradeOff`)
+ * for all 90 Core Feats (`37` Interface Core [`18` in `1A` + `19` in `1B`] + `53` Frame Core [`24` in `2A` + `29` in `2B`]).
+ * Together with the `22` Specialist Martial Stances in `1A` (`40` total in `1A`, `59` total Interface) and `1` Reward Feat (`Knight's Oath`),
+ * this forms the complete `113-Node` v2.3 Feat Constellation.
+ */
+export const CORE_FEAT_V23_METADATA: Record<
+  string,
+  {
+    v23Id: string;
+    rootDomain: FeatRootDomain;
+    subBranch: FeatSubBranch;
+    tradeOff: string;
+  }
+> = {
+  // ─── TIER I: 5 Interface (1A) + 5 Frame (2A) + 5 Frame (2B) = 15 Core ───
+  booster_evasion: {
+    v23Id: 'if_sweetspot_calibration',
+    rootDomain: 'interface',
+    subBranch: '1A_combat_records',
+    tradeOff: '+2 Booster Heat cost per dash; -10% inner-shaft sour-spot damage',
+  },
+  phantom_strike: {
+    v23Id: 'if_draw_cadence',
+    rootDomain: 'interface',
+    subBranch: '1A_combat_records',
+    tradeOff: '+8% reactor heat on stealth exit strike',
+  },
+  surgical_precision: {
+    v23Id: 'if_quick_nock',
+    rootDomain: 'interface',
+    subBranch: '1A_combat_records',
+    tradeOff: '-10% base non-sweetspot body damage',
+  },
+  anchored_focus: {
+    v23Id: 'if_caster_vent_discipline',
+    rootDomain: 'interface',
+    subBranch: '1A_combat_records',
+    tradeOff: 'Requires stationary bracing (μ = 0 for 0.75s); breaks on movement',
+  },
+  empowered_blessing: {
+    v23Id: 'if_offhand_indexing',
+    rootDomain: 'interface',
+    subBranch: '1A_combat_records',
+    tradeOff: '1.5s internal cooldown; +6% active skill energy draw',
+  },
+  momentum_guard: {
+    v23Id: 'fr_directional_brace',
+    rootDomain: 'frame',
+    subBranch: '2A_defensive_architecture',
+    tradeOff: '-8% turn-rate agility while boosting',
+  },
+  anchored_action: {
+    v23Id: 'fr_parry_gyros',
+    rootDomain: 'frame',
+    subBranch: '2A_defensive_architecture',
+    tradeOff: 'Active only while anchored (μ = 0); +4% guard heat drain',
+  },
+  stabilizer_pulse: {
+    v23Id: 'fr_shield_capacitor_primer',
+    rootDomain: 'frame',
+    subBranch: '2A_defensive_architecture',
+    tradeOff: '+0.35s shield recharge startup delay after full break',
+  },
+  shield_charge: {
+    v23Id: 'fr_impact_baffle_liners',
+    rootDomain: 'frame',
+    subBranch: '2A_defensive_architecture',
+    tradeOff: '+4 Heat cost on shield bash impact',
+  },
+  veil_of_mercy: {
+    v23Id: 'fr_reactive_seam_welds',
+    rootDomain: 'frame',
+    subBranch: '2A_defensive_architecture',
+    tradeOff: 'Strictly self-only mitigation; never transfers to allies',
+  },
+  radiant_dash: {
+    v23Id: 'sub_booster_ignition_trim',
+    rootDomain: 'frame',
+    subBranch: '2B_subsystem_tuning',
+    tradeOff: '+12% thermal signature visibility after dash',
+  },
+  siege_stability: {
+    v23Id: 'sub_load_bearing_struts_1',
+    rootDomain: 'frame',
+    subBranch: '2B_subsystem_tuning',
+    tradeOff: '-5% dash startup acceleration',
+  },
+  shadow_step: {
+    v23Id: 'sub_optic_baseline_gain',
+    rootDomain: 'frame',
+    subBranch: '2B_subsystem_tuning',
+    tradeOff: '-8% Layer 1 Shield capacity while cloak capacitors charge',
+  },
+  radiant_overflow: {
+    v23Id: 'sub_thermal_bleed_valves',
+    rootDomain: 'frame',
+    subBranch: '2B_subsystem_tuning',
+    tradeOff: '-6% peak burst damage while venting overflow',
+  },
+  reactive_healing: {
+    v23Id: 'sub_utility_feed_primer',
+    rootDomain: 'frame',
+    subBranch: '2B_subsystem_tuning',
+    tradeOff: '20s emergency capacitor lockout after trigger',
+  },
+
+  // ─── TIER II: 6 Interface (1A) + 4 Interface (1B) + 4 Frame (2A) + 4 Frame (2B) = 18 Core ───
+  backstab_mastery: {
+    v23Id: 'mast_reverse_grip_dual_katana',
+    rootDomain: 'interface',
+    subBranch: '1A_combat_records',
+    tradeOff: 'Reverse-Grip toggle reduces melee reach by -20% and locks Action 4 to Parry',
+  },
+  arcane_ambush: {
+    v23Id: 'mast_kaad_iron_bind',
+    rootDomain: 'interface',
+    subBranch: '1A_combat_records',
+    tradeOff: 'Solo Kaad replaces Action 4 Block with Iron-Bind Grapple (+10% heat)',
+  },
+  mercy_strike: {
+    v23Id: 'mast_kaad_sanctified_palm',
+    rootDomain: 'interface',
+    subBranch: '1A_combat_records',
+    tradeOff: 'Solo Kaad replaces Action 4 Block with Sanctified Palm Pulse',
+  },
+  sustained_channeling: {
+    v23Id: 'if_ricasso_leverage',
+    rootDomain: 'interface',
+    subBranch: '1A_combat_records',
+    tradeOff: 'Stacks reset immediately if target lock breaks for >1.2s',
+  },
+  shared_resonance: {
+    v23Id: 'if_bodkin_tension_memory',
+    rootDomain: 'interface',
+    subBranch: '1A_combat_records',
+    tradeOff: '-8% unbuffed baseline energy regeneration',
+  },
+  purification_sweep: {
+    v23Id: 'if_combo_momentum_carry',
+    rootDomain: 'interface',
+    subBranch: '1A_combat_records',
+    tradeOff: '+10% finisher windup commitment',
+  },
+  sidearm_twin_link: {
+    v23Id: 'if_sidearm_twin_link',
+    rootDomain: 'interface',
+    subBranch: '1B_tactical_links',
+    tradeOff: '+15% total reactor heat per synchronized twin strike',
+  },
+  suppression_link: {
+    v23Id: 'if_dorsal_quick_bus',
+    rootDomain: 'interface',
+    subBranch: '1B_tactical_links',
+    tradeOff: '+12% ammo/heat consumption during rapid burst chains',
+  },
+  guarded_fire: {
+    v23Id: 'if_guarded_trigger_interlock',
+    rootDomain: 'interface',
+    subBranch: '1B_tactical_links',
+    tradeOff: '+20% weapon heat generation while firing behind guard',
+  },
+  phase_beam: {
+    v23Id: 'if_parry_riposte_vector',
+    rootDomain: 'interface',
+    subBranch: '1B_tactical_links',
+    tradeOff: '-12% physical armor threshold during phase intangibility',
+  },
+  radiant_ward_flare: {
+    v23Id: 'fr_ward_flare_capacitors',
+    rootDomain: 'frame',
+    subBranch: '2A_defensive_architecture',
+    tradeOff: '+4 Reactor Heat per triggered ward flare (4s CD)',
+  },
+  protectors_aura: {
+    v23Id: 'fr_interference_screen_emitter',
+    rootDomain: 'frame',
+    subBranch: '2A_defensive_architecture',
+    tradeOff: 'Reserves 12% of max reactor energy capacity while active',
+  },
+  healing_shadow: {
+    v23Id: 'fr_cloak_shield_siphon',
+    rootDomain: 'frame',
+    subBranch: '2A_defensive_architecture',
+    tradeOff: 'Self-only shield regeneration; halts immediately on breaking stealth',
+  },
+  martyrs_resolve: {
+    v23Id: 'fr_martyr_dampener_plates',
+    rootDomain: 'frame',
+    subBranch: '2A_defensive_architecture',
+    tradeOff: '-8% movement speed while martyrdom absorption is active',
+  },
+  suppression_chainfire: {
+    v23Id: 'sub_ordnance_hopper_struts',
+    rootDomain: 'frame',
+    subBranch: '2B_subsystem_tuning',
+    tradeOff: '-6% lateral strafe acceleration (+1 Load Step)',
+  },
+  aura_of_suppression: {
+    v23Id: 'sub_suppression_field_coils',
+    rootDomain: 'frame',
+    subBranch: '2B_subsystem_tuning',
+    tradeOff: '+8% continuous thermal load while projecting aura',
+  },
+  guardians_interference: {
+    v23Id: 'sub_ecm_scramble_array',
+    rootDomain: 'frame',
+    subBranch: '2B_subsystem_tuning',
+    tradeOff: '-1.0m personal optic lock-on range while jamming',
+  },
+  energy_redistribution: {
+    v23Id: 'sub_mana_shunt_conduits',
+    rootDomain: 'frame',
+    subBranch: '2B_subsystem_tuning',
+    tradeOff: '+10% reactor heat on heavy hull hit conversion',
+  },
+
+  // ─── TIER III: 4 Interface (1A) + 6 Interface (1B) + 5 Frame (2A) + 5 Frame (2B) = 20 Core ───
+  overload_cleave: {
+    v23Id: 'mast_sarissa_pike_solo',
+    rootDomain: 'interface',
+    subBranch: '1A_combat_records',
+    tradeOff: 'Solo 2H Pike gains +30% tip sweetspot reach; -35% damage inside 24px sour-spot',
+  },
+  radiant_cleave: {
+    v23Id: 'if_sweetspot_executioner',
+    rootDomain: 'interface',
+    subBranch: '1A_combat_records',
+    tradeOff: '+5 Heat cost on 180° combo finisher wave',
+  },
+  assassinate: {
+    v23Id: 'if_anatomical_seam_reader',
+    rootDomain: 'interface',
+    subBranch: '1A_combat_records',
+    tradeOff: 'Bonus applies only vs targets above 90% HP; -10% sustained brawl damage',
+  },
+  vital_strike: {
+    v23Id: 'if_vital_actuator_sever',
+    rootDomain: 'interface',
+    subBranch: '1A_combat_records',
+    tradeOff: 'Requires precision sweetspot / critical hit; +8% swing recovery',
+  },
+  off_hand_deflection: {
+    v23Id: 'if_offhand_parry_protocol',
+    rootDomain: 'interface',
+    subBranch: '1B_tactical_links',
+    tradeOff: 'Mode B Parry cannot be held for sustained Block (0.28s whiff vulnerability)',
+  },
+  attrition_riposte: {
+    v23Id: 'if_attrition_riposte_loop',
+    rootDomain: 'interface',
+    subBranch: '1B_tactical_links',
+    tradeOff: 'Triggers once per enemy attack cycle; +15% whiff damage taken on missed Parry',
+  },
+  cleave_counter: {
+    v23Id: 'if_cleave_counter_reflex',
+    rootDomain: 'interface',
+    subBranch: '1B_tactical_links',
+    tradeOff: '+6 Heat cost when auto-counter wave triggers',
+  },
+  radiant_barrage: {
+    v23Id: 'if_salvo_follow_link',
+    rootDomain: 'interface',
+    subBranch: '1B_tactical_links',
+    tradeOff: '+14% follow-up salvo heat generation',
+  },
+  phantom_barrage: {
+    v23Id: 'if_ambush_double_tap',
+    rootDomain: 'interface',
+    subBranch: '1B_tactical_links',
+    tradeOff: 'Immediately breaks stealth and triggers 0.75s Revealed signature',
+  },
+  void_strike: {
+    v23Id: 'if_phase_vector_bypass',
+    rootDomain: 'interface',
+    subBranch: '1B_tactical_links',
+    tradeOff: '+18% phase module cooldown after shield/armor bypass strike',
+  },
+  overclock_guard: {
+    v23Id: 'fr_thermal_hardening_plates',
+    rootDomain: 'frame',
+    subBranch: '2A_defensive_architecture',
+    tradeOff: '+12% reactor heat generation while hardened',
+  },
+  attrition_guard: {
+    v23Id: 'fr_kinetic_conversion_armor',
+    rootDomain: 'frame',
+    subBranch: '2A_defensive_architecture',
+    tradeOff: '+15% Armor Durability wear on converted heavy impacts',
+  },
+  cleave_suppression: {
+    v23Id: 'fr_concussive_guard_shock',
+    rootDomain: 'frame',
+    subBranch: '2A_defensive_architecture',
+    tradeOff: '+10% melee swing tell duration',
+  },
+  shadow_siphon: {
+    v23Id: 'fr_stealth_integrity_leech',
+    rootDomain: 'frame',
+    subBranch: '2A_defensive_architecture',
+    tradeOff: 'Self-only siphon; -15% external support healing received',
+  },
+  empowered_ward: {
+    v23Id: 'fr_reflective_barrier_lattice',
+    rootDomain: 'frame',
+    subBranch: '2A_defensive_architecture',
+    tradeOff: '+10% shield energy drain on reflected hits',
+  },
+  reactive_overload: {
+    v23Id: 'sub_kinetic_cooldown_shunt',
+    rootDomain: 'frame',
+    subBranch: '2B_subsystem_tuning',
+    tradeOff: 'Requires forward momentum (μ > 0); +8% incoming stagger impulse',
+  },
+  overcharge: {
+    v23Id: 'sub_capacitor_overcharge_tap',
+    rootDomain: 'frame',
+    subBranch: '2B_subsystem_tuning',
+    tradeOff: 'Consumes 30% energy pool & +15% heat generation on discharge',
+  },
+  convergence_field: {
+    v23Id: 'sub_harmonic_regen_coils',
+    rootDomain: 'frame',
+    subBranch: '2B_subsystem_tuning',
+    tradeOff: '-8% movement speed while projecting convergence field',
+  },
+  benediction_pulse: {
+    v23Id: 'sub_triage_pulse_emitter',
+    rootDomain: 'frame',
+    subBranch: '2B_subsystem_tuning',
+    tradeOff: '+6 Heat cost on restorative finisher pulse',
+  },
+  mass_restoration: {
+    v23Id: 'sub_projector_lens_widener',
+    rootDomain: 'frame',
+    subBranch: '2B_subsystem_tuning',
+    tradeOff: '+15% support field cooldown duration',
+  },
+
+  // ─── TIER IV: 3 Interface (1A) + 5 Interface (1B) + 6 Frame (2A) + 6 Frame (2B) = 20 Core ───
+  perfect_ambush: {
+    v23Id: 'if_unseen_execution_doctrine',
+    rootDomain: 'interface',
+    subBranch: '1A_combat_records',
+    tradeOff: 'Requires unbroken stealth entry; +25% cloak recharge delay after strike',
+  },
+  merciful_execution: {
+    v23Id: 'if_trophy_harvest_protocol',
+    rootDomain: 'interface',
+    subBranch: '1A_combat_records',
+    tradeOff: 'Triggers only on killing blow; -8% non-lethal hit damage',
+  },
+  arcane_mastery: {
+    v23Id: 'if_harmonic_frequency_pierce',
+    rootDomain: 'interface',
+    subBranch: '1A_combat_records',
+    tradeOff: '+14% reactor heat cost on shield-piercing energy attacks',
+  },
+  main_weapon_twin_link: {
+    v23Id: 'if_main_weapon_twin_link',
+    rootDomain: 'interface',
+    subBranch: '1B_tactical_links',
+    tradeOff: '+16% reactor heat generation; requires matching weapon classes in Slot 1 & Slot 2',
+  },
+  disruption_riposte: {
+    v23Id: 'if_ecm_parry_pulse',
+    rootDomain: 'interface',
+    subBranch: '1B_tactical_links',
+    tradeOff: '+1.5s interference launcher cooldown on whiffed parry window',
+  },
+  guardians_dash: {
+    v23Id: 'if_vanguard_ram_interlock',
+    rootDomain: 'interface',
+    subBranch: '1B_tactical_links',
+    tradeOff: '10s internal cooldown; +8 Booster Heat on ram impact',
+  },
+  dimensional_strike: {
+    v23Id: 'if_blink_backstab_vector',
+    rootDomain: 'interface',
+    subBranch: '1B_tactical_links',
+    tradeOff: 'Returns to origin point after strike; +20% phase heat cost',
+  },
+  spectral_volley: {
+    v23Id: 'if_ghost_trigger_discipline',
+    rootDomain: 'interface',
+    subBranch: '1B_tactical_links',
+    tradeOff: 'Capped at 3s stealth fire window; -15% projectile impact impulse',
+  },
+  overclocked_ward: {
+    v23Id: 'fr_overclocked_aegis_gyros',
+    rootDomain: 'frame',
+    subBranch: '2A_defensive_architecture',
+    tradeOff: '+15% thermal buildup while CC immunity barrier is active',
+  },
+  suppression_ward: {
+    v23Id: 'fr_dread_bastion_field',
+    rootDomain: 'frame',
+    subBranch: '2A_defensive_architecture',
+    tradeOff: '-10% guard glide speed while projecting suppression stacks',
+  },
+  unyielding_bulwark: {
+    v23Id: 'fr_heavy_bulwark_locks',
+    rootDomain: 'frame',
+    subBranch: '2A_defensive_architecture',
+    tradeOff: '-10% dash distance while bulwark locks engage (+1 Load Step)',
+  },
+  siege_ward: {
+    v23Id: 'fr_bastion_dome_anchor',
+    rootDomain: 'frame',
+    subBranch: '2A_defensive_architecture',
+    tradeOff: 'Stationary dome anchor; leaves dome bonuses if forced outside radius',
+  },
+  barrier_network: {
+    v23Id: 'fr_linked_barrier_grid',
+    rootDomain: 'frame',
+    subBranch: '2A_defensive_architecture',
+    tradeOff: 'Shared barrier drain transfers 25% of ally shield damage to your pool',
+  },
+  selfless_sacrifice: {
+    v23Id: 'fr_aegis_failsafe_shunt',
+    rootDomain: 'frame',
+    subBranch: '2A_defensive_architecture',
+    tradeOff: '60s failsafe cooldown; vents 50% reactor energy on trigger',
+  },
+  overclock_barrage: {
+    v23Id: 'sub_rotary_feed_overclock',
+    rootDomain: 'frame',
+    subBranch: '2B_subsystem_tuning',
+    tradeOff: '+18% escalating reactor heat cost; tempo capped at +30% (Rule P-08)',
+  },
+  disruption_field: {
+    v23Id: 'sub_wideband_jammer_bus',
+    rootDomain: 'frame',
+    subBranch: '2B_subsystem_tuning',
+    tradeOff: '+12% auxiliary energy draw per deployment',
+  },
+  unfaltering: {
+    v23Id: 'sub_superheavy_servo_locks',
+    rootDomain: 'frame',
+    subBranch: '2B_subsystem_tuning',
+    tradeOff: '-8% base turn speed (+1 Load Step)',
+  },
+  shadow_sanctuary: {
+    v23Id: 'sub_personal_shroud_vent',
+    rootDomain: 'frame',
+    subBranch: '2B_subsystem_tuning',
+    tradeOff: 'Cloaks and repairs only yourself (4m personal shroud; 0 ally benefit)',
+  },
+  font_of_power: {
+    v23Id: 'sub_core_resonance_tap',
+    rootDomain: 'frame',
+    subBranch: '2B_subsystem_tuning',
+    tradeOff: '+10% thermal signature radius while resonating',
+  },
+  consecrated_ground: {
+    v23Id: 'sub_sanctified_field_pylons',
+    rootDomain: 'frame',
+    subBranch: '2B_subsystem_tuning',
+    tradeOff: 'Fixed 10s ground zone; requires stationary pylon deployment tell',
+  },
+
+  // ─── TIER V: 4 Interface (1B) + 4 Frame (2A) + 9 Frame (2B) = 17 Core Apex Capstones ───
+  multi_lock_array: {
+    v23Id: 'apex_multi_lock_fire_control',
+    rootDomain: 'interface',
+    subBranch: '1B_tactical_links',
+    tradeOff: '+20% salvo heat cost & -15% single-target concentration damage',
+  },
+  shadow_master: {
+    v23Id: 'apex_wraith_combat_protocol',
+    rootDomain: 'interface',
+    subBranch: '1B_tactical_links',
+    tradeOff: 'Hard 8s stealth duration cap; -20% Layer 2 Armor Rating while cloaked',
+  },
+  quantum_assassin: {
+    v23Id: 'apex_quantum_chain_vector',
+    rootDomain: 'interface',
+    subBranch: '1B_tactical_links',
+    tradeOff: 'High commitment 3-jump sequence; +25% phase reactor heat',
+  },
+  phantom_sniper: {
+    v23Id: 'apex_ghost_ballistics_computer',
+    rootDomain: 'interface',
+    subBranch: '1B_tactical_links',
+    tradeOff: 'Requires stationary μ = 0; triggers 0.75s Revealed debuff on fire',
+  },
+  radiant_convergence: {
+    v23Id: 'apex_aegis_singularity_dome',
+    rootDomain: 'frame',
+    subBranch: '2A_defensive_architecture',
+    tradeOff: 'Bonus active only inside deployed radiant sphere; +18% dome energy cost',
+  },
+  hardening_light: {
+    v23Id: 'apex_reflective_bastion_core',
+    rootDomain: 'frame',
+    subBranch: '2A_defensive_architecture',
+    tradeOff: '-12% movement speed while reflective hard-light lattice is active',
+  },
+  phantom_shroud: {
+    v23Id: 'apex_null_signature_shroud',
+    rootDomain: 'frame',
+    subBranch: '2A_defensive_architecture',
+    tradeOff: 'Strictly self-only stealth & cleanse; 0 ally healing or shielding',
+  },
+  martyrdom_transcendent: {
+    v23Id: 'apex_immortal_bulwark_shunt',
+    rootDomain: 'frame',
+    subBranch: '2A_defensive_architecture',
+    tradeOff: '180s cooldown; absorbs 60% nearby damage into your shields first',
+  },
+  core_overclock: {
+    v23Id: 'apex_ichor_meltdown_override',
+    rootDomain: 'frame',
+    subBranch: '2B_subsystem_tuning',
+    tradeOff: '+20% reactor heat generation; risks thermal redline lockout if mismanaged',
+  },
+  salvo_link: {
+    v23Id: 'apex_seismic_mass_coupler',
+    rootDomain: 'frame',
+    subBranch: '2B_subsystem_tuning',
+    tradeOff: 'Requires Heavy Load or Δv_eff >= 72 (+1 Load Step; +12% windup)',
+  },
+  avalanche_surge: {
+    v23Id: 'apex_avalanche_hopper_drive',
+    rootDomain: 'frame',
+    subBranch: '2B_subsystem_tuning',
+    tradeOff: '+18% escalating heat & ordnance ammo consumption',
+  },
+  lightstorm_barrage: {
+    v23Id: 'apex_mana_saturation_array',
+    rootDomain: 'frame',
+    subBranch: '2B_subsystem_tuning',
+    tradeOff: '+16% mana/heat cost per wide-area suppression salvo',
+  },
+  angel_of_death: {
+    v23Id: 'apex_reaper_siphon_turbine',
+    rootDomain: 'frame',
+    subBranch: '2B_subsystem_tuning',
+    tradeOff: 'Requires stealth killing blow trigger; 6s buff window',
+  },
+  arcane_annihilation: {
+    v23Id: 'apex_aether_cataclysm_lens',
+    rootDomain: 'frame',
+    subBranch: '2B_subsystem_tuning',
+    tradeOff: 'Requires 3.0s immobile channel (120s CD) & +20% reactor heat',
+  },
+  infinite_wellspring: {
+    v23Id: 'apex_perpetual_mana_reactor',
+    rootDomain: 'frame',
+    subBranch: '2B_subsystem_tuning',
+    tradeOff: 'Continuously drains reactor energy per tick while healing aura is active',
+  },
+  empowered_singularity: {
+    v23Id: 'apex_gravity_well_projector',
+    rootDomain: 'frame',
+    subBranch: '2B_subsystem_tuning',
+    tradeOff: 'Fixed 12s singularity zone; +20% reactor heat on deployment',
+  },
+  radiant_apocalypse: {
+    v23Id: 'apex_harmonic_judgment_core',
+    rootDomain: 'frame',
+    subBranch: '2B_subsystem_tuning',
+    tradeOff: 'High commitment wave discharge; drains 25% support energy pool',
+  },
+};
+
+/**
+ * Legacy Core Feat ID and v2.3 slug normalization map so saves or callers referencing
+ * retired/merged feat IDs or v2.3 specification slugs (`if_*`, `doc_*`, `mast_*`, `fr_*`, `sub_*`, `apex_*`, `reward_knights_oath`)
+ * resolve cleanly to their canonical 113-node feat IDs.
  */
 export const LEGACY_CORE_FEAT_ID_MAP: Record<string, string> = {
   radiant_step: 'radiant_dash',
@@ -57,11 +627,18 @@ export const LEGACY_CORE_FEAT_ID_MAP: Record<string, string> = {
   judgment_battery: 'lightstorm_barrage',
   phantom_artillery: 'phantom_sniper',
   divine_veil: 'phantom_shroud',
+  reward_knights_oath: 'knights_oath',
+  ...Object.fromEntries(
+    Object.entries(CORE_FEAT_V23_METADATA).map(([canonicalId, meta]) => [
+      meta.v23Id,
+      canonicalId,
+    ])
+  ),
   ...LEGACY_SPECIALIST_FEAT_ID_MAP,
 };
 
 /**
- * Normalizes any persisted or legacy feat ID to its current canonical 113-node feat ID.
+ * Normalizes any persisted, legacy, or v2.3 feat ID to its current canonical 113-node feat ID.
  */
 export function normalizeCanonicalFeatId(featId: string): string {
   return LEGACY_CORE_FEAT_ID_MAP[featId] || featId;
@@ -86,7 +663,34 @@ interface LoreFeatSeed {
 }
 
 function buildLoreFeat(s: LoreFeatSeed): FrameFeatDefinition {
-  const gemCount1 = s.tier === 'IV' || s.tier === 'V' ? 2 : 1;
+  const v23Meta = CORE_FEAT_V23_METADATA[s.id];
+  const rootDomain: FeatRootDomain =
+    v23Meta?.rootDomain || (s.kind === 'system' || s.loadStepUp ? 'frame' : 'interface');
+  const subBranch: FeatSubBranch =
+    v23Meta?.subBranch ||
+    (rootDomain === 'frame'
+      ? s.loadStepUp
+        ? '2B_subsystem_tuning'
+        : '2A_defensive_architecture'
+      : '1A_combat_records');
+  const tradeOff =
+    v23Meta?.tradeOff ||
+    'Zero-sum reactor/chassis calibration trade-off under Rule P-09';
+
+  // Rule P-01 Gem Socket Economy: Tier I/II = 1 Gem, Tier III/IV = 2 Gems, Tier V = 3 Gems
+  const gemSockets: Array<{ gemId: GemId; count: number }> =
+    s.tier === 'I' || s.tier === 'II'
+      ? [{ gemId: s.gems[0], count: 1 }]
+      : s.tier === 'III' || s.tier === 'IV'
+        ? [
+            { gemId: s.gems[0], count: 1 },
+            { gemId: s.gems[1], count: 1 },
+          ]
+        : [
+            { gemId: s.gems[0], count: 2 },
+            { gemId: s.gems[1], count: 1 },
+          ];
+
   const reqLabel = s.reqEq && s.reqEq !== '—' ? s.reqEq : 'Any Loadout';
   const chainName = s.chainId ? FEAT_CHAIN_NAMES[s.chainId] : undefined;
   const chainLabel =
@@ -95,9 +699,12 @@ function buildLoreFeat(s: LoreFeatSeed): FrameFeatDefinition {
       : 'Standalone (No Prerequisite Feat)';
   return {
     id: s.id,
+    v23Id: v23Meta?.v23Id,
     name: s.name,
     tier: s.tier,
-    kind: s.kind || (s.loadStepUp ? 'system' : 'interface'),
+    kind: rootDomain === 'frame' ? 'system' : 'interface',
+    rootDomain,
+    subBranch,
     requiredSkillId: s.skill,
     requiredSkillLevel: 1,
     umbrella: s.umbrella,
@@ -107,11 +714,9 @@ function buildLoreFeat(s: LoreFeatSeed): FrameFeatDefinition {
     synergyCategory: s.cat,
     requiredEquipment: reqLabel,
     gainDescription: s.effect,
-    costDescription: `${chainLabel} · Trigger/Hardware: ${reqLabel} (${s.umbrella} · ${s.lineageHint})`,
-    gemSockets: [
-      { gemId: s.gems[0], count: gemCount1 },
-      { gemId: s.gems[1], count: 1 },
-    ],
+    costDescription: `${chainLabel} · Trigger/Hardware: ${reqLabel} · Trade-Off: ${tradeOff}`,
+    tradeOffDescription: tradeOff,
+    gemSockets,
     unlocksDescription: `Trigger/Hardware: ${reqLabel}`,
     loadStepUp: s.loadStepUp,
     modifiers: s.modifiers || { damageMult: 1.08 },
@@ -1537,9 +2142,12 @@ export const CANONICAL_FRAME_FEAT_CATALOG: FrameFeatDefinition[] = [
   ...SPECIALIST_FRAME_FEATS,
   {
     id: 'knights_oath',
+    v23Id: 'reward_knights_oath',
     name: "Knight's Oath",
     tier: 'I',
     kind: 'interface',
+    rootDomain: 'interface',
+    subBranch: '1A_combat_records',
     requiredSkillId: 'Guardian',
     requiredSkillLevel: 1,
     umbrella: 'Fighter',
@@ -1549,10 +2157,8 @@ export const CANONICAL_FRAME_FEAT_CATALOG: FrameFeatDefinition[] = [
     gainDescription: '+10% permanent bonus damage against all Camelot enemies.',
     costDescription:
       'Campaign Reward Feat — Defeat Sir Percival, Sir Tristan, and Sir Bors in a combined encounter in Camelot Border Town.',
-    gemSockets: [
-      { gemId: 'titanite', count: 1 },
-      { gemId: 'moonstone', count: 1 },
-    ],
+    tradeOffDescription: 'None (Campaign Reward Feat)',
+    gemSockets: [{ gemId: 'titanite', count: 1 }],
     unlocksDescription: 'Reward Feat — Combined boss fight (Percival, Tristan, Bors)',
     modifiers: { damageMult: 1.1 },
   },

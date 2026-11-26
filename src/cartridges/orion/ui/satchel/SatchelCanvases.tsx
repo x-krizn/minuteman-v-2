@@ -50,7 +50,8 @@ export type EditableLoadoutSlot =
   | 'mod_melee'
   | 'mod_mobility'
   | 'bind_l'
-  | 'bind_r';
+  | 'bind_r'
+  | 'bind_b';
 
 /** Category filter tabs for the Pilot Satchel equipment & consumable inventory view. */
 export type EquipmentInventoryCategory =
@@ -771,8 +772,8 @@ export const HighResMechDollCanvas: React.FC<{
           slot1: { x: W / 2 + 26, y: 86, r: 20, color: '#fde047', label: 'MAIN HAND [R]' },
           slot2: { x: W / 2 - 26, y: 88, r: 20, color: '#38bdf8', label: 'SIDE HAND [L]' },
           slot3: { x: W / 2 + 18, y: 62, r: 18, color: '#c084fc', label: 'AUXILIARY [BACK]' },
-          bind_l: { x: W / 2 + 26, y: 86, r: 16, color: '#fde047', label: 'LEFT TRIGGER [L]' },
-          bind_r: { x: W / 2 - 26, y: 88, r: 16, color: '#38bdf8', label: 'RIGHT TRIGGER [R]' },
+          bind_l: { x: W / 2 + 26, y: 86, r: 16, color: '#fde047', label: 'L [Q] LONG-PRESS' },
+          bind_r: { x: W / 2 - 26, y: 88, r: 16, color: '#38bdf8', label: 'R [E] SHOULDER' },
         };
         const z = zoneCoords[focusSlot];
         if (z) {

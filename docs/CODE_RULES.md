@@ -52,7 +52,7 @@ Code is code. **Sections 1 to 8 apply identically to all three areas.** Orion-on
   |---|---|
   | Minuteman | `engine/core/`, `engine/input/`, `components/gamepad/`, `components/screen/`, `types/`, `utils/` |
   | Knight | `database/`, `renderer/`, `ui/`, `assets/`, plus flat modules at the root (`combat.ts`, `enemies.ts`, `physics.ts`, `pickups.ts`, `particles.ts`, `skills.ts`, `stateStore.ts`) |
-  | Orion | `types/`, `database/`, `systems/combat/`, `systems/render/`, `systems/world/`, `ui/hud/`, `ui/satchel/`, `ui/settings/` |
+  | Orion | `types/`, `database/` (`database/world/global/biomes/<biome>/tiles/`, `database/world/overworld/<world>/`), `systems/combat/`, `systems/render/`, `systems/world/`, `ui/hud/`, `ui/satchel/`, `ui/settings/` |
 
 - **Import direction (all areas):**
   - `types/` imports only other types.
@@ -145,29 +145,29 @@ Code is code. **Sections 1 to 8 apply identically to all three areas.** Orion-on
 
 ## 9. BASELINE
 
-*Measured 2026-11-14 at commit `a3821f5`. Re-measure after major refactors.*
+*Measured 2026-11-26. Re-measure after major refactors.*
 
 | Check | Minuteman | Knight | Orion |
 |---|---|---|---|
-| `.ts` / `.tsx` files | 28 | 88 | 168 |
-| License header present | 28 of 28 | 88 of 88 | 168 of 168 |
+| `.ts` / `.tsx` files | 28 | 88 | 186 |
+| License header present | 28 of 28 | 88 of 88 | 186 of 186 |
 | `any`, `@ts-ignore`, `@ts-expect-error`, `TODO`, `FIXME` | 0 | 0 | 0 |
 | Network calls (`fetch`, XHR, WebSocket, `http(s)://`) | 0 | 0 | 0 |
-| Exports with no JSDoc block immediately above | 0 of 95 | 0 of 216 | 0 of 1,370 |
-| `addEventListener` / `removeEventListener` | 24 / 24 | 0 / 0 | 0 / 0 |
-| `setTimeout` / `clearTimeout` | 1 / 1 | 3 / 6 | 3 / 5 |
+| Exports with no JSDoc block immediately above | 0 of 95 | 0 of 216 | 0 of 1,584 |
+| `addEventListener` / `removeEventListener` | 24 / 24 | 0 / 0 | 1 / 1 |
+| `setTimeout` / `clearTimeout` | 1 / 1 | 3 / 6 | 4 / 5 |
 | `requestAnimationFrame` / `cancelAnimationFrame` | 6 / 2 (two self-rescheduling loops, one cancel each) | 0 / 0 | 3 / 3 |
-| Files over 1,000 lines | 0 | 0 | 20 |
-| `import.meta.glob` uses | 0 | 9 | 14 |
-| Import statements leaving the area | 4 into cartridges (below) | 12 into Minuteman | 43 into Minuteman |
+| Files over 1,000 lines | 0 | 0 | 25 |
+| `import.meta.glob` uses | 0 | 9 | 17 |
+| Import statements leaving the area | 4 into cartridges (below) | 12 into Minuteman | 45 into Minuteman |
 | Imports of another cartridge | n/a | 0 | 0 |
-| `[ORION-ANCHOR: …]` comments in code | 0 | 0 | 23 |
+| `[ORION-ANCHOR: …]` comments in code | 0 | 0 | 24 |
 
 | Cross-area fact | Result |
 |---|---|
 | Minuteman imports of cartridges | `src/cartridges/index.ts` imports both cartridge indexes. `src/App.tsx` imports `cartridges` and `cartridges/orion/systems/graphicsSettingsStore`. The second import is an exception that exists today: do not add others. |
 | Knight imports into Minuteman | `engine/core/soundSystem` 8, `types/cartridge` 2, `types/input` 1, `engine/input/inputBindingsStore` 1 |
-| Orion imports into Minuteman | `engine/core/soundSystem` 31, `engine/input/inputBindingsStore` 4, `types/input` 3, `types/cartridge` 1, `engine/input/hardwareGamepad` 1, `engine/input/gamepadStore` 1, `engine/input/keyboardMapper` 1, `utils/fullscreen` 1 |
+| Orion imports into Minuteman | `engine/core/soundSystem` 33, `engine/input/inputBindingsStore` 4, `types/input` 3, `types/cartridge` 1, `engine/input/hardwareGamepad` 1, `engine/input/gamepadStore` 1, `engine/input/keyboardMapper` 1, `utils/fullscreen` 1 |
 
 ---
 

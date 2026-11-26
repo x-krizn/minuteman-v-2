@@ -62,7 +62,11 @@ import {
   OrionState,
   TraitLine,
 } from '../types';
-import { updateTargetLock } from './combatSystem';
+import {
+  activateAssignedBAction,
+  getEffectiveBActionId,
+  updateTargetLock,
+} from './combatSystem';
 import { spawnRoomEnemies, updateParticles } from './entitySystem';
 import {
   computePlayerWeightRecoveryProfile,
@@ -192,7 +196,15 @@ function applySerializedSaveDataToState(
   state.equippedWeapons = data.equippedWeapons ?? state.equippedWeapons;
   state.activeWeaponIndex = data.activeWeaponIndex ?? state.activeWeaponIndex;
   if (data.assignedActions && typeof data.assignedActions === 'object') {
-    state.assignedActions = { ...state.assignedActions, ...data.assignedActions };
+    const nextL =
+      !data.assignedActions.L || data.assignedActions.L === 'weapon_skill_1'
+        ? 'weapon_swap'
+        : data.assignedActions.L;
+    state.assignedActions = {
+      ...state.assignedActions,
+      ...data.assignedActions,
+      L: nextL,
+    };
   }
   if (Array.isArray(data.equippedFeats) && data.equippedFeats.length > 0) {
     state.equippedFeats = data.equippedFeats;
@@ -662,7 +674,7 @@ export function createInitialOrionState(
     skillActionTimer: 0,
 
     assignedActions: {
-      L: 'weapon_skill_1',
+      L: 'weapon_swap',
       R: 'weapon_skill_2',
     },
     actionCooldowns: {},
@@ -2028,10 +2040,14 @@ export function updatePlayerSystem(
 
   updateTargetLock(state);
 
-  // 2. [B] Button Dual-Mode Boost (Tap Burst + Hold Continuous Boost)
+  // 2. [B] Button Dual-Mode Boost (Tap Burst + Hold Continuous Boost) or Custom Bound Action
+  const bBoundActionId = getEffectiveBActionId(state);
+  const isDefaultBoosterDash = bBoundActionId === 'booster_dash';
   if (p.b) {
     state.bHoldTimer = 0;
-    if (!gates.canBoosterDash) {
+    if (!isDefaultBoosterDash) {
+      activateAssignedBAction(state, combatCtx);
+    } else if (!gates.canBoosterDash) {
       soundSystem.playMenuBeep();
       combatCtx.say('BOOSTER KIT OFFLINE');
       notifyOrionStateChange();
@@ -2093,6 +2109,7 @@ export function updatePlayerSystem(
   }
 
   if (
+    isDefaultBoosterDash &&
     h.b &&
     gates.legsSlotActive &&
     !isAttackingOrWindingUp &&

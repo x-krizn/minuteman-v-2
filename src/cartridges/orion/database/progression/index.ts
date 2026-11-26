@@ -3829,7 +3829,8 @@ export function computeLoadPenalty(
 }
 
 /**
- * Executes `computeInterfaceFeatModifiers` (compute interface feat modifiers) in `index.ts`.
+ * Computes cumulative interface/frame feat modifiers across all socketed feats,
+ * enforcing `Rule P-08` (`+35%` sustained feat damage cap: `damageMult <= 1.35`).
  */
 export function computeInterfaceFeatModifiers(equippedFeats: string[]): {
   damageMult: number;
@@ -3870,6 +3871,9 @@ export function computeInterfaceFeatModifiers(equippedFeats: string[]): {
     if (m.accuracyMult) accuracyMult *= m.accuracyMult;
     if (m.lightDelta) lightDelta += m.lightDelta;
   }
+
+  // Rule P-08: Cumulative sustained damage multipliers from feats may not exceed +35% (1.35x)
+  damageMult = Math.min(1.35, Number(damageMult.toFixed(4)));
 
   return {
     damageMult,
